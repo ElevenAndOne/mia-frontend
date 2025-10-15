@@ -115,10 +115,33 @@ const VideoIntroView = ({ onAuthSuccess }: VideoIntroViewProps) => {
         </div>
       </video>
 
+      {/* Skip Button - Top Right */}
+      {!showLoginModal && (
+        <button
+          onClick={() => setShowLoginModal(true)}
+          className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
+          aria-label="Skip video"
+        >
+          <svg
+            className="w-6 h-6 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 5l7 7-7 7M5 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* Login Modal - slides up from bottom */}
       <AnimatePresence>
         {showLoginModal && (
-          <FigmaLoginModal 
+          <FigmaLoginModal
             onAuthSuccess={onAuthSuccess}
           />
         )}
