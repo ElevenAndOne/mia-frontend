@@ -439,8 +439,8 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
           category: activeCategory,
           session_id: sessionId,
           user_id: '106540664695114193744',
-          google_ads_id: selectedAccount?.google_ads_id || '7574136388', // Fallback to DFSA
-          ga4_property_id: selectedAccount?.ga4_property_id || '458016659', // Fallback to DFSA
+          google_ads_id: selectedAccount?.google_ads_id,
+          ga4_property_id: selectedAccount?.ga4_property_id,
           start_date: selectedDateRange.start,
           end_date: selectedDateRange.end
         }),

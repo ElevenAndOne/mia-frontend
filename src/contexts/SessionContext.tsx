@@ -426,22 +426,42 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   const checkExistingAuth = async (): Promise<boolean> => {
     try {
-      const authResponse = await apiFetch('/api/oauth/google/status')
+      const authResponse = await apiFetch('/api/oauth/google/status', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
       if (authResponse.ok) {
         const authData = await authResponse.json()
         if (authData.authenticated) {
           // Fetch available accounts
           await refreshAccounts()
 
+          // Build selected account from response if available
+          let selectedAccount = null
+          if (authData.selected_account) {
+            selectedAccount = {
+              id: authData.selected_account.id,
+              name: authData.selected_account.name,
+              google_ads_id: authData.selected_account.google_ads_id,
+              ga4_property_id: authData.selected_account.ga4_property_id,
+              meta_ads_id: authData.selected_account.meta_ads_id,
+              business_type: authData.selected_account.business_type,
+              color: '',
+              display_name: authData.selected_account.name
+            }
+          }
+
           setState(prev => ({
             ...prev,
             isAuthenticated: true,
             user: {
-              name: authData.name || 'User',
-              email: authData.email || '',
-              picture_url: authData.picture || '',
-              google_user_id: authData.user_id || ''
-            }
+              name: authData.user_info?.name || authData.name || 'User',
+              email: authData.user_info?.email || authData.email || '',
+              picture_url: authData.user_info?.picture || authData.picture || '',
+              google_user_id: authData.user_info?.id || authData.user_id || ''
+            },
+            selectedAccount: selectedAccount
           }))
           return true
         }

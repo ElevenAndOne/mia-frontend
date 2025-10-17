@@ -24,6 +24,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const { sessionId } = useSession()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
+  const [connectingId, setConnectingId] = useState<string | null>(null)
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
 
@@ -153,7 +154,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleConnect = async (integrationId: string) => {
-    setLoading(true)
+    setConnectingId(integrationId)
 
     try {
       console.log(`Connecting to ${integrationId} with sessionId:`, sessionId)
@@ -200,7 +201,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       if (!popup) {
         alert('Popup blocked. Please allow popups for this site.')
-        setLoading(false)
+        setConnectingId(null)
         return
       }
 
@@ -244,13 +245,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           await checkConnections()
 
           setSelectedIntegration(integrationId)
-          setLoading(false)
+          setConnectingId(null)
         }
       }, 500)
     } catch (error) {
       console.error(`${integrationId} connection error:`, error)
       alert(`Connection failed: ${error}`)
-      setLoading(false)
+      setConnectingId(null)
     }
   }
 
@@ -398,14 +399,20 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
-                      disabled={loading || integration.id === 'linkedin' || integration.id === 'tiktok'}
+                      disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
                       className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
                         integration.id === 'linkedin' || integration.id === 'tiktok'
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : connectingId === integration.id
+                          ? 'bg-gray-600 text-white cursor-wait'
                           : 'bg-black text-white hover:bg-gray-800'
                       }`}
                     >
-                      {integration.id === 'linkedin' || integration.id === 'tiktok' ? 'Soon' : 'Connect'}
+                      {integration.id === 'linkedin' || integration.id === 'tiktok'
+                        ? 'Soon'
+                        : connectingId === integration.id
+                        ? 'Connecting...'
+                        : 'Connect'}
                     </button>
                   </div>
                 </div>
