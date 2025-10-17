@@ -100,17 +100,65 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  // Initialize session on mount - but don't auto-authenticate to allow video intro
+  // Initialize session on mount - check for existing session first
   useEffect(() => {
     const initializeSession = async () => {
       setState(prev => ({ ...prev, isLoading: true }))
 
       try {
-        // Generate session ID
-        const sessionId = generateSessionId()
+        // Check localStorage for existing session
+        const storedSessionId = localStorage.getItem('mia_session_id')
 
-        // For now, just initialize with session ID and let explicit login handle auth
-        // This prevents auto-skipping the video intro
+        if (storedSessionId) {
+          console.log('[SESSION] Found stored session, validating...', storedSessionId)
+
+          // Validate session with backend
+          const response = await apiFetch(`/api/session/validate?session_id=${storedSessionId}`)
+
+          if (response.ok) {
+            const data = await response.json()
+
+            if (data.valid) {
+              console.log('[SESSION] Session valid, restoring state')
+
+              // Restore auth state from validated session
+              setState(prev => ({
+                ...prev,
+                sessionId: storedSessionId,
+                isAuthenticated: true,
+                user: {
+                  name: data.user.name,
+                  email: data.user.email,
+                  picture_url: data.user.picture_url,
+                  google_user_id: data.user.user_id
+                },
+                selectedAccount: data.selected_account ? {
+                  id: data.selected_account.id,
+                  google_ads_id: data.selected_account.google_ads_id,
+                  ga4_property_id: data.selected_account.ga4_property_id,
+                  meta_ads_id: data.selected_account.meta_ads_id,
+                  name: data.selected_account.id,
+                  business_type: '',
+                  color: '',
+                  display_name: data.selected_account.id
+                } : null,
+                isLoading: false
+              }))
+
+              // Refresh available accounts
+              await refreshAccounts()
+              return
+            } else {
+              console.log('[SESSION] Session invalid or expired, creating new session')
+              localStorage.removeItem('mia_session_id')
+            }
+          }
+        }
+
+        // No stored session or validation failed - create new session
+        const sessionId = generateSessionId()
+        localStorage.setItem('mia_session_id', sessionId)
+
         setState(prev => ({
           ...prev,
           sessionId: sessionId,
@@ -119,10 +167,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       } catch (error) {
         console.error('[SESSION] Initialization error:', error)
+        const sessionId = generateSessionId()
+        localStorage.setItem('mia_session_id', sessionId)
+
         setState(prev => ({
           ...prev,
           error: 'Failed to initialize session',
-          sessionId: generateSessionId(),
+          sessionId: sessionId,
           isLoading: false
         }))
       }
@@ -273,14 +324,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       await apiFetch('/api/oauth/google/logout', { method: 'POST' })
 
+      // Clear stored session
+      localStorage.removeItem('mia_session_id')
+
+      // Generate new session and store it
+      const newSessionId = generateSessionId()
+      localStorage.setItem('mia_session_id', newSessionId)
+
       setState({
         isAuthenticated: false,
         isLoading: false,
         user: null,
-        sessionId: generateSessionId(),
+        sessionId: newSessionId,
         selectedAccount: null,
         availableAccounts: [],
-        error: null
+        error: null,
+        isMetaAuthenticated: false,
+        metaUser: null
       })
     } catch (error) {
       console.error('[SESSION] Logout error:', error)

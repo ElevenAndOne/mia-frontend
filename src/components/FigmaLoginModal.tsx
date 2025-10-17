@@ -8,7 +8,7 @@ interface FigmaLoginModalProps {
 }
 
 const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
-  const { login, loginMeta, isLoading: sessionLoading, error, sessionId, checkExistingAuth, refreshAccounts } = useSession()
+  const { login, loginMeta, isLoading: sessionLoading, error, sessionId, checkExistingAuth, refreshAccounts, isAuthenticated, isMetaAuthenticated } = useSession()
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
@@ -78,15 +78,34 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         setMetaLoadingMessage('')
       }
     } else if (method === 'Login') {
-      // BYPASS: Black "Log in" button simulates authentication for mobile testing
+      // Login button - check for existing auth first, then bypass if needed
 
       try {
         setIsGoogleLoading(true)
+        setGoogleLoadingMessage('Checking session...')
+
+        // Check if user is already authenticated
+        if (isAuthenticated || isMetaAuthenticated) {
+          console.log('[LOGIN] User already authenticated, skipping to app')
+          setGoogleLoadingMessage('Session found! Redirecting...')
+
+          // Refresh accounts to ensure we have latest data
+          await refreshAccounts()
+
+          // Small delay for UX
+          setTimeout(() => {
+            if (onAuthSuccess) {
+              onAuthSuccess()
+            }
+            setIsGoogleLoading(false)
+          }, 200)
+          return
+        }
+
+        // No existing auth - use bypass login for testing
         setGoogleLoadingMessage('Creating bypass session...')
 
-        // Use the SessionContext's session ID for consistency
-
-        // Call the new bypass endpoint which creates a complete authenticated session
+        // Call the bypass endpoint to create a test authenticated session
         const bypassResponse = await apiFetch('/api/oauth/bypass-login', {
           method: 'POST',
           headers: {
@@ -104,24 +123,10 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
 
         setGoogleLoadingMessage('Session created! Redirecting...')
 
-        // Force the SessionContext to check auth status with the bypass session
-        // Check authentication status with the bypass session ID
-        const authStatusResponse = await apiFetch('/api/oauth/google/status', {
-          headers: {
-            'X-Session-ID': sessionId
-          }
-        })
-
-        if (authStatusResponse.ok) {
-          const authData = await authStatusResponse.json()
-
-          if (authData.authenticated) {
-            // Update SessionContext by refreshing auth
-            const authSuccess = await checkExistingAuth()
-            if (authSuccess) {
-              await refreshAccounts()
-            }
-          }
+        // Update SessionContext by checking auth status
+        const authSuccess = await checkExistingAuth()
+        if (authSuccess) {
+          await refreshAccounts()
         }
 
         // Small delay for UX
@@ -133,8 +138,8 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         }, 200)
 
       } catch (error) {
-        console.error('💥 Login bypass failed:', error)
-        alert(`Login bypass failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
+        console.error('💥 Login failed:', error)
+        alert(`Login failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
       }
