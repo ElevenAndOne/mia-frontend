@@ -80,7 +80,7 @@ const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = f
         setOptimizeData(result.data)
         setError(null)
       } else {
-        setError('Unable to load optimization data. Please try again.')
+        setError('Unable to load optimisation data. Please try again.')
         setOptimizeData(getErrorFallbackData())
       }
     } catch (error) {

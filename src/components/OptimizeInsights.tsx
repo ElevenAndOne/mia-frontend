@@ -71,7 +71,7 @@ const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
         </div>
 
         <h1 className="text-xl font-normal text-black text-center" style={{ fontFamily: 'Geologica, sans-serif', fontSize: '20px', fontWeight: 400, lineHeight: '110%' }}>
-          Optimize
+          Optimise
         </h1>
 
         <div className="flex-1 flex justify-end pr-2">
@@ -134,7 +134,7 @@ const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-600 rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600 text-sm">Analyzing optimization opportunities...</p>
+            <p className="text-gray-600 text-sm">Analysing optimisation opportunities...</p>
           </div>
         )}
 
@@ -160,7 +160,7 @@ const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
 
             {/* Key Insights */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Optimization Opportunities</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Optimisation Opportunities</h2>
               <div className="space-y-3">
                 {insights.insights.map((insight, index) => (
                   <div key={index} className="flex items-start gap-3 bg-gray-50 rounded-lg p-4">
