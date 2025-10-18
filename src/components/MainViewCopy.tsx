@@ -9,9 +9,12 @@ interface MainViewProps {
   onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: any) => void
   onCreativeClick?: () => void
   onIntegrationsClick?: () => void
+  onGrowQuickClick?: () => void
+  onOptimizeQuickClick?: () => void
+  onProtectQuickClick?: () => void
 }
 
-const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick }: MainViewProps) => {
+const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
@@ -482,8 +485,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                     }
                   }}
                   className="inline-flex items-center gap-2 px-5 py-3 bg-black text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
-                  style={{ 
-                    minWidth: '190px', 
+                  style={{
+                    minWidth: '190px',
                     justifyContent: 'center',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                     WebkitTapHighlightColor: 'transparent',
@@ -497,7 +500,94 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 </button>
               </div>
             )}
-            
+
+            {/* BETA: Quick Insights Buttons */}
+            {onGrowQuickClick && (
+              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '555px' }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (onGrowQuickClick) {
+                      setTimeout(() => onGrowQuickClick(), 150)
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  style={{
+                    minWidth: '190px',
+                    justifyContent: 'center',
+                    backgroundColor: '#27D1F4',
+                    boxShadow: '0 4px 12px rgba(39, 209, 244, 0.25)',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  Grow Insights
+                </button>
+              </div>
+            )}
+
+            {onOptimizeQuickClick && (
+              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '610px' }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (onOptimizeQuickClick) {
+                      setTimeout(() => onOptimizeQuickClick(), 150)
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  style={{
+                    minWidth: '190px',
+                    justifyContent: 'center',
+                    backgroundColor: '#F32F94',
+                    boxShadow: '0 4px 12px rgba(243, 47, 148, 0.25)',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                  </svg>
+                  Optimize Insights
+                </button>
+              </div>
+            )}
+
+            {onProtectQuickClick && (
+              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '665px' }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (onProtectQuickClick) {
+                      setTimeout(() => onProtectQuickClick(), 150)
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  style={{
+                    minWidth: '190px',
+                    justifyContent: 'center',
+                    backgroundColor: '#FAA90B',
+                    boxShadow: '0 4px 12px rgba(250, 169, 11, 0.25)',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  Protect Insights
+                </button>
+              </div>
+            )}
+
           </>
         ) : (
           /* Chat Interface - iPhone 16 Optimized with proper flex layout */

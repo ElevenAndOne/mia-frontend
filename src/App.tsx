@@ -8,9 +8,12 @@ import OptimizePage from './components/OptimizePage' // Optimize improvement pag
 import ProtectPage from './components/ProtectPage' // Protect/fixing page
 import CreativePageFixed from './components/CreativePageFixed' // NEW: Creative-only analysis
 import IntegrationsPage from './components/IntegrationsPage'
+import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - Grow
+import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
+import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
 import { useSession } from './contexts/SessionContext'
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations'
+type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading } = useSession()
@@ -162,6 +165,9 @@ function App() {
                 onQuestionClick={handleQuestionClick}
                 onCreativeClick={handleCreativeClick}
                 onIntegrationsClick={() => setAppState('integrations')}
+                onGrowQuickClick={() => setAppState('grow-quick')}
+                onOptimizeQuickClick={() => setAppState('optimize-quick')}
+                onProtectQuickClick={() => setAppState('protect-quick')}
               />
             </motion.div>
           )}
@@ -252,6 +258,51 @@ function App() {
               className="w-full h-full"
             >
               <IntegrationsPage
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'grow-quick' && isAnyAuthenticated && (
+            <motion.div
+              key="grow-quick"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <GrowInsights
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'optimize-quick' && isAnyAuthenticated && (
+            <motion.div
+              key="optimize-quick"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <OptimizeInsights
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'protect-quick' && isAnyAuthenticated && (
+            <motion.div
+              key="protect-quick"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <ProtectInsights
                 onBack={() => setAppState('main')}
               />
             </motion.div>
