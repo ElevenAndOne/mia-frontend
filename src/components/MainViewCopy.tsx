@@ -464,8 +464,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
                   style={{
                     minWidth: '190px',
-                    backgroundColor: '#27D1F4',
-                    boxShadow: '0 4px 12px rgba(39, 209, 244, 0.25)',
+                    background: '#000000',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
@@ -487,8 +487,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
                   style={{
                     minWidth: '190px',
-                    backgroundColor: '#F32F94',
-                    boxShadow: '0 4px 12px rgba(243, 47, 148, 0.25)',
+                    background: '#000000',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
@@ -510,8 +510,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
                   style={{
                     minWidth: '190px',
-                    backgroundColor: '#FAA90B',
-                    boxShadow: '0 4px 12px rgba(250, 169, 11, 0.25)',
+                    background: '#000000',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}

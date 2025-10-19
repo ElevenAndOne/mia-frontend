@@ -1,6 +1,7 @@
 import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
+import DateRangeSelector from './DateRangeSelector'
 
 interface GrowInsightsProps {
   onBack?: () => void
@@ -18,11 +19,36 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
+  const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
 
-  // Fetch insights on mount
+  // Helper function to calculate and format date range
+  const getDateRangeDisplay = (range: string): string => {
+    const today = new Date()
+    const daysMap: { [key: string]: number } = {
+      '7_days': 7,
+      '14_days': 14,
+      '30_days': 30,
+      '90_days': 90
+    }
+
+    const days = daysMap[range] || 30
+    const startDate = new Date(today)
+    startDate.setDate(today.getDate() - days)
+
+    const formatDate = (date: Date) => {
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = date.toLocaleDateString('en-GB', { month: 'short' })
+      return `${day} ${month}`
+    }
+
+    return `${formatDate(startDate)} - ${formatDate(today)}`
+  }
+
+  // Fetch insights on mount and when date range changes
   useEffect(() => {
     fetchGrowInsights()
-  }, [])
+  }, [selectedDateRange])
 
   const fetchGrowInsights = async () => {
     try {
@@ -39,7 +65,8 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          session_id: sessionId
+          session_id: sessionId,
+          date_range: selectedDateRange
         }),
       })
 
@@ -65,6 +92,14 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
 
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>
+      {/* Date Range Selector */}
+      <DateRangeSelector
+        isOpen={isDateSelectorOpen}
+        onClose={() => setIsDateSelectorOpen(false)}
+        selectedRange={selectedDateRange}
+        onApply={setSelectedDateRange}
+      />
+
       {/* Header */}
       <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
@@ -77,7 +112,10 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
 
         <div className="flex-1 flex justify-end pr-2">
           <div className="relative">
-            <button className="w-6 h-6 flex items-center justify-center opacity-50">
+            <button
+              onClick={() => setIsDateSelectorOpen(!isDateSelectorOpen)}
+              className="w-6 h-6 flex items-center justify-center hover:opacity-70 transition-opacity active:scale-90"
+            >
               <img src="/icons/calendar.svg" alt="Calendar" className="w-6 h-6" />
             </button>
           </div>
@@ -123,7 +161,7 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
         </button>
 
         <div className="flex flex-col items-end" style={{ zIndex: 10, position: 'relative', transform: 'translateY(-5px) translateX(-20px)' }}>
-          <span className="text-white font-medium text-lg">03 Aug - 02 Sep</span>
+          <span className="text-white font-medium text-lg">{getDateRangeDisplay(selectedDateRange)}</span>
           {selectedAccount && (
             <span className="text-white/80 text-sm font-normal mt-0.5">{selectedAccount.name}</span>
           )}
@@ -153,7 +191,7 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
 
         {insights && !isLoading && !error && (
           <div className="space-y-6">
-            {/* Summary */}
+            {/* Summary FIRST */}
             <div className="bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 rounded-lg p-5">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
               <p className="text-gray-700 leading-relaxed">{insights.summary}</p>
