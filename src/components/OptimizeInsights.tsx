@@ -7,11 +7,19 @@ interface OptimizeInsightsProps {
   onBack?: () => void
 }
 
+interface Insight {
+  title: string
+  insight: string
+  interpretation: string
+  action: string
+  counterView: string
+}
+
 interface InsightsResponse {
   success: boolean
   type: string
   summary: string
-  insights: string[]
+  insights: Insight[]
 }
 
 const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
@@ -199,13 +207,42 @@ const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
             {/* Key Insights */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Optimisation Opportunities</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {insights.insights.map((insight, index) => (
-                  <div key={index} className="flex items-start gap-3 bg-gray-50 rounded-lg p-4">
-                    <div className="flex-shrink-0 w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                      {index + 1}
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
+                    {/* Number + Title */}
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        {index + 1}
+                      </div>
+                      <h3 className="flex-1 text-base font-semibold text-gray-900 leading-snug">{insight.title}</h3>
                     </div>
-                    <p className="flex-1 text-gray-800 text-sm leading-relaxed">{insight}</p>
+
+                    {/* Insight (Data) */}
+                    <div className="pl-10">
+                      <p className="text-sm text-gray-800 leading-relaxed font-medium">{insight.insight}</p>
+                    </div>
+
+                    {/* Interpretation */}
+                    {insight.interpretation && (
+                      <div className="pl-10">
+                        <p className="text-sm text-gray-700 leading-relaxed italic">{insight.interpretation}</p>
+                      </div>
+                    )}
+
+                    {/* Action */}
+                    {insight.action && (
+                      <div className="pl-10 bg-pink-50 border-l-4 border-pink-500 p-3 rounded">
+                        <p className="text-sm text-gray-900 leading-relaxed font-medium"><span className="font-bold text-pink-700">Action:</span> {insight.action}</p>
+                      </div>
+                    )}
+
+                    {/* Counter-View */}
+                    {insight.counterView && (
+                      <div className="pl-10 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
+                        <p className="text-sm text-gray-700 leading-relaxed"><span className="font-semibold text-amber-700">Consider:</span> {insight.counterView}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

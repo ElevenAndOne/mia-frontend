@@ -9,12 +9,13 @@ interface MainViewProps {
   onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: any) => void
   onCreativeClick?: () => void
   onIntegrationsClick?: () => void
+  onSummaryQuickClick?: () => void
   onGrowQuickClick?: () => void
   onOptimizeQuickClick?: () => void
   onProtectQuickClick?: () => void
 }
 
-const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
+const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
@@ -521,8 +522,31 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               </div>
             )}
 
+            {onSummaryQuickClick && (
+              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '610px' }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (onSummaryQuickClick) {
+                      setTimeout(() => onSummaryQuickClick(), 150)
+                    }
+                  }}
+                  className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  style={{
+                    minWidth: '190px',
+                    background: '#000000',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  Summary
+                </button>
+              </div>
+            )}
+
             {/* Chat with Mia Button */}
-            <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '610px' }}>
+            <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '665px' }}>
               <button
                 onClick={(e) => {
                   e.preventDefault()

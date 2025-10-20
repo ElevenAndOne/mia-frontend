@@ -11,9 +11,10 @@ import IntegrationsPage from './components/IntegrationsPage'
 import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - Grow
 import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
 import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
+import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
 import { useSession } from './contexts/SessionContext'
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick'
+type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading } = useSession()
@@ -165,6 +166,7 @@ function App() {
                 onQuestionClick={handleQuestionClick}
                 onCreativeClick={handleCreativeClick}
                 onIntegrationsClick={() => setAppState('integrations')}
+                onSummaryQuickClick={() => setAppState('summary-quick')}
                 onGrowQuickClick={() => setAppState('grow-quick')}
                 onOptimizeQuickClick={() => setAppState('optimize-quick')}
                 onProtectQuickClick={() => setAppState('protect-quick')}
@@ -303,6 +305,21 @@ function App() {
               className="w-full h-full"
             >
               <ProtectInsights
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'summary-quick' && isAnyAuthenticated && (
+            <motion.div
+              key="summary-quick"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <SummaryInsights
                 onBack={() => setAppState('main')}
               />
             </motion.div>

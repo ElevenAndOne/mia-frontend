@@ -3,28 +3,19 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import DateRangeSelector from './DateRangeSelector'
 
-interface ProtectInsightsProps {
+interface SummaryInsightsProps {
   onBack?: () => void
 }
 
-interface Insight {
-  title: string
-  insight: string
-  interpretation: string
-  action: string
-  counterView: string
-}
-
-interface InsightsResponse {
+interface SummaryResponse {
   success: boolean
   type: string
   summary: string
-  insights: Insight[]
 }
 
-const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
+const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   const { sessionId, selectedAccount } = useSession()
-  const [insights, setInsights] = useState<InsightsResponse | null>(null)
+  const [summary, setSummary] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
@@ -54,10 +45,10 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
   }
 
   useEffect(() => {
-    fetchProtectInsights()
+    fetchSummary()
   }, [selectedDateRange])
 
-  const fetchProtectInsights = async () => {
+  const fetchSummary = async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -66,7 +57,7 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
         throw new Error('No session found. Please log in again.')
       }
 
-      const response = await apiFetch('/api/quick-insights/protect', {
+      const response = await apiFetch('/api/quick-insights/summary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,16 +72,16 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const result = await response.json()
+      const result: SummaryResponse = await response.json()
 
       if (result.success) {
-        setInsights(result)
+        setSummary(result.summary)
       } else {
-        throw new Error(result.error || 'Failed to fetch insights')
+        throw new Error('Failed to fetch summary')
       }
 
     } catch (error) {
-      console.error('[PROTECT-INSIGHTS] Error:', error)
+      console.error('[SUMMARY-INSIGHTS] Error:', error)
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setIsLoading(false)
@@ -114,7 +105,7 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
         </div>
 
         <h1 className="text-xl font-normal text-black text-center" style={{ fontFamily: 'Geologica, sans-serif', fontSize: '20px', fontWeight: 400, lineHeight: '110%' }}>
-          Protect
+          Summary
         </h1>
 
         <div className="flex-1 flex justify-end pr-2">
@@ -139,10 +130,6 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
           className="absolute inset-0"
           style={{
             background: 'linear-gradient(135deg, #290068 0%, #4A148C 50%, #6A1B9A 100%)',
-            backgroundImage: 'url("/images/Protect Nav.png")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
             zIndex: 0
           }}
         />
@@ -179,8 +166,8 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
       <div className="flex-1 bg-white p-6 overflow-y-auto rounded-t-2xl -mt-4">
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-600 rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600 text-sm">Analyzing protection strategies...</p>
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600 text-sm">Generating executive summary...</p>
           </div>
         )}
 
@@ -188,7 +175,7 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-800 text-sm">{error}</p>
             <button
-              onClick={fetchProtectInsights}
+              onClick={fetchSummary}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
             >
               Try Again
@@ -196,56 +183,26 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
           </div>
         )}
 
-        {insights && !isLoading && !error && (
+        {summary && !isLoading && !error && (
           <div className="space-y-6">
-            {/* Summary FIRST */}
-            <div className="bg-gradient-to-r from-orange-50 to-purple-50 border border-orange-200 rounded-lg p-5">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
-              <p className="text-gray-700 leading-relaxed">{insights.summary}</p>
+            {/* Executive Summary Box */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 16C6.68629 16 4 13.3137 4 10C4 6.68629 6.68629 4 10 4C13.3137 4 16 6.68629 16 10C16 13.3137 13.3137 16 10 16Z" fill="#2563EB"/>
+                  <path d="M10 6C9.44772 6 9 6.44772 9 7V11C9 11.5523 9.44772 12 10 12C10.5523 12 11 11.5523 11 11V7C11 6.44772 10.5523 6 10 6Z" fill="#2563EB"/>
+                  <path d="M10 13C9.44772 13 9 13.4477 9 14C9 14.5523 9.44772 15 10 15C10.5523 15 11 14.5523 11 14C11 13.4477 10.5523 13 10 13Z" fill="#2563EB"/>
+                </svg>
+                Executive Summary
+              </h2>
+              <p className="text-gray-700 leading-relaxed text-base whitespace-pre-wrap">{summary}</p>
             </div>
 
-            {/* Key Insights */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Protection Strategies</h2>
-              <div className="space-y-4">
-                {insights.insights.map((insight, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
-                    {/* Number + Title */}
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                        {index + 1}
-                      </div>
-                      <h3 className="flex-1 text-base font-semibold text-gray-900 leading-snug">{insight.title}</h3>
-                    </div>
-
-                    {/* Insight (Data) */}
-                    <div className="pl-10">
-                      <p className="text-sm text-gray-800 leading-relaxed font-medium">{insight.insight}</p>
-                    </div>
-
-                    {/* Interpretation */}
-                    {insight.interpretation && (
-                      <div className="pl-10">
-                        <p className="text-sm text-gray-700 leading-relaxed italic">{insight.interpretation}</p>
-                      </div>
-                    )}
-
-                    {/* Action */}
-                    {insight.action && (
-                      <div className="pl-10 bg-orange-50 border-l-4 border-orange-500 p-3 rounded">
-                        <p className="text-sm text-gray-900 leading-relaxed font-medium"><span className="font-bold text-orange-700">Action:</span> {insight.action}</p>
-                      </div>
-                    )}
-
-                    {/* Counter-View */}
-                    {insight.counterView && (
-                      <div className="pl-10 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
-                        <p className="text-sm text-gray-700 leading-relaxed"><span className="font-semibold text-amber-700">Consider:</span> {insight.counterView}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {/* Info Box */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-800">Quick snapshot</span> covering your biggest growth opportunities, optimisation needs, and protection strategies. For detailed insights, visit the Grow, Optimise, or Protect pages.
+              </p>
             </div>
           </div>
         )}
@@ -254,4 +211,4 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
   )
 }
 
-export default ProtectInsights
+export default SummaryInsights
