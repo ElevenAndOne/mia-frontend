@@ -198,12 +198,6 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
 
         {insights && !isLoading && !error && (
           <div className="space-y-6">
-            {/* Summary FIRST */}
-            <div className="bg-gradient-to-r from-orange-50 to-purple-50 border border-orange-200 rounded-lg p-5">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
-              <p className="text-gray-700 leading-relaxed">{insights.summary}</p>
-            </div>
-
             {/* Key Insights */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Protection Strategies</h2>
@@ -246,6 +240,12 @@ const ProtectInsights = ({ onBack }: ProtectInsightsProps) => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Summary LAST (moved from top) */}
+            <div className="bg-gradient-to-r from-orange-50 to-purple-50 border border-orange-200 rounded-lg p-5">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
+              <p className="text-gray-700 leading-relaxed">{insights.summary}</p>
             </div>
           </div>
         )}
