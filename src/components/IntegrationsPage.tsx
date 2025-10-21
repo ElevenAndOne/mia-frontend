@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
+import BrevoApiKeyModal from './BrevoApiKeyModal'
 
 interface Integration {
   id: string
@@ -27,6 +28,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
+  const [isBrevoModalOpen, setIsBrevoModalOpen] = useState(false)
 
   // Check connection status on load - wait for sessionId to be available
   useEffect(() => {
@@ -154,6 +156,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleConnect = async (integrationId: string) => {
+    // Brevo uses API key modal instead of OAuth
+    if (integrationId === 'brevo') {
+      setIsBrevoModalOpen(true)
+      return
+    }
+
     setConnectingId(integrationId)
 
     try {
@@ -176,12 +184,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       } else if (integrationId === 'hubspot') {
         const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          authUrl = data.auth_url
-        }
-      } else if (integrationId === 'brevo') {
-        const response = await apiFetch(`/brevo-oauth/auth-url?user_id=${sessionId}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
@@ -253,6 +255,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       alert(`Connection failed: ${error}`)
       setConnectingId(null)
     }
+  }
+
+  const handleBrevoSuccess = async () => {
+    console.log('[IntegrationsPage] Brevo connected successfully')
+    await checkConnections()
+    setSelectedIntegration('brevo')
   }
 
   const connectedSources = integrations.filter(i => i.connected)
@@ -472,6 +480,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
       </div>
+
+      {/* Brevo API Key Modal */}
+      <BrevoApiKeyModal
+        isOpen={isBrevoModalOpen}
+        onClose={() => setIsBrevoModalOpen(false)}
+        onSuccess={handleBrevoSuccess}
+      />
     </div>
   )
 }
