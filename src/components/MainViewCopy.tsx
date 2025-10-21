@@ -25,6 +25,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   const [isChatLoading, setIsChatLoading] = useState(false) // Track chat loading state
   const [isAccountSwitching, setIsAccountSwitching] = useState(false)
   const [showBrevoModal, setShowBrevoModal] = useState(false) // Brevo connection modal
+  const [showMore, setShowMore] = useState(false) // Toggle for More button
 
   const handleAccountSwitch = async (accountId: string) => {
     if (isAccountSwitching) return
@@ -227,13 +228,13 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">
-      {/* Header - Conditional: Burger Menu OR Back Button - Moved up 20px total */}
-      <div className="flex justify-between items-center px-4 py-3 relative z-20 flex-shrink-0" style={{ marginTop: '-20px' }}>
+      {/* Header - Conditional: Burger Menu OR Back Button */}
+      <div className="flex justify-start items-center px-4 py-3 relative z-20 flex-shrink-0" style={{ marginTop: '-20px' }}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowBurgerMenu(!showBurgerMenu)}
                 className="w-6 h-6 flex items-center justify-center"
               >
@@ -354,21 +355,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 </div>
               )}
             </div>
-
-            {/* Mia Title - Centered properly */}
-            <h1 style={{
-              color: '#000',
-              fontFamily: 'Geologica, system-ui, sans-serif',
-              fontSize: '25.518px',
-              fontWeight: 400,
-              lineHeight: '110%',
-              textAlign: 'center'
-            }}>Mia</h1>
-
-            {/* Edit Icon - Using Figma SVG */}
-            <button className="w-6 h-6 flex items-center justify-center">
-              <img src="/icons/edit.svg" alt="Edit" className="w-6 h-6" />
-            </button>
           </>
         ) : (
           <>
@@ -388,59 +374,26 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         )}
       </div>
 
-      {/* Main Content - iPhone 16 Pro Layout with better spacing */}
+      {/* Main Content - iPhone 16 Pro Layout */}
       <div className="flex-1 flex flex-col items-center relative px-6 overflow-hidden">
         {!showChat ? (
           <>
-            {/* Mia Avatar - Moved up 10px more (220px to 210px) */}
-            <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '210px' }}>
-              <div 
-                className="relative w-[91px] h-[91px] active:scale-95 transition-transform duration-150 cursor-pointer"
-                style={{
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                {/* Vector.png background */}
-                <img 
-                  src="/icons/Vector.png" 
-                  alt="Mia Avatar Background" 
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Mia.png text overlay - perfectly centered */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <img 
-                    src="/icons/Mia.png" 
-                    alt="Mia" 
-                    className="w-[37px] h-[23px] object-contain"
-                    style={{
-                      position: 'absolute',
-                      top: '47%',
-                      left: '52%',
-                      transform: 'translate(-50%, -50%)'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Greeting - Moved down 5px (301px to 306px), wider for single line */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 text-center" style={{ top: '306px', width: '320px' }}>
+            {/* Greeting - Vertically Centered */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-60px' }}>
               <h2 style={{
                 color: '#000',
                 textAlign: 'center',
-                fontFamily: 'Inter, system-ui, sans-serif',
+                fontFamily: 'Geologica, system-ui, sans-serif',
                 fontSize: '26px',
                 fontStyle: 'normal',
                 fontWeight: 400,
                 lineHeight: '110%',
                 letterSpacing: '-0.78px',
-                marginBottom: '0px'
-              }}>Hey Sean,</h2>
+                marginBottom: '4px'
+              }}>Hello Sean.</h2>
               <p style={{
-                color: 'rgba(0, 0, 0, 0.40)',
-                fontFamily: 'Inter, system-ui, sans-serif',
+                color: '#000',
+                fontFamily: 'Geologica, system-ui, sans-serif',
                 fontSize: '26px',
                 fontStyle: 'normal',
                 fontWeight: 400,
@@ -450,11 +403,11 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               }}>How can I help today?</p>
             </div>
 
-            {/* Starter Questions - TEMPORARILY HIDDEN FOR UI REDESIGN */}
+            {/* New Button Layout - Horizontal Pills */}
 
-            {/* BETA: Quick Insights Buttons - Reordered: Grow, Optimise, Protect, Chat */}
-            {onGrowQuickClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '445px' }}>
+            {/* Row 1: Grow, Optimise, Protect - Horizontal */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '20px' }}>
+              {onGrowQuickClick && (
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -462,22 +415,26 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                       setTimeout(() => onGrowQuickClick(), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
                   style={{
-                    minWidth: '190px',
-                    background: '#000000',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    backgroundColor: '#E6E6E6',
+                    color: '#000',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
                 >
                   Grow
                 </button>
-              </div>
-            )}
+              )}
 
-            {onOptimizeQuickClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '500px' }}>
+              {onOptimizeQuickClick && (
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -485,22 +442,26 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                       setTimeout(() => onOptimizeQuickClick(), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
                   style={{
-                    minWidth: '190px',
-                    background: '#000000',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    backgroundColor: '#E6E6E6',
+                    color: '#000',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
                 >
                   Optimise
                 </button>
-              </div>
-            )}
+              )}
 
-            {onProtectQuickClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '555px' }}>
+              {onProtectQuickClick && (
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -508,64 +469,108 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                       setTimeout(() => onProtectQuickClick(), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
                   style={{
-                    minWidth: '190px',
-                    background: '#000000',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    backgroundColor: '#E6E6E6',
+                    color: '#000',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
                 >
                   Protect
                 </button>
-              </div>
-            )}
+              )}
+            </div>
 
-            {onSummaryQuickClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '610px' }}>
+            {/* Row 2: More button OR Summary + Chat with Mia */}
+            {!showMore ? (
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '72px' }}>
                 <button
                   onClick={(e) => {
                     e.preventDefault()
-                    if (onSummaryQuickClick) {
-                      setTimeout(() => onSummaryQuickClick(), 150)
-                    }
+                    setShowMore(true)
                   }}
-                  className="inline-flex items-center justify-center px-5 py-3 text-white rounded-full font-medium text-sm hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
                   style={{
-                    minWidth: '190px',
-                    background: '#000000',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+                    backgroundColor: '#E6E6E6',
+                    color: '#000',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    opacity: 0.5,
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
                     WebkitTapHighlightColor: 'transparent',
                     touchAction: 'manipulation'
                   }}
                 >
-                  Summary
+                  More
+                </button>
+              </div>
+            ) : (
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '72px', marginLeft: '5px' }}>
+                {onSummaryQuickClick && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (onSummaryQuickClick) {
+                        setTimeout(() => onSummaryQuickClick(), 150)
+                      }
+                    }}
+                    className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
+                    style={{
+                      backgroundColor: '#E6E6E6',
+                      color: '#000',
+                      fontFamily: 'Geologica, system-ui, sans-serif',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      paddingLeft: '24px',
+                      paddingRight: '24px',
+                      paddingTop: '12px',
+                      paddingBottom: '12px',
+                      whiteSpace: 'nowrap',
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation'
+                    }}
+                  >
+                    Summary
+                  </button>
+                )}
+
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setTimeout(() => setShowChat(true), 150)
+                  }}
+                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
+                  style={{
+                    backgroundColor: '#E6E6E6',
+                    color: '#000',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    whiteSpace: 'nowrap',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  Chat with Mia
                 </button>
               </div>
             )}
-
-            {/* Chat with Mia Button */}
-            <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '665px' }}>
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  // Small delay to show touch feedback before navigation
-                  setTimeout(() => setShowChat(true), 150)
-                }}
-                className="inline-flex items-center gap-2 px-4 py-3 bg-black text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
-                style={{
-                  minWidth: '190px',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-              >
-                <img src="/icons/message-square.svg" alt="Chat" width="16" height="16" />
-                Chat with Mia
-              </button>
-            </div>
 
             {/* Creative Insights Button - HIDDEN but preserved for later use */}
             {false && onCreativeClick && (
