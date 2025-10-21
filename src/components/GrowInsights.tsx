@@ -55,7 +55,19 @@ const GrowInsights = ({ onBack }: GrowInsightsProps) => {
 
   // Fetch insights on mount and when date range changes
   useEffect(() => {
-    fetchGrowInsights()
+    let isCancelled = false
+
+    const loadInsights = async () => {
+      if (!isCancelled) {
+        await fetchGrowInsights()
+      }
+    }
+
+    loadInsights()
+
+    return () => {
+      isCancelled = true
+    }
   }, [selectedDateRange])
 
   const fetchGrowInsights = async () => {
