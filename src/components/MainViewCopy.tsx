@@ -229,7 +229,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
-      <div className="flex justify-start items-center px-4 py-3 relative z-20 flex-shrink-0" style={{ marginTop: '-20px' }}>
+      <div className={`flex items-center px-4 py-3 relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`} style={{ marginTop: '-20px' }}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}
@@ -359,7 +359,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         ) : (
           <>
             {/* Chat Header - Replace burger menu */}
-            <button 
+            <button
               onClick={() => setShowChat(false)}
               className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-full border border-gray-100 text-gray-800 font-medium hover:bg-gray-100 transition-colors"
             >
@@ -368,7 +368,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               </svg>
               Back
             </button>
-            <h2 className="text-lg font-semibold text-black">Mia</h2>
+            <h2 className="text-lg font-semibold text-black" style={{ marginLeft: '-20px' }}>Mia</h2>
             <div style={{ width: '60px' }}></div>
           </>
         )}
