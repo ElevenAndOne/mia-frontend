@@ -278,8 +278,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3"
                   >
                     <div className="relative">
-                      <div className="w-5 h-5 rounded-full border-2 border-gray-900 flex items-center justify-center">
-                        <img src="/icons/plugin.svg" alt="Integrations" className="w-3 h-3" />
+                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+                        <img src="/icons/plugin.svg" alt="Integrations" className="w-3.5 h-3.5 brightness-0 invert" />
                       </div>
                     </div>
                     <div className="font-medium text-gray-900 text-base">Integrations</div>
@@ -636,12 +636,12 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
             </div>
 
             {/* Chat Input - Fixed at bottom and centered */}
-            <div className="flex-shrink-0 p-3 border-t border-gray-100 bg-white flex justify-center">
+            <div className="flex-shrink-0 p-4 pb-6 border-t border-gray-100 bg-white flex justify-center">
               <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
                 <input
                   type="text"
                   placeholder="Ask about your marketing performance..."
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="flex-1 px-4 py-3.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       const target = e.target as HTMLInputElement
@@ -658,7 +658,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                       input.value = ''
                     }
                   }}
-                  className="px-4 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="px-5 py-3.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm font-medium"
                   disabled={isChatLoading}
                 >
                   Send

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
-import BrevoApiKeyModal from './BrevoApiKeyModal'
 
 interface Integration {
   id: string
@@ -15,20 +14,61 @@ interface Integration {
 }
 
 interface PlatformStatus {
-  google: boolean
-  meta: boolean
-  brevo: boolean
-  hubspot: boolean
+  google: {
+    connected: boolean
+    last_synced?: string
+  }
+  meta: {
+    connected: boolean
+    last_synced?: string
+  }
+  brevo: {
+    connected: boolean
+    last_synced?: string
+  }
+  hubspot: {
+    connected: boolean
+    last_synced?: string
+  }
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId } = useSession()
+  const { sessionId, user } = useSession()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
-  const [isBrevoModalOpen, setIsBrevoModalOpen] = useState(false)
+
+  // Brevo API Key Modal State
+  const [showBrevoModal, setShowBrevoModal] = useState(false)
+  const [brevoApiKey, setBrevoApiKey] = useState('')
+  const [brevoSubmitting, setBrevoSubmitting] = useState(false)
+  const [brevoError, setBrevoError] = useState('')
+
+  // Helper function to calculate "time ago" from ISO timestamp
+  const getTimeAgo = (isoTimestamp: string | undefined): string => {
+    if (!isoTimestamp) return 'Just now'
+
+    try {
+      // Ensure timestamp is treated as UTC by adding 'Z' if not present
+      const utcTimestamp = isoTimestamp.endsWith('Z') ? isoTimestamp : isoTimestamp + 'Z'
+
+      const now = new Date()
+      const then = new Date(utcTimestamp)
+      const diffMs = now.getTime() - then.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+
+      if (diffMins < 1) return 'Just now'
+      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+      const diffHours = Math.floor(diffMins / 60)
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+      const diffDays = Math.floor(diffHours / 24)
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    } catch (e) {
+      return 'Just now'
+    }
+  }
 
   // Check connection status on load - wait for sessionId to be available
   useEffect(() => {
@@ -57,10 +97,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'Google',
             description: 'Advertising & Analytics',
             icon: '/icons/google-ads.svg',
-            connected: data.platforms.google || false,
-            dataPoints: data.platforms.google ? 32587 : undefined,
-            lastSync: data.platforms.google ? '2 minutes ago' : undefined,
-            autoSync: data.platforms.google ? true : undefined
+            connected: data.platforms.google?.connected || false,
+            dataPoints: data.platforms.google?.connected ? 32587 : undefined,
+            lastSync: data.platforms.google?.connected ? getTimeAgo(data.platforms.google.last_synced) : undefined,
+            autoSync: data.platforms.google?.connected ? true : undefined
           },
           // Meta
           {
@@ -68,10 +108,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'Meta',
             description: 'Facebook & Instagram Ads',
             icon: '/icons/meta-color.svg',
-            connected: data.platforms.meta || false,
-            dataPoints: data.platforms.meta ? 8500 : undefined,
-            lastSync: data.platforms.meta ? '2 minutes ago' : undefined,
-            autoSync: data.platforms.meta ? true : undefined
+            connected: data.platforms.meta?.connected || false,
+            dataPoints: data.platforms.meta?.connected ? 8500 : undefined,
+            lastSync: data.platforms.meta?.connected ? getTimeAgo(data.platforms.meta.last_synced) : undefined,
+            autoSync: data.platforms.meta?.connected ? true : undefined
           },
           // Brevo
           {
@@ -79,10 +119,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'Brevo',
             description: 'Email marketing and campaigns',
             icon: '/icons/brevo.jpeg',
-            connected: data.platforms.brevo || false,
-            dataPoints: data.platforms.brevo ? 3800 : undefined,
-            lastSync: data.platforms.brevo ? '10 minutes ago' : undefined,
-            autoSync: data.platforms.brevo ? false : undefined
+            connected: data.platforms.brevo?.connected || false,
+            dataPoints: data.platforms.brevo?.connected ? 3800 : undefined,
+            lastSync: data.platforms.brevo?.connected ? getTimeAgo(data.platforms.brevo.last_synced) : undefined,
+            autoSync: data.platforms.brevo?.connected ? false : undefined
           },
           // HubSpot
           {
@@ -90,10 +130,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'HubSpot',
             description: 'CRM and marketing automation',
             icon: '/icons/hubspot.svg',
-            connected: data.platforms.hubspot || false,
-            dataPoints: data.platforms.hubspot ? 5200 : undefined,
-            lastSync: data.platforms.hubspot ? '5 minutes ago' : undefined,
-            autoSync: data.platforms.hubspot ? true : undefined
+            connected: data.platforms.hubspot?.connected || false,
+            dataPoints: data.platforms.hubspot?.connected ? 5200 : undefined,
+            lastSync: data.platforms.hubspot?.connected ? getTimeAgo(data.platforms.hubspot.last_synced) : undefined,
+            autoSync: data.platforms.hubspot?.connected ? true : undefined
           },
           // Coming soon
           {
@@ -117,7 +157,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       } else {
         console.error('Failed to fetch platform status:', response.status, response.statusText)
         // Fallback: assume nothing connected but still show integrations
-        const fallbackData = { google: false, meta: false, brevo: false, hubspot: false }
+        const fallbackData = {
+          google: { connected: false },
+          meta: { connected: false },
+          brevo: { connected: false },
+          hubspot: { connected: false }
+        }
         setPlatformStatus(fallbackData)
 
         // Build integrations with no connections
@@ -135,7 +180,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     } catch (error) {
       console.error('Error checking connections:', error)
       // Fallback: assume nothing connected but still show integrations
-      const fallbackData = { google: false, meta: false, brevo: false, hubspot: false }
+      const fallbackData = {
+        google: { connected: false },
+        meta: { connected: false },
+        brevo: { connected: false },
+        hubspot: { connected: false }
+      }
       setPlatformStatus(fallbackData)
 
       const integrationsData: Integration[] = [
@@ -155,10 +205,78 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setSelectedIntegration(integrationId === selectedIntegration ? null : integrationId)
   }
 
+  // Handle Brevo API Key Submission
+  const handleBrevoSubmit = async () => {
+    if (!brevoApiKey.trim()) {
+      setBrevoError('Please enter an API key')
+      return
+    }
+
+    setBrevoSubmitting(true)
+    setBrevoError('')
+
+    try {
+      // Get user_id from session validation first
+      let userId = user?.google_user_id
+
+      if (!userId) {
+        console.log('[Brevo] User not in context, fetching from session...')
+
+        // Try to get user_id from session validation endpoint
+        const sessionResponse = await apiFetch(`/api/session/validate?session_id=${sessionId}`)
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json()
+          userId = sessionData.user?.user_id
+          console.log('[Brevo] Got user_id from session:', userId)
+        }
+      }
+
+      if (!userId) {
+        setBrevoError('User ID not available. Please refresh the page and try again.')
+        setBrevoSubmitting(false)
+        return
+      }
+
+      console.log('[Brevo] Submitting API key for user:', userId)
+
+      const response = await apiFetch('/brevo-oauth/save-credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          api_key: brevoApiKey.trim()
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to save API key')
+      }
+
+      const data = await response.json()
+      console.log('[Brevo] API key saved successfully:', data)
+
+      // Close modal and refresh connections
+      setShowBrevoModal(false)
+      setBrevoApiKey('')
+      await checkConnections()
+
+    } catch (error) {
+      console.error('[Brevo] API key submission error:', error)
+      setBrevoError(error instanceof Error ? error.message : 'Failed to save API key')
+    } finally {
+      setBrevoSubmitting(false)
+    }
+  }
+
   const handleConnect = async (integrationId: string) => {
-    // Brevo uses API key modal instead of OAuth
+    // Brevo uses API key (not OAuth) - show modal instead
     if (integrationId === 'brevo') {
-      setIsBrevoModalOpen(true)
+      setShowBrevoModal(true)
+      setBrevoError('')
+      setBrevoApiKey('')
       return
     }
 
@@ -257,12 +375,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
-  const handleBrevoSuccess = async () => {
-    console.log('[IntegrationsPage] Brevo connected successfully')
-    await checkConnections()
-    setSelectedIntegration('brevo')
-  }
-
   const connectedSources = integrations.filter(i => i.connected)
   const availableSources = integrations.filter(i => !i.connected)
 
@@ -306,9 +418,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="grid grid-cols-3 gap-2 mb-4">
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg mx-auto mb-1">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-4 h-4" />
                 </div>
                 <p className="text-xs text-gray-500">Connected</p>
                 <p className="text-sm font-semibold text-gray-900">{connectedSources.length}</p>
@@ -316,9 +426,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg mx-auto mb-1">
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                  </svg>
+                  <img src="/icons/datapoints.svg" alt="" className="w-4 h-4" />
                 </div>
                 <p className="text-xs text-gray-500">Data Points</p>
                 <p className="text-sm font-semibold text-gray-900">{totalDataPoints.toLocaleString()}</p>
@@ -326,9 +434,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg mx-auto mb-1">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <img src="/icons/autosync.svg" alt="" className="w-4 h-4" />
                 </div>
                 <p className="text-xs text-gray-500">Auto-Sync</p>
                 <p className="text-sm font-semibold text-gray-900">{autoSyncCount}</p>
@@ -364,13 +470,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                         <p className="text-xs text-gray-500 truncate">{integration.description}</p>
                       </div>
                       <div className="flex-shrink-0">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                          isSelected ? 'bg-blue-500' : 'bg-green-100'
-                        }`}>
-                          <svg className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-green-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
+                        {isSelected ? (
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-5 h-5" />
+                        )}
                       </div>
                     </div>
                     {integration.dataPoints && (
@@ -482,11 +590,84 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       </div>
 
       {/* Brevo API Key Modal */}
-      <BrevoApiKeyModal
-        isOpen={isBrevoModalOpen}
-        onClose={() => setIsBrevoModalOpen(false)}
-        onSuccess={handleBrevoSuccess}
-      />
+      {showBrevoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            {/* Header */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <img src="/icons/brevo.jpeg" alt="Brevo" className="w-10 h-10" />
+                <h2 className="text-xl font-bold text-gray-900">Connect Brevo</h2>
+              </div>
+              <p className="text-sm text-gray-600">
+                Enter your Brevo API key to connect your email marketing campaigns.
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2">How to get your API key:</h3>
+              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                <li>Log in to your Brevo account</li>
+                <li>Go to Settings → SMTP & API → API Keys</li>
+                <li>Click "Generate a new API key"</li>
+                <li>Copy the key and paste it below</li>
+              </ol>
+              <a
+                href="https://app.brevo.com/settings/keys/api"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
+              >
+                Open Brevo API Settings
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+
+            {/* API Key Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Key
+              </label>
+              <input
+                type="text"
+                value={brevoApiKey}
+                onChange={(e) => setBrevoApiKey(e.target.value)}
+                placeholder="xkeysib-..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                disabled={brevoSubmitting}
+              />
+              {brevoError && (
+                <p className="mt-2 text-xs text-red-600">{brevoError}</p>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowBrevoModal(false)
+                  setBrevoApiKey('')
+                  setBrevoError('')
+                }}
+                disabled={brevoSubmitting}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBrevoSubmit}
+                disabled={brevoSubmitting || !brevoApiKey.trim()}
+                className="flex-1 px-4 py-3 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {brevoSubmitting ? 'Connecting...' : 'Connect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
