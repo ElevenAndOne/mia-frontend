@@ -3,6 +3,7 @@ import { authService } from '../services/auth'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import BrevoConnectionModal from './BrevoConnectionModal'
+import DateRangeSelector from './DateRangeSelector'
 
 interface MainViewProps {
   onLogout: () => void
@@ -26,6 +27,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   const [isAccountSwitching, setIsAccountSwitching] = useState(false)
   const [showBrevoModal, setShowBrevoModal] = useState(false) // Brevo connection modal
   const [showMore, setShowMore] = useState(false) // Toggle for More button
+  const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
+  const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
 
   const handleAccountSwitch = async (accountId: string) => {
     if (isAccountSwitching) return
@@ -124,7 +127,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
           session_id: sessionId,
           user_id: '106540664695114193744',
           google_ads_id: selectedAccount?.google_ads_id,
-          ga4_property_id: selectedAccount?.ga4_property_id
+          ga4_property_id: selectedAccount?.ga4_property_id,
+          date_range: dateRange
         }),
       })
 
@@ -358,7 +362,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
           </>
         ) : (
           <>
-            {/* Chat Header - Replace burger menu */}
+            {/* Chat Header - Back button, Mia title, and Date picker */}
             <button
               onClick={() => setShowChat(false)}
               className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-full border border-gray-100 text-gray-800 font-medium hover:bg-gray-100 transition-colors"
@@ -369,7 +373,16 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               Back
             </button>
             <h2 className="text-lg font-semibold text-black" style={{ marginLeft: '-20px' }}>Mia</h2>
-            <div style={{ width: '60px' }}></div>
+
+            {/* Date Range Picker Button */}
+            <button
+              onClick={() => setShowDatePicker(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition-colors"
+              title="Change date range"
+            >
+              <img src="/icons/calendar.svg" alt="Calendar" className="w-3.5 h-3.5" />
+              <span>{dateRange === '7_days' ? '7d' : dateRange === '14_days' ? '14d' : dateRange === '30_days' ? '30d' : '90d'}</span>
+            </button>
           </>
         )}
       </div>
@@ -689,6 +702,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
           console.log('Brevo connected successfully')
           // Could trigger a refresh of platform status here if needed
         }}
+      />
+
+      {/* Date Range Selector */}
+      <DateRangeSelector
+        isOpen={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        selectedRange={dateRange}
+        onApply={(range) => setDateRange(range)}
       />
     </div>
   )
