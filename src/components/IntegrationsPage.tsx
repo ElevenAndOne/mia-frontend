@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
+import MetaAccountSelector from './MetaAccountSelector'
 
 interface Integration {
   id: string
@@ -45,6 +46,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoApiKey, setBrevoApiKey] = useState('')
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
+
+  // Meta Account Selector Modal State
+  const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
 
   // Helper function to calculate "time ago" from ISO timestamp
   const getTimeAgo = (isoTimestamp: string | undefined): string => {
@@ -355,6 +359,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               } else {
                 const completeData = await completeResponse.json()
                 console.log(`${integrationId} /complete succeeded:`, completeData)
+
+                // For Meta, show account selector modal
+                if (integrationId === 'meta' && completeData.success) {
+                  console.log('[META-OAUTH] Meta OAuth complete, showing account selector')
+                  setShowMetaAccountSelector(true)
+                  setConnectingId(null)
+                  return // Don't refresh connections yet - wait for account selection
+                }
               }
             } catch (error) {
               console.error(`${integrationId} /complete error:`, error)
@@ -668,6 +680,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
       )}
+
+      {/* Meta Account Selector Modal */}
+      <MetaAccountSelector
+        isOpen={showMetaAccountSelector}
+        onClose={() => setShowMetaAccountSelector(false)}
+        onSuccess={async () => {
+          console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
+          setShowMetaAccountSelector(false)
+          await checkConnections() // Refresh to show Meta as connected
+        }}
+        currentGoogleAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
+      />
     </div>
   )
 }
