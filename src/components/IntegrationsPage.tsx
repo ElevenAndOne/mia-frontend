@@ -74,37 +74,108 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
+  const [ga4Properties, setGA4Properties] = useState<any[]>([])
+  const [selectedGA4, setSelectedGA4] = useState<string | null>(null)
+  const [isLinkingGA4, setIsLinkingGA4] = useState(false)
+
   // Check connection status on load - wait for sessionId to be available
   useEffect(() => {
     if (sessionId) {
       checkConnections()
+      fetchGA4Properties()
     }
   }, [sessionId])
+
+  const fetchGA4Properties = async () => {
+    try {
+      const response = await apiFetch('/api/accounts/available', {
+        headers: {
+          'X-Session-ID': sessionId || ''
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('[IntegrationsPage] GA4 properties:', data.ga4_properties)
+        setGA4Properties(data.ga4_properties || [])
+
+        // Check if current account already has GA4 linked
+        if (data.accounts && data.accounts.length > 0) {
+          const currentAccount = data.accounts[0]
+          if (currentAccount.ga4_property_id) {
+            setSelectedGA4(currentAccount.ga4_property_id)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[IntegrationsPage] Error fetching GA4 properties:', error)
+    }
+  }
 
   const checkConnections = async () => {
     try {
       console.log('[IntegrationsPage] Fetching platform status with sessionId:', sessionId)
 
-      // Get platform connection status from backend
-      const response = await apiFetch(`/api/auth/platforms?session_id=${sessionId}`)
+      // Get available accounts to check what's connected
+      const accountsResponse = await apiFetch('/api/accounts/available', {
+        headers: {
+          'X-Session-ID': sessionId || ''
+        }
+      })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[IntegrationsPage] Platform status:', data)
-        setPlatformStatus(data.platforms)
+      let googleConnected = false
+      let metaConnected = false
+      let ga4Connected = false
+      let brevoConnected = false
+
+      if (accountsResponse.ok) {
+        const accountsData = await accountsResponse.json()
+        console.log('[IntegrationsPage] Accounts data:', accountsData)
+
+        if (accountsData.accounts && accountsData.accounts.length > 0) {
+          const account = accountsData.accounts[0]
+          googleConnected = !!account.google_ads_id
+          metaConnected = !!account.meta_ads_id
+          ga4Connected = !!account.ga4_property_id
+          brevoConnected = !!account.brevo_api_key
+        }
+      }
+
+      // Build platform status object
+      const platforms = {
+        google: { connected: googleConnected, last_synced: new Date().toISOString() },
+        ga4: { connected: ga4Connected, last_synced: new Date().toISOString() },
+        meta: { connected: metaConnected, last_synced: new Date().toISOString() },
+        brevo: { connected: brevoConnected, last_synced: new Date().toISOString() },
+        hubspot: { connected: false }
+      }
+
+      console.log('[IntegrationsPage] Computed platform status:', platforms)
+      setPlatformStatus(platforms)
 
         // Build integrations list based on actual connection status
         const integrationsData: Integration[] = [
-          // Google (combined Ads + Analytics)
+          // Google Ads
           {
             id: 'google',
-            name: 'Google',
-            description: 'Advertising & Analytics',
+            name: 'Google Ads',
+            description: 'Advertising campaigns',
             icon: '/icons/google-ads.svg',
-            connected: data.platforms.google?.connected || false,
-            dataPoints: data.platforms.google?.connected ? 32587 : undefined,
-            lastSync: data.platforms.google?.connected ? getTimeAgo(data.platforms.google.last_synced) : undefined,
-            autoSync: data.platforms.google?.connected ? true : undefined
+            connected: platforms.google?.connected || false,
+            dataPoints: platforms.google?.connected ? 15000 : undefined,
+            lastSync: platforms.google?.connected ? getTimeAgo(platforms.google.last_synced) : undefined,
+            autoSync: platforms.google?.connected ? true : undefined
+          },
+          // GA4 (separate from Google Ads)
+          {
+            id: 'ga4',
+            name: 'Google Analytics 4',
+            description: 'Website and app analytics',
+            icon: '/icons/google_analytics.svg',
+            connected: platforms.ga4?.connected || false,
+            dataPoints: platforms.ga4?.connected ? 17587 : undefined,
+            lastSync: platforms.ga4?.connected ? getTimeAgo(platforms.ga4.last_synced) : undefined,
+            autoSync: platforms.ga4?.connected ? true : undefined
           },
           // Meta
           {
@@ -112,10 +183,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'Meta',
             description: 'Facebook & Instagram Ads',
             icon: '/icons/meta-color.svg',
-            connected: data.platforms.meta?.connected || false,
-            dataPoints: data.platforms.meta?.connected ? 8500 : undefined,
-            lastSync: data.platforms.meta?.connected ? getTimeAgo(data.platforms.meta.last_synced) : undefined,
-            autoSync: data.platforms.meta?.connected ? true : undefined
+            connected: platforms.meta?.connected || false,
+            dataPoints: platforms.meta?.connected ? 8500 : undefined,
+            lastSync: platforms.meta?.connected ? getTimeAgo(platforms.meta.last_synced) : undefined,
+            autoSync: platforms.meta?.connected ? true : undefined
           },
           // Brevo
           {
@@ -123,10 +194,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'Brevo',
             description: 'Email marketing and campaigns',
             icon: '/icons/brevo.jpeg',
-            connected: data.platforms.brevo?.connected || false,
-            dataPoints: data.platforms.brevo?.connected ? 3800 : undefined,
-            lastSync: data.platforms.brevo?.connected ? getTimeAgo(data.platforms.brevo.last_synced) : undefined,
-            autoSync: data.platforms.brevo?.connected ? false : undefined
+            connected: platforms.brevo?.connected || false,
+            dataPoints: platforms.brevo?.connected ? 3800 : undefined,
+            lastSync: platforms.brevo?.connected ? getTimeAgo(platforms.brevo.last_synced) : undefined,
+            autoSync: platforms.brevo?.connected ? false : undefined
           },
           // HubSpot
           {
@@ -134,10 +205,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             name: 'HubSpot',
             description: 'CRM and marketing automation',
             icon: '/icons/hubspot.svg',
-            connected: data.platforms.hubspot?.connected || false,
-            dataPoints: data.platforms.hubspot?.connected ? 5200 : undefined,
-            lastSync: data.platforms.hubspot?.connected ? getTimeAgo(data.platforms.hubspot.last_synced) : undefined,
-            autoSync: data.platforms.hubspot?.connected ? true : undefined
+            connected: platforms.hubspot?.connected || false,
+            dataPoints: platforms.hubspot?.connected ? 5200 : undefined,
+            lastSync: platforms.hubspot?.connected ? getTimeAgo(platforms.hubspot.last_synced) : undefined,
+            autoSync: platforms.hubspot?.connected ? true : undefined
           },
           // Coming soon
           {
@@ -156,57 +227,75 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           },
         ]
 
-        setIntegrations(integrationsData)
-        setLoading(false)
-      } else {
-        console.error('Failed to fetch platform status:', response.status, response.statusText)
-        // Fallback: assume nothing connected but still show integrations
-        const fallbackData = {
-          google: { connected: false },
-          meta: { connected: false },
-          brevo: { connected: false },
-          hubspot: { connected: false }
-        }
-        setPlatformStatus(fallbackData)
-
-        // Build integrations with no connections
-        const integrationsData: Integration[] = [
-          { id: 'google', name: 'Google', description: 'Advertising & Analytics', icon: '/icons/google-ads.svg', connected: false },
-          { id: 'meta', name: 'Meta', description: 'Facebook & Instagram Ads', icon: '/icons/meta-color.svg', connected: false },
-          { id: 'brevo', name: 'Brevo', description: 'Email marketing and campaigns', icon: '/icons/brevo.jpeg', connected: false },
-          { id: 'hubspot', name: 'HubSpot', description: 'CRM and marketing automation', icon: '/icons/hubspot.svg', connected: false },
-          { id: 'linkedin', name: 'LinkedIn Ads', description: 'B2B advertising and lead generation', icon: '/icons/linkedin.svg', connected: false },
-          { id: 'tiktok', name: 'TikTok Ads', description: 'Short-form video advertising', icon: '/icons/tiktok.svg', connected: false },
-        ]
-        setIntegrations(integrationsData)
-        setLoading(false)
-      }
+      setIntegrations(integrationsData)
+      setLoading(false)
     } catch (error) {
       console.error('Error checking connections:', error)
-      // Fallback: assume nothing connected but still show integrations
-      const fallbackData = {
-        google: { connected: false },
-        meta: { connected: false },
-        brevo: { connected: false },
-        hubspot: { connected: false }
-      }
-      setPlatformStatus(fallbackData)
-
-      const integrationsData: Integration[] = [
-        { id: 'google', name: 'Google', description: 'Advertising & Analytics', icon: '/icons/google-ads.svg', connected: false },
-        { id: 'meta', name: 'Meta', description: 'Facebook & Instagram Ads', icon: '/icons/meta-color.svg', connected: false },
-        { id: 'brevo', name: 'Brevo', description: 'Email marketing and campaigns', icon: '/icons/brevo.jpeg', connected: false },
-        { id: 'hubspot', name: 'HubSpot', description: 'CRM and marketing automation', icon: '/icons/hubspot.svg', connected: false },
-        { id: 'linkedin', name: 'LinkedIn Ads', description: 'B2B advertising and lead generation', icon: '/icons/linkedin.svg', connected: false },
-        { id: 'tiktok', name: 'TikTok Ads', description: 'Short-form video advertising', icon: '/icons/tiktok.svg', connected: false },
-      ]
-      setIntegrations(integrationsData)
       setLoading(false)
     }
   }
 
   const handleSelectIntegration = async (integrationId: string) => {
     setSelectedIntegration(integrationId === selectedIntegration ? null : integrationId)
+  }
+
+  // Handle GA4 Property Selection
+  const handleGA4Select = async (propertyId: string) => {
+    if (!propertyId || propertyId === 'none') {
+      setSelectedGA4(null)
+      return
+    }
+
+    setIsLinkingGA4(true)
+    setSelectedGA4(propertyId)
+
+    try {
+      // Get selected account
+      const accountsResponse = await apiFetch('/api/accounts/available', {
+        headers: {
+          'X-Session-ID': sessionId || ''
+        }
+      })
+
+      if (!accountsResponse.ok) {
+        throw new Error('Failed to get account info')
+      }
+
+      const accountsData = await accountsResponse.json()
+      if (!accountsData.accounts || accountsData.accounts.length === 0) {
+        throw new Error('No account selected')
+      }
+
+      const accountId = accountsData.accounts[0].id
+
+      // Link GA4 property to account
+      const response = await apiFetch('/api/accounts/link-platform', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId || ''
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          platform: 'ga4',
+          platform_id: propertyId
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to link GA4 property')
+      }
+
+      console.log('[IntegrationsPage] GA4 linked successfully')
+
+      // Refresh connections
+      await checkConnections()
+    } catch (error) {
+      console.error('[IntegrationsPage] Error linking GA4:', error)
+      alert(`Failed to link GA4: ${error}`)
+    } finally {
+      setIsLinkingGA4(false)
+    }
   }
 
   // Handle Brevo API Key Submission
@@ -276,6 +365,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleConnect = async (integrationId: string) => {
+    // GA4 uses manual selection (not OAuth) - handled separately
+    if (integrationId === 'ga4') {
+      // GA4 selection is handled in the Available Integrations section
+      return
+    }
+
     // Brevo uses API key (not OAuth) - show modal instead
     if (integrationId === 'brevo') {
       setShowBrevoModal(true)
@@ -515,34 +610,72 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-2">
               {availableSources.map(integration => (
                 <div key={integration.id} className="bg-white border border-gray-200 rounded-xl p-3 overflow-hidden">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
+                  {/* GA4 - Special case with dropdown */}
+                  {integration.id === 'ga4' ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                          <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-sm text-gray-900">{integration.name}</h3>
+                          <p className="text-xs text-gray-500">{integration.description}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
-                        <p className="text-xs text-gray-500 truncate">{integration.description}</p>
-                      </div>
+                      <select
+                        value={selectedGA4 || ''}
+                        onChange={(e) => handleGA4Select(e.target.value)}
+                        disabled={isLinkingGA4 || ga4Properties.length === 0}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-black focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {ga4Properties.length === 0 ? 'No GA4 properties available' : 'Select GA4 property...'}
+                        </option>
+                        {ga4Properties.map((prop) => (
+                          <option key={prop.property_id} value={prop.property_id}>
+                            {prop.display_name} ({prop.property_id})
+                          </option>
+                        ))}
+                        <option value="none">None (skip for now)</option>
+                      </select>
+                      {isLinkingGA4 && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black"></div>
+                          <span>Linking...</span>
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
-                        integration.id === 'linkedin' || integration.id === 'tiktok'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ) : (
+                    /* Other integrations - normal button */
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                          <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
+                          <p className="text-xs text-gray-500 truncate">{integration.description}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleConnect(integration.id)}
+                        disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
+                        className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
+                          integration.id === 'linkedin' || integration.id === 'tiktok'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : connectingId === integration.id
+                            ? 'bg-gray-600 text-white cursor-wait'
+                            : 'bg-black text-white hover:bg-gray-800'
+                        }`}
+                      >
+                        {integration.id === 'linkedin' || integration.id === 'tiktok'
+                          ? 'Soon'
                           : connectingId === integration.id
-                          ? 'bg-gray-600 text-white cursor-wait'
-                          : 'bg-black text-white hover:bg-gray-800'
-                      }`}
-                    >
-                      {integration.id === 'linkedin' || integration.id === 'tiktok'
-                        ? 'Soon'
-                        : connectingId === integration.id
-                        ? 'Connecting...'
-                        : 'Connect'}
-                    </button>
-                  </div>
+                          ? 'Connecting...'
+                          : 'Connect'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
