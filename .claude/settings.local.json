@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Suede/older_docs/OneDrive/Desktop/mia-backend/docs/**)",
+      "Read(//c/Users/Suede/older_docs/OneDrive/Desktop/mia-backend/**)",
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

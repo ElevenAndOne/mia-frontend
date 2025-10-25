@@ -90,10 +90,8 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
 
       if (data.success) {
         setSuccess(true)
-        setTimeout(() => {
-          onSuccess?.()
-          handleClose()
-        }, 1500)
+        onSuccess?.()
+        handleClose()
       } else {
         setError(data.message || 'Failed to link Meta account')
       }

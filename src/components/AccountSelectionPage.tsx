@@ -38,10 +38,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
       const success = await selectAccount(account.id)
 
       if (success) {
-        // Small delay for UX feedback
-        setTimeout(() => {
-          onAccountSelected()
-        }, 800)
+        onAccountSelected()
       }
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error selecting account:', err)
