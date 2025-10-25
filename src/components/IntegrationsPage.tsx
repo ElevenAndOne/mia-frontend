@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import MetaAccountSelector from './MetaAccountSelector'
+import GA4PropertySelector from './GA4PropertySelector'
 
 interface Integration {
   id: string
@@ -50,6 +51,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   // Meta Account Selector Modal State
   const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
 
+  // GA4 Property Selector Modal State
+  const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
+
   // Helper function to calculate "time ago" from ISO timestamp
   const getTimeAgo = (isoTimestamp: string | undefined): string => {
     if (!isoTimestamp) return 'Just now'
@@ -74,43 +78,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
-  const [ga4Properties, setGA4Properties] = useState<any[]>([])
-  const [selectedGA4, setSelectedGA4] = useState<string | null>(null)
-  const [isLinkingGA4, setIsLinkingGA4] = useState(false)
-
   // Check connection status on load - wait for sessionId to be available
   useEffect(() => {
     if (sessionId) {
       checkConnections()
-      fetchGA4Properties()
     }
   }, [sessionId])
-
-  const fetchGA4Properties = async () => {
-    try {
-      const response = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': sessionId || ''
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[IntegrationsPage] GA4 properties:', data.ga4_properties)
-        setGA4Properties(data.ga4_properties || [])
-
-        // Check if current account already has GA4 linked
-        if (data.accounts && data.accounts.length > 0) {
-          const currentAccount = data.accounts[0]
-          if (currentAccount.ga4_property_id) {
-            setSelectedGA4(currentAccount.ga4_property_id)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('[IntegrationsPage] Error fetching GA4 properties:', error)
-    }
-  }
 
   const checkConnections = async () => {
     try {
@@ -239,65 +212,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setSelectedIntegration(integrationId === selectedIntegration ? null : integrationId)
   }
 
-  // Handle GA4 Property Selection
-  const handleGA4Select = async (propertyId: string) => {
-    if (!propertyId || propertyId === 'none') {
-      setSelectedGA4(null)
-      return
-    }
-
-    setIsLinkingGA4(true)
-    setSelectedGA4(propertyId)
-
-    try {
-      // Get selected account
-      const accountsResponse = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': sessionId || ''
-        }
-      })
-
-      if (!accountsResponse.ok) {
-        throw new Error('Failed to get account info')
-      }
-
-      const accountsData = await accountsResponse.json()
-      if (!accountsData.accounts || accountsData.accounts.length === 0) {
-        throw new Error('No account selected')
-      }
-
-      const accountId = accountsData.accounts[0].id
-
-      // Link GA4 property to account
-      const response = await apiFetch('/api/accounts/link-platform', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || ''
-        },
-        body: JSON.stringify({
-          account_id: accountId,
-          platform: 'ga4',
-          platform_id: propertyId
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to link GA4 property')
-      }
-
-      console.log('[IntegrationsPage] GA4 linked successfully')
-
-      // Refresh connections
-      await checkConnections()
-    } catch (error) {
-      console.error('[IntegrationsPage] Error linking GA4:', error)
-      alert(`Failed to link GA4: ${error}`)
-    } finally {
-      setIsLinkingGA4(false)
-    }
-  }
-
   // Handle Brevo API Key Submission
   const handleBrevoSubmit = async () => {
     if (!brevoApiKey.trim()) {
@@ -365,9 +279,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleConnect = async (integrationId: string) => {
-    // GA4 uses manual selection (not OAuth) - handled separately
+    // GA4 uses property selector modal
     if (integrationId === 'ga4') {
-      // GA4 selection is handled in the Available Integrations section
+      setShowGA4PropertySelector(true)
       return
     }
 
@@ -610,72 +524,34 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-2">
               {availableSources.map(integration => (
                 <div key={integration.id} className="bg-white border border-gray-200 rounded-xl p-3 overflow-hidden">
-                  {/* GA4 - Special case with dropdown */}
-                  {integration.id === 'ga4' ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-sm text-gray-900">{integration.name}</h3>
-                          <p className="text-xs text-gray-500">{integration.description}</p>
-                        </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
                       </div>
-                      <select
-                        value={selectedGA4 || ''}
-                        onChange={(e) => handleGA4Select(e.target.value)}
-                        disabled={isLinkingGA4 || ga4Properties.length === 0}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-black focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="">
-                          {ga4Properties.length === 0 ? 'No GA4 properties available' : 'Select GA4 property...'}
-                        </option>
-                        {ga4Properties.map((prop) => (
-                          <option key={prop.property_id} value={prop.property_id}>
-                            {prop.display_name} ({prop.property_id})
-                          </option>
-                        ))}
-                        <option value="none">None (skip for now)</option>
-                      </select>
-                      {isLinkingGA4 && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black"></div>
-                          <span>Linking...</span>
-                        </div>
-                      )}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
+                        <p className="text-xs text-gray-500 truncate">{integration.description}</p>
+                      </div>
                     </div>
-                  ) : (
-                    /* Other integrations - normal button */
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
-                          <p className="text-xs text-gray-500 truncate">{integration.description}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleConnect(integration.id)}
-                        disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                        className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
-                          integration.id === 'linkedin' || integration.id === 'tiktok'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : connectingId === integration.id
-                            ? 'bg-gray-600 text-white cursor-wait'
-                            : 'bg-black text-white hover:bg-gray-800'
-                        }`}
-                      >
-                        {integration.id === 'linkedin' || integration.id === 'tiktok'
-                          ? 'Soon'
+                    <button
+                      onClick={() => handleConnect(integration.id)}
+                      disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
+                      className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
+                        integration.id === 'linkedin' || integration.id === 'tiktok'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : connectingId === integration.id
-                          ? 'Connecting...'
-                          : 'Connect'}
-                      </button>
-                    </div>
-                  )}
+                          ? 'bg-gray-600 text-white cursor-wait'
+                          : 'bg-black text-white hover:bg-gray-800'
+                      }`}
+                    >
+                      {integration.id === 'linkedin' || integration.id === 'tiktok'
+                        ? 'Soon'
+                        : connectingId === integration.id
+                        ? 'Connecting...'
+                        : 'Connect'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -824,6 +700,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           await checkConnections() // Refresh to show Meta as connected
         }}
         currentGoogleAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
+      />
+
+      {/* GA4 Property Selector Modal */}
+      <GA4PropertySelector
+        isOpen={showGA4PropertySelector}
+        onClose={() => setShowGA4PropertySelector(false)}
+        onSuccess={async () => {
+          console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
+          setShowGA4PropertySelector(false)
+          await checkConnections() // Refresh to show GA4 as connected
+        }}
+        currentAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
       />
     </div>
   )
