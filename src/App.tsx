@@ -12,9 +12,10 @@ import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - G
 import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
 import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
 import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
+import IntegrationsSetup from './components/IntegrationsSetup' // Platform setup after account selection
 import { useSession } from './contexts/SessionContext'
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'integrations-setup' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading } = useSession()
@@ -68,10 +69,10 @@ function App() {
 
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
-      // User has selected an account - but only auto-transition from account-selection
+      // User has selected an account - navigate to integrations setup
       // Don't interfere with manual navigation from other states
-      setAppState('main')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix') {
+      setAppState('integrations-setup')
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix' && appState !== 'integrations-setup') {
       // User is authenticated (Google OR Meta) but needs to select an account
       setAppState('account-selection')
     } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
@@ -143,12 +144,28 @@ function App() {
               className="w-full h-full"
             >
               <AccountSelectionPage
-                onAccountSelected={() => {}}
+                onAccountSelected={() => setAppState('integrations-setup')}
                 onBack={() => logout()}
               />
             </motion.div>
           )}
-          
+
+          {appState === 'integrations-setup' && selectedAccount && (
+            <motion.div
+              key="integrations-setup"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="w-full h-full"
+            >
+              <IntegrationsSetup
+                selectedAccount={selectedAccount}
+                onComplete={() => setAppState('main')}
+                onBack={() => setAppState('account-selection')}
+              />
+            </motion.div>
+          )}
+
           {appState === 'main' && selectedAccount && (
             <motion.div
               key="main"
