@@ -366,10 +366,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       const data = await response.json()
       console.log('[Brevo] API key saved successfully:', data)
 
-      // Close modal and refresh connections
+      // Close modal and optimistically update platform status
       setShowBrevoModal(false)
       setBrevoApiKey('')
-      await checkConnections()
+      setPlatformStatus(prev => prev ? {...prev, brevo: {connected: true, last_synced: new Date().toISOString()}} : prev)
 
     } catch (error) {
       console.error('[Brevo] API key submission error:', error)
