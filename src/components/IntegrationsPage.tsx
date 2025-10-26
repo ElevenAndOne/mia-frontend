@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import MetaAccountSelector from './MetaAccountSelector'
@@ -35,12 +35,14 @@ interface PlatformStatus {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user } = useSession()
+  const { sessionId, user, selectedAccount } = useSession()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
+  const [isCheckingConnections, setIsCheckingConnections] = useState(false)
+  const hasInitiallyLoaded = useRef(false)
 
   // Brevo API Key Modal State
   const [showBrevoModal, setShowBrevoModal] = useState(false)
@@ -53,6 +55,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // GA4 Property Selector Modal State
   const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
+  const [ga4Properties, setGa4Properties] = useState<any[]>([])
 
   // Helper function to calculate "time ago" from ISO timestamp
   const getTimeAgo = (isoTimestamp: string | undefined): string => {
@@ -79,13 +82,97 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   // Check connection status on load - wait for sessionId to be available
+  // Only run ONCE when component mounts and sessionId is available
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && !hasInitiallyLoaded.current) {
+      console.log('[IntegrationsPage] Initial load, fetching connections...')
+      hasInitiallyLoaded.current = true
       checkConnections()
     }
   }, [sessionId])
 
+  // Rebuild integrations list whenever platformStatus changes (for optimistic updates)
+  useEffect(() => {
+    if (!platformStatus) return
+
+    console.log('[IntegrationsPage] Platform status changed, rebuilding integrations list')
+    const integrationsData: Integration[] = [
+      {
+        id: 'google',
+        name: 'Google Ads',
+        description: 'Advertising campaigns',
+        icon: '/icons/google-ads.svg',
+        connected: platformStatus.google?.connected || false,
+        dataPoints: platformStatus.google?.connected ? 15000 : undefined,
+        lastSync: platformStatus.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
+        autoSync: platformStatus.google?.connected ? true : undefined
+      },
+      {
+        id: 'ga4',
+        name: 'Google Analytics 4',
+        description: 'Website and app analytics',
+        icon: '/icons/google_analytics.svg',
+        connected: platformStatus.ga4?.connected || false,
+        dataPoints: platformStatus.ga4?.connected ? 17587 : undefined,
+        lastSync: platformStatus.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
+        autoSync: platformStatus.ga4?.connected ? true : undefined
+      },
+      {
+        id: 'meta',
+        name: 'Meta',
+        description: 'Facebook & Instagram Ads',
+        icon: '/icons/meta-color.svg',
+        connected: platformStatus.meta?.connected || false,
+        dataPoints: platformStatus.meta?.connected ? 8500 : undefined,
+        lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
+        autoSync: platformStatus.meta?.connected ? true : undefined
+      },
+      {
+        id: 'brevo',
+        name: 'Brevo',
+        description: 'Email marketing and campaigns',
+        icon: '/icons/brevo.jpeg',
+        connected: platformStatus.brevo?.connected || false,
+        dataPoints: platformStatus.brevo?.connected ? 3800 : undefined,
+        lastSync: platformStatus.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
+        autoSync: platformStatus.brevo?.connected ? false : undefined
+      },
+      {
+        id: 'hubspot',
+        name: 'HubSpot',
+        description: 'CRM and marketing automation',
+        icon: '/icons/hubspot.svg',
+        connected: platformStatus.hubspot?.connected || false,
+        dataPoints: platformStatus.hubspot?.connected ? 5200 : undefined,
+        lastSync: platformStatus.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
+        autoSync: platformStatus.hubspot?.connected ? true : undefined
+      },
+      {
+        id: 'linkedin',
+        name: 'LinkedIn Ads',
+        description: 'B2B advertising and lead generation',
+        icon: '/icons/linkedin.svg',
+        connected: false
+      },
+      {
+        id: 'tiktok',
+        name: 'TikTok Ads',
+        description: 'Short-form video advertising',
+        icon: '/icons/tiktok.svg',
+        connected: false
+      },
+    ]
+    setIntegrations(integrationsData)
+  }, [platformStatus])
+
   const checkConnections = async () => {
+    // Prevent duplicate concurrent calls
+    if (isCheckingConnections) {
+      console.log('[IntegrationsPage] Already checking connections, skipping...')
+      return
+    }
+
+    setIsCheckingConnections(true)
     try {
       console.log('[IntegrationsPage] Fetching platform status with sessionId:', sessionId)
 
@@ -105,12 +192,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         const accountsData = await accountsResponse.json()
         console.log('[IntegrationsPage] Accounts data:', accountsData)
 
+        // Cache GA4 properties for later use
+        if (accountsData.ga4_properties) {
+          setGa4Properties(accountsData.ga4_properties)
+        }
+
         if (accountsData.accounts && accountsData.accounts.length > 0) {
-          const account = accountsData.accounts[0]
-          googleConnected = !!account.google_ads_id
-          metaConnected = !!account.meta_ads_id
-          ga4Connected = !!account.ga4_property_id
-          brevoConnected = !!account.brevo_api_key
+          // Find the selected account instead of just using first account
+          const account = selectedAccount
+            ? accountsData.accounts.find((acc: any) => acc.id === selectedAccount.id)
+            : accountsData.accounts[0]
+
+          if (account) {
+            console.log('[IntegrationsPage] Checking connections for account:', account.name)
+            googleConnected = !!account.google_ads_id
+            metaConnected = !!account.meta_ads_id
+            ga4Connected = !!account.ga4_property_id
+            brevoConnected = !!account.brevo_api_key
+          }
         }
       }
 
@@ -205,6 +304,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     } catch (error) {
       console.error('Error checking connections:', error)
       setLoading(false)
+    } finally {
+      setIsCheckingConnections(false)
     }
   }
 
@@ -694,10 +795,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <MetaAccountSelector
         isOpen={showMetaAccountSelector}
         onClose={() => setShowMetaAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
-          await checkConnections() // Refresh to show Meta as connected
+          // Just update status without refetching
+          setPlatformStatus(prev => prev ? {...prev, meta: {connected: true, last_synced: new Date().toISOString()}} : prev)
         }}
         currentGoogleAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
       />
@@ -706,12 +808,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <GA4PropertySelector
         isOpen={showGA4PropertySelector}
         onClose={() => setShowGA4PropertySelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
-          await checkConnections() // Refresh to show GA4 as connected
+          // Just update status without refetching
+          setPlatformStatus(prev => prev ? {...prev, ga4: {connected: true, last_synced: new Date().toISOString()}} : prev)
         }}
-        currentAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
+        currentAccountName={selectedAccount?.name}
+        ga4Properties={ga4Properties}
       />
     </div>
   )

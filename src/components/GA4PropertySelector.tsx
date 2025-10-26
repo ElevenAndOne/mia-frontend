@@ -13,10 +13,11 @@ interface GA4PropertySelectorProps {
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
+  ga4Properties?: GA4Property[]  // Optional: pass pre-fetched properties
 }
 
-const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName }: GA4PropertySelectorProps) => {
-  const { sessionId } = useSession()
+const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties }: GA4PropertySelectorProps) => {
+  const { sessionId, selectedAccount } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -24,12 +25,22 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName }:
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Fetch available GA4 properties when modal opens
+  // Use pre-fetched properties if available, otherwise fetch
   useEffect(() => {
     if (isOpen) {
-      fetchGA4Properties()
+      if (ga4Properties && ga4Properties.length > 0) {
+        // Use pre-fetched properties
+        setProperties(ga4Properties)
+        if (ga4Properties.length === 1) {
+          setSelectedPropertyId(ga4Properties[0].property_id)
+        }
+        setIsLoading(false)
+      } else {
+        // Fetch properties if not provided
+        fetchGA4Properties()
+      }
     }
-  }, [isOpen])
+  }, [isOpen, ga4Properties])
 
   const fetchGA4Properties = async () => {
     setIsLoading(true)
@@ -72,19 +83,14 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName }:
     setError(null)
 
     try {
-      // Get selected account
-      const accountsResponse = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
-      })
-
-      const accountsData = await accountsResponse.json()
-      if (!accountsData.accounts || accountsData.accounts.length === 0) {
+      // Use selected account from context
+      if (!selectedAccount) {
         throw new Error('No account selected')
       }
 
-      const accountId = accountsData.accounts[0].id
+      const accountId = selectedAccount.id
+
+      console.log('[GA4-PROPERTY-SELECTOR] Linking property', selectedPropertyId, 'to account', selectedAccount.name)
 
       // Link GA4 property
       const response = await apiFetch('/api/accounts/link-platform', {
