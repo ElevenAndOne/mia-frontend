@@ -19,7 +19,7 @@ interface GA4PropertySelectorProps {
 const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties }: GA4PropertySelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLinking, setIsLinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,9 +31,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       if (ga4Properties && ga4Properties.length > 0) {
         // Use pre-fetched properties
         setProperties(ga4Properties)
-        if (ga4Properties.length === 1) {
-          setSelectedPropertyId(ga4Properties[0].property_id)
-        }
+        // Don't auto-select - let user choose which properties to link
         setIsLoading(false)
       } else {
         // Fetch properties if not provided
@@ -57,11 +55,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
       if (data.success && data.ga4_properties) {
         setProperties(data.ga4_properties)
-
-        // Auto-select if only one property
-        if (data.ga4_properties.length === 1) {
-          setSelectedPropertyId(data.ga4_properties[0].property_id)
-        }
+        // Don't auto-select - let user choose which properties to link
       } else {
         setError('Failed to fetch GA4 properties')
       }
@@ -73,9 +67,19 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     }
   }
 
-  const handleLinkProperty = async () => {
-    if (!selectedPropertyId) {
-      setError('Please select a GA4 property')
+  const togglePropertySelection = (propertyId: string) => {
+    setSelectedPropertyIds(prev => {
+      if (prev.includes(propertyId)) {
+        return prev.filter(id => id !== propertyId)
+      } else {
+        return [...prev, propertyId]
+      }
+    })
+  }
+
+  const handleLinkProperties = async () => {
+    if (selectedPropertyIds.length === 0) {
+      setError('Please select at least one GA4 property')
       return
     }
 
@@ -90,9 +94,12 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
       const accountId = selectedAccount.id
 
-      console.log('[GA4-PROPERTY-SELECTOR] Linking property', selectedPropertyId, 'to account', selectedAccount.name)
+      console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
 
-      // Link GA4 property
+      // Join multiple property IDs with comma for backend storage
+      const propertyIdsString = selectedPropertyIds.join(',')
+
+      // Link GA4 properties (comma-separated)
       const response = await apiFetch('/api/accounts/link-platform', {
         method: 'POST',
         headers: {
@@ -102,7 +109,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
         body: JSON.stringify({
           account_id: accountId,
           platform: 'ga4',
-          platform_id: selectedPropertyId
+          platform_id: propertyIdsString
         })
       })
 
@@ -129,7 +136,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
   const handleClose = () => {
     if (!isLinking) {
-      setSelectedPropertyId(null)
+      setSelectedPropertyIds([])
       setError(null)
       setSuccess(false)
       onClose()
@@ -160,7 +167,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                   <img src="/icons/google_analytics.svg" alt="GA4" className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Link GA4 Property</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Link GA4 Properties</h2>
                   {currentAccountName && (
                     <p className="text-sm text-gray-500">to {currentAccountName}</p>
                   )}
@@ -218,41 +225,52 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select GA4 Property
+                      Select GA4 Properties ({selectedPropertyIds.length} selected)
                     </label>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {properties.map((property) => (
-                        <button
-                          key={property.property_id}
-                          onClick={() => setSelectedPropertyId(property.property_id)}
-                          className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                            selectedPropertyId === property.property_id
-                              ? 'border-orange-500 bg-orange-50'
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-900">{property.display_name}</p>
-                              <p className="text-sm text-gray-500">
-                                Property ID: {property.property_id}
-                              </p>
+                      {properties.map((property) => {
+                        const isSelected = selectedPropertyIds.includes(property.property_id)
+                        return (
+                          <button
+                            key={property.property_id}
+                            onClick={() => togglePropertySelection(property.property_id)}
+                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? 'border-orange-500 bg-orange-50'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Checkbox */}
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                isSelected
+                                  ? 'bg-orange-600 border-orange-600'
+                                  : 'border-gray-300 bg-white'
+                              }`}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              {/* Property Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{property.display_name}</p>
+                                <p className="text-sm text-gray-500 truncate">
+                                  Property ID: {property.property_id}
+                                </p>
+                              </div>
                             </div>
-                            {selectedPropertyId === property.property_id && (
-                              <svg className="w-5 h-5 text-orange-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
                   {/* Helper Text */}
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                     <p className="text-xs text-orange-800">
-                      💡 This GA4 property will be linked to your {currentAccountName || 'Google Ads'} account for website analytics.
+                      💡 Select one or more GA4 properties to link to your {currentAccountName || 'Google Ads'} account for website analytics.
                     </p>
                   </div>
                 </>
@@ -281,17 +299,17 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                   Cancel
                 </button>
                 <button
-                  onClick={handleLinkProperty}
-                  disabled={!selectedPropertyId || isLinking}
+                  onClick={handleLinkProperties}
+                  disabled={selectedPropertyIds.length === 0 || isLinking}
                   className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {isLinking ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Linking...
+                      Applying...
                     </>
                   ) : (
-                    'Link Property'
+                    `Apply (${selectedPropertyIds.length})`
                   )}
                 </button>
               </div>

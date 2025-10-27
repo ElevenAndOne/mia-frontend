@@ -569,47 +569,63 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 const isSelected = selectedIntegration === integration.id
 
                 return (
-                  <button
-                    key={integration.id}
-                    onClick={() => handleSelectIntegration(integration.id)}
-                    disabled={loading}
-                    className={`w-full text-left transition-all ${
-                      isSelected
-                        ? 'bg-blue-50 border-2 border-blue-500'
-                        : 'bg-white border-2 border-gray-200'
-                    } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-blue-300 ${
-                      loading ? 'opacity-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3 mb-2">
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <img src={integration.icon} alt="" className="w-10 h-10" />
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
+                  <div key={integration.id} className="w-full">
+                    <button
+                      onClick={() => handleSelectIntegration(integration.id)}
+                      disabled={loading}
+                      className={`w-full text-left transition-all ${
+                        isSelected
+                          ? 'bg-blue-50 border-2 border-blue-500'
+                          : 'bg-white border-2 border-gray-200'
+                      } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-blue-300 ${
+                        loading ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                          <img src={integration.icon} alt="" className="w-10 h-10" />
                         </div>
-                        <p className="text-xs text-gray-500 truncate">{integration.description}</p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {isSelected ? (
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
-                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
                           </div>
-                        ) : (
-                          <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-5 h-5" />
-                        )}
+                          <p className="text-xs text-gray-500 truncate">{integration.description}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Edit icon for GA4 to manage properties */}
+                          {integration.id === 'ga4' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowGA4PropertySelector(true)
+                              }}
+                              className="w-5 h-5 text-gray-400 hover:text-orange-600 transition-colors"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          )}
+                          {isSelected ? (
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-5 h-5" />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    {integration.dataPoints && (
-                      <div className="flex items-center justify-between text-xs text-gray-500 mt-2 pl-[52px]">
-                        <span>{integration.dataPoints.toLocaleString()} data points</span>
-                        <span>Last: {integration.lastSync}</span>
-                      </div>
-                    )}
-                  </button>
+                      {integration.dataPoints && (
+                        <div className="flex items-center justify-between text-xs text-gray-500 mt-2 pl-[52px]">
+                          <span>{integration.dataPoints.toLocaleString()} data points</span>
+                          <span>Last: {integration.lastSync}</span>
+                        </div>
+                      )}
+                    </button>
+                  </div>
                 )
               })}
             </div>
