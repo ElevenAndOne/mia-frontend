@@ -8,18 +8,27 @@ interface GA4Property {
   display_name: string
 }
 
+interface LinkedGA4Property {
+  property_id: string
+  display_name: string
+  is_primary: boolean
+  sort_order: number
+}
+
 interface GA4PropertySelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
   ga4Properties?: GA4Property[]  // Optional: pass pre-fetched properties
+  linkedProperties?: LinkedGA4Property[]  // Already linked properties
 }
 
-const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties }: GA4PropertySelectorProps) => {
+const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties, linkedProperties }: GA4PropertySelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
+  const [primaryPropertyId, setPrimaryPropertyId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLinking, setIsLinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,14 +40,26 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       if (ga4Properties && ga4Properties.length > 0) {
         // Use pre-fetched properties
         setProperties(ga4Properties)
-        // Don't auto-select - let user choose which properties to link
+
+        // Pre-select already linked properties
+        if (linkedProperties && linkedProperties.length > 0) {
+          const linkedIds = linkedProperties.map(p => p.property_id)
+          setSelectedPropertyIds(linkedIds)
+
+          // Set primary property
+          const primary = linkedProperties.find(p => p.is_primary)
+          if (primary) {
+            setPrimaryPropertyId(primary.property_id)
+          }
+        }
+
         setIsLoading(false)
       } else {
         // Fetch properties if not provided
         fetchGA4Properties()
       }
     }
-  }, [isOpen, ga4Properties])
+  }, [isOpen, ga4Properties, linkedProperties])
 
   const fetchGA4Properties = async () => {
     setIsLoading(true)
@@ -69,12 +90,26 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
   const togglePropertySelection = (propertyId: string) => {
     setSelectedPropertyIds(prev => {
-      if (prev.includes(propertyId)) {
-        return prev.filter(id => id !== propertyId)
-      } else {
-        return [...prev, propertyId]
+      const newSelection = prev.includes(propertyId)
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+
+      // If deselecting the primary, clear primary
+      if (!newSelection.includes(propertyId) && primaryPropertyId === propertyId) {
+        setPrimaryPropertyId(newSelection[0] || null)
       }
+
+      // If this is the first selection, make it primary
+      if (newSelection.length === 1 && !primaryPropertyId) {
+        setPrimaryPropertyId(newSelection[0])
+      }
+
+      return newSelection
     })
+  }
+
+  const setPrimary = (propertyId: string) => {
+    setPrimaryPropertyId(propertyId)
   }
 
   const handleLinkProperties = async () => {
@@ -95,11 +130,17 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       const accountId = selectedAccount.id
 
       console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
+      console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
 
-      // Join multiple property IDs with comma for backend storage
-      const propertyIdsString = selectedPropertyIds.join(',')
+      // Order properties with primary first
+      const orderedPropertyIds = primaryPropertyId
+        ? [primaryPropertyId, ...selectedPropertyIds.filter(id => id !== primaryPropertyId)]
+        : selectedPropertyIds
 
-      // Link GA4 properties (comma-separated)
+      // Join multiple property IDs with comma for backend storage (primary first)
+      const propertyIdsString = orderedPropertyIds.join(',')
+
+      // Link GA4 properties (comma-separated, primary first)
       const response = await apiFetch('/api/accounts/link-platform', {
         method: 'POST',
         headers: {
@@ -230,38 +271,57 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {properties.map((property) => {
                         const isSelected = selectedPropertyIds.includes(property.property_id)
+                        const isPrimary = primaryPropertyId === property.property_id
                         return (
-                          <button
+                          <div
                             key={property.property_id}
-                            onClick={() => togglePropertySelection(property.property_id)}
-                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                            className={`relative p-4 rounded-lg border-2 transition-all ${
                               isSelected
                                 ? 'border-orange-500 bg-orange-50'
-                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                : 'border-gray-200 bg-white'
                             }`}
                           >
                             <div className="flex items-center gap-3">
                               {/* Checkbox */}
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                                isSelected
-                                  ? 'bg-orange-600 border-orange-600'
-                                  : 'border-gray-300 bg-white'
-                              }`}>
+                              <button
+                                onClick={() => togglePropertySelection(property.property_id)}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isSelected
+                                    ? 'bg-orange-600 border-orange-600'
+                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                }`}
+                              >
                                 {isSelected && (
                                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 )}
-                              </div>
+                              </button>
                               {/* Property Info */}
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{property.display_name}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 truncate">{property.display_name}</p>
+                                  {isPrimary && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      Primary
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-gray-500 truncate">
                                   Property ID: {property.property_id}
                                 </p>
                               </div>
+                              {/* Set as Primary Button */}
+                              {isSelected && !isPrimary && (
+                                <button
+                                  onClick={() => setPrimary(property.property_id)}
+                                  className="px-3 py-1 text-xs font-medium text-orange-700 bg-white border border-orange-300 rounded hover:bg-orange-50 transition-colors"
+                                >
+                                  Set as Primary
+                                </button>
+                              )}
                             </div>
-                          </button>
+                          </div>
                         )
                       })}
                     </div>
