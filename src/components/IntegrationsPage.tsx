@@ -56,6 +56,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   // GA4 Property Selector Modal State
   const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
   const [ga4Properties, setGa4Properties] = useState<any[]>([])
+  const [linkedGA4Properties, setLinkedGA4Properties] = useState<any[]>([])
 
   // Helper function to calculate "time ago" from ISO timestamp
   const getTimeAgo = (isoTimestamp: string | undefined): string => {
@@ -209,6 +210,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             metaConnected = !!account.meta_ads_id
             ga4Connected = !!account.ga4_property_id
             brevoConnected = !!account.brevo_api_key
+
+            // Store linked GA4 properties
+            if (account.linked_ga4_properties) {
+              setLinkedGA4Properties(account.linked_ga4_properties)
+              console.log('[IntegrationsPage] Linked GA4 properties:', account.linked_ga4_properties)
+            }
           }
         }
       }
@@ -827,11 +834,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={() => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
-          // Just update status without refetching
-          setPlatformStatus(prev => prev ? {...prev, ga4: {connected: true, last_synced: new Date().toISOString()}} : prev)
+          // Refetch to get updated linked properties
+          checkConnections()
         }}
         currentAccountName={selectedAccount?.name}
         ga4Properties={ga4Properties}
+        linkedProperties={linkedGA4Properties}
       />
     </div>
   )
