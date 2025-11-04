@@ -5,6 +5,7 @@ import DateRangeSelector from './DateRangeSelector'
 
 interface OptimizeInsightsProps {
   onBack?: () => void
+  initialDateRange?: string
 }
 
 interface Insight {
@@ -22,16 +23,31 @@ interface InsightsResponse {
   insights: Insight[]
 }
 
-const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
+const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsightsProps) => {
   const { sessionId, selectedAccount } = useSession()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
+  const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
 
   // Helper function to calculate and format date range
   const getDateRangeDisplay = (range: string): string => {
+    const formatDate = (date: Date) => {
+      const day = String(date.getDate()).padStart(2, '0')
+      const month = date.toLocaleDateString('en-GB', { month: 'short' })
+      return `${day} ${month}`
+    }
+
+    // Check if it's a custom date range (format: YYYY-MM-DD_YYYY-MM-DD)
+    if (range.includes('_') && range.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
+      const [startStr, endStr] = range.split('_')
+      const startDate = new Date(startStr)
+      const endDate = new Date(endStr)
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`
+    }
+
+    // Handle preset date ranges
     const today = new Date()
     const daysMap: { [key: string]: number } = {
       '7_days': 7,
@@ -42,20 +58,14 @@ const OptimizeInsights = ({ onBack }: OptimizeInsightsProps) => {
 
     const days = daysMap[range] || 30
     const startDate = new Date(today)
-    startDate.setDate(today.getDate() - days)
-
-    const formatDate = (date: Date) => {
-      const day = String(date.getDate()).padStart(2, '0')
-      const month = date.toLocaleDateString('en-GB', { month: 'short' })
-      return `${day} ${month}`
-    }
+    startDate.setDate(today.getDate() - (days - 1))  // Match backend: days - 1 for inclusive count
 
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
   useEffect(() => {
     fetchOptimizeInsights()
-  }, [selectedDateRange])
+  }, [selectedDateRange, selectedAccount])  // ✅ Re-fetch when account changes!
 
   const fetchOptimizeInsights = async () => {
     try {

@@ -12,6 +12,7 @@ import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - G
 import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
 import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
 import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
+import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
 import { useSession } from './contexts/SessionContext'
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
@@ -24,6 +25,11 @@ function App() {
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   const [preloadedData, setPreloadedData] = useState<any>(null) // Store pre-fetched data
+
+  // Date picker modal state
+  const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
+  const [pendingInsightType, setPendingInsightType] = useState<'grow' | 'optimize' | 'protect' | null>(null)
+  const [selectedInsightDateRange, setSelectedInsightDateRange] = useState<string>('30_days')
 
   // Preload critical images - mobile-optimized approach
   useEffect(() => {
@@ -106,6 +112,22 @@ function App() {
     setAppState('creative')
   }
 
+  const handleInsightsDateGenerate = (dateRange: string) => {
+    setSelectedInsightDateRange(dateRange)
+    setShowInsightsDatePicker(false)
+
+    // Navigate to the appropriate insights page
+    if (pendingInsightType === 'grow') {
+      setAppState('grow-quick')
+    } else if (pendingInsightType === 'optimize') {
+      setAppState('optimize-quick')
+    } else if (pendingInsightType === 'protect') {
+      setAppState('protect-quick')
+    }
+
+    setPendingInsightType(null)
+  }
+
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-50">
@@ -167,9 +189,18 @@ function App() {
                 onCreativeClick={handleCreativeClick}
                 onIntegrationsClick={() => setAppState('integrations')}
                 onSummaryQuickClick={() => setAppState('summary-quick')}
-                onGrowQuickClick={() => setAppState('grow-quick')}
-                onOptimizeQuickClick={() => setAppState('optimize-quick')}
-                onProtectQuickClick={() => setAppState('protect-quick')}
+                onGrowQuickClick={() => {
+                  setPendingInsightType('grow')
+                  setShowInsightsDatePicker(true)
+                }}
+                onOptimizeQuickClick={() => {
+                  setPendingInsightType('optimize')
+                  setShowInsightsDatePicker(true)
+                }}
+                onProtectQuickClick={() => {
+                  setPendingInsightType('protect')
+                  setShowInsightsDatePicker(true)
+                }}
               />
             </motion.div>
           )}
@@ -276,6 +307,7 @@ function App() {
             >
               <GrowInsights
                 onBack={() => setAppState('main')}
+                initialDateRange={selectedInsightDateRange}
               />
             </motion.div>
           )}
@@ -291,6 +323,7 @@ function App() {
             >
               <OptimizeInsights
                 onBack={() => setAppState('main')}
+                initialDateRange={selectedInsightDateRange}
               />
             </motion.div>
           )}
@@ -306,6 +339,7 @@ function App() {
             >
               <ProtectInsights
                 onBack={() => setAppState('main')}
+                initialDateRange={selectedInsightDateRange}
               />
             </motion.div>
           )}
@@ -327,6 +361,17 @@ function App() {
 
         </AnimatePresence>
       </div>
+
+      {/* Insights Date Picker Modal */}
+      <InsightsDatePickerModal
+        isOpen={showInsightsDatePicker}
+        onClose={() => {
+          setShowInsightsDatePicker(false)
+          setPendingInsightType(null)
+        }}
+        onGenerate={handleInsightsDateGenerate}
+        insightType={pendingInsightType || 'grow'}
+      />
     </div>
   )
 }
