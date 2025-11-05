@@ -18,24 +18,33 @@ interface Integration {
 interface PlatformStatus {
   google: {
     connected: boolean
+    linked: boolean
     last_synced?: string
   }
   meta: {
     connected: boolean
+    linked: boolean
     last_synced?: string
   }
   brevo: {
     connected: boolean
+    linked: boolean
     last_synced?: string
   }
   hubspot: {
     connected: boolean
+    linked: boolean
+    last_synced?: string
+  }
+  ga4: {
+    connected: boolean
+    linked: boolean
     last_synced?: string
   }
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount } = useSession()
+  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated } = useSession()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connectingId, setConnectingId] = useState<string | null>(null)
@@ -91,6 +100,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       checkConnections()
     }
   }, [sessionId])
+
+  // Re-check connections when selected account changes
+  useEffect(() => {
+    if (sessionId && hasInitiallyLoaded.current && selectedAccount) {
+      console.log('[IntegrationsPage] Account changed, re-fetching connections for:', selectedAccount.name)
+      checkConnections()
+    }
+  }, [selectedAccount])
 
   // Rebuild integrations list whenever platformStatus changes (for optimistic updates)
   useEffect(() => {
@@ -184,10 +201,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       })
 
-      let googleConnected = false
-      let metaConnected = false
-      let ga4Connected = false
-      let brevoConnected = false
+      // Track account-specific linking (for showing checkmarks)
+      let googleLinked = false
+      let metaLinked = false
+      let ga4Linked = false
+      let brevoLinked = false
 
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json()
@@ -206,10 +224,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
           if (account) {
             console.log('[IntegrationsPage] Checking connections for account:', account.name)
-            googleConnected = !!account.google_ads_id
-            metaConnected = !!account.meta_ads_id
-            ga4Connected = !!account.ga4_property_id
-            brevoConnected = !!account.brevo_api_key
+            googleLinked = !!account.google_ads_id
+            metaLinked = !!account.meta_ads_id
+            ga4Linked = !!account.ga4_property_id
+            brevoLinked = !!account.brevo_api_key
 
             // Store linked GA4 properties
             if (account.linked_ga4_properties) {
@@ -220,13 +238,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       }
 
-      // Build platform status object
+      // Use GLOBAL authentication status for "connected", not account-specific linking
+      // This shows gear icons even when not linked to this specific account
       const platforms = {
-        google: { connected: googleConnected, last_synced: new Date().toISOString() },
-        ga4: { connected: ga4Connected, last_synced: new Date().toISOString() },
-        meta: { connected: metaConnected, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoConnected, last_synced: new Date().toISOString() },
-        hubspot: { connected: false }
+        google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
+        ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
+        meta: { connected: isMetaAuthenticated || metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
+        brevo: { connected: brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
+        hubspot: { connected: false, linked: false }
       }
 
       console.log('[IntegrationsPage] Computed platform status:', platforms)
@@ -607,6 +626,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                 setShowGA4PropertySelector(true)
                               }}
                               className="w-5 h-5 text-gray-400 hover:text-orange-600 transition-colors"
+                              title="Manage GA4 properties"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          )}
+                          {/* Edit icon for Meta to select account */}
+                          {integration.id === 'meta' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowMetaAccountSelector(true)
+                              }}
+                              className="w-5 h-5 text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Change Meta account"
                             >
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />

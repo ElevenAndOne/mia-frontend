@@ -46,9 +46,13 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         // Clear any existing chat messages when switching accounts
         setChatMessages([])
 
-        // Small delay for UX feedback
+        // Navigate to Integrations page after account switch
+        // User needs to link platforms (GA4, Meta) for the new account
         setTimeout(() => {
           setIsAccountSwitching(false)
+          if (onIntegrationsClick) {
+            onIntegrationsClick()
+          }
         }, 500)
       } else {
         console.error('❌ [MAIN] Failed to switch account')

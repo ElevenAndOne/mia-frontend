@@ -125,7 +125,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               setState(prev => ({
                 ...prev,
                 sessionId: storedSessionId,
-                isAuthenticated: true,
+                isAuthenticated: data.platforms?.google || false,
+                isMetaAuthenticated: data.platforms?.meta || false,  // ✅ Restore Meta auth state!
                 user: {
                   name: data.user.name,
                   email: data.user.email,
@@ -144,6 +145,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 } : null,
                 isLoading: false
               }))
+              console.log('[SESSION] Restored auth state: Google=' + (data.platforms?.google || false) + ', Meta=' + (data.platforms?.meta || false))
 
               // Refresh available accounts
               await refreshAccounts()
