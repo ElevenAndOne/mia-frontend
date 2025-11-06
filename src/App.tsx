@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import VideoIntroView from './components/VideoIntroView'
-import MCCSelectionPage from './components/MCCSelectionPage'
 import AccountSelectionPage from './components/AccountSelectionPage'
 import MainViewCopy from './components/MainViewCopy' // The main app after auth
 import GrowthPage from './components/GrowthPage' // Blue growth page
@@ -16,7 +15,7 @@ import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insigh
 import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
 import { useSession } from './contexts/SessionContext'
 
-type AppState = 'video-intro' | 'mcc-selection' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId } = useSession()
@@ -26,7 +25,6 @@ function App() {
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   const [preloadedData, setPreloadedData] = useState<any>(null) // Store pre-fetched data
-  const [selectedMCC, setSelectedMCC] = useState<string | null>(null) // Store selected MCC
 
   // Date picker modal state
   const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
@@ -79,9 +77,8 @@ function App() {
       // User has selected an account - navigate to integrations page
       // Don't interfere with manual navigation from other states
       setAppState('integrations')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'mcc-selection' && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix') {
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix') {
       // User is authenticated (Google OR Meta) but needs to select an account
-      // Don't override mcc-selection state
       setAppState('account-selection')
     } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
       // User logged out - reset to video intro
@@ -92,17 +89,10 @@ function App() {
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal
     // We need to manually transition since we disabled auto-transition on video-intro
-    // Force transition to MCC selection after successful auth
+    // Force transition to account selection after successful auth
     // The SessionContext should have updated isAuthenticated by now
-    setAppState('mcc-selection')
-  }
-
-  const handleMCCSelected = (mccId: string) => {
-    // Store selected MCC and proceed to account selection
-    setSelectedMCC(mccId)
     setAppState('account-selection')
   }
-
 
   const { logout } = useSession()
 
@@ -162,21 +152,6 @@ function App() {
               className="w-full h-full"
             >
               <VideoIntroView onAuthSuccess={handleAuthSuccess} />
-            </motion.div>
-          )}
-
-          {appState === 'mcc-selection' && sessionId && (
-            <motion.div
-              key="mcc-selection"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <MCCSelectionPage
-                sessionId={sessionId}
-                onMCCSelected={handleMCCSelected}
-              />
             </motion.div>
           )}
 
