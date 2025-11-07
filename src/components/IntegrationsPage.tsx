@@ -238,14 +238,40 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       }
 
+      // Check HubSpot authentication status
+      let hubspotConnected = false
+      try {
+        const hubspotResponse = await apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`)
+        if (hubspotResponse.ok) {
+          const hubspotData = await hubspotResponse.json()
+          hubspotConnected = hubspotData.authenticated || false
+          console.log('[IntegrationsPage] HubSpot status:', hubspotData)
+        }
+      } catch (error) {
+        console.error('[IntegrationsPage] Error checking HubSpot status:', error)
+      }
+
+      // Check Brevo authentication status
+      let brevoConnected = false
+      try {
+        const brevoResponse = await apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`)
+        if (brevoResponse.ok) {
+          const brevoData = await brevoResponse.json()
+          brevoConnected = brevoData.authenticated || false
+          console.log('[IntegrationsPage] Brevo status:', brevoData)
+        }
+      } catch (error) {
+        console.error('[IntegrationsPage] Error checking Brevo status:', error)
+      }
+
       // Use GLOBAL authentication status for "connected", not account-specific linking
       // This shows gear icons even when not linked to this specific account
       const platforms = {
         google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: isMetaAuthenticated || metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
-        hubspot: { connected: false, linked: false }
+        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },
+        hubspot: { connected: hubspotConnected, linked: false, last_synced: new Date().toISOString() }
       }
 
       console.log('[IntegrationsPage] Computed platform status:', platforms)
