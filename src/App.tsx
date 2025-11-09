@@ -89,9 +89,15 @@ function App() {
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal
     // We need to manually transition since we disabled auto-transition on video-intro
-    // Force transition to account selection after successful auth
-    // The SessionContext should have updated isAuthenticated by now
-    setAppState('account-selection')
+
+    // Check if user already has a selected account (returning user via "Log in")
+    if (selectedAccount) {
+      // Returning user with saved account → go directly to main page
+      setAppState('main')
+    } else {
+      // New user → go to account selection
+      setAppState('account-selection')
+    }
   }
 
   const { logout } = useSession()

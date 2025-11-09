@@ -63,7 +63,7 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
-  // Fetch insights on mount and when date range OR account changes
+  // Fetch insights on mount and when date range changes
   useEffect(() => {
     let isCancelled = false
 
@@ -78,7 +78,7 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
     return () => {
       isCancelled = true
     }
-  }, [selectedDateRange, selectedAccount])  // ✅ Re-fetch when account changes!
+  }, [selectedDateRange])  // Only re-fetch when date range changes
 
   const fetchGrowInsights = async () => {
     try {
@@ -221,12 +221,6 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
 
         {insights && !isLoading && !error && (
           <div className="space-y-6">
-            {/* Summary FIRST */}
-            <div className="bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 rounded-lg p-5">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
-              <p className="text-gray-700 leading-relaxed">{insights.summary}</p>
-            </div>
-
             {/* Key Insights */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Growth Opportunities</h2>

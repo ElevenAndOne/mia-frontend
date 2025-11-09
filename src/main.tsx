@@ -11,9 +11,7 @@ if (viewport) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <SessionProvider>
-      <App />
-    </SessionProvider>
-  </React.StrictMode>,
+  <SessionProvider>
+    <App />
+  </SessionProvider>,
 )

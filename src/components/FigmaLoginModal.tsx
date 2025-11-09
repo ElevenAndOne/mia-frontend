@@ -106,7 +106,8 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         setGoogleLoadingMessage('Creating bypass session...')
 
         // Call the bypass endpoint to create a test authenticated session
-        const bypassResponse = await apiFetch('/api/oauth/bypass-login', {
+        // Use the test user_id from your DFSA account
+        const bypassResponse = await apiFetch('/api/oauth/bypass-login?user_id=106540664695114193744', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
