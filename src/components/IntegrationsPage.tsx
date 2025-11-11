@@ -264,12 +264,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         console.error('[IntegrationsPage] Error checking Brevo status:', error)
       }
 
+      // CRITICAL FIX (Nov 11): Check if Meta CREDENTIALS actually exist in database
+      // Don't rely on isMetaAuthenticated from session (can be stale after DB clear)
+      let metaHasCredentials = false
+      try {
+        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
+        if (metaCredsResponse.ok) {
+          const metaCredsData = await metaCredsResponse.json()
+          metaHasCredentials = metaCredsData.has_credentials || false
+          console.log('[IntegrationsPage] Meta credentials status:', metaCredsData)
+        }
+      } catch (error) {
+        console.error('[IntegrationsPage] Error checking Meta credentials:', error)
+      }
+
       // Use GLOBAL authentication status for "connected", not account-specific linking
       // This shows gear icons even when not linked to this specific account
       const platforms = {
         google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
-        meta: { connected: isMetaAuthenticated || metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
+        meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
         brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },
         hubspot: { connected: hubspotConnected, linked: false, last_synced: new Date().toISOString() }
       }
