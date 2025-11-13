@@ -237,7 +237,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                     {/* Action */}
                     {insight.action && (
                       <div className="pl-10 bg-pink-50 border-l-4 border-pink-500 p-3 rounded">
-                        <p className="text-sm text-gray-900 leading-relaxed font-medium"><span className="font-bold text-pink-700">Action:</span> {insight.action}</p>
+                        <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}><span className="font-bold text-pink-700">Action:</span> {insight.action}</p>
                       </div>
                     )}
 

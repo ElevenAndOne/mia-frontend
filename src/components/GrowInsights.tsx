@@ -250,7 +250,7 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
                     {/* Action */}
                     {insight.action && (
                       <div className="pl-10 bg-cyan-50 border-l-4 border-cyan-500 p-3 rounded">
-                        <p className="text-sm text-gray-900 leading-relaxed font-medium"><span className="font-bold text-cyan-700">Action:</span> {insight.action}</p>
+                        <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}><span className="font-bold text-cyan-700">Action:</span> {insight.action}</p>
                       </div>
                     )}
 

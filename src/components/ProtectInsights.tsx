@@ -237,7 +237,7 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
                     {/* Action */}
                     {insight.action && (
                       <div className="pl-10 bg-orange-50 border-l-4 border-orange-500 p-3 rounded">
-                        <p className="text-sm text-gray-900 leading-relaxed font-medium"><span className="font-bold text-orange-700">Action:</span> {insight.action}</p>
+                        <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}><span className="font-bold text-orange-700">Action:</span> {insight.action}</p>
                       </div>
                     )}
 
