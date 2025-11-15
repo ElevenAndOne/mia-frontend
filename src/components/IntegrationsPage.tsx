@@ -4,6 +4,7 @@ import { apiFetch } from '../utils/api'
 import MetaAccountSelector from './MetaAccountSelector'
 import FacebookPageSelector from './FacebookPageSelector'
 import GA4PropertySelector from './GA4PropertySelector'
+import GoogleAccountSelector from './GoogleAccountSelector'
 
 interface Integration {
   id: string
@@ -60,11 +61,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
 
+  // Google Account Selector Modal State
+  const [showGoogleAccountSelector, setShowGoogleAccountSelector] = useState(false)
+
   // Meta Account Selector Modal State
   const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
 
   // Facebook Page Selector Modal State
   const [showFacebookPageSelector, setShowFacebookPageSelector] = useState(false)
+  const [currentAccountData, setCurrentAccountData] = useState<any>(null)  // Fresh account data
 
   // GA4 Property Selector Modal State
   const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
@@ -232,6 +237,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             metaLinked = !!account.meta_ads_id
             ga4Linked = !!account.ga4_property_id
             brevoLinked = !!account.brevo_api_key
+
+            // Store account data with facebook_page_id for FacebookPageSelector
+            setCurrentAccountData(account)
 
             // Store linked GA4 properties
             if (account.linked_ga4_properties) {
@@ -661,7 +669,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           <p className="text-xs text-gray-500 truncate">{integration.description}</p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Edit icon for GA4 to manage properties */}
+                          {/* Gear icon for Google Ads to switch accounts */}
+                          {integration.id === 'google' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowGoogleAccountSelector(true)
+                              }}
+                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                              title="Switch Google Ads account"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          )}
+                          {/* Gear icon for GA4 to manage properties */}
                           {integration.id === 'ga4' && (
                             <button
                               onClick={(e) => {
@@ -677,7 +701,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               </svg>
                             </button>
                           )}
-                          {/* Edit icon for Meta to select account */}
+                          {/* Gear icons for Meta to select account and Facebook Page */}
                           {integration.id === 'meta' && (
                             <>
                               <button
@@ -905,6 +929,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         </div>
       )}
 
+      {/* Google Account Selector Modal */}
+      <GoogleAccountSelector
+        isOpen={showGoogleAccountSelector}
+        onClose={() => setShowGoogleAccountSelector(false)}
+        onSuccess={() => {
+          console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
+          setShowGoogleAccountSelector(false)
+          checkConnections()
+        }}
+      />
+
       {/* Meta Account Selector Modal */}
       <MetaAccountSelector
         isOpen={showMetaAccountSelector}
@@ -912,10 +947,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={() => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
-          // Just update status without refetching
-          setPlatformStatus(prev => prev ? {...prev, meta: {connected: true, last_synced: new Date().toISOString()}} : prev)
+          checkConnections()
         }}
-        currentGoogleAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
+        currentGoogleAccountName={selectedAccount?.name}
+        currentAccountData={currentAccountData}
       />
 
       {/* Facebook Page Selector Modal */}
@@ -929,6 +964,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           checkConnections()
         }}
         currentAccountName={selectedAccount?.name}
+        currentAccountData={currentAccountData}
       />
 
       {/* GA4 Property Selector Modal */}

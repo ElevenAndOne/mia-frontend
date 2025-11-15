@@ -17,10 +17,13 @@ interface FacebookPageSelectorProps {
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
+  currentAccountData?: any  // Fresh account data from IntegrationsPage
 }
 
-const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }: FacebookPageSelectorProps) => {
+const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, currentAccountData }: FacebookPageSelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
+  // Use currentAccountData if provided (fresh data), otherwise fall back to selectedAccount
+  const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -40,34 +43,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
     setError(null)
 
     try {
-      // Check sessionStorage cache first (5 min TTL)
-      const cacheKey = `fb_pages_${sessionId}`
-      const cached = sessionStorage.getItem(cacheKey)
-
-      if (cached) {
-        try {
-          const { data: cachedPages, timestamp } = JSON.parse(cached)
-          const age = Date.now() - timestamp
-
-          // Use cache if less than 5 minutes old
-          if (age < 5 * 60 * 1000) {
-            console.log('[FACEBOOK-PAGE-SELECTOR] Using cached pages')
-            setPages(cachedPages)
-
-            // Pre-select currently linked page if exists
-            if (selectedAccount?.facebook_page_id) {
-              setSelectedPageId(selectedAccount.facebook_page_id)
-            }
-
-            setIsLoading(false)
-            return
-          }
-        } catch (e) {
-          console.error('[FACEBOOK-PAGE-SELECTOR] Cache parse error:', e)
-        }
-      }
-
-      // Fetch fresh data
+      // Fetch pages from backend (uses PostgreSQL cache with 7-day TTL)
       const response = await apiFetch('/api/oauth/meta/api/organic/facebook-pages', {
         headers: {
           'X-Session-ID': sessionId || 'default'
@@ -84,15 +60,10 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
 
         setPages(sortedPages)
 
-        // Cache the sorted pages for 5 minutes
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: sortedPages,
-          timestamp: Date.now()
-        }))
-
         // Pre-select currently linked page if exists
-        if (selectedAccount?.facebook_page_id) {
-          setSelectedPageId(selectedAccount.facebook_page_id)
+        if (accountToUse?.facebook_page_id) {
+          setSelectedPageId(accountToUse.facebook_page_id)
+          console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected page:', accountToUse.facebook_page_id)
         }
       } else {
         setError('Failed to fetch Facebook Pages')
@@ -115,7 +86,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
     setError(null)
 
     try {
-      if (!selectedAccount) {
+      if (!accountToUse) {
         throw new Error('No account selected')
       }
 
@@ -124,7 +95,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
         throw new Error('Selected page not found')
       }
 
-      console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', selectedAccount.name)
+      console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', accountToUse.name)
 
       // Link Facebook Page to account
       const response = await apiFetch('/api/oauth/meta/api/organic/link-page', {
@@ -137,7 +108,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
           page_id: selectedPage.id,
           page_name: selectedPage.name,
           page_access_token: selectedPage.access_token,
-          account_id: selectedAccount.id
+          account_id: accountToUse.id
         })
       })
 
@@ -149,10 +120,6 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
 
       if (data.success) {
         setSuccess(true)
-
-        // Clear cache so next open shows fresh data
-        const cacheKey = `fb_pages_${sessionId}`
-        sessionStorage.removeItem(cacheKey)
 
         setTimeout(() => {
           onSuccess?.()
@@ -276,14 +243,16 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName }
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              {/* Radio Button */}
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              {/* Square Checkbox */}
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                                 isSelected
-                                  ? 'border-blue-600'
+                                  ? 'border-blue-600 bg-blue-600'
                                   : 'border-gray-300'
                               }`}>
                                 {isSelected && (
-                                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
                                 )}
                               </div>
                               {/* Page Info */}
