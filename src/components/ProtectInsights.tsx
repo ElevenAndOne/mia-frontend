@@ -8,20 +8,18 @@ const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: 
   const convertDeepLink = (linkUrl: string): string => {
     // Handle DEEPLINK: format for campaign deep links
     if (linkUrl.startsWith('DEEPLINK:')) {
-      const campaignId = linkUrl.replace('DEEPLINK:', '')
+      const campaignId = linkUrl.replace('DEEPLINK:', '').trim()
 
-      // Check if it looks like a Google Ads campaign ID (numeric, 10-11 digits)
-      if (/^\d{10,11}$/.test(campaignId) && googleAdsId) {
-        // Google Ads campaign deep link
-        const customerId = googleAdsId.replace(/-/g, '') // Remove dashes
-        return `https://ads.google.com/aw/campaigns?campaignId=${campaignId}&__e=${customerId}`
-      }
-
-      // Check if it looks like a Meta campaign ID (numeric, 15+ digits)
-      if (/^\d{15,}$/.test(campaignId) && metaAdsId) {
+      // Only create deep links for Meta campaigns (13+ digits)
+      // Google Ads deep linking to UI is unreliable without authentication
+      if (/^\d{13,}$/.test(campaignId) && metaAdsId) {
         // Meta Ads Manager campaign deep link
         return `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAdsId}&selected_campaign_ids=${campaignId}`
       }
+
+      // For Google Ads campaigns (10-12 digits) or unknown formats, return empty string
+      // This will cause the link to not render, showing just the campaign name as plain text
+      return ''
     }
 
     return linkUrl
@@ -35,6 +33,12 @@ const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: 
       if (linkMatch) {
         const [, linkText, linkUrl] = linkMatch
         const actualUrl = convertDeepLink(linkUrl)
+
+        // If actualUrl is empty (Google Ads campaign), just show plain text
+        if (!actualUrl) {
+          return <span key={index}>{linkText}</span>
+        }
+
         return (
           <a
             key={index}
