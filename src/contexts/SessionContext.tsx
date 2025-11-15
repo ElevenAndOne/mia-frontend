@@ -7,6 +7,7 @@ export interface AccountMapping {
   google_ads_id: string
   ga4_property_id: string
   meta_ads_id?: string
+  facebook_page_id?: string
   business_type: string
   color: string
   display_name: string

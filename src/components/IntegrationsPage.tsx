@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import MetaAccountSelector from './MetaAccountSelector'
+import FacebookPageSelector from './FacebookPageSelector'
 import GA4PropertySelector from './GA4PropertySelector'
 
 interface Integration {
@@ -61,6 +62,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // Meta Account Selector Modal State
   const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
+
+  // Facebook Page Selector Modal State
+  const [showFacebookPageSelector, setShowFacebookPageSelector] = useState(false)
 
   // GA4 Property Selector Modal State
   const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
@@ -664,7 +668,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                 e.stopPropagation()
                                 setShowGA4PropertySelector(true)
                               }}
-                              className="w-5 h-5 text-gray-400 hover:text-orange-600 transition-colors"
+                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
                               title="Manage GA4 properties"
                             >
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -675,19 +679,31 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           )}
                           {/* Edit icon for Meta to select account */}
                           {integration.id === 'meta' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowMetaAccountSelector(true)
-                              }}
-                              className="w-5 h-5 text-gray-400 hover:text-blue-600 transition-colors"
-                              title="Change Meta account"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowFacebookPageSelector(true)
+                                }}
+                                className="w-5 h-5 hover:opacity-70 transition-opacity"
+                                title="Select Facebook Page for organic insights"
+                              >
+                                <img src="/icons/facebook.png" alt="Facebook" className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowMetaAccountSelector(true)
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Change Meta account"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              </button>
+                            </>
                           )}
                           {isSelected ? (
                             <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
@@ -900,6 +916,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           setPlatformStatus(prev => prev ? {...prev, meta: {connected: true, last_synced: new Date().toISOString()}} : prev)
         }}
         currentGoogleAccountName={platformStatus?.google?.connected ? 'your Google Ads account' : undefined}
+      />
+
+      {/* Facebook Page Selector Modal */}
+      <FacebookPageSelector
+        isOpen={showFacebookPageSelector}
+        onClose={() => setShowFacebookPageSelector(false)}
+        onSuccess={() => {
+          console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
+          setShowFacebookPageSelector(false)
+          // Refetch to get updated account with facebook_page_id
+          checkConnections()
+        }}
+        currentAccountName={selectedAccount?.name}
       />
 
       {/* GA4 Property Selector Modal */}

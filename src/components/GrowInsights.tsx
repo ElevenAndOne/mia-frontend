@@ -26,9 +26,10 @@ const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: 
   }
 
   const renderWithLinks = (text: string) => {
-    // Match both http(s) URLs and DEEPLINK: format
-    const parts = text.split(/(\[.*?\]\((?:https?:\/\/.*?|DEEPLINK:.*?)\))/)
+    // Match both markdown links [text](url) and plain URLs
+    const parts = text.split(/(\[.*?\]\((?:https?:\/\/.*?|DEEPLINK:.*?)\)|https?:\/\/[^\s]+)/)
     return parts.map((part, index) => {
+      // Check for markdown link format
       const linkMatch = part.match(/\[(.*?)\]\(((?:https?:\/\/|DEEPLINK:).*?)\)/)
       if (linkMatch) {
         const [, linkText, linkUrl] = linkMatch
@@ -51,6 +52,22 @@ const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: 
           </a>
         )
       }
+
+      // Check for plain URL (http:// or https://)
+      if (part.match(/^https?:\/\//)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline font-medium"
+          >
+            {part}
+          </a>
+        )
+      }
+
       return <span key={index}>{part}</span>
     })
   }

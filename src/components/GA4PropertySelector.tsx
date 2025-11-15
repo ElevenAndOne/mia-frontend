@@ -38,8 +38,11 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
   useEffect(() => {
     if (isOpen) {
       if (ga4Properties && ga4Properties.length > 0) {
-        // Use pre-fetched properties
-        setProperties(ga4Properties)
+        // Sort pre-fetched properties alphabetically by display name (A-Z)
+        const sortedProperties = [...ga4Properties].sort((a, b) =>
+          a.display_name.localeCompare(b.display_name)
+        )
+        setProperties(sortedProperties)
 
         // Pre-select already linked properties
         if (linkedProperties && linkedProperties.length > 0) {
@@ -75,7 +78,11 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       const data = await response.json()
 
       if (data.success && data.ga4_properties) {
-        setProperties(data.ga4_properties)
+        // Sort properties alphabetically by display name (A-Z)
+        const sortedProperties = data.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
+          a.display_name.localeCompare(b.display_name)
+        )
+        setProperties(sortedProperties)
         // Don't auto-select - let user choose which properties to link
       } else {
         setError('Failed to fetch GA4 properties')
