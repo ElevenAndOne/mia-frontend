@@ -3,6 +3,35 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import DateRangeSelector from './DateRangeSelector'
 
+// Helper component to render text with markdown links
+const MarkdownText = ({ text, className = '' }: { text: string; className?: string }) => {
+  // Convert markdown links [text](url) to clickable <a> tags
+  // Only match URLs starting with http:// or https://
+  const renderWithLinks = (text: string) => {
+    const parts = text.split(/(\[.*?\]\(https?:\/\/.*?\))/)
+    return parts.map((part, index) => {
+      const linkMatch = part.match(/\[(.*?)\]\((https?:\/\/.*?)\)/)
+      if (linkMatch) {
+        const [, linkText, url] = linkMatch
+        return (
+          <a
+            key={index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline font-medium"
+          >
+            {linkText}
+          </a>
+        )
+      }
+      return <span key={index}>{part}</span>
+    })
+  }
+
+  return <span className={className}>{renderWithLinks(text)}</span>
+}
+
 interface ProtectInsightsProps {
   onBack?: () => void
   initialDateRange?: string
@@ -224,20 +253,26 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
 
                     {/* Insight (Data) */}
                     <div className="pl-10">
-                      <p className="text-sm text-gray-800 leading-relaxed font-medium">{insight.insight}</p>
+                      <p className="text-sm text-gray-800 leading-relaxed font-medium">
+                        <MarkdownText text={insight.insight} />
+                      </p>
                     </div>
 
                     {/* Interpretation */}
                     {insight.interpretation && (
                       <div className="pl-10">
-                        <p className="text-sm text-gray-700 leading-relaxed italic">{insight.interpretation}</p>
+                        <p className="text-sm text-gray-700 leading-relaxed italic">
+                          <MarkdownText text={insight.interpretation} />
+                        </p>
                       </div>
                     )}
 
                     {/* Action */}
                     {insight.action && (
                       <div className="pl-10 bg-orange-50 border-l-4 border-orange-500 p-3 rounded">
-                        <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}><span className="font-bold text-orange-700">Action:</span> {insight.action}</p>
+                        <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}>
+                          <span className="font-bold text-orange-700">Action:</span> <MarkdownText text={insight.action} />
+                        </p>
                       </div>
                     )}
 

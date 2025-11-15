@@ -636,15 +636,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
                 return (
                   <div key={integration.id} className="w-full">
-                    <button
+                    <div
                       onClick={() => handleSelectIntegration(integration.id)}
-                      disabled={loading}
                       className={`w-full text-left transition-all ${
                         isSelected
                           ? 'bg-blue-50 border-2 border-blue-500'
                           : 'bg-white border-2 border-gray-200'
                       } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-blue-300 ${
-                        loading ? 'opacity-50' : ''
+                        loading ? 'opacity-50 pointer-events-none' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3 mb-2">
@@ -707,7 +706,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           <span>Last: {integration.lastSync}</span>
                         </div>
                       )}
-                    </button>
+                    </div>
                   </div>
                 )
               })}
