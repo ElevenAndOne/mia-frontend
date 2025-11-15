@@ -120,11 +120,6 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
   }
 
   const handleLinkProperties = async () => {
-    if (selectedPropertyIds.length === 0) {
-      setError('Please select at least one GA4 property')
-      return
-    }
-
     setIsLinking(true)
     setError(null)
 
@@ -136,18 +131,25 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
       const accountId = selectedAccount.id
 
-      console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
-      console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
+      if (selectedPropertyIds.length === 0) {
+        console.log('[GA4-PROPERTY-SELECTOR] Unlinking all GA4 properties from account', selectedAccount.name)
+      } else {
+        console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
+        console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
+      }
 
-      // Order properties with primary first
-      const orderedPropertyIds = primaryPropertyId
-        ? [primaryPropertyId, ...selectedPropertyIds.filter(id => id !== primaryPropertyId)]
-        : selectedPropertyIds
+      // Order properties with primary first (or empty string if unlinking)
+      const orderedPropertyIds = selectedPropertyIds.length > 0
+        ? (primaryPropertyId
+          ? [primaryPropertyId, ...selectedPropertyIds.filter(id => id !== primaryPropertyId)]
+          : selectedPropertyIds)
+        : []
 
       // Join multiple property IDs with comma for backend storage (primary first)
+      // Empty string if unlinking all properties
       const propertyIdsString = orderedPropertyIds.join(',')
 
-      // Link GA4 properties (comma-separated, primary first)
+      // Link GA4 properties (comma-separated, primary first) or unlink if empty
       const response = await apiFetch('/api/accounts/link-platform', {
         method: 'POST',
         headers: {
@@ -367,7 +369,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                 </button>
                 <button
                   onClick={handleLinkProperties}
-                  disabled={selectedPropertyIds.length === 0 || isLinking}
+                  disabled={isLinking}
                   className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {isLinking ? (

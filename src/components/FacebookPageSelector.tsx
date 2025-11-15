@@ -77,11 +77,6 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
   }
 
   const handleLinkPage = async () => {
-    if (!selectedPageId) {
-      setError('Please select a Facebook Page')
-      return
-    }
-
     setIsLinking(true)
     setError(null)
 
@@ -90,14 +85,17 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
         throw new Error('No account selected')
       }
 
-      const selectedPage = pages.find(p => p.id === selectedPageId)
-      if (!selectedPage) {
-        throw new Error('Selected page not found')
+      if (selectedPageId) {
+        const selectedPage = pages.find(p => p.id === selectedPageId)
+        if (!selectedPage) {
+          throw new Error('Selected page not found')
+        }
+        console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', accountToUse.name)
+      } else {
+        console.log('[FACEBOOK-PAGE-SELECTOR] Unlinking Facebook Page from account', accountToUse.name)
       }
 
-      console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', accountToUse.name)
-
-      // Link Facebook Page to account
+      // Link Facebook Page to account (or unlink if selectedPageId is null)
       const response = await apiFetch('/api/oauth/meta/api/organic/link-page', {
         method: 'POST',
         headers: {
@@ -105,9 +103,9 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
           'X-Session-ID': sessionId || 'default'
         },
         body: JSON.stringify({
-          page_id: selectedPage.id,
-          page_name: selectedPage.name,
-          page_access_token: selectedPage.access_token,
+          page_id: selectedPageId || '',
+          page_name: selectedPageId ? pages.find(p => p.id === selectedPageId)?.name || '' : '',
+          page_access_token: selectedPageId ? pages.find(p => p.id === selectedPageId)?.access_token || '' : '',
           account_id: accountToUse.id
         })
       })
@@ -235,7 +233,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
                         return (
                           <div
                             key={page.id}
-                            onClick={() => setSelectedPageId(page.id)}
+                            onClick={() => setSelectedPageId(isSelected ? null : page.id)}
                             className={`relative p-4 rounded-lg border-2 transition-all cursor-pointer ${
                               isSelected
                                 ? 'border-blue-500 bg-blue-50'
@@ -310,16 +308,16 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
                 </button>
                 <button
                   onClick={handleLinkPage}
-                  disabled={!selectedPageId || isLinking}
+                  disabled={isLinking}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {isLinking ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Linking...
+                      Applying...
                     </>
                   ) : (
-                    'Link Page'
+                    `Apply (${selectedPageId ? '1' : '0'})`
                   )}
                 </button>
               </div>

@@ -77,15 +77,16 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
   }
 
   const handleLinkAccount = async () => {
-    if (!selectedAccountId) {
-      setError('Please select a Meta account')
-      return
-    }
-
     setIsLinking(true)
     setError(null)
 
     try {
+      if (selectedAccountId) {
+        console.log('[META-ACCOUNT-SELECTOR] Linking Meta account:', selectedAccountId)
+      } else {
+        console.log('[META-ACCOUNT-SELECTOR] Unlinking Meta account')
+      }
+
       const response = await apiFetch('/api/oauth/meta/api/accounts/link', {
         method: 'POST',
         headers: {
@@ -93,7 +94,7 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
           'X-Session-ID': sessionId || 'default'
         },
         body: JSON.stringify({
-          meta_account_id: selectedAccountId
+          meta_account_id: selectedAccountId || ''  // Empty string to unlink
         })
       })
 
@@ -101,14 +102,16 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
 
       if (data.success) {
         setSuccess(true)
-        onSuccess?.()
-        handleClose()
+        setTimeout(() => {
+          onSuccess?.()
+          handleClose()
+        }, 1000)
       } else {
-        setError(data.message || 'Failed to link Meta account')
+        setError(data.message || 'Failed to update Meta account')
       }
     } catch (err: any) {
-      console.error('Meta account linking error:', err)
-      setError('Failed to link Meta account. Please try again.')
+      console.error('Meta account update error:', err)
+      setError('Failed to update Meta account. Please try again.')
     } finally {
       setIsLinking(false)
     }
@@ -215,7 +218,7 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
                         return (
                           <div
                             key={account.id}
-                            onClick={() => setSelectedAccountId(account.id)}
+                            onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
                             className={`relative p-4 rounded-lg border-2 transition-all cursor-pointer ${
                               isSelected
                                 ? 'border-blue-500 bg-blue-50'
@@ -282,16 +285,16 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
                 </button>
                 <button
                   onClick={handleLinkAccount}
-                  disabled={!selectedAccountId || isLinking}
+                  disabled={isLinking}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {isLinking ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Linking...
+                      Applying...
                     </>
                   ) : (
-                    'Link Account'
+                    `Apply (${selectedAccountId ? '1' : '0'})`
                   )}
                 </button>
               </div>
