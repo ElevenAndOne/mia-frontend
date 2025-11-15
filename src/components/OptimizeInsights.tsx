@@ -3,20 +3,42 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import DateRangeSelector from './DateRangeSelector'
 
-// Helper component to render text with markdown links
-const MarkdownText = ({ text, className = '' }: { text: string; className?: string }) => {
-  // Convert markdown links [text](url) to clickable <a> tags
-  // Only match URLs starting with http:// or https://
+// Helper component to render text with markdown links and campaign deep links
+const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
+  const convertDeepLink = (linkUrl: string): string => {
+    // Handle DEEPLINK: format for campaign deep links
+    if (linkUrl.startsWith('DEEPLINK:')) {
+      const campaignId = linkUrl.replace('DEEPLINK:', '')
+
+      // Check if it looks like a Google Ads campaign ID (numeric, 10-11 digits)
+      if (/^\d{10,11}$/.test(campaignId) && googleAdsId) {
+        // Google Ads campaign deep link
+        const customerId = googleAdsId.replace(/-/g, '') // Remove dashes
+        return `https://ads.google.com/aw/campaigns?campaignId=${campaignId}&__e=${customerId}`
+      }
+
+      // Check if it looks like a Meta campaign ID (numeric, 15+ digits)
+      if (/^\d{15,}$/.test(campaignId) && metaAdsId) {
+        // Meta Ads Manager campaign deep link
+        return `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAdsId}&selected_campaign_ids=${campaignId}`
+      }
+    }
+
+    return linkUrl
+  }
+
   const renderWithLinks = (text: string) => {
-    const parts = text.split(/(\[.*?\]\(https?:\/\/.*?\))/)
+    // Match both http(s) URLs and DEEPLINK: format
+    const parts = text.split(/(\[.*?\]\((?:https?:\/\/.*?|DEEPLINK:.*?)\))/)
     return parts.map((part, index) => {
-      const linkMatch = part.match(/\[(.*?)\]\((https?:\/\/.*?)\)/)
+      const linkMatch = part.match(/\[(.*?)\]\(((?:https?:\/\/|DEEPLINK:).*?)\)/)
       if (linkMatch) {
-        const [, linkText, url] = linkMatch
+        const [, linkText, linkUrl] = linkMatch
+        const actualUrl = convertDeepLink(linkUrl)
         return (
           <a
             key={index}
-            href={url}
+            href={actualUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:text-blue-800 underline font-medium"
@@ -254,7 +276,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                     {/* Insight (Data) */}
                     <div className="pl-10">
                       <p className="text-sm text-gray-800 leading-relaxed font-medium">
-                        <MarkdownText text={insight.insight} />
+                        <MarkdownText text={insight.insight} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
                       </p>
                     </div>
 
@@ -262,7 +284,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                     {insight.interpretation && (
                       <div className="pl-10">
                         <p className="text-sm text-gray-700 leading-relaxed italic">
-                          <MarkdownText text={insight.interpretation} />
+                          <MarkdownText text={insight.interpretation} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
                         </p>
                       </div>
                     )}
@@ -271,7 +293,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                     {insight.action && (
                       <div className="pl-10 bg-pink-50 border-l-4 border-pink-500 p-3 rounded">
                         <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}>
-                          <span className="font-bold text-pink-700">Action:</span> <MarkdownText text={insight.action} />
+                          <span className="font-bold text-pink-700">Action:</span> <MarkdownText text={insight.action} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
                         </p>
                       </div>
                     )}
