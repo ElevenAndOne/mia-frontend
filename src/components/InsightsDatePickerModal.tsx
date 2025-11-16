@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { DayPicker, DateRange, CaptionProps } from 'react-day-picker'
+import 'react-day-picker/dist/style.css'
+import { format } from 'date-fns'
 
 interface InsightsDatePickerModalProps {
   isOpen: boolean
@@ -28,36 +31,88 @@ const INSIGHT_DESCRIPTIONS = {
   protect: 'Safeguard your high-performing campaigns from potential risks'
 }
 
+// Custom caption component with month/year dropdowns
+function CustomCaption(props: CaptionProps) {
+  const { displayMonth } = props
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - 9 + i)
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newMonth = parseInt(e.target.value)
+    const newDate = new Date(displayMonth.getFullYear(), newMonth, 1)
+    props.onMonthChange?.(newDate)
+  }
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newYear = parseInt(e.target.value)
+    const newDate = new Date(newYear, displayMonth.getMonth(), 1)
+    props.onMonthChange?.(newDate)
+  }
+
+  return (
+    <div className="flex justify-center gap-2 pb-2">
+      <select
+        value={displayMonth.getMonth()}
+        onChange={handleMonthChange}
+        className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+      >
+        {months.map((month, index) => (
+          <option key={month} value={index}>
+            {month}
+          </option>
+        ))}
+      </select>
+      <select
+        value={displayMonth.getFullYear()}
+        onChange={handleYearChange}
+        className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+      >
+        {years.map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: InsightsDatePickerModalProps) => {
   const [selectedRange, setSelectedRange] = useState('30_days')
   const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
 
   const handleRangeSelect = (value: string) => {
     setSelectedRange(value)
     if (value === 'custom') {
       setShowCustomPicker(true)
-      // Set default dates (today and 30 days ago)
-      const today = new Date()
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(today.getDate() - 30)
-      if (!customStartDate) setCustomStartDate(thirtyDaysAgo.toISOString().split('T')[0])
-      if (!customEndDate) setCustomEndDate(today.toISOString().split('T')[0])
+      // Set default dates (today and 30 days ago) if no range selected
+      if (!dateRange?.from || !dateRange?.to) {
+        const today = new Date()
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(today.getDate() - 30)
+        setDateRange({ from: thirtyDaysAgo, to: today })
+      }
     } else {
       setShowCustomPicker(false)
     }
   }
 
   const handleGenerate = () => {
-    if (selectedRange === 'custom' && customStartDate && customEndDate) {
-      onGenerate(`${customStartDate}_${customEndDate}`)
+    if (selectedRange === 'custom' && dateRange?.from && dateRange?.to) {
+      const startStr = format(dateRange.from, 'yyyy-MM-dd')
+      const endStr = format(dateRange.to, 'yyyy-MM-dd')
+      onGenerate(`${startStr}_${endStr}`)
     } else {
       onGenerate(selectedRange)
     }
   }
 
-  const isGenerateDisabled = selectedRange === 'custom' && (!customStartDate || !customEndDate)
+  const isGenerateDisabled = selectedRange === 'custom' && (!dateRange?.from || !dateRange?.to)
 
   return (
     <AnimatePresence>
@@ -125,32 +180,47 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
 
             {/* Custom Date Picker */}
             {showCustomPicker && (
-              <div className="border-t border-gray-200 pt-4 mb-6 space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    max={customEndDate || new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              <div className="border-t border-gray-200 pt-4 mb-6">
+                <p className="text-xs font-medium text-gray-700 mb-3">
+                  Select date range
+                </p>
+                <div className="flex justify-center">
+                  <DayPicker
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={1}
+                    disabled={{ after: new Date() }}
+                    captionLayout="dropdown"
+                    components={{
+                      Caption: CustomCaption
+                    }}
+                    classNames={{
+                      months: "flex flex-col",
+                      month: "space-y-4",
+                      caption: "flex justify-center pt-1 relative items-center mb-2",
+                      caption_label: "text-sm font-medium",
+                      nav: "hidden",
+                      table: "w-full border-collapse space-y-1",
+                      head_row: "flex",
+                      head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
+                      row: "flex w-full mt-2",
+                      cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-purple-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-md",
+                      day_selected: "bg-purple-600 text-white hover:bg-purple-600 hover:text-white focus:bg-purple-600 focus:text-white",
+                      day_today: "bg-gray-100 text-gray-900",
+                      day_outside: "text-gray-400 opacity-50",
+                      day_disabled: "text-gray-400 opacity-50",
+                      day_range_middle: "aria-selected:bg-purple-100 aria-selected:text-purple-900",
+                      day_hidden: "invisible",
+                    }}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    min={customStartDate}
-                    max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+                {dateRange?.from && dateRange?.to && (
+                  <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded text-center">
+                    <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
+                  </div>
+                )}
               </div>
             )}
 
