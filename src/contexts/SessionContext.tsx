@@ -8,6 +8,9 @@ export interface AccountMapping {
   ga4_property_id: string
   meta_ads_id?: string
   facebook_page_id?: string
+  facebook_page_name?: string
+  brevo_api_key?: string
+  brevo_account_name?: string
   business_type: string
   color: string
   display_name: string

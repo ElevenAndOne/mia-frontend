@@ -296,7 +296,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },
+        brevo: { connected: brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },  // FIXED (Nov 16): Use brevoLinked from account data (per-account)
         hubspot: { connected: hubspotConnected, linked: false, last_synced: new Date().toISOString() }
       }
 
@@ -398,41 +398,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
+    if (!selectedAccount) {
+      setBrevoError('No account selected. Please select an account first.')
+      return
+    }
+
     setBrevoSubmitting(true)
     setBrevoError('')
 
     try {
-      // Get user_id from session validation first
-      let userId = user?.google_user_id
+      console.log('[Brevo] Submitting API key for account:', selectedAccount.name)
 
-      if (!userId) {
-        console.log('[Brevo] User not in context, fetching from session...')
-
-        // Try to get user_id from session validation endpoint
-        const sessionResponse = await apiFetch(`/api/session/validate?session_id=${sessionId}`)
-        if (sessionResponse.ok) {
-          const sessionData = await sessionResponse.json()
-          userId = sessionData.user?.user_id
-          console.log('[Brevo] Got user_id from session:', userId)
-        }
-      }
-
-      if (!userId) {
-        setBrevoError('User ID not available. Please refresh the page and try again.')
-        setBrevoSubmitting(false)
-        return
-      }
-
-      console.log('[Brevo] Submitting API key for user:', userId)
-
-      const response = await apiFetch('/brevo-oauth/save-credentials', {
+      // Use the NEW per-account endpoint (Nov 16 fix)
+      const response = await apiFetch('/api/oauth/brevo/save-api-key', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: userId,
-          api_key: brevoApiKey.trim()
+          api_key: brevoApiKey.trim(),
+          session_id: sessionId
         })
       })
 
@@ -444,14 +429,47 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       const data = await response.json()
       console.log('[Brevo] API key saved successfully:', data)
 
-      // Close modal and optimistically update platform status
+      // Close modal and refresh connections
       setShowBrevoModal(false)
       setBrevoApiKey('')
-      setPlatformStatus(prev => prev ? {...prev, brevo: {connected: true, last_synced: new Date().toISOString()}} : prev)
+      await checkConnections()
 
     } catch (error) {
       console.error('[Brevo] API key submission error:', error)
       setBrevoError(error instanceof Error ? error.message : 'Failed to save API key')
+    } finally {
+      setBrevoSubmitting(false)
+    }
+  }
+
+  // Handle Brevo Unlink
+  const handleBrevoUnlink = async () => {
+    if (!confirm(`Disconnect Brevo from ${selectedAccount?.name || 'this account'}?`)) {
+      return
+    }
+
+    setBrevoSubmitting(true)
+    setBrevoError('')
+
+    try {
+      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to disconnect Brevo')
+      }
+
+      console.log('[Brevo] Disconnected successfully')
+
+      // Close modal and refresh connections
+      setShowBrevoModal(false)
+      await checkConnections()
+
+    } catch (error) {
+      console.error('[Brevo] Unlink error:', error)
+      setBrevoError(error instanceof Error ? error.message : 'Failed to disconnect Brevo')
     } finally {
       setBrevoSubmitting(false)
     }
@@ -729,6 +747,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               </button>
                             </>
                           )}
+                          {/* Gear icon for Brevo to change API key */}
+                          {integration.id === 'brevo' && integration.connected && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowBrevoModal(true)
+                              }}
+                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                              title="Change Brevo API key for this account"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          )}
                           {isSelected ? (
                             <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -857,52 +891,91 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <img src="/icons/brevo.jpeg" alt="Brevo" className="w-10 h-10" />
-                <h2 className="text-xl font-bold text-gray-900">Connect Brevo</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {currentAccountData?.brevo_api_key ? 'Manage Brevo Connection' : 'Connect Brevo'}
+                </h2>
               </div>
               <p className="text-sm text-gray-600">
-                Enter your Brevo API key to connect your email marketing campaigns.
+                {currentAccountData?.brevo_api_key
+                  ? `Connected to ${currentAccountData.brevo_account_name || 'your Brevo account'} for ${selectedAccount?.name || 'this account'}`
+                  : `Enter your Brevo API key to connect email marketing for ${selectedAccount?.name || 'this account'}.`
+                }
               </p>
             </div>
 
-            {/* Instructions */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">How to get your API key:</h3>
-              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                <li>Log in to your Brevo account</li>
-                <li>Go to Settings → SMTP & API → API Keys</li>
-                <li>Click "Generate a new API key"</li>
-                <li>Copy the key and paste it below</li>
-              </ol>
-              <a
-                href="https://app.brevo.com/settings/keys/api"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
-              >
-                Open Brevo API Settings
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            </div>
+            {/* Instructions - only show when NOT connected */}
+            {!currentAccountData?.brevo_api_key && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">How to get your API key:</h3>
+                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                  <li>Log in to your Brevo account</li>
+                  <li>Go to Settings → SMTP & API → API Keys</li>
+                  <li>Click "Generate a new API key"</li>
+                  <li>Copy the key and paste it below</li>
+                </ol>
+                <a
+                  href="https://app.brevo.com/settings/keys/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
+                >
+                  Open Brevo API Settings
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            )}
 
-            {/* API Key Input */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                API Key
-              </label>
-              <input
-                type="text"
-                value={brevoApiKey}
-                onChange={(e) => setBrevoApiKey(e.target.value)}
-                placeholder="xkeysib-..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
-                disabled={brevoSubmitting}
-              />
-              {brevoError && (
-                <p className="mt-2 text-xs text-red-600">{brevoError}</p>
-              )}
-            </div>
+            {/* API Key Input - only show when NOT connected */}
+            {!currentAccountData?.brevo_api_key && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  API Key
+                </label>
+                <input
+                  type="text"
+                  value={brevoApiKey}
+                  onChange={(e) => setBrevoApiKey(e.target.value)}
+                  placeholder="xkeysib-..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  disabled={brevoSubmitting}
+                />
+                {brevoError && (
+                  <p className="mt-2 text-xs text-red-600">{brevoError}</p>
+                )}
+              </div>
+            )}
+
+            {/* Connected Account Display - show when connected */}
+            {currentAccountData?.brevo_api_key && (
+              <div className="mb-4 space-y-3">
+                {/* Account Name */}
+                {currentAccountData.brevo_account_name && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-semibold text-green-900">{currentAccountData.brevo_account_name}</p>
+                        <p className="text-xs text-green-700">Connected Brevo account</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Masked API Key */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    API Key
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-600">
+                    {currentAccountData.brevo_api_key.substring(0, 10)}...
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3">
@@ -915,15 +988,25 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 disabled={brevoSubmitting}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                Cancel
+                {currentAccountData?.brevo_api_key ? 'Close' : 'Cancel'}
               </button>
-              <button
-                onClick={handleBrevoSubmit}
-                disabled={brevoSubmitting || !brevoApiKey.trim()}
-                className="flex-1 px-4 py-3 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {brevoSubmitting ? 'Connecting...' : 'Connect'}
-              </button>
+              {currentAccountData?.brevo_api_key ? (
+                <button
+                  onClick={handleBrevoUnlink}
+                  disabled={brevoSubmitting}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {brevoSubmitting ? 'Unlinking...' : 'Unlink'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleBrevoSubmit}
+                  disabled={brevoSubmitting || !brevoApiKey.trim()}
+                  className="flex-1 px-4 py-3 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {brevoSubmitting ? 'Connecting...' : 'Connect'}
+                </button>
+              )}
             </div>
           </div>
         </div>
