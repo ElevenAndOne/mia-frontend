@@ -16,6 +16,34 @@ interface MainViewProps {
   onProtectQuickClick?: () => void
 }
 
+// Helper function to format date range for display
+const formatDateRangeDisplay = (dateRange: string): string => {
+  // Handle preset ranges
+  if (dateRange === '7_days') return '7d'
+  if (dateRange === '14_days') return '14d'
+  if (dateRange === '30_days') return '30d'
+  if (dateRange === '90_days') return '90d'
+
+  // Handle custom range (format: YYYY-MM-DD_YYYY-MM-DD)
+  if (dateRange.includes('_') && dateRange.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
+    const [startStr, endStr] = dateRange.split('_')
+    const start = new Date(startStr)
+    const end = new Date(endStr)
+
+    // Format: "Aug 1 - Nov 16" (no year to keep it compact)
+    const formatDate = (date: Date) => {
+      const month = date.toLocaleDateString('en-US', { month: 'short' })
+      const day = date.getDate()
+      return `${month} ${day}`
+    }
+
+    return `${formatDate(start)} - ${formatDate(end)}`
+  }
+
+  // Fallback
+  return '90d'
+}
+
 const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
   const [showChat, setShowChat] = useState(false)
@@ -367,6 +395,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         ) : (
           <>
             {/* Chat Header - Back button, Mia title, and Date picker */}
+            {/* Back Button (Left) */}
             <button
               onClick={() => setShowChat(false)}
               className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-full border border-gray-100 text-gray-800 font-medium hover:bg-gray-100 transition-colors"
@@ -376,16 +405,18 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               </svg>
               Back
             </button>
-            <h2 className="text-lg font-semibold text-black" style={{ marginLeft: '-20px' }}>Mia</h2>
 
-            {/* Date Range Picker Button */}
+            {/* Mia Header (Center) - Absolutely positioned to stay centered */}
+            <h2 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-black">Mia</h2>
+
+            {/* Date Range Picker Button (Right) */}
             <button
               onClick={() => setShowDatePicker(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
               title="Change date range"
             >
               <img src="/icons/calendar.svg" alt="Calendar" className="w-3.5 h-3.5" />
-              <span>{dateRange === '7_days' ? '7d' : dateRange === '14_days' ? '14d' : dateRange === '30_days' ? '30d' : '90d'}</span>
+              <span>{formatDateRangeDisplay(dateRange)}</span>
             </button>
           </>
         )}
