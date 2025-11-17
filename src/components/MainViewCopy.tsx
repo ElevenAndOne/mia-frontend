@@ -265,7 +265,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
-      <div className={`flex items-center px-4 py-3 relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`} style={{ marginTop: '-20px' }}>
+      <div className={`flex items-center px-4 py-1 relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}
@@ -684,7 +684,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
             </div>
 
             {/* Chat Input - Fixed at bottom and centered */}
-            <div className="flex-shrink-0 p-4 pb-6 border-t border-gray-100 bg-white flex justify-center">
+            <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center" style={{ paddingBottom: '5rem' }}>
               <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
                 <input
                   type="text"

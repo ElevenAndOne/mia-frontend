@@ -126,12 +126,12 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
       />
 
       {/* Dropdown */}
-      <div className={`fixed top-16 right-4 bg-white rounded-lg shadow-xl z-50 overflow-hidden transition-all ${showCustomPicker ? 'w-80' : 'w-64'}`}>
+      <div className={`fixed top-16 right-4 bg-white rounded-lg shadow-xl z-50 overflow-y-auto max-h-[75vh] transition-all ${showCustomPicker ? 'w-80' : 'w-64'}`}>
         {DATE_RANGE_OPTIONS.map((option) => (
           <button
             key={option.value}
             onClick={() => handleOptionClick(option.value)}
-            className={`w-full px-4 py-3 text-left text-sm transition-colors ${
+            className={`w-full px-3 py-2 text-left text-sm transition-colors ${
               tempSelection === option.value
                 ? 'bg-purple-50 text-purple-900 font-medium'
                 : 'text-gray-700 hover:bg-gray-50'
@@ -146,7 +146,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
 
         {/* Custom Date Picker */}
         {showCustomPicker && (
-          <div className="border-t border-gray-200 p-4">
+          <div className="border-t border-gray-200 p-3">
             <p className="text-xs font-medium text-gray-700 mb-3">
               Select date range
             </p>
@@ -191,7 +191,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
         )}
 
         {/* Apply Button */}
-        <div className="border-t border-gray-200 p-2">
+        <div className="border-t border-gray-200 p-2" style={{ paddingBottom: '1rem' }}>
           <button
             onClick={handleApply}
             disabled={showCustomPicker && (!dateRange?.from || !dateRange?.to)}
