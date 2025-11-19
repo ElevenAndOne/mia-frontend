@@ -37,6 +37,7 @@ export interface SessionState extends MetaAuthState {
   // Authentication state
   isAuthenticated: boolean
   isLoading: boolean
+  hasSeenIntro: boolean  // Track if user has seen intro video
 
   // User information
   user: UserProfile | null
@@ -90,6 +91,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const [state, setState] = useState<SessionState>({
     isAuthenticated: false,
     isLoading: false,
+    hasSeenIntro: false,
     user: null,
     sessionId: null,
     selectedAccount: null,
@@ -476,6 +478,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           setState(prev => ({
             ...prev,
             isAuthenticated: true,
+            hasSeenIntro: authData.user_info?.has_seen_intro || false,
             user: {
               name: authData.user_info?.name || authData.name || 'User',
               email: authData.user_info?.email || authData.email || '',
@@ -674,6 +677,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           setState(prev => ({
             ...prev,
             isMetaAuthenticated: true,
+            hasSeenIntro: authData.user_info?.has_seen_intro || false,
             metaUser: {
               id: authData.user_info?.id || '',
               name: authData.user_info?.name || 'Meta User',

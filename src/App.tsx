@@ -23,7 +23,7 @@ type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'impro
 
 function App() {
   const location = useLocation()
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
   const [appState, setAppState] = useState<AppState>('video-intro')
 
   // Support both Google and Meta authentication
@@ -75,13 +75,29 @@ function App() {
 
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
-      // If user has valid session with selected account → skip intro
-      if (isAnyAuthenticated && selectedAccount) {
-        console.log('[APP] 🔄 Returning user detected - skipping intro video')
+      // Priority 1: User has seen intro before + has valid session → Skip to main
+      if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
+        console.log('[APP] 🔄 Returning user with session - skipping intro video to main')
         setAppState('main')
         return
       }
-      // Otherwise, block transition (force video for new users)
+
+      // Priority 2: User has seen intro before + authenticated but no account → Skip to account selection
+      if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
+        console.log('[APP] 🔄 Returning user authenticated - skipping intro to account selection')
+        setAppState('account-selection')
+        return
+      }
+
+      // Priority 3: User has seen intro before + logged out → Stay on video-intro (shows login modal)
+      if (hasSeenIntro && !isAnyAuthenticated) {
+        console.log('[APP] 🔄 Returning user logged out - staying on video intro (login modal visible)')
+        // Stay on video-intro state - VideoIntroView will show login modal automatically
+        return
+      }
+
+      // Priority 4: First time user → Watch video
+      console.log('[APP] First time user - showing intro video')
       return
     }
 
@@ -97,7 +113,7 @@ function App() {
       // User logged out - reset to video intro
       setAppState('video-intro')
     }
-  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState])
+  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
 
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal
