@@ -5,17 +5,26 @@ import { authService } from '../services/auth'
 
 interface VideoIntroViewProps {
   onAuthSuccess?: () => void
+  hasSeenIntro?: boolean  // If true, skip video and show login modal immediately
 }
 
-const VideoIntroView = ({ onAuthSuccess }: VideoIntroViewProps) => {
-  const [showLoginModal, setShowLoginModal] = useState(false)
+const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewProps) => {
+  const [showLoginModal, setShowLoginModal] = useState(hasSeenIntro)  // ✅ Show immediately if returning user
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const modalTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+  // ✅ CRITICAL: Auto-show login modal for returning users (signed out / session expired)
+  useEffect(() => {
+    if (hasSeenIntro && !showLoginModal) {
+      console.log('[VIDEO-INTRO] Returning user detected - showing login modal immediately')
+      setShowLoginModal(true)
+    }
+  }, [hasSeenIntro])
 
   useEffect(() => {
     const video = videoRef.current
@@ -70,6 +79,12 @@ const VideoIntroView = ({ onAuthSuccess }: VideoIntroViewProps) => {
     }
 
     const handleCanPlayThrough = () => {
+      // ✅ Don't autoplay video if user has seen intro before
+      if (hasSeenIntro) {
+        console.log('[VIDEO-INTRO] Skipping video autoplay for returning user')
+        return
+      }
+
       video.play().catch(error => {
         console.error('🚫 Video autoplay failed:', error)
         // Fallback: show modal immediately if video fails to play

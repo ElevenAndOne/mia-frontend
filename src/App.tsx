@@ -197,7 +197,7 @@ function App() {
               transition={{ duration: 0.5 }}
               className="w-full h-full"
             >
-              <VideoIntroView onAuthSuccess={handleAuthSuccess} />
+              <VideoIntroView onAuthSuccess={handleAuthSuccess} hasSeenIntro={hasSeenIntro} />
             </motion.div>
           )}
 
