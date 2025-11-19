@@ -8,6 +8,7 @@
     "dev:mobile": "vite --host 0.0.0.0",
     "build": "vite build",
     "vercel-build": "npm run build",
+    "vercel-build-check": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; else exit 1; fi",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0",
     "backend": "python simple_adk_server.py",
