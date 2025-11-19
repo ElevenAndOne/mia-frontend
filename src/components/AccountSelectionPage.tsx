@@ -322,7 +322,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               className="space-y-4"
             >
               {availableAccounts
-                .filter(account => !account.name.includes('(Meta Ads)'))
+                .filter(account => account.id.startsWith('google_'))  // ✅ Only show Google accounts
                 .map((account, index) => (
                 <motion.button
                   key={account.id}
