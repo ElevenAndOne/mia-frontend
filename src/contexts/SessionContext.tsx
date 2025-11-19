@@ -133,6 +133,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 sessionId: storedSessionId,
                 isAuthenticated: data.platforms?.google || false,
                 isMetaAuthenticated: data.platforms?.meta || false,  // ✅ Restore Meta auth state!
+                hasSeenIntro: data.user?.has_seen_intro || false,  // ✅ CRITICAL: Restore has_seen_intro!
                 user: {
                   name: data.user.name,
                   email: data.user.email,

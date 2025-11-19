@@ -40,6 +40,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
   const [industries, setIndustries] = useState<string[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
+  const [localSelectedAccount, setLocalSelectedAccount] = useState<AccountMapping | null>(null)
 
   // Fetch MCC accounts and industries on mount
   useEffect(() => {
@@ -328,17 +329,17 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 1) }}
-                  onClick={() => handleAccountSelect(account)}
+                  onClick={() => setLocalSelectedAccount(account)}
                   disabled={isSelecting}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    selectedAccount?.id === account.id
+                    localSelectedAccount?.id === account.id
                       ? 'border-black bg-gray-50 shadow-lg'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   } ${
                     isSelecting ? 'opacity-60 cursor-not-allowed' : ''
                   }`}
                   style={{
-                    borderColor: selectedAccount?.id === account.id ? account.color : undefined
+                    borderColor: localSelectedAccount?.id === account.id ? account.color : undefined
                   }}
                 >
                   <div className="flex items-center space-x-4">
@@ -354,7 +355,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                         <h3 className="font-semibold text-gray-900 truncate">
                           {account.name}
                         </h3>
-                        {selectedAccount?.id === account.id && (
+                        {localSelectedAccount?.id === account.id && (
                           <div className="w-6 h-6 rounded-full flex items-center justify-center ml-2" style={{ backgroundColor: account.color }}>
                             <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -396,7 +397,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                     </div>
                   </div>
 
-                  {isSelecting && selectedAccount?.id === account.id && (
+                  {isSelecting && localSelectedAccount?.id === account.id && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -416,7 +417,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
       )}
 
       {/* Industry Selection - Only show when account is selected */}
-      {selectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
+      {localSelectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -441,14 +442,14 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
       )}
 
       {/* Continue Button - Only show when account is selected */}
-      {selectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
+      {localSelectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="p-6 pt-2 flex-shrink-0"
         >
           <button
-            onClick={() => handleAccountSelect(selectedAccount)}
+            onClick={() => handleAccountSelect(localSelectedAccount)}
             disabled={!selectedIndustry}
             className={`w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center space-x-2 ${
               selectedIndustry
@@ -456,7 +457,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            <span>Continue with {selectedAccount.name}</span>
+            <span>Continue with {localSelectedAccount.name}</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
