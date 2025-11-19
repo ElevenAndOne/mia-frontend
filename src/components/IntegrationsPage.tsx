@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import MetaAccountSelector from './MetaAccountSelector'
 import FacebookPageSelector from './FacebookPageSelector'
 import GA4PropertySelector from './GA4PropertySelector'
 import GoogleAccountSelector from './GoogleAccountSelector'
+import BrevoAccountSelector from './BrevoAccountSelector'
+import HubSpotAccountSelector from './HubSpotAccountSelector'
 
 interface Integration {
   id: string
@@ -66,6 +69,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // Meta Account Selector Modal State
   const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
+
+  // Brevo Account Selector Modal State
+  const [showBrevoAccountSelector, setShowBrevoAccountSelector] = useState(false)
+
+  // HubSpot Account Selector Modal State
+  const [showHubSpotAccountSelector, setShowHubSpotAccountSelector] = useState(false)
 
   // Facebook Page Selector Modal State
   const [showFacebookPageSelector, setShowFacebookPageSelector] = useState(false)
@@ -296,8 +305,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },  // FIXED (Nov 16): Use brevoLinked from account data (per-account)
-        hubspot: { connected: hubspotConnected, linked: false, last_synced: new Date().toISOString() }
+        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },  // FIXED (Nov 18): Use brevoConnected from status endpoint (supports multi-account)
+        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() }  // FIXED (Nov 18): Use hubspotConnected from status endpoint (supports multi-account)
       }
 
       console.log('[IntegrationsPage] Computed platform status:', platforms)
@@ -747,21 +756,65 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               </button>
                             </>
                           )}
-                          {/* Gear icon for Brevo to change API key */}
+                          {/* Gear icon for Brevo to switch accounts or add new API key */}
                           {integration.id === 'brevo' && integration.connected && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowBrevoModal(true)
-                              }}
-                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                              title="Change Brevo API key for this account"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowBrevoModal(true)
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Add another Brevo account"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowBrevoAccountSelector(true)
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Switch Brevo account"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+                          {/* Icons for HubSpot to add portal and switch portals */}
+                          {integration.id === 'hubspot' && integration.connected && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleConnect('hubspot')
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Add another HubSpot portal"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowHubSpotAccountSelector(true)
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Switch HubSpot portal"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              </button>
+                            </>
                           )}
                           {isSelected ? (
                             <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
@@ -837,7 +890,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           <p className="text-xs text-gray-500 mb-3">Having trouble connecting your data sources? Here are some helpful resources:</p>
 
           <div className="space-y-2 pl-2">
-            <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
+            <Link
+              to="/docs/integration-guide"
+              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -849,9 +905,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <p className="text-xs text-gray-500">Step-by-step guides</p>
                 </div>
               </div>
-            </button>
+            </Link>
 
-            <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
+            <Link
+              to="/docs/video-tutorial"
+              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -864,7 +923,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <p className="text-xs text-gray-500">Watch how to connect</p>
                 </div>
               </div>
-            </button>
+            </Link>
 
             <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
               <div className="flex items-center gap-3">
@@ -1034,6 +1093,28 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }}
         currentGoogleAccountName={selectedAccount?.name}
         currentAccountData={currentAccountData}
+      />
+
+      {/* Brevo Account Selector Modal */}
+      <BrevoAccountSelector
+        isOpen={showBrevoAccountSelector}
+        onClose={() => setShowBrevoAccountSelector(false)}
+        onSuccess={() => {
+          console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
+          setShowBrevoAccountSelector(false)
+          checkConnections()
+        }}
+      />
+
+      {/* HubSpot Account Selector Modal */}
+      <HubSpotAccountSelector
+        isOpen={showHubSpotAccountSelector}
+        onClose={() => setShowHubSpotAccountSelector(false)}
+        onSuccess={() => {
+          console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
+          setShowHubSpotAccountSelector(false)
+          checkConnections()
+        }}
       />
 
       {/* Facebook Page Selector Modal */}

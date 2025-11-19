@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import VideoIntroView from './components/VideoIntroView'
 import AccountSelectionPage from './components/AccountSelectionPage'
@@ -13,11 +14,14 @@ import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insi
 import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
 import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
 import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
+import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
+import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
 import { useSession } from './contexts/SessionContext'
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
+  const location = useLocation()
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId } = useSession()
   const [appState, setAppState] = useState<AppState>('video-intro')
 
@@ -141,6 +145,16 @@ function App() {
           <p className="text-gray-600">Fetching accounts...</p>
         </div>
       </div>
+    )
+  }
+
+  // Check if we're on a docs route
+  if (location.pathname.startsWith('/docs/')) {
+    return (
+      <Routes>
+        <Route path="/docs/integration-guide" element={<IntegrationGuidePage />} />
+        <Route path="/docs/video-tutorial" element={<VideoTutorialPage />} />
+      </Routes>
     )
   }
 

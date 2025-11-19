@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { SessionProvider } from './contexts/SessionContext'
 import './index.css'
@@ -11,7 +12,9 @@ if (viewport) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <SessionProvider>
-    <App />
-  </SessionProvider>,
+  <BrowserRouter>
+    <SessionProvider>
+      <App />
+    </SessionProvider>
+  </BrowserRouter>,
 )
