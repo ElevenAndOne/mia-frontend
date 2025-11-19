@@ -38,10 +38,13 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
+  const [industries, setIndustries] = useState<string[]>([])
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
 
-  // Fetch MCC accounts on mount
+  // Fetch MCC accounts and industries on mount
   useEffect(() => {
     fetchMCCAccounts()
+    fetchIndustries()
   }, [])
 
   // Auto-select MCC if there's only one
@@ -83,6 +86,24 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }
 
+  const fetchIndustries = async () => {
+    try {
+      const response = await apiFetch('/api/industries', {
+        method: 'GET',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch industries')
+      }
+
+      const data = await response.json()
+      setIndustries(data.industries || [])
+      console.log('[ACCOUNT-SELECTION] Fetched industries:', data.industries)
+    } catch (err) {
+      console.error('[ACCOUNT-SELECTION] Error fetching industries:', err)
+    }
+  }
+
   const handleMCCSelect = async (mccId: string) => {
     try {
       setSelectedMCC(mccId)
@@ -114,11 +135,17 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   const handleAccountSelect = async (account: AccountMapping) => {
     if (isSelecting) return
 
+    // Validate industry selection
+    if (!selectedIndustry) {
+      alert('Please select your business industry')
+      return
+    }
+
     setIsSelecting(true)
     clearError()
 
     try {
-      const success = await selectAccount(account.id)
+      const success = await selectAccount(account.id, selectedIndustry)
 
       if (success) {
         onAccountSelected()
@@ -388,16 +415,46 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
         </div>
       )}
 
+      {/* Industry Selection - Only show when account is selected */}
+      {selectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="px-6 pb-4 flex-shrink-0"
+        >
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            What industry are you in?
+          </label>
+          <select
+            value={selectedIndustry}
+            onChange={(e) => setSelectedIndustry(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+          >
+            <option value="">Select your industry</option>
+            {industries.map((industry) => (
+              <option key={industry} value={industry}>
+                {industry}
+              </option>
+            ))}
+          </select>
+        </motion.div>
+      )}
+
       {/* Continue Button - Only show when account is selected */}
       {selectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 flex-shrink-0"
+          className="p-6 pt-2 flex-shrink-0"
         >
           <button
             onClick={() => handleAccountSelect(selectedAccount)}
-            className="w-full py-4 rounded-xl font-medium transition-all bg-black text-white hover:bg-gray-800 flex items-center justify-center space-x-2"
+            disabled={!selectedIndustry}
+            className={`w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center space-x-2 ${
+              selectedIndustry
+                ? 'bg-black text-white hover:bg-gray-800'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             <span>Continue with {selectedAccount.name}</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

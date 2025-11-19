@@ -382,7 +382,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
   }
 
-  const selectAccount = async (accountId: string): Promise<boolean> => {
+  const selectAccount = async (accountId: string, industry?: string): Promise<boolean> => {
     if (!state.sessionId) {
       setState(prev => ({ ...prev, error: 'No session ID available' }))
       return false
@@ -392,16 +392,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     try {
 
+      const requestBody: any = {
+        account_id: accountId,
+        session_id: state.sessionId
+      }
+
+      // Include industry if provided
+      if (industry) {
+        requestBody.industry = industry
+      }
+
       const response = await apiFetch('/api/accounts/select', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Session-ID': state.sessionId
         },
-        body: JSON.stringify({
-          account_id: accountId,
-          session_id: state.sessionId
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (response.ok) {
