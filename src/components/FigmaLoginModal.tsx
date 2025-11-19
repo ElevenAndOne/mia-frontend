@@ -102,12 +102,21 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
           return
         }
 
-        // No existing auth - use bypass login for testing
-        setGoogleLoadingMessage('Creating bypass session...')
+        // No existing auth - check for last authenticated user
+        setGoogleLoadingMessage('Restoring last session...')
 
-        // Call the bypass endpoint to create a test authenticated session
-        // Use the test user_id from your DFSA account
-        const bypassResponse = await apiFetch('/api/oauth/bypass-login?user_id=106540664695114193744', {
+        // ✅ FIX: Try to restore LAST authenticated user (not hardcoded test account)
+        const lastUserId = localStorage.getItem('mia_last_user_id')
+
+        if (!lastUserId) {
+          // No previous user found - can't use bypass
+          throw new Error('No previous session found. Please sign in with Google or Meta.')
+        }
+
+        console.log('[LOGIN] 🔄 Restoring session for user:', lastUserId)
+
+        // Call the bypass endpoint with LAST authenticated user's ID
+        const bypassResponse = await apiFetch(`/api/oauth/bypass-login?user_id=${lastUserId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

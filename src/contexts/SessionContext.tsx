@@ -149,6 +149,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 } : null,
                 isLoading: false
               }))
+
+              // ✅ FIX: Store last user ID on session restore
+              if (data.user.user_id) {
+                localStorage.setItem('mia_last_user_id', data.user.user_id)
+              }
+
               console.log('[SESSION] Restored auth state: Google=' + (data.platforms?.google || false) + ', Meta=' + (data.platforms?.meta || false))
 
               // Refresh available accounts
@@ -458,6 +464,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             }
           }
 
+          const userId = authData.user_info?.id || authData.user_id || ''
+
           setState(prev => ({
             ...prev,
             isAuthenticated: true,
@@ -465,10 +473,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               name: authData.user_info?.name || authData.name || 'User',
               email: authData.user_info?.email || authData.email || '',
               picture_url: authData.user_info?.picture || authData.picture || '',
-              google_user_id: authData.user_info?.id || authData.user_id || ''
+              google_user_id: userId
             },
             selectedAccount: selectedAccount
           }))
+
+          // ✅ FIX: Store last authenticated user ID for "Log in" button
+          if (userId) {
+            localStorage.setItem('mia_last_user_id', userId)
+            console.log('[SESSION] 💾 Saved last user ID:', userId)
+          }
+
           return true
         }
       }

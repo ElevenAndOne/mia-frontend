@@ -14,8 +14,9 @@ import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insi
 import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
 import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
 import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
-import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
-import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
+// TODO: Re-enable docs pages when created
+// import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
+// import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
 import { useSession } from './contexts/SessionContext'
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
@@ -72,9 +73,17 @@ function App() {
   useEffect(() => {
     if (isLoading) return // Wait for session to initialize
 
-    // Only auto-transition if we're not on video-intro
-    // This prevents skipping the video on initial load
-    if (appState === 'video-intro') return
+    // ✅ FIX: Allow returning users to skip intro video
+    if (appState === 'video-intro') {
+      // If user has valid session with selected account → skip intro
+      if (isAnyAuthenticated && selectedAccount) {
+        console.log('[APP] 🔄 Returning user detected - skipping intro video')
+        setAppState('main')
+        return
+      }
+      // Otherwise, block transition (force video for new users)
+      return
+    }
 
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
@@ -149,14 +158,15 @@ function App() {
   }
 
   // Check if we're on a docs route
-  if (location.pathname.startsWith('/docs/')) {
-    return (
-      <Routes>
-        <Route path="/docs/integration-guide" element={<IntegrationGuidePage />} />
-        <Route path="/docs/video-tutorial" element={<VideoTutorialPage />} />
-      </Routes>
-    )
-  }
+  // TODO: Re-enable when docs pages are created
+  // if (location.pathname.startsWith('/docs/')) {
+  //   return (
+  //     <Routes>
+  //       <Route path="/docs/integration-guide" element={<IntegrationGuidePage />} />
+  //       <Route path="/docs/video-tutorial" element={<VideoTutorialPage />} />
+  //     </Routes>
+  //   )
+  // }
 
   return (
     <div className="w-full h-full relative">
