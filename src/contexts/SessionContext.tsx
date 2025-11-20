@@ -369,7 +369,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   const refreshAccounts = async (): Promise<void> => {
     try {
-      const response = await apiFetch('/api/accounts/available')
+      const response = await apiFetch('/api/accounts/available', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
 
       if (response.ok) {
         const data = await response.json()
