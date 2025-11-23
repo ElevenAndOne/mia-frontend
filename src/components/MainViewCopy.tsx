@@ -470,7 +470,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         {!showChat ? (
           <>
             {/* Greeting - Centered with uniform spacing */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-80px' }}>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-70px' }}>
               <h2 style={{
                 color: '#1B1B1B',
                 textAlign: 'center',
@@ -506,7 +506,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                     onClick={() => isConnected && togglePlatform(platform.id)}
                     className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group relative"
                     style={{
-                      opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.15,
+                      opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.3,
                       transform: isSelected ? 'scale(1)' : 'scale(0.9)',
                       cursor: isConnected ? 'pointer' : 'not-allowed',
                     }}
