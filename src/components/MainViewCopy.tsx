@@ -62,13 +62,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
 
   // Platform configuration - maps to backend platform IDs
+  // Order: Google Ads, GA4, Meta, Facebook, Brevo, HubSpot
   const platformConfig = [
-    { id: 'ga4', name: 'GA4', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
     { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id' },
-    { id: 'meta', name: 'Meta', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
+    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
+    { id: 'meta', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
+    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
     { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
     { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_access_token' },
-    { id: 'facebook_organic', name: 'Facebook', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
   ]
 
   // Get connected platforms from selected account
@@ -98,10 +99,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         return [...prev, platformId]
       }
     })
-  }
-
-  const selectAllPlatforms = () => {
-    setSelectedPlatforms(connectedPlatforms)
   }
 
   const handleAccountSwitch = async (accountId: string) => {
@@ -472,8 +469,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       <div className="flex-1 flex flex-col items-center relative px-6 overflow-hidden">
         {!showChat ? (
           <>
-            {/* Greeting - Shifted up to make room for platform toggles */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-100px' }}>
+            {/* Greeting - Centered with uniform spacing */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-80px' }}>
               <h2 style={{
                 color: '#1B1B1B',
                 textAlign: 'center',
@@ -497,47 +494,40 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               }}>How can I help today?</p>
             </div>
 
-            {/* Platform Toggles - Between greeting and action buttons */}
-            {connectedPlatforms.length > 0 && (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: '-20px' }}>
-                {platformConfig
-                  .filter(p => connectedPlatforms.includes(p.id))
-                  .map(platform => (
-                    <button
-                      key={platform.id}
-                      onClick={() => togglePlatform(platform.id)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200"
+            {/* Platform Toggles - Show all 6 platforms */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: '-10px' }}>
+              {platformConfig.map(platform => {
+                const isConnected = connectedPlatforms.includes(platform.id)
+                const isSelected = selectedPlatforms.includes(platform.id)
+
+                return (
+                  <button
+                    key={platform.id}
+                    onClick={() => isConnected && togglePlatform(platform.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group relative"
+                    style={{
+                      opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.15,
+                      transform: isSelected ? 'scale(1)' : 'scale(0.9)',
+                      cursor: isConnected ? 'pointer' : 'not-allowed',
+                    }}
+                    disabled={!isConnected}
+                  >
+                    <img
+                      src={platform.icon}
+                      alt={platform.name}
+                      className="w-6 h-6"
                       style={{
-                        opacity: selectedPlatforms.includes(platform.id) ? 1 : 0.3,
-                        transform: selectedPlatforms.includes(platform.id) ? 'scale(1)' : 'scale(0.9)',
+                        filter: isConnected && isSelected ? 'none' : 'grayscale(100%)',
                       }}
-                      title={platform.name}
-                    >
-                      <img
-                        src={platform.icon}
-                        alt={platform.name}
-                        className="w-6 h-6"
-                        style={{
-                          filter: selectedPlatforms.includes(platform.id) ? 'none' : 'grayscale(100%)',
-                        }}
-                      />
-                    </button>
-                  ))}
-                {/* All button */}
-                <button
-                  onClick={selectAllPlatforms}
-                  className="px-2 py-1 text-xs rounded-full transition-all duration-200"
-                  style={{
-                    color: '#1B1B1B',
-                    backgroundColor: selectedPlatforms.length === connectedPlatforms.length ? '#E6E6E6' : 'transparent',
-                    border: '1px solid #E6E6E6',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                  }}
-                >
-                  All
-                </button>
-              </div>
-            )}
+                    />
+                    {/* Tooltip */}
+                    <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      {platform.name}{!isConnected && ' (not connected)'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
 
             {/* New Button Layout - Horizontal Pills */}
 
