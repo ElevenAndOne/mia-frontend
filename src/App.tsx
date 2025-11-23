@@ -35,6 +35,7 @@ function App() {
   const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
   const [pendingInsightType, setPendingInsightType] = useState<'grow' | 'optimize' | 'protect' | null>(null)
   const [selectedInsightDateRange, setSelectedInsightDateRange] = useState<string>('30_days')
+  const [pendingPlatforms, setPendingPlatforms] = useState<string[]>([]) // Store selected platforms for insights
 
   // Preload critical images - mobile-optimized approach
   useEffect(() => {
@@ -233,16 +234,22 @@ function App() {
                 onQuestionClick={handleQuestionClick}
                 onCreativeClick={handleCreativeClick}
                 onIntegrationsClick={() => setAppState('integrations')}
-                onSummaryQuickClick={() => setAppState('summary-quick')}
-                onGrowQuickClick={() => {
+                onSummaryQuickClick={(platforms) => {
+                  setPendingPlatforms(platforms || [])
+                  setAppState('summary-quick')
+                }}
+                onGrowQuickClick={(platforms) => {
+                  setPendingPlatforms(platforms || [])
                   setPendingInsightType('grow')
                   setShowInsightsDatePicker(true)
                 }}
-                onOptimizeQuickClick={() => {
+                onOptimizeQuickClick={(platforms) => {
+                  setPendingPlatforms(platforms || [])
                   setPendingInsightType('optimize')
                   setShowInsightsDatePicker(true)
                 }}
-                onProtectQuickClick={() => {
+                onProtectQuickClick={(platforms) => {
+                  setPendingPlatforms(platforms || [])
                   setPendingInsightType('protect')
                   setShowInsightsDatePicker(true)
                 }}
@@ -353,6 +360,7 @@ function App() {
               <GrowInsights
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
+                platforms={pendingPlatforms}
               />
             </motion.div>
           )}
@@ -369,6 +377,7 @@ function App() {
               <OptimizeInsights
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
+                platforms={pendingPlatforms}
               />
             </motion.div>
           )}
@@ -385,6 +394,7 @@ function App() {
               <ProtectInsights
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
+                platforms={pendingPlatforms}
               />
             </motion.div>
           )}

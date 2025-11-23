@@ -78,6 +78,7 @@ const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: 
 interface OptimizeInsightsProps {
   onBack?: () => void
   initialDateRange?: string
+  platforms?: string[]
 }
 
 interface Insight {
@@ -95,7 +96,7 @@ interface InsightsResponse {
   insights: Insight[]
 }
 
-const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsightsProps) => {
+const OptimizeInsights = ({ onBack, initialDateRange = '30_days', platforms }: OptimizeInsightsProps) => {
   const { sessionId, selectedAccount } = useSession()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -155,7 +156,8 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
         },
         body: JSON.stringify({
           session_id: sessionId,
-          date_range: selectedDateRange
+          date_range: selectedDateRange,
+          platforms: platforms && platforms.length > 0 ? platforms : undefined
         }),
       })
 

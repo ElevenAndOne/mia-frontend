@@ -10,10 +10,10 @@ interface MainViewProps {
   onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: any) => void
   onCreativeClick?: () => void
   onIntegrationsClick?: () => void
-  onSummaryQuickClick?: () => void
-  onGrowQuickClick?: () => void
-  onOptimizeQuickClick?: () => void
-  onProtectQuickClick?: () => void
+  onSummaryQuickClick?: (platforms?: string[]) => void
+  onGrowQuickClick?: (platforms?: string[]) => void
+  onOptimizeQuickClick?: (platforms?: string[]) => void
+  onProtectQuickClick?: (platforms?: string[]) => void
 }
 
 // Helper function to format date range for display
@@ -57,6 +57,52 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   const [showMore, setShowMore] = useState(false) // Toggle for More button
   const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
   const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
+
+  // Platform toggles for Quick Insights
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
+
+  // Platform configuration - maps to backend platform IDs
+  const platformConfig = [
+    { id: 'ga4', name: 'GA4', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
+    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id' },
+    { id: 'meta', name: 'Meta', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
+    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
+    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_access_token' },
+    { id: 'facebook_organic', name: 'Facebook', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
+  ]
+
+  // Get connected platforms from selected account
+  const getConnectedPlatforms = () => {
+    if (!selectedAccount) return []
+    return platformConfig.filter(p => {
+      const value = (selectedAccount as any)[p.accountKey]
+      return value && value !== ''
+    }).map(p => p.id)
+  }
+
+  // Initialize selected platforms when account changes
+  const connectedPlatforms = getConnectedPlatforms()
+
+  // Auto-select all connected platforms on first render or account change
+  if (selectedPlatforms.length === 0 && connectedPlatforms.length > 0) {
+    setSelectedPlatforms(connectedPlatforms)
+  }
+
+  const togglePlatform = (platformId: string) => {
+    setSelectedPlatforms(prev => {
+      if (prev.includes(platformId)) {
+        // Don't allow deselecting if it's the last one
+        if (prev.length === 1) return prev
+        return prev.filter(id => id !== platformId)
+      } else {
+        return [...prev, platformId]
+      }
+    })
+  }
+
+  const selectAllPlatforms = () => {
+    setSelectedPlatforms(connectedPlatforms)
+  }
 
   const handleAccountSwitch = async (accountId: string) => {
     if (isAccountSwitching) return
@@ -426,10 +472,10 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       <div className="flex-1 flex flex-col items-center relative px-6 overflow-hidden">
         {!showChat ? (
           <>
-            {/* Greeting - Vertically Centered */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-60px' }}>
+            {/* Greeting - Shifted up to make room for platform toggles */}
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-100px' }}>
               <h2 style={{
-                color: '#000',
+                color: '#1B1B1B',
                 textAlign: 'center',
                 fontFamily: 'Geologica, system-ui, sans-serif',
                 fontSize: '26px',
@@ -440,7 +486,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 marginBottom: '4px'
               }}>Hello Sean.</h2>
               <p style={{
-                color: '#000',
+                color: '#1B1B1B',
                 fontFamily: 'Geologica, system-ui, sans-serif',
                 fontSize: '26px',
                 fontStyle: 'normal',
@@ -451,6 +497,48 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               }}>How can I help today?</p>
             </div>
 
+            {/* Platform Toggles - Between greeting and action buttons */}
+            {connectedPlatforms.length > 0 && (
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: '-20px' }}>
+                {platformConfig
+                  .filter(p => connectedPlatforms.includes(p.id))
+                  .map(platform => (
+                    <button
+                      key={platform.id}
+                      onClick={() => togglePlatform(platform.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200"
+                      style={{
+                        opacity: selectedPlatforms.includes(platform.id) ? 1 : 0.3,
+                        transform: selectedPlatforms.includes(platform.id) ? 'scale(1)' : 'scale(0.9)',
+                      }}
+                      title={platform.name}
+                    >
+                      <img
+                        src={platform.icon}
+                        alt={platform.name}
+                        className="w-6 h-6"
+                        style={{
+                          filter: selectedPlatforms.includes(platform.id) ? 'none' : 'grayscale(100%)',
+                        }}
+                      />
+                    </button>
+                  ))}
+                {/* All button */}
+                <button
+                  onClick={selectAllPlatforms}
+                  className="px-2 py-1 text-xs rounded-full transition-all duration-200"
+                  style={{
+                    color: '#1B1B1B',
+                    backgroundColor: selectedPlatforms.length === connectedPlatforms.length ? '#E6E6E6' : 'transparent',
+                    border: '1px solid #E6E6E6',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                  }}
+                >
+                  All
+                </button>
+              </div>
+            )}
+
             {/* New Button Layout - Horizontal Pills */}
 
             {/* Row 1: Grow, Optimise, Protect - Horizontal */}
@@ -460,7 +548,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   onClick={(e) => {
                     e.preventDefault()
                     if (onGrowQuickClick) {
-                      setTimeout(() => onGrowQuickClick(), 150)
+                      setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
                     }
                   }}
                   className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
@@ -487,7 +575,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   onClick={(e) => {
                     e.preventDefault()
                     if (onOptimizeQuickClick) {
-                      setTimeout(() => onOptimizeQuickClick(), 150)
+                      setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
                     }
                   }}
                   className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
@@ -514,7 +602,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   onClick={(e) => {
                     e.preventDefault()
                     if (onProtectQuickClick) {
-                      setTimeout(() => onProtectQuickClick(), 150)
+                      setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
                     }
                   }}
                   className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
@@ -571,7 +659,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                     onClick={(e) => {
                       e.preventDefault()
                       if (onSummaryQuickClick) {
-                        setTimeout(() => onSummaryQuickClick(), 150)
+                        setTimeout(() => onSummaryQuickClick(selectedPlatforms), 150)
                       }
                     }}
                     className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
