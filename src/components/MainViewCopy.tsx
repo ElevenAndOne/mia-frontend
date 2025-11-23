@@ -532,7 +532,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
             {/* New Button Layout - Horizontal Pills */}
 
             {/* Row 1: Grow, Optimise, Protect - Horizontal */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '20px' }}>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '40px' }}>
               {onGrowQuickClick && (
                 <button
                   onClick={(e) => {
@@ -617,7 +617,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
             {/* Row 2: More button OR Summary + Chat with Mia */}
             {!showMore ? (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '72px' }}>
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '92px' }}>
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -643,7 +643,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 </button>
               </div>
             ) : (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '72px', marginLeft: '5px' }}>
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '92px', marginLeft: '5px' }}>
                 {onSummaryQuickClick && (
                   <button
                     onClick={(e) => {
