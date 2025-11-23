@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { authService } from '../services/auth'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
@@ -60,6 +60,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
   // Platform toggles for Quick Insights
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
+  const prevAccountId = useRef<string | null>(null)
 
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, HubSpot
@@ -81,13 +83,73 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     }).map(p => p.id)
   }
 
-  // Initialize selected platforms when account changes
   const connectedPlatforms = getConnectedPlatforms()
 
-  // Auto-select all connected platforms on first render or account change
-  if (selectedPlatforms.length === 0 && connectedPlatforms.length > 0) {
-    setSelectedPlatforms(connectedPlatforms)
-  }
+  // Load saved platform preferences when account changes
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!sessionId || !selectedAccount) return
+
+      // Only load if account changed
+      if (prevAccountId.current === selectedAccount.id) return
+      prevAccountId.current = selectedAccount.id
+      setPrefsLoaded(false)
+
+      try {
+        const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.selected_platforms && data.selected_platforms.length > 0) {
+            // Filter to only include connected platforms
+            const validPlatforms = data.selected_platforms.filter((p: string) =>
+              connectedPlatforms.includes(p)
+            )
+            if (validPlatforms.length > 0) {
+              setSelectedPlatforms(validPlatforms)
+            } else {
+              // Saved platforms no longer connected, default to all connected
+              setSelectedPlatforms(connectedPlatforms)
+            }
+          } else {
+            // No saved preferences, default to all connected
+            setSelectedPlatforms(connectedPlatforms)
+          }
+        } else {
+          // API failed, default to all connected
+          setSelectedPlatforms(connectedPlatforms)
+        }
+      } catch (error) {
+        console.error('[MainView] Failed to load platform preferences:', error)
+        setSelectedPlatforms(connectedPlatforms)
+      }
+      setPrefsLoaded(true)
+    }
+
+    loadPreferences()
+  }, [sessionId, selectedAccount?.id])
+
+  // Save platform preferences when they change (after initial load)
+  useEffect(() => {
+    const savePreferences = async () => {
+      if (!sessionId || !selectedAccount || !prefsLoaded) return
+      if (selectedPlatforms.length === 0) return
+
+      try {
+        await apiFetch('/api/account/platform-preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            selected_platforms: selectedPlatforms
+          })
+        })
+      } catch (error) {
+        console.error('[MainView] Failed to save platform preferences:', error)
+      }
+    }
+
+    savePreferences()
+  }, [selectedPlatforms, prefsLoaded])
 
   const togglePlatform = (platformId: string) => {
     setSelectedPlatforms(prev => {
