@@ -11,6 +11,7 @@ export interface AccountMapping {
   facebook_page_name?: string
   brevo_api_key?: string
   brevo_account_name?: string
+  hubspot_portal_id?: string
   business_type: string
   color: string
   display_name: string
@@ -128,6 +129,27 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               console.log('[SESSION] Session valid, restoring state')
 
               // Restore auth state from validated session
+              // First fetch full accounts data to get complete account info
+              const accountsResponse = await apiFetch('/api/accounts/available', {
+                headers: {
+                  'X-Session-ID': storedSessionId
+                }
+              })
+
+              let fullSelectedAccount = null
+              let availableAccounts: AccountMapping[] = []
+
+              if (accountsResponse.ok) {
+                const accountsData = await accountsResponse.json()
+                availableAccounts = accountsData.accounts || []
+                // Find full account data for selected account
+                if (data.selected_account) {
+                  fullSelectedAccount = availableAccounts.find(
+                    (acc: AccountMapping) => acc.id === data.selected_account.id
+                  ) || null
+                }
+              }
+
               setState(prev => ({
                 ...prev,
                 sessionId: storedSessionId,
@@ -140,16 +162,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   picture_url: data.user.picture_url,
                   google_user_id: data.user.user_id
                 },
-                selectedAccount: data.selected_account ? {
-                  id: data.selected_account.id,
-                  google_ads_id: data.selected_account.google_ads_id,
-                  ga4_property_id: data.selected_account.ga4_property_id,
-                  meta_ads_id: data.selected_account.meta_ads_id,
-                  name: data.selected_account.id,
-                  business_type: '',
-                  color: '',
-                  display_name: data.selected_account.id
-                } : null,
+                selectedAccount: fullSelectedAccount,
+                availableAccounts: availableAccounts,
                 isLoading: false
               }))
 
@@ -159,9 +173,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }
 
               console.log('[SESSION] Restored auth state: Google=' + (data.platforms?.google || false) + ', Meta=' + (data.platforms?.meta || false))
-
-              // Refresh available accounts
-              await refreshAccounts()
               return
             } else {
               console.log('[SESSION] Session invalid or expired, creating new session')
@@ -377,10 +388,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       if (response.ok) {
         const data = await response.json()
-        setState(prev => ({
-          ...prev,
-          availableAccounts: data.accounts || []
-        }))
+        const accounts = data.accounts || []
+        setState(prev => {
+          // Also update selectedAccount if it exists in the new accounts list
+          const updatedSelectedAccount = prev.selectedAccount
+            ? accounts.find((acc: AccountMapping) => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
+            : null
+          return {
+            ...prev,
+            availableAccounts: accounts,
+            selectedAccount: updatedSelectedAccount
+          }
+        })
       } else {
         console.error('[SESSION] Accounts API failed:', response.status, response.statusText)
       }

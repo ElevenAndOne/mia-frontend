@@ -69,7 +69,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     { id: 'meta', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
     { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
     { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
-    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_access_token' },
+    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id' },
   ]
 
   // Get connected platforms from selected account
@@ -470,7 +470,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         {!showChat ? (
           <>
             {/* Greeting - Centered with uniform spacing */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-70px' }}>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-85px' }}>
               <h2 style={{
                 color: '#1B1B1B',
                 textAlign: 'center',
@@ -521,7 +521,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                       }}
                     />
                     {/* Tooltip */}
-                    <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                       {platform.name}{!isConnected && ' (not connected)'}
                     </span>
                   </button>
@@ -532,7 +532,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
             {/* New Button Layout - Horizontal Pills */}
 
             {/* Row 1: Grow, Optimise, Protect - Horizontal */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '40px' }}>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '55px' }}>
               {onGrowQuickClick && (
                 <button
                   onClick={(e) => {
@@ -617,7 +617,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
             {/* Row 2: More button OR Summary + Chat with Mia */}
             {!showMore ? (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '92px' }}>
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '107px' }}>
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -643,7 +643,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 </button>
               </div>
             ) : (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '92px', marginLeft: '5px' }}>
+              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '107px', marginLeft: '5px' }}>
                 {onSummaryQuickClick && (
                   <button
                     onClick={(e) => {
