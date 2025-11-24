@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import FigmaLoginModal from '../modals/figma-login-modal'
 
 interface VideoIntroViewProps {
@@ -11,11 +11,8 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
   const [showLoginModal, setShowLoginModal] = useState(hasSeenIntro)  // ✅ Show immediately if returning user
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
-  const [videoLoaded, setVideoLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const modalTimerRef = useRef<number | null>(null)
-
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   // ✅ CRITICAL: Auto-show login modal for returning users (signed out / session expired)
   useEffect(() => {
@@ -73,10 +70,6 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
       }
     }
 
-    const handleLoadedMetadata = () => {
-      setVideoLoaded(true)
-    }
-
     const handleCanPlayThrough = () => {
       // ✅ Don't autoplay video if user has seen intro before
       if (hasSeenIntro) {
@@ -93,13 +86,11 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
 
     video.addEventListener('timeupdate', handleTimeUpdate)
     video.addEventListener('ended', handleEnded)
-    video.addEventListener('loadedmetadata', handleLoadedMetadata)
     video.addEventListener('canplaythrough', handleCanPlayThrough)
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate)
       video.removeEventListener('ended', handleEnded)
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata)
       video.removeEventListener('canplaythrough', handleCanPlayThrough)
       
       if (modalTimerRef.current) {

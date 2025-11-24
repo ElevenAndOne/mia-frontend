@@ -50,8 +50,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Split large libraries for better mobile loading
-          'framer-motion': ['framer-motion'],
-          'three': ['three', '@react-three/fiber', '@react-three/drei']
+          'framer-motion': ['framer-motion']
         }
       }
     }

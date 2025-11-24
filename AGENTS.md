@@ -25,12 +25,13 @@
 
 ## Implementation workflow
 1) Read the relevant screen/component in `src/components` plus the supporting service/context before changing flow logic.
-2) Check the token files and `src/index.css` for existing utilities before adding styles; keep new utilities centralized.
-3) Extend service modules or `SessionContext` rather than introducing new global stores or direct fetches.
-4) Validate UI changes with the current mobile viewport assumptions (fixed height, safe areas, gradients).
-5) Run `npm run lint` or `npm run test` when changing logic/JSX.
-6) After verifying changes (tests and manual checks), update `CHANGELOG.md` (the log of agent changes across threads): append a new entry for every prompt—even on the same day or within the same thread since the version captures differences—place it at the top of the entries list, and leave older entries intact; only amend a prior entry when you are continuing the exact same fix/issue within the same thread.
-7) Do not create additional `.md` files unless the user explicitly requests them; `CHANGELOG.md` updates are the exception.
+2) If you truly need recent context, briefly skim `CHANGELOG.md` to understand prior changes; otherwise avoid unnecessary edits to it beyond the required per-prompt entry.
+3) Check the token files and `src/index.css` for existing utilities before adding styles; keep new utilities centralized.
+4) Extend service modules or `SessionContext` rather than introducing new global stores or direct fetches.
+5) Validate UI changes with the current mobile viewport assumptions (fixed height, safe areas, gradients).
+6) Run `npm run lint` or `npm run test` when changing logic/JSX.
+7) After verifying changes (tests and manual checks), update `CHANGELOG.md` (the log of agent changes across threads): append a new entry for every prompt—even on the same day or within the same thread since the version captures differences—place it at the top of the entries list, and leave older entries intact; only amend a prior entry when you are continuing the exact same fix/issue within the same thread.
+8) Do not create additional `.md` files unless the user explicitly requests them; `CHANGELOG.md` updates are the exception.
 
 ## Do’s
 - Reuse `useSession` state and handlers for auth/account changes; update the service layer if you need new backend calls.

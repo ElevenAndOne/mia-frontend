@@ -12,6 +12,50 @@ This log tracks changes made by agents across multiple chat threads.
 
 ### [Unreleased] - 2025-11-24
 
+**Author**: Codex  
+**Date**: November 24, 2025  
+**Version**: 3.0.1-changelog-guidance
+
+---
+
+### 📚 Documentation
+- Updated `AGENTS.md` to remind agents to skim `CHANGELOG.md` for context when necessary and continue logging every prompt at the top without altering older entries.
+
+### [Unreleased] - 2025-11-24
+
+**Author**: Cascade AI Assistant  
+**Date**: November 24, 2025  
+**Version**: 4.1.0-cleanup
+
+#### 🧹 Major Codebase Cleanup and Optimization
+
+**Removed Unused Packages**
+- Removed 9 unused npm packages: `@react-three/drei`, `@react-three/fiber`, `@tanstack/react-query`, `axios`, `clsx`, `lottie-react`, `remark-gfm`, `tailwind-merge`, `three`, `zustand`
+- Reduced bundle size by ~199 packages (dependencies + sub-dependencies)
+- Fixed Vite build configuration by removing Three.js manual chunk references
+
+**Cleaned Up Unused Code**
+- Removed unused service files: `services/auth.ts`, `services/auth-sdk.ts`, `services/account-service.ts`, `services/meta-auth.ts`, `services/meta-ads.ts`
+- Fixed unused variables: removed `videoLoaded` and `isMobile` variables from `video-intro-view.tsx`
+- Removed unused `handleLoadedMetadata` function and event listeners from video component
+- Cleaned up unused `motion` import in `video-intro-view.tsx`
+- Fixed unused `result` variable in `clear-meta-auth.ts`
+
+**Build & Performance Improvements**
+- Fixed build pipeline errors caused by removed Three.js dependencies
+- Reduced development warnings from ESLint unused variable checks
+- Improved loading times by removing unnecessary package overhead
+- Maintained all existing functionality while reducing codebase complexity
+
+**Quality Assurance**
+- Verified all changes with successful `npm run build`
+- Ensured no breaking changes to existing features
+- Preserved all active imports and dependencies that are actually used
+
+---
+
+### [Unreleased] - 2025-11-24
+
 **Author**: Cascade AI Assistant  
 **Date**: November 24, 2025  
 **Version**: 4.0.0-sdk-migration
