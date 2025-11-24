@@ -1,0 +1,18 @@
+:root {
+  --margin: clamp(0.75rem, -3.3125rem + 13vw, 4rem);
+}
+
+@theme {
+  --spacing-xxs: 0.125rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-bg: 1.5rem;
+  --spacing-xbg: 2rem;
+  --spacing-lg: 3rem;
+  --spacing-xlg: 4rem;
+  --spacing-hg: 4rem;
+  --spacing-xhg: 5rem;
+  
+  --spacing-margin: clamp(0.75rem, -3.3125rem + 13vw, 4rem);
+}

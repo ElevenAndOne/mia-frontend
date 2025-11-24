@@ -1,7 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Figtree:wght@300;400;500;600;700&display=swap');
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import 'tailwindcss';
+
+@theme {
+  /* Custom color palette */
+  --color-mia-red: #D00603;
+  --color-mia-pink: #F189CB;
+  --color-mia-green: #82EBA1;
+  --color-mia-yellow: #C9F84A;
+  --color-mia-cyan: #3CDDF9;
+  --color-mia-purple: #9A3698;
+  --color-mia-deep-purple: #2A3698;
+  
+  --color-neutral-black: #000000;
+  --color-neutral-white: #FFFFFF;
+  --color-neutral-grey: #E8E8E8;
+  --color-neutral-dark-grey: #666666;
+  --color-neutral-light-grey: #F5F5F5;
+  
+  /* Animations */
+  --animate-gradient: gradient 8s ease infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 3s ease-in-out infinite;
+  
+  /* Font family */
+  --font-family-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+}
+
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
 
 /* iPhone 16 Pro Optimized CSS Variables */
 :root {
