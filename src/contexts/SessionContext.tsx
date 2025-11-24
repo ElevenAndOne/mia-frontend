@@ -75,6 +75,7 @@ type SessionContextType = SessionState & SessionActions
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSession = () => {
   const context = useContext(SessionContext)
   if (context === undefined) {

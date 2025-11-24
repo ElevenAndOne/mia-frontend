@@ -6,6 +6,7 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
+    "types": ["vite/client"],
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -15,16 +16,15 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@scenes/*": ["src/scenes/*"],
-      "@hooks/*": ["src/hooks/*"],
-      "@lib/*": ["src/lib/*"],
-      "@assets/*": ["src/assets/*"],
-      "@styles/*": ["src/styles/*"],
-      "@types/*": ["src/types/*"]
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@scenes/*": ["./src/scenes/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@styles/*": ["./src/styles/*"],
+      "@types/*": ["./src/types/*"]
     }
   },
   "include": ["src"],

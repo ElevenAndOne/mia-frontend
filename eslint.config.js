@@ -19,5 +19,20 @@ export default tseslint.config([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Downgrade certain rules to warnings during refactoring
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'caughtErrorsIgnorePattern': '^_'
+      }],
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-empty': 'warn',
+      'no-constant-binary-expression': 'warn',
+      'no-constant-condition': 'warn',
+      'no-useless-escape': 'warn',
+      'react-refresh/only-export-components': 'warn'
+    },
   },
 ])

@@ -15,16 +15,17 @@ interface MCCAccount {
   manager: boolean
 }
 
-interface GoogleAdsAccount {
-  customer_id: string
-  descriptive_name: string
-  manager: boolean
-}
+// Unused interface - kept for potential future use
+// interface GoogleAdsAccount {
+//   customer_id: string
+//   descriptive_name: string
+//   manager: boolean
+// }
 
 const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPageProps) => {
   const {
     availableAccounts,
-    selectedAccount,
+    selectedAccount: _selectedAccount,
     selectAccount,
     isLoading,
     error,

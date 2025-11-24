@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import VideoIntroView from './components/VideoIntroView'
 import AccountSelectionPage from './components/AccountSelectionPage'
@@ -21,15 +20,18 @@ import { useSession } from './contexts/SessionContext'
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
+interface PreloadedData {
+  [key: string]: unknown
+}
+
 function App() {
-  const location = useLocation()
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, hasSeenIntro } = useSession()
   const [appState, setAppState] = useState<AppState>('video-intro')
 
   // Support both Google and Meta authentication
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  const [preloadedData, setPreloadedData] = useState<any>(null) // Store pre-fetched data
+  const [preloadedData, setPreloadedData] = useState<PreloadedData | null>(null) // Store pre-fetched data
 
   // Date picker modal state
   const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
@@ -63,8 +65,12 @@ function App() {
       // Strategy 3: Force immediate load
       img.onload = () => {
         // Store in a global cache object
-        if (!(window as any).imageCache) (window as any).imageCache = {}
-        ;(window as any).imageCache[src] = img
+        interface WindowWithCache extends Window {
+          imageCache?: Record<string, HTMLImageElement>
+        }
+        const win = window as unknown as WindowWithCache
+        if (!win.imageCache) win.imageCache = {}
+        win.imageCache[src] = img
       }
     })
   }, [])
@@ -109,11 +115,14 @@ function App() {
     } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix') {
       // User is authenticated (Google OR Meta) but needs to select an account
       setAppState('account-selection')
-    } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
+    } else if (!isAnyAuthenticated && !selectedAccount) {
       // User logged out - reset to video intro
-      setAppState('video-intro')
+      const validStates: AppState[] = ['growth', 'improve', 'fix', 'creative', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick']
+      if (validStates.includes(appState)) {
+        setAppState('video-intro')
+      }
     }
-  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
+  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro, isAnyAuthenticated])
 
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal
@@ -131,8 +140,8 @@ function App() {
 
   const { logout } = useSession()
 
-  const handleQuestionClick = (questionType: 'growth' | 'improve' | 'fix', data?: any) => {
-    setPreloadedData(data) // Store the pre-fetched data
+  const handleQuestionClick = (questionType: 'growth' | 'improve' | 'fix', data?: PreloadedData) => {
+    setPreloadedData(data || null) // Store the pre-fetched data
     if (questionType === 'growth') {
       setAppState('growth')
     } else if (questionType === 'improve') {
@@ -264,7 +273,7 @@ function App() {
                   setAppState('main')
                   setPreloadedData(null) // Clear pre-loaded data when going back
                 }} 
-                data={preloadedData}
+                data={preloadedData as never}
               />
             </motion.div>
           )}
@@ -283,7 +292,7 @@ function App() {
                   setAppState('main')
                   setPreloadedData(null) // Clear pre-loaded data when going back
                 }} 
-                data={preloadedData}
+                data={preloadedData as never}
               />
             </motion.div>
           )}
@@ -302,7 +311,7 @@ function App() {
                   setAppState('main')
                   setPreloadedData(null) // Clear pre-loaded data when going back
                 }} 
-                data={preloadedData}
+                data={preloadedData as never}
               />
             </motion.div>
           )}

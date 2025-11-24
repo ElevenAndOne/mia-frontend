@@ -38,7 +38,7 @@ interface GrowthPageProps {
 const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false, data }: GrowthPageProps) => {
   const [growthData, setGrowthData] = useState<GrowthData | null>(data || null)
   const [loading, setLoading] = useState(isLoading)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
 
   // Fetch data when component mounts if not provided
   useEffect(() => {
