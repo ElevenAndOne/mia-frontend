@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { DayPicker, DateRange, CaptionProps } from 'react-day-picker'
+import { DayPicker, DateRange, MonthCaptionProps, useDayPicker } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { format } from 'date-fns'
 
@@ -11,8 +11,9 @@ interface DateRangeSelectorProps {
 }
 
 // Custom caption component with month/year dropdowns
-function CustomCaption(props: CaptionProps) {
-  const { displayMonth } = props
+function CustomCaption(props: MonthCaptionProps) {
+  const { calendarMonth } = props
+  const { goToMonth } = useDayPicker()
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 10 }, (_, i) => currentYear - 9 + i) // Last 10 years
   const months = [
@@ -22,20 +23,20 @@ function CustomCaption(props: CaptionProps) {
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMonth = parseInt(e.target.value)
-    const newDate = new Date(displayMonth.getFullYear(), newMonth, 1)
-    props.onMonthChange?.(newDate)
+    const newDate = new Date(calendarMonth.date.getFullYear(), newMonth, 1)
+    goToMonth(newDate)
   }
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newYear = parseInt(e.target.value)
-    const newDate = new Date(newYear, displayMonth.getMonth(), 1)
-    props.onMonthChange?.(newDate)
+    const newDate = new Date(newYear, calendarMonth.date.getMonth(), 1)
+    goToMonth(newDate)
   }
 
   return (
     <div className="flex justify-center gap-2 pb-2">
       <select
-        value={displayMonth.getMonth()}
+        value={calendarMonth.date.getMonth()}
         onChange={handleMonthChange}
         className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
       >
@@ -46,7 +47,7 @@ function CustomCaption(props: CaptionProps) {
         ))}
       </select>
       <select
-        value={displayMonth.getFullYear()}
+        value={calendarMonth.date.getFullYear()}
         onChange={handleYearChange}
         className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
       >
@@ -159,7 +160,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
                 disabled={{ after: new Date() }}
                 captionLayout="dropdown"
                 components={{
-                  Caption: CustomCaption
+                  MonthCaption: CustomCaption
                 }}
                 classNames={{
                   months: "flex flex-col",

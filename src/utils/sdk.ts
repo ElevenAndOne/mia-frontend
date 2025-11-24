@@ -5,7 +5,12 @@
  */
 
 import { createMiaSDK, type MiaSDK } from '../sdk'
-import { API_BASE_URL } from './api'
+
+// Get API base URL from environment variable with smart defaults
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('ondigitalocean.app')
+    ? 'https://dolphin-app-b869e.ondigitalocean.app'
+    : 'http://localhost:8000')
 
 let sdkInstance: MiaSDK | null = null
 

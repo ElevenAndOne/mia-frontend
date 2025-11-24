@@ -445,7 +445,7 @@ const ProtectPage = ({ onBack, question = "What needs protecting?", isLoading = 
         <div className="flex items-center" style={{ gap: '12px' }}>
           {/* Grey ROAS container - widened to match Figma */}
           <div 
-            className="rounded-3xl flex-shrink-0"
+            className="rounded-3xl shrink-0"
             style={{
               backgroundColor: '#F2F2F2',
               padding: '16px',

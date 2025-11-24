@@ -1,67 +1,48 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { apiFetch } from '../../utils/api'
+import { useBrevo } from '../../hooks/useMiaSDK'
 
 interface BrevoConnectionModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  sessionId: string
 }
 
-const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionModalProps) => {
+const BrevoConnectionModal = ({ isOpen, onClose, onSuccess, sessionId }: BrevoConnectionModalProps) => {
+  const { saveApiKey, isLoading, error: sdkError, clearError } = useBrevo()
   const [apiKey, setApiKey] = useState('')
-  const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const handleConnect = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
     if (!apiKey.trim()) {
-      setError('Please enter your Brevo API key')
+      setError('API key is required')
       return
     }
 
-    setIsConnecting(true)
+    clearError()
     setError(null)
 
-    try {
-      const response = await apiFetch('/api/oauth/brevo/save-api-key', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          api_key: apiKey.trim()
-        })
-      })
+    const result = await saveApiKey(apiKey)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to connect Brevo account')
-      }
-
-      const result = await response.json()
-      
-      if (result.success) {
-        setSuccess(true)
-        setTimeout(() => {
-          onSuccess?.()
-          onClose()
-          setApiKey('')
-          setSuccess(false)
-        }, 1500)
-      } else {
-        setError(result.message || 'Failed to connect Brevo account')
-      }
-    } catch (err: any) {
-      console.error('Brevo connection error:', err)
-      setError(err.message || 'Failed to connect to Brevo. Please check your API key.')
-    } finally {
-      setIsConnecting(false)
+    if (result.success) {
+      setSuccess(true)
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+        setApiKey('')
+        setSuccess(false)
+      }, 1500)
+    } else {
+      setError(result.error || 'Failed to save API key')
     }
   }
 
   const handleClose = () => {
-    if (!isConnecting) {
+    if (!isLoading) {
       setApiKey('')
       setError(null)
       setSuccess(false)
@@ -98,7 +79,7 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
               </div>
               <button
                 onClick={handleClose}
-                disabled={isConnecting}
+                disabled={isLoading}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,13 +103,13 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
             )}
 
             {/* Error Message */}
-            {error && (
+            {(error || sdkError) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"
               >
-                <p className="text-red-600 text-sm">{error}</p>
+                <p className="text-red-600 text-sm">{error || sdkError}</p>
               </motion.div>
             )}
 
@@ -153,9 +134,9 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleConnect()}
+                onKeyPress={(e) => e.key === 'Enter' && handleSubmit(e)}
                 placeholder="xkeysib-..."
-                disabled={isConnecting || success}
+                disabled={isLoading || success}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -164,23 +145,23 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
             <div className="flex space-x-3">
               <button
                 onClick={handleClose}
-                disabled={isConnecting}
+                disabled={isLoading}
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConnect}
-                disabled={isConnecting || success || !apiKey.trim()}
+                onClick={handleSubmit}
+                disabled={isLoading || !apiKey.trim()}
                 className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
               >
-                {isConnecting ? (
+                {isLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Connecting...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
-                  <span>Connect</span>
+                  <span>Save API Key</span>
                 )}
               </button>
             </div>

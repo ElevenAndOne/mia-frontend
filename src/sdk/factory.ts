@@ -13,7 +13,14 @@ import {
   AccountsService,
   AnalyticsService,
   IntegrationsService,
-  MCPService
+  MCPService,
+  SessionService,
+  HubSpotService,
+  BrevoService,
+  FacebookService,
+  PlatformService,
+  CreativeService,
+  ChatService
 } from './services'
 
 export interface MiaSDK {
@@ -25,6 +32,13 @@ export interface MiaSDK {
   analytics: AnalyticsService
   integrations: IntegrationsService
   mcp: MCPService
+  session: SessionService
+  hubspot: HubSpotService
+  brevo: BrevoService
+  facebook: FacebookService
+  platform: PlatformService
+  creative: CreativeService
+  chat: ChatService
 }
 
 /**
@@ -60,7 +74,14 @@ export function createMiaSDK(config: SDKConfig = {}): MiaSDK {
     accounts: new AccountsService(client),
     analytics: new AnalyticsService(client),
     integrations: new IntegrationsService(client),
-    mcp: new MCPService(client)
+    mcp: new MCPService(client),
+    session: new SessionService(client),
+    hubspot: new HubSpotService(client),
+    brevo: new BrevoService(client),
+    facebook: new FacebookService(client),
+    platform: new PlatformService(client),
+    creative: new CreativeService(client),
+    chat: new ChatService(client)
   }
 }
 

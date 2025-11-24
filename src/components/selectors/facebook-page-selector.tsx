@@ -1,16 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { apiFetch } from '../../utils/api'
+import { useFacebook } from '../../hooks/useMiaSDK'
+import { FacebookPage } from '../../sdk/services/facebook'
 import { useSession } from '../../contexts/session-context'
-
-interface FacebookPage {
-  id: string
-  name: string
-  access_token: string
-  fan_count: number
-  link: string
-  category: string
-}
 
 interface FacebookPageSelectorProps {
   isOpen: boolean
@@ -21,14 +13,13 @@ interface FacebookPageSelectorProps {
 }
 
 const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, currentAccountData }: FacebookPageSelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { selectedAccount } = useSession()
+  const { getPages, linkPage, isLoading: sdkLoading, error: sdkError, clearError } = useFacebook()
   // Use currentAccountData if provided (fresh data), otherwise fall back to selectedAccount
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isLinking, setIsLinking] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   // Fetch Facebook Pages when modal opens
@@ -39,105 +30,61 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
   }, [isOpen])
 
   const fetchFacebookPages = async () => {
-    setIsLoading(true)
-    setError(null)
+    clearError()
+    
+    const result = await getPages()
+    
+    if (result.success && result.data) {
+      // Sort pages alphabetically by name (A-Z)
+      const sortedPages = result.data.sort((a: FacebookPage, b: FacebookPage) =>
+        a.name.localeCompare(b.name)
+      )
 
-    try {
-      // Fetch pages from backend (uses PostgreSQL cache with 7-day TTL)
-      const response = await apiFetch('/api/oauth/meta/api/organic/facebook-pages', {
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
-      })
+      setPages(sortedPages)
 
-      const data = await response.json()
-
-      if (data.success && data.facebook_pages) {
-        // Sort pages alphabetically by name (A-Z)
-        const sortedPages = data.facebook_pages.sort((a: FacebookPage, b: FacebookPage) =>
-          a.name.localeCompare(b.name)
-        )
-
-        setPages(sortedPages)
-
-        // Pre-select currently linked page if exists
-        if (accountToUse?.facebook_page_id) {
-          setSelectedPageId(accountToUse.facebook_page_id)
-          console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected page:', accountToUse.facebook_page_id)
-        }
-      } else {
-        setError('Failed to fetch Facebook Pages')
+      // Auto-select page if account already has one linked
+      if (accountToUse?.linked_facebook_page) {
+        setSelectedPageId(accountToUse.linked_facebook_page)
+        console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected linked page:', accountToUse.linked_facebook_page)
       }
-    } catch (err: any) {
-      console.error('Error fetching Facebook Pages:', err)
-      setError('Failed to load Facebook Pages. Please try again.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleLinkPage = async () => {
-    setIsLinking(true)
-    setError(null)
-
-    try {
-      if (!accountToUse) {
-        throw new Error('No account selected')
-      }
-
-      if (selectedPageId) {
-        const selectedPage = pages.find(p => p.id === selectedPageId)
-        if (!selectedPage) {
-          throw new Error('Selected page not found')
-        }
-        console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', accountToUse.name)
-      } else {
-        console.log('[FACEBOOK-PAGE-SELECTOR] Unlinking Facebook Page from account', accountToUse.name)
-      }
-
-      // Link Facebook Page to account (or unlink if selectedPageId is null)
-      const response = await apiFetch('/api/oauth/meta/api/organic/link-page', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default'
-        },
-        body: JSON.stringify({
-          page_id: selectedPageId || '',
-          page_name: selectedPageId ? pages.find(p => p.id === selectedPageId)?.name || '' : '',
-          page_access_token: selectedPageId ? pages.find(p => p.id === selectedPageId)?.access_token || '' : '',
-          account_id: accountToUse.id
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to link Facebook Page')
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        setSuccess(true)
-
-        setTimeout(() => {
-          onSuccess?.()
-          handleClose()
-        }, 1500)
-      } else {
-        setError(data.message || 'Failed to link Facebook Page')
-      }
-    } catch (err: any) {
-      console.error('Facebook Page linking error:', err)
-      setError('Failed to link Facebook Page. Please try again.')
-    } finally {
-      setIsLinking(false)
+    if (!accountToUse) {
+      return
     }
+
+    setIsLinking(true)
+
+    if (selectedPageId) {
+      const selectedPage = pages.find(p => p.id === selectedPageId)
+      if (!selectedPage) {
+        setIsLinking(false)
+        return
+      }
+      console.log('[FACEBOOK-PAGE-SELECTOR] Linking page', selectedPage.name, 'to account', accountToUse.name)
+    } else {
+      console.log('[FACEBOOK-PAGE-SELECTOR] Unlinking Facebook Page from account', accountToUse.name)
+    }
+
+    const result = await linkPage(selectedPageId, accountToUse.id)
+
+    if (result.success) {
+      setSuccess(true)
+
+      setTimeout(() => {
+        onSuccess?.()
+        handleClose()
+      }, 1500)
+    }
+
+    setIsLinking(false)
   }
 
   const handleClose = () => {
     if (!isLinking) {
       setSelectedPageId(null)
-      setError(null)
       setSuccess(false)
       onClose()
     }
@@ -187,41 +134,39 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
             {/* Content */}
             <div className="space-y-4">
               {/* Loading State */}
-              {isLoading && (
+              {sdkLoading ? (
                 <div className="py-8 text-center">
                   <div className="inline-block w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                   <p className="mt-4 text-gray-600">Loading your Facebook Pages...</p>
                 </div>
-              )}
-
-              {/* Error State */}
-              {error && !isLoading && (
+              ) : sdkError ? (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex items-start">
-                    <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
                     <div className="flex-1">
-                      <p className="text-sm text-red-800">{error}</p>
+                      <p className="text-sm text-gray-600">{sdkError}</p>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Success State */}
-              {success && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <p className="text-sm font-medium text-green-800">Facebook Page linked successfully!</p>
-                  </div>
+              ) : (
+                <div>
+                  {success && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm font-medium text-green-800">Facebook Page linked successfully!</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Page Selection */}
-              {!isLoading && !success && pages.length > 0 && (
+              {!sdkLoading && !success && pages.length > 0 && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -242,7 +187,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
                           >
                             <div className="flex items-center gap-3">
                               {/* Square Checkbox */}
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
                                 isSelected
                                   ? 'border-blue-600 bg-blue-600'
                                   : 'border-gray-300'
@@ -257,12 +202,12 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">{page.name}</p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <p className="text-xs text-gray-500 truncate">{page.category}</p>
-                                  {page.fan_count > 0 && (
+                                  <p className="text-xs text-gray-500">{page.fan_count ? page.fan_count.toLocaleString() : '0'} followers</p>
+                                  {(page.fan_count || 0) > 1000 && (
                                     <>
                                       <span className="text-gray-300">•</span>
                                       <p className="text-xs text-gray-500">
-                                        {page.fan_count.toLocaleString()} followers
+                                        Popular
                                       </p>
                                     </>
                                   )}
@@ -285,7 +230,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
               )}
 
               {/* No Pages Found */}
-              {!isLoading && !error && pages.length === 0 && (
+              {!sdkLoading && !sdkError && pages.length === 0 && (
                 <div className="py-8 text-center">
                   <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -297,7 +242,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
             </div>
 
             {/* Actions */}
-            {!isLoading && !success && pages.length > 0 && (
+            {!sdkLoading && !success && pages.length > 0 && (
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={handleClose}

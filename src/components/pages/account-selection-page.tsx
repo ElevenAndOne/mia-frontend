@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useSession, AccountMapping } from '../../contexts/session-context'
-import { apiFetch } from '../../utils/api'
+import { usePlatform, useSessionSDK } from '../../hooks/useMiaSDK'
 
 interface AccountSelectionPageProps {
   onAccountSelected: () => void
@@ -16,24 +16,10 @@ interface MCCAccount {
 }
 
 // Unused interface - kept for potential future use
-// interface GoogleAdsAccount {
-//   customer_id: string
-//   descriptive_name: string
-//   manager: boolean
-// }
-
 const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPageProps) => {
-  const {
-    availableAccounts,
-    selectedAccount: _selectedAccount,
-    selectAccount,
-    isLoading,
-    error,
-    clearError,
-    user,
-    refreshAccounts,
-    sessionId
-  } = useSession()
+  const { sessionId, availableAccounts, selectAccount, isLoading: isSessionLoading, user } = useSession()
+  const { getGoogleAdAccounts, getIndustries } = usePlatform()
+  const { selectMCC } = useSessionSDK()
 
   const [isSelecting, setIsSelecting] = useState(false)
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
@@ -45,7 +31,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
   // Fetch MCC accounts and industries on mount
   useEffect(() => {
-    fetchMCCAccounts()
+    fetchMCCs()
     fetchIndustries()
   }, [])
 
@@ -59,30 +45,29 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   // Load available accounts after MCC is selected
   useEffect(() => {
     if (selectedMCC && availableAccounts.length === 0) {
-      refreshAccounts()
+      // No need to refresh accounts manually, SDK will handle it
     }
   }, [selectedMCC])
 
-  const fetchMCCAccounts = async () => {
+  const fetchMCCs = async () => {
+    if (!user?.email) {
+      console.log('[ACCOUNT-SELECTION] No user email found')
+      return
+    }
+
     try {
       setIsFetchingMCCs(true)
 
-      const response = await apiFetch('/api/oauth/google/ad-accounts', {
-        method: 'GET',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch accounts')
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        setMccAccounts(data.mcc_accounts || [])
-        console.log('[ACCOUNT-SELECTION] Fetched MCCs:', data.mcc_accounts)
+      const result = await getGoogleAdAccounts()
+      
+      if (result.success && result.data) {
+        setMccAccounts(result.data)
+        console.log('[ACCOUNT-SELECTION] Fetched', result.data.length, 'MCC accounts')
+      } else {
+        console.error('[ACCOUNT-SELECTION] Failed to fetch MCC accounts:', result.error)
       }
     } catch (err) {
-      console.error('[ACCOUNT-SELECTION] Error fetching MCCs:', err)
+      console.error('[ACCOUNT-SELECTION] Error fetching MCC accounts:', err)
     } finally {
       setIsFetchingMCCs(false)
     }
@@ -90,17 +75,14 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
   const fetchIndustries = async () => {
     try {
-      const response = await apiFetch('/api/industries', {
-        method: 'GET',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch industries')
+      const result = await getIndustries()
+      
+      if (result.success && result.data) {
+        setIndustries(result.data)
+        console.log('[ACCOUNT-SELECTION] Fetched', result.data.length, 'industries')
+      } else {
+        console.error('[ACCOUNT-SELECTION] Failed to fetch industries:', result.error)
       }
-
-      const data = await response.json()
-      setIndustries(data.industries || [])
-      console.log('[ACCOUNT-SELECTION] Fetched industries:', data.industries)
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error fetching industries:', err)
     }
@@ -112,22 +94,8 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
       // Store selected MCC in session
       if (sessionId) {
-        const response = await apiFetch('/api/session/select-mcc', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            session_id: sessionId,
-            mcc_id: mccId
-          }),
-        })
-
-        if (!response.ok) {
-          console.error('[ACCOUNT-SELECTION] Failed to store MCC selection')
-        } else {
-          console.log('[ACCOUNT-SELECTION] Stored MCC selection:', mccId)
-        }
+        const result = await selectMCC(mccId)
+        console.log('[ACCOUNT-SELECTION] MCC selection result:', result)
       }
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error selecting MCC:', err)
@@ -422,7 +390,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="px-6 pb-4 flex-shrink-0"
+          className="px-6 pb-4 shrink-0"
         >
           <label className="block text-sm font-medium text-gray-700 mb-2">
             What industry are you in?
@@ -447,7 +415,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 pt-2 flex-shrink-0"
+          className="p-6 pt-2 shrink-0"
         >
           <button
             onClick={() => handleAccountSelect(localSelectedAccount)}

@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { apiFetch } from '../../utils/api'
-import { useSession } from '../../contexts/session-context'
+import { useBrevo } from '../../hooks/useMiaSDK'
+import { BrevoAccount } from '../../sdk/services/brevo'
 
-interface BrevoAccount {
-  id: number
-  account_name: string
-  is_primary: boolean
-  created_at: string
-}
 
 interface BrevoAccountSelectorProps {
   isOpen: boolean
@@ -17,12 +11,10 @@ interface BrevoAccountSelectorProps {
 }
 
 const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { getAccounts, selectAccount, disconnectAccount, isLoading: sdkLoading, error: sdkError, clearError } = useBrevo()
   const [accounts, setAccounts] = useState<BrevoAccount[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSwitching, setIsSwitching] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   // Fetch available Brevo accounts when modal opens
@@ -33,86 +25,47 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
   }, [isOpen])
 
   const fetchBrevoAccounts = async () => {
-    setIsLoading(true)
-    setError(null)
+    clearError()
+    
+    const result = await getAccounts()
+    
+    if (result.success && result.data) {
+      setAccounts(result.data)
 
-    try {
-      const response = await apiFetch(`/api/oauth/brevo/accounts?session_id=${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.accounts) {
-        setAccounts(data.accounts)
-
-        // Pre-select currently primary account
-        const primaryAccount = data.accounts.find((acc: BrevoAccount) => acc.is_primary)
-        if (primaryAccount) {
-          setSelectedAccountId(primaryAccount.id)
-          console.log('[BREVO-ACCOUNT-SELECTOR] Pre-selected primary account:', primaryAccount.id)
-        } else if (data.accounts.length === 1) {
-          // Auto-select if only one account
-          setSelectedAccountId(data.accounts[0].id)
-        }
-      } else {
-        setError(data.error || 'Failed to fetch Brevo accounts')
+      // Pre-select currently primary account
+      const primaryAccount = result.data.find((acc: BrevoAccount) => acc.is_primary)
+      if (primaryAccount) {
+        setSelectedAccountId(primaryAccount.id)
+        console.log('[BREVO-ACCOUNT-SELECTOR] Pre-selected primary account:', primaryAccount.id)
+      } else if (result.data.length === 1) {
+        // Auto-select if only one account
+        setSelectedAccountId(result.data[0].id)
       }
-    } catch (err: any) {
-      console.error('Error fetching Brevo accounts:', err)
-      setError('Failed to load Brevo accounts. Please try again.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleSwitchAccount = async () => {
     if (!selectedAccountId) {
-      setError('Please select an account')
       return
     }
 
     setIsSwitching(true)
-    setError(null)
+    console.log('[BREVO-ACCOUNT-SELECTOR] Switching to Brevo account:', selectedAccountId)
 
-    try {
-      console.log('[BREVO-ACCOUNT-SELECTOR] Switching to Brevo account:', selectedAccountId)
+    const result = await selectAccount(selectedAccountId)
 
-      const response = await apiFetch('/api/oauth/brevo/select-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default'
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          brevo_id: selectedAccountId
-        })
-      })
+    if (result.success) {
+      console.log('[BREVO-ACCOUNT-SELECTOR] Successfully switched account')
+      setSuccess(true)
 
-      const data = await response.json()
-
-      if (data.success) {
-        console.log('[BREVO-ACCOUNT-SELECTOR] Successfully switched to:', data.account_name)
-        setSuccess(true)
-
-        // Show success for 1 second, then close and refresh
-        setTimeout(() => {
-          onSuccess?.()
-          onClose()
-        }, 1000)
-      } else {
-        setError(data.message || 'Failed to switch Brevo account')
-      }
-    } catch (err: any) {
-      console.error('Error switching Brevo account:', err)
-      setError('Failed to switch account. Please try again.')
-    } finally {
-      setIsSwitching(false)
+      // Show success for 1 second, then close and refresh
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+      }, 1000)
     }
+
+    setIsSwitching(false)
   }
 
   const handleRemoveAccount = async (brevoId: number, accountName: string) => {
@@ -120,23 +73,12 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
       return
     }
 
-    try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}&brevo_id=${brevoId}`, {
-        method: 'DELETE'
-      })
+    const result = await disconnectAccount(brevoId)
 
-      const data = await response.json()
-
-      if (data.success) {
-        console.log('[BREVO-ACCOUNT-SELECTOR] Removed Brevo account:', brevoId)
-        // Refresh list
-        await fetchBrevoAccounts()
-      } else {
-        setError(data.message || 'Failed to remove Brevo account')
-      }
-    } catch (err: any) {
-      console.error('Error removing Brevo account:', err)
-      setError('Failed to remove account. Please try again.')
+    if (result.success) {
+      console.log('[BREVO-ACCOUNT-SELECTOR] Removed Brevo account:', brevoId)
+      // Refresh list
+      await fetchBrevoAccounts()
     }
   }
 
@@ -178,15 +120,15 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
 
           {/* Content */}
           <div className="p-6 overflow-y-auto max-h-96">
-            {isLoading ? (
+            {sdkLoading ? (
               <div className="text-center py-8">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                 <p className="mt-2 text-sm text-gray-600">Loading Brevo accounts...</p>
               </div>
-            ) : error && accounts.length === 0 ? (
+            ) : sdkError && accounts.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-red-500 mb-2">⚠️</div>
-                <p className="text-sm text-gray-600">{error}</p>
+                <p className="text-sm text-gray-600">{sdkError}</p>
                 <button
                   onClick={fetchBrevoAccounts}
                   className="mt-4 px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800"
@@ -252,9 +194,9 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
               </div>
             )}
 
-            {error && accounts.length > 0 && (
+            {sdkError && accounts.length > 0 && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="text-sm text-red-600">{sdkError}</p>
               </div>
             )}
 
@@ -266,7 +208,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
           </div>
 
           {/* Footer */}
-          {!isLoading && accounts.length > 0 && (
+          {!sdkLoading && accounts.length > 0 && (
             <div className="p-6 border-t border-gray-200 flex gap-3">
               <button
                 onClick={onClose}

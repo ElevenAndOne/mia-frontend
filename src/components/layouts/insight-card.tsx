@@ -51,7 +51,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({
             <p className="text-sm text-gray-600 mt-1">{label}</p>
           </div>
           {icon && (
-            <div className="ml-3 flex-shrink-0">
+            <div className="ml-3 shrink-0">
               {icon}
             </div>
           )}
@@ -80,7 +80,7 @@ export const InsightList: React.FC<InsightListProps> = ({ insights, className = 
         <ul className="space-y-2">
           {insights.map((insight, index) => (
             <li key={index} className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
+              <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-blue-500 mt-2" />
               <span className="text-sm text-gray-700">{insight}</span>
             </li>
           ))}

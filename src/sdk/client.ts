@@ -23,7 +23,6 @@ export class APIClient {
    */
   private getDefaultBaseURL(): string {
     // Check environment variable first
-    // @ts-expect-error - Vite env types
     const apiUrl = import.meta?.env?.VITE_API_BASE_URL
     if (apiUrl) {
       return apiUrl

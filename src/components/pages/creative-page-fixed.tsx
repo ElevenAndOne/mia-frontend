@@ -1,9 +1,9 @@
-import { apiFetch } from '../../utils/api'
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import BottomQuestionBar from '../common/bottom-question-bar'
 import CreativeDatePicker from '../common/creative-date-picker'
 import { useSession } from '../../contexts/session-context'
+import { useCreative } from '../../hooks/useMiaSDK'
 
 // Import all the logic from the old CreativePage
 interface CreativePageProps {
@@ -46,6 +46,7 @@ interface Message {
 
 const CreativePageFixed = ({ onBack }: CreativePageProps) => {
   const { sessionId, selectedAccount, logout, availableAccounts, selectAccount } = useSession()
+  const { analyzeCreative } = useCreative()
 
   const [activeCategory, setActiveCategory] = useState<Category>('grow')
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
@@ -427,30 +428,11 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
         throw new Error('No session or account selected. Please log in and select an account.')
       }
 
-
-      // Use session-based account switching - backend will resolve account IDs
-      const response = await apiFetch('/api/creative-analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: question,
-          category: activeCategory,
-          session_id: sessionId,
-          user_id: '106540664695114193744',
-          google_ads_id: selectedAccount?.google_ads_id,
-          ga4_property_id: selectedAccount?.ga4_property_id,
-          start_date: selectedDateRange.start,
-          end_date: selectedDateRange.end
-        }),
+      // Use SDK creative analysis with session-based account switching
+      const result = await analyzeCreative(question, {
+        startDate: selectedDateRange.start,
+        endDate: selectedDateRange.end
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
 
       // Replace loading message with actual response
       setMessagesByCategory(prev => ({
@@ -459,7 +441,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
           msg.id === loadingMessage.id 
             ? {
                 ...msg,
-                content: result.success ? result.creative_response : `Error: ${result.error}`,
+                content: result.success ? (result.data?.analysis || 'Analysis completed') : `Error: ${result.error}`,
                 isLoading: false
               }
             : msg
@@ -560,7 +542,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>
       {/* Header - Full width */}
-      <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
+      <div className="flex items-center px-4 py-3 relative z-20 shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
           <div className="relative">
             <button
@@ -838,16 +820,16 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
                 <div className={`text-sm w-full ${message.type === 'question' ? '' : 'prose prose-sm'}`}>
                   <ReactMarkdown
                     components={{
-                      h1: ({ children }) => <h2 className={`text-base font-semibold mb-3 mt-4 break-words ${message.type === 'question' ? 'text-white' : 'text-gray-900'}`}>{children}</h2>,
-                      h2: ({ children }) => <h3 className={`text-sm font-semibold mb-2 mt-4 break-words ${message.type === 'question' ? 'text-white' : 'text-gray-900'}`}>{children}</h3>,
-                      h3: ({ children }) => <h4 className={`text-sm font-medium mb-2 mt-3 break-words ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>{children}</h4>,
+                      h1: ({ children }) => <h2 className={`text-base font-semibold mb-3 mt-4 wrap-break-word ${message.type === 'question' ? 'text-white' : 'text-gray-900'}`}>{children}</h2>,
+                      h2: ({ children }) => <h3 className={`text-sm font-semibold mb-2 mt-4 wrap-break-word ${message.type === 'question' ? 'text-white' : 'text-gray-900'}`}>{children}</h3>,
+                      h3: ({ children }) => <h4 className={`text-sm font-medium mb-2 mt-3 wrap-break-word ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>{children}</h4>,
                       ul: ({ children }) => <ul className="list-none space-y-1 mb-3 ml-0">{children}</ul>,
                       ol: ({ children }) => <ol className="list-none space-y-1 mb-3 ml-0">{children}</ol>,
-                      li: ({ children }) => <li className={`text-sm break-words flex items-start ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>
-                        <span className="text-gray-400 mr-2 mt-0.5 flex-shrink-0">•</span>
+                      li: ({ children }) => <li className={`text-sm wrap-break-word flex items-start ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>
+                        <span className="text-gray-400 mr-2 mt-0.5 shrink-0">•</span>
                         <span className="flex-1">{children}</span>
                       </li>,
-                      p: ({ children }) => <p className={`text-sm ${message.type === 'question' ? 'mb-0' : 'mb-3'} leading-relaxed break-words ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>{children}</p>,
+                      p: ({ children }) => <p className={`text-sm ${message.type === 'question' ? 'mb-0' : 'mb-3'} leading-relaxed wrap-break-word ${message.type === 'question' ? 'text-white' : 'text-gray-800'}`}>{children}</p>,
                       strong: ({ children }) => <span className={`font-semibold ${message.type === 'question' ? 'text-white' : 'text-gray-900'}`}>{children}</span>
                     }}
                   >

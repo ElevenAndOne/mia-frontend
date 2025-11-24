@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
-import { apiFetch } from '../utils/api'
+import { getGlobalSDK } from '../sdk'
 import { useSession } from './session-context'
 
 export interface AnalyticsData {
@@ -130,23 +130,32 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children }
     }))
 
     try {
-      const endpoint = getApiEndpoint(type)
-      const response = await apiFetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question,
-          context: type,
-          user: user?.email || 'anonymous',
-          selected_account: selectedAccount,
-          user_id: user?.google_user_id || '',
-          date_range: dateRange
-        }),
-      })
-
-      const result = await response.json()
+      const sdk = getGlobalSDK()
+      
+      // Call the appropriate SDK method based on analytics type
+      let result
+      const requestData = {
+        question,
+        context: type,
+        user: user?.email || 'anonymous',
+        selected_account: selectedAccount as any,
+        user_id: user?.google_user_id || '',
+        date_range: dateRange
+      }
+      
+      switch (type) {
+        case 'growth':
+          result = await sdk.analytics.getGrowthData(requestData)
+          break
+        case 'optimize':
+          result = await sdk.analytics.getImproveData(requestData)
+          break
+        case 'protect':
+          result = await sdk.analytics.getFixData(requestData)
+          break
+        default:
+          throw new Error(`Unknown analytics type: ${type}`)
+      }
 
       if (result.success && result.data) {
         const analyticsData = result.data as AnalyticsData

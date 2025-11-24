@@ -1,4 +1,4 @@
-import { apiFetch } from '../utils/api'
+import { getGlobalSDK } from '../sdk'
 /**
  * Utility to clear all Meta authentication data from browser storage
  */
@@ -49,16 +49,9 @@ export const logoutMeta = async (sessionId?: string): Promise<void> => {
     // Clear browser storage first
     clearMetaAuth()
 
-    // Call server logout endpoint
-    const response = await apiFetch('/api/oauth/meta/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-ID': sessionId || sessionStorage.getItem('session_id') || ''
-      }
-    })
-
-    await response.json()
+    // Call server logout endpoint via SDK
+    const sdk = getGlobalSDK()
+    await sdk.session.logoutMeta()
 
   } catch (error) {
     console.error('[LOGOUT-META] Error during Meta logout:', error)

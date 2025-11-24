@@ -1,5 +1,5 @@
-import { apiFetch } from '../../utils/api'
 import { useState, useEffect } from 'react'
+import { useCreative } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
 import DateRangeSelector from '../common/date-range-selector'
 
@@ -97,9 +97,8 @@ interface InsightsResponse {
 
 const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsightsProps) => {
   const { sessionId, selectedAccount } = useSession()
+  const { generateOptimizeInsights, isLoading: sdkLoading, error: sdkError, clearError } = useCreative()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
 
@@ -140,42 +139,14 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
   }, [selectedDateRange])  // Only re-fetch when date range changes
 
   const fetchOptimizeInsights = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      if (!sessionId) {
-        throw new Error('No session found. Please log in again.')
-      }
-
-      const response = await apiFetch('/api/quick-insights/optimize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          date_range: selectedDateRange
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-
-      if (result.success) {
-        setInsights(result)
-      } else {
-        throw new Error(result.error || 'Failed to fetch insights')
-      }
-
-    } catch (error) {
-      console.error('[OPTIMIZE-INSIGHTS] Error:', error)
-      setError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
+    clearError()
+    
+    const result = await generateOptimizeInsights('Generate optimization insights', {
+      date_range: selectedDateRange
+    })
+    
+    if (result.success && result.data) {
+      setInsights(result.data)
     }
   }
 
@@ -190,7 +161,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
       />
 
       {/* Header */}
-      <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
+      <div className="flex items-center px-4 py-3 relative z-20 shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
           {/* Empty space for symmetry */}
         </div>
@@ -259,16 +230,16 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
 
       {/* Content Area */}
       <div className="flex-1 bg-white p-6 overflow-y-auto rounded-t-2xl -mt-4">
-        {isLoading && (
+        {sdkLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-pink-600 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-600 text-sm">Analysing optimisation opportunities...</p>
           </div>
         )}
 
-        {error && (
+        {sdkError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800 text-sm">{error}</p>
+            <p className="text-red-600 mb-4">{sdkError}</p>
             <button
               onClick={fetchOptimizeInsights}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
@@ -278,7 +249,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
           </div>
         )}
 
-        {insights && !isLoading && !error && (
+        {insights && !sdkLoading && !sdkError && (
           <div className="space-y-6">
             {/* Key Insights */}
             <div>
@@ -288,7 +259,7 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
                     {/* Number + Title */}
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                      <div className="shrink-0 w-7 h-7 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
                         {index + 1}
                       </div>
                       <h3 className="flex-1 text-base font-semibold text-gray-900 leading-snug">{insight.title}</h3>

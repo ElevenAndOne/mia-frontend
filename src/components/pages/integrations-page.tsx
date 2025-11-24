@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../contexts/session-context'
-import { apiFetch } from '../../utils/api'
+import { usePlatform, useHubSpot, useBrevo, useSessionSDK } from '../../hooks/useMiaSDK'
 import MetaAccountSelector from '../selectors/meta-account-selector'
 import FacebookPageSelector from '../selectors/facebook-page-selector'
 import GA4PropertySelector from '../selectors/ga4-property-selector'
@@ -49,7 +49,10 @@ interface PlatformStatus {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated } = useSession()
+  const { sessionId, selectedAccount, availableAccounts, refreshAvailableAccounts, isMetaAuthenticated } = useSession()
+  const { getAvailableAccounts, getHubSpotAuthStatus, getBrevoAuthStatus, getMetaCredentialsStatus } = usePlatform()
+  const { getAuthURL, completeOAuth } = useSessionSDK()
+  const { saveApiKey: saveBrevoApiKey, disconnectAccount: disconnectBrevo } = useBrevo()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connectingId, setConnectingId] = useState<string | null>(null)
@@ -213,11 +216,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       console.log('[IntegrationsPage] Fetching platform status with sessionId:', sessionId)
 
       // Get available accounts to check what's connected
-      const accountsResponse = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': sessionId || ''
-        }
-      })
+      const accountsResult = await getAvailableAccounts()
+
+      if (!accountsResult.success || !accountsResult.data) {
+        throw new Error(accountsResult.error || 'Failed to fetch accounts')
+      }
+
+      const accountsData = accountsResult.data
+      console.log('[IntegrationsPage] Accounts data:', accountsData)
+
+      // Cache GA4 properties for later use
+      if (accountsData.ga4_properties) {
+        setGa4Properties(accountsData.ga4_properties)
+      }
 
       // Track account-specific linking (for showing checkmarks)
       let googleLinked = false
@@ -225,36 +236,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       let ga4Linked = false
       let brevoLinked = false
 
-      if (accountsResponse.ok) {
-        const accountsData = await accountsResponse.json()
-        console.log('[IntegrationsPage] Accounts data:', accountsData)
+      if (accountsData.accounts && accountsData.accounts.length > 0) {
+        // Find the selected account instead of just using first account
+        const account = selectedAccount
+          ? accountsData.accounts.find((acc: any) => acc.id === selectedAccount.id)
+          : accountsData.accounts[0]
 
-        // Cache GA4 properties for later use
-        if (accountsData.ga4_properties) {
-          setGa4Properties(accountsData.ga4_properties)
-        }
+        if (account) {
+          console.log('[IntegrationsPage] Checking connections for account:', account.name)
+          googleLinked = !!account.google_ads_id
+          metaLinked = !!account.meta_ads_id
+          ga4Linked = !!account.ga4_property_id
+          brevoLinked = !!account.brevo_api_key
 
-        if (accountsData.accounts && accountsData.accounts.length > 0) {
-          // Find the selected account instead of just using first account
-          const account = selectedAccount
-            ? accountsData.accounts.find((acc: any) => acc.id === selectedAccount.id)
-            : accountsData.accounts[0]
+          // Store account data with facebook_page_id for FacebookPageSelector
+          setCurrentAccountData(account)
 
-          if (account) {
-            console.log('[IntegrationsPage] Checking connections for account:', account.name)
-            googleLinked = !!account.google_ads_id
-            metaLinked = !!account.meta_ads_id
-            ga4Linked = !!account.ga4_property_id
-            brevoLinked = !!account.brevo_api_key
-
-            // Store account data with facebook_page_id for FacebookPageSelector
-            setCurrentAccountData(account)
-
-            // Store linked GA4 properties
-            if (account.linked_ga4_properties) {
-              setLinkedGA4Properties(account.linked_ga4_properties)
-              console.log('[IntegrationsPage] Linked GA4 properties:', account.linked_ga4_properties)
-            }
+          // Store linked GA4 properties
+          if (account.linked_ga4_properties) {
+            setLinkedGA4Properties(account.linked_ga4_properties)
+            console.log('[IntegrationsPage] Linked GA4 properties:', account.linked_ga4_properties)
           }
         }
       }
@@ -262,41 +263,35 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Check HubSpot authentication status
       let hubspotConnected = false
       try {
-        const hubspotResponse = await apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`)
-        if (hubspotResponse.ok) {
-          const hubspotData = await hubspotResponse.json()
-          hubspotConnected = hubspotData.authenticated || false
-          console.log('[IntegrationsPage] HubSpot status:', hubspotData)
+        const hubspotResult = await getHubSpotAuthStatus()
+        if (hubspotResult.success && hubspotResult.data) {
+          hubspotConnected = hubspotResult.data.authenticated || false
         }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking HubSpot status:', error)
+      } catch (err) {
+        console.error('Failed to check HubSpot status:', err)
       }
 
       // Check Brevo authentication status
       let brevoConnected = false
       try {
-        const brevoResponse = await apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`)
-        if (brevoResponse.ok) {
-          const brevoData = await brevoResponse.json()
-          brevoConnected = brevoData.authenticated || false
-          console.log('[IntegrationsPage] Brevo status:', brevoData)
+        const brevoResult = await getBrevoAuthStatus()
+        if (brevoResult.success && brevoResult.data) {
+          brevoConnected = brevoResult.data.authenticated || false
         }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Brevo status:', error)
+      } catch (err) {
+        console.error('Failed to check Brevo status:', err)
       }
 
       // CRITICAL FIX (Nov 11): Check if Meta CREDENTIALS actually exist in database
       // Don't rely on isMetaAuthenticated from session (can be stale after DB clear)
       let metaHasCredentials = false
       try {
-        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
-        if (metaCredsResponse.ok) {
-          const metaCredsData = await metaCredsResponse.json()
-          metaHasCredentials = metaCredsData.has_credentials || false
-          console.log('[IntegrationsPage] Meta credentials status:', metaCredsData)
+        const metaResult = await getMetaCredentialsStatus()
+        if (metaResult.success && metaResult.data) {
+          metaHasCredentials = metaResult.data.has_credentials || false
         }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Meta credentials:', error)
+      } catch (err) {
+        console.error('Failed to check Meta credentials status:', err)
       }
 
       // Use GLOBAL authentication status for "connected", not account-specific linking
@@ -418,25 +413,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     try {
       console.log('[Brevo] Submitting API key for account:', selectedAccount.name)
 
-      // Use the NEW per-account endpoint (Nov 16 fix)
-      const response = await apiFetch('/api/oauth/brevo/save-api-key', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          api_key: brevoApiKey.trim(),
-          session_id: sessionId
-        })
-      })
+      const result = await saveBrevoApiKey(brevoApiKey, selectedAccount?.id)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to save API key')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save Brevo API key')
       }
 
-      const data = await response.json()
-      console.log('[Brevo] API key saved successfully:', data)
+      console.log('[Brevo] API key saved successfully:', result)
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
@@ -461,16 +444,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setBrevoError('')
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}`, {
-        method: 'DELETE'
-      })
+      const result = await disconnectBrevo()
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to disconnect Brevo')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to disconnect Brevo')
       }
 
-      console.log('[Brevo] Disconnected successfully')
+      console.log('[IntegrationsPage] Brevo disconnected successfully')
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
@@ -507,24 +487,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       let authUrl: string | null = null
 
       // Get auth URL based on platform
-      if (integrationId === 'google') {
-        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          authUrl = data.auth_url
-        }
-      } else if (integrationId === 'meta') {
-        const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          authUrl = data.auth_url
-        }
-      } else if (integrationId === 'hubspot') {
-        const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          authUrl = data.auth_url
-        }
+      const authResult = await getAuthURL(integrationId)
+      if (authResult.success && authResult.data) {
+        authUrl = authResult.data.auth_url
       }
 
       if (!authUrl) {
@@ -553,28 +518,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // For Meta/Google OAuth, call /complete endpoint to link credentials
           if (integrationId === 'meta' || integrationId === 'google') {
             try {
-              const completeUrl = integrationId === 'meta'
-                ? `/api/oauth/meta/complete`
-                : `/api/oauth/google/complete`
+              const completeResult = await completeOAuth(integrationId, authCode)
+              console.log(`${integrationId.toUpperCase()} OAuth completion response:`, completeResult)
 
-              console.log(`Calling ${completeUrl} with session_id:`, sessionId)
-
-              const completeResponse = await apiFetch(completeUrl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-Session-ID': sessionId || ''
-                },
-                body: JSON.stringify({ session_id: sessionId })
-              })
-
-              if (!completeResponse.ok) {
-                const errorText = await completeResponse.text()
-                console.error(`${integrationId} /complete failed:`, errorText)
-              } else {
-                const completeData = await completeResponse.json()
-                console.log(`${integrationId} /complete succeeded:`, completeData)
-
+              // For Meta, show account selector modal
+              if (integrationId === 'meta' && completeResult.success) {
+                console.log('[META-OAUTH] Meta OAuth complete, showing account selector')
+                setShowMetaAccountSelector(true)
+                setConnectingId(null)
+                return // Don't refresh connections yet - wait for account selection
                 // For Meta, show account selector modal
                 if (integrationId === 'meta' && completeData.success) {
                   console.log('[META-OAUTH] Meta OAuth complete, showing account selector')
@@ -614,7 +566,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       style={{ fontFamily: 'Figtree, sans-serif', maxWidth: '393px', margin: '0 auto' }}
     >
       {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-100 flex-shrink-0">
+      <div className="px-4 py-4 border-b border-gray-100 shrink-0">
         <button onClick={onBack} className="flex items-center gap-2 text-gray-600 mb-3">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -686,7 +638,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       }`}
                     >
                       <div className="flex items-start gap-3 mb-2">
-                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
                           <img src={integration.icon} alt="" className="w-10 h-10" />
                         </div>
                         <div className="flex-1 min-w-0 overflow-hidden">
@@ -695,7 +647,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           </div>
                           <p className="text-xs text-gray-500 truncate">{integration.description}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                           {/* Gear icon for Google Ads to switch accounts */}
                           {integration.id === 'google' && (
                             <button
@@ -852,7 +804,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div key={integration.id} className="bg-white border border-gray-200 rounded-xl p-3 overflow-hidden">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0">
                         <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -863,7 +815,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     <button
                       onClick={() => handleConnect(integration.id)}
                       disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
+                      className={`px-4 py-2 rounded-lg font-medium text-xs shrink-0 ${
                         integration.id === 'linkedin' || integration.id === 'tiktok'
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : connectingId === integration.id
@@ -895,7 +847,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -912,7 +864,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -927,7 +879,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
             <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>

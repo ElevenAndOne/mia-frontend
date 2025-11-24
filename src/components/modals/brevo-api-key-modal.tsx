@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { apiFetch } from '../../utils/api'
+import { useBrevo } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
 
 interface BrevoApiKeyModalProps {
@@ -10,59 +10,29 @@ interface BrevoApiKeyModalProps {
 
 const BrevoApiKeyModal = ({ isOpen, onClose, onSuccess }: BrevoApiKeyModalProps) => {
   const { sessionId } = useSession()
+  const { saveApiKey, isLoading, error: sdkError, clearError } = useBrevo()
   const [apiKey, setApiKey] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSubmit = async () => {
     if (!apiKey.trim()) {
-      setError('Please enter your Brevo API key')
+      setError('Please enter a valid Brevo API key')
       return
     }
 
-    if (!sessionId) {
-      setError('No active session found. Please refresh the page.')
-      return
-    }
-
-    setIsLoading(true)
+    clearError()
     setError(null)
 
-    try {
-      const response = await apiFetch('/api/brevo/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          api_key: apiKey,
-        }),
-      })
+    const result = await saveApiKey(apiKey)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to connect Brevo')
-      }
-
-      const result = await response.json()
-
-      if (result.success) {
-        setApiKey('')
-        onSuccess()
-        onClose()
-      } else {
-        throw new Error('Failed to connect Brevo')
-      }
-    } catch (err) {
-      console.error('[BREVO-MODAL] Connection error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to connect Brevo. Please check your API key.')
-    } finally {
-      setIsLoading(false)
+    if (result.success) {
+      onSuccess?.()
+      onClose()
+      setApiKey('')
+    } else {
+      setError(result.error || 'Failed to connect to Brevo. Please check your API key.')
     }
   }
 
@@ -92,7 +62,7 @@ const BrevoApiKeyModal = ({ isOpen, onClose, onSuccess }: BrevoApiKeyModalProps)
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={(e) => e.preventDefault()} className="p-6">
           <div className="mb-6">
             <label htmlFor="brevo-api-key" className="block text-sm font-medium text-gray-700 mb-2">
               Brevo API Key
@@ -135,9 +105,9 @@ const BrevoApiKeyModal = ({ isOpen, onClose, onSuccess }: BrevoApiKeyModalProps)
             </div>
           </div>
 
-          {error && (
+          {(error || sdkError) && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-red-600 text-sm mt-2">{error || sdkError}</p>
             </div>
           )}
 
@@ -152,7 +122,8 @@ const BrevoApiKeyModal = ({ isOpen, onClose, onSuccess }: BrevoApiKeyModalProps)
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={isLoading || !apiKey.trim()}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >

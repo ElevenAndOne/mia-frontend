@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { apiFetch } from '../utils/api'
+import { getGlobalSDK } from '../sdk'
 
 export interface AccountMapping {
   id: string
@@ -110,23 +110,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Define refreshAccounts before useEffect that uses it
   const refreshAccounts = useCallback(async (): Promise<void> => {
     try {
-      const response = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': state.sessionId || ''
-        }
-      })
+      const sdk = getGlobalSDK()
+      const result = await sdk.session.getAvailableAccounts()
 
-      if (response.ok) {
-        const data = await response.json()
+      if (result.success && result.data) {
         setState(prev => ({
           ...prev,
-          availableAccounts: data.accounts || []
+          availableAccounts: result.data.accounts || [],
+          error: null
         }))
       } else {
-        console.error('[SESSION] Accounts API failed:', response.status, response.statusText)
+        setState(prev => ({ ...prev, error: result.error || 'Failed to fetch accounts' }))
       }
     } catch (error) {
-      console.error('[SESSION] Failed to refresh accounts:', error)
+      console.error('[SESSION] Error refreshing accounts:', error)
+      setState(prev => ({ ...prev, error: 'Failed to refresh accounts' }))
     }
   }, [state.sessionId])
 
@@ -143,10 +141,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           console.log('[SESSION] Found stored session, validating...', storedSessionId)
 
           // Validate session with backend
-          const response = await apiFetch(`/api/session/validate?session_id=${storedSessionId}`)
+          const sdk = getGlobalSDK()
+          const result = await sdk.session.validateSession(storedSessionId)
 
-          if (response.ok) {
-            const data = await response.json()
+          if (result.success && result.data) {
+            const data = result.data
 
             if (data.valid) {
               console.log('[SESSION] Session valid, restoring state')

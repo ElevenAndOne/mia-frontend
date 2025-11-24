@@ -112,7 +112,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
         style={{ willChange: 'transform' }}
       >
         <source src="/videos/Mia_AppIntroVideo_v03.1.mp4" type="video/mp4" />
-        <div className="w-full h-full bg-gradient-to-br from-purple-600 via-blue-600 to-pink-600">
+        <div className="w-full h-full bg-linear-to-br from-purple-600 via-blue-600 to-pink-600">
           {/* Fallback gradient if video fails to load */}
           <div className="flex items-center justify-center h-full">
             <div className="text-white text-4xl font-bold">Mia</div>

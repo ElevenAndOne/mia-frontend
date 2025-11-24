@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getGlobalSDK } from '../../sdk'
-import { useSession } from '../../contexts/session-context'
+import { useHubSpot } from '../../hooks/useMiaSDK'
 
 interface HubSpotAccount {
   id: number
@@ -16,16 +15,16 @@ interface HubSpotAccountSelectorProps {
   onSuccess?: () => void
 }
 
-const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSelectorProps) => {
-  const sdk = getGlobalSDK()
+const HubSpotAccountSelectorRefactored = ({ isOpen, onClose, onSuccess }: HubSpotAccountSelectorProps) => {
+  // Use the custom hook - much cleaner!
+  const { getAccounts, selectAccount, disconnectAccount, isLoading, error, clearError } = useHubSpot()
+  
   const [accounts, setAccounts] = useState<HubSpotAccount[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSwitching, setIsSwitching] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Fetch available HubSpot accounts when modal opens
+  // Fetch accounts when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchHubSpotAccounts()
@@ -33,67 +32,47 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   }, [isOpen])
 
   const fetchHubSpotAccounts = async () => {
-    setIsLoading(true)
-    setError(null)
+    clearError()
+    
+    const result = await getAccounts()
+    
+    if (result.success && result.data) {
+      setAccounts(result.data)
 
-    try {
-      const result = await sdk.hubspot.getAccounts()
-
-      if (result.success && result.data) {
-        setAccounts(result.data)
-
-        // Pre-select currently primary account
-        const primaryAccount = result.data.find((acc: HubSpotAccount) => acc.is_primary)
-        if (primaryAccount) {
-          setSelectedAccountId(primaryAccount.id)
-          console.log('[HUBSPOT-ACCOUNT-SELECTOR] Pre-selected primary account:', primaryAccount.id)
-        } else if (result.data.length === 1) {
-          // Auto-select if only one account
-          setSelectedAccountId(result.data[0].id)
-        }
-      } else {
-        setError(result.error || 'Failed to fetch HubSpot accounts')
+      // Pre-select currently primary account
+      const primaryAccount = result.data.find((acc: HubSpotAccount) => acc.is_primary)
+      if (primaryAccount) {
+        setSelectedAccountId(primaryAccount.id)
+        console.log('[HUBSPOT-ACCOUNT-SELECTOR] Pre-selected primary account:', primaryAccount.id)
+      } else if (result.data.length === 1) {
+        // Auto-select if only one account
+        setSelectedAccountId(result.data[0].id)
       }
-    } catch (err: any) {
-      console.error('Error fetching HubSpot accounts:', err)
-      setError('Failed to load HubSpot accounts. Please try again.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleSwitchAccount = async () => {
     if (!selectedAccountId) {
-      setError('Please select an account')
       return
     }
 
     setIsSwitching(true)
-    setError(null)
+    console.log('[HUBSPOT-ACCOUNT-SELECTOR] Switching to HubSpot account:', selectedAccountId)
 
-    try {
-      console.log('[HUBSPOT-ACCOUNT-SELECTOR] Switching to HubSpot account:', selectedAccountId)
+    const result = await selectAccount(selectedAccountId)
 
-      const result = await sdk.hubspot.selectAccount(selectedAccountId)
+    if (result.success) {
+      console.log('[HUBSPOT-ACCOUNT-SELECTOR] Successfully switched to account')
+      setSuccess(true)
 
-      if (result.success) {
-        console.log('[HUBSPOT-ACCOUNT-SELECTOR] Successfully switched to account')
-        setSuccess(true)
-
-        // Show success for 1 second, then close and refresh
-        setTimeout(() => {
-          onSuccess?.()
-          onClose()
-        }, 1000)
-      } else {
-        setError(result.error || 'Failed to switch HubSpot account')
-      }
-    } catch (err: any) {
-      console.error('Error switching HubSpot account:', err)
-      setError('Failed to switch account. Please try again.')
-    } finally {
-      setIsSwitching(false)
+      // Show success for 1 second, then close and refresh
+      setTimeout(() => {
+        onSuccess?.()
+        onClose()
+      }, 1000)
     }
+
+    setIsSwitching(false)
   }
 
   const handleRemoveAccount = async (hubspotId: number, accountName: string) => {
@@ -101,19 +80,12 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
       return
     }
 
-    try {
-      const result = await sdk.hubspot.disconnectAccount(hubspotId)
+    const result = await disconnectAccount(hubspotId)
 
-      if (result.success) {
-        console.log('[HUBSPOT-ACCOUNT-SELECTOR] Removed HubSpot account:', hubspotId)
-        // Refresh list
-        await fetchHubSpotAccounts()
-      } else {
-        setError(result.error || 'Failed to remove HubSpot account')
-      }
-    } catch (err: any) {
-      console.error('Error removing HubSpot account:', err)
-      setError('Failed to remove account. Please try again.')
+    if (result.success) {
+      console.log('[HUBSPOT-ACCOUNT-SELECTOR] Removed HubSpot account:', hubspotId)
+      // Refresh list
+      await fetchHubSpotAccounts()
     }
   }
 
@@ -271,4 +243,4 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   )
 }
 
-export default HubSpotAccountSelector
+export default HubSpotAccountSelectorRefactored

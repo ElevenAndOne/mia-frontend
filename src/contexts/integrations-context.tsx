@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
-import { apiFetch } from '../utils/api'
+import { getGlobalSDK } from '../sdk'
 import { useSession } from './session-context'
 
 export interface PlatformStatus {
@@ -78,9 +78,9 @@ export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ chil
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refreshIntegrations = useCallback(async () => {
+  const refreshIntegrations = useCallback(async (): Promise<void> => {
     if (!sessionId || !selectedAccount) {
-      console.log('[INTEGRATIONS] Cannot refresh - missing session or account')
+      setError('Missing session or account')
       return
     }
 
@@ -88,23 +88,14 @@ export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ chil
     setError(null)
 
     try {
-      // Fetch platform status
-      const statusResponse = await apiFetch('/api/integrations/platform-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({
-          account_id: selectedAccount.id
-        })
-      })
+      const sdk = getGlobalSDK()
+      const result = await sdk.platform.getPlatformStatus()
 
-      if (!statusResponse.ok) {
+      if (!result.success || !result.data) {
         throw new Error('Failed to fetch platform status')
       }
 
-      const statusData = await statusResponse.json()
+      const statusData = result.data
 
       // Update platforms state
       setPlatforms({
@@ -176,18 +167,10 @@ export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ chil
     }
 
     try {
-      const response = await apiFetch(`/api/integrations/${platformId}/connect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({
-          account_id: selectedAccount.id
-        })
-      })
+      const sdk = getGlobalSDK()
+      const result = await sdk.platform.connectPlatform(platformId, selectedAccount.id)
 
-      if (!response.ok) {
+      if (!result.success) {
         throw new Error(`Failed to connect ${platformId}`)
       }
 
@@ -208,18 +191,10 @@ export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ chil
     }
 
     try {
-      const response = await apiFetch(`/api/integrations/${platformId}/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({
-          account_id: selectedAccount.id
-        })
-      })
+      const sdk = getGlobalSDK()
+      const result = await sdk.platform.disconnectPlatform(platformId, selectedAccount.id)
 
-      if (!response.ok) {
+      if (!result.success) {
         throw new Error(`Failed to disconnect ${platformId}`)
       }
 
