@@ -20,7 +20,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
       console.log('[VIDEO-INTRO] Returning user detected - showing login modal immediately')
       setShowLoginModal(true)
     }
-  }, [hasSeenIntro])
+  }, [hasSeenIntro, showLoginModal])
 
   useEffect(() => {
     const video = videoRef.current
@@ -97,7 +97,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
         clearTimeout(modalTimerRef.current)
       }
     }
-  }, []) // Remove videoPhase dependency to prevent effect re-running
+  }, [hasSeenIntro, modalTimerSet, showLoginModal, videoPhase]) // track relevant state for handlers
 
   return (
     <div className="relative w-full h-full overflow-hidden">

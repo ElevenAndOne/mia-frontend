@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useBrevo } from '../../hooks/useMiaSDK'
-import { useSession } from '../../contexts/session-context'
 
 interface BrevoApiKeyModalProps {
   isOpen: boolean
@@ -9,7 +8,6 @@ interface BrevoApiKeyModalProps {
 }
 
 const BrevoApiKeyModal = ({ isOpen, onClose, onSuccess }: BrevoApiKeyModalProps) => {
-  const { sessionId } = useSession()
   const { saveApiKey, isLoading, error: sdkError, clearError } = useBrevo()
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState<string | null>(null)

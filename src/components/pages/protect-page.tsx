@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getSDK } from '../../utils/sdk'
 
 interface ProtectData {
@@ -37,23 +37,9 @@ interface ProtectPageProps {
 const ProtectPage = ({ onBack, question = "What needs protecting?", isLoading = false, data }: ProtectPageProps) => {
   const [protectData, setProtectData] = useState<ProtectData | null>(data || null)
   const [loading, setLoading] = useState(isLoading)
-  const [error, setError] = useState<string | null>(null)
 
-  // Fetch data when component mounts if not provided
-  useEffect(() => {
-    if (data) {
-      // Use pre-loaded data
-      setProtectData(data)
-      setLoading(false)
-    } else if (question) {
-      // Fallback to fetch if no pre-loaded data
-      fetchProtectData()
-    }
-  }, [data, question])
-
-  const fetchProtectData = async () => {
+  const fetchProtectData = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const sdk = getSDK()
       
@@ -71,19 +57,26 @@ const ProtectPage = ({ onBack, question = "What needs protecting?", isLoading = 
       
       if (response.success && response.data) {
         setProtectData(response.data as ProtectData)
-        setError(null)
       } else {
-        setError('Unable to load protection data. Please try again.')
         setProtectData(getErrorFallbackData())
       }
     } catch (error) {
       console.error('💥 [PROTECT-PAGE] Failed to fetch protect data:', error)
-      setError('Connection error. Please check your connection.')
       setProtectData(getErrorFallbackData())
     } finally {
       setLoading(false)
     }
-  }
+  }, [question])
+
+  // Fetch data when component mounts if not provided
+  useEffect(() => {
+    if (data) {
+      setProtectData(data)
+      setLoading(false)
+    } else if (question) {
+      fetchProtectData()
+    }
+  }, [data, fetchProtectData, question])
 
   // Error fallback data
   const getErrorFallbackData = (): ProtectData => ({

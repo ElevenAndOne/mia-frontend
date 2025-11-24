@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCreative } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
 import DateRangeSelector from '../common/date-range-selector'
 
 // Helper component to render text with markdown links and campaign deep links
-const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
+const MarkdownText = ({ text, className = '', googleAdsId: _googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
   const convertDeepLink = (linkUrl: string): string => {
     // Handle DEEPLINK: format for campaign deep links
     if (linkUrl.startsWith('DEEPLINK:')) {
@@ -96,7 +96,7 @@ interface InsightsResponse {
 }
 
 const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { selectedAccount } = useSession()
   const { generateGrowthInsights, isLoading: sdkLoading, error: sdkError, clearError } = useCreative()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
@@ -134,6 +134,18 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
+  const fetchGrowInsights = useCallback(async () => {
+    clearError()
+    
+    const result = await generateGrowthInsights('Generate growth insights', {
+      dateRange: selectedDateRange
+    })
+    
+    if (result.success && result.data) {
+      setInsights(result.data as InsightsResponse)
+    }
+  }, [clearError, generateGrowthInsights, selectedDateRange])
+
   // Fetch insights on mount and when date range changes
   useEffect(() => {
     let isCancelled = false
@@ -149,19 +161,7 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
     return () => {
       isCancelled = true
     }
-  }, [selectedDateRange])  // Only re-fetch when date range changes
-
-  const fetchGrowInsights = async () => {
-    clearError()
-    
-    const result = await generateGrowthInsights('Generate growth insights', {
-      date_range: selectedDateRange
-    })
-    
-    if (result.success && result.data) {
-      setInsights(result.data)
-    }
-  }
+  }, [fetchGrowInsights])  // Only re-fetch when date range changes
 
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>
@@ -268,7 +268,7 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Growth Opportunities</h2>
               <div className="space-y-4">
-                {insights.insights.map((insight: any, index: number) => (
+                {insights.insights.map((insight: Insight, index: number) => (
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
                     {/* Number + Title */}
                     <div className="flex items-start gap-3">
@@ -303,12 +303,6 @@ const GrowInsights = ({ onBack, initialDateRange = '30_days' }: GrowInsightsProp
                       </div>
                     )}
 
-                    {/* Counter-View - HIDDEN */}
-                    {false && insight.counterView && (
-                      <div className="pl-10 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
-                        <p className="text-sm text-gray-700 leading-relaxed"><span className="font-semibold text-amber-700">Consider:</span> {insight.counterView}</p>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

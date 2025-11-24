@@ -137,7 +137,7 @@ export class AccountsService {
   /**
    * Fetch Google Ads accounts using MCP tool
    */
-  private async fetchGoogleAdsAccounts(): Promise<any> {
+  private async fetchGoogleAdsAccounts(): Promise<unknown> {
     const response = await this.client.post('/api/mcp/google-ads-accounts', {
       tool: 'get_google_ads_accounts'
     })
@@ -152,7 +152,7 @@ export class AccountsService {
   /**
    * Fetch GA4 properties using MCP tool
    */
-  private async fetchGA4Properties(): Promise<any> {
+  private async fetchGA4Properties(): Promise<unknown> {
     const response = await this.client.post('/api/mcp/ga4-properties', {
       tool: 'get_ga4_properties'
     })
@@ -167,13 +167,20 @@ export class AccountsService {
   /**
    * Process raw Google Ads data into GoogleAdsAccount objects
    */
-  private processGoogleAdsData(rawData: any): GoogleAdsAccount[] {
-    if (!rawData || !Array.isArray(rawData.accounts)) {
+  private processGoogleAdsData(rawData: unknown): GoogleAdsAccount[] {
+    if (
+      !rawData ||
+      typeof rawData !== 'object' ||
+      !('accounts' in rawData) ||
+      !Array.isArray((rawData as { accounts?: RawGoogleAdsAccount[] }).accounts)
+    ) {
       console.warn('❌ [ACCOUNTS-SERVICE] Invalid Google Ads data structure')
       return []
     }
 
-    return rawData.accounts
+    const accounts = (rawData as { accounts: RawGoogleAdsAccount[] }).accounts
+
+    return accounts
       .filter((account: RawGoogleAdsAccount) => !account.error)
       .map((account: RawGoogleAdsAccount) => ({
         id: `ads_${account.customer_id}`,
@@ -188,13 +195,20 @@ export class AccountsService {
   /**
    * Process raw GA4 data into GA4Account objects
    */
-  private processGA4Data(rawData: any): GA4Account[] {
-    if (!rawData || !Array.isArray(rawData.properties)) {
+  private processGA4Data(rawData: unknown): GA4Account[] {
+    if (
+      !rawData ||
+      typeof rawData !== 'object' ||
+      !('properties' in rawData) ||
+      !Array.isArray((rawData as { properties?: RawGA4Property[] }).properties)
+    ) {
       console.warn('❌ [ACCOUNTS-SERVICE] Invalid GA4 data structure')
       return []
     }
 
-    return rawData.properties.map((property: RawGA4Property) => ({
+    const properties = (rawData as { properties: RawGA4Property[] }).properties
+
+    return properties.map((property: RawGA4Property) => ({
       id: `ga4_${property.property_id}`,
       name: property.display_name || 'Unnamed Property',
       property_id: property.property_id,

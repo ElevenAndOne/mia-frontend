@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCreative } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
 import DateRangeSelector from '../common/date-range-selector'
@@ -7,15 +7,9 @@ interface SummaryInsightsProps {
   onBack?: () => void
 }
 
-interface SummaryResponse {
-  success: boolean
-  type: string
-  summary: string
-}
-
 const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   const { generateProtectInsights, isLoading: sdkLoading, error: sdkError, clearError } = useCreative()
-  const { sessionId, selectedAccount } = useSession()
+  const { selectedAccount } = useSession()
   const [summary, setSummary] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
@@ -52,21 +46,21 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
-  useEffect(() => {
-    fetchSummary()
-  }, [selectedDateRange])
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     clearError()
     
     const result = await generateProtectInsights('Generate summary insights', {
-      date_range: selectedDateRange
+      dateRange: selectedDateRange
     })
     
     if (result.success && result.data) {
-      setSummary(result.data)
+      setSummary(typeof result.data === 'string' ? result.data : null)
     }
-  }
+  }, [clearError, generateProtectInsights, selectedDateRange])
+
+  useEffect(() => {
+    fetchSummary()
+  }, [fetchSummary])
 
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>

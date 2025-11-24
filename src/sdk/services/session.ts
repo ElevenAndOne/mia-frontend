@@ -6,19 +6,31 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, GoogleAuthStatus, MetaAuthStatus, AccountCollections } from '../types'
+import { APIResponse, GoogleAuthStatus, MetaAuthStatus, AvailableAccountsResponse, MarketingAccount } from '../types'
 
 export interface SessionValidationResponse {
   valid: boolean
+  user?: {
+    name: string
+    email: string
+    picture_url?: string
+    user_id?: string
+    google_user_id?: string
+    has_seen_intro?: boolean
+  }
   user_info?: {
     email: string
     name?: string
     picture?: string
     google_user_id: string
   }
-  selected_account?: any
+  selected_account?: MarketingAccount
   authenticated?: boolean
   meta_authenticated?: boolean
+  platforms?: {
+    google?: boolean
+    meta?: boolean
+  }
 }
 
 export interface OAuthUrlResponse {
@@ -34,7 +46,13 @@ export interface OAuthCompleteResponse {
     picture?: string
     google_user_id: string
   }
-  selected_account?: any
+  selected_account?: MarketingAccount
+}
+
+export interface OAuthPopupResultData {
+  user_info?: GoogleAuthStatus['user_info']
+  authenticated?: boolean
+  selected_account?: MarketingAccount
 }
 
 export class SessionService {
@@ -117,7 +135,7 @@ export class SessionService {
   /**
    * Complete Google OAuth flow with popup
    */
-  async loginGoogleWithPopup(): Promise<{ success: boolean; error?: string; data?: any }> {
+  async loginGoogleWithPopup(): Promise<{ success: boolean; error?: string; data?: OAuthPopupResultData }> {
     try {
       // Get auth URL
       const urlResult = await this.getGoogleAuthUrl()
@@ -187,7 +205,7 @@ export class SessionService {
                 }
               }, 500)
             }
-          } catch (error) {
+          } catch (_error) {
             clearInterval(pollTimer)
             resolve({
               success: false,
@@ -237,7 +255,7 @@ export class SessionService {
   /**
    * Complete Meta OAuth flow with popup
    */
-  async loginMetaWithPopup(): Promise<{ success: boolean; error?: string; data?: any }> {
+  async loginMetaWithPopup(): Promise<{ success: boolean; error?: string; data?: OAuthPopupResultData }> {
     try {
       // Get Meta auth URL
       const urlResult = await this.getMetaAuthUrl()
@@ -304,7 +322,7 @@ export class SessionService {
                 }
               }, 500)
             }
-          } catch (error) {
+          } catch (_error) {
             clearInterval(pollTimer)
             resolve({
               success: false,
@@ -326,14 +344,14 @@ export class SessionService {
   /**
    * Get available accounts for current session
    */
-  async getAvailableAccounts(): Promise<APIResponse<AccountCollections>> {
-    return this.client.get<AccountCollections>('/api/accounts/available')
+  async getAvailableAccounts(): Promise<APIResponse<AvailableAccountsResponse>> {
+    return this.client.get<AvailableAccountsResponse>('/api/accounts/available')
   }
 
   /**
    * Select an account for the current session
    */
-  async selectAccount(accountId: string, businessType?: string, industry?: string): Promise<APIResponse<any>> {
+  async selectAccount(accountId: string, businessType?: string, industry?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/session/select-account', {
       account_id: accountId,
       business_type: businessType,
@@ -344,7 +362,7 @@ export class SessionService {
   /**
    * Select MCC account for the current session
    */
-  async selectMCC(mccId: string, mccName?: string): Promise<APIResponse<any>> {
+  async selectMCC(mccId: string, mccName?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/session/select-mcc', {
       mcc_id: mccId,
       mcc_name: mccName
@@ -361,23 +379,22 @@ export class SessionService {
   /**
    * Complete OAuth authentication flow
    */
-  async completeOAuth(platform: string, authCode: string): Promise<APIResponse<any>> {
-    return this.client.post(`/api/oauth/${platform}/complete`, {
-      code: authCode
-    })
+  async completeOAuth(platform: string, authCode?: string): Promise<APIResponse<unknown>> {
+    const body = authCode ? { code: authCode } : undefined
+    return this.client.post(`/api/oauth/${platform}/complete`, body)
   }
 
   /**
    * Bypass login with user ID for session restoration
    */
-  async bypassLogin(userId: string): Promise<APIResponse<any>> {
+  async bypassLogin(userId: string): Promise<APIResponse<unknown>> {
     return this.client.post(`/api/oauth/bypass-login?user_id=${userId}`)
   }
 
   /**
    * Meta bypass login for session creation
    */
-  async metaBypassLogin(): Promise<APIResponse<any>> {
+  async metaBypassLogin(): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/meta/bypass-login')
   }
 

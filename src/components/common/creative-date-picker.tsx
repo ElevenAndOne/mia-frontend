@@ -10,7 +10,7 @@ interface CreativeDatePickerProps {
   onClose: () => void
 }
 
-const CreativeDatePicker = ({ isOpen, startDate, category, onDateChange, onClose }: CreativeDatePickerProps) => {
+const CreativeDatePicker = ({ isOpen, startDate, category, onDateChange }: CreativeDatePickerProps) => {
   // Internal temporary state for the picker (separate from parent's actual selected date)
   const [tempSelectedStartDate, setTempSelectedStartDate] = useState<string>(startDate)
 

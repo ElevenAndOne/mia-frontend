@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlatform } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
+import { MarketingAccount } from '../../sdk/types'
 
 interface GA4Property {
   property_id: string
@@ -20,7 +21,12 @@ interface GA4PropertySelectorProps {
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
-  currentAccountData?: any
+  currentAccountData?: {
+    id: string
+    name?: string
+    ga4?: GA4Property[]
+    linkedProperties?: LinkedGA4Property[]
+  }
   ga4Properties?: GA4Property[]
   linkedProperties?: LinkedGA4Property[]
 }
@@ -36,7 +42,25 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, c
   const [success, setSuccess] = useState(false)
 
   // Use currentAccountData directly or fetch if needed
-  const accountToUse = currentAccountData || selectedAccount
+  const accountToUse = (currentAccountData || selectedAccount) as (MarketingAccount | GA4PropertySelectorProps['currentAccountData']) | null
+
+  const fetchGA4Properties = useCallback(async () => {
+    clearError()
+    
+    const result = await getAvailableAccounts()
+    
+    if (result.success && result.data) {
+      const ga4Data = result.data as { ga4?: GA4Property[]; ga4_properties?: GA4Property[] }
+      const ga4List = ga4Data.ga4 || ga4Data.ga4_properties
+
+      if (ga4List && Array.isArray(ga4List)) {
+        const sortedProperties = ga4List.sort((a: GA4Property, b: GA4Property) =>
+          a.display_name.localeCompare(b.display_name)
+        )
+        setProperties(sortedProperties)
+      }
+    }
+  }, [clearError, getAvailableAccounts])
 
   useEffect(() => {
     if (isOpen) {
@@ -47,10 +71,10 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, c
         setProperties(sortedProperties)
 
         if (currentAccountData.linkedProperties && currentAccountData.linkedProperties.length > 0) {
-          const linkedIds = currentAccountData.linkedProperties.map((p: any) => p.property_id)
+          const linkedIds = currentAccountData.linkedProperties.map((p) => p.property_id)
           setSelectedPropertyIds(linkedIds)
 
-          const primary = currentAccountData.linkedProperties.find((p: any) => p.is_primary)
+          const primary = currentAccountData.linkedProperties.find((p) => p.is_primary)
           if (primary) {
             setPrimaryPropertyId(primary.property_id)
           }
@@ -59,21 +83,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, c
         fetchGA4Properties()
       }
     }
-  }, [isOpen, currentAccountData])
-
-  const fetchGA4Properties = async () => {
-    clearError()
-    
-    const result = await getAvailableAccounts()
-    
-    if (result.success && result.data && result.data.ga4) {
-      // Sort properties alphabetically by display name (A-Z)  
-      const sortedProperties = result.data.ga4.sort((a: GA4Property, b: GA4Property) =>
-        a.display_name.localeCompare(b.display_name)
-      )
-      setProperties(sortedProperties)
-    }
-  }
+  }, [currentAccountData, fetchGA4Properties, isOpen])
 
   const togglePropertySelection = (propertyId: string) => {
     setSelectedPropertyIds(prev => {

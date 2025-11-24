@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useHubSpot } from '../../hooks/useMiaSDK'
 
@@ -24,14 +24,7 @@ const HubSpotAccountSelectorRefactored = ({ isOpen, onClose, onSuccess }: HubSpo
   const [isSwitching, setIsSwitching] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Fetch accounts when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchHubSpotAccounts()
-    }
-  }, [isOpen])
-
-  const fetchHubSpotAccounts = async () => {
+  const fetchHubSpotAccounts = useCallback(async () => {
     clearError()
     
     const result = await getAccounts()
@@ -49,7 +42,14 @@ const HubSpotAccountSelectorRefactored = ({ isOpen, onClose, onSuccess }: HubSpo
         setSelectedAccountId(result.data[0].id)
       }
     }
-  }
+  }, [clearError, getAccounts])
+
+  // Fetch accounts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchHubSpotAccounts()
+    }
+  }, [fetchHubSpotAccounts, isOpen])
 
   const handleSwitchAccount = async () => {
     if (!selectedAccountId) {

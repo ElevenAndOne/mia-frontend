@@ -10,6 +10,71 @@ This log tracks changes made by agents across multiple chat threads.
 
 ## Entries
 
+### [COMPLETED] - 2025-11-25
+
+**Author**: Cascade  
+**Date**: November 25, 2025  
+**Version**: 4.3.3-fix-getsdk-import-error
+
+- **Fixed `Cannot find name 'getSDK'` error in main-view-copy.tsx**:
+  - Added missing import: `import { getGlobalSDK } from '../../sdk'`
+  - Corrected function call from `getSDK()` to `getGlobalSDK()` on line 122
+  - Added `ChatResponse` type import and proper response typing with `sdk.client.post<ChatResponse>()`
+  - Fixed TypeScript errors related to `claude_response` property access
+  - Simplified response handling with nullish coalescing operator to ensure type safety
+  - This resolves all TypeScript compilation errors preventing the chat functionality from working
+
+### [COMPLETED] - 2025-11-24
+
+**Author**: Cascade  
+**Date**: November 24, 2025  
+**Version**: 4.3.2-comprehensive-typescript-fixes
+
+- **Fixed multiple TypeScript errors across insight components**:
+  - `grow-insights.tsx`: Fixed type error with `result.data` assignment and corrected `date_range` → `dateRange` property name
+  - `optimize-insights.tsx`: Fixed type error with `result.data` assignment and corrected `date_range` → `dateRange` property name  
+  - `protect-insights.tsx`: Fixed undefined `sessionId` variable, updated to use modern SDK hook pattern, removed redundant state
+  - `summary-insights.tsx`: Fixed type error with `result.data` assignment using type guard
+
+- **Standardized SDK usage patterns**: All insight components now use consistent `useCreative` hook pattern instead of mixed direct SDK calls
+
+- **Remaining work**: TypeScript compilation shows 39 additional errors primarily in session context, integrations context, and selector files that require broader architectural changes beyond simple type fixes
+
+### [COMPLETED] - 2025-11-24
+
+**Author**: Cascade  
+**Date**: November 24, 2025  
+**Version**: 4.3.1-typescript-fix-summary-insights
+
+- Fixed TypeScript error in `summary-insights.tsx` where `result.data` (type `unknown`) was being passed directly to `setSummary()` expecting `string | null`
+- Added type guard to safely check if `result.data` is a string before setting summary state
+- Maintains type safety while handling cases where API returns unexpected data types
+
+### [COMPLETED] - 2025-11-24
+
+**Author**: Codex  
+**Date**: November 24, 2025  
+**Version**: 4.3.0-unused-any-cleanup
+
+- Removed unused session props/locals across modals and pages (Brevo/Figma, main view, creative/insight pages) and deleted dead hidden blocks to silence unused-variable noise.
+- Tightened typings by replacing `any` with concrete SDK/domain types (MarketingAccount, GA4Account, ChatResponse, OAuth popup data, etc.) across SDK services, selectors, analytics context, and creative services.
+- Simplified selectors and services by typing account data instead of `any`, cleaned legacy `utils/api` consumer, and dropped redundant state in optimize/protect flows plus stray empty blocks.
+- Lint now only reports hook dependency/Fast Refresh warnings; unused-variable and `any` cases addressed.  
+- Verified `npm run lint` (warnings remain for deps), `npm run build` not rerun in this pass.
+
+### [COMPLETED] - 2025-11-24
+
+**Author**: Codex  
+**Date**: November 24, 2025  
+**Version**: 4.2.0-critical-flow-fixes
+
+**Stabilized SDK Migration Regressions**:
+- Removed duplicate methods in `sdk/services/platform.ts`, normalized `getAvailableAccounts`/`validateAccountSetup`, and aligned MCC typing.
+- Fixed session/account flows by wiring industry selection, injecting missing session errors, and adding the restored `utils/api.ts` helper used by `session-context`.
+- Repaired integrations + GA4 selectors to use the normalized account response, handled Meta OAuth completion safely, and relaxed Brevo disconnect typing.
+- Hardened UI helpers against optional account fields across creative/main/account selection pages.
+- Verified with `npx tsc --noEmit`, `npm run build` (success), and reran `npm run lint` (warnings remain from preexisting items).
+
 ### [COMPLETED] - 2025-11-24
 
 **Author**: Cascade  

@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getGlobalSDK } from '../../sdk'
-import { useSession } from '../../contexts/session-context'
 
 interface HubSpotAccount {
   id: number
@@ -25,14 +24,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Fetch available HubSpot accounts when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchHubSpotAccounts()
-    }
-  }, [isOpen])
-
-  const fetchHubSpotAccounts = async () => {
+  const fetchHubSpotAccounts = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -54,13 +46,20 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
       } else {
         setError(result.error || 'Failed to fetch HubSpot accounts')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching HubSpot accounts:', err)
-      setError('Failed to load HubSpot accounts. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to load HubSpot accounts. Please try again.')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [sdk])
+
+  // Fetch available HubSpot accounts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchHubSpotAccounts()
+    }
+  }, [fetchHubSpotAccounts, isOpen])
 
   const handleSwitchAccount = async () => {
     if (!selectedAccountId) {
@@ -88,9 +87,9 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
       } else {
         setError(result.error || 'Failed to switch HubSpot account')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error switching HubSpot account:', err)
-      setError('Failed to switch account. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to switch account. Please try again.')
     } finally {
       setIsSwitching(false)
     }
@@ -111,9 +110,9 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
       } else {
         setError(result.error || 'Failed to remove HubSpot account')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error removing HubSpot account:', err)
-      setError('Failed to remove account. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to remove account. Please try again.')
     }
   }
 

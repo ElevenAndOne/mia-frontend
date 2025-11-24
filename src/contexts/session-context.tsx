@@ -1,20 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
+import { apiFetch } from '../utils/api'
+import { MarketingAccount } from '../sdk/types'
 
-export interface AccountMapping {
-  id: string
-  name: string
-  google_ads_id: string
-  ga4_property_id: string
-  meta_ads_id?: string
-  facebook_page_id?: string
-  facebook_page_name?: string
-  brevo_api_key?: string
-  brevo_account_name?: string
-  business_type: string
-  color: string
-  display_name: string
-}
+export type AccountMapping = MarketingAccount
 
 export interface UserProfile {
   name: string
@@ -61,7 +50,7 @@ export interface SessionActions {
   logoutMeta: () => Promise<void>
 
   // Account selection actions
-  selectAccount: (accountId: string) => Promise<boolean>
+  selectAccount: (accountId: string, industry?: string) => Promise<boolean>
   refreshAccounts: () => Promise<void>
 
   // Utility actions
@@ -113,10 +102,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const sdk = getGlobalSDK()
       const result = await sdk.session.getAvailableAccounts()
 
-      if (result.success && result.data) {
+      if (result.success) {
         setState(prev => ({
           ...prev,
-          availableAccounts: result.data.accounts || [],
+          availableAccounts: result.data?.accounts || [],
           error: null
         }))
       } else {
@@ -126,7 +115,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       console.error('[SESSION] Error refreshing accounts:', error)
       setState(prev => ({ ...prev, error: 'Failed to refresh accounts' }))
     }
-  }, [state.sessionId])
+  }, [])
 
   // Initialize session on mount - check for existing session first
   useEffect(() => {
@@ -150,6 +139,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             if (data.valid) {
               console.log('[SESSION] Session valid, restoring state')
 
+              const restoredUser = data.user
               // Restore auth state from validated session
               setState(prev => ({
                 ...prev,
@@ -157,12 +147,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 isAuthenticated: data.platforms?.google || false,
                 isMetaAuthenticated: data.platforms?.meta || false,  // ✅ Restore Meta auth state!
                 hasSeenIntro: data.user?.has_seen_intro || false,  // ✅ CRITICAL: Restore has_seen_intro!
-                user: {
-                  name: data.user.name,
-                  email: data.user.email,
-                  picture_url: data.user.picture_url,
-                  google_user_id: data.user.user_id
-                },
+                user: restoredUser ? {
+                  name: restoredUser.name,
+                  email: restoredUser.email,
+                  picture_url: restoredUser.picture_url || '',
+                  google_user_id: restoredUser.user_id || restoredUser.google_user_id || ''
+                } : null,
                 selectedAccount: data.selected_account ? {
                   id: data.selected_account.id,
                   google_ads_id: data.selected_account.google_ads_id,
@@ -177,8 +167,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }))
 
               // ✅ FIX: Store last user ID on session restore
-              if (data.user.user_id) {
-                localStorage.setItem('mia_last_user_id', data.user.user_id)
+              if (restoredUser?.user_id) {
+                localStorage.setItem('mia_last_user_id', restoredUser.user_id)
               }
 
               console.log('[SESSION] Restored auth state: Google=' + (data.platforms?.google || false) + ', Meta=' + (data.platforms?.meta || false))
@@ -401,7 +391,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     try {
 
-      const requestBody: any = {
+      const requestBody: { account_id: string; session_id: string; industry?: string } = {
         account_id: accountId,
         session_id: state.sessionId
       }

@@ -8,7 +8,7 @@ interface FigmaLoginModalProps {
 }
 
 const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
-  const { login, loginMeta, isLoading: sessionLoading, error, sessionId, checkExistingAuth, refreshAccounts, isAuthenticated, isMetaAuthenticated } = useSession()
+  const { login, loginMeta, checkExistingAuth, refreshAccounts, isAuthenticated, isMetaAuthenticated } = useSession()
   const { bypassLogin, metaBypassLogin } = useSessionSDK()
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)

@@ -29,7 +29,7 @@ export const GrowthPageRefactored = ({ onBack, question = "Where can we grow?" }
     }
 
     loadData()
-  }, [dateRange.selectedRange, question])
+  }, [dateRange.selectedRange, fetchAnalytics, question, setLoading])
 
   // Fallback data for loading/error states
   const displayData = growthData || {

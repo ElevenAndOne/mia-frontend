@@ -92,8 +92,6 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
       const success = await selectAccount(accountId)
 
       if (success) {
-        const newAccount = availableAccounts.find(acc => acc.id === accountId)
-
         // Clear chat messages when switching accounts
         setMessagesByCategory({
           grow: [],
@@ -120,7 +118,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
   }
 
   // Get account icon helper function
-  const getAccountIcon = (businessType: string) => {
+  const getAccountIcon = (businessType?: string) => {
     switch (businessType?.toLowerCase()) {
       case 'engineering': return '⚙️'
       case 'food': return '🍒'
@@ -385,27 +383,6 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
     
     // Move to next available question
     setCurrentQuestionIndex(prev => prev + 1)
-  }
-
-  // Shared analysis logic
-  // Refresh functionality - reset to initial state
-  const handleRefresh = () => {
-    
-    // Reset current tab only - don't change activeCategory
-    setIsAnalyzing(false)
-    setQuestionFlow('initial')
-    setCurrentQuestionIndex(0)
-    
-    // Clear current category's messages and asked questions
-    setMessagesByCategory(prev => ({
-      ...prev,
-      [activeCategory]: []
-    }))
-    
-    setAskedQuestionsByCategory(prev => ({
-      ...prev,
-      [activeCategory]: []
-    }))
   }
 
   // Sign out functionality
@@ -697,7 +674,6 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
 
             if (onBack) {
               onBack()
-            } else {
             }
           }}
           onTouchStart={(e) => {

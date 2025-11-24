@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useSession } from '../../contexts/session-context'
-import { getSDK } from '../../utils/sdk'
+import { getGlobalSDK } from '../../sdk'
+import { ChatResponse } from '../../sdk/services/chat'
 import BrevoConnectionModal from '../modals/brevo-connection-modal'
 import DateRangeSelector from '../common/date-range-selector'
 
 interface MainViewProps {
   onLogout: () => void
-  onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: any) => void
+  onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: unknown) => void
   onCreativeClick?: () => void
   onIntegrationsClick?: () => void
   onSummaryQuickClick?: () => void
@@ -43,11 +44,10 @@ const formatDateRangeDisplay = (dateRange: string): string => {
   return '90d'
 }
 
-const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
+const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick: _onQuestionClick, onCreativeClick: _onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
-  const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null) // Track which question is loading
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
   const [showAccountSelector, setShowAccountSelector] = useState(false) // New state for account selection popout
   const [isChatLoading, setIsChatLoading] = useState(false) // Track chat loading state
@@ -68,8 +68,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       const success = await selectAccount(accountId)
 
       if (success) {
-        const newAccount = availableAccounts.find(acc => acc.id === accountId)
-
         // Clear any existing chat messages when switching accounts
         setChatMessages([])
 
@@ -91,7 +89,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     }
   }
 
-  const getAccountIcon = (businessType: string) => {
+  const getAccountIcon = (businessType?: string) => {
     switch (businessType?.toLowerCase()) {
       case 'food':
         return '🍎'
@@ -102,30 +100,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       default:
         return '🏢'
     }
-  }
-
-  const starterQuestions = [
-    { text: "Where can we grow?", color: "#A2FAE0", dotColor: "#A2FAE0" },
-    { text: "What can we improve?", color: "#A7D3FF", dotColor: "#A7D3FF" },  
-    { text: "What needs fixing?", color: "#FFC5B0", dotColor: "#FFC5B0" }
-  ]
-
-  // Dynamic API URL - works for both desktop and mobile ngrok, context-aware
-  const getApiUrl = (context: 'growth' | 'improve' | 'fix') => {
-    const endpointMap = {
-      'growth': 'growth-data',
-      'improve': 'improve-data', 
-      'fix': 'fix-data'
-    }
-    
-    const endpoint = endpointMap[context]
-    
-    // If running via ngrok or production, use relative URL (will be proxied)
-    if (window.location.hostname.includes('ngrok') || window.location.hostname !== 'localhost') {
-      return `/api/${endpoint}` // Relative URL for proxy
-    }
-    // Local development - direct backend call
-    return `/api/${endpoint}`
   }
 
   const handleChatSubmit = async (message: string) => {
@@ -146,9 +120,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     }, 100)
 
     try {
-      const sdk = getSDK()
+      const sdk = getGlobalSDK()
       
-      const response = await sdk.client.post('/api/chat', {
+      const response = await sdk.client.post<ChatResponse>('/api/chat', {
         message: message,
         session_id: sessionId,
         user_id: '106540664695114193744',
@@ -163,12 +137,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
       setIsChatLoading(false) // Remove loading state
 
-      const result = response.data as any
-      if (result && result.claude_response) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: result.claude_response }])
-      } else {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble processing your question. Please try again.' }])
-      }
+      const result = response.data
+      const assistantResponse = result?.claude_response || 'Sorry, I had trouble processing your question. Please try again.'
+      setChatMessages(prev => [...prev, { role: 'assistant', content: assistantResponse }])
       
       // Auto-scroll to show the top of Mia's response
       setTimeout(() => {
@@ -182,75 +153,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       console.error('[CHAT] Error:', error)
       setIsChatLoading(false)
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
-    }
-  }
-
-  const fetchQuestionData = async (context: 'growth' | 'improve' | 'fix', question: string) => {
-    try {
-      const sdk = getSDK()
-      
-      // Get selected account from SDK auth service
-      const session = sdk.auth.getSession()
-      const selectedAccount = session?.selectedAccount
-      
-      const apiUrl = getApiUrl(context)
-      const response = await sdk.client.post(apiUrl, {
-        question: question,
-        context: context,
-        user: 'trystin@11and1.com',
-        selected_account: selectedAccount,
-        user_id: '106540664695114193744'
-      })
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Question data request failed')
-      }
-
-      const result = response.data as any
-      
-      if (result.success && result.data) {
-        return result.data
-      }
-      return null
-    } catch (error) {
-      console.error(`❌ [MAIN-VIEW] Pre-fetch failed for ${context}:`, error)
-      return null
-    }
-  }
-
-  const handleQuestionClick = async (question: string) => {
-    // Start loading state
-    setLoadingQuestion(question)
-    
-    try {
-      // Fetch data FIRST, then navigate with data
-      let questionType: 'growth' | 'improve' | 'fix'
-      let data: any = null
-      
-      if (question === "Where can we grow?") {
-        questionType = 'growth'
-        data = await fetchQuestionData('growth', question)
-      } else if (question === "What can we improve?") {
-        questionType = 'improve' 
-        data = await fetchQuestionData('improve', question)
-      } else if (question === "What needs fixing?") {
-        questionType = 'fix'
-        data = await fetchQuestionData('fix', question)
-      } else {
-        throw new Error('Unknown question')
-      }
-      
-      // Only navigate AFTER data is ready
-      onQuestionClick(questionType, data)
-      
-    } catch (error) {
-      console.error('Question handling error:', error)
-      // Navigate anyway with fallback (no pre-fetched data)
-      if (question === "Where can we grow?") onQuestionClick('growth')
-      else if (question === "What can we improve?") onQuestionClick('improve')
-      else if (question === "What needs fixing?") onQuestionClick('fix')
-    } finally {
-      setLoadingQuestion(null) // Clear loading state
     }
   }
 
@@ -612,33 +514,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               </div>
             )}
 
-            {/* Creative Insights Button - HIDDEN but preserved for later use */}
-            {false && onCreativeClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '665px' }}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    // Small delay to show touch feedback before navigation
-                    if (onCreativeClick) {
-                      setTimeout(() => onCreativeClick(), 150)
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-black text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
-                  style={{
-                    minWidth: '190px',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
-                  </svg>
-                  Creative Insights
-                </button>
-              </div>
-            )}
 
           </>
         ) : (

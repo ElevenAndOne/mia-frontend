@@ -1,23 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useSession, AccountMapping } from '../../contexts/session-context'
 import { usePlatform, useSessionSDK } from '../../hooks/useMiaSDK'
+import { MCCAccount, Industry } from '../../sdk/services/platform'
 
 interface AccountSelectionPageProps {
   onAccountSelected: () => void
   onBack?: () => void
 }
 
-interface MCCAccount {
-  customer_id: string
-  descriptive_name: string
-  account_count: number
-  manager: boolean
-}
-
 // Unused interface - kept for potential future use
 const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPageProps) => {
-  const { sessionId, availableAccounts, selectAccount, isLoading: isSessionLoading, user } = useSession()
+  const { sessionId, availableAccounts, selectAccount, isLoading: isSessionLoading, user, error, clearError } = useSession()
   const { getGoogleAdAccounts, getIndustries } = usePlatform()
   const { selectMCC } = useSessionSDK()
 
@@ -25,31 +19,11 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
-  const [industries, setIndustries] = useState<string[]>([])
+  const [industries, setIndustries] = useState<Industry[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [localSelectedAccount, setLocalSelectedAccount] = useState<AccountMapping | null>(null)
 
-  // Fetch MCC accounts and industries on mount
-  useEffect(() => {
-    fetchMCCs()
-    fetchIndustries()
-  }, [])
-
-  // Auto-select MCC if there's only one
-  useEffect(() => {
-    if (mccAccounts.length === 1 && !selectedMCC) {
-      handleMCCSelect(mccAccounts[0].customer_id)
-    }
-  }, [mccAccounts])
-
-  // Load available accounts after MCC is selected
-  useEffect(() => {
-    if (selectedMCC && availableAccounts.length === 0) {
-      // No need to refresh accounts manually, SDK will handle it
-    }
-  }, [selectedMCC])
-
-  const fetchMCCs = async () => {
+  const fetchMCCs = useCallback(async () => {
     if (!user?.email) {
       console.log('[ACCOUNT-SELECTION] No user email found')
       return
@@ -71,9 +45,9 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     } finally {
       setIsFetchingMCCs(false)
     }
-  }
+  }, [getGoogleAdAccounts, user?.email])
 
-  const fetchIndustries = async () => {
+  const fetchIndustries = useCallback(async () => {
     try {
       const result = await getIndustries()
       
@@ -86,9 +60,9 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error fetching industries:', err)
     }
-  }
+  }, [getIndustries])
 
-  const handleMCCSelect = async (mccId: string) => {
+  const handleMCCSelect = useCallback(async (mccId: string) => {
     try {
       setSelectedMCC(mccId)
 
@@ -100,7 +74,27 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error selecting MCC:', err)
     }
-  }
+  }, [selectMCC, sessionId])
+
+  // Fetch MCC accounts and industries on mount
+  useEffect(() => {
+    fetchMCCs()
+    fetchIndustries()
+  }, [fetchMCCs, fetchIndustries])
+
+  // Auto-select MCC if there's only one
+  useEffect(() => {
+    if (mccAccounts.length === 1 && !selectedMCC) {
+      handleMCCSelect(mccAccounts[0].customer_id)
+    }
+  }, [handleMCCSelect, mccAccounts, selectedMCC])
+
+  // Load available accounts after MCC is selected
+  useEffect(() => {
+    if (selectedMCC && availableAccounts.length === 0) {
+      // No need to refresh accounts manually, SDK will handle it
+    }
+  }, [selectedMCC, availableAccounts.length])
 
   const handleAccountSelect = async (account: AccountMapping) => {
     if (isSelecting) return
@@ -115,7 +109,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     clearError()
 
     try {
-      const success = await selectAccount(account.id)
+    const success = await selectAccount(account.id, selectedIndustry)
 
       if (success) {
         onAccountSelected()
@@ -127,7 +121,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }
 
-  const getAccountIcon = (businessType: string) => {
+  const getAccountIcon = (businessType?: string) => {
     switch (businessType?.toLowerCase()) {
       case 'food':
         return '🍎'
@@ -140,7 +134,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }
 
-  if (isFetchingMCCs || (isLoading && availableAccounts.length === 0)) {
+  if (isFetchingMCCs || (isSessionLoading && availableAccounts.length === 0)) {
     return (
       <div className="w-full h-full bg-white flex items-center justify-center" style={{ maxWidth: '393px', margin: '0 auto' }}>
         <div className="text-center">
@@ -402,8 +396,8 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
           >
             <option value="">Select your industry</option>
             {industries.map((industry) => (
-              <option key={industry} value={industry}>
-                {industry}
+              <option key={industry.id || industry.name} value={industry.name}>
+                {industry.name}
               </option>
             ))}
           </select>

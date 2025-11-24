@@ -51,7 +51,7 @@ export class HubSpotService {
   /**
    * Select a HubSpot account
    */
-  async selectAccount(hubspotId: number): Promise<APIResponse<any>> {
+  async selectAccount(hubspotId: number): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/hubspot/select-account', null, {
       params: { hubspot_id: hubspotId.toString() }
     })
@@ -76,7 +76,7 @@ export class HubSpotService {
   /**
    * Save HubSpot API key for account
    */
-  async saveApiKey(apiKey: string, accountId?: string): Promise<APIResponse<any>> {
+  async saveApiKey(apiKey: string, accountId?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/hubspot/save-api-key', {
       api_key: apiKey,
       account_id: accountId

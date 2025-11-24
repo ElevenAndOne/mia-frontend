@@ -109,6 +109,27 @@ export interface AccountCollections {
   combined: CombinedAccount[]
 }
 
+export interface MarketingAccount {
+  id: string
+  name: string
+  google_ads_id?: string
+  ga4_property_id?: string
+  meta_ads_id?: string
+  facebook_page_id?: string
+  facebook_page_name?: string
+  brevo_api_key?: string
+  brevo_account_name?: string
+  business_type?: string
+  color?: string
+  display_name?: string
+  linked_ga4_properties?: string[]
+}
+
+export interface AvailableAccountsResponse {
+  accounts?: MarketingAccount[]
+  ga4_properties?: GA4Account[]
+}
+
 export interface AccountMappingRecord {
   id: number
   account_id: string

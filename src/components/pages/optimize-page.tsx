@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getSDK } from '../../utils/sdk'
 
 interface OptimizeData {
@@ -37,23 +37,9 @@ interface OptimizePageProps {
 const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = false, data }: OptimizePageProps) => {
   const [optimizeData, setOptimizeData] = useState<OptimizeData | null>(data || null)
   const [loading, setLoading] = useState(isLoading)
-  const [error, setError] = useState<string | null>(null)
 
-  // Fetch data when component mounts if not provided
-  useEffect(() => {
-    if (data) {
-      // Use pre-loaded data
-      setOptimizeData(data)
-      setLoading(false)
-    } else if (question) {
-      // Fallback to fetch if no pre-loaded data
-      fetchOptimizeData()
-    }
-  }, [data, question])
-
-  const fetchOptimizeData = async () => {
+  const fetchOptimizeData = useCallback(async () => {
     setLoading(true)
-    setError(null)
     try {
       const sdk = getSDK()
       
@@ -71,19 +57,26 @@ const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = f
       
       if (response.success && response.data) {
         setOptimizeData(response.data as OptimizeData)
-        setError(null)
       } else {
-        setError('Unable to load optimisation data. Please try again.')
         setOptimizeData(getErrorFallbackData())
       }
     } catch (error) {
       console.error('💥 [OPTIMIZE-PAGE] Failed to fetch optimize data:', error)
-      setError('Connection error. Please check your connection.')
       setOptimizeData(getErrorFallbackData())
     } finally {
       setLoading(false)
     }
-  }
+  }, [question])
+
+  // Fetch data when component mounts if not provided
+  useEffect(() => {
+    if (data) {
+      setOptimizeData(data)
+      setLoading(false)
+    } else if (question) {
+      fetchOptimizeData()
+    }
+  }, [data, fetchOptimizeData, question])
 
   // Error fallback data
   const getErrorFallbackData = (): OptimizeData => ({

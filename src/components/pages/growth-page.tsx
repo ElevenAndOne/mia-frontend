@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getSDK } from '../../utils/sdk'
 
 interface GrowthData {
@@ -39,19 +39,7 @@ const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false
   const [loading, setLoading] = useState(isLoading)
   const [, setError] = useState<string | null>(null)
 
-  // Fetch data when component mounts if not provided
-  useEffect(() => {
-    if (data) {
-      // Use pre-loaded data
-      setGrowthData(data)
-      setLoading(false)
-    } else if (question) {
-      // Fallback to fetch if no pre-loaded data
-      fetchGrowthData()
-    }
-  }, [data, question])
-
-  const fetchGrowthData = async () => {
+  const fetchGrowthData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -83,7 +71,17 @@ const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false
     } finally {
       setLoading(false)
     }
-  }
+  }, [question])
+
+  // Fetch data when component mounts if not provided
+  useEffect(() => {
+    if (data) {
+      setGrowthData(data)
+      setLoading(false)
+    } else if (question) {
+      fetchGrowthData()
+    }
+  }, [data, fetchGrowthData, question])
 
   // Error fallback data
   const getErrorFallbackData = (): GrowthData => ({

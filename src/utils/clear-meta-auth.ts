@@ -44,7 +44,7 @@ export const clearMetaAuth = (): void => {
 /**
  * Clear Meta auth and call the server logout endpoint
  */
-export const logoutMeta = async (sessionId?: string): Promise<void> => {
+export const logoutMeta = async (): Promise<void> => {
   try {
     // Clear browser storage first
     clearMetaAuth()

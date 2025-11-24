@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBrevo } from '../../hooks/useMiaSDK'
 import { BrevoAccount } from '../../sdk/services/brevo'
@@ -17,14 +17,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
   const [isSwitching, setIsSwitching] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Fetch available Brevo accounts when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchBrevoAccounts()
-    }
-  }, [isOpen])
-
-  const fetchBrevoAccounts = async () => {
+  const fetchBrevoAccounts = useCallback(async () => {
     clearError()
     
     const result = await getAccounts()
@@ -42,7 +35,14 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
         setSelectedAccountId(result.data[0].id)
       }
     }
-  }
+  }, [clearError, getAccounts])
+
+  // Fetch available Brevo accounts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchBrevoAccounts()
+    }
+  }, [fetchBrevoAccounts, isOpen])
 
   const handleSwitchAccount = async () => {
     if (!selectedAccountId) {

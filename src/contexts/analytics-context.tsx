@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { getGlobalSDK } from '../sdk'
 import { useSession } from './session-context'
+import { MarketingAccount } from '../sdk/types'
 
 export interface AnalyticsData {
   header: {
@@ -95,17 +96,6 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children }
     }
   })
 
-  const getApiEndpoint = (type: AnalyticsType): string => {
-    switch (type) {
-      case 'growth':
-        return '/api/growth-data'
-      case 'optimize':
-        return '/api/improve-data'
-      case 'protect':
-        return '/api/fix-data'
-    }
-  }
-
   const fetchAnalytics = useCallback(async (
     type: AnalyticsType,
     question: string,
@@ -138,7 +128,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children }
         question,
         context: type,
         user: user?.email || 'anonymous',
-        selected_account: selectedAccount as any,
+        selected_account: selectedAccount as unknown as MarketingAccount | undefined,
         user_id: user?.google_user_id || '',
         date_range: dateRange
       }

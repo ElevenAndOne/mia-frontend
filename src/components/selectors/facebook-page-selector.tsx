@@ -1,42 +1,36 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFacebook } from '../../hooks/useMiaSDK'
 import { FacebookPage } from '../../sdk/services/facebook'
 import { useSession } from '../../contexts/session-context'
+import { MarketingAccount } from '../../sdk/types'
 
 interface FacebookPageSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
-  currentAccountData?: any  // Fresh account data from IntegrationsPage
+  currentAccountData?: MarketingAccount & { linked_facebook_page?: string }
 }
 
 const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, currentAccountData }: FacebookPageSelectorProps) => {
   const { selectedAccount } = useSession()
   const { getPages, linkPage, isLoading: sdkLoading, error: sdkError, clearError } = useFacebook()
   // Use currentAccountData if provided (fresh data), otherwise fall back to selectedAccount
-  const accountToUse = currentAccountData || selectedAccount
+  const accountToUse = (currentAccountData || selectedAccount) as (FacebookPageSelectorProps['currentAccountData'] | MarketingAccount | null)
   const [pages, setPages] = useState<FacebookPage[]>([])
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
   const [isLinking, setIsLinking] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Fetch Facebook Pages when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchFacebookPages()
-    }
-  }, [isOpen])
-
-  const fetchFacebookPages = async () => {
+  const fetchFacebookPages = useCallback(async () => {
     clearError()
     
     const result = await getPages()
     
     if (result.success && result.data) {
       // Sort pages alphabetically by name (A-Z)
-      const sortedPages = result.data.sort((a: FacebookPage, b: FacebookPage) =>
+      const sortedPages = [...result.data].sort((a: FacebookPage, b: FacebookPage) =>
         a.name.localeCompare(b.name)
       )
 
@@ -48,7 +42,14 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
         console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected linked page:', accountToUse.linked_facebook_page)
       }
     }
-  }
+  }, [accountToUse, clearError, getPages])
+
+  // Fetch Facebook Pages when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchFacebookPages()
+    }
+  }, [fetchFacebookPages, isOpen])
 
   const handleLinkPage = async () => {
     if (!accountToUse) {

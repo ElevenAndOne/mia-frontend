@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse } from '../types'
+import { APIResponse, MarketingAccount } from '../types'
 
 export interface ChatMessage {
   id: string
@@ -21,7 +21,7 @@ export interface ChatRequest {
   session_id?: string
   user_id?: string
   context?: string
-  selected_account?: any
+  selected_account?: MarketingAccount
   conversation_id?: string
 }
 
@@ -30,7 +30,8 @@ export interface ChatResponse {
   response?: string
   message_id?: string
   conversation_id?: string
-  data?: any
+  data?: unknown
+  claude_response?: string
   error?: string
 }
 
@@ -67,7 +68,7 @@ export class ChatService {
     options: {
       userId?: string
       context?: string
-      selectedAccount?: any
+      selectedAccount?: MarketingAccount
       conversationId?: string
     } = {}
   ): Promise<APIResponse<ChatResponse>> {
@@ -166,10 +167,10 @@ export class ChatService {
    */
   async chatStream(
     message: string,
-    options: {
+    _options: {
       userId?: string
       context?: string
-      selectedAccount?: any
+      selectedAccount?: MarketingAccount
       conversationId?: string
       onMessage?: (chunk: string) => void
       onComplete?: (response: ChatResponse) => void

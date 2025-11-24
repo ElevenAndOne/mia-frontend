@@ -78,7 +78,7 @@ export class FacebookService {
   /**
    * Link Facebook page to account (or unlink if pageId is null)
    */
-  async linkPage(pageId: string | null, accountId?: string): Promise<APIResponse<any>> {
+  async linkPage(pageId: string | null, accountId?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/meta/api/organic/link-page', {
       page_id: pageId,
       account_id: accountId
@@ -88,7 +88,7 @@ export class FacebookService {
   /**
    * Unlink Facebook page from account
    */
-  async unlinkPage(accountId?: string): Promise<APIResponse<any>> {
+  async unlinkPage(accountId?: string): Promise<APIResponse<unknown>> {
     return this.linkPage(null, accountId)
   }
 
@@ -117,7 +117,7 @@ export class FacebookService {
   /**
    * Link Meta ad account (or unlink if metaAccountId is null)
    */
-  async linkMetaAccount(metaAccountId: string | null, accountId?: string): Promise<APIResponse<any>> {
+  async linkMetaAccount(metaAccountId: string | null, accountId?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/meta/api/accounts/link', {
       meta_account_id: metaAccountId,
       account_id: accountId
@@ -127,7 +127,7 @@ export class FacebookService {
   /**
    * Unlink Meta ad account from current account
    */
-  async unlinkMetaAccount(accountId?: string): Promise<APIResponse<any>> {
+  async unlinkMetaAccount(accountId?: string): Promise<APIResponse<unknown>> {
     return this.linkMetaAccount(null, accountId)
   }
 
@@ -143,7 +143,7 @@ export class FacebookService {
   /**
    * Refresh Meta access token
    */
-  async refreshCredentials(): Promise<APIResponse<any>> {
+  async refreshCredentials(): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/meta/refresh-credentials')
   }
 

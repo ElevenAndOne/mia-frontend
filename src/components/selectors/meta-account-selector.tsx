@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFacebook } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
@@ -9,27 +9,20 @@ interface MetaAccountSelectorProps {
   onClose: () => void
   onSuccess?: () => void
   currentGoogleAccountName?: string
-  currentAccountData?: any  // Fresh account data from IntegrationsPage
+  currentAccountData?: MetaAdsAccount & { linked_meta_account_id?: string }
 }
 
 const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountName, currentAccountData }: MetaAccountSelectorProps) => {
   const { selectedAccount } = useSession()
   const { getMetaAccounts, linkMetaAccount, isLoading: sdkLoading, error: sdkError, clearError } = useFacebook()
   // Use currentAccountData if provided (fresh data), otherwise fall back to selectedAccount
-  const accountToUse = currentAccountData || selectedAccount
+  const accountToUse = (currentAccountData || selectedAccount) as (MetaAccountSelectorProps['currentAccountData'] | MetaAdsAccount | null)
   const [metaAccounts, setMetaAccounts] = useState<MetaAdsAccount[]>([])
   const [selectedMetaAccountId, setSelectedMetaAccountId] = useState<string | null>(null)
   const [isLinking, setIsLinking] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Fetch available Meta accounts when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchMetaAccounts()
-    }
-  }, [isOpen])
-
-  const fetchMetaAccounts = async () => {
+  const fetchMetaAccounts = useCallback(async () => {
     clearError()
     
     const result = await getMetaAccounts()
@@ -45,7 +38,14 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
         setSelectedMetaAccountId(result.data[0].id)
       }
     }
-  }
+  }, [accountToUse, clearError, getMetaAccounts])
+
+  // Fetch available Meta accounts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchMetaAccounts()
+    }
+  }, [fetchMetaAccounts, isOpen])
 
   const handleLinkMetaAccount = async () => {
     if (!accountToUse) {

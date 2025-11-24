@@ -1,5 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
+import { MarketingAccount } from '../sdk/types'
 
 export interface AccountMapping {
   id: string
@@ -24,7 +26,7 @@ export interface SessionState {
     picture_url: string
     google_user_id: string
   } | null
-  selectedAccount: any | null
+  selectedAccount: MarketingAccount | null
 }
 
 interface SessionContextType {
@@ -155,7 +157,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
 
     initializeSession()
-  }, [sdk, refreshAccounts])
+  }, [sdk, refreshAccounts, state.isAuthenticated])
 
   const login = async (): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))

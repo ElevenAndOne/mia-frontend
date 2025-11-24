@@ -59,7 +59,7 @@ export class BrevoService {
   /**
    * Select a Brevo account
    */
-  async selectAccount(brevoId: number, accountId?: string): Promise<APIResponse<any>> {
+  async selectAccount(brevoId: number, accountId?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/brevo/select-account', {
       brevo_id: brevoId.toString(),
       account_id: accountId
@@ -90,7 +90,7 @@ export class BrevoService {
   /**
    * Save Brevo API key
    */
-  async saveApiKey(apiKey: string, accountId?: string): Promise<APIResponse<any>> {
+  async saveApiKey(apiKey: string, accountId?: string): Promise<APIResponse<unknown>> {
     return this.client.post('/api/oauth/brevo/save-api-key', {
       api_key: apiKey,
       account_id: accountId
@@ -109,7 +109,7 @@ export class BrevoService {
   /**
    * Update Brevo API key for existing account
    */
-  async updateApiKey(brevoId: string, apiKey: string): Promise<APIResponse<any>> {
+  async updateApiKey(brevoId: string, apiKey: string): Promise<APIResponse<unknown>> {
     return this.client.put('/api/oauth/brevo/update-api-key', {
       brevo_id: brevoId,
       api_key: apiKey

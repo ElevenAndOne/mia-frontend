@@ -6,10 +6,9 @@ interface BrevoConnectionModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
-  sessionId: string
 }
 
-const BrevoConnectionModal = ({ isOpen, onClose, onSuccess, sessionId }: BrevoConnectionModalProps) => {
+const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionModalProps) => {
   const { saveApiKey, isLoading, error: sdkError, clearError } = useBrevo()
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState<string | null>(null)

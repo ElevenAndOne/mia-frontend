@@ -28,7 +28,7 @@ export const OptimizePageRefactored = ({ onBack, question = "What can we improve
     }
 
     loadData()
-  }, [dateRange.selectedRange, question])
+  }, [dateRange.selectedRange, fetchAnalytics, question, setLoading])
 
   const displayData = optimizeData || {
     header: {

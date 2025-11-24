@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useCreative } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
-import { getSDK } from '../../utils/sdk'
 import DateRangeSelector from '../common/date-range-selector'
 
 // Helper component to render text with markdown links and campaign deep links
-const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
+const MarkdownText = ({ text, className = '', googleAdsId: _googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
   const convertDeepLink = (linkUrl: string): string => {
     // Handle DEEPLINK: format for campaign deep links
     if (linkUrl.startsWith('DEEPLINK:')) {
@@ -96,10 +96,9 @@ interface InsightsResponse {
 }
 
 const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsightsProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { selectedAccount } = useSession()
+  const { generateProtectInsights, isLoading: sdkLoading, error: sdkError, clearError } = useCreative()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
 
@@ -135,43 +134,21 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
+  const fetchProtectInsights = useCallback(async () => {
+    clearError()
+    
+    const result = await generateProtectInsights('Generate protection insights', {
+      dateRange: selectedDateRange
+    })
+    
+    if (result.success && result.data) {
+      setInsights(result.data as InsightsResponse)
+    }
+  }, [clearError, generateProtectInsights, selectedDateRange])
+
   useEffect(() => {
     fetchProtectInsights()
-  }, [selectedDateRange])  // Only re-fetch when date range changes
-
-  const fetchProtectInsights = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      if (!sessionId) {
-        throw new Error('No session found. Please log in again.')
-      }
-
-      const sdk = getSDK()
-      const response = await sdk.client.post('/api/quick-insights/protect', {
-        session_id: sessionId,
-        date_range: selectedDateRange
-      })
-
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to fetch insights')
-      }
-
-      const result = response.data as any
-      if (result) {
-        setInsights(result)
-      } else {
-        throw new Error('No data received')
-      }
-
-    } catch (error) {
-      console.error('[PROTECT-INSIGHTS] Error:', error)
-      setError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [fetchProtectInsights])  // Only re-fetch when date range changes
 
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>
@@ -253,16 +230,16 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
 
       {/* Content Area */}
       <div className="flex-1 bg-white p-6 overflow-y-auto rounded-t-2xl -mt-4">
-        {isLoading && (
+        {sdkLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-600 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-600 text-sm">Analyzing protection strategies...</p>
           </div>
         )}
 
-        {error && (
+        {sdkError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800 text-sm">{error}</p>
+            <p className="text-red-800 text-sm">{sdkError}</p>
             <button
               onClick={fetchProtectInsights}
               className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
@@ -272,7 +249,7 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
           </div>
         )}
 
-        {insights && !isLoading && !error && (
+        {insights && !sdkLoading && !sdkError && (
           <div className="space-y-6">
             {/* Key Insights */}
             <div>
@@ -313,12 +290,6 @@ const ProtectInsights = ({ onBack, initialDateRange = '30_days' }: ProtectInsigh
                       </div>
                     )}
 
-                    {/* Counter-View - HIDDEN */}
-                    {false && insight.counterView && (
-                      <div className="pl-10 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
-                        <p className="text-sm text-gray-700 leading-relaxed"><span className="font-semibold text-amber-700">Consider:</span> {insight.counterView}</p>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

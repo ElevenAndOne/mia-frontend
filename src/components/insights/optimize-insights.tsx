@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useCreative } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
 import DateRangeSelector from '../common/date-range-selector'
 
 // Helper component to render text with markdown links and campaign deep links
-const MarkdownText = ({ text, className = '', googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
+const MarkdownText = ({ text, className = '', googleAdsId: _googleAdsId, metaAdsId }: { text: string; className?: string; googleAdsId?: string; metaAdsId?: string }) => {
   const convertDeepLink = (linkUrl: string): string => {
     // Handle DEEPLINK: format for campaign deep links
     if (linkUrl.startsWith('DEEPLINK:')) {
@@ -96,7 +96,7 @@ interface InsightsResponse {
 }
 
 const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsightsProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { selectedAccount } = useSession()
   const { generateOptimizeInsights, isLoading: sdkLoading, error: sdkError, clearError } = useCreative()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
@@ -134,21 +134,21 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
     return `${formatDate(startDate)} - ${formatDate(today)}`
   }
 
-  useEffect(() => {
-    fetchOptimizeInsights()
-  }, [selectedDateRange])  // Only re-fetch when date range changes
-
-  const fetchOptimizeInsights = async () => {
+  const fetchOptimizeInsights = useCallback(async () => {
     clearError()
     
     const result = await generateOptimizeInsights('Generate optimization insights', {
-      date_range: selectedDateRange
+      dateRange: selectedDateRange
     })
     
     if (result.success && result.data) {
-      setInsights(result.data)
+      setInsights(result.data as InsightsResponse)
     }
-  }
+  }, [clearError, generateOptimizeInsights, selectedDateRange])
+
+  useEffect(() => {
+    fetchOptimizeInsights()
+  }, [fetchOptimizeInsights])  // Only re-fetch when date range changes
 
   return (
     <div className="w-full h-full relative flex flex-col" style={{ backgroundColor: '#290068' }}>
@@ -291,11 +291,6 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days' }: OptimizeInsi
                     )}
 
                     {/* Counter-View - HIDDEN */}
-                    {false && insight.counterView && (
-                      <div className="pl-10 bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
-                        <p className="text-sm text-gray-700 leading-relaxed"><span className="font-semibold text-amber-700">Consider:</span> {insight.counterView}</p>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react'
 import { getGlobalSDK } from '../sdk'
-import { APIResponse } from '../sdk/types'
+import { APIResponse, MarketingAccount } from '../sdk/types'
 
 export interface SDKHookState {
   isLoading: boolean
@@ -72,7 +72,7 @@ export function useMiaSDK() {
       withLoading(() => sdk.session.selectAccount(accountId, businessType, industry)),
     selectMCC: (mccId: string, mccName?: string) => withLoading(() => sdk.session.selectMCC(mccId, mccName)),
     getAuthURL: (platform: string) => withLoading(() => sdk.session.getAuthURL(platform)),
-    completeOAuth: (platform: string, authCode: string) => withLoading(() => sdk.session.completeOAuth(platform, authCode)),
+    completeOAuth: (platform: string, authCode?: string) => withLoading(() => sdk.session.completeOAuth(platform, authCode)),
     bypassLogin: (userId: string) => withLoading(() => sdk.session.bypassLogin(userId)),
     metaBypassLogin: () => withLoading(() => sdk.session.metaBypassLogin())
   }
@@ -89,7 +89,7 @@ export function useMiaSDK() {
   const brevoHelpers = {
     getAccounts: () => withLoading(() => sdk.brevo.getAccounts()),
     selectAccount: (brevoId: number, accountId?: string) => withLoading(() => sdk.brevo.selectAccount(brevoId, accountId)),
-    disconnectAccount: (brevoId: number) => withLoading(() => sdk.brevo.disconnectAccount(brevoId)),
+    disconnectAccount: (brevoId?: number) => withLoading(() => sdk.brevo.disconnectAccount(brevoId)),
     saveApiKey: (apiKey: string, accountId?: string) => withLoading(() => sdk.brevo.saveApiKey(apiKey, accountId))
   }
 
@@ -126,11 +126,29 @@ export function useMiaSDK() {
       startDate?: string
       endDate?: string
     }) => withLoading(() => sdk.creative.analyzeCreativeWithSession(question, options)),
-    generateGrowthInsights: (question: string, options?: any) => 
+    generateGrowthInsights: (question: string, options?: {
+      user?: string
+      selectedAccount?: MarketingAccount
+      dateRange?: string
+      startDate?: string
+      endDate?: string
+    }) => 
       withLoading(() => sdk.creative.generateInsights('grow', question, options)),
-    generateOptimizeInsights: (question: string, options?: any) =>
+    generateOptimizeInsights: (question: string, options?: {
+      user?: string
+      selectedAccount?: MarketingAccount
+      dateRange?: string
+      startDate?: string
+      endDate?: string
+    }) =>
       withLoading(() => sdk.creative.generateInsights('optimize', question, options)),
-    generateProtectInsights: (question: string, options?: any) =>
+    generateProtectInsights: (question: string, options?: {
+      user?: string
+      selectedAccount?: MarketingAccount
+      dateRange?: string
+      startDate?: string
+      endDate?: string
+    }) =>
       withLoading(() => sdk.creative.generateInsights('protect', question, options))
   }
 
@@ -139,7 +157,7 @@ export function useMiaSDK() {
     sendMessage: (message: string, options?: {
       userId?: string
       context?: string
-      selectedAccount?: any
+      selectedAccount?: MarketingAccount
     }) => withLoading(() => sdk.chat.chat(message, options)),
     getConversations: () => withLoading(() => sdk.chat.getConversations()),
     createConversation: (title?: string) => withLoading(() => sdk.chat.createConversation(title))

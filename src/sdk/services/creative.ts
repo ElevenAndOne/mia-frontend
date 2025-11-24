@@ -5,14 +5,14 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse } from '../types'
+import { APIResponse, MarketingAccount } from '../types'
 
 export interface CreativeAnalysisRequest {
   question: string
   context: string
   session_id: string
   user?: string
-  selected_account?: any
+  selected_account?: MarketingAccount
   google_ads_id?: string
   ga4_property_id?: string
   start_date?: string
@@ -24,9 +24,9 @@ export interface CreativeAnalysisRequest {
 export interface CreativeAnalysisResponse {
   success: boolean
   analysis?: string
-  insights?: any[]
-  recommendations?: any[]
-  data?: any
+  insights?: Record<string, unknown>[]
+  recommendations?: Record<string, unknown>[]
+  data?: unknown
   error?: string
 }
 
@@ -37,7 +37,7 @@ export interface InsightAnalysisRequest {
   context: InsightType
   user?: string
   session_id?: string
-  selected_account?: any
+  selected_account?: MarketingAccount
   date_range?: string
   start_date?: string
   end_date?: string
@@ -93,7 +93,7 @@ export class CreativeService {
   /**
    * Generate growth insights
    */
-  async generateGrowthInsights(request: InsightAnalysisRequest): Promise<APIResponse<any>> {
+  async generateGrowthInsights(request: InsightAnalysisRequest): Promise<APIResponse<unknown>> {
     return this.client.post('/api/growth-data', {
       ...request,
       context: 'growth'
@@ -103,7 +103,7 @@ export class CreativeService {
   /**
    * Generate optimization insights
    */
-  async generateOptimizeInsights(request: InsightAnalysisRequest): Promise<APIResponse<any>> {
+  async generateOptimizeInsights(request: InsightAnalysisRequest): Promise<APIResponse<unknown>> {
     return this.client.post('/api/improve-data', {
       ...request,
       context: 'optimize'
@@ -113,7 +113,7 @@ export class CreativeService {
   /**
    * Generate protection insights
    */
-  async generateProtectInsights(request: InsightAnalysisRequest): Promise<APIResponse<any>> {
+  async generateProtectInsights(request: InsightAnalysisRequest): Promise<APIResponse<unknown>> {
     return this.client.post('/api/fix-data', {
       ...request,
       context: 'protect'
@@ -128,12 +128,12 @@ export class CreativeService {
     question: string,
     options: {
       user?: string
-      selectedAccount?: any
+      selectedAccount?: MarketingAccount
       dateRange?: string
       startDate?: string
       endDate?: string
     } = {}
-  ): Promise<APIResponse<any>> {
+  ): Promise<APIResponse<unknown>> {
     const sessionId = this.client.getSessionId()
     
     if (!sessionId) {
