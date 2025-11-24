@@ -49,7 +49,7 @@ interface PlatformStatus {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated } = useSession()
+  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts } = useSession()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connectingId, setConnectingId] = useState<string | null>(null)
@@ -1075,10 +1075,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <GoogleAccountSelector
         isOpen={showGoogleAccountSelector}
         onClose={() => setShowGoogleAccountSelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
           setShowGoogleAccountSelector(false)
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
       />
 
@@ -1086,10 +1087,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <MetaAccountSelector
         isOpen={showMetaAccountSelector}
         onClose={() => setShowMetaAccountSelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
         currentGoogleAccountName={selectedAccount?.name}
         currentAccountData={currentAccountData}
@@ -1099,10 +1101,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <BrevoAccountSelector
         isOpen={showBrevoAccountSelector}
         onClose={() => setShowBrevoAccountSelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
           setShowBrevoAccountSelector(false)
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
       />
 
@@ -1110,10 +1113,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <HubSpotAccountSelector
         isOpen={showHubSpotAccountSelector}
         onClose={() => setShowHubSpotAccountSelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
       />
 
@@ -1121,11 +1125,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <FacebookPageSelector
         isOpen={showFacebookPageSelector}
         onClose={() => setShowFacebookPageSelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
           setShowFacebookPageSelector(false)
-          // Refetch to get updated account with facebook_page_id
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
         currentAccountData={currentAccountData}
@@ -1135,11 +1139,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <GA4PropertySelector
         isOpen={showGA4PropertySelector}
         onClose={() => setShowGA4PropertySelector(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
-          // Refetch to get updated linked properties
-          checkConnections()
+          await checkConnections()
+          await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
         ga4Properties={ga4Properties}
