@@ -1,12 +1,12 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App'
-import { SessionProvider } from './contexts/SessionContext'
-import { DateRangeProvider } from './contexts/DateRangeContext'
-import { UIStateProvider } from './contexts/UIStateContext'
-import { AnalyticsProvider } from './contexts/AnalyticsContext'
-import { IntegrationsProvider } from './contexts/IntegrationsContext'
+import App from './app'
+import { SessionProvider } from './contexts/session-context'
+import { DateRangeProvider } from './contexts/date-range-context'
+import { UIStateProvider } from './contexts/ui-state-context'
+import { AnalyticsProvider } from './contexts/analytics-context'
+import { IntegrationsProvider } from './contexts/integrations-context'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization

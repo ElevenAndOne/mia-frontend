@@ -29,7 +29,7 @@
 3) Extend service modules or `SessionContext` rather than introducing new global stores or direct fetches.
 4) Validate UI changes with the current mobile viewport assumptions (fixed height, safe areas, gradients).
 5) Run `npm run lint` or `npm run test` when changing logic/JSX.
-6) After verifying changes (tests and manual checks), update `CHANGELOG.md`: append a new entry for each fresh chat/task; you may overwrite a prior entry only when the user is iterating on the same fix/issue in the same thread.
+6) After verifying changes (tests and manual checks), update `CHANGELOG.md` (the log of agent changes across threads): append a new entry for every prompt—even on the same day or within the same thread since the version captures differences—place it at the top of the entries list, and leave older entries intact; only amend a prior entry when you are continuing the exact same fix/issue within the same thread.
 7) Do not create additional `.md` files unless the user explicitly requests them; `CHANGELOG.md` updates are the exception.
 
 ## Do’s
@@ -37,7 +37,7 @@
 - Keep styling semantic and token-based; lean on existing typography and animation helpers.
 - Preserve mobile-first layouts, safe-area padding, and preload patterns used in `App.tsx`/`index.css`.
 - Keep diffs narrow; extract subcomponents when JSX mixes presentation with service calls.
-- Keep `CHANGELOG.md` current after each verified change; append for new chats/tasks, and only amend an existing entry when iterating on the same task in the same thread.
+- Keep `CHANGELOG.md` current after each verified change; append for every prompt (date overlaps and same-thread prompts are fine because the version differentiates), place new entries at the top, and never delete or rewrite earlier entries—only amend an existing one when iterating on the same task in the same thread.
 - Avoid introducing new Markdown docs (other than `CHANGELOG.md`) unless the user asks for them.
 
 ## Don’ts

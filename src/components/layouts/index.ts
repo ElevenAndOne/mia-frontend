@@ -7,10 +7,10 @@
  */
 
 // Page Layout
-export { PageLayout } from './PageLayout'
+export { PageLayout } from './page-layout'
 
 // Modal
-export { Modal } from './Modal'
+export { Modal } from './modal'
 
 // Card Components
 export { 
@@ -19,7 +19,7 @@ export {
   CardTitle, 
   CardContent, 
   CardFooter 
-} from './Card'
+} from './card'
 
 // Insight Components
-export { InsightCard, InsightList } from './InsightCard'
+export { InsightCard, InsightList } from './insight-card'

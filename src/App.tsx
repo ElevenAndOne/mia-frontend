@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import VideoIntroView from './components/VideoIntroView'
-import AccountSelectionPage from './components/AccountSelectionPage'
-import MainViewCopy from './components/MainViewCopy' // The main app after auth
-import GrowthPage from './components/GrowthPage' // Blue growth page
-import OptimizePage from './components/OptimizePage' // Optimize improvement page
-import ProtectPage from './components/ProtectPage' // Protect/fixing page
-import CreativePageFixed from './components/CreativePageFixed' // NEW: Creative-only analysis
-import IntegrationsPage from './components/IntegrationsPage'
-import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - Grow
-import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
-import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
-import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
-import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
+import VideoIntroView from './components/pages/video-intro-view'
+import AccountSelectionPage from './components/pages/account-selection-page'
+import MainViewCopy from './components/pages/main-view-copy' // The main app after auth
+import GrowthPage from './components/pages/growth-page' // Blue growth page
+import OptimizePage from './components/pages/optimize-page' // Optimize improvement page
+import ProtectPage from './components/pages/protect-page' // Protect/fixing page
+import CreativePageFixed from './components/pages/creative-page-fixed' // NEW: Creative-only analysis
+import IntegrationsPage from './components/pages/integrations-page'
+import GrowInsights from './components/insights/grow-insights' // BETA: Quick Insights - Grow
+import OptimizeInsights from './components/insights/optimize-insights' // BETA: Quick Insights - Optimize
+import ProtectInsights from './components/insights/protect-insights' // BETA: Quick Insights - Protect
+import SummaryInsights from './components/insights/summary-insights' // BETA: Quick Insights - Summary
+import InsightsDatePickerModal from './components/modals/insights-date-picker-modal' // Date picker modal
 // TODO: Re-enable docs pages when created
 // import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
 // import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
-import { useSession } from './contexts/SessionContext'
+import { useSession } from './contexts/session-context'
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 

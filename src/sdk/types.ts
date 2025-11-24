@@ -50,6 +50,12 @@ export interface MetaAuthStatus {
   user_info?: MetaUserInfo
 }
 
+export interface UserSession {
+  user: AuthUser
+  selectedAccount?: GoogleAdsAccount | GA4Account | CombinedAccount
+  hasCompletedSetup: boolean
+}
+
 // ============= Account Types =============
 
 export interface RawGoogleAdsAccount {

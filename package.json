@@ -12,10 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0",
     "backend": "python simple_adk_server.py",
-    "backend:dev": "python simple_adk_server.py",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "backend:dev": "python simple_adk_server.py"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.3",
@@ -38,28 +35,20 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@playwright/test": "^1.55.0",
     "@tailwindcss/vite": "^4.0.0",
-    "@testing-library/jest-dom": "^6.8.0",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@types/three": "^0.179.0",
     "@vitejs/plugin-react": "^5.0.2",
     "@vitejs/plugin-react-swc": "^4.0.1",
-    "@vitest/ui": "^3.2.4",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
-    "jsdom": "^27.0.0",
-    "playwright": "^1.55.0",
     "tailwindcss": "^4.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.5",
-    "vitest": "^3.2.4"
+    "vite": "^7.1.5"
   }
 }

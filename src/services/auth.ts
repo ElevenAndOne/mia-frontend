@@ -1,4 +1,4 @@
-import { GoogleAdsAccount, GA4Account, CombinedAccount } from './accountService'
+import { GoogleAdsAccount, GA4Account, CombinedAccount } from './account-service'
 import { apiFetch } from '../utils/api'
 
 // Enhanced authentication service for MIA
@@ -39,7 +39,7 @@ class AuthService {
       localStorage.setItem('mia_return_url', currentUrl)
       
       // Step 3: Use popup for all OAuth (mobile-friendly approach)
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const _isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       
       // Force popup for testing - change to true
       if (true) {
@@ -106,7 +106,7 @@ class AuthService {
         }
       })
       
-      const result = await response.json()
+      const _result = await response.json()
       
       // Clear local session
       this.session = null
@@ -139,7 +139,7 @@ class AuthService {
         }
       })
       
-      const result = await response.json()
+      const _result = await response.json()
       
     } catch (error) {
       console.error('Force logout error:', error)
@@ -217,7 +217,7 @@ class AuthService {
           selectedAccount: data.selectedAccount,
           hasCompletedSetup: data.hasCompletedSetup
         }
-      } catch (e) {
+      } catch (_e) {
         localStorage.removeItem('mia_session')
       }
     }
