@@ -29,12 +29,14 @@
 3) Extend service modules or `SessionContext` rather than introducing new global stores or direct fetches.
 4) Validate UI changes with the current mobile viewport assumptions (fixed height, safe areas, gradients).
 5) Run `npm run lint` or `npm run test` when changing logic/JSX.
+6) After verifying changes (tests and manual checks), create or update `CHANGELOG.md` with the latest updates; you may overwrite prior entries if the user is re-prompting on the same fix or issue.
 
 ## Do’s
 - Reuse `useSession` state and handlers for auth/account changes; update the service layer if you need new backend calls.
 - Keep styling semantic and token-based; lean on existing typography and animation helpers.
 - Preserve mobile-first layouts, safe-area padding, and preload patterns used in `App.tsx`/`index.css`.
 - Keep diffs narrow; extract subcomponents when JSX mixes presentation with service calls.
+- Keep `CHANGELOG.md` current after each verified change; summarize what shipped and update previous notes if the same task is being amended.
 
 ## Don’ts
 - Don’t bypass `apiFetch`/service modules with raw `fetch` or hard-coded URLs.
