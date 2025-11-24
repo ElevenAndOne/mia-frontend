@@ -1,6 +1,6 @@
-import { apiFetch } from '../utils/api'
 import { motion } from 'framer-motion'
 import { useSession } from '../contexts/SessionContext'
+import { useSdk } from '../contexts/SdkContext'
 import { useState } from 'react'
 
 interface FigmaLoginModalProps {
@@ -9,6 +9,7 @@ interface FigmaLoginModalProps {
 
 const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
   const { login, loginMeta, isLoading: sessionLoading, error, sessionId, checkExistingAuth, refreshAccounts, isAuthenticated, isMetaAuthenticated } = useSession()
+  const sdk = useSdk()
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
@@ -105,21 +106,8 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         // No existing auth - use bypass login for testing
         setGoogleLoadingMessage('Creating bypass session...')
 
-        // Call the bypass endpoint to create a test authenticated session
-        const bypassResponse = await apiFetch('/api/oauth/bypass-login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionId
-          }
-        })
-
-        if (!bypassResponse.ok) {
-          const errorData = await bypassResponse.json().catch(() => ({}))
-          throw new Error(errorData.detail || 'Bypass login failed')
-        }
-
-        const bypassData = await bypassResponse.json()
+        // Call the bypass endpoint using SDK to create a test authenticated session
+        const bypassData = await sdk.auth.bypassLogin()
 
         setGoogleLoadingMessage('Session created! Redirecting...')
 
@@ -149,20 +137,8 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         setIsGoogleLoading(true)
         setGoogleLoadingMessage('Creating Meta bypass session...')
 
-        const bypassResponse = await apiFetch('/api/oauth/meta/bypass-login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionId
-          }
-        })
-
-        if (!bypassResponse.ok) {
-          const errorData = await bypassResponse.json().catch(() => ({}))
-          throw new Error(errorData.detail || 'Meta bypass login failed')
-        }
-
-        const bypassData = await bypassResponse.json()
+        // Call the Meta bypass endpoint using SDK to create a test authenticated session
+        const bypassData = await sdk.metaAuth.bypassLogin()
         setGoogleLoadingMessage('Meta session created! Redirecting...')
 
         // Wait a moment for the session to be established

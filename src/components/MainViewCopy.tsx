@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { authService } from '../services/auth'
 import { useSession } from '../contexts/SessionContext'
-import { apiFetch } from '../utils/api'
+import { useSdk } from '../contexts/SdkContext'
 import BrevoConnectionModal from './BrevoConnectionModal'
 import DateRangeSelector from './DateRangeSelector'
 
@@ -18,6 +17,7 @@ interface MainViewProps {
 
 const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
+  const sdk = useSdk()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null) // Track which question is loading
@@ -120,35 +120,19 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
     try {
       
-      const response = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          message: message,
-          session_id: sessionId,
-          user_id: '106540664695114193744',
-          google_ads_id: selectedAccount?.google_ads_id,
-          ga4_property_id: selectedAccount?.ga4_property_id,
-          date_range: dateRange
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const result = await response.json()
+      const response = await sdk.insights.sendChatMessage({
+        message: message,
+        session_id: sessionId || 'default',
+        user_id: '106540664695114193744',
+        google_ads_id: selectedAccount?.google_ads_id,
+        ga4_property_id: selectedAccount?.ga4_property_id,
+        date_range: dateRange
+      }, { sessionId: sessionId || undefined })
 
       setIsChatLoading(false) // Remove loading state
 
-      if (result.success && result.claude_response) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: result.claude_response }])
-      } else {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble processing your question. Please try again.' }])
-      }
+      const responseText = response.claude_response || response.response || 'Sorry, I had trouble processing your question. Please try again.'
+      setChatMessages(prev => [...prev, { role: 'assistant', content: responseText }])
       
       // Auto-scroll to show the top of Mia's response
       setTimeout(() => {
@@ -167,31 +151,38 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
   const fetchQuestionData = async (context: 'growth' | 'improve' | 'fix', question: string) => {
     try {
-      // Get selected account from auth service
-      const session = authService.getSession()
-      const selectedAccount = session?.selectedAccount
-      
-      const apiUrl = getApiUrl(context)
-      const response = await apiFetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: question,
-          context: context,
-          user: 'trystin@11and1.com',
-          selected_account: selectedAccount,
-          user_id: '106540664695114193744'
-        }),
-      })
-      
-      const result = await response.json()
-      
-      if (result.success && result.data) {
-        return result.data
+      if (!selectedAccount) {
+        throw new Error('No account selected')
       }
-      return null
+
+      const payload = {
+        question,
+        user: 'default_user', // Required by InsightQuestionRequest
+        google_ads_id: selectedAccount.google_ads_id,
+        ga4_property_id: selectedAccount.ga4_property_id,
+        date_range: 'LAST_30_DAYS',
+        user_id: '106540664695114193744' // Optional but included for consistency
+      }
+
+      // Convert null sessionId to undefined to match the expected type
+      const sessionOptions = { sessionId: sessionId || undefined }
+      
+      let response;
+      switch (context) {
+        case 'growth':
+          response = await sdk.insights.getGrowthData(payload, sessionOptions)
+          break
+        case 'improve':
+          response = await sdk.insights.getImproveData(payload, sessionOptions)
+          break
+        case 'fix':
+          response = await sdk.insights.getFixData(payload, sessionOptions)
+          break
+        default:
+          throw new Error(`Unknown context: ${context}`)
+      }
+
+      return response
     } catch (error) {
       console.error(`❌ [MAIN-VIEW] Pre-fetch failed for ${context}:`, error)
       return null

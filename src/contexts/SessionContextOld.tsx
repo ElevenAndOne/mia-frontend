@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useSdk } from './SdkContext'
+import { apiFetch } from '../utils/api'
 
 export interface AccountMapping {
   id: string
@@ -83,7 +83,6 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
-  const sdk = useSdk()
   const [state, setState] = useState<SessionState>({
     isAuthenticated: false,
     isLoading: false,
@@ -113,10 +112,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (storedSessionId) {
           console.log('[SESSION] Found stored session, validating...', storedSessionId)
 
-          try {
-            // Use SDK to validate session
-            sdk.setSessionId(storedSessionId)
-            const data = await sdk.session.validate(storedSessionId)
+          // Validate session with backend
+          const response = await apiFetch(`/api/session/validate?session_id=${storedSessionId}`)
+
+          if (response.ok) {
+            const data = await response.json()
 
             if (data.valid) {
               console.log('[SESSION] Session valid, restoring state')
@@ -126,7 +126,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 ...prev,
                 sessionId: storedSessionId,
                 isAuthenticated: data.platforms?.google || false,
-                isMetaAuthenticated: data.platforms?.meta || false,
+                isMetaAuthenticated: data.platforms?.meta || false,  // ✅ Restore Meta auth state!
                 user: {
                   name: data.user.name,
                   email: data.user.email,
@@ -154,16 +154,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               console.log('[SESSION] Session invalid or expired, creating new session')
               localStorage.removeItem('mia_session_id')
             }
-          } catch (error) {
-            console.log('[SESSION] Session validation failed:', error)
-            localStorage.removeItem('mia_session_id')
           }
         }
 
         // No stored session or validation failed - create new session
         const sessionId = generateSessionId()
         localStorage.setItem('mia_session_id', sessionId)
-        sdk.setSessionId(sessionId)
 
         setState(prev => ({
           ...prev,
@@ -175,7 +171,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         console.error('[SESSION] Initialization error:', error)
         const sessionId = generateSessionId()
         localStorage.setItem('mia_session_id', sessionId)
-        sdk.setSessionId(sessionId)
 
         setState(prev => ({
           ...prev,
@@ -187,14 +182,20 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
 
     initializeSession()
-  }, [sdk])
+  }, [])
 
   const login = async (): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      // Get auth URL using SDK
-      const authData = await sdk.auth.getAuthUrl()
+      // Get auth URL
+      const authUrlResponse = await apiFetch('/api/oauth/google/auth-url')
+
+      if (!authUrlResponse.ok) {
+        throw new Error('Failed to get auth URL')
+      }
+
+      const authData = await authUrlResponse.json()
 
       // Open popup for OAuth
       const popup = window.open(
@@ -216,7 +217,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               // Complete OAuth by creating database session
               try {
-                await sdk.auth.complete({ session_id: state.sessionId || '' })
+                const completeResponse = await apiFetch('/api/oauth/google/complete', {
+                  method: 'POST',
+                  headers: {
+                    'X-Session-ID': state.sessionId
+                  }
+                })
+
+                if (!completeResponse.ok) {
+                  throw new Error(`OAuth complete failed: ${completeResponse.status}`)
+                }
+
+                const completeData = await completeResponse.json()
               } catch (error) {
                 console.error('[SESSION] OAuth complete error:', error)
                 setState(prev => ({
@@ -228,10 +240,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 return
               }
 
-              // Check auth status using SDK
-              try {
-                const statusData = await sdk.auth.checkStatus()
-                
+              // Check auth status
+              const statusResponse = await apiFetch('/api/oauth/google/status', {
+                headers: {
+                  'X-Session-ID': state.sessionId
+                }
+              })
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json()
+
                 if (statusData.authenticated) {
                   // Fetch accounts
                   await refreshAccounts()
@@ -241,10 +258,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                     isAuthenticated: true,
                     isLoading: false,
                     user: {
-                      name: statusData.user_info?.name || 'User',
-                      email: statusData.user_info?.email || '',
-                      picture_url: statusData.user_info?.picture || '',
-                      google_user_id: statusData.user_info?.id || ''
+                      name: statusData.name || 'User',
+                      email: statusData.email || '',
+                      picture_url: statusData.picture || '',
+                      google_user_id: statusData.user_id || ''
                     }
                   }))
 
@@ -257,7 +274,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   }))
                   resolve(false)
                 }
-              } catch (error) {
+              } else {
                 setState(prev => ({
                   ...prev,
                   isLoading: false,
@@ -307,8 +324,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true }))
 
     try {
-      // Use SDK for logout
-      await sdk.auth.logout()
+      await apiFetch('/api/oauth/google/logout', { method: 'POST' })
 
       // Clear stored session
       localStorage.removeItem('mia_session_id')
@@ -316,7 +332,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       // Generate new session and store it
       const newSessionId = generateSessionId()
       localStorage.setItem('mia_session_id', newSessionId)
-      sdk.setSessionId(newSessionId)
 
       setState({
         isAuthenticated: false,
@@ -334,21 +349,151 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: 'Failed to logout'
+        error: 'Logout failed'
       }))
     }
+  }
+
+  const refreshAccounts = async (): Promise<void> => {
+    try {
+      const response = await apiFetch('/api/accounts/available')
+
+      if (response.ok) {
+        const data = await response.json()
+        setState(prev => ({
+          ...prev,
+          availableAccounts: data.accounts || []
+        }))
+      } else {
+        console.error('[SESSION] Accounts API failed:', response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error('[SESSION] Failed to refresh accounts:', error)
+    }
+  }
+
+  const selectAccount = async (accountId: string): Promise<boolean> => {
+    if (!state.sessionId) {
+      setState(prev => ({ ...prev, error: 'No session ID available' }))
+      return false
+    }
+
+    setState(prev => ({ ...prev, isLoading: true, error: null }))
+
+    try {
+
+      const response = await apiFetch('/api/accounts/select', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': state.sessionId
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          session_id: state.sessionId
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        // Find the full account details
+        const account = state.availableAccounts.find(acc => acc.id === accountId)
+
+        setState(prev => ({
+          ...prev,
+          selectedAccount: account || null,
+          isLoading: false
+        }))
+
+        return true
+      } else {
+        console.error('[SESSION] Account selection API failed:', response.status, response.statusText)
+        throw new Error('Failed to select account')
+      }
+    } catch (error) {
+      console.error('[SESSION] Account selection error:', error)
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Account selection failed'
+      }))
+      return false
+    }
+  }
+
+  const clearError = (): void => {
+    setState(prev => ({ ...prev, error: null }))
+  }
+
+  const checkExistingAuth = async (): Promise<boolean> => {
+    try {
+      const authResponse = await apiFetch('/api/oauth/google/status', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
+      if (authResponse.ok) {
+        const authData = await authResponse.json()
+        if (authData.authenticated) {
+          // Fetch available accounts
+          await refreshAccounts()
+
+          // Build selected account from response if available
+          let selectedAccount = null
+          if (authData.selected_account) {
+            selectedAccount = {
+              id: authData.selected_account.id,
+              name: authData.selected_account.name,
+              google_ads_id: authData.selected_account.google_ads_id,
+              ga4_property_id: authData.selected_account.ga4_property_id,
+              meta_ads_id: authData.selected_account.meta_ads_id,
+              business_type: authData.selected_account.business_type,
+              color: '',
+              display_name: authData.selected_account.name
+            }
+          }
+
+          setState(prev => ({
+            ...prev,
+            isAuthenticated: true,
+            user: {
+              name: authData.user_info?.name || authData.name || 'User',
+              email: authData.user_info?.email || authData.email || '',
+              picture_url: authData.user_info?.picture || authData.picture || '',
+              google_user_id: authData.user_info?.id || authData.user_id || ''
+            },
+            selectedAccount: selectedAccount
+          }))
+          return true
+        }
+      }
+    } catch (error) {
+      console.error('[SESSION] Error checking existing auth:', error)
+    }
+    return false
   }
 
   const loginMeta = async (): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      // Get Meta auth URL using SDK
-      const authUrl = await sdk.metaAuth.getAuthUrl()
+      // Get Meta auth URL
+      const authUrlResponse = await apiFetch('/api/oauth/meta/auth-url', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
 
-      // Open popup for Meta OAuth
+      if (!authUrlResponse.ok) {
+        throw new Error('Failed to get Meta auth URL')
+      }
+
+      const authData = await authUrlResponse.json()
+
+      // Open popup for OAuth
       const popup = window.open(
-        authUrl,
+        authData.auth_url,
         'meta-oauth',
         'width=500,height=600,scrollbars=yes,resizable=yes'
       )
@@ -365,21 +510,49 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               clearInterval(pollTimer)
 
               // Check Meta auth status
-              try {
-                const userInfo = await sdk.metaAuth.getUserInfo()
-                
-                if (userInfo) {
-                  setState(prev => ({
-                    ...prev,
-                    isMetaAuthenticated: true,
-                    metaUser: {
-                      id: userInfo.id,
-                      name: userInfo.name,
-                      email: userInfo.email
-                    },
-                    isLoading: false
-                  }))
-                  resolve(true)
+              const statusResponse = await apiFetch('/api/oauth/meta/status', {
+                headers: {
+                  'X-Session-ID': state.sessionId || ''
+                }
+              })
+
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json()
+
+                if (statusData.authenticated) {
+                  // Complete Meta OAuth flow - create database session
+                  const completeResponse = await apiFetch('/api/oauth/meta/complete', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-Session-ID': state.sessionId || ''
+                    }
+                  })
+
+                  if (completeResponse.ok) {
+                    setState(prev => ({
+                      ...prev,
+                      isLoading: false,
+                      isMetaAuthenticated: true,
+                      metaUser: {
+                        id: statusData.user_info?.id || '',
+                        name: statusData.user_info?.name || 'Meta User',
+                        email: statusData.user_info?.email
+                      }
+                    }))
+
+                    // Refresh accounts to include Meta accounts
+                    await refreshAccounts()
+                    resolve(true)
+                  } else {
+                    console.error('[SESSION] Failed to complete Meta OAuth')
+                    setState(prev => ({
+                      ...prev,
+                      isLoading: false,
+                      error: 'Failed to complete Meta authentication'
+                    }))
+                    resolve(false)
+                  }
                 } else {
                   setState(prev => ({
                     ...prev,
@@ -388,7 +561,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   }))
                   resolve(false)
                 }
-              } catch (error) {
+              } else {
                 setState(prev => ({
                   ...prev,
                   isLoading: false,
@@ -435,10 +608,19 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }
 
   const logoutMeta = async (): Promise<void> => {
+    setState(prev => ({ ...prev, isLoading: true }))
+
     try {
-      await sdk.metaAuth.logout()
+      await apiFetch('/api/oauth/meta/logout', {
+        method: 'POST',
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
+
       setState(prev => ({
         ...prev,
+        isLoading: false,
         isMetaAuthenticated: false,
         metaUser: null
       }))
@@ -446,92 +628,39 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       console.error('[SESSION] Meta logout error:', error)
       setState(prev => ({
         ...prev,
-        error: 'Failed to logout from Meta'
+        isLoading: false,
+        error: 'Meta logout failed'
       }))
-    }
-  }
-
-  const refreshAccounts = async (): Promise<void> => {
-    try {
-      // Use SDK to get available accounts
-      const response = await sdk.accounts.getAvailable()
-      
-      const mappedAccounts: AccountMapping[] = (response.accounts || []).map(account => ({
-        id: account.id,
-        name: account.name || account.display_name || account.id,
-        google_ads_id: account.google_ads_id || '',
-        ga4_property_id: account.ga4_property_id || '',
-        meta_ads_id: account.meta_ads_id,
-        business_type: account.business_type || '',
-        color: account.color || '',
-        display_name: account.display_name || account.name || account.id
-      }))
-
-      setState(prev => ({
-        ...prev,
-        availableAccounts: mappedAccounts
-      }))
-    } catch (error) {
-      console.error('[SESSION] Failed to refresh accounts:', error)
-      setState(prev => ({
-        ...prev,
-        error: 'Failed to load accounts'
-      }))
-    }
-  }
-
-  const selectAccount = async (accountId: string): Promise<boolean> => {
-    const account = state.availableAccounts.find(acc => acc.id === accountId)
-    if (!account) {
-      setState(prev => ({ ...prev, error: 'Account not found' }))
-      return false
-    }
-
-    try {
-      // Use SDK to select account
-      await sdk.accounts.selectAccount({
-        account_id: account.id,
-        session_id: state.sessionId || ''
-      })
-
-      setState(prev => ({
-        ...prev,
-        selectedAccount: account,
-        error: null
-      }))
-      return true
-    } catch (error) {
-      console.error('[SESSION] Failed to select account:', error)
-      setState(prev => ({
-        ...prev,
-        error: 'Failed to select account'
-      }))
-      return false
-    }
-  }
-
-  const checkExistingAuth = async (): Promise<boolean> => {
-    try {
-      const status = await sdk.auth.checkStatus()
-      return status.authenticated
-    } catch (error) {
-      console.error('[SESSION] Failed to check auth status:', error)
-      return false
     }
   }
 
   const checkMetaAuth = async (): Promise<boolean> => {
     try {
-      const userInfo = await sdk.metaAuth.getUserInfo()
-      return !!userInfo
-    } catch (error) {
-      console.error('[SESSION] Failed to check Meta auth status:', error)
-      return false
-    }
-  }
+      const authResponse = await apiFetch('/api/oauth/meta/status', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
 
-  const clearError = () => {
-    setState(prev => ({ ...prev, error: null }))
+      if (authResponse.ok) {
+        const authData = await authResponse.json()
+        if (authData.authenticated) {
+          setState(prev => ({
+            ...prev,
+            isMetaAuthenticated: true,
+            metaUser: {
+              id: authData.user_info?.id || '',
+              name: authData.user_info?.name || 'Meta User',
+              email: authData.user_info?.email
+            }
+          }))
+          return true
+        }
+      }
+    } catch (error) {
+      console.error('[SESSION] Error checking existing Meta auth:', error)
+    }
+    return false
   }
 
   const contextValue: SessionContextType = {

@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { SessionProvider } from './contexts/SessionContext'
+import { AppProviders } from './components/providers/AppProviders'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization
@@ -12,8 +12,8 @@ if (viewport) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SessionProvider>
+    <AppProviders>
       <App />
-    </SessionProvider>
+    </AppProviders>
   </React.StrictMode>,
 )

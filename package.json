@@ -6,15 +6,19 @@
   "scripts": {
     "dev": "vite",
     "dev:mobile": "vite --host 0.0.0.0",
+    "dev:mock": "cross-env VITE_USE_MOCK_DATA=true VITE_USE_MOCK_AUTH=true VITE_SHOW_API_LOGS=true vite",
+    "dev:production": "cross-env VITE_USE_MOCK_DATA=false VITE_USE_MOCK_AUTH=false vite",
     "build": "vite build",
     "vercel-build": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0",
     "backend": "python simple_adk_server.py",
     "backend:dev": "python simple_adk_server.py",
+    "setup:dev": "cp .env.example .env && echo 'Development environment configured! Edit .env as needed.'",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:mock": "cross-env VITE_USE_MOCK_DATA=true vitest"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.3",
@@ -33,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "cross-env": "^7.0.3",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
