@@ -331,17 +331,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         console.error('[IntegrationsPage] Error checking Meta credentials:', error)
       }
 
-      // Use ACTUAL connection status from account data and API checks
-      // FIXED (Nov 26): Check actual data, not stale context
-      // Google Ads: connected if ANY Google Ads accounts exist (auto-populated from Google OAuth)
-      // GA4: connected only if GA4 property is selected for THIS account
-      // Meta: connected only if credentials exist in credentials.db
+      // Use GLOBAL authentication status for "connected", not account-specific linking
+      // This shows gear icons even when not linked to this specific account
       const platforms = {
-        google: { connected: googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
-        ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
-        meta: { connected: metaHasCredentials && metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },
-        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },
+        google: { connected: isAuthenticated || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
+        ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
+        meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
+        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },  // FIXED (Nov 18): Use brevoConnected from status endpoint (supports multi-account)
+        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },  // FIXED (Nov 18): Use hubspotConnected from status endpoint (supports multi-account)
         mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
       }
 
