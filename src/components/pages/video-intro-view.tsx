@@ -12,7 +12,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const modalTimerRef = useRef<number | null>(null)
+  const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ✅ CRITICAL: Auto-show login modal for returning users (signed out / session expired)
   useEffect(() => {

@@ -5,7 +5,7 @@
  * session management, and response parsing.
  */
 
-import { SDKConfig, RequestOptions, APIResponse } from './types'
+import type { SDKConfig, RequestOptions, APIResponse } from './types'
 
 export class APIClient {
   private baseURL: string

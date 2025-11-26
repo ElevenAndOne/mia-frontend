@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from './client'
-import { SDKConfig } from './types'
+import type { SDKConfig } from './types'
 import {
   AuthService,
   MetaAuthService,

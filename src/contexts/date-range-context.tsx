@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState } from 'react'
+import type { FC, ReactNode } from 'react'
 
 export type DateRangeOption = '7_days' | '30_days' | '90_days' | 'custom'
 
@@ -30,7 +31,7 @@ interface DateRangeProviderProps {
   children: ReactNode
 }
 
-export const DateRangeProvider: React.FC<DateRangeProviderProps> = ({ children }) => {
+export const DateRangeProvider: FC<DateRangeProviderProps> = ({ children }) => {
   const [dateRange, setDateRangeState] = useState<DateRangeState>({
     selectedRange: '30_days'
   })

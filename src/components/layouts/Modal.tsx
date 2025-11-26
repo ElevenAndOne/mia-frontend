@@ -1,4 +1,5 @@
-import React, { ReactNode, useEffect } from 'react'
+import { useEffect } from 'react'
+import type { FC, ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface ModalProps {
@@ -12,7 +13,7 @@ interface ModalProps {
   className?: string
 }
 
-export const Modal: React.FC<ModalProps> = ({
+export const Modal: FC<ModalProps> = ({
   isOpen,
   onClose,
   title,

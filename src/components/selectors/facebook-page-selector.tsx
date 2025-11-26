@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFacebook } from '../../hooks/useMiaSDK'
-import { FacebookPage } from '../../sdk/services/facebook'
+import type { FacebookPage } from '../../sdk/services/facebook'
 import { useSession } from '../../contexts/session-context'
-import { MarketingAccount } from '../../sdk/types'
+import type { MarketingAccount } from '../../sdk/types'
 
 interface FacebookPageSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
   currentAccountName?: string
-  currentAccountData?: MarketingAccount & { linked_facebook_page?: string }
+  currentAccountData?: MarketingAccount
 }
 
 const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, currentAccountData }: FacebookPageSelectorProps) => {
@@ -37,9 +37,9 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
       setPages(sortedPages)
 
       // Auto-select page if account already has one linked
-      if (accountToUse?.linked_facebook_page) {
-        setSelectedPageId(accountToUse.linked_facebook_page)
-        console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected linked page:', accountToUse.linked_facebook_page)
+      if (accountToUse?.facebook_page_id) {
+        setSelectedPageId(accountToUse.facebook_page_id)
+        console.log('[FACEBOOK-PAGE-SELECTOR] Pre-selected linked page:', accountToUse.facebook_page_id)
       }
     }
   }, [accountToUse, clearError, getPages])

@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import type { FC, ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
-import { MarketingAccount } from '../sdk/types'
+import type { GoogleAuthStatus, MarketingAccount } from '../sdk/types'
 
 export interface AccountMapping {
   id: string
@@ -56,7 +57,7 @@ interface SessionProviderProps {
   children: ReactNode
 }
 
-export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
+export const SessionProvider: FC<SessionProviderProps> = ({ children }) => {
   // Get SDK instance
   const sdk = getGlobalSDK()
 
@@ -120,7 +121,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 picture_url: data.user_info.picture || '',
                 google_user_id: data.user_info.google_user_id
               } : null,
-              selectedAccount: data.selected_account,
+              selectedAccount: data.selected_account || null,
               hasSeenIntro: localStorage.getItem('mia_has_seen_intro') === 'true'
             }))
 
@@ -165,8 +166,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       const result = await sdk.session.loginGoogleWithPopup()
       
-      if (result.success && result.data) {
-        const { user_info } = result.data
+      const popupResult = result.data
+      if (result.success && popupResult && popupResult.user_info) {
+        const user_info = popupResult.user_info as NonNullable<GoogleAuthStatus['user_info']>
         
         setState(prev => ({
           ...prev,
@@ -178,7 +180,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             picture_url: user_info.picture || '',
             google_user_id: user_info.google_user_id || ''
           },
-          selectedAccount: result.data.selected_account
+          selectedAccount: popupResult.selected_account || null
         }))
 
         // Store last authenticated user ID for "Log in" button
@@ -247,7 +249,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         setState(prev => ({
           ...prev,
           isLoading: false,
-          selectedAccount: response.data,
+          selectedAccount: (response.data as MarketingAccount | null) ?? prev.selectedAccount,
           error: null
         }))
         

@@ -3,10 +3,14 @@
  */
 
 import { APIClient } from '../client'
-import { HubSpotAccountsResponse, BrevoConnectionRequest, BrevoStatusResponse, APIResponse } from '../types'
+import type { HubSpotAccountsResponse, BrevoConnectionRequest, BrevoStatusResponse, APIResponse } from '../types'
 
 export class IntegrationsService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= HubSpot =============
 

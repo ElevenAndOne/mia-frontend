@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBrevo } from '../../hooks/useMiaSDK'
-import { BrevoAccount } from '../../sdk/services/brevo'
+import type { BrevoAccount } from '../../sdk/services/brevo'
 
 
 interface BrevoAccountSelectorProps {

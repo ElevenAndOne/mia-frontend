@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { useSession, AccountMapping } from '../../contexts/session-context'
+import { useSession } from '../../contexts/session-context'
+import type { AccountMapping } from '../../contexts/session-context'
 import { usePlatform, useSessionSDK } from '../../hooks/useMiaSDK'
-import { MCCAccount, Industry } from '../../sdk/services/platform'
+import type { MCCAccount, Industry } from '../../sdk/services/platform'
 
 interface AccountSelectionPageProps {
   onAccountSelected: () => void

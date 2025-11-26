@@ -6,7 +6,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, GoogleAuthStatus, MetaAuthStatus, AvailableAccountsResponse, MarketingAccount } from '../types'
+import type { APIResponse, GoogleAuthStatus, MetaAuthStatus, AvailableAccountsResponse, MarketingAccount } from '../types'
 
 export interface SessionValidationResponse {
   valid: boolean
@@ -50,13 +50,17 @@ export interface OAuthCompleteResponse {
 }
 
 export interface OAuthPopupResultData {
-  user_info?: GoogleAuthStatus['user_info']
+  user_info?: GoogleAuthStatus['user_info'] | MetaAuthStatus['user_info']
   authenticated?: boolean
   selected_account?: MarketingAccount
 }
 
 export class SessionService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= Session Management =============
 

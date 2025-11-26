@@ -3,7 +3,7 @@
  */
 
 import { APIClient } from '../client'
-import { 
+import type { 
   AccountCollections, 
   AccountMappingRecord, 
   APIResponse, 
@@ -15,11 +15,15 @@ import {
 } from '../types'
 
 export class AccountsService {
+  private readonly client: APIClient
+
   private cachedCollections: AccountCollections | null = null
   private lastFetchTime: number = 0
   private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
-  constructor(private client: APIClient) {}
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Get Google Ads accounts via MCP

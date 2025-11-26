@@ -2,21 +2,21 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useFacebook } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
-import { MetaAdsAccount } from '../../sdk/types'
+import type { MetaAdsAccount, MarketingAccount } from '../../sdk/types'
 
 interface MetaAccountSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
   currentGoogleAccountName?: string
-  currentAccountData?: MetaAdsAccount & { linked_meta_account_id?: string }
+  currentAccountData?: MarketingAccount
 }
 
 const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountName, currentAccountData }: MetaAccountSelectorProps) => {
   const { selectedAccount } = useSession()
   const { getMetaAccounts, linkMetaAccount, isLoading: sdkLoading, error: sdkError, clearError } = useFacebook()
   // Use currentAccountData if provided (fresh data), otherwise fall back to selectedAccount
-  const accountToUse = (currentAccountData || selectedAccount) as (MetaAccountSelectorProps['currentAccountData'] | MetaAdsAccount | null)
+  const accountToUse = (currentAccountData || selectedAccount) as (MetaAccountSelectorProps['currentAccountData'] | MarketingAccount | null)
   const [metaAccounts, setMetaAccounts] = useState<MetaAdsAccount[]>([])
   const [selectedMetaAccountId, setSelectedMetaAccountId] = useState<string | null>(null)
   const [isLinking, setIsLinking] = useState(false)
@@ -31,9 +31,9 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
       setMetaAccounts(result.data)
 
       // Auto-select account if only one is available or if already linked
-      if (accountToUse?.linked_meta_account_id) {
-        setSelectedMetaAccountId(accountToUse.linked_meta_account_id)
-        console.log('[META-ACCOUNT-SELECTOR] Pre-selected linked account:', accountToUse.linked_meta_account_id)
+      if (accountToUse?.meta_ads_id) {
+        setSelectedMetaAccountId(accountToUse.meta_ads_id)
+        console.log('[META-ACCOUNT-SELECTOR] Pre-selected linked account:', accountToUse.meta_ads_id)
       } else if (result.data.length === 1) {
         setSelectedMetaAccountId(result.data[0].id)
       }

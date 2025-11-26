@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, AccountCollections, AvailableAccountsResponse, MarketingAccount } from '../types'
+import type { APIResponse, AccountCollections, AvailableAccountsResponse, MarketingAccount } from '../types'
 
 export interface Industry {
   id: string
@@ -52,14 +52,18 @@ export interface PlatformStatusData {
   brevo_connected: boolean
   meta_has_credentials: boolean
   google: { connected: boolean; linked: boolean; last_synced: string }
-  meta: { connected: boolean; linked: boolean }
-  brevo: { connected: boolean; linked: boolean }
-  hubspot: { connected: boolean; linked: boolean }
-  ga4: { connected: boolean; linked: boolean }
+  meta: { connected: boolean; linked: boolean; last_synced?: string }
+  brevo: { connected: boolean; linked: boolean; last_synced?: string }
+  hubspot: { connected: boolean; linked: boolean; last_synced?: string }
+  ga4: { connected: boolean; linked: boolean; last_synced?: string }
 }
 
 export class PlatformService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= Account Operations =============
 
@@ -198,14 +202,17 @@ export class PlatformService {
    * Get comprehensive platform status for integrations
    */
   async getPlatformStatus(): Promise<APIResponse<PlatformStatusData>> {
-    const response = await this.getAvailableAccounts()
+    const accountsResult = await this.getAvailableAccounts()
     
-    if (!response.success) {
-      return response
+    if (!accountsResult.success || !accountsResult.data) {
+      return {
+        success: false,
+        error: accountsResult.error || 'Failed to load platform status'
+      }
     }
     
     // Extract status info from accounts response
-    const accountsData = response.data?.accounts || []
+    const accountsData = accountsResult.data.accounts || []
     const hubspotResult = await this.client.get<{ authenticated?: boolean }>('/api/oauth/hubspot/status')
     const brevoResult = await this.client.get<{ authenticated?: boolean }>('/api/oauth/brevo/status')  
     const metaCredsResult = await this.client.get<{ has_credentials?: boolean }>('/api/oauth/meta/credentials-status')

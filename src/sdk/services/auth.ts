@@ -3,12 +3,15 @@
  */
 
 import { APIClient } from '../client'
-import { GoogleAuthStatus, APIResponse, AuthUser, UserSession, GoogleAdsAccount, GA4Account, CombinedAccount } from '../types'
+import type { GoogleAuthStatus, APIResponse, AuthUser, UserSession, GoogleAdsAccount, GA4Account, CombinedAccount } from '../types'
 
 export class AuthService {
+  private readonly client: APIClient
   private session: UserSession | null = null
 
-  constructor(private client: APIClient) {}
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Get Google OAuth authorization URL

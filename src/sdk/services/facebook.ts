@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, MetaAdsAccount } from '../types'
+import type { APIResponse, MetaAdsAccount } from '../types'
 
 export interface FacebookPage {
   id: string
@@ -52,7 +52,11 @@ export interface MetaAccountLinkRequest {
 }
 
 export class FacebookService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= Facebook Pages =============
 

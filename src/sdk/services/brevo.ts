@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse } from '../types'
+import type { APIResponse } from '../types'
 
 export interface BrevoAccount {
   id: number
@@ -35,7 +35,11 @@ export interface BrevoApiKeyRequest {
 }
 
 export class BrevoService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Get available Brevo accounts

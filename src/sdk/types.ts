@@ -36,6 +36,7 @@ export interface GoogleAuthStatus {
     email: string
     name?: string
     picture?: string
+    google_user_id?: string
   }
 }
 
@@ -109,6 +110,13 @@ export interface AccountCollections {
   combined: CombinedAccount[]
 }
 
+export interface LinkedGA4Property {
+  property_id: string
+  display_name: string
+  is_primary?: boolean
+  sort_order?: number
+}
+
 export interface MarketingAccount {
   id: string
   name: string
@@ -122,7 +130,7 @@ export interface MarketingAccount {
   business_type?: string
   color?: string
   display_name?: string
-  linked_ga4_properties?: string[]
+  linked_ga4_properties?: Array<string | LinkedGA4Property>
 }
 
 export interface AvailableAccountsResponse {
@@ -193,12 +201,14 @@ export interface AnalyticsRequest {
   question: string
   context: string
   session_id: string
+  user?: string
   user_id?: string
-  selected_account?: GoogleAdsAccount | GA4Account | CombinedAccount
+  selected_account?: GoogleAdsAccount | GA4Account | CombinedAccount | MarketingAccount
   google_ads_id?: string
   ga4_property_id?: string
   start_date?: string
   end_date?: string
+  date_range?: string
   category?: string
 }
 

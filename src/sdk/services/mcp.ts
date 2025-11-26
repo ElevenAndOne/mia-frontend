@@ -3,10 +3,14 @@
  */
 
 import { APIClient } from '../client'
-import { MCPToolRequest, MCPToolResponse, APIResponse } from '../types'
+import type { MCPToolRequest, MCPToolResponse, APIResponse } from '../types'
 
 export class MCPService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Execute a generic MCP tool

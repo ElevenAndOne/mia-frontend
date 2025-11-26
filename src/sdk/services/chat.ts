@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, MarketingAccount } from '../types'
+import type { APIResponse, MarketingAccount } from '../types'
 
 export interface ChatMessage {
   id: string
@@ -44,7 +44,11 @@ export interface ConversationHistory {
 }
 
 export class ChatService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= Chat Operations =============
 
@@ -166,7 +170,7 @@ export class ChatService {
    * Note: This would need special handling for streaming responses
    */
   async chatStream(
-    message: string,
+    _message: string,
     _options: {
       userId?: string
       context?: string

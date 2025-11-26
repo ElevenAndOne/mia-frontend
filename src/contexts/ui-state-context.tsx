@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState } from 'react'
+import type { FC, ReactNode } from 'react'
 
 export type ModalType = 
   | 'none'
@@ -53,7 +54,7 @@ interface UIStateProviderProps {
   children: ReactNode
 }
 
-export const UIStateProvider: React.FC<UIStateProviderProps> = ({ children }) => {
+export const UIStateProvider: FC<UIStateProviderProps> = ({ children }) => {
   const [activeModal, setActiveModal] = useState<ModalType>('none')
   const [modalData, setModalData] = useState<ModalData | null>(null)
   const [loadingState, setLoadingStateInternal] = useState<LoadingState>({ isLoading: false })

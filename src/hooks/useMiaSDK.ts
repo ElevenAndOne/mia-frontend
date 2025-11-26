@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react'
 import { getGlobalSDK } from '../sdk'
-import { APIResponse, MarketingAccount } from '../sdk/types'
+import type { APIResponse, MarketingAccount } from '../sdk/types'
 
 export interface SDKHookState {
   isLoading: boolean

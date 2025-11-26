@@ -10,6 +10,30 @@ This log tracks changes made by agents across multiple chat threads.
 
 ## Entries
 
+### [COMPLETED] - 2025-11-27
+
+**Author**: Codex  
+**Date**: November 27, 2025  
+**Version**: 4.3.5-full-typescript-pass
+
+- Converted every React component/context and SDK module to use type-only imports plus proper `FC` usage where needed, removed dead locals, and aligned popup/login handlers to fix all verbatim module syntax/unused symbol errors.
+- Centralized marketing account typing by introducing `LinkedGA4Property`, expanding `AnalyticsRequest`/`GoogleAuthStatus`, and teaching selectors/integrations about richer GA4 property data for consistent state handling.
+- Refactored every SDK service constructor away from parameter properties, tightened request/response typing, corrected `SessionService`/`PlatformService` return shapes, and updated tsconfig to include `vite/client` so `import.meta.env` resolves.
+- Verified `npx tsc -p tsconfig.app.json` and `npm run build` both succeed without errors.
+
+### [COMPLETED] - 2025-11-26
+
+**Author**: Cascade  
+**Date**: November 26, 2025  
+**Version**: 4.3.4-fix-typescript-type-errors
+
+- **Fixed TypeScript type errors in integrations-page.tsx**:
+  - Resolved `Type 'MarketingAccount | null' is not assignable to type '(MarketingAccount & { linked_facebook_page?: string | undefined; }) | undefined'` error
+  - Updated FacebookPageSelector and MetaAccountSelector to convert `null` to `undefined` using nullish coalescing operator
+  - Fixed type mismatch in MetaAccountSelector: changed expected type from `MetaAdsAccount` to `MarketingAccount`
+  - Updated property references: `linked_facebook_page` → `facebook_page_id` and `linked_meta_account_id` → `meta_ads_id`
+  - Removed unnecessary type extensions in component interfaces
+
 ### [COMPLETED] - 2025-11-25
 
 **Author**: Cascade  

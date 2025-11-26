@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse } from '../types'
+import type { APIResponse } from '../types'
 
 export interface HubSpotAccount {
   id: number
@@ -27,7 +27,11 @@ export interface HubSpotAccountsResponse {
 }
 
 export class HubSpotService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Get available HubSpot accounts

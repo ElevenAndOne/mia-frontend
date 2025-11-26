@@ -5,7 +5,7 @@
  */
 
 import { APIClient } from '../client'
-import { APIResponse, MarketingAccount } from '../types'
+import type { APIResponse, MarketingAccount } from '../types'
 
 export interface CreativeAnalysisRequest {
   question: string
@@ -44,7 +44,11 @@ export interface InsightAnalysisRequest {
 }
 
 export class CreativeService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   // ============= Creative Analysis =============
 

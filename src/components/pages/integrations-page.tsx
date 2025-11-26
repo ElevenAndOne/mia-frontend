@@ -8,9 +8,7 @@ import GA4PropertySelector from '../selectors/ga4-property-selector'
 import GoogleAccountSelector from '../selectors/google-account-selector'
 import BrevoAccountSelector from '../selectors/brevo-account-selector'
 import HubSpotAccountSelector from '../selectors/hubspot-account-selector'
-import { MarketingAccount, GA4Account } from '../../sdk/types'
-
-type LinkedGA4Property = { property_id: string; display_name: string; is_primary?: boolean; sort_order?: number }
+import type { MarketingAccount, GA4Account, LinkedGA4Property } from '../../sdk/types'
 
 interface Integration {
   id: string
@@ -164,11 +162,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
           // Store linked GA4 properties
           if (account.linked_ga4_properties) {
-            const linkedProps: LinkedGA4Property[] = account.linked_ga4_properties.map((prop) =>
-              typeof prop === 'string'
-                ? { property_id: prop, display_name: prop }
-                : prop
-            )
+            const linkedProps: LinkedGA4Property[] = account.linked_ga4_properties.map((prop, index) => {
+              if (typeof prop === 'string') {
+                return {
+                  property_id: prop,
+                  display_name: prop,
+                  is_primary: index === 0,
+                  sort_order: index
+                }
+              }
+
+              return {
+                property_id: prop.property_id,
+                display_name: prop.display_name || prop.property_id,
+                is_primary: prop.is_primary ?? index === 0,
+                sort_order: prop.sort_order ?? index
+              }
+            })
             setLinkedGA4Properties(linkedProps)
             console.log('[IntegrationsPage] Linked GA4 properties:', linkedProps)
           }
@@ -1054,7 +1064,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           checkConnections()
         }}
         currentGoogleAccountName={selectedAccount?.name}
-        currentAccountData={currentAccountData}
+        currentAccountData={currentAccountData || undefined}
       />
 
       {/* Brevo Account Selector Modal */}
@@ -1090,7 +1100,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           checkConnections()
         }}
         currentAccountName={selectedAccount?.name}
-        currentAccountData={currentAccountData}
+        currentAccountData={currentAccountData || undefined}
       />
 
       {/* GA4 Property Selector Modal */}

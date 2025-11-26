@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
 import { useSession } from './session-context'
-import { MarketingAccount } from '../sdk/types'
+import type { AnalyticsRequest } from '../sdk/types'
 
 export interface AnalyticsData {
   header: {
@@ -124,12 +125,14 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children }
       
       // Call the appropriate SDK method based on analytics type
       let result
-      const requestData = {
+      const requestData: Partial<AnalyticsRequest> = {
         question,
         context: type,
         user: user?.email || 'anonymous',
-        selected_account: selectedAccount as unknown as MarketingAccount | undefined,
-        user_id: user?.google_user_id || '',
+        selected_account: selectedAccount ?? undefined,
+        user_id: user?.google_user_id || undefined,
+        google_ads_id: selectedAccount?.google_ads_id,
+        ga4_property_id: selectedAccount?.ga4_property_id,
         date_range: dateRange
       }
       

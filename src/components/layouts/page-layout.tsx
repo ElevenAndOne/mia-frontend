@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 
 interface PageLayoutProps {
@@ -11,7 +11,7 @@ interface PageLayoutProps {
   animate?: boolean
 }
 
-export const PageLayout: React.FC<PageLayoutProps> = ({
+export const PageLayout: FC<PageLayoutProps> = ({
   children,
   className = '',
   showBackButton = false,

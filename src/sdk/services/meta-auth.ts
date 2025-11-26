@@ -3,13 +3,15 @@
  */
 
 import { APIClient } from '../client'
-import { MetaUserInfo, MetaAuthStatus, APIResponse } from '../types'
+import type { MetaUserInfo, MetaAuthStatus, APIResponse } from '../types'
 
 export class MetaAuthService {
+  private readonly client: APIClient
   private isAuthenticated: boolean = false
   private userInfo: MetaUserInfo | null = null
 
-  constructor(private client: APIClient) {
+  constructor(client: APIClient) {
+    this.client = client
     this.checkAuthStatusOnInit()
   }
 

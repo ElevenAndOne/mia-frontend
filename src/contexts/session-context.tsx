@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import type { FC, ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
 import { apiFetch } from '../utils/api'
-import { MarketingAccount } from '../sdk/types'
+import type { MarketingAccount } from '../sdk/types'
 
 export type AccountMapping = MarketingAccount
 
@@ -77,7 +78,7 @@ interface SessionProviderProps {
   children: ReactNode
 }
 
-export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
+export const SessionProvider: FC<SessionProviderProps> = ({ children }) => {
   const [state, setState] = useState<SessionState>({
     isAuthenticated: false,
     isLoading: false,
@@ -254,7 +255,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   throw new Error(`OAuth complete failed: ${completeResponse.status}`)
                 }
 
-                const _completeData = await completeResponse.json()
+                await completeResponse.json()
               } catch (error) {
                 console.error('[SESSION] OAuth complete error:', error)
                 setState(prev => ({
@@ -411,7 +412,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       })
 
       if (response.ok) {
-        const _data = await response.json()
+        await response.json()
 
         // Find the full account details
         const account = state.availableAccounts.find(acc => acc.id === accountId)

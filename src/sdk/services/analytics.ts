@@ -3,10 +3,14 @@
  */
 
 import { APIClient } from '../client'
-import { AnalyticsRequest, InsightsRequest, InsightsResponse, APIResponse } from '../types'
+import type { AnalyticsRequest, InsightsRequest, InsightsResponse, APIResponse } from '../types'
 
 export class AnalyticsService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Perform creative analysis

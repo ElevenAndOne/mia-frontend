@@ -2,18 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlatform } from '../../hooks/useMiaSDK'
 import { useSession } from '../../contexts/session-context'
-import { MarketingAccount } from '../../sdk/types'
+import type { MarketingAccount, LinkedGA4Property } from '../../sdk/types'
 
 interface GA4Property {
   property_id: string
   display_name: string
-}
-
-interface LinkedGA4Property {
-  property_id: string
-  display_name: string
-  is_primary: boolean
-  sort_order: number
 }
 
 interface GA4PropertySelectorProps {

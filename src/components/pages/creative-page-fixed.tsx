@@ -327,7 +327,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
       [activeCategory]: [...prev[activeCategory], loadingMessage]
     }))
 
-    await performQuestionAnalysis(question, questionIndex, loadingMessage)
+    await performQuestionAnalysis(question, loadingMessage)
   }
 
   // Handle cycling question click (bottom bar questions)
@@ -379,7 +379,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
       [activeCategory]: [...prev[activeCategory], loadingMessage]
     }))
 
-    await performQuestionAnalysis(question, questionIndex, loadingMessage)
+    await performQuestionAnalysis(question, loadingMessage)
     
     // Move to next available question
     setCurrentQuestionIndex(prev => prev + 1)
@@ -398,7 +398,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
     setShowBurgerMenu(false)
   }
 
-  const performQuestionAnalysis = async (question: string, questionIndex: number, loadingMessage: Message) => {
+  const performQuestionAnalysis = async (question: string, loadingMessage: Message) => {
     try {
       // Ensure we have session and account selected
       if (!sessionId || !selectedAccount) {

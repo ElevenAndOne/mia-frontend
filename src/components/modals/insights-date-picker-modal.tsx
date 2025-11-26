@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DayPicker, DateRange, MonthCaptionProps, useDayPicker } from 'react-day-picker'
+import { DayPicker, useDayPicker } from 'react-day-picker'
+import type { DateRange, MonthCaptionProps } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { format } from 'date-fns'
 

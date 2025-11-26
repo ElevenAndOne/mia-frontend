@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
+import type { FC, ReactNode } from 'react'
 import { getGlobalSDK } from '../sdk'
 import { useSession } from './session-context'
+import type { PlatformStatusData } from '../sdk/services/platform'
 
 export interface PlatformStatus {
   connected: boolean
@@ -71,7 +73,7 @@ const initialState: IntegrationsState = {
   ga4: defaultPlatformStatus
 }
 
-export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ children }) => {
+export const IntegrationsProvider: FC<IntegrationsProviderProps> = ({ children }) => {
   const { sessionId, selectedAccount } = useSession()
   const [platforms, setPlatforms] = useState<IntegrationsState>(initialState)
   const [integrations, setIntegrations] = useState<Integration[]>([])
@@ -95,7 +97,7 @@ export const IntegrationsProvider: React.FC<IntegrationsProviderProps> = ({ chil
         throw new Error('Failed to fetch platform status')
       }
 
-      const statusData = result.data
+      const statusData: PlatformStatusData = result.data
 
       // Update platforms state
       setPlatforms({

@@ -3,10 +3,14 @@
  */
 
 import { APIClient } from '../client'
-import { MetaAdsAccount, MetaCampaign, CampaignMetrics, MetaAdSet, MetaAd, APIResponse } from '../types'
+import type { MetaAdsAccount, MetaCampaign, CampaignMetrics, MetaAdSet, MetaAd, APIResponse } from '../types'
 
 export class MetaAdsService {
-  constructor(private client: APIClient) {}
+  private readonly client: APIClient
+
+  constructor(client: APIClient) {
+    this.client = client
+  }
 
   /**
    * Get all Meta ad accounts

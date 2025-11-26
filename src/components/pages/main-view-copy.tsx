@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { getGlobalSDK } from '../../sdk'
-import { ChatResponse } from '../../sdk/services/chat'
+import type { ChatResponse } from '../../sdk/services/chat'
 import BrevoConnectionModal from '../modals/brevo-connection-modal'
 import DateRangeSelector from '../common/date-range-selector'
 
 interface MainViewProps {
   onLogout: () => void
-  onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: unknown) => void
+  onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: Record<string, unknown>) => void
   onCreativeClick?: () => void
   onIntegrationsClick?: () => void
   onSummaryQuickClick?: () => void
