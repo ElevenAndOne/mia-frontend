@@ -8,6 +8,7 @@ import GA4PropertySelector from './GA4PropertySelector'
 import GoogleAccountSelector from './GoogleAccountSelector'
 import BrevoAccountSelector from './BrevoAccountSelector'
 import HubSpotAccountSelector from './HubSpotAccountSelector'
+import MailchimpAccountSelector from './MailchimpAccountSelector'
 
 interface Integration {
   id: string
@@ -37,6 +38,11 @@ interface PlatformStatus {
     last_synced?: string
   }
   hubspot: {
+    connected: boolean
+    linked: boolean
+    last_synced?: string
+  }
+  mailchimp: {
     connected: boolean
     linked: boolean
     last_synced?: string
@@ -75,6 +81,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // HubSpot Account Selector Modal State
   const [showHubSpotAccountSelector, setShowHubSpotAccountSelector] = useState(false)
+
+  // Mailchimp Account Selector Modal State
+  const [showMailchimpAccountSelector, setShowMailchimpAccountSelector] = useState(false)
 
   // Facebook Page Selector Modal State
   const [showFacebookPageSelector, setShowFacebookPageSelector] = useState(false)
@@ -184,6 +193,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         autoSync: platformStatus.hubspot?.connected ? true : undefined
       },
       {
+        id: 'mailchimp',
+        name: 'Mailchimp',
+        description: 'Email marketing and campaigns',
+        icon: '/icons/mailchimp.png',
+        connected: platformStatus.mailchimp?.connected || false,
+        dataPoints: platformStatus.mailchimp?.connected ? 4500 : undefined,
+        lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
+        autoSync: platformStatus.mailchimp?.connected ? true : undefined
+      },
+      {
         id: 'linkedin',
         name: 'LinkedIn Ads',
         description: 'B2B advertising and lead generation',
@@ -272,6 +291,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         console.error('[IntegrationsPage] Error checking HubSpot status:', error)
       }
 
+      // Check Mailchimp authentication status
+      let mailchimpConnected = false
+      try {
+        const mailchimpResponse = await apiFetch(`/api/oauth/mailchimp/status?session_id=${sessionId}`)
+        if (mailchimpResponse.ok) {
+          const mailchimpData = await mailchimpResponse.json()
+          mailchimpConnected = mailchimpData.authenticated || false
+          console.log('[IntegrationsPage] Mailchimp status:', mailchimpData)
+        }
+      } catch (error) {
+        console.error('[IntegrationsPage] Error checking Mailchimp status:', error)
+      }
+
       // Check Brevo authentication status
       let brevoConnected = false
       try {
@@ -306,7 +338,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         ga4: { connected: isAuthenticated || ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
         brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },  // FIXED (Nov 18): Use brevoConnected from status endpoint (supports multi-account)
-        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() }  // FIXED (Nov 18): Use hubspotConnected from status endpoint (supports multi-account)
+        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },  // FIXED (Nov 18): Use hubspotConnected from status endpoint (supports multi-account)
+        mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
       }
 
       console.log('[IntegrationsPage] Computed platform status:', platforms)
@@ -521,6 +554,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       } else if (integrationId === 'hubspot') {
         const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}`)
+        if (response.ok) {
+          const data = await response.json()
+          authUrl = data.auth_url
+        }
+      } else if (integrationId === 'mailchimp') {
+        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?session_id=${sessionId}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
@@ -808,6 +847,35 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                 }}
                                 className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
                                 title="Switch HubSpot portal"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+                          {integration.id === 'mailchimp' && integration.connected && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleConnect('mailchimp')
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Connect another Mailchimp account"
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowMailchimpAccountSelector(true)
+                                }}
+                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                                title="Switch Mailchimp account"
                               >
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1116,6 +1184,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
+          await checkConnections()
+          await refreshAccounts()
+        }}
+      />
+
+      {/* Mailchimp Account Selector Modal */}
+      <MailchimpAccountSelector
+        isOpen={showMailchimpAccountSelector}
+        onClose={() => setShowMailchimpAccountSelector(false)}
+        onSuccess={async () => {
+          console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
+          setShowMailchimpAccountSelector(false)
           await checkConnections()
           await refreshAccounts()
         }}
