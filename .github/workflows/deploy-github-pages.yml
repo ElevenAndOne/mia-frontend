@@ -1,10 +1,10 @@
 name: Deploy to GitHub Pages
 
-# Deploy when pushing to fat/new-ui branch or manually trigger
+# Deploy when pushing to feat/new-ui branch or manually trigger
 on:
   push:
     branches:
-      - fat/new-ui
+      - feat/new-ui
   workflow_dispatch:
 
 permissions:
