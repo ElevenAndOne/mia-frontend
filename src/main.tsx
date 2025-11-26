@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './app.tsx'
+import App from './App'
 import { SessionProvider } from './contexts/session-context'
 import { DateRangeProvider } from './contexts/date-range-context'
 import { UIStateProvider } from './contexts/ui-state-context'
