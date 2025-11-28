@@ -336,11 +336,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Google Ads: connected if ANY Google Ads accounts exist (auto-populated from Google OAuth)
       // GA4: connected only if GA4 property is selected for THIS account
       // Meta: connected only if credentials exist in credentials.db
+      // FIXED (Nov 27): Use brevoLinked OR brevoConnected for Brevo status
+      // brevoLinked = from account data (brevo_api_key field)
+      // brevoConnected = from /api/oauth/brevo/status endpoint
       const platforms = {
         google: { connected: googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: metaHasCredentials && metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoConnected, linked: brevoConnected, last_synced: new Date().toISOString() },
+        brevo: { connected: brevoConnected || brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
         hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },
         mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
       }

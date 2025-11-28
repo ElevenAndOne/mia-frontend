@@ -45,7 +45,7 @@ const formatDateRangeDisplay = (dateRange: string): string => {
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
-  const { selectedAccount, availableAccounts, selectAccount, sessionId } = useSession()
+  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null) // Track which question is loading
@@ -85,6 +85,15 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   }
 
   const connectedPlatforms = getConnectedPlatforms()
+
+  // Refresh accounts on mount to get latest platform connections
+  // This ensures platform icons update after returning from Integrations page
+  useEffect(() => {
+    if (sessionId) {
+      console.log('[MainView] Refreshing accounts to get latest platform connections...')
+      refreshAccounts()
+    }
+  }, []) // Only on mount
 
   // Load saved platform preferences when account changes
   useEffect(() => {
