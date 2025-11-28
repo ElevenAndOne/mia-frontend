@@ -172,7 +172,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 bg-white p-6 overflow-y-auto rounded-t-2xl -mt-4">
+      <div className="flex-1 bg-white p-6 pb-32 overflow-y-auto rounded-t-2xl -mt-4">
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
