@@ -134,7 +134,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
       {!showLoginModal && (
         <button
           onClick={() => setShowLoginModal(true)}
-          className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
+          className="absolute top-4 right-4 z-50 bg-purple-600 hover:bg-purple-700 shadow-lg rounded-full p-3 transition-all duration-200"
           aria-label="Skip video"
         >
           <svg
