@@ -282,10 +282,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                     isAuthenticated: true,
                     isLoading: false,
                     user: {
-                      name: statusData.name || 'User',
-                      email: statusData.email || '',
-                      picture_url: statusData.picture || '',
-                      google_user_id: statusData.user_id || ''
+                      name: statusData.user_info?.name || statusData.name || 'User',
+                      email: statusData.user_info?.email || statusData.email || '',
+                      picture_url: statusData.user_info?.picture || statusData.picture || '',
+                      google_user_id: statusData.user_info?.id || statusData.user_id || ''
                     }
                   }))
 

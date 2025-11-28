@@ -45,7 +45,7 @@ const formatDateRangeDisplay = (dateRange: string): string => {
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
-  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts } = useSession()
+  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null) // Track which question is loading
@@ -553,7 +553,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                 lineHeight: '110%',
                 letterSpacing: '-0.78px',
                 marginBottom: '4px'
-              }}>Hello Sean.</h2>
+              }}>Hello {user?.name?.split(' ')[0] || 'there'}.</h2>
               <p style={{
                 color: '#1B1B1B',
                 fontFamily: 'Geologica, system-ui, sans-serif',
