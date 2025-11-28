@@ -55,6 +55,23 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }, [mccAccounts])
 
+  // Auto-select and proceed if there's only one user-based account (no Google Ads)
+  useEffect(() => {
+    if (!isFetchingMCCs && mccAccounts.length === 0 && availableAccounts.length === 1) {
+      const account = availableAccounts[0]
+      // If it's a user-based account (no ads platforms), auto-select and proceed
+      if (account.id.startsWith('user_')) {
+        console.log('[ACCOUNT-SELECTION] Auto-selecting user-based account:', account.name)
+        // Auto-select with a default industry, then proceed
+        selectAccount(account.id, 'Other').then((success) => {
+          if (success) {
+            onAccountSelected()
+          }
+        })
+      }
+    }
+  }, [isFetchingMCCs, mccAccounts, availableAccounts])
+
   // Load available accounts after MCC is selected
   useEffect(() => {
     if (selectedMCC && availableAccounts.length === 0) {
@@ -322,7 +339,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               className="space-y-4"
             >
               {availableAccounts
-                .filter(account => account.id.startsWith('google_') || account.id.startsWith('meta_'))  // Show Google and Meta accounts
+                .filter(account => account.id.startsWith('google_') || account.id.startsWith('meta_') || account.id.startsWith('user_'))  // Show Google, Meta, and user-based accounts
                 .map((account, index) => (
                 <motion.button
                   key={account.id}
