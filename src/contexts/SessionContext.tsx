@@ -113,6 +113,45 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({ ...prev, isLoading: true }))
 
       try {
+        // Check if this is a mobile OAuth redirect callback
+        const urlParams = new URLSearchParams(window.location.search)
+        const oauthComplete = urlParams.get('oauth_complete')
+
+        // Get or create session ID early - needed for OAuth completion
+        let sessionId = localStorage.getItem('mia_session_id')
+        if (!sessionId) {
+          sessionId = generateSessionId()
+          localStorage.setItem('mia_session_id', sessionId)
+        }
+
+        if (oauthComplete === 'google') {
+          console.log('[SESSION] Mobile OAuth redirect detected, completing flow...')
+          // Clear the URL parameter
+          window.history.replaceState({}, '', window.location.pathname)
+          // Clear the pending OAuth flag
+          localStorage.removeItem('mia_oauth_pending')
+          localStorage.removeItem('mia_oauth_return_url')
+
+          // Complete OAuth by creating database session
+          try {
+            const completeResponse = await apiFetch('/api/oauth/google/complete', {
+              method: 'POST',
+              headers: {
+                'X-Session-ID': sessionId
+              }
+            })
+
+            if (completeResponse.ok) {
+              console.log('[SESSION] Mobile OAuth complete success')
+              // Continue to check auth status below - the session validation will pick up the new auth
+            } else {
+              console.error('[SESSION] Mobile OAuth complete failed:', completeResponse.status)
+            }
+          } catch (error) {
+            console.error('[SESSION] Mobile OAuth complete error:', error)
+          }
+        }
+
         // Check localStorage for existing session
         const storedSessionId = localStorage.getItem('mia_session_id')
 
@@ -182,24 +221,24 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
 
         // No stored session or validation failed - create new session
-        const sessionId = generateSessionId()
-        localStorage.setItem('mia_session_id', sessionId)
+        const newSessionId = generateSessionId()
+        localStorage.setItem('mia_session_id', newSessionId)
 
         setState(prev => ({
           ...prev,
-          sessionId: sessionId,
+          sessionId: newSessionId,
           isLoading: false
         }))
 
       } catch (error) {
         console.error('[SESSION] Initialization error:', error)
-        const sessionId = generateSessionId()
-        localStorage.setItem('mia_session_id', sessionId)
+        const errorSessionId = generateSessionId()
+        localStorage.setItem('mia_session_id', errorSessionId)
 
         setState(prev => ({
           ...prev,
           error: 'Failed to initialize session',
-          sessionId: sessionId,
+          sessionId: errorSessionId,
           isLoading: false
         }))
       }
@@ -207,6 +246,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     initializeSession()
   }, [])
+
+  // Detect if running on mobile (iOS Safari is particularly strict about popups)
+  const isMobile = (): boolean => {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  }
 
   const login = async (): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
@@ -221,7 +265,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       const authData = await authUrlResponse.json()
 
-      // Open popup for OAuth
+      // On mobile, use redirect flow instead of popup (iOS Safari blocks delayed popups)
+      if (isMobile()) {
+        console.log('[SESSION] Mobile detected, using redirect flow')
+        // Store session ID and return URL for after OAuth redirect
+        localStorage.setItem('mia_oauth_pending', 'google')
+        localStorage.setItem('mia_oauth_return_url', window.location.href)
+        // Redirect to OAuth (will come back to /oauth/callback)
+        window.location.href = authData.auth_url
+        return true // Will complete after redirect
+      }
+
+      // Desktop: use popup flow
       const popup = window.open(
         authData.auth_url,
         'google-oauth',

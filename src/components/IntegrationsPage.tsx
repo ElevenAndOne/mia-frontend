@@ -331,18 +331,34 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         console.error('[IntegrationsPage] Error checking Meta credentials:', error)
       }
 
+      // FIXED (Nov 28): Check if Google OAuth is authenticated (not just if they have Google Ads)
+      // User-based accounts don't have google_ads_id but ARE authenticated with Google
+      let googleHasCredentials = false
+      try {
+        const googleStatusResponse = await apiFetch(`/api/oauth/google/status`, {
+          headers: { 'X-Session-ID': sessionId || '' }
+        })
+        if (googleStatusResponse.ok) {
+          const googleStatusData = await googleStatusResponse.json()
+          googleHasCredentials = googleStatusData.authenticated || false
+          console.log('[IntegrationsPage] Google auth status:', googleHasCredentials)
+        }
+      } catch (error) {
+        console.error('[IntegrationsPage] Error checking Google auth:', error)
+      }
+
       // Use ACTUAL connection status from account data and API checks
       // FIXED (Nov 26): Check actual data, not stale context
-      // Google Ads: connected if ANY Google Ads accounts exist (auto-populated from Google OAuth)
+      // FIXED (Nov 28): Google connected = has credentials OR has google_ads_id
       // GA4: connected only if GA4 property is selected for THIS account
       // Meta: connected only if credentials exist in credentials.db
       // FIXED (Nov 27): Use brevoLinked OR brevoConnected for Brevo status
       // brevoLinked = from account data (brevo_api_key field)
       // brevoConnected = from /api/oauth/brevo/status endpoint
       const platforms = {
-        google: { connected: googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
+        google: { connected: googleHasCredentials || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
-        meta: { connected: metaHasCredentials && metaLinked, linked: metaLinked, last_synced: new Date().toISOString() },
+        meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
         brevo: { connected: brevoConnected || brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
         hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },
         mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
@@ -620,12 +636,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 const completeData = await completeResponse.json()
                 console.log(`${integrationId} /complete succeeded:`, completeData)
 
-                // For Meta, show account selector modal
+                // For Meta, just mark as connected - user selects ad account/FB page via gear icons
+                // No auto-popup - simpler UX, user has control
                 if (integrationId === 'meta' && completeData.success) {
-                  console.log('[META-OAUTH] Meta OAuth complete, showing account selector')
-                  setShowMetaAccountSelector(true)
-                  setConnectingId(null)
-                  return // Don't refresh connections yet - wait for account selection
+                  console.log('[META-OAUTH] Meta OAuth complete - credentials saved')
+                  console.log('[META-OAUTH] User can select Meta ad account (gear) or Facebook page (FB icon)')
+                  // Continue to checkConnections() below
                 }
               }
             } catch (error) {
@@ -634,7 +650,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           }
 
           // Refresh integration status
+          console.log('[INTEGRATIONS] Calling checkConnections after OAuth complete...')
           await checkConnections()
+          console.log('[INTEGRATIONS] checkConnections complete')
 
           setSelectedIntegration(integrationId)
           setConnectingId(null)
