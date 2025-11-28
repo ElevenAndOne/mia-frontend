@@ -716,33 +716,26 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
               </div>
             ) : (
               <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '107px', marginLeft: '5px' }}>
-                {onSummaryQuickClick && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      if (onSummaryQuickClick) {
-                        setTimeout(() => onSummaryQuickClick(selectedPlatforms), 150)
-                      }
-                    }}
-                    className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                    style={{
-                      backgroundColor: '#E6E6E6',
-                      color: '#000',
-                      fontFamily: 'Geologica, system-ui, sans-serif',
-                      fontSize: '14px',
-                      fontWeight: 400,
-                      paddingLeft: '24px',
-                      paddingRight: '24px',
-                      paddingTop: '12px',
-                      paddingBottom: '12px',
-                      whiteSpace: 'nowrap',
-                      WebkitTapHighlightColor: 'transparent',
-                      touchAction: 'manipulation'
-                    }}
-                  >
-                    Summary
-                  </button>
-                )}
+                {/* Summary button - disabled/coming soon */}
+                <button
+                  disabled
+                  title="Coming Soon"
+                  className="inline-flex items-center justify-center rounded-full cursor-not-allowed opacity-50"
+                  style={{
+                    backgroundColor: '#E6E6E6',
+                    color: '#999',
+                    fontFamily: 'Geologica, system-ui, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 400,
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Summary
+                </button>
 
                 <button
                   onClick={(e) => {
