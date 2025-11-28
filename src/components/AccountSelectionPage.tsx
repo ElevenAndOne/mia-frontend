@@ -200,16 +200,16 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   }
 
   return (
-    <div className="w-full h-full bg-white flex flex-col" style={{ maxWidth: '393px', margin: '0 auto' }}>
+    <div className="w-full h-full bg-white overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
       {/* Header */}
-      <div className="px-6 pt-12 pb-8 text-center">
+      <div className="px-6 pt-4 pb-4 text-center">
         {onBack && (
-          <div className="flex justify-start mb-4">
+          <div className="flex justify-start mb-2">
             <button
               onClick={onBack}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
@@ -228,15 +228,15 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               transition={{ delay: 0.1 }}
               src={user.picture_url}
               alt={user.name}
-              className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-gray-200"
+              className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-gray-200"
             />
           )}
 
-          <h1 className="text-2xl font-semibold text-black mb-3">
+          <h1 className="text-xl font-semibold text-black mb-1">
             Welcome{user?.name ? `, ${user.name}` : ''}!
           </h1>
 
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm">
             {mccAccounts.length > 1 && !selectedMCC
               ? 'Select your Manager Account first'
               : 'Select the account you\'d like to analyze'}
@@ -259,7 +259,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
       {/* STEP 1: MCC Selection (only show if user has 2+ MCCs) */}
       {mccAccounts.length > 1 && !selectedMCC && (
-        <div className="px-6 flex-1 overflow-y-auto">
+        <div className="px-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Step 1: Select Manager Account</h2>
             <p className="text-sm text-gray-600">Choose which Manager Account to use</p>
@@ -306,7 +306,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
       {/* STEP 2: Account Selection (show after MCC selected, or if 0-1 MCCs) */}
       {(mccAccounts.length <= 1 || selectedMCC) && (
-        <div className="px-6 flex-1 overflow-y-auto">
+        <div className="px-6 pb-8">
           {/* Show step header only if there were multiple MCCs */}
           {mccAccounts.length > 1 && selectedMCC && (
             <div className="mb-6">
@@ -430,56 +430,47 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               ))}
             </motion.div>
           )}
+
+          {/* Industry Selection - INSIDE scrollable area */}
+          {localSelectedAccount && !isSelecting && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 pb-32"
+            >
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                What industry are you in?
+              </label>
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => setSelectedIndustry(e.target.value)}
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                >
+                  <option value="">Select your industry</option>
+                  {industries.map((industry) => (
+                    <option key={industry} value={industry}>
+                      {industry}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => handleAccountSelect(localSelectedAccount)}
+                  disabled={!selectedIndustry}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                    selectedIndustry
+                      ? 'bg-black text-white hover:bg-gray-800'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
-      )}
-
-      {/* Industry Selection - Only show when account is selected */}
-      {localSelectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="px-6 pb-4 flex-shrink-0"
-        >
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            What industry are you in?
-          </label>
-          <select
-            value={selectedIndustry}
-            onChange={(e) => setSelectedIndustry(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-          >
-            <option value="">Select your industry</option>
-            {industries.map((industry) => (
-              <option key={industry} value={industry}>
-                {industry}
-              </option>
-            ))}
-          </select>
-        </motion.div>
-      )}
-
-      {/* Continue Button - Only show when account is selected */}
-      {localSelectedAccount && !isSelecting && (mccAccounts.length <= 1 || selectedMCC) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 pt-2 flex-shrink-0"
-        >
-          <button
-            onClick={() => handleAccountSelect(localSelectedAccount)}
-            disabled={!selectedIndustry}
-            className={`w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center space-x-2 ${
-              selectedIndustry
-                ? 'bg-black text-white hover:bg-gray-800'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            <span>Continue with {localSelectedAccount.name}</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </button>
-        </motion.div>
       )}
     </div>
   )
