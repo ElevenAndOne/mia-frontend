@@ -83,7 +83,13 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     try {
       setIsFetchingMCCs(true)
 
-      const response = await apiFetch('/api/oauth/google/ad-accounts', {
+      // Pass user_id to avoid relying on server-side global state
+      const userId = user?.google_user_id
+      const url = userId
+        ? `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(userId)}`
+        : '/api/oauth/google/ad-accounts'
+
+      const response = await apiFetch(url, {
         method: 'GET',
       })
 
