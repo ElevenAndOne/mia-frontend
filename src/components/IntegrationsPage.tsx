@@ -32,6 +32,11 @@ interface PlatformStatus {
     linked: boolean
     last_synced?: string
   }
+  facebook_organic: {
+    connected: boolean
+    linked: boolean
+    last_synced?: string
+  }
   brevo: {
     connected: boolean
     linked: boolean
@@ -164,13 +169,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       },
       {
         id: 'meta',
-        name: 'Meta',
-        description: 'Facebook & Instagram Ads',
+        name: 'Meta Ads',
+        description: 'Paid advertising campaigns',
         icon: '/icons/meta-color.svg',
         connected: platformStatus.meta?.connected || false,
         dataPoints: platformStatus.meta?.connected ? 8500 : undefined,
         lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
         autoSync: platformStatus.meta?.connected ? true : undefined
+      },
+      {
+        id: 'facebook_organic',
+        name: 'Facebook',
+        description: 'Page posts, engagement & reach',
+        icon: '/icons/facebook-48.png',
+        connected: platformStatus.facebook_organic?.connected || false,
+        dataPoints: platformStatus.facebook_organic?.connected ? 2500 : undefined,
+        lastSync: platformStatus.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
+        autoSync: platformStatus.facebook_organic?.connected ? true : undefined
       },
       {
         id: 'brevo',
@@ -196,7 +211,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         id: 'mailchimp',
         name: 'Mailchimp',
         description: 'Email marketing and campaigns',
-        icon: '/icons/mailchimp.png',
+        icon: '/icons/radio buttons/mailchimp.png',
         connected: platformStatus.mailchimp?.connected || false,
         dataPoints: platformStatus.mailchimp?.connected ? 4500 : undefined,
         lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
@@ -243,6 +258,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       let metaLinked = false
       let ga4Linked = false
       let brevoLinked = false
+      let facebookOrganicLinked = false
 
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json()
@@ -265,6 +281,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             metaLinked = !!account.meta_ads_id
             ga4Linked = !!account.ga4_property_id
             brevoLinked = !!account.brevo_api_key
+            facebookOrganicLinked = !!account.facebook_page_id
 
             // Store account data with facebook_page_id for FacebookPageSelector
             setCurrentAccountData(account)
@@ -355,10 +372,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // FIXED (Nov 27): Use brevoLinked OR brevoConnected for Brevo status
       // brevoLinked = from account data (brevo_api_key field)
       // brevoConnected = from /api/oauth/brevo/status endpoint
+      // FIXED (Nov 30): Split facebook_organic from meta - requires Meta OAuth + Facebook Page linked
       const platforms = {
         google: { connected: googleHasCredentials || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
         meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
+        facebook_organic: { connected: metaHasCredentials && facebookOrganicLinked, linked: facebookOrganicLinked, last_synced: new Date().toISOString() },
         brevo: { connected: brevoConnected || brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
         hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },
         mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
@@ -391,16 +410,27 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             lastSync: platforms.ga4?.connected ? getTimeAgo(platforms.ga4.last_synced) : undefined,
             autoSync: platforms.ga4?.connected ? true : undefined
           },
-          // Meta
+          // Meta Ads (Nov 30: split from organic)
           {
             id: 'meta',
-            name: 'Meta',
+            name: 'Meta Ads',
             description: 'Facebook & Instagram Ads',
             icon: '/icons/meta-color.svg',
             connected: platforms.meta?.connected || false,
             dataPoints: platforms.meta?.connected ? 8500 : undefined,
             lastSync: platforms.meta?.connected ? getTimeAgo(platforms.meta.last_synced) : undefined,
             autoSync: platforms.meta?.connected ? true : undefined
+          },
+          // Facebook Organic (Nov 30: separate from Meta Ads)
+          {
+            id: 'facebook_organic',
+            name: 'Facebook Organic',
+            description: 'Page posts, engagement & reach',
+            icon: '/icons/facebook-48.png',
+            connected: platforms.facebook_organic?.connected || false,
+            dataPoints: platforms.facebook_organic?.connected ? 2500 : undefined,
+            lastSync: platforms.facebook_organic?.connected ? getTimeAgo(platforms.facebook_organic.last_synced) : undefined,
+            autoSync: platforms.facebook_organic?.connected ? true : undefined
           },
           // Brevo
           {
@@ -423,6 +453,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             dataPoints: platforms.hubspot?.connected ? 5200 : undefined,
             lastSync: platforms.hubspot?.connected ? getTimeAgo(platforms.hubspot.last_synced) : undefined,
             autoSync: platforms.hubspot?.connected ? true : undefined
+          },
+          // Mailchimp
+          {
+            id: 'mailchimp',
+            name: 'Mailchimp',
+            description: 'Email marketing and campaigns',
+            icon: '/icons/radio buttons/mailchimp.png',
+            connected: platforms.mailchimp?.connected || false,
+            dataPoints: platforms.mailchimp?.connected ? 4500 : undefined,
+            lastSync: platforms.mailchimp?.connected ? getTimeAgo(platforms.mailchimp.last_synced) : undefined,
+            autoSync: platforms.mailchimp?.connected ? true : undefined
           },
           // Coming soon
           {
@@ -554,6 +595,28 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
+    // Facebook Organic: Check if Meta OAuth is connected, if so show page selector
+    // Otherwise, start Meta OAuth flow (it will enable both Meta Ads and FB Organic credentials)
+    if (integrationId === 'facebook_organic') {
+      // Check if Meta credentials exist
+      try {
+        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
+        if (metaCredsResponse.ok) {
+          const metaCredsData = await metaCredsResponse.json()
+          if (metaCredsData.has_credentials) {
+            // Meta OAuth already connected - just show page selector
+            setShowFacebookPageSelector(true)
+            return
+          }
+        }
+      } catch (error) {
+        console.error('[FB-ORGANIC] Error checking Meta credentials:', error)
+      }
+      // Meta OAuth not connected - fall through to start Meta OAuth flow
+      // After OAuth completes, user can select Facebook page via gear icon
+      console.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+    }
+
     setConnectingId(integrationId)
 
     try {
@@ -568,7 +631,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           authUrl = data.auth_url
         }
-      } else if (integrationId === 'meta') {
+      } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
+        // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
         const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}`)
         if (response.ok) {
           const data = await response.json()
@@ -611,10 +675,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           clearInterval(pollTimer)
           console.log(`${integrationId} popup closed, completing auth flow...`)
 
-          // For Meta/Google OAuth, call /complete endpoint to link credentials
-          if (integrationId === 'meta' || integrationId === 'google') {
+          // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials
+          if (integrationId === 'meta' || integrationId === 'google' || integrationId === 'facebook_organic') {
             try {
-              const completeUrl = integrationId === 'meta'
+              // Facebook Organic and Meta Ads use the same Meta OAuth endpoint
+              const completeUrl = (integrationId === 'meta' || integrationId === 'facebook_organic')
                 ? `/api/oauth/meta/complete`
                 : `/api/oauth/google/complete`
 
@@ -636,12 +701,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 const completeData = await completeResponse.json()
                 console.log(`${integrationId} /complete succeeded:`, completeData)
 
-                // For Meta, just mark as connected - user selects ad account/FB page via gear icons
-                // No auto-popup - simpler UX, user has control
+                // For Meta Ads, just mark as connected - user selects ad account via gear icon
                 if (integrationId === 'meta' && completeData.success) {
                   console.log('[META-OAUTH] Meta OAuth complete - credentials saved')
-                  console.log('[META-OAUTH] User can select Meta ad account (gear) or Facebook page (FB icon)')
-                  // Continue to checkConnections() below
+                  console.log('[META-OAUTH] User can select Meta ad account via gear icon')
+                }
+
+                // For Facebook Organic, show the Facebook page selector after OAuth completes
+                if (integrationId === 'facebook_organic' && completeData.success) {
+                  console.log('[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector')
+                  // Show Facebook page selector after a brief delay for checkConnections to complete
+                  setTimeout(() => setShowFacebookPageSelector(true), 500)
                 }
               }
             } catch (error) {
@@ -791,33 +861,37 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               </svg>
                             </button>
                           )}
-                          {/* Gear icons for Meta to select account and Facebook Page */}
+                          {/* Gear icon for Meta Ads to select ad account */}
                           {integration.id === 'meta' && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowFacebookPageSelector(true)
-                                }}
-                                className="w-5 h-5 hover:opacity-70 transition-opacity"
-                                title="Select Facebook Page for organic insights"
-                              >
-                                <img src="/icons/facebook.png" alt="Facebook" className="w-5 h-5" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowMetaAccountSelector(true)
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Change Meta account"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                              </button>
-                            </>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowMetaAccountSelector(true)
+                              }}
+                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                              title="Change Meta ad account"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          )}
+                          {/* Gear icon for Facebook Organic to select Facebook Page */}
+                          {integration.id === 'facebook_organic' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowFacebookPageSelector(true)
+                              }}
+                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+                              title="Change Facebook Page"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
                           )}
                           {/* Gear icon for Brevo to switch accounts or add new API key */}
                           {integration.id === 'brevo' && integration.connected && (

@@ -126,15 +126,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         if (oauthComplete === 'google') {
           console.log('[SESSION] Mobile OAuth redirect detected, completing flow...')
+          // Get user_id from URL if present (passed by backend callback)
+          const authUserId = urlParams.get('user_id')
+          console.log('[SESSION] Mobile OAuth user_id from URL:', authUserId)
+
           // Clear the URL parameter
           window.history.replaceState({}, '', window.location.pathname)
           // Clear the pending OAuth flag
           localStorage.removeItem('mia_oauth_pending')
           localStorage.removeItem('mia_oauth_return_url')
 
-          // Complete OAuth by creating database session
+          // Complete OAuth by creating database session - pass user_id if available
           try {
-            const completeResponse = await apiFetch('/api/oauth/google/complete', {
+            const completeUrl = authUserId
+              ? `/api/oauth/google/complete?user_id=${authUserId}`
+              : '/api/oauth/google/complete'
+
+            const completeResponse = await apiFetch(completeUrl, {
               method: 'POST',
               headers: {
                 'X-Session-ID': sessionId
@@ -276,7 +284,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         return true // Will complete after redirect
       }
 
-      // Desktop: use popup flow
+      // Desktop: use popup flow with message listener for user_id
       const popup = window.open(
         authData.auth_url,
         'google-oauth',
@@ -287,16 +295,35 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         throw new Error('Popup blocked. Please allow popups for this site.')
       }
 
-      // Poll for completion
+      // Listen for postMessage from OAuth callback with user_id
       return new Promise((resolve) => {
+        let authUserId: string | null = null
+
+        const messageHandler = (event: MessageEvent) => {
+          // Handle the OAuth completion message from the popup
+          if (event.data && event.data.type === 'oauth_complete' && event.data.provider === 'google') {
+            authUserId = event.data.user_id
+            console.log('[SESSION] Received OAuth complete message with user_id:', authUserId)
+          }
+        }
+
+        window.addEventListener('message', messageHandler)
+
         const pollTimer = setInterval(async () => {
           try {
             if (popup.closed) {
               clearInterval(pollTimer)
+              window.removeEventListener('message', messageHandler)
 
-              // Complete OAuth by creating database session
+              // Complete OAuth by creating database session - pass user_id if we received it
               try {
-                const completeResponse = await apiFetch('/api/oauth/google/complete', {
+                const completeUrl = authUserId
+                  ? `/api/oauth/google/complete?user_id=${authUserId}`
+                  : '/api/oauth/google/complete'
+
+                console.log('[SESSION] Completing OAuth with URL:', completeUrl)
+
+                const completeResponse = await apiFetch(completeUrl, {
                   method: 'POST',
                   headers: {
                     'X-Session-ID': state.sessionId
@@ -364,6 +391,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             }
           } catch (error) {
             clearInterval(pollTimer)
+            window.removeEventListener('message', messageHandler)
             console.error('[SESSION] Auth polling error:', error)
             setState(prev => ({
               ...prev,
@@ -377,6 +405,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         // Timeout after 5 minutes
         setTimeout(() => {
           clearInterval(pollTimer)
+          window.removeEventListener('message', messageHandler)
           if (!popup.closed) {
             popup.close()
           }
