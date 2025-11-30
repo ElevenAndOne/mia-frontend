@@ -78,14 +78,17 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         setMetaLoadingMessage('')
       }
     } else if (method === 'Login') {
-      // Login button - check for existing auth first, then bypass if needed
+      // Login button - check for existing session first, then redirect to Google OAuth
+      // SECURITY FIX (Nov 30, 2025): Removed bypass-login endpoint call - always use proper OAuth
 
       try {
         setIsGoogleLoading(true)
         setGoogleLoadingMessage('Checking session...')
 
-        // Check if user is already authenticated
-        if (isAuthenticated || isMetaAuthenticated) {
+        // First, check if user is already authenticated via session validation
+        const authCheck = await checkExistingAuth()
+
+        if (authCheck) {
           console.log('[LOGIN] User already authenticated, skipping to app')
           setGoogleLoadingMessage('Session found! Redirecting...')
 
@@ -102,54 +105,29 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
           return
         }
 
-        // No existing auth - check for last authenticated user
-        setGoogleLoadingMessage('Restoring last session...')
+        // No valid session found - redirect to Google OAuth (same as "Continue with Google")
+        console.log('[LOGIN] No valid session, redirecting to Google OAuth')
+        setGoogleLoadingMessage('Redirecting to sign in...')
 
-        // ✅ FIX: Try to restore LAST authenticated user (not hardcoded test account)
-        const lastUserId = localStorage.getItem('mia_last_user_id')
+        const success = await login()
 
-        if (!lastUserId) {
-          // No previous user found - can't use bypass
-          throw new Error('No previous session found. Please sign in with Google or Meta.')
-        }
+        if (success) {
+          setGoogleLoadingMessage('Authentication successful!')
 
-        console.log('[LOGIN] 🔄 Restoring session for user:', lastUserId)
-
-        // Call the bypass endpoint with LAST authenticated user's ID
-        const bypassResponse = await apiFetch(`/api/oauth/bypass-login?user_id=${lastUserId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionId
-          }
-        })
-
-        if (!bypassResponse.ok) {
-          const errorData = await bypassResponse.json().catch(() => ({}))
-          throw new Error(errorData.detail || 'Bypass login failed')
-        }
-
-        const bypassData = await bypassResponse.json()
-
-        setGoogleLoadingMessage('Session created! Redirecting...')
-
-        // Update SessionContext by checking auth status
-        const authSuccess = await checkExistingAuth()
-        if (authSuccess) {
-          await refreshAccounts()
-        }
-
-        // Small delay for UX
-        setTimeout(() => {
           if (onAuthSuccess) {
             onAuthSuccess()
           }
-          setIsGoogleLoading(false)
-        }, 200)
+        } else {
+          throw new Error('Authentication failed')
+        }
 
       } catch (error) {
         console.error('💥 Login failed:', error)
-        alert(`Login failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
+        if (error instanceof Error) {
+          alert(`Login failed: ${error.message}`)
+        } else {
+          alert('Login failed. Please try again.')
+        }
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
       }
