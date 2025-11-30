@@ -24,7 +24,21 @@ type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'impro
 function App() {
   const location = useLocation()
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
-  const [appState, setAppState] = useState<AppState>('video-intro')
+
+  // Persist appState to localStorage so page refresh keeps you on the same page
+  const [appState, setAppState] = useState<AppState>(() => {
+    const saved = localStorage.getItem('mia_app_state')
+    // Only restore valid states (not video-intro or account-selection which need fresh auth check)
+    if (saved && ['main', 'growth', 'improve', 'fix', 'creative', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
+      return saved as AppState
+    }
+    return 'video-intro'
+  })
+
+  // Save appState to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('mia_app_state', appState)
+  }, [appState])
 
   // Support both Google and Meta authentication
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated

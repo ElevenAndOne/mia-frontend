@@ -363,6 +363,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                     ...prev,
                     isAuthenticated: true,
                     isLoading: false,
+                    hasSeenIntro: statusData.user_info?.has_seen_intro || prev.hasSeenIntro,  // Update from backend
                     user: {
                       name: statusData.user_info?.name || statusData.name || 'User',
                       email: statusData.user_info?.email || statusData.email || '',
@@ -432,18 +433,27 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true }))
 
     try {
-      await apiFetch('/api/oauth/google/logout', { method: 'POST' })
+      // SECURITY FIX (Nov 30, 2025): Include session ID so backend can invalidate correct session
+      await apiFetch('/api/oauth/google/logout', {
+        method: 'POST',
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
 
-      // Clear stored session
+      // Clear stored session and user data
       localStorage.removeItem('mia_session_id')
+      localStorage.removeItem('mia_last_user_id')
+      localStorage.removeItem('mia_app_state')  // Reset to main page on next login
 
       // Generate new session and store it
       const newSessionId = generateSessionId()
       localStorage.setItem('mia_session_id', newSessionId)
 
-      setState({
+      setState(prev => ({
         isAuthenticated: false,
         isLoading: false,
+        hasSeenIntro: prev.hasSeenIntro,  // Preserve - once you've seen intro, you've seen it
         user: null,
         sessionId: newSessionId,
         selectedAccount: null,
@@ -451,7 +461,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         error: null,
         isMetaAuthenticated: false,
         metaUser: null
-      })
+      }))
     } catch (error) {
       console.error('[SESSION] Logout error:', error)
       setState(prev => ({
@@ -563,6 +573,26 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       if (authResponse.ok) {
         const authData = await authResponse.json()
         if (authData.authenticated) {
+          // FIX (Nov 30, 2025): If needs_session_creation is true, we need to create a session first
+          // This happens when credentials exist but session was logged out
+          if (authData.needs_session_creation) {
+            console.log('[SESSION] Credentials exist but need new session, calling /complete')
+            const userId = authData.user_info?.id || ''
+            if (userId) {
+              const completeResponse = await apiFetch(`/api/oauth/google/complete?user_id=${userId}`, {
+                method: 'POST',
+                headers: {
+                  'X-Session-ID': state.sessionId || ''
+                }
+              })
+              if (!completeResponse.ok) {
+                console.error('[SESSION] Failed to create session via /complete')
+                return false
+              }
+              console.log('[SESSION] New session created successfully')
+            }
+          }
+
           // Fetch available accounts
           await refreshAccounts()
 

@@ -123,23 +123,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
-  // Check connection status on load - wait for sessionId to be available
-  // Only run ONCE when component mounts and sessionId is available
+  // Check connection status on load - only run ONCE
   useEffect(() => {
     if (sessionId && !hasInitiallyLoaded.current) {
-      console.log('[IntegrationsPage] Initial load, fetching connections...')
       hasInitiallyLoaded.current = true
       checkConnections()
     }
   }, [sessionId])
 
-  // Re-check connections when selected account changes
+  // Re-check connections when selected account changes (but not on initial load)
+  const prevAccountRef = useRef<string | null>(null)
   useEffect(() => {
-    if (sessionId && hasInitiallyLoaded.current && selectedAccount) {
-      console.log('[IntegrationsPage] Account changed, re-fetching connections for:', selectedAccount.name)
+    const currentAccountId = selectedAccount?.id || null
+    // Only refetch if account actually changed (not initial mount)
+    if (hasInitiallyLoaded.current && prevAccountRef.current !== null && currentAccountId !== prevAccountRef.current) {
       checkConnections()
     }
-  }, [selectedAccount])
+    prevAccountRef.current = currentAccountId
+  }, [selectedAccount?.id])
 
   // Rebuild integrations list whenever platformStatus changes (for optimistic updates)
   useEffect(() => {
@@ -238,22 +239,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const checkConnections = async () => {
     // Prevent duplicate concurrent calls
     if (isCheckingConnections) {
-      console.log('[IntegrationsPage] Already checking connections, skipping...')
       return
     }
 
     setIsCheckingConnections(true)
     try {
-      console.log('[IntegrationsPage] Fetching platform status with sessionId:', sessionId)
+      // Run ALL status checks in parallel for speed
+      const [
+        accountsResponse,
+        hubspotResponse,
+        mailchimpResponse,
+        brevoResponse,
+        metaCredsResponse,
+        googleStatusResponse
+      ] = await Promise.all([
+        apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId || '' } }),
+        apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`).catch(() => null),
+        apiFetch(`/api/oauth/mailchimp/status?session_id=${sessionId}`).catch(() => null),
+        apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`).catch(() => null),
+        apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`).catch(() => null),
+        apiFetch(`/api/oauth/google/status`, { headers: { 'X-Session-ID': sessionId || '' } }).catch(() => null)
+      ])
 
-      // Get available accounts to check what's connected
-      const accountsResponse = await apiFetch('/api/accounts/available', {
-        headers: {
-          'X-Session-ID': sessionId || ''
-        }
-      })
-
-      // Track account-specific linking (for showing checkmarks)
+      // Track account-specific linking
       let googleLinked = false
       let metaLinked = false
       let ga4Linked = false
@@ -262,117 +270,38 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json()
-        console.log('[IntegrationsPage] Accounts data:', accountsData)
 
-        // Cache GA4 properties for later use
         if (accountsData.ga4_properties) {
           setGa4Properties(accountsData.ga4_properties)
         }
 
         if (accountsData.accounts && accountsData.accounts.length > 0) {
-          // Find the selected account instead of just using first account
           const account = selectedAccount
             ? accountsData.accounts.find((acc: any) => acc.id === selectedAccount.id)
             : accountsData.accounts[0]
 
           if (account) {
-            console.log('[IntegrationsPage] Checking connections for account:', account.name)
             googleLinked = !!account.google_ads_id
             metaLinked = !!account.meta_ads_id
             ga4Linked = !!account.ga4_property_id
             brevoLinked = !!account.brevo_api_key
             facebookOrganicLinked = !!account.facebook_page_id
-
-            // Store account data with facebook_page_id for FacebookPageSelector
             setCurrentAccountData(account)
 
-            // Store linked GA4 properties
             if (account.linked_ga4_properties) {
               setLinkedGA4Properties(account.linked_ga4_properties)
-              console.log('[IntegrationsPage] Linked GA4 properties:', account.linked_ga4_properties)
             }
           }
         }
       }
 
-      // Check HubSpot authentication status
-      let hubspotConnected = false
-      try {
-        const hubspotResponse = await apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`)
-        if (hubspotResponse.ok) {
-          const hubspotData = await hubspotResponse.json()
-          hubspotConnected = hubspotData.authenticated || false
-          console.log('[IntegrationsPage] HubSpot status:', hubspotData)
-        }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking HubSpot status:', error)
-      }
+      // Parse parallel responses
+      const hubspotConnected = hubspotResponse?.ok ? (await hubspotResponse.json()).authenticated || false : false
+      const mailchimpConnected = mailchimpResponse?.ok ? (await mailchimpResponse.json()).authenticated || false : false
+      const brevoConnected = brevoResponse?.ok ? (await brevoResponse.json()).authenticated || false : false
+      const metaHasCredentials = metaCredsResponse?.ok ? (await metaCredsResponse.json()).has_credentials || false : false
+      const googleHasCredentials = googleStatusResponse?.ok ? (await googleStatusResponse.json()).authenticated || false : false
 
-      // Check Mailchimp authentication status
-      let mailchimpConnected = false
-      try {
-        const mailchimpResponse = await apiFetch(`/api/oauth/mailchimp/status?session_id=${sessionId}`)
-        if (mailchimpResponse.ok) {
-          const mailchimpData = await mailchimpResponse.json()
-          mailchimpConnected = mailchimpData.authenticated || false
-          console.log('[IntegrationsPage] Mailchimp status:', mailchimpData)
-        }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Mailchimp status:', error)
-      }
-
-      // Check Brevo authentication status
-      let brevoConnected = false
-      try {
-        const brevoResponse = await apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`)
-        if (brevoResponse.ok) {
-          const brevoData = await brevoResponse.json()
-          brevoConnected = brevoData.authenticated || false
-          console.log('[IntegrationsPage] Brevo status:', brevoData)
-        }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Brevo status:', error)
-      }
-
-      // CRITICAL FIX (Nov 11): Check if Meta CREDENTIALS actually exist in database
-      // Don't rely on isMetaAuthenticated from session (can be stale after DB clear)
-      let metaHasCredentials = false
-      try {
-        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
-        if (metaCredsResponse.ok) {
-          const metaCredsData = await metaCredsResponse.json()
-          metaHasCredentials = metaCredsData.has_credentials || false
-          console.log('[IntegrationsPage] Meta credentials status:', metaCredsData)
-        }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Meta credentials:', error)
-      }
-
-      // FIXED (Nov 28): Check if Google OAuth is authenticated (not just if they have Google Ads)
-      // User-based accounts don't have google_ads_id but ARE authenticated with Google
-      let googleHasCredentials = false
-      try {
-        const googleStatusResponse = await apiFetch(`/api/oauth/google/status`, {
-          headers: { 'X-Session-ID': sessionId || '' }
-        })
-        if (googleStatusResponse.ok) {
-          const googleStatusData = await googleStatusResponse.json()
-          googleHasCredentials = googleStatusData.authenticated || false
-          console.log('[IntegrationsPage] Google auth status:', googleHasCredentials)
-        }
-      } catch (error) {
-        console.error('[IntegrationsPage] Error checking Google auth:', error)
-      }
-
-      // Use ACTUAL connection status from account data and API checks
-      // FIXED (Nov 26): Check actual data, not stale context
-      // FIXED (Nov 28): Google connected = has credentials OR has google_ads_id
-      // GA4: connected only if GA4 property is selected for THIS account
-      // Meta: connected only if credentials exist in credentials.db
-      // FIXED (Nov 27): Use brevoLinked OR brevoConnected for Brevo status
-      // brevoLinked = from account data (brevo_api_key field)
-      // brevoConnected = from /api/oauth/brevo/status endpoint
-      // FIXED (Nov 30): Split facebook_organic from meta - requires Meta OAuth + Facebook Page linked
       const platforms = {
         google: { connected: googleHasCredentials || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
         ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
@@ -383,7 +312,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
       }
 
-      console.log('[IntegrationsPage] Computed platform status:', platforms)
       setPlatformStatus(platforms)
 
         // Build integrations list based on actual connection status
