@@ -1,4 +1,3 @@
-import { apiFetch } from '../utils/api'
 import { motion } from 'framer-motion'
 import { useSession } from '../contexts/SessionContext'
 import { useState } from 'react'
@@ -8,10 +7,8 @@ interface FigmaLoginModalProps {
 }
 
 const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
-  const { login, loginMeta, isLoading: sessionLoading, error, sessionId, checkExistingAuth, refreshAccounts, isAuthenticated, isMetaAuthenticated } = useSession()
-  const [isMetaLoading, setIsMetaLoading] = useState(false)
+  const { login, checkExistingAuth, refreshAccounts } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
 
   const handleLoginClick = async (method: string) => {
@@ -45,37 +42,6 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         }
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
-      }
-    } else if (method === 'Meta') {
-      try {
-        setIsMetaLoading(true)
-        setMetaLoadingMessage('Opening Meta sign-in...')
-
-        // Use new SessionContext loginMeta method
-        const success = await loginMeta()
-
-        if (success) {
-          setMetaLoadingMessage('Meta authentication successful!')
-
-          // Trigger the auth success callback immediately
-          if (onAuthSuccess) {
-            onAuthSuccess()
-          } else {
-            console.warn('⚠️ No onAuthSuccess callback provided')
-          }
-        } else {
-          throw new Error('Meta authentication failed')
-        }
-
-      } catch (error) {
-        console.error('💥 Error during Meta OAuth:', error)
-        if (error instanceof Error) {
-          alert(`Meta authentication failed: ${error.message}`)
-        } else {
-          alert('Meta authentication failed. Please try again.')
-        }
-        setIsMetaLoading(false)
-        setMetaLoadingMessage('')
       }
     } else if (method === 'Login') {
       // Login button - check for existing session first, then redirect to Google OAuth
@@ -131,47 +97,6 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
       }
-    } else if (method === 'MetaBypass') {
-      // Meta Bypass Login
-      try {
-        setIsGoogleLoading(true)
-        setGoogleLoadingMessage('Creating Meta bypass session...')
-
-        const bypassResponse = await apiFetch('/api/oauth/meta/bypass-login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionId
-          }
-        })
-
-        if (!bypassResponse.ok) {
-          const errorData = await bypassResponse.json().catch(() => ({}))
-          throw new Error(errorData.detail || 'Meta bypass login failed')
-        }
-
-        const bypassData = await bypassResponse.json()
-        setGoogleLoadingMessage('Meta session created! Redirecting...')
-
-        // Wait a moment for the session to be established
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        if (onAuthSuccess) {
-          onAuthSuccess()
-        }
-
-        // Reset loading state after success
-        setTimeout(() => {
-          setIsGoogleLoading(false)
-          setGoogleLoadingMessage('')
-        }, 200)
-
-      } catch (error) {
-        console.error('💥 Meta bypass failed:', error)
-        alert(`Meta bypass failed: ${error instanceof Error ? error.message : 'Please try again.'}`)
-        setIsGoogleLoading(false)
-        setGoogleLoadingMessage('')
-      }
     } else {
       alert(`${method} login coming soon!`)
     }
@@ -188,44 +113,15 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         bottom: '-15px' // Push modal DOWN (away from text)
       }}
     >
-      {/* White Modal - Height reduced, full width maintained */}
+      {/* White Modal - 3 buttons layout (Meta removed for cleaner UX - connect Meta via Integrations) */}
       <div
-        className="bg-white rounded-t-[38px] px-6 py-3 shadow-2xl touch-manipulation"
+        className="bg-white rounded-t-[38px] px-6 py-5 shadow-2xl touch-manipulation"
         style={{
           touchAction: 'manipulation',
-          height: '260px', // Slightly taller to prevent cutoff, but still shorter than original
-          width: '100%' // Ensure full width coverage
+          height: '220px', // Adjusted for 3 buttons
+          width: '100%'
         }}
       >
-        {/* Continue with Meta Button */}
-        <button
-          onClick={() => handleLoginClick('Meta')}
-          disabled={isMetaLoading}
-          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
-            isMetaLoading
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'bg-white hover:bg-gray-50 active:bg-gray-100'
-          }`}
-        >
-          {isMetaLoading ? (
-            <>
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"></div>
-              <span className="text-gray-600 font-medium">{metaLoadingMessage}</span>
-            </>
-          ) : (
-            <>
-              <div className="w-5 h-5 flex items-center justify-center">
-                <img
-                  src="/icons/meta-color.svg"
-                  alt="Meta"
-                  className="w-5 h-5"
-                />
-              </div>
-              <span className="text-gray-900 font-medium">Continue with Meta</span>
-            </>
-          )}
-        </button>
-
         {/* Continue with Google Button */}
         <button
           onClick={() => handleLoginClick('Google')}
