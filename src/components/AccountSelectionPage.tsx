@@ -83,11 +83,13 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     try {
       setIsFetchingMCCs(true)
 
-      // Pass user_id to avoid relying on server-side global state
+      // SECURITY: user_id is REQUIRED - never call without it
       const userId = user?.google_user_id
-      const url = userId
-        ? `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(userId)}`
-        : '/api/oauth/google/ad-accounts'
+      if (!userId) {
+        console.error('[ACCOUNT-SELECTION] Cannot fetch accounts: no user_id available')
+        return
+      }
+      const url = `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(userId)}`
 
       const response = await apiFetch(url, {
         method: 'GET',
