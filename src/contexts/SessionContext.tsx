@@ -166,26 +166,25 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (storedSessionId) {
           console.log('[SESSION] Found stored session, validating...', storedSessionId)
 
-          // Validate session with backend
-          const response = await apiFetch(`/api/session/validate?session_id=${storedSessionId}`)
+          // PERF FIX (Dec 1): Fetch session validation AND accounts in parallel
+          // This saves ~500-1000ms by not waiting for validation before fetching accounts
+          const [sessionResponse, accountsResponse] = await Promise.all([
+            apiFetch(`/api/session/validate?session_id=${storedSessionId}`),
+            apiFetch('/api/accounts/available', {
+              headers: { 'X-Session-ID': storedSessionId }
+            })
+          ])
 
-          if (response.ok) {
-            const data = await response.json()
+          if (sessionResponse.ok) {
+            const data = await sessionResponse.json()
 
             if (data.valid) {
               console.log('[SESSION] Session valid, restoring state')
 
-              // Restore auth state from validated session
-              // First fetch full accounts data to get complete account info
-              const accountsResponse = await apiFetch('/api/accounts/available', {
-                headers: {
-                  'X-Session-ID': storedSessionId
-                }
-              })
-
               let fullSelectedAccount = null
               let availableAccounts: AccountMapping[] = []
 
+              // Use already-fetched accounts data (no extra wait)
               if (accountsResponse.ok) {
                 const accountsData = await accountsResponse.json()
                 availableAccounts = accountsData.accounts || []

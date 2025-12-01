@@ -144,7 +144,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
         preload="auto"
         style={{ willChange: 'transform' }}
       >
-        <source src="/videos/Mia_AppIntroVideo_v03.1.mp4" type="video/mp4" />
+        <source src="/videos/Mia_AppIntroVideo_compressed_fixed.mp4" type="video/mp4" />
       </video>
 
       {/* Tap to Play overlay for iOS when video not playing */}
