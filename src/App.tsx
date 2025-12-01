@@ -1,23 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSession } from './contexts/SessionContext'
+
+// Eager load: Components needed immediately on app start
 import VideoIntroView from './components/VideoIntroView'
 import AccountSelectionPage from './components/AccountSelectionPage'
-import MainViewCopy from './components/MainViewCopy' // The main app after auth
-import GrowthPage from './components/GrowthPage' // Blue growth page
-import OptimizePage from './components/OptimizePage' // Optimize improvement page
-import ProtectPage from './components/ProtectPage' // Protect/fixing page
-import CreativePageFixed from './components/CreativePageFixed' // NEW: Creative-only analysis
-import IntegrationsPage from './components/IntegrationsPage'
-import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - Grow
-import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
-import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
-import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
-import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
-// TODO: Re-enable docs pages when created
-// import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
-// import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
-import { useSession } from './contexts/SessionContext'
+import MainViewCopy from './components/MainViewCopy'
+import InsightsDatePickerModal from './components/InsightsDatePickerModal'
+
+// PERF (Dec 1): Lazy load route components - only loaded when navigated to
+// This reduces initial bundle size and speeds up first load
+const GrowthPage = lazy(() => import('./components/GrowthPage'))
+const OptimizePage = lazy(() => import('./components/OptimizePage'))
+const ProtectPage = lazy(() => import('./components/ProtectPage'))
+const CreativePageFixed = lazy(() => import('./components/CreativePageFixed'))
+const IntegrationsPage = lazy(() => import('./components/IntegrationsPage'))
+const GrowInsights = lazy(() => import('./components/GrowInsights'))
+const OptimizeInsights = lazy(() => import('./components/OptimizeInsights'))
+const ProtectInsights = lazy(() => import('./components/ProtectInsights'))
+const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
@@ -280,13 +282,15 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <GrowthPage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <GrowthPage
+                  onBack={() => {
+                    setAppState('main')
+                    setPreloadedData(null) // Clear pre-loaded data when going back
+                  }}
+                  data={preloadedData}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -299,13 +303,15 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <OptimizePage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <OptimizePage
+                  onBack={() => {
+                    setAppState('main')
+                    setPreloadedData(null) // Clear pre-loaded data when going back
+                  }}
+                  data={preloadedData}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -318,13 +324,15 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <ProtectPage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <ProtectPage
+                  onBack={() => {
+                    setAppState('main')
+                    setPreloadedData(null) // Clear pre-loaded data when going back
+                  }}
+                  data={preloadedData}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -338,12 +346,14 @@ function App() {
               className="w-full h-full"
               style={{ backgroundColor: '#290068' }}
             >
-              <CreativePageFixed
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear any preloaded data
-                }}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#290068' }}><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+                <CreativePageFixed
+                  onBack={() => {
+                    setAppState('main')
+                    setPreloadedData(null) // Clear any preloaded data
+                  }}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -356,9 +366,11 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <IntegrationsPage
-                onBack={() => setAppState('main')}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <IntegrationsPage
+                  onBack={() => setAppState('main')}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -371,11 +383,13 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <GrowInsights
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <GrowInsights
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -388,11 +402,13 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <OptimizeInsights
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <OptimizeInsights
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -405,11 +421,13 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <ProtectInsights
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <ProtectInsights
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -422,9 +440,11 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <SummaryInsights
-                onBack={() => setAppState('main')}
-              />
+              <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+                <SummaryInsights
+                  onBack={() => setAppState('main')}
+                />
+              </Suspense>
             </motion.div>
           )}
 
