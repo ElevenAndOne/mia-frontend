@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { authService } from '../services/auth'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
+import { usePlatformPreferences } from '../hooks/usePlatformPreferences'
 import BrevoConnectionModal from './BrevoConnectionModal'
 import DateRangeSelector from './DateRangeSelector'
 
@@ -58,14 +59,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
   const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
   const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
 
-  // Platform toggles for Quick Insights
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
-  const [prefsLoaded, setPrefsLoaded] = useState(false)
-  const prevAccountId = useRef<string | null>(null)
-
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, Mailchimp, HubSpot
-  const platformConfig = [
+  const platformConfig = useMemo(() => [
     { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id' },
     { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
     { id: 'meta', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
@@ -73,18 +69,23 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
     { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', accountKey: 'mailchimp_account_id' },
     { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id' },
-  ]
+  ], [])
 
-  // Get connected platforms from selected account
-  const getConnectedPlatforms = () => {
+  // Get connected platforms from selected account - memoized
+  const connectedPlatforms = useMemo(() => {
     if (!selectedAccount) return []
     return platformConfig.filter(p => {
       const value = (selectedAccount as any)[p.accountKey]
       return value && value !== ''
     }).map(p => p.id)
-  }
+  }, [selectedAccount, platformConfig])
 
-  const connectedPlatforms = getConnectedPlatforms()
+  // Platform preferences with caching and debounced saves
+  const { selectedPlatforms, togglePlatform } = usePlatformPreferences({
+    sessionId,
+    selectedAccountId: selectedAccount?.id,
+    connectedPlatforms
+  })
 
   // Refresh accounts on mount to get latest platform connections
   // This ensures platform icons update after returning from Integrations page
@@ -95,85 +96,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     }
   }, []) // Only on mount
 
-  // Load saved platform preferences when account changes
-  useEffect(() => {
-    const loadPreferences = async () => {
-      if (!sessionId || !selectedAccount) return
-
-      // Only load if account changed
-      if (prevAccountId.current === selectedAccount.id) return
-      prevAccountId.current = selectedAccount.id
-      setPrefsLoaded(false)
-
-      try {
-        const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.selected_platforms && data.selected_platforms.length > 0) {
-            // Filter to only include connected platforms
-            const validPlatforms = data.selected_platforms.filter((p: string) =>
-              connectedPlatforms.includes(p)
-            )
-            if (validPlatforms.length > 0) {
-              setSelectedPlatforms(validPlatforms)
-            } else {
-              // Saved platforms no longer connected, default to all connected
-              setSelectedPlatforms(connectedPlatforms)
-            }
-          } else {
-            // No saved preferences, default to all connected
-            setSelectedPlatforms(connectedPlatforms)
-          }
-        } else {
-          // API failed, default to all connected
-          setSelectedPlatforms(connectedPlatforms)
-        }
-      } catch (error) {
-        console.error('[MainView] Failed to load platform preferences:', error)
-        setSelectedPlatforms(connectedPlatforms)
-      }
-      setPrefsLoaded(true)
-    }
-
-    loadPreferences()
-  }, [sessionId, selectedAccount?.id])
-
-  // Save platform preferences when they change (after initial load)
-  useEffect(() => {
-    const savePreferences = async () => {
-      if (!sessionId || !selectedAccount || !prefsLoaded) return
-      if (selectedPlatforms.length === 0) return
-
-      try {
-        await apiFetch('/api/account/platform-preferences', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: sessionId,
-            selected_platforms: selectedPlatforms
-          })
-        })
-      } catch (error) {
-        console.error('[MainView] Failed to save platform preferences:', error)
-      }
-    }
-
-    savePreferences()
-  }, [selectedPlatforms, prefsLoaded])
-
-  const togglePlatform = (platformId: string) => {
-    setSelectedPlatforms(prev => {
-      if (prev.includes(platformId)) {
-        // Don't allow deselecting if it's the last one
-        if (prev.length === 1) return prev
-        return prev.filter(id => id !== platformId)
-      } else {
-        return [...prev, platformId]
-      }
-    })
-  }
-
-  const handleAccountSwitch = async (accountId: string) => {
+  const handleAccountSwitch = useCallback(async (accountId: string) => {
     if (isAccountSwitching) return
 
     setIsAccountSwitching(true)
@@ -205,9 +128,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       console.error('❌ [MAIN] Account switch error:', error)
       setIsAccountSwitching(false)
     }
-  }
+  }, [isAccountSwitching, selectAccount, availableAccounts, onIntegrationsClick])
 
-  const getAccountIcon = (businessType: string) => {
+  const getAccountIcon = useCallback((businessType: string) => {
     switch (businessType?.toLowerCase()) {
       case 'food':
         return '🍎'
@@ -218,33 +141,33 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       default:
         return '🏢'
     }
-  }
+  }, [])
 
-  const starterQuestions = [
+  const starterQuestions = useMemo(() => [
     { text: "Where can we grow?", color: "#A2FAE0", dotColor: "#A2FAE0" },
-    { text: "What can we improve?", color: "#A7D3FF", dotColor: "#A7D3FF" },  
+    { text: "What can we improve?", color: "#A7D3FF", dotColor: "#A7D3FF" },
     { text: "What needs fixing?", color: "#FFC5B0", dotColor: "#FFC5B0" }
-  ]
+  ], [])
 
   // Dynamic API URL - works for both desktop and mobile ngrok, context-aware
-  const getApiUrl = (context: 'growth' | 'improve' | 'fix') => {
+  const getApiUrl = useCallback((context: 'growth' | 'improve' | 'fix') => {
     const endpointMap = {
       'growth': 'growth-data',
-      'improve': 'improve-data', 
+      'improve': 'improve-data',
       'fix': 'fix-data'
     }
-    
+
     const endpoint = endpointMap[context]
-    
+
     // If running via ngrok or production, use relative URL (will be proxied)
     if (window.location.hostname.includes('ngrok') || window.location.hostname !== 'localhost') {
       return `/api/${endpoint}` // Relative URL for proxy
     }
     // Local development - direct backend call
     return `/api/${endpoint}`
-  }
+  }, [])
 
-  const handleChatSubmit = async (message: string) => {
+  const handleChatSubmit = useCallback(async (message: string) => {
     if (!message.trim()) return
 
     // Add user message to chat
@@ -306,9 +229,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       setIsChatLoading(false)
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
     }
-  }
+  }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange])
 
-  const fetchQuestionData = async (context: 'growth' | 'improve' | 'fix', question: string) => {
+  const fetchQuestionData = useCallback(async (context: 'growth' | 'improve' | 'fix', question: string) => {
     try {
       // Get selected account from auth service
       const session = authService.getSession()
@@ -339,9 +262,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       console.error(`❌ [MAIN-VIEW] Pre-fetch failed for ${context}:`, error)
       return null
     }
-  }
+  }, [getApiUrl])
 
-  const handleQuestionClick = async (question: string) => {
+  const handleQuestionClickLocal = useCallback(async (question: string) => {
     // Start loading state
     setLoadingQuestion(question)
     
@@ -375,7 +298,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     } finally {
       setLoadingQuestion(null) // Clear loading state
     }
-  }
+  }, [fetchQuestionData, onQuestionClick])
 
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">

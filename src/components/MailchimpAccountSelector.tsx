@@ -110,11 +110,33 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     }
   }
 
-  const handleConnectAnother = () => {
-    // Close modal and trigger connection flow
-    onClose()
-    // The parent component will handle opening the OAuth flow
-    window.location.href = `/api/oauth/mailchimp/auth-url?session_id=${sessionId}`
+  const handleRemoveAccount = async (mailchimpId: number, accountName: string) => {
+    if (!confirm(`Remove ${accountName} from this account?`)) {
+      return
+    }
+
+    try {
+      const response = await apiFetch(`/api/oauth/mailchimp/disconnect?session_id=${sessionId}&mailchimp_id=${mailchimpId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Session-ID': sessionId || 'default'
+        }
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Removed Mailchimp account:', mailchimpId)
+        // Refresh list
+        await fetchMailchimpAccounts()
+        onSuccess?.()
+      } else {
+        setError(data.message || 'Failed to remove Mailchimp account')
+      }
+    } catch (err: any) {
+      console.error('Error removing Mailchimp account:', err)
+      setError('Failed to remove account. Please try again.')
+    }
   }
 
   if (!isOpen) return null
@@ -178,10 +200,10 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
                 {/* Account List */}
                 <div className="space-y-2 mb-6">
                   {accounts.map((account) => (
-                    <button
+                    <div
                       key={account.id}
                       onClick={() => setSelectedAccountId(account.id)}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all cursor-pointer ${
                         selectedAccountId === account.id
                           ? 'border-blue-600 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
@@ -196,13 +218,27 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
                             ID: {account.mailchimp_account_id}
                           </div>
                         </div>
-                        {account.is_primary && (
-                          <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
-                            Current
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {account.is_primary && (
+                            <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
+                              Current
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleRemoveAccount(account.id, account.mailchimp_account_name)
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                            title="Remove this account"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
 
@@ -223,17 +259,18 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
                 {/* Actions */}
                 <div className="flex gap-3">
                   <button
+                    onClick={onClose}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    disabled={isSwitching}
+                  >
+                    Cancel
+                  </button>
+                  <button
                     onClick={handleSwitchAccount}
                     disabled={isSwitching || !selectedAccountId || success}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
                   >
                     {isSwitching ? 'Switching...' : 'Switch Account'}
-                  </button>
-                  <button
-                    onClick={handleConnectAnother}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  >
-                    + Add Another
                   </button>
                 </div>
               </>

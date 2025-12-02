@@ -38,13 +38,18 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
     }
   }, [isOpen])
 
-  const fetchFacebookPages = async () => {
+  const fetchFacebookPages = async (forceRefresh: boolean = false) => {
     setIsLoading(true)
     setError(null)
 
     try {
       // Fetch pages from backend (uses PostgreSQL cache with 7-day TTL)
-      const response = await apiFetch('/api/oauth/meta/api/organic/facebook-pages', {
+      // Pass refresh=true to bypass cache and fetch fresh from Meta API
+      const url = forceRefresh
+        ? '/api/oauth/meta/api/organic/facebook-pages?refresh=true'
+        : '/api/oauth/meta/api/organic/facebook-pages'
+
+      const response = await apiFetch(url, {
         headers: {
           'X-Session-ID': sessionId || 'default'
         }
@@ -224,9 +229,17 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
               {!isLoading && !success && pages.length > 0 && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select a Facebook Page
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Select a Facebook Page
+                      </label>
+                      <button
+                        onClick={() => fetchFacebookPages(true)}
+                        className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        Refresh list
+                      </button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {pages.map((page) => {
                         const isSelected = selectedPageId === page.id

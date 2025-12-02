@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
+import { useIntegrationStatus } from '../hooks/useIntegrationStatus'
 import MetaAccountSelector from './MetaAccountSelector'
 import FacebookPageSelector from './FacebookPageSelector'
 import GA4PropertySelector from './GA4PropertySelector'
@@ -61,52 +62,54 @@ interface PlatformStatus {
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts } = useSession()
-  const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [loading, setLoading] = useState(true)
-  const [connectingId, setConnectingId] = useState<string | null>(null)
-  const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null)
-  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
-  const [isCheckingConnections, setIsCheckingConnections] = useState(false)
-  const hasInitiallyLoaded = useRef(false)
 
-  // Brevo API Key Modal State
-  const [showBrevoModal, setShowBrevoModal] = useState(false)
+  // Use React Query hook for integration status (cached, deduplicated)
+  const {
+    platformStatus,
+    currentAccountData,
+    ga4Properties,
+    linkedGA4Properties,
+    isLoading: loading,
+    isRefetching,
+    invalidate: invalidateIntegrationStatus
+  } = useIntegrationStatus(sessionId, selectedAccount?.id)
+
+  const [connectingId, setConnectingId] = useState<string | null>(null)
+  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
+
+  // Consolidated modal state - reduces useState hooks from 10+ to 1
+  const [openModal, setOpenModal] = useState<string | null>(null)
+
+  // Brevo API Key form state
   const [brevoApiKey, setBrevoApiKey] = useState('')
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
 
-  // Google Account Selector Modal State
-  const [showGoogleAccountSelector, setShowGoogleAccountSelector] = useState(false)
+  // Modal helpers
+  const showBrevoModal = openModal === 'brevo'
+  const showGoogleAccountSelector = openModal === 'google'
+  const showMetaAccountSelector = openModal === 'meta'
+  const showBrevoAccountSelector = openModal === 'brevo-selector'
+  const showHubSpotAccountSelector = openModal === 'hubspot'
+  const showMailchimpAccountSelector = openModal === 'mailchimp'
+  const showFacebookPageSelector = openModal === 'facebook'
+  const showGA4PropertySelector = openModal === 'ga4'
 
-  // Meta Account Selector Modal State
-  const [showMetaAccountSelector, setShowMetaAccountSelector] = useState(false)
+  const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
+  const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
+  const setShowMetaAccountSelector = (show: boolean) => setOpenModal(show ? 'meta' : null)
+  const setShowBrevoAccountSelector = (show: boolean) => setOpenModal(show ? 'brevo-selector' : null)
+  const setShowHubSpotAccountSelector = (show: boolean) => setOpenModal(show ? 'hubspot' : null)
+  const setShowMailchimpAccountSelector = (show: boolean) => setOpenModal(show ? 'mailchimp' : null)
+  const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
+  const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
 
-  // Brevo Account Selector Modal State
-  const [showBrevoAccountSelector, setShowBrevoAccountSelector] = useState(false)
-
-  // HubSpot Account Selector Modal State
-  const [showHubSpotAccountSelector, setShowHubSpotAccountSelector] = useState(false)
-
-  // Mailchimp Account Selector Modal State
-  const [showMailchimpAccountSelector, setShowMailchimpAccountSelector] = useState(false)
-
-  // Facebook Page Selector Modal State
-  const [showFacebookPageSelector, setShowFacebookPageSelector] = useState(false)
-  const [currentAccountData, setCurrentAccountData] = useState<any>(null)  // Fresh account data
-
-  // GA4 Property Selector Modal State
-  const [showGA4PropertySelector, setShowGA4PropertySelector] = useState(false)
-  const [ga4Properties, setGa4Properties] = useState<any[]>([])
-  const [linkedGA4Properties, setLinkedGA4Properties] = useState<any[]>([])
-
-  // Helper function to calculate "time ago" from ISO timestamp
-  const getTimeAgo = (isoTimestamp: string | undefined): string => {
+  // Helper function to calculate "time ago" from ISO timestamp - memoized
+  const getTimeAgo = useCallback((isoTimestamp: string | undefined): string => {
     if (!isoTimestamp) return 'Just now'
 
     try {
-      // Ensure timestamp is treated as UTC by adding 'Z' if not present
       const utcTimestamp = isoTimestamp.endsWith('Z') ? isoTimestamp : isoTimestamp + 'Z'
-
       const now = new Date()
       const then = new Date(utcTimestamp)
       const diffMs = now.getTime() - then.getTime()
@@ -121,33 +124,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     } catch (e) {
       return 'Just now'
     }
-  }
+  }, [])
 
-  // Check connection status on load - only run ONCE
-  useEffect(() => {
-    if (sessionId && !hasInitiallyLoaded.current) {
-      hasInitiallyLoaded.current = true
-      checkConnections()
-    }
-  }, [sessionId])
+  // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
+  const integrations = useMemo((): Integration[] => {
+    if (!platformStatus) return []
 
-  // Re-check connections when selected account changes (but not on initial load)
-  const prevAccountRef = useRef<string | null>(null)
-  useEffect(() => {
-    const currentAccountId = selectedAccount?.id || null
-    // Only refetch if account actually changed (not initial mount)
-    if (hasInitiallyLoaded.current && prevAccountRef.current !== null && currentAccountId !== prevAccountRef.current) {
-      checkConnections()
-    }
-    prevAccountRef.current = currentAccountId
-  }, [selectedAccount?.id])
-
-  // Rebuild integrations list whenever platformStatus changes (for optimistic updates)
-  useEffect(() => {
-    if (!platformStatus) return
-
-    console.log('[IntegrationsPage] Platform status changed, rebuilding integrations list')
-    const integrationsData: Integration[] = [
+    return [
       {
         id: 'google',
         name: 'Google Ads',
@@ -233,196 +216,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         connected: false
       },
     ]
-    setIntegrations(integrationsData)
-  }, [platformStatus])
+  }, [platformStatus, getTimeAgo])
 
-  const checkConnections = async () => {
-    // Prevent duplicate concurrent calls
-    if (isCheckingConnections) {
-      return
-    }
-
-    setIsCheckingConnections(true)
-    try {
-      // Run ALL status checks in parallel for speed
-      const [
-        accountsResponse,
-        hubspotResponse,
-        mailchimpResponse,
-        brevoResponse,
-        metaCredsResponse,
-        googleStatusResponse
-      ] = await Promise.all([
-        apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId || '' } }),
-        apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`).catch(() => null),
-        apiFetch(`/api/oauth/mailchimp/status?session_id=${sessionId}`).catch(() => null),
-        apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`).catch(() => null),
-        apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`).catch(() => null),
-        apiFetch(`/api/oauth/google/status`, { headers: { 'X-Session-ID': sessionId || '' } }).catch(() => null)
-      ])
-
-      // Track account-specific linking
-      let googleLinked = false
-      let metaLinked = false
-      let ga4Linked = false
-      let brevoLinked = false
-      let facebookOrganicLinked = false
-
-      if (accountsResponse.ok) {
-        const accountsData = await accountsResponse.json()
-
-        if (accountsData.ga4_properties) {
-          setGa4Properties(accountsData.ga4_properties)
-        }
-
-        if (accountsData.accounts && accountsData.accounts.length > 0) {
-          const account = selectedAccount
-            ? accountsData.accounts.find((acc: any) => acc.id === selectedAccount.id)
-            : accountsData.accounts[0]
-
-          if (account) {
-            googleLinked = !!account.google_ads_id
-            metaLinked = !!account.meta_ads_id
-            ga4Linked = !!account.ga4_property_id
-            brevoLinked = !!account.brevo_api_key
-            facebookOrganicLinked = !!account.facebook_page_id
-            setCurrentAccountData(account)
-
-            if (account.linked_ga4_properties) {
-              setLinkedGA4Properties(account.linked_ga4_properties)
-            }
-          }
-        }
-      }
-
-      // Parse parallel responses
-      const hubspotConnected = hubspotResponse?.ok ? (await hubspotResponse.json()).authenticated || false : false
-      const mailchimpConnected = mailchimpResponse?.ok ? (await mailchimpResponse.json()).authenticated || false : false
-      const brevoConnected = brevoResponse?.ok ? (await brevoResponse.json()).authenticated || false : false
-      const metaHasCredentials = metaCredsResponse?.ok ? (await metaCredsResponse.json()).has_credentials || false : false
-      const googleHasCredentials = googleStatusResponse?.ok ? (await googleStatusResponse.json()).authenticated || false : false
-
-      const platforms = {
-        google: { connected: googleHasCredentials || googleLinked, linked: googleLinked, last_synced: new Date().toISOString() },
-        ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: new Date().toISOString() },
-        meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: new Date().toISOString() },
-        facebook_organic: { connected: metaHasCredentials && facebookOrganicLinked, linked: facebookOrganicLinked, last_synced: new Date().toISOString() },
-        brevo: { connected: brevoConnected || brevoLinked, linked: brevoLinked, last_synced: new Date().toISOString() },
-        hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: new Date().toISOString() },
-        mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: new Date().toISOString() }
-      }
-
-      setPlatformStatus(platforms)
-
-        // Build integrations list based on actual connection status
-        const integrationsData: Integration[] = [
-          // Google Ads
-          {
-            id: 'google',
-            name: 'Google Ads',
-            description: 'Advertising campaigns',
-            icon: '/icons/google-ads.svg',
-            connected: platforms.google?.connected || false,
-            dataPoints: platforms.google?.connected ? 15000 : undefined,
-            lastSync: platforms.google?.connected ? getTimeAgo(platforms.google.last_synced) : undefined,
-            autoSync: platforms.google?.connected ? true : undefined
-          },
-          // GA4 (separate from Google Ads)
-          {
-            id: 'ga4',
-            name: 'Google Analytics 4',
-            description: 'Website and app analytics',
-            icon: '/icons/google_analytics.svg',
-            connected: platforms.ga4?.connected || false,
-            dataPoints: platforms.ga4?.connected ? 17587 : undefined,
-            lastSync: platforms.ga4?.connected ? getTimeAgo(platforms.ga4.last_synced) : undefined,
-            autoSync: platforms.ga4?.connected ? true : undefined
-          },
-          // Meta Ads (Nov 30: split from organic)
-          {
-            id: 'meta',
-            name: 'Meta Ads',
-            description: 'Facebook & Instagram Ads',
-            icon: '/icons/meta-color.svg',
-            connected: platforms.meta?.connected || false,
-            dataPoints: platforms.meta?.connected ? 8500 : undefined,
-            lastSync: platforms.meta?.connected ? getTimeAgo(platforms.meta.last_synced) : undefined,
-            autoSync: platforms.meta?.connected ? true : undefined
-          },
-          // Facebook Organic (Nov 30: separate from Meta Ads)
-          {
-            id: 'facebook_organic',
-            name: 'Facebook Organic',
-            description: 'Page posts, engagement & reach',
-            icon: '/icons/facebook-48.png',
-            connected: platforms.facebook_organic?.connected || false,
-            dataPoints: platforms.facebook_organic?.connected ? 2500 : undefined,
-            lastSync: platforms.facebook_organic?.connected ? getTimeAgo(platforms.facebook_organic.last_synced) : undefined,
-            autoSync: platforms.facebook_organic?.connected ? true : undefined
-          },
-          // Brevo
-          {
-            id: 'brevo',
-            name: 'Brevo',
-            description: 'Email marketing and campaigns',
-            icon: '/icons/brevo.jpeg',
-            connected: platforms.brevo?.connected || false,
-            dataPoints: platforms.brevo?.connected ? 3800 : undefined,
-            lastSync: platforms.brevo?.connected ? getTimeAgo(platforms.brevo.last_synced) : undefined,
-            autoSync: platforms.brevo?.connected ? false : undefined
-          },
-          // HubSpot
-          {
-            id: 'hubspot',
-            name: 'HubSpot',
-            description: 'CRM and marketing automation',
-            icon: '/icons/hubspot.svg',
-            connected: platforms.hubspot?.connected || false,
-            dataPoints: platforms.hubspot?.connected ? 5200 : undefined,
-            lastSync: platforms.hubspot?.connected ? getTimeAgo(platforms.hubspot.last_synced) : undefined,
-            autoSync: platforms.hubspot?.connected ? true : undefined
-          },
-          // Mailchimp
-          {
-            id: 'mailchimp',
-            name: 'Mailchimp',
-            description: 'Email marketing and campaigns',
-            icon: '/icons/radio buttons/mailchimp.png',
-            connected: platforms.mailchimp?.connected || false,
-            dataPoints: platforms.mailchimp?.connected ? 4500 : undefined,
-            lastSync: platforms.mailchimp?.connected ? getTimeAgo(platforms.mailchimp.last_synced) : undefined,
-            autoSync: platforms.mailchimp?.connected ? true : undefined
-          },
-          // Coming soon
-          {
-            id: 'linkedin',
-            name: 'LinkedIn Ads',
-            description: 'B2B advertising and lead generation',
-            icon: '/icons/linkedin.svg',
-            connected: false
-          },
-          {
-            id: 'tiktok',
-            name: 'TikTok Ads',
-            description: 'Short-form video advertising',
-            icon: '/icons/tiktok.svg',
-            connected: false
-          },
-        ]
-
-      setIntegrations(integrationsData)
-      setLoading(false)
-    } catch (error) {
-      console.error('Error checking connections:', error)
-      setLoading(false)
-    } finally {
-      setIsCheckingConnections(false)
-    }
-  }
-
-  const handleSelectIntegration = async (integrationId: string) => {
-    setSelectedIntegration(integrationId === selectedIntegration ? null : integrationId)
-  }
+  // handleSelectIntegration - memoized with useCallback
+  const handleSelectIntegration = useCallback((integrationId: string) => {
+    setSelectedIntegration(prev => prev === integrationId ? null : integrationId)
+  }, [])
 
   // Handle Brevo API Key Submission
   const handleBrevoSubmit = async () => {
@@ -465,7 +264,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Close modal and refresh connections
       setShowBrevoModal(false)
       setBrevoApiKey('')
-      await checkConnections()
+      invalidateIntegrationStatus()
 
     } catch (error) {
       console.error('[Brevo] API key submission error:', error)
@@ -498,7 +297,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
-      await checkConnections()
+      invalidateIntegrationStatus()
 
     } catch (error) {
       console.error('[Brevo] Unlink error:', error)
@@ -638,7 +437,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 // For Facebook Organic, show the Facebook page selector after OAuth completes
                 if (integrationId === 'facebook_organic' && completeData.success) {
                   console.log('[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector')
-                  // Show Facebook page selector after a brief delay for checkConnections to complete
+                  // Show Facebook page selector after a brief delay for cache invalidation
                   setTimeout(() => setShowFacebookPageSelector(true), 500)
                 }
               }
@@ -648,9 +447,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           }
 
           // Refresh integration status
-          console.log('[INTEGRATIONS] Calling checkConnections after OAuth complete...')
-          await checkConnections()
-          console.log('[INTEGRATIONS] checkConnections complete')
+          console.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
+          invalidateIntegrationStatus()
 
           setSelectedIntegration(integrationId)
           setConnectingId(null)
@@ -748,7 +546,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     >
                       <div className="flex items-start gap-3 mb-2">
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          <img src={integration.icon} alt="" className="w-10 h-10" />
+                          <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
                         </div>
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <div className="flex items-center gap-2">
@@ -947,7 +745,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" />
+                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
@@ -1172,7 +970,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
           setShowGoogleAccountSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
       />
@@ -1184,7 +982,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
         currentGoogleAccountName={selectedAccount?.name}
@@ -1198,7 +996,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
           setShowBrevoAccountSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
       />
@@ -1210,7 +1008,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
       />
@@ -1222,7 +1020,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
           setShowMailchimpAccountSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
       />
@@ -1234,7 +1032,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
           setShowFacebookPageSelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
@@ -1248,7 +1046,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         onSuccess={async () => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
-          await checkConnections()
+          invalidateIntegrationStatus()
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}

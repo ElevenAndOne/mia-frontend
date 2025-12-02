@@ -347,7 +347,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               className="space-y-4"
             >
               {availableAccounts
-                .filter(account => account.id.startsWith('google_') || account.id.startsWith('meta_') || account.id.startsWith('user_'))  // Show Google, Meta, and user-based accounts
+                .filter(account => account.id.startsWith('google_') || account.id.startsWith('user_'))  // Only show Google Ads and user-based accounts (Meta linking happens later in Integrations)
                 .map((account, index) => (
                 <motion.button
                   key={account.id}

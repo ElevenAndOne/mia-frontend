@@ -1,23 +1,31 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSession } from './contexts/SessionContext'
+
+// Critical path components - load immediately
 import VideoIntroView from './components/VideoIntroView'
 import AccountSelectionPage from './components/AccountSelectionPage'
-import MainViewCopy from './components/MainViewCopy' // The main app after auth
-import GrowthPage from './components/GrowthPage' // Blue growth page
-import OptimizePage from './components/OptimizePage' // Optimize improvement page
-import ProtectPage from './components/ProtectPage' // Protect/fixing page
-import CreativePageFixed from './components/CreativePageFixed' // NEW: Creative-only analysis
-import IntegrationsPage from './components/IntegrationsPage'
-import GrowInsights from './components/GrowInsights' // BETA: Quick Insights - Grow
-import OptimizeInsights from './components/OptimizeInsights' // BETA: Quick Insights - Optimize
-import ProtectInsights from './components/ProtectInsights' // BETA: Quick Insights - Protect
-import SummaryInsights from './components/SummaryInsights' // BETA: Quick Insights - Summary
-import InsightsDatePickerModal from './components/InsightsDatePickerModal' // Date picker modal
-// TODO: Re-enable docs pages when created
-// import IntegrationGuidePage from './pages/docs/IntegrationGuidePage' // Docs: Integration Guide
-// import VideoTutorialPage from './pages/docs/VideoTutorialPage' // Docs: Video Tutorial
-import { useSession } from './contexts/SessionContext'
+
+// Lazy load all other pages - only downloaded when needed
+const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
+const GrowthPage = lazy(() => import('./components/GrowthPage'))
+const OptimizePage = lazy(() => import('./components/OptimizePage'))
+const ProtectPage = lazy(() => import('./components/ProtectPage'))
+const CreativePageFixed = lazy(() => import('./components/CreativePageFixed'))
+const IntegrationsPage = lazy(() => import('./components/IntegrationsPage'))
+const GrowInsights = lazy(() => import('./components/GrowInsights'))
+const OptimizeInsights = lazy(() => import('./components/OptimizeInsights'))
+const ProtectInsights = lazy(() => import('./components/ProtectInsights'))
+const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
+const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
+
+// Loading spinner for lazy-loaded components
+const LazyLoadSpinner = () => (
+  <div className="w-full h-full flex items-center justify-center bg-gray-50">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+  </div>
+)
 
 type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
@@ -51,36 +59,23 @@ function App() {
   const [selectedInsightDateRange, setSelectedInsightDateRange] = useState<string>('30_days')
   const [pendingPlatforms, setPendingPlatforms] = useState<string[]>([]) // Store selected platforms for insights
 
-  // Preload critical images - mobile-optimized approach
+  // Preload critical images - simplified single strategy (link preload)
+  // Browser handles caching automatically - no need for manual cache objects
   useEffect(() => {
     const criticalImages = [
       '/icons/Vector.png',
       '/icons/Mia.png',
       '/images/Grow Nav.png',
-      '/images/Optimise Nav.png', 
+      '/images/Optimise Nav.png',
       '/images/Protect Nav.png'
     ]
-    
-    // Multiple preloading strategies for mobile compatibility
+
     criticalImages.forEach(src => {
-      // Strategy 1: Link preload
       const link = document.createElement('link')
       link.rel = 'preload'
       link.as = 'image'
       link.href = src
       document.head.appendChild(link)
-      
-      // Strategy 2: Image object with cache control
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.src = src
-      
-      // Strategy 3: Force immediate load
-      img.onload = () => {
-        // Store in a global cache object
-        if (!(window as any).imageCache) (window as any).imageCache = {}
-        ;(window as any).imageCache[src] = img
-      }
     })
   }, [])
 
@@ -203,6 +198,7 @@ function App() {
     <div className="w-full h-full relative">
       {/* Content */}
       <div className="w-full h-full">
+        <Suspense fallback={<LazyLoadSpinner />}>
         <AnimatePresence mode="wait">
           {appState === 'video-intro' && (
             <motion.div
@@ -429,9 +425,11 @@ function App() {
           )}
 
         </AnimatePresence>
+        </Suspense>
       </div>
 
       {/* Insights Date Picker Modal */}
+      <Suspense fallback={null}>
       <InsightsDatePickerModal
         isOpen={showInsightsDatePicker}
         onClose={() => {
@@ -441,6 +439,7 @@ function App() {
         onGenerate={handleInsightsDateGenerate}
         insightType={pendingInsightType || 'grow'}
       />
+      </Suspense>
     </div>
   )
 }
