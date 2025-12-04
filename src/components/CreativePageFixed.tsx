@@ -45,7 +45,7 @@ interface Message {
 }
 
 const CreativePageFixed = ({ onBack }: CreativePageProps) => {
-  const { sessionId, selectedAccount, logout, availableAccounts, selectAccount } = useSession()
+  const { sessionId, selectedAccount, logout, availableAccounts, selectAccount, user } = useSession()
 
   const [activeCategory, setActiveCategory] = useState<Category>('grow')
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
@@ -438,7 +438,7 @@ const CreativePageFixed = ({ onBack }: CreativePageProps) => {
           question: question,
           category: activeCategory,
           session_id: sessionId,
-          user_id: '106540664695114193744',
+          user_id: user?.google_user_id || '',
           google_ads_id: selectedAccount?.google_ads_id,
           ga4_property_id: selectedAccount?.ga4_property_id,
           start_date: selectedDateRange.start,

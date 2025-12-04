@@ -1,7 +1,7 @@
 import { apiFetch } from '../utils/api'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { authService } from '../services/auth'
+import { useSession } from '../contexts/SessionContext'
 
 interface GrowthData {
   header: {
@@ -36,6 +36,7 @@ interface GrowthPageProps {
 }
 
 const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false, data }: GrowthPageProps) => {
+  const { user, selectedAccount } = useSession()
   const [growthData, setGrowthData] = useState<GrowthData | null>(data || null)
   const [loading, setLoading] = useState(isLoading)
   const [error, setError] = useState<string | null>(null)
@@ -56,10 +57,6 @@ const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false
     setLoading(true)
     setError(null)
     try {
-      // Get selected account from auth service
-      const session = authService.getSession()
-      const selectedAccount = session?.selectedAccount
-      
       const response = await apiFetch('/api/growth-data', {
         method: 'POST',
         headers: {
@@ -68,9 +65,9 @@ const GrowthPage = ({ onBack, question = "Where can we grow?", isLoading = false
         body: JSON.stringify({
           question: question,
           context: 'growth',
-          user: 'trystin@11and1.com',
+          user: user?.email || '',
           selected_account: selectedAccount,
-          user_id: '106540664695114193744' // TODO: Get from auth service
+          user_id: user?.google_user_id || ''
         }),
       })
       

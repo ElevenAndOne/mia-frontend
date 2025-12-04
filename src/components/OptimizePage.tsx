@@ -1,7 +1,7 @@
 import { apiFetch } from '../utils/api'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { authService } from '../services/auth'
+import { useSession } from '../contexts/SessionContext'
 
 interface OptimizeData {
   header: {
@@ -36,6 +36,7 @@ interface OptimizePageProps {
 }
 
 const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = false, data }: OptimizePageProps) => {
+  const { user, selectedAccount } = useSession()
   const [optimizeData, setOptimizeData] = useState<OptimizeData | null>(data || null)
   const [loading, setLoading] = useState(isLoading)
   const [error, setError] = useState<string | null>(null)
@@ -56,10 +57,6 @@ const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = f
     setLoading(true)
     setError(null)
     try {
-      // Get selected account from auth service
-      const session = authService.getSession()
-      const selectedAccount = session?.selectedAccount
-      
       const response = await apiFetch('/api/improve-data', {
         method: 'POST',
         headers: {
@@ -68,9 +65,9 @@ const OptimizePage = ({ onBack, question = "What can we improve?", isLoading = f
         body: JSON.stringify({
           question: question,
           context: 'optimize',
-          user: 'trystin@11and1.com',
+          user: user?.email || '',
           selected_account: selectedAccount,
-          user_id: '106540664695114193744' // TODO: Get from auth service
+          user_id: user?.google_user_id || ''
         }),
       })
       

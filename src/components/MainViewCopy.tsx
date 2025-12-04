@@ -195,7 +195,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         body: JSON.stringify({
           message: message,
           session_id: sessionId,
-          user_id: '106540664695114193744',
+          user_id: user?.google_user_id || '',
           google_ads_id: selectedAccount?.google_ads_id,
           ga4_property_id: selectedAccount?.ga4_property_id,
           date_range: dateRange
@@ -233,10 +233,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
 
   const fetchQuestionData = useCallback(async (context: 'growth' | 'improve' | 'fix', question: string) => {
     try {
-      // Get selected account from auth service
-      const session = authService.getSession()
-      const selectedAccount = session?.selectedAccount
-      
       const apiUrl = getApiUrl(context)
       const response = await apiFetch(apiUrl, {
         method: 'POST',
@@ -246,9 +242,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
         body: JSON.stringify({
           question: question,
           context: context,
-          user: 'trystin@11and1.com',
+          user: user?.email || '',
           selected_account: selectedAccount,
-          user_id: '106540664695114193744'
+          user_id: user?.google_user_id || ''
         }),
       })
       
