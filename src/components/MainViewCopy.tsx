@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { authService } from '../services/auth'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import { usePlatformPreferences } from '../hooks/usePlatformPreferences'

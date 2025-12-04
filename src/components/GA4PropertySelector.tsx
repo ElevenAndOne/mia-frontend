@@ -64,12 +64,17 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     }
   }, [isOpen, ga4Properties, linkedProperties])
 
-  const fetchGA4Properties = async () => {
+  const fetchGA4Properties = async (forceRefresh: boolean = false) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await apiFetch('/api/accounts/available', {
+      // Pass refresh=true to bypass cache and fetch fresh from Google API
+      const url = forceRefresh
+        ? '/api/accounts/available?refresh=true'
+        : '/api/accounts/available'
+
+      const response = await apiFetch(url, {
         headers: {
           'X-Session-ID': sessionId || 'default'
         }
@@ -274,9 +279,17 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
               {!isLoading && !success && properties.length > 0 && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select GA4 Properties ({selectedPropertyIds.length} selected)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Select GA4 Properties ({selectedPropertyIds.length} selected)
+                      </label>
+                      <button
+                        onClick={() => fetchGA4Properties(true)}
+                        className="text-xs text-orange-600 hover:text-orange-700 hover:underline"
+                      >
+                        Refresh list
+                      </button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {properties.map((property) => {
                         const isSelected = selectedPropertyIds.includes(property.property_id)

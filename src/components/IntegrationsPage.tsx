@@ -10,6 +10,7 @@ import GoogleAccountSelector from './GoogleAccountSelector'
 import BrevoAccountSelector from './BrevoAccountSelector'
 import HubSpotAccountSelector from './HubSpotAccountSelector'
 import MailchimpAccountSelector from './MailchimpAccountSelector'
+import PlatformGearMenu from './PlatformGearMenu'
 
 interface Integration {
   id: string
@@ -555,159 +556,36 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           <p className="text-xs text-gray-500 truncate">{integration.description}</p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Gear icon for Google Ads to switch accounts */}
-                          {integration.id === 'google' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowGoogleAccountSelector(true)
-                              }}
-                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                              title="Switch Google Ads account"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
-                          )}
-                          {/* Gear icon for GA4 to manage properties */}
-                          {integration.id === 'ga4' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowGA4PropertySelector(true)
-                              }}
-                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                              title="Manage GA4 properties"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
-                          )}
-                          {/* Gear icon for Meta Ads to select ad account */}
-                          {integration.id === 'meta' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowMetaAccountSelector(true)
-                              }}
-                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                              title="Change Meta ad account"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
-                          )}
-                          {/* Gear icon for Facebook Organic to select Facebook Page */}
-                          {integration.id === 'facebook_organic' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowFacebookPageSelector(true)
-                              }}
-                              className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                              title="Change Facebook Page"
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </button>
-                          )}
-                          {/* Gear icon for Brevo to switch accounts or add new API key */}
-                          {integration.id === 'brevo' && integration.connected && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowBrevoModal(true)
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Add another Brevo account"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowBrevoAccountSelector(true)
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Switch Brevo account"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                              </button>
-                            </>
-                          )}
-                          {/* Icons for HubSpot to add portal and switch portals */}
-                          {integration.id === 'hubspot' && integration.connected && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleConnect('hubspot')
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Add another HubSpot portal"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowHubSpotAccountSelector(true)
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Switch HubSpot portal"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                              </button>
-                            </>
-                          )}
-                          {integration.id === 'mailchimp' && integration.connected && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleConnect('mailchimp')
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Connect another Mailchimp account"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowMailchimpAccountSelector(true)
-                                }}
-                                className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
-                                title="Switch Mailchimp account"
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                              </button>
-                            </>
-                          )}
+                          {/* Platform Gear Menu - unified dropdown for all platforms */}
+                          <PlatformGearMenu
+                            platformId={integration.id}
+                            platformName={integration.name}
+                            isConnected={integration.connected}
+                            sessionId={sessionId}
+                            onManage={() => {
+                              // Open the appropriate selector modal
+                              if (integration.id === 'google') setShowGoogleAccountSelector(true)
+                              else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
+                              else if (integration.id === 'meta') setShowMetaAccountSelector(true)
+                              else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
+                              else if (integration.id === 'brevo') setShowBrevoAccountSelector(true)
+                              else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
+                              else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
+                            }}
+                            onAddAccount={
+                              ['brevo', 'hubspot', 'mailchimp'].includes(integration.id)
+                                ? () => {
+                                    if (integration.id === 'brevo') setShowBrevoModal(true)
+                                    else if (integration.id === 'hubspot') handleConnect('hubspot')
+                                    else if (integration.id === 'mailchimp') handleConnect('mailchimp')
+                                  }
+                                : undefined
+                            }
+                            onDisconnectSuccess={() => {
+                              invalidateIntegrationStatus()
+                              refreshAccounts()
+                            }}
+                          />
                           {isSelected ? (
                             <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">

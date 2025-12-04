@@ -94,6 +94,7 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
     isComplete,
     error,
     startStreaming,
+    stopStreaming,
     reset
   } = useStreamingInsightsParsed()
 
@@ -134,10 +135,11 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
       startStreaming('optimize', sessionId, selectedDateRange, platforms)
     }
 
+    // Cancel streaming when component unmounts (e.g., user clicks back)
     return () => {
-      // Cleanup handled by hook
+      stopStreaming()
     }
-  }, [selectedDateRange, sessionId])
+  }, [selectedDateRange, sessionId, stopStreaming])
 
   const handleRetry = () => {
     if (sessionId) {

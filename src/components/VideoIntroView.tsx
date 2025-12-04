@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import FigmaLoginModal from './FigmaLoginModal'
-import { authService } from '../services/auth'
 
 interface VideoIntroViewProps {
   onAuthSuccess?: () => void

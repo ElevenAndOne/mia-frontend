@@ -94,6 +94,7 @@ const GrowInsightsStreaming = ({ onBack, initialDateRange = '30_days', platforms
     isComplete,
     error,
     startStreaming,
+    stopStreaming,
     reset
   } = useStreamingInsightsParsed()
 
@@ -134,10 +135,11 @@ const GrowInsightsStreaming = ({ onBack, initialDateRange = '30_days', platforms
       startStreaming('grow', sessionId, selectedDateRange, platforms)
     }
 
+    // Cancel streaming when component unmounts (e.g., user clicks back)
     return () => {
-      // Cleanup handled by hook
+      stopStreaming()
     }
-  }, [selectedDateRange, sessionId])
+  }, [selectedDateRange, sessionId, stopStreaming])
 
   const handleRetry = () => {
     if (sessionId) {

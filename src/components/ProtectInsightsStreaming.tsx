@@ -94,6 +94,7 @@ const ProtectInsightsStreaming = ({ onBack, initialDateRange = '30_days', platfo
     isComplete,
     error,
     startStreaming,
+    stopStreaming,
     reset
   } = useStreamingInsightsParsed()
 
@@ -134,10 +135,11 @@ const ProtectInsightsStreaming = ({ onBack, initialDateRange = '30_days', platfo
       startStreaming('protect', sessionId, selectedDateRange, platforms)
     }
 
+    // Cancel streaming when component unmounts (e.g., user clicks back)
     return () => {
-      // Cleanup handled by hook
+      stopStreaming()
     }
-  }, [selectedDateRange, sessionId])
+  }, [selectedDateRange, sessionId, stopStreaming])
 
   const handleRetry = () => {
     if (sessionId) {

@@ -400,7 +400,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             }))
             resolve(false)
           }
-        }, 1000)
+        }, 3000)  // Poll every 3 seconds (reduced from 1s to decrease server load)
 
         // Timeout after 5 minutes
         setTimeout(() => {
@@ -746,7 +746,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             }))
             resolve(false)
           }
-        }, 1000)
+        }, 3000)  // Poll every 3 seconds (reduced from 1s to decrease server load)
 
         // Timeout after 5 minutes
         setTimeout(() => {

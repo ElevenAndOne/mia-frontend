@@ -41,7 +41,7 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
 
   // Typing speed: characters per interval (slower = more readable)
   const CHARS_PER_TICK = 1  // Characters to add each tick
-  const TICK_INTERVAL = 14  // Milliseconds between ticks (~70 chars/sec)
+  const TICK_INTERVAL = 15  // Milliseconds between ticks (~65 chars/sec)
 
   // Clean up on unmount
   useEffect(() => {
