@@ -90,7 +90,17 @@ const StreamingInsightsDemo = ({
           </button>
         )}
         <h1 className="text-white text-xl font-semibold">{getTitle()}</h1>
-        <div className="w-6" /> {/* Spacer for alignment */}
+        {/* Refresh button for testing */}
+        <button
+          onClick={handleRetry}
+          className="text-white hover:opacity-80 transition-opacity"
+          title="Refresh"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M4 4v5h5M20 20v-5h-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L4 7m16 10l-1.64 1.36A9 9 0 0 1 3.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
 
       {/* Account Info */}
@@ -131,10 +141,6 @@ const StreamingInsightsDemo = ({
             {/* Render text with basic formatting */}
             <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
               {text}
-              {/* Typing cursor while streaming */}
-              {isStreaming && (
-                <span className="inline-block w-2 h-4 bg-purple-600 ml-1 animate-pulse" />
-              )}
             </div>
           </div>
         )}

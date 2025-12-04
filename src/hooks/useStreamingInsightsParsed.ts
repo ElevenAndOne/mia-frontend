@@ -1,18 +1,32 @@
 /**
- * Hook for streaming insights from Claude API via SSE
- * Provides real-time text streaming with smooth typing effect
+ * Hook for streaming insights with real-time parsing into structured cards
+ * Uses the same smooth typing effect as useStreamingInsights, but parses
+ * the displayed text into structured cards on each render
  */
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { createApiUrl } from '../utils/api'
 
+export interface ParsedInsight {
+  title: string
+  insight: string
+  interpretation: string
+  action: string
+}
+
 interface StreamingState {
-  text: string
+  text: string // Raw displayed text (typed out smoothly)
   isStreaming: boolean
   isComplete: boolean
   error: string | null
 }
 
-interface UseStreamingInsightsReturn extends StreamingState {
+interface UseStreamingInsightsParsedReturn {
+  insights: ParsedInsight[]
+  currentInsightIndex: number
+  currentSection: 'title' | 'insight' | 'interpretation' | 'action' | null
+  isStreaming: boolean
+  isComplete: boolean
+  error: string | null
   startStreaming: (
     insightType: 'grow' | 'optimize' | 'protect',
     sessionId: string,
@@ -23,7 +37,84 @@ interface UseStreamingInsightsReturn extends StreamingState {
   reset: () => void
 }
 
-export function useStreamingInsights(): UseStreamingInsightsReturn {
+// Markers we look for in the stream
+const MARKERS = {
+  TITLE: '[Title]:',
+  INSIGHT: '[Insight]:',
+  INTERPRETATION: '[Interpretation]:',
+  ACTION: '[Action]:'
+}
+
+// Parse displayed text into structured insights
+function parseInsights(text: string): { insights: ParsedInsight[], currentIndex: number, currentSection: 'title' | 'insight' | 'interpretation' | 'action' | null } {
+  const insights: ParsedInsight[] = []
+  let currentIndex = -1
+  let currentSection: 'title' | 'insight' | 'interpretation' | 'action' | null = null
+
+  // Split by [Title]: to get each insight block
+  const parts = text.split(MARKERS.TITLE)
+
+  for (let i = 1; i < parts.length; i++) {
+    const block = parts[i]
+    const insight: ParsedInsight = { title: '', insight: '', interpretation: '', action: '' }
+
+    // Find positions of each marker in this block
+    const insightPos = block.indexOf(MARKERS.INSIGHT)
+    const interpPos = block.indexOf(MARKERS.INTERPRETATION)
+    const actionPos = block.indexOf(MARKERS.ACTION)
+
+    // Extract title (everything before first marker, or end of block)
+    const firstMarkerPos = Math.min(
+      insightPos >= 0 ? insightPos : Infinity,
+      interpPos >= 0 ? interpPos : Infinity,
+      actionPos >= 0 ? actionPos : Infinity
+    )
+    insight.title = (firstMarkerPos === Infinity ? block : block.slice(0, firstMarkerPos)).trim()
+
+    // Extract insight section
+    if (insightPos >= 0) {
+      const afterInsight = block.slice(insightPos + MARKERS.INSIGHT.length)
+      const nextMarkerPos = Math.min(
+        afterInsight.indexOf(MARKERS.INTERPRETATION) >= 0 ? afterInsight.indexOf(MARKERS.INTERPRETATION) : Infinity,
+        afterInsight.indexOf(MARKERS.ACTION) >= 0 ? afterInsight.indexOf(MARKERS.ACTION) : Infinity
+      )
+      insight.insight = (nextMarkerPos === Infinity ? afterInsight : afterInsight.slice(0, nextMarkerPos)).trim()
+    }
+
+    // Extract interpretation section
+    if (interpPos >= 0) {
+      const afterInterp = block.slice(interpPos + MARKERS.INTERPRETATION.length)
+      const nextMarkerPos = afterInterp.indexOf(MARKERS.ACTION)
+      insight.interpretation = (nextMarkerPos < 0 ? afterInterp : afterInterp.slice(0, nextMarkerPos)).trim()
+    }
+
+    // Extract action section - also strip any trailing "## INSIGHT" headers
+    if (actionPos >= 0) {
+      let actionText = block.slice(actionPos + MARKERS.ACTION.length).trim()
+      // Remove trailing markdown headers like "## INSIGHT 2", "---", etc.
+      actionText = actionText.replace(/\n---[\s\S]*$/m, '').replace(/\n##\s*INSIGHT[\s\S]*$/im, '').trim()
+      insight.action = actionText
+    }
+
+    insights.push(insight)
+    currentIndex = insights.length - 1
+
+    // Determine current section based on what's at the end
+    if (actionPos >= 0) {
+      currentSection = 'action'
+    } else if (interpPos >= 0) {
+      currentSection = 'interpretation'
+    } else if (insightPos >= 0) {
+      currentSection = 'insight'
+    } else {
+      currentSection = 'title'
+    }
+  }
+
+  return { insights, currentIndex, currentSection }
+}
+
+export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
   const [state, setState] = useState<StreamingState>({
     text: '',
     isStreaming: false,
@@ -33,17 +124,16 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
 
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Typing effect refs
-  const pendingTextRef = useRef<string>('') // Text waiting to be displayed
-  const displayedTextRef = useRef<string>('') // Text already shown
+  // Typing effect refs - exactly like useStreamingInsights
+  const pendingTextRef = useRef<string>('')
+  const displayedTextRef = useRef<string>('')
   const typingIntervalRef = useRef<number | null>(null)
   const streamDoneRef = useRef<boolean>(false)
 
-  // Typing speed: characters per interval (slower = more readable)
-  const CHARS_PER_TICK = 1  // Characters to add each tick
-  const TICK_INTERVAL = 14  // Milliseconds between ticks (~70 chars/sec)
+  // Typing speed: 1 char every 14ms = ~70 chars/sec (the smooth speed)
+  const CHARS_PER_TICK = 1
+  const TICK_INTERVAL = 14
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (typingIntervalRef.current) {
@@ -52,13 +142,14 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
     }
   }, [])
 
-  // Start the typing animation
+  // Parse the displayed text into structured insights
+  const parsed = useMemo(() => parseInsights(state.text), [state.text])
+
   const startTypingEffect = useCallback(() => {
-    if (typingIntervalRef.current) return // Already running
+    if (typingIntervalRef.current) return
 
     typingIntervalRef.current = window.setInterval(() => {
       if (pendingTextRef.current.length > 0) {
-        // Take next chunk of characters from pending
         const charsToAdd = pendingTextRef.current.slice(0, CHARS_PER_TICK)
         pendingTextRef.current = pendingTextRef.current.slice(CHARS_PER_TICK)
         displayedTextRef.current += charsToAdd
@@ -68,7 +159,6 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
           text: displayedTextRef.current
         }))
       } else if (streamDoneRef.current) {
-        // No more pending text and stream is done - stop typing
         if (typingIntervalRef.current) {
           clearInterval(typingIntervalRef.current)
           typingIntervalRef.current = null
@@ -79,7 +169,6 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
           isComplete: true
         }))
       }
-      // If pending is empty but stream not done, keep interval running
     }, TICK_INTERVAL)
   }, [])
 
@@ -87,10 +176,12 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
     pendingTextRef.current = ''
     displayedTextRef.current = ''
     streamDoneRef.current = false
+
     if (typingIntervalRef.current) {
       clearInterval(typingIntervalRef.current)
       typingIntervalRef.current = null
     }
+
     setState({
       text: '',
       isStreaming: false,
@@ -136,10 +227,7 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
       error: null
     })
 
-    // Create abort controller for cancellation
     abortControllerRef.current = new AbortController()
-
-    // Start the typing effect
     startTypingEffect()
 
     try {
@@ -147,9 +235,7 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
         createApiUrl(`/api/quick-insights/${insightType}/stream`),
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             session_id: sessionId,
             date_range: dateRange,
@@ -179,40 +265,27 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
           break
         }
 
-        // Decode the chunk and add to buffer
         buffer += decoder.decode(value, { stream: true })
-
-        // Process complete SSE messages (each ends with \n\n)
         const messages = buffer.split('\n\n')
-        buffer = messages.pop() || '' // Keep incomplete message in buffer
+        buffer = messages.pop() || ''
 
         for (const message of messages) {
           if (message.startsWith('data: ')) {
-            const data = message.slice(6) // Remove "data: " prefix
             try {
-              const parsed = JSON.parse(data)
-
+              const parsed = JSON.parse(message.slice(6))
               if (parsed.text) {
-                // Add to pending queue (typing effect will display it)
                 pendingTextRef.current += parsed.text
               } else if (parsed.done) {
                 streamDoneRef.current = true
               } else if (parsed.error) {
-                // Error - stop everything
                 if (typingIntervalRef.current) {
                   clearInterval(typingIntervalRef.current)
                   typingIntervalRef.current = null
                 }
-                setState(prev => ({
-                  ...prev,
-                  isStreaming: false,
-                  error: parsed.error
-                }))
+                setState(prev => ({ ...prev, isStreaming: false, error: parsed.error }))
                 return
               }
-            } catch {
-              // Ignore JSON parse errors for incomplete chunks
-            }
+            } catch { /* ignore */ }
           }
         }
       }
@@ -222,7 +295,6 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
         typingIntervalRef.current = null
       }
       if (error instanceof Error && error.name === 'AbortError') {
-        // User cancelled - not an error
         setState(prev => ({ ...prev, isStreaming: false }))
       } else {
         setState(prev => ({
@@ -235,7 +307,12 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
   }, [startTypingEffect])
 
   return {
-    ...state,
+    insights: parsed.insights,
+    currentInsightIndex: parsed.currentIndex,
+    currentSection: parsed.currentSection,
+    isStreaming: state.isStreaming,
+    isComplete: state.isComplete,
+    error: state.error,
     startStreaming,
     stopStreaming,
     reset

@@ -14,11 +14,13 @@ const OptimizePage = lazy(() => import('./components/OptimizePage'))
 const ProtectPage = lazy(() => import('./components/ProtectPage'))
 const CreativePageFixed = lazy(() => import('./components/CreativePageFixed'))
 const IntegrationsPage = lazy(() => import('./components/IntegrationsPage'))
-const GrowInsights = lazy(() => import('./components/GrowInsights'))
-const OptimizeInsights = lazy(() => import('./components/OptimizeInsights'))
-const ProtectInsights = lazy(() => import('./components/ProtectInsights'))
+const GrowInsights = lazy(() => import('./components/GrowInsightsStreaming'))
+const OptimizeInsights = lazy(() => import('./components/OptimizeInsightsStreaming'))
+const ProtectInsights = lazy(() => import('./components/ProtectInsightsStreaming'))
 const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
+const StreamingInsightsDemo = lazy(() => import('./components/StreamingInsightsDemo'))
+const GrowInsightsStreaming = lazy(() => import('./components/GrowInsightsStreaming'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -27,7 +29,7 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick' | 'test-stream' | 'test-grow-stream'
 
 function App() {
   const location = useLocation()
@@ -37,7 +39,7 @@ function App() {
   const [appState, setAppState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mia_app_state')
     // Only restore valid states (not video-intro or account-selection which need fresh auth check)
-    if (saved && ['main', 'growth', 'improve', 'fix', 'creative', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
+    if (saved && ['main', 'growth', 'improve', 'fix', 'creative', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick', 'test-stream', 'test-grow-stream'].includes(saved)) {
       return saved as AppState
     }
     return 'video-intro'
@@ -83,25 +85,31 @@ function App() {
   useEffect(() => {
     if (isLoading) return // Wait for session to initialize
 
+    // TEST: Don't interfere with test states
+    if (appState === 'test-stream' || appState === 'test-grow-stream') {
+      console.log('[APP] test state - not redirecting')
+      return
+    }
+
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
-        console.log('[APP] 🔄 Returning user with session - skipping intro video to main')
+        console.log('[APP] Returning user with session - skipping intro video to main')
         setAppState('main')
         return
       }
 
       // Priority 2: User has seen intro before + authenticated but no account → Skip to account selection
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        console.log('[APP] 🔄 Returning user authenticated - skipping intro to account selection')
+        console.log('[APP] Returning user authenticated - skipping intro to account selection')
         setAppState('account-selection')
         return
       }
 
       // Priority 3: User has seen intro before + logged out → Stay on video-intro (shows login modal)
       if (hasSeenIntro && !isAnyAuthenticated) {
-        console.log('[APP] 🔄 Returning user logged out - staying on video intro (login modal visible)')
+        console.log('[APP] Returning user logged out - staying on video intro (login modal visible)')
         // Stay on video-intro state - VideoIntroView will show login modal automatically
         return
       }
@@ -116,7 +124,7 @@ function App() {
       // User has selected an account - navigate to integrations page
       // Don't interfere with manual navigation from other states
       setAppState('integrations')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix') {
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix' && appState !== 'test-stream' && appState !== 'test-grow-stream') {
       // User is authenticated (Google OR Meta) but needs to select an account
       setAppState('account-selection')
     } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
@@ -419,6 +427,40 @@ function App() {
               className="w-full h-full"
             >
               <SummaryInsights
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {/* TEST: Streaming Insights Demo - Remove after testing */}
+          {appState === 'test-stream' && isAnyAuthenticated && (
+            <motion.div
+              key="test-stream"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <StreamingInsightsDemo
+                insightType="grow"
+                dateRange="30_days"
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {/* TEST: Grow Insights with Streaming Cards - Remove after testing */}
+          {appState === 'test-grow-stream' && isAnyAuthenticated && (
+            <motion.div
+              key="test-grow-stream"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <GrowInsightsStreaming
                 onBack={() => setAppState('main')}
               />
             </motion.div>
