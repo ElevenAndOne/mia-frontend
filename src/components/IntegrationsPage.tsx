@@ -429,10 +429,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 const completeData = await completeResponse.json()
                 console.log(`${integrationId} /complete succeeded:`, completeData)
 
-                // For Meta Ads, just mark as connected - user selects ad account via gear icon
+                // For Meta Ads, show the account selector after OAuth completes
+                // User must select which Meta ad account to link to this Google Ads account
                 if (integrationId === 'meta' && completeData.success) {
-                  console.log('[META-OAUTH] Meta OAuth complete - credentials saved')
-                  console.log('[META-OAUTH] User can select Meta ad account via gear icon')
+                  console.log('[META-OAUTH] Meta OAuth complete - showing Meta account selector')
+                  // Show Meta account selector after a brief delay for cache invalidation
+                  setTimeout(() => setShowMetaAccountSelector(true), 500)
                 }
 
                 // For Facebook Organic, show the Facebook page selector after OAuth completes

@@ -33,28 +33,19 @@ async function fetchIntegrationStatus(sessionId: string, selectedAccountId?: str
   ga4Properties: any[]
   linkedGA4Properties: any[]
 }> {
-  // Run ALL status checks in parallel for speed
-  const [
-    accountsResponse,
-    hubspotResponse,
-    mailchimpResponse,
-    brevoResponse,
-    metaCredsResponse,
-    googleStatusResponse
-  ] = await Promise.all([
-    apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } }),
-    apiFetch(`/api/oauth/hubspot/status?session_id=${sessionId}`).catch(() => null),
-    apiFetch(`/api/oauth/mailchimp/status?session_id=${sessionId}`).catch(() => null),
-    apiFetch(`/api/oauth/brevo/status?session_id=${sessionId}`).catch(() => null),
-    apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`).catch(() => null),
-    apiFetch(`/api/oauth/google/status`, { headers: { 'X-Session-ID': sessionId } }).catch(() => null)
-  ])
+  // ACCOUNT ISOLATION FIX (Dec 5, 2025):
+  // We only need to fetch account data - platform "connected" status is based on account-level IDs
+  // Removed redundant user-level credential checks (hubspot/mailchimp/brevo/meta/google status endpoints)
+  const accountsResponse = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
 
-  // Track account-specific linking
+  // Track account-specific linking (ACCOUNT ISOLATION - Dec 5, 2025)
+  // Each platform's "connected" status must be based on the CURRENT ACCOUNT's linked IDs
   let googleLinked = false
   let metaLinked = false
   let ga4Linked = false
   let brevoLinked = false
+  let hubspotLinked = false
+  let mailchimpLinked = false
   let facebookOrganicLinked = false
   let currentAccountData: any = null
   let ga4Properties: any[] = []
@@ -77,6 +68,8 @@ async function fetchIntegrationStatus(sessionId: string, selectedAccountId?: str
         metaLinked = !!account.meta_ads_id
         ga4Linked = !!account.ga4_property_id
         brevoLinked = !!account.brevo_api_key
+        hubspotLinked = !!account.hubspot_portal_id
+        mailchimpLinked = !!account.mailchimp_account_id
         facebookOrganicLinked = !!account.facebook_page_id
         currentAccountData = account
 
@@ -87,22 +80,18 @@ async function fetchIntegrationStatus(sessionId: string, selectedAccountId?: str
     }
   }
 
-  // Parse parallel responses
-  const hubspotConnected = hubspotResponse?.ok ? (await hubspotResponse.json()).authenticated || false : false
-  const mailchimpConnected = mailchimpResponse?.ok ? (await mailchimpResponse.json()).authenticated || false : false
-  const brevoConnected = brevoResponse?.ok ? (await brevoResponse.json()).authenticated || false : false
-  const metaHasCredentials = metaCredsResponse?.ok ? (await metaCredsResponse.json()).has_credentials || false : false
-  const googleHasCredentials = googleStatusResponse?.ok ? (await googleStatusResponse.json()).authenticated || false : false
-
   const now = new Date().toISOString()
+  // ACCOUNT ISOLATION FIX (Dec 5, 2025):
+  // Platform "connected" status must be based on ACCOUNT-level linking, not USER-level credentials
+  // This ensures each Google Ads account shows only its own linked platforms
   const platformStatus: PlatformStatus = {
-    google: { connected: googleHasCredentials || googleLinked, linked: googleLinked, last_synced: now },
+    google: { connected: googleLinked, linked: googleLinked, last_synced: now },
     ga4: { connected: ga4Linked, linked: ga4Linked, last_synced: now },
-    meta: { connected: metaHasCredentials, linked: metaLinked, last_synced: now },
-    facebook_organic: { connected: metaHasCredentials && facebookOrganicLinked, linked: facebookOrganicLinked, last_synced: now },
-    brevo: { connected: brevoConnected || brevoLinked, linked: brevoLinked, last_synced: now },
-    hubspot: { connected: hubspotConnected, linked: hubspotConnected, last_synced: now },
-    mailchimp: { connected: mailchimpConnected, linked: mailchimpConnected, last_synced: now }
+    meta: { connected: metaLinked, linked: metaLinked, last_synced: now },
+    facebook_organic: { connected: facebookOrganicLinked, linked: facebookOrganicLinked, last_synced: now },
+    brevo: { connected: brevoLinked, linked: brevoLinked, last_synced: now },
+    hubspot: { connected: hubspotLinked, linked: hubspotLinked, last_synced: now },
+    mailchimp: { connected: mailchimpLinked, linked: mailchimpLinked, last_synced: now }
   }
 
   return { platformStatus, currentAccountData, ga4Properties, linkedGA4Properties }
