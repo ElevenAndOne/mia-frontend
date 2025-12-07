@@ -1,10 +1,11 @@
 /**
  * Custom hook for managing platform preferences
- * - Caches preferences with React Query (5 min cache)
- * - Debounces save operations (waits 1 second after last change)
+ * - All connected platforms default to ON (first time)
+ * - Newly connected platforms auto-enable
+ * - Toggles are instant (local state)
+ * - Saves debounce to backend (1 second after last change)
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch } from '../utils/api'
 
 interface UsePlatformPreferencesProps {
@@ -22,10 +23,14 @@ interface UsePlatformPreferencesResult {
 }
 
 async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
-  const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
-  if (response.ok) {
-    const data = await response.json()
-    return data.selected_platforms || []
+  try {
+    const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
+    if (response.ok) {
+      const data = await response.json()
+      return data.selected_platforms || []
+    }
+  } catch (e) {
+    console.error('[PlatformPrefs] Fetch error:', e)
   }
   return []
 }
@@ -46,97 +51,127 @@ export function usePlatformPreferences({
   selectedAccountId,
   connectedPlatforms
 }: UsePlatformPreferencesProps): UsePlatformPreferencesResult {
-  const queryClient = useQueryClient()
+  // Simple local state for selected platforms
+  const [selectedPlatforms, setSelectedPlatformsState] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Track previous connected platforms to detect new ones
+  const prevConnectedRef = useRef<string[]>([])
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const pendingPlatformsRef = useRef<string[] | null>(null)
+  const hasLoadedRef = useRef(false)
 
-  const queryKey = ['platform-preferences', sessionId, selectedAccountId]
+  // Load preferences on mount or when account changes
+  useEffect(() => {
+    if (!sessionId) return
 
-  // Fetch preferences with caching
-  const { data: savedPlatforms, isLoading } = useQuery({
-    queryKey,
-    queryFn: () => fetchPlatformPreferences(sessionId!),
-    enabled: !!sessionId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  })
+    const loadPreferences = async () => {
+      setIsLoading(true)
+      hasLoadedRef.current = false
 
-  // Mutation for saving
-  const saveMutation = useMutation({
-    mutationFn: (platforms: string[]) => savePlatformPreferences(sessionId!, platforms),
-    onSuccess: () => {
-      // Invalidate cache after successful save
-      queryClient.invalidateQueries({ queryKey: ['platform-preferences'] })
+      const saved = await fetchPlatformPreferences(sessionId)
+
+      if (saved.length > 0) {
+        // Filter to only connected platforms
+        const validPlatforms = saved.filter(p => connectedPlatforms.includes(p))
+        setSelectedPlatformsState(validPlatforms.length > 0 ? validPlatforms : connectedPlatforms)
+      } else {
+        // No saved prefs - default to all connected
+        setSelectedPlatformsState(connectedPlatforms)
+      }
+
+      prevConnectedRef.current = [...connectedPlatforms]
+      hasLoadedRef.current = true
+      setIsLoading(false)
     }
-  })
 
-  // Calculate effective selected platforms
-  // Filter saved platforms to only include currently connected ones
-  const selectedPlatforms = savedPlatforms
-    ? savedPlatforms.filter(p => connectedPlatforms.includes(p))
-    : connectedPlatforms
+    loadPreferences()
+  }, [sessionId, selectedAccountId]) // Reload when session or account changes
 
-  // If no valid saved platforms, default to all connected
-  const effectivePlatforms = selectedPlatforms.length > 0 ? selectedPlatforms : connectedPlatforms
+  // Detect newly connected platforms and auto-enable them
+  useEffect(() => {
+    if (!hasLoadedRef.current || connectedPlatforms.length === 0) return
 
-  // Debounced save function
-  const debouncedSave = useCallback((platforms: string[]) => {
-    // Clear any existing timer
+    const prevConnected = prevConnectedRef.current
+    const newPlatforms = connectedPlatforms.filter(p => !prevConnected.includes(p))
+
+    if (newPlatforms.length > 0) {
+      console.log('[PlatformPrefs] New platforms detected, enabling:', newPlatforms)
+      setSelectedPlatformsState(prev => {
+        const combined = [...new Set([...prev, ...newPlatforms])]
+        // Also save to backend
+        if (sessionId) {
+          savePlatformPreferences(sessionId, combined)
+        }
+        return combined
+      })
+    }
+
+    prevConnectedRef.current = [...connectedPlatforms]
+  }, [connectedPlatforms, sessionId])
+
+  // Debounced save to backend
+  const saveToBackend = useCallback((platforms: string[]) => {
+    if (!sessionId) return
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
     }
 
-    // Store the pending platforms
-    pendingPlatformsRef.current = platforms
-
-    // Set new timer - wait 1 second after last change
-    debounceTimerRef.current = setTimeout(() => {
-      if (pendingPlatformsRef.current && sessionId) {
-        saveMutation.mutate(pendingPlatformsRef.current)
-        pendingPlatformsRef.current = null
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsSaving(true)
+      try {
+        await savePlatformPreferences(sessionId, platforms)
+      } catch (e) {
+        console.error('[PlatformPrefs] Save error:', e)
       }
+      setIsSaving(false)
     }, 1000)
-  }, [sessionId, saveMutation])
+  }, [sessionId])
 
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
-        // Save any pending changes before unmount
-        if (pendingPlatformsRef.current && sessionId) {
-          savePlatformPreferences(sessionId, pendingPlatformsRef.current)
-        }
       }
     }
-  }, [sessionId])
+  }, [])
 
-  // Set platforms (with optimistic update + debounced save)
+  // Set platforms (instant UI update + debounced save)
   const setSelectedPlatforms = useCallback((platforms: string[]) => {
-    // Optimistic update - immediately update the cache
-    queryClient.setQueryData(queryKey, platforms)
-    // Debounced save to backend
-    debouncedSave(platforms)
-  }, [queryClient, queryKey, debouncedSave])
+    setSelectedPlatformsState(platforms)
+    saveToBackend(platforms)
+  }, [saveToBackend])
 
   // Toggle a single platform
   const togglePlatform = useCallback((platformId: string) => {
-    const current = queryClient.getQueryData<string[]>(queryKey) || effectivePlatforms
-    const newPlatforms = current.includes(platformId)
-      ? current.filter(p => p !== platformId)
-      : [...current, platformId]
+    setSelectedPlatformsState(current => {
+      const newPlatforms = current.includes(platformId)
+        ? current.filter(p => p !== platformId)
+        : [...current, platformId]
 
-    // Don't allow deselecting all platforms
-    if (newPlatforms.length === 0) return
+      // Don't allow deselecting all platforms
+      if (newPlatforms.length === 0) return current
 
-    setSelectedPlatforms(newPlatforms)
-  }, [queryClient, queryKey, effectivePlatforms, setSelectedPlatforms])
+      // Save to backend (debounced)
+      saveToBackend(newPlatforms)
+
+      return newPlatforms
+    })
+  }, [saveToBackend])
+
+  // Filter selected to only connected (in case platform was disconnected)
+  const filteredSelected = selectedPlatforms.filter(p => connectedPlatforms.includes(p))
+
+  // If all selected got disconnected, default to all connected
+  const effectivePlatforms = filteredSelected.length > 0 ? filteredSelected : connectedPlatforms
 
   return {
     selectedPlatforms: effectivePlatforms,
     setSelectedPlatforms,
     togglePlatform,
     isLoading,
-    isSaving: saveMutation.isPending
+    isSaving
   }
 }
