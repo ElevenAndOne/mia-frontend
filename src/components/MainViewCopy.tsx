@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
 import { usePlatformPreferences } from '../hooks/usePlatformPreferences'
@@ -7,8 +7,6 @@ import DateRangeSelector from './DateRangeSelector'
 
 interface MainViewProps {
   onLogout: () => void
-  onQuestionClick: (questionType: 'growth' | 'improve' | 'fix', data?: any) => void
-  onCreativeClick?: () => void
   onIntegrationsClick?: () => void
   onSummaryQuickClick?: (platforms?: string[]) => void
   onGrowQuickClick?: (platforms?: string[]) => void
@@ -44,11 +42,10 @@ const formatDateRangeDisplay = (dateRange: string): string => {
   return '90d'
 }
 
-const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
+const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
-  const [loadingQuestion, setLoadingQuestion] = useState<string | null>(null) // Track which question is loading
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
   const [showAccountSelector, setShowAccountSelector] = useState(false) // New state for account selection popout
   const [isChatLoading, setIsChatLoading] = useState(false) // Track chat loading state
@@ -142,29 +139,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
     }
   }, [])
 
-  const starterQuestions = useMemo(() => [
-    { text: "Where can we grow?", color: "#A2FAE0", dotColor: "#A2FAE0" },
-    { text: "What can we improve?", color: "#A7D3FF", dotColor: "#A7D3FF" },
-    { text: "What needs fixing?", color: "#FFC5B0", dotColor: "#FFC5B0" }
-  ], [])
-
-  // Dynamic API URL - works for both desktop and mobile ngrok, context-aware
-  const getApiUrl = useCallback((context: 'growth' | 'improve' | 'fix') => {
-    const endpointMap = {
-      'growth': 'growth-data',
-      'improve': 'improve-data',
-      'fix': 'fix-data'
-    }
-
-    const endpoint = endpointMap[context]
-
-    // If running via ngrok or production, use relative URL (will be proxied)
-    if (window.location.hostname.includes('ngrok') || window.location.hostname !== 'localhost') {
-      return `/api/${endpoint}` // Relative URL for proxy
-    }
-    // Local development - direct backend call
-    return `/api/${endpoint}`
-  }, [])
 
   const handleChatSubmit = useCallback(async (message: string) => {
     if (!message.trim()) return
@@ -229,71 +203,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
     }
   }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange])
-
-  const fetchQuestionData = useCallback(async (context: 'growth' | 'improve' | 'fix', question: string) => {
-    try {
-      const apiUrl = getApiUrl(context)
-      const response = await apiFetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: question,
-          context: context,
-          user: user?.email || '',
-          selected_account: selectedAccount,
-          user_id: user?.google_user_id || ''
-        }),
-      })
-      
-      const result = await response.json()
-      
-      if (result.success && result.data) {
-        return result.data
-      }
-      return null
-    } catch (error) {
-      console.error(`❌ [MAIN-VIEW] Pre-fetch failed for ${context}:`, error)
-      return null
-    }
-  }, [getApiUrl])
-
-  const handleQuestionClickLocal = useCallback(async (question: string) => {
-    // Start loading state
-    setLoadingQuestion(question)
-    
-    try {
-      // Fetch data FIRST, then navigate with data
-      let questionType: 'growth' | 'improve' | 'fix'
-      let data: any = null
-      
-      if (question === "Where can we grow?") {
-        questionType = 'growth'
-        data = await fetchQuestionData('growth', question)
-      } else if (question === "What can we improve?") {
-        questionType = 'improve' 
-        data = await fetchQuestionData('improve', question)
-      } else if (question === "What needs fixing?") {
-        questionType = 'fix'
-        data = await fetchQuestionData('fix', question)
-      } else {
-        throw new Error('Unknown question')
-      }
-      
-      // Only navigate AFTER data is ready
-      onQuestionClick(questionType, data)
-      
-    } catch (error) {
-      console.error('Question handling error:', error)
-      // Navigate anyway with fallback (no pre-fetched data)
-      if (question === "Where can we grow?") onQuestionClick('growth')
-      else if (question === "What can we improve?") onQuestionClick('improve')
-      else if (question === "What needs fixing?") onQuestionClick('fix')
-    } finally {
-      setLoadingQuestion(null) // Clear loading state
-    }
-  }, [fetchQuestionData, onQuestionClick])
 
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">
@@ -677,34 +586,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onQuestionClick, onCreativeClick, o
                   }}
                 >
                   Chat with Mia
-                </button>
-              </div>
-            )}
-
-            {/* Creative Insights Button - HIDDEN but preserved for later use */}
-            {false && onCreativeClick && (
-              <div className="absolute left-1/2 transform -translate-x-1/2" style={{ top: '665px' }}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    // Small delay to show touch feedback before navigation
-                    if (onCreativeClick) {
-                      setTimeout(() => onCreativeClick(), 150)
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-black text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
-                  style={{
-                    minWidth: '190px',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
-                  </svg>
-                  Creative Insights
                 </button>
               </div>
             )}

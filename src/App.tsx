@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+// Note: react-router-dom may be needed for future routing features
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from './contexts/SessionContext'
 
@@ -9,18 +9,12 @@ import AccountSelectionPage from './components/AccountSelectionPage'
 
 // Lazy load all other pages - only downloaded when needed
 const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
-const GrowthPage = lazy(() => import('./components/GrowthPage'))
-const OptimizePage = lazy(() => import('./components/OptimizePage'))
-const ProtectPage = lazy(() => import('./components/ProtectPage'))
-const CreativePageFixed = lazy(() => import('./components/CreativePageFixed'))
 const IntegrationsPage = lazy(() => import('./components/IntegrationsPage'))
-const GrowInsights = lazy(() => import('./components/GrowInsightsStreaming'))
-const OptimizeInsights = lazy(() => import('./components/OptimizeInsightsStreaming'))
-const ProtectInsights = lazy(() => import('./components/ProtectInsightsStreaming'))
+const GrowInsightsStreaming = lazy(() => import('./components/GrowInsightsStreaming'))
+const OptimizeInsightsStreaming = lazy(() => import('./components/OptimizeInsightsStreaming'))
+const ProtectInsightsStreaming = lazy(() => import('./components/ProtectInsightsStreaming'))
 const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
-const StreamingInsightsDemo = lazy(() => import('./components/StreamingInsightsDemo'))
-const GrowInsightsStreaming = lazy(() => import('./components/GrowInsightsStreaming'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -29,17 +23,16 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'growth' | 'improve' | 'fix' | 'creative' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick' | 'test-stream' | 'test-grow-stream'
+type AppState = 'video-intro' | 'account-selection' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
-  const location = useLocation()
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
 
   // Persist appState to localStorage so page refresh keeps you on the same page
   const [appState, setAppState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mia_app_state')
     // Only restore valid states (not video-intro or account-selection which need fresh auth check)
-    if (saved && ['main', 'growth', 'improve', 'fix', 'creative', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick', 'test-stream', 'test-grow-stream'].includes(saved)) {
+    if (saved && ['main', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
       return saved as AppState
     }
     return 'video-intro'
@@ -52,8 +45,6 @@ function App() {
 
   // Support both Google and Meta authentication
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
-
-  const [preloadedData, setPreloadedData] = useState<any>(null) // Store pre-fetched data
 
   // Date picker modal state
   const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
@@ -84,12 +75,6 @@ function App() {
   // Handle authentication state changes - but only after video intro
   useEffect(() => {
     if (isLoading) return // Wait for session to initialize
-
-    // TEST: Don't interfere with test states
-    if (appState === 'test-stream' || appState === 'test-grow-stream') {
-      console.log('[APP] test state - not redirecting')
-      return
-    }
 
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
@@ -122,9 +107,8 @@ function App() {
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
       // User has selected an account - navigate to integrations page
-      // Don't interfere with manual navigation from other states
       setAppState('integrations')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'creative' && appState !== 'growth' && appState !== 'improve' && appState !== 'fix' && appState !== 'test-stream' && appState !== 'test-grow-stream') {
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'video-intro' && appState !== 'account-selection') {
       // User is authenticated (Google OR Meta) but needs to select an account
       setAppState('account-selection')
     } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
@@ -148,21 +132,6 @@ function App() {
   }
 
   const { logout } = useSession()
-
-  const handleQuestionClick = (questionType: 'growth' | 'improve' | 'fix', data?: any) => {
-    setPreloadedData(data) // Store the pre-fetched data
-    if (questionType === 'growth') {
-      setAppState('growth')
-    } else if (questionType === 'improve') {
-      setAppState('improve')
-    } else if (questionType === 'fix') {
-      setAppState('fix')
-    }
-  }
-
-  const handleCreativeClick = () => {
-    setAppState('creative')
-  }
 
   const handleInsightsDateGenerate = (dateRange: string) => {
     setSelectedInsightDateRange(dateRange)
@@ -190,17 +159,6 @@ function App() {
       </div>
     )
   }
-
-  // Check if we're on a docs route
-  // TODO: Re-enable when docs pages are created
-  // if (location.pathname.startsWith('/docs/')) {
-  //   return (
-  //     <Routes>
-  //       <Route path="/docs/integration-guide" element={<IntegrationGuidePage />} />
-  //       <Route path="/docs/video-tutorial" element={<VideoTutorialPage />} />
-  //     </Routes>
-  //   )
-  // }
 
   return (
     <div className="w-full h-full relative">
@@ -249,8 +207,6 @@ function App() {
                   // Reset app state to video intro after logout
                   setAppState('video-intro')
                 }}
-                onQuestionClick={handleQuestionClick}
-                onCreativeClick={handleCreativeClick}
                 onIntegrationsClick={() => setAppState('integrations')}
                 onSummaryQuickClick={(platforms) => {
                   setPendingPlatforms(platforms || [])
@@ -275,82 +231,6 @@ function App() {
             </motion.div>
           )}
           
-          {appState === 'growth' && isAnyAuthenticated && (
-            <motion.div
-              key="growth"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <GrowthPage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'improve' && isAnyAuthenticated && (
-            <motion.div
-              key="improve"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <OptimizePage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'fix' && isAnyAuthenticated && (
-            <motion.div
-              key="fix"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <ProtectPage 
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear pre-loaded data when going back
-                }} 
-                data={preloadedData}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'creative' && isAnyAuthenticated && (
-            <motion.div
-              key="creative"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15, ease: "easeInOut" }}
-              className="w-full h-full"
-              style={{ backgroundColor: '#290068' }}
-            >
-              <CreativePageFixed
-                onBack={() => {
-                  setAppState('main')
-                  setPreloadedData(null) // Clear any preloaded data
-                }}
-              />
-            </motion.div>
-          )}
-
           {appState === 'integrations' && isAnyAuthenticated && (
             <motion.div
               key="integrations"
@@ -375,7 +255,7 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <GrowInsights
+              <GrowInsightsStreaming
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
                 platforms={pendingPlatforms}
@@ -392,7 +272,7 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <OptimizeInsights
+              <OptimizeInsightsStreaming
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
                 platforms={pendingPlatforms}
@@ -409,7 +289,7 @@ function App() {
               transition={{ duration: 0.3 }}
               className="w-full h-full"
             >
-              <ProtectInsights
+              <ProtectInsightsStreaming
                 onBack={() => setAppState('main')}
                 initialDateRange={selectedInsightDateRange}
                 platforms={pendingPlatforms}
@@ -427,40 +307,6 @@ function App() {
               className="w-full h-full"
             >
               <SummaryInsights
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {/* TEST: Streaming Insights Demo - Remove after testing */}
-          {appState === 'test-stream' && isAnyAuthenticated && (
-            <motion.div
-              key="test-stream"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <StreamingInsightsDemo
-                insightType="grow"
-                dateRange="30_days"
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {/* TEST: Grow Insights with Streaming Cards - Remove after testing */}
-          {appState === 'test-grow-stream' && isAnyAuthenticated && (
-            <motion.div
-              key="test-grow-stream"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <GrowInsightsStreaming
                 onBack={() => setAppState('main')}
               />
             </motion.div>
