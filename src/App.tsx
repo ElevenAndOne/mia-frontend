@@ -15,6 +15,7 @@ const OptimizeInsightsStreaming = lazy(() => import('./components/OptimizeInsigh
 const ProtectInsightsStreaming = lazy(() => import('./components/ProtectInsightsStreaming'))
 const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
+const OnboardingChat = lazy(() => import('./components/OnboardingChat'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -23,7 +24,7 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
@@ -32,7 +33,7 @@ function App() {
   const [appState, setAppState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mia_app_state')
     // Only restore valid states (not video-intro or account-selection which need fresh auth check)
-    if (saved && ['main', 'integrations', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
+    if (saved && ['main', 'integrations', 'onboarding-chat', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
       return saved as AppState
     }
     return 'video-intro'
@@ -106,13 +107,17 @@ function App() {
 
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
-      // User has selected an account - navigate to integrations page
-      setAppState('integrations')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'video-intro' && appState !== 'account-selection') {
+      // User has selected an account - check if onboarding needed
+      // For new flow: go to onboarding-chat instead of integrations
+      // TODO: Check onboarding status from backend to determine if complete
+      setAppState('onboarding-chat')
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection') {
       // User is authenticated (Google OR Meta) but needs to select an account
+      // Note: video-intro case already returned above, so no need to check
       setAppState('account-selection')
-    } else if (!isAnyAuthenticated && !selectedAccount && appState !== 'video-intro') {
+    } else if (!isAnyAuthenticated && !selectedAccount) {
       // User logged out - reset to video intro
+      // Note: video-intro case already returned above
       setAppState('video-intro')
     }
   }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
@@ -189,6 +194,26 @@ function App() {
               <AccountSelectionPage
                 onAccountSelected={() => {}}
                 onBack={() => logout()}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'onboarding-chat' && isAnyAuthenticated && selectedAccount && (
+            <motion.div
+              key="onboarding-chat"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <OnboardingChat
+                onComplete={() => setAppState('main')}
+                onSkip={() => setAppState('main')}
+                onConnectPlatform={(platformId) => {
+                  // Store the platform to connect and go to integrations
+                  localStorage.setItem('pending_platform_connect', platformId)
+                  setAppState('integrations')
+                }}
               />
             </motion.div>
           )}
