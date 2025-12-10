@@ -50,6 +50,7 @@ export interface OnboardingState {
   growTaskId: string | null
   growInsightsReady: boolean
   growInsightsProgress: number
+  growInsightsSummary: string | null  // The actual summary result
 
   // UI state
   isLoading: boolean
@@ -58,19 +59,19 @@ export interface OnboardingState {
 
 export interface OnboardingActions {
   // Fetch current status from backend
-  loadOnboardingStatus: () => Promise<void>
+  loadOnboardingStatus: () => Promise<string | null>
 
   // Step progression
   advanceStep: () => Promise<void>
   updateStep: (step: number) => Promise<void>
 
   // Bronze facts
-  fetchBronzeHighlight: () => Promise<BronzeFact | null>
-  fetchBronzeFollowup: () => Promise<BronzeFact | null>
+  fetchBronzeHighlight: (platform?: string) => Promise<BronzeFact | null>
+  fetchBronzeFollowup: (platform?: string) => Promise<BronzeFact | null>
 
   // Background tasks
   startGrowInsightsAsync: () => Promise<string | null>
-  checkGrowInsightsStatus: () => Promise<boolean>
+  checkGrowInsightsStatus: (taskIdOverride?: string) => Promise<boolean>
 
   // Completion
   completeOnboarding: () => Promise<void>
@@ -114,9 +115,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     growTaskId: null,
     growInsightsReady: false,
     growInsightsProgress: 0,
+    growInsightsSummary: null,
     isLoading: false,
     error: null,
   })
+
+  // OPTIMIZATION: Deduplication refs for loadOnboardingStatus
+  const isLoadingRef = React.useRef(false)
+  const lastLoadTimeRef = React.useRef(0)
 
   // Load onboarding status when session/account changes
   useEffect(() => {
@@ -125,9 +131,23 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
   }, [sessionId, selectedAccount?.id])
 
-  const loadOnboardingStatus = useCallback(async () => {
-    if (!sessionId) return
+  const loadOnboardingStatus = useCallback(async (forceRefresh = false): Promise<string | null> => {
+    if (!sessionId) return null
 
+    // OPTIMIZATION: Skip if already loading or loaded recently (within 2 seconds)
+    const now = Date.now()
+    if (!forceRefresh) {
+      if (isLoadingRef.current) {
+        console.log('[ONBOARDING] Skipping duplicate load (already in progress)')
+        return state.growTaskId
+      }
+      if (now - lastLoadTimeRef.current < 2000) {
+        console.log('[ONBOARDING] Skipping duplicate load (loaded recently)')
+        return state.growTaskId
+      }
+    }
+
+    isLoadingRef.current = true
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -137,6 +157,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
       if (response.ok) {
         const data = await response.json()
+        console.log('[ONBOARDING] Status loaded:', {
+          growTaskId: data.grow_task_id,
+          step: data.step,
+          bronzeReady: data.bronze_ready
+        })
         setState(prev => ({
           ...prev,
           step: data.step || 0,
@@ -148,6 +173,10 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           growTaskId: data.grow_task_id || null,
           isLoading: false,
         }))
+        // Update deduplication tracking
+        lastLoadTimeRef.current = Date.now()
+        // Return the task ID directly so callers don't have to wait for state
+        return data.grow_task_id || null
       } else {
         setState(prev => ({
           ...prev,
@@ -162,29 +191,30 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         isLoading: false,
         error: 'Failed to connect to server'
       }))
+    } finally {
+      // Always clear the loading ref so future loads can proceed
+      isLoadingRef.current = false
     }
+    return null
   }, [sessionId])
 
   const advanceStep = useCallback(async () => {
     if (!sessionId) return
 
-    try {
-      const response = await apiFetch(`/api/onboarding/advance?session_id=${sessionId}`, {
-        method: 'POST',
-        headers: { 'X-Session-ID': sessionId }
-      })
+    // OPTIMIZATION: Update local state immediately (optimistic update)
+    setState(prev => ({
+      ...prev,
+      step: Math.min(prev.step + 1, 5),
+      completed: prev.step + 1 >= 5,
+    }))
 
-      if (response.ok) {
-        const data = await response.json()
-        setState(prev => ({
-          ...prev,
-          step: data.current_step,
-          completed: data.completed || false,
-        }))
-      }
-    } catch (err) {
-      console.error('[ONBOARDING] Advance step error:', err)
-    }
+    // Sync to server in background (fire-and-forget)
+    apiFetch(`/api/onboarding/advance?session_id=${sessionId}`, {
+      method: 'POST',
+      headers: { 'X-Session-ID': sessionId }
+    }).catch(err => {
+      console.error('[ONBOARDING] Advance step sync error:', err)
+    })
   }, [sessionId])
 
   const updateStep = useCallback(async (step: number) => {
@@ -208,7 +238,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
   }, [sessionId])
 
-  const fetchBronzeHighlight = useCallback(async (): Promise<BronzeFact | null> => {
+  const fetchBronzeHighlight = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
     if (!sessionId) return null
 
     try {
@@ -218,7 +248,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           'Content-Type': 'application/json',
           'X-Session-ID': sessionId
         },
-        body: JSON.stringify({ session_id: sessionId })
+        body: JSON.stringify({ session_id: sessionId, platform })
       })
 
       if (response.ok) {
@@ -239,7 +269,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     return null
   }, [sessionId])
 
-  const fetchBronzeFollowup = useCallback(async (): Promise<BronzeFact | null> => {
+  const fetchBronzeFollowup = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
     if (!sessionId) return null
 
     try {
@@ -249,7 +279,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           'Content-Type': 'application/json',
           'X-Session-ID': sessionId
         },
-        body: JSON.stringify({ session_id: sessionId })
+        body: JSON.stringify({ session_id: sessionId, platform })
       })
 
       if (response.ok) {
@@ -298,21 +328,34 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     return null
   }, [sessionId])
 
-  const checkGrowInsightsStatus = useCallback(async (): Promise<boolean> => {
-    if (!state.growTaskId) return false
+  const checkGrowInsightsStatus = useCallback(async (taskIdOverride?: string): Promise<boolean> => {
+    const taskId = taskIdOverride || state.growTaskId
+    console.log('[ONBOARDING] checkGrowInsightsStatus called, taskId:', taskId)
+    if (!taskId) {
+      console.log('[ONBOARDING] No growTaskId available, returning false')
+      return false
+    }
 
     try {
-      const response = await apiFetch(`/api/insights/task/${state.growTaskId}`)
+      const response = await apiFetch(`/api/insights/task/${taskId}`)
 
       if (response.ok) {
         const data = await response.json()
+        console.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
         const isComplete = data.status === 'completed'
         const progress = data.progress || 0
+
+        // Extract summary from result if completed
+        let summary: string | null = null
+        if (isComplete && data.result) {
+          summary = data.result.summary || null
+        }
 
         setState(prev => ({
           ...prev,
           growInsightsReady: isComplete,
           growInsightsProgress: progress,
+          growInsightsSummary: summary,
         }))
 
         return isComplete
@@ -403,6 +446,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       growTaskId: null,
       growInsightsReady: false,
       growInsightsProgress: 0,
+      growInsightsSummary: null,
       isLoading: false,
       error: null,
     })

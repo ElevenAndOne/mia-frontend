@@ -136,7 +136,7 @@ function App() {
     }
   }
 
-  const { logout } = useSession()
+  const { logout, loginMeta, refreshAccounts } = useSession()
 
   const handleInsightsDateGenerate = (dateRange: string) => {
     setSelectedInsightDateRange(dateRange)
@@ -154,7 +154,9 @@ function App() {
     setPendingInsightType(null)
   }
 
-  if (isLoading) {
+  // Only show global loading spinner during initial load, NOT during onboarding
+  // OnboardingChat has its own loading states (typing indicator) and must not unmount during Meta OAuth
+  if (isLoading && appState !== 'onboarding-chat') {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -209,10 +211,21 @@ function App() {
               <OnboardingChat
                 onComplete={() => setAppState('main')}
                 onSkip={() => setAppState('main')}
-                onConnectPlatform={(platformId) => {
-                  // Store the platform to connect and go to integrations
-                  localStorage.setItem('pending_platform_connect', platformId)
-                  setAppState('integrations')
+                onConnectPlatform={async (platformId) => {
+                  // Open OAuth popup inline - stay in onboarding
+                  if (platformId === 'meta_ads' || platformId === 'meta' || platformId === 'facebook_organic') {
+                    console.log('[ONBOARDING] Opening Meta OAuth popup...')
+                    const success = await loginMeta()
+                    if (success) {
+                      console.log('[ONBOARDING] Meta connected successfully')
+                      // Refresh accounts to get updated platform connections
+                      await refreshAccounts()
+                    }
+                  } else {
+                    // For other platforms, go to integrations (or implement their OAuth)
+                    localStorage.setItem('pending_platform_connect', platformId)
+                    setAppState('integrations')
+                  }
                 }}
               />
             </motion.div>

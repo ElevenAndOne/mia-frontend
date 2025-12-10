@@ -41,7 +41,7 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
     setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/meta/api/accounts/available', {
+      const response = await apiFetch('/api/oauth/meta/accounts/available', {
         method: 'GET',
         headers: {
           'X-Session-ID': sessionId || 'default'
@@ -87,7 +87,7 @@ const MetaAccountSelector = ({ isOpen, onClose, onSuccess, currentGoogleAccountN
         console.log('[META-ACCOUNT-SELECTOR] Unlinking Meta account')
       }
 
-      const response = await apiFetch('/api/oauth/meta/api/accounts/link', {
+      const response = await apiFetch('/api/oauth/meta/accounts/link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

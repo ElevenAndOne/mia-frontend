@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useSession, AccountMapping } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
@@ -38,14 +38,15 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
-  const [industries, setIndustries] = useState<string[]>([])
-  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
-  const [localSelectedAccount, setLocalSelectedAccount] = useState<AccountMapping | null>(null)
 
-  // Fetch MCC accounts and industries on mount
+  // Ref to prevent duplicate fetches (React StrictMode calls useEffect twice)
+  const hasFetchedRef = useRef(false)
+
+  // Fetch MCC accounts on mount (only once) - industry selection removed
   useEffect(() => {
+    if (hasFetchedRef.current) return
+    hasFetchedRef.current = true
     fetchMCCAccounts()
-    fetchIndustries()
   }, [])
 
   // Auto-select MCC if there's only one
@@ -62,8 +63,8 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
       // If it's a user-based account (no ads platforms), auto-select and proceed
       if (account.id.startsWith('user_')) {
         console.log('[ACCOUNT-SELECTION] Auto-selecting user-based account:', account.name)
-        // Auto-select with a default industry, then proceed
-        selectAccount(account.id, 'Other').then((success) => {
+        // Auto-select and proceed (industry removed)
+        selectAccount(account.id).then((success) => {
           if (success) {
             onAccountSelected()
           }
@@ -112,24 +113,6 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }
 
-  const fetchIndustries = async () => {
-    try {
-      const response = await apiFetch('/api/industries', {
-        method: 'GET',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch industries')
-      }
-
-      const data = await response.json()
-      setIndustries(data.industries || [])
-      console.log('[ACCOUNT-SELECTION] Fetched industries:', data.industries)
-    } catch (err) {
-      console.error('[ACCOUNT-SELECTION] Error fetching industries:', err)
-    }
-  }
-
   const handleMCCSelect = async (mccId: string) => {
     try {
       setSelectedMCC(mccId)
@@ -158,20 +141,15 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     }
   }
 
+  // Direct account selection - no industry required
   const handleAccountSelect = async (account: AccountMapping) => {
     if (isSelecting) return
-
-    // Validate industry selection
-    if (!selectedIndustry) {
-      alert('Please select your business industry')
-      return
-    }
 
     setIsSelecting(true)
     clearError()
 
     try {
-      const success = await selectAccount(account.id, selectedIndustry)
+      const success = await selectAccount(account.id)
 
       if (success) {
         onAccountSelected()
@@ -347,25 +325,25 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
               className="space-y-4"
             >
               {availableAccounts
-                .filter(account => account.id.startsWith('google_') || account.id.startsWith('user_'))  // Only show Google Ads and user-based accounts (Meta linking happens later in Integrations)
+                .filter(account =>
+                  // Only show Google Ads and user-based accounts (Meta linking happens later in Integrations)
+                  (account.id.startsWith('google_') || account.id.startsWith('user_')) &&
+                  // Filter out MCC accounts - they're already shown in MCC selection step
+                  account.google_ads_account_type !== 'mcc'
+                )
                 .map((account, index) => (
                 <motion.button
                   key={account.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 1) }}
-                  onClick={() => setLocalSelectedAccount(account)}
+                  onClick={() => handleAccountSelect(account)}
                   disabled={isSelecting}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    localSelectedAccount?.id === account.id
-                      ? 'border-black bg-gray-50 shadow-lg'
+                    isSelecting
+                      ? 'opacity-60 cursor-not-allowed'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  } ${
-                    isSelecting ? 'opacity-60 cursor-not-allowed' : ''
                   }`}
-                  style={{
-                    borderColor: localSelectedAccount?.id === account.id ? account.color : undefined
-                  }}
                 >
                   <div className="flex items-center space-x-4">
                     <div
@@ -380,13 +358,9 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                         <h3 className="font-semibold text-gray-900 truncate">
                           {account.name}
                         </h3>
-                        {localSelectedAccount?.id === account.id && (
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center ml-2" style={{ backgroundColor: account.color }}>
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        )}
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </div>
 
                       <p className="text-sm text-gray-600 capitalize mb-2">
@@ -422,7 +396,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                     </div>
                   </div>
 
-                  {isSelecting && localSelectedAccount?.id === account.id && (
+                  {isSelecting && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -436,46 +410,6 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                   )}
                 </motion.button>
               ))}
-            </motion.div>
-          )}
-
-          {/* Industry Selection - INSIDE scrollable area */}
-          {localSelectedAccount && !isSelecting && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 pb-32"
-            >
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                What industry are you in?
-              </label>
-              <div className="flex items-center gap-3">
-                <select
-                  value={selectedIndustry}
-                  onChange={(e) => setSelectedIndustry(e.target.value)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                >
-                  <option value="">Select your industry</option>
-                  {industries.map((industry) => (
-                    <option key={industry} value={industry}>
-                      {industry}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => handleAccountSelect(localSelectedAccount)}
-                  disabled={!selectedIndustry}
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                    selectedIndustry
-                      ? 'bg-black text-white hover:bg-gray-800'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              </div>
             </motion.div>
           )}
         </div>

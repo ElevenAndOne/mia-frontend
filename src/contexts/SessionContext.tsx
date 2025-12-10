@@ -15,6 +15,7 @@ export interface AccountMapping {
   business_type: string
   color: string
   display_name: string
+  google_ads_account_type?: string  // "mcc", "standalone", or "mcc_subaccount"
 }
 
 export interface UserProfile {
