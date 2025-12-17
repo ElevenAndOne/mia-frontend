@@ -697,14 +697,26 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   })
 
                   if (completeResponse.ok) {
+                    const completeData = await completeResponse.json()
+                    console.log('[SESSION] Meta OAuth complete response:', completeData)
+
+                    // CRITICAL: Set the user object so /api/accounts/available works
+                    // The user.id from complete response is the google_user_id stored in the session
                     setState(prev => ({
                       ...prev,
                       isLoading: false,
                       isMetaAuthenticated: true,
+                      isAuthenticated: false,  // Not Google authenticated, but Meta is
+                      user: completeData.user ? {
+                        google_user_id: completeData.user.id,
+                        name: completeData.user.name || 'Meta User',
+                        email: completeData.user.email || '',
+                        picture_url: ''  // Meta doesn't provide picture in our flow
+                      } : prev.user,
                       metaUser: {
-                        id: statusData.user_info?.id || '',
-                        name: statusData.user_info?.name || 'Meta User',
-                        email: statusData.user_info?.email
+                        id: completeData.user?.id || statusData.user_info?.id || '',
+                        name: completeData.user?.name || statusData.user_info?.name || 'Meta User',
+                        email: completeData.user?.email || statusData.user_info?.email
                       }
                     }))
 

@@ -26,6 +26,7 @@ import OnboardingProgressBar from './OnboardingProgressBar'
 import BronzeFactCard from './BronzeFactCard'
 import MicroCelebration from './MicroCelebration'
 import MetaAccountSelector from './MetaAccountSelector'
+import GoogleAccountLinkSelector from './GoogleAccountLinkSelector'
 import TypingMessage from './TypingMessage'
 
 interface OnboardingChatProps {
@@ -51,7 +52,7 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   onSkip,
   onConnectPlatform,
 }) => {
-  const { selectedAccount, sessionId, loginMeta, refreshAccounts } = useSession()
+  const { selectedAccount, sessionId, login, loginMeta, refreshAccounts } = useSession()
   const {
     step,
     platformsConnected,
@@ -80,7 +81,24 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     reset: resetStreaming
   } = useOnboardingStreaming()
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  // Restore messages from localStorage if available (survives mobile OAuth redirects)
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('mia_onboarding_messages')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        // Convert timestamp strings back to Date objects
+        return parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+      } catch (e) {
+        console.error('[ONBOARDING] Failed to parse saved messages:', e)
+        return []
+      }
+    }
+    return []
+  })
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationType, setCelebrationType] = useState<'success' | 'milestone' | 'complete'>('success')
   const [isTyping, setIsTyping] = useState(false)
@@ -89,6 +107,8 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
 
   // Meta Account Selector modal state
   const [showMetaSelector, setShowMetaSelector] = useState(false)
+  // Google Account Link Selector modal state (for Meta-first flow)
+  const [showGoogleSelector, setShowGoogleSelector] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   // Track if we're streaming combined insights (after Meta linked) vs single platform
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
@@ -100,12 +120,40 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Persist messages to localStorage (survives mobile OAuth redirects)
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('mia_onboarding_messages', JSON.stringify(messages))
+    }
+  }, [messages])
+
+  // Track if we're in Google link mobile redirect flow (use ref for synchronous check)
+  const isGoogleLinkFlowRef = useRef(false)
+
   // Initialize onboarding chat (only once when account is selected)
+  // Check for Google link flow SYNCHRONOUSLY before deciding to init
   const hasInitialized = useRef(false)
   useEffect(() => {
+    // Check localStorage DIRECTLY here to avoid state timing issues
+    const shouldShowGoogleSelector = localStorage.getItem('mia_show_google_selector')
+    if (shouldShowGoogleSelector) {
+      console.log('[ONBOARDING] Google link mobile redirect detected - showing selector, continuing existing chat')
+      console.log('[ONBOARDING] Restored messages count:', messages.length)
+      localStorage.removeItem('mia_show_google_selector')
+      isGoogleLinkFlowRef.current = true
+      hasInitialized.current = true  // Prevent future init
+      setShowGoogleSelector(true)
+      return  // Skip initializeChat - we have messages from before redirect
+    }
+
+    // Only initialize if we have NO messages (fresh start, not returning from redirect)
     if (!hasInitialized.current && messages.length === 0 && selectedAccount) {
       hasInitialized.current = true
       initializeChat()
+    } else if (messages.length > 0) {
+      // We have restored messages - mark as initialized
+      hasInitialized.current = true
+      console.log('[ONBOARDING] Restored', messages.length, 'messages from localStorage')
     }
   }, [selectedAccount, messages.length])
 
@@ -176,6 +224,7 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
       'skip_details': 'Later',
       'connect_second': 'Connect another platform',
       'connect_meta_ads': 'Connect Meta',
+      'connect_google_ads': 'Connect Google Ads',
       'skip': 'Skip for now',
       'show_snapshot': 'Show me my Intelligence Snapshot',
       'explore': 'Explore on my own',
@@ -189,6 +238,7 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
       'connect_more': 'Connect more platforms',
       'weekly_reports': 'Receive weekly Intelligence Reports',
       'show_meta_followup': 'Yes',
+      'show_google_followup': 'Yes',
       'finish_onboarding': 'Later',
     }
 
@@ -259,8 +309,16 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
         await handleConnectMeta()
         break
 
+      case 'connect_google_ads':
+        await handleConnectGoogle()
+        break
+
       case 'show_meta_followup':
         await handleShowMetaFollowup()
+        break
+
+      case 'show_google_followup':
+        await handleShowGoogleFollowup()
         break
 
       case 'finish_onboarding':
@@ -352,10 +410,12 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   }
 
   const handleShowSnapshot = async () => {
+    localStorage.removeItem('mia_onboarding_messages')
     onComplete()
   }
 
   const handleExplore = async () => {
+    localStorage.removeItem('mia_onboarding_messages')
     onComplete()
   }
 
@@ -417,7 +477,9 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
 
   // Handle streaming completion - different flow for single vs combined
   useEffect(() => {
+    console.log('[ONBOARDING] Stream useEffect - streamComplete:', streamComplete, 'streamingMessageId:', streamingMessageId)
     if (streamComplete && streamingMessageId) {
+      console.log('[ONBOARDING] Stream completed! Processing...')
       const handleStreamComplete = async () => {
         // Add the streamed text as a permanent message
         // Pre-generate ID and mark as already typed (user saw it streaming live)
@@ -479,6 +541,148 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
           { label: "Skip for now", action: "skip" }
         ]
       )
+    }
+  }
+
+  // Helper to detect mobile
+  const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+  // STATE 6.1-ALT — Google OAuth for Meta-first users (INLINE)
+  // Opens Google OAuth popup - for users who started with Meta and want to add Google
+  const handleConnectGoogle = async () => {
+    console.log('[ONBOARDING] handleConnectGoogle called - starting Google OAuth')
+    try {
+      // For mobile: Store flag so we know to show Google selector after OAuth redirect
+      if (isMobile()) {
+        console.log('[ONBOARDING] Mobile detected - storing pending Google link flag')
+        localStorage.setItem('mia_onboarding_google_link_pending', 'true')
+      }
+
+      // Trigger Google OAuth popup (or redirect on mobile)
+      console.log('[ONBOARDING] Calling login() for Google OAuth...')
+      const success = await login()
+      console.log('[ONBOARDING] login() returned:', success)
+
+      // On mobile, login() returns true immediately but redirects away
+      // The selector will be shown after redirect back (handled in App.tsx)
+      if (isMobile()) {
+        console.log('[ONBOARDING] Mobile - page will redirect, not showing selector yet')
+        return
+      }
+
+      if (success) {
+        // OAuth successful - show Google Ads account selector
+        // User needs to select which Google Ads account to link to their Meta account
+        console.log('[ONBOARDING] Setting showGoogleSelector to true')
+        setShowGoogleSelector(true)
+      } else {
+        addMiaMessage(
+          "Google connection was cancelled. Would you like to try again or connect a different platform?",
+          [
+            { label: "Try Google again", action: "connect_google_ads" },
+            { label: "Connect another platform", action: "connect_second" },
+            { label: "Skip for now", action: "skip" }
+          ]
+        )
+      }
+    } catch (error) {
+      console.error('Google OAuth error:', error)
+      addMiaMessage(
+        "There was an issue connecting to Google. Would you like to try again?",
+        [
+          { label: "Try again", action: "connect_google_ads" },
+          { label: "Skip for now", action: "skip" }
+        ]
+      )
+    }
+  }
+
+  // When Google account is linked (for Meta-first users)
+  // linkedGoogleId is passed from GoogleAccountLinkSelector but we don't need it
+  // since the backend already linked the account
+  const handleGoogleAccountLinked = async (_linkedGoogleId?: string) => {
+    console.log('[ONBOARDING] handleGoogleAccountLinked called with:', _linkedGoogleId)
+    console.log('[ONBOARDING] isGoogleLinkFlowRef:', isGoogleLinkFlowRef.current, 'messages.length:', messages.length)
+
+    // Close the Google account selector modal
+    setShowGoogleSelector(false)
+
+    // Clear the Google link flow flag
+    isGoogleLinkFlowRef.current = false
+
+    // Refresh accounts to get updated data
+    console.log('[ONBOARDING] Refreshing accounts after Google link...')
+    await refreshAccounts()
+
+    // Reload onboarding status (will have new combined task_id)
+    await loadOnboardingStatus()
+
+    // Show success and Google Bronze facts
+    // Messages are now persisted, so this continues the existing conversation
+    await addMiaMessage("Perfect - Google Ads is now connected!")
+
+    setIsTyping(true)
+    // Request Google Bronze data
+    const bronzeFact = await fetchBronzeHighlight('google_ads')
+    setIsTyping(false)
+
+    if (bronzeFact) {
+      addBronzeFactMessage(bronzeFact)
+      setCelebrationType('success')
+      setShowCelebration(true)
+
+      await delay(500)
+
+      // Ask about clicks/CTR
+      addMiaMessage(
+        "Want to see how many clicked through?",
+        [
+          { label: "Yes", action: "show_google_followup" },
+          { label: "Later", action: "finish_onboarding" }
+        ]
+      )
+    } else {
+      // No Google Bronze available (maybe no campaigns yet)
+      // Still proceed to combined insights since we have Meta data
+      addMiaMessage("I'm now analyzing both platforms together...")
+
+      if (sessionId) {
+        const streamMsgId = generateId()
+        setStreamingMessageId(streamMsgId)
+        setIsStreamingCombined(true)
+        startStreaming(sessionId, ['google_ads', 'meta_ads'])
+      } else {
+        await handleOnboardingComplete()
+      }
+    }
+  }
+
+  // Show Google Bronze followup (clicks/CTR) - for Meta-first users
+  const handleShowGoogleFollowup = async () => {
+    setIsTyping(true)
+    // Explicitly request Google followup
+    const followupFact = await fetchBronzeFollowup('google_ads')
+    setIsTyping(false)
+
+    if (followupFact) {
+      addBronzeFactMessage(followupFact)
+      setCelebrationType('success')
+      setShowCelebration(true)
+    }
+
+    await delay(500)
+
+    // Now show combined insights (streaming)
+    addMiaMessage("I'm now analyzing both platforms together...")
+
+    // Start streaming combined insights if we have session
+    if (sessionId) {
+      const streamMsgId = generateId()
+      setStreamingMessageId(streamMsgId)
+      setIsStreamingCombined(true)  // Mark as combined for completion handler
+      startStreaming(sessionId, ['google_ads', 'meta_ads'])
+    } else {
+      await handleOnboardingComplete()
     }
   }
 
@@ -558,11 +762,28 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
       return
     }
 
+    // Determine which platform to suggest based on what's already connected
+    // Meta-first users should see "Connect Google", Google-first users should see "Connect Meta"
+    // Note: Backend returns 'meta' for meta_ads_id, not 'meta_ads'
+    const hasMetaConnected = platformsConnected.includes('meta') || platformsConnected.includes('meta_ads') || platformsConnected.includes('facebook')
+    const hasGoogleConnected = platformsConnected.includes('google_ads')
+
+    console.log('[ONBOARDING-CHAT] promptForSecondPlatform:', {
+      platformsConnected,
+      hasMetaConnected,
+      hasGoogleConnected
+    })
+
+    // Build the primary connection option based on what's missing
+    const primaryOption = hasMetaConnected && !hasGoogleConnected
+      ? { label: "Connect Google Ads", action: "connect_google_ads" }
+      : { label: "Connect Meta", action: "connect_meta_ads" }
+
     // Only show action buttons - Claude's streamed response already encourages connecting more platforms
     addMiaMessage(
       "",
       [
-        { label: "Connect Meta", action: "connect_meta_ads" },
+        primaryOption,
         { label: "Connect another platform", action: "connect_second" },
         { label: "Show me what this unlocks", action: "show_unlock_preview" },
         { label: "Skip for now", action: "skip" }
@@ -572,6 +793,15 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
 
   // CTO doc: "Show me what this unlocks"
   const handleShowUnlockPreview = async () => {
+    // Determine which platform to suggest based on what's already connected
+    // Note: Backend returns 'meta' for meta_ads_id, not 'meta_ads'
+    const hasMetaConnected = platformsConnected.includes('meta') || platformsConnected.includes('meta_ads') || platformsConnected.includes('facebook')
+    const hasGoogleConnected = platformsConnected.includes('google_ads')
+
+    const primaryOption = hasMetaConnected && !hasGoogleConnected
+      ? { label: "Connect Google Ads", action: "connect_google_ads" }
+      : { label: "Connect Meta", action: "connect_meta_ads" }
+
     addMiaMessage(
       "With two platforms connected, I can:\n\n" +
       "- Cross-reference your Google Ads and Meta Ads audiences\n" +
@@ -580,7 +810,7 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
       "- Generate unified Grow, Optimise, and Protect insights\n\n" +
       "Ready to unlock these capabilities?",
       [
-        { label: "Connect Meta", action: "connect_meta_ads" },
+        primaryOption,
         { label: "Connect another platform", action: "connect_second" },
         { label: "Skip for now", action: "skip" }
       ]
@@ -616,7 +846,12 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
 
   // CTO doc FINAL STATE — User Completes Onboarding
   const handleOnboardingComplete = async () => {
+    console.log('[ONBOARDING] handleOnboardingComplete called - completing onboarding')
+    console.trace('[ONBOARDING] Stack trace for handleOnboardingComplete')
     await completeOnboarding()
+
+    // Clear persisted messages since onboarding is done
+    localStorage.removeItem('mia_onboarding_messages')
 
     setCelebrationType('complete')
     setShowCelebration(true)
@@ -781,6 +1016,13 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
         onClose={() => setShowMetaSelector(false)}
         onSuccess={handleMetaAccountLinked}
         currentGoogleAccountName={selectedAccount?.name}
+      />
+
+      {/* Google Account Link Selector Modal - For Meta-first users linking Google */}
+      <GoogleAccountLinkSelector
+        isOpen={showGoogleSelector}
+        onClose={() => setShowGoogleSelector(false)}
+        onSuccess={handleGoogleAccountLinked}
       />
     </div>
   )

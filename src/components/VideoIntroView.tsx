@@ -4,10 +4,11 @@ import FigmaLoginModal from './FigmaLoginModal'
 
 interface VideoIntroViewProps {
   onAuthSuccess?: () => void
+  onMetaAuthSuccess?: () => void  // Callback for Meta-first flow
   hasSeenIntro?: boolean  // If true, skip video and show login modal immediately
 }
 
-const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewProps) => {
+const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false }: VideoIntroViewProps) => {
   const [showLoginModal, setShowLoginModal] = useState(hasSeenIntro)  // ✅ Show immediately if returning user
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
@@ -189,6 +190,7 @@ const VideoIntroView = ({ onAuthSuccess, hasSeenIntro = false }: VideoIntroViewP
         {showLoginModal && (
           <FigmaLoginModal
             onAuthSuccess={onAuthSuccess}
+            onMetaAuthSuccess={onMetaAuthSuccess}
           />
         )}
       </AnimatePresence>

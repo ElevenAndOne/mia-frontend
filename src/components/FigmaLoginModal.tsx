@@ -4,12 +4,15 @@ import { useState } from 'react'
 
 interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
+  onMetaAuthSuccess?: () => void  // New callback for Meta-first flow
 }
 
-const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
-  const { login, checkExistingAuth, refreshAccounts } = useSession()
+const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess }: FigmaLoginModalProps) => {
+  const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
+  const [isMetaLoading, setIsMetaLoading] = useState(false)
+  const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
 
   const handleLoginClick = async (method: string) => {
     if (method === 'Google') {
@@ -42,6 +45,38 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         }
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
+      }
+    } else if (method === 'Meta') {
+      // Meta-first flow - authenticate with Meta first
+      try {
+        setIsMetaLoading(true)
+        setMetaLoadingMessage('Opening Meta sign-in...')
+
+        const success = await loginMeta()
+
+        if (success) {
+          setMetaLoadingMessage('Authentication successful!')
+
+          // Trigger the Meta auth success callback (goes to Meta account selection)
+          if (onMetaAuthSuccess) {
+            onMetaAuthSuccess()
+          } else if (onAuthSuccess) {
+            // Fallback to regular auth success if Meta callback not provided
+            onAuthSuccess()
+          }
+        } else {
+          throw new Error('Meta authentication failed')
+        }
+
+      } catch (error) {
+        console.error('[META-LOGIN] Error during OAuth:', error)
+        if (error instanceof Error) {
+          alert(`Meta authentication failed: ${error.message}`)
+        } else {
+          alert('Meta authentication failed. Please try again.')
+        }
+        setIsMetaLoading(false)
+        setMetaLoadingMessage('')
       }
     } else if (method === 'Login') {
       // Login button - check for existing session first, then redirect to Google OAuth
@@ -88,7 +123,7 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         }
 
       } catch (error) {
-        console.error('💥 Login failed:', error)
+        console.error('[LOGIN] Login failed:', error)
         if (error instanceof Error) {
           alert(`Login failed: ${error.message}`)
         } else {
@@ -113,21 +148,21 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         bottom: '-15px' // Push modal DOWN (away from text)
       }}
     >
-      {/* White Modal - 3 buttons layout (Meta removed for cleaner UX - connect Meta via Integrations) */}
+      {/* White Modal - 4 buttons layout (Google, Meta, Email, Login) */}
       <div
         className="bg-white rounded-t-[38px] px-6 py-5 shadow-2xl touch-manipulation"
         style={{
           touchAction: 'manipulation',
-          height: '220px', // Adjusted for 3 buttons
+          height: '270px', // Adjusted for 4 buttons
           width: '100%'
         }}
       >
         {/* Continue with Google Button */}
         <button
           onClick={() => handleLoginClick('Google')}
-          disabled={isGoogleLoading}
+          disabled={isGoogleLoading || isMetaLoading}
           className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
-            isGoogleLoading
+            isGoogleLoading || isMetaLoading
               ? 'bg-gray-100 cursor-not-allowed'
               : 'bg-white hover:bg-gray-50 active:bg-gray-100'
           }`}
@@ -152,10 +187,42 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
           )}
         </button>
 
+        {/* Continue with Meta Button */}
+        <button
+          onClick={() => handleLoginClick('Meta')}
+          disabled={isGoogleLoading || isMetaLoading}
+          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
+            isGoogleLoading || isMetaLoading
+              ? 'bg-gray-100 cursor-not-allowed'
+              : 'bg-white hover:bg-gray-50 active:bg-gray-100'
+          }`}
+        >
+          {isMetaLoading ? (
+            <>
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              <span className="text-gray-600 font-medium">{metaLoadingMessage}</span>
+            </>
+          ) : (
+            <>
+              <div className="w-5 h-5 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-5 h-5">
+                  <path fill="#0866FF" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </div>
+              <span className="text-gray-900 font-medium">Continue with Meta</span>
+            </>
+          )}
+        </button>
+
         {/* Sign up with email Button */}
         <button
           onClick={() => handleLoginClick('Email')}
-          className="w-full bg-white border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation min-h-[44px]"
+          disabled={isGoogleLoading || isMetaLoading}
+          className={`w-full bg-white border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
+            isGoogleLoading || isMetaLoading
+              ? 'bg-gray-100 cursor-not-allowed'
+              : 'hover:bg-gray-50 active:bg-gray-100'
+          }`}
         >
           <svg viewBox="0 0 24 24" className="w-5 h-5 fill-gray-600">
             <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
@@ -166,7 +233,12 @@ const FigmaLoginModal = ({ onAuthSuccess }: FigmaLoginModalProps) => {
         {/* Log in Button - Black */}
         <button
           onClick={() => handleLoginClick('Login')}
-          className="w-full bg-black text-white rounded-2xl py-3 px-6 font-medium hover:bg-gray-800 active:bg-gray-700 transition-colors touch-manipulation min-h-[44px]"
+          disabled={isGoogleLoading || isMetaLoading}
+          className={`w-full bg-black text-white rounded-2xl py-3 px-6 font-medium transition-colors touch-manipulation min-h-[44px] ${
+            isGoogleLoading || isMetaLoading
+              ? 'opacity-50 cursor-not-allowed'
+              : 'hover:bg-gray-800 active:bg-gray-700'
+          }`}
         >
           Log in
         </button>

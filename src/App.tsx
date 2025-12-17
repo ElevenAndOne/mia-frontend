@@ -6,6 +6,7 @@ import { useSession } from './contexts/SessionContext'
 // Critical path components - load immediately
 import VideoIntroView from './components/VideoIntroView'
 import AccountSelectionPage from './components/AccountSelectionPage'
+import MetaAccountSelectionPage from './components/MetaAccountSelectionPage'
 
 // Lazy load all other pages - only downloaded when needed
 const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
@@ -24,7 +25,7 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
@@ -38,6 +39,9 @@ function App() {
     }
     return 'video-intro'
   })
+
+  // Track if user is in Meta-first flow (authenticated via Meta, not Google)
+  const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
 
   // Save appState to localStorage when it changes
   useEffect(() => {
@@ -77,6 +81,17 @@ function App() {
   useEffect(() => {
     if (isLoading) return // Wait for session to initialize
 
+    // Check for pending Google link from mobile OAuth redirect (Meta-first flow)
+    const pendingGoogleLink = localStorage.getItem('mia_onboarding_google_link_pending')
+    if (pendingGoogleLink && isAnyAuthenticated && selectedAccount) {
+      console.log('[APP] Pending Google link detected - going to onboarding chat with Google selector')
+      localStorage.removeItem('mia_onboarding_google_link_pending')
+      // Set flag for OnboardingChat to show Google selector on mount
+      localStorage.setItem('mia_show_google_selector', 'true')
+      setAppState('onboarding-chat')
+      return
+    }
+
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main
@@ -111,9 +126,10 @@ function App() {
       // For new flow: go to onboarding-chat instead of integrations
       // TODO: Check onboarding status from backend to determine if complete
       setAppState('onboarding-chat')
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection') {
+    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection' && appState !== 'meta-account-selection') {
       // User is authenticated (Google OR Meta) but needs to select an account
       // Note: video-intro case already returned above, so no need to check
+      // Note: Don't redirect if already on meta-account-selection (Meta-first flow)
       setAppState('account-selection')
     } else if (!isAnyAuthenticated && !selectedAccount) {
       // User logged out - reset to video intro
@@ -123,7 +139,7 @@ function App() {
   }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
 
   const handleAuthSuccess = () => {
-    // This will be triggered by the FigmaLoginModal
+    // This will be triggered by the FigmaLoginModal for Google auth
     // We need to manually transition since we disabled auto-transition on video-intro
 
     // Check if user already has a selected account (returning user via "Log in")
@@ -134,6 +150,13 @@ function App() {
       // New user → go to account selection
       setAppState('account-selection')
     }
+  }
+
+  const handleMetaAuthSuccess = () => {
+    // This will be triggered by the FigmaLoginModal for Meta auth (Meta-first flow)
+    // Go to Meta account selection page
+    console.log('[APP] Meta auth success, going to Meta account selection')
+    setAppState('meta-account-selection')
   }
 
   const { logout, loginMeta, refreshAccounts } = useSession()
@@ -181,7 +204,11 @@ function App() {
               transition={{ duration: 0.5 }}
               className="w-full h-full"
             >
-              <VideoIntroView onAuthSuccess={handleAuthSuccess} hasSeenIntro={hasSeenIntro} />
+              <VideoIntroView
+                onAuthSuccess={handleAuthSuccess}
+                onMetaAuthSuccess={handleMetaAuthSuccess}
+                hasSeenIntro={hasSeenIntro}
+              />
             </motion.div>
           )}
 
@@ -195,6 +222,24 @@ function App() {
             >
               <AccountSelectionPage
                 onAccountSelected={() => {}}
+                onBack={() => logout()}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'meta-account-selection' && isMetaAuthenticated && (
+            <motion.div
+              key="meta-account-selection"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="w-full h-full"
+            >
+              <MetaAccountSelectionPage
+                onAccountSelected={() => {
+                  // After Meta account selection, go to onboarding chat
+                  setAppState('onboarding-chat')
+                }}
                 onBack={() => logout()}
               />
             </motion.div>
