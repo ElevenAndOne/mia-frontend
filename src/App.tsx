@@ -81,17 +81,6 @@ function App() {
   useEffect(() => {
     if (isLoading) return // Wait for session to initialize
 
-    // Check for pending Google link from mobile OAuth redirect (Meta-first flow)
-    const pendingGoogleLink = localStorage.getItem('mia_onboarding_google_link_pending')
-    if (pendingGoogleLink && isAnyAuthenticated && selectedAccount) {
-      console.log('[APP] Pending Google link detected - going to onboarding chat with Google selector')
-      localStorage.removeItem('mia_onboarding_google_link_pending')
-      // Set flag for OnboardingChat to show Google selector on mount
-      localStorage.setItem('mia_show_google_selector', 'true')
-      setAppState('onboarding-chat')
-      return
-    }
-
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main

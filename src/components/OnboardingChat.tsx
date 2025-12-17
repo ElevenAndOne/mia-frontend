@@ -82,33 +82,9 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   } = useOnboardingStreaming()
 
   // Track which messages have completed typing animation (to skip on re-render)
-  // Defined early so we can populate it during message restoration
   const typedMessageIdsRef = useRef<Set<string>>(new Set())
 
-  // Restore messages from localStorage if available (survives mobile OAuth redirects)
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('mia_onboarding_messages')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        // Convert timestamp strings back to Date objects
-        // Also mark ALL restored messages as already typed (skip animation)
-        const restoredMessages = parsed.map((msg: any) => {
-          typedMessageIdsRef.current.add(msg.id)  // Skip typing animation
-          return {
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }
-        })
-        console.log('[ONBOARDING] Restored', restoredMessages.length, 'messages, marked as typed')
-        return restoredMessages
-      } catch (e) {
-        console.error('[ONBOARDING] Failed to parse saved messages:', e)
-        return []
-      }
-    }
-    return []
-  })
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationType, setCelebrationType] = useState<'success' | 'milestone' | 'complete'>('success')
   const [isTyping, setIsTyping] = useState(false)
@@ -128,48 +104,12 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Scroll to bottom immediately on mount if we have restored messages
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Use 'instant' for immediate scroll (no animation) on restore
-      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
-    }
-  }, [])  // Only run once on mount
-
-  // Persist messages to localStorage (survives mobile OAuth redirects)
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('mia_onboarding_messages', JSON.stringify(messages))
-    }
-  }, [messages])
-
-  // Track if we're in Google link mobile redirect flow (use ref for synchronous check)
-  const isGoogleLinkFlowRef = useRef(false)
-
   // Initialize onboarding chat (only once when account is selected)
-  // Check for Google link flow SYNCHRONOUSLY before deciding to init
   const hasInitialized = useRef(false)
   useEffect(() => {
-    // Check localStorage DIRECTLY here to avoid state timing issues
-    const shouldShowGoogleSelector = localStorage.getItem('mia_show_google_selector')
-    if (shouldShowGoogleSelector) {
-      console.log('[ONBOARDING] Google link mobile redirect detected - showing selector, continuing existing chat')
-      console.log('[ONBOARDING] Restored messages count:', messages.length)
-      localStorage.removeItem('mia_show_google_selector')
-      isGoogleLinkFlowRef.current = true
-      hasInitialized.current = true  // Prevent future init
-      setShowGoogleSelector(true)
-      return  // Skip initializeChat - we have messages from before redirect
-    }
-
-    // Only initialize if we have NO messages (fresh start, not returning from redirect)
     if (!hasInitialized.current && messages.length === 0 && selectedAccount) {
       hasInitialized.current = true
       initializeChat()
-    } else if (messages.length > 0) {
-      // We have restored messages - mark as initialized
-      hasInitialized.current = true
-      console.log('[ONBOARDING] Restored', messages.length, 'messages from localStorage')
     }
   }, [selectedAccount, messages.length])
 
@@ -426,12 +366,10 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   }
 
   const handleShowSnapshot = async () => {
-    localStorage.removeItem('mia_onboarding_messages')
     onComplete()
   }
 
   const handleExplore = async () => {
-    localStorage.removeItem('mia_onboarding_messages')
     onComplete()
   }
 
@@ -560,36 +498,19 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     }
   }
 
-  // Helper to detect mobile
-  const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-
   // STATE 6.1-ALT — Google OAuth for Meta-first users (INLINE)
   // Opens Google OAuth popup - for users who started with Meta and want to add Google
+  // Same pattern as handleConnectMeta - popup flow, no page reload
   const handleConnectGoogle = async () => {
     console.log('[ONBOARDING] handleConnectGoogle called - starting Google OAuth')
     try {
-      // For mobile: Store flag so we know to show Google selector after OAuth redirect
-      if (isMobile()) {
-        console.log('[ONBOARDING] Mobile detected - storing pending Google link flag')
-        localStorage.setItem('mia_onboarding_google_link_pending', 'true')
-      }
-
-      // Trigger Google OAuth popup (or redirect on mobile)
-      console.log('[ONBOARDING] Calling login() for Google OAuth...')
+      // Trigger Google OAuth popup
       const success = await login()
       console.log('[ONBOARDING] login() returned:', success)
 
-      // On mobile, login() returns true immediately but redirects away
-      // The selector will be shown after redirect back (handled in App.tsx)
-      if (isMobile()) {
-        console.log('[ONBOARDING] Mobile - page will redirect, not showing selector yet')
-        return
-      }
-
       if (success) {
         // OAuth successful - show Google Ads account selector
-        // User needs to select which Google Ads account to link to their Meta account
-        console.log('[ONBOARDING] Setting showGoogleSelector to true')
+        console.log('[ONBOARDING] Google OAuth success - showing account selector')
         setShowGoogleSelector(true)
       } else {
         addMiaMessage(
@@ -618,13 +539,9 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   // since the backend already linked the account
   const handleGoogleAccountLinked = async (_linkedGoogleId?: string) => {
     console.log('[ONBOARDING] handleGoogleAccountLinked called with:', _linkedGoogleId)
-    console.log('[ONBOARDING] isGoogleLinkFlowRef:', isGoogleLinkFlowRef.current, 'messages.length:', messages.length)
 
     // Close the Google account selector modal
     setShowGoogleSelector(false)
-
-    // Clear the Google link flow flag
-    isGoogleLinkFlowRef.current = false
 
     // Refresh accounts to get updated data
     console.log('[ONBOARDING] Refreshing accounts after Google link...')
@@ -865,9 +782,6 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     console.log('[ONBOARDING] handleOnboardingComplete called - completing onboarding')
     console.trace('[ONBOARDING] Stack trace for handleOnboardingComplete')
     await completeOnboarding()
-
-    // Clear persisted messages since onboarding is done
-    localStorage.removeItem('mia_onboarding_messages')
 
     setCelebrationType('complete')
     setShowCelebration(true)
