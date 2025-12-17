@@ -81,6 +81,10 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     reset: resetStreaming
   } = useOnboardingStreaming()
 
+  // Track which messages have completed typing animation (to skip on re-render)
+  // Defined early so we can populate it during message restoration
+  const typedMessageIdsRef = useRef<Set<string>>(new Set())
+
   // Restore messages from localStorage if available (survives mobile OAuth redirects)
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem('mia_onboarding_messages')
@@ -88,10 +92,16 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
       try {
         const parsed = JSON.parse(saved)
         // Convert timestamp strings back to Date objects
-        return parsed.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }))
+        // Also mark ALL restored messages as already typed (skip animation)
+        const restoredMessages = parsed.map((msg: any) => {
+          typedMessageIdsRef.current.add(msg.id)  // Skip typing animation
+          return {
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }
+        })
+        console.log('[ONBOARDING] Restored', restoredMessages.length, 'messages, marked as typed')
+        return restoredMessages
       } catch (e) {
         console.error('[ONBOARDING] Failed to parse saved messages:', e)
         return []
@@ -112,8 +122,6 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   // Track if we're streaming combined insights (after Meta linked) vs single platform
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
-  // Track which messages have completed typing animation (to skip on re-render)
-  const typedMessageIdsRef = useRef<Set<string>>(new Set())
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
