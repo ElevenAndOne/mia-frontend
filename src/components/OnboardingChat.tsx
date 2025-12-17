@@ -128,6 +128,14 @@ const OnboardingChat: React.FC<OnboardingChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Scroll to bottom immediately on mount if we have restored messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Use 'instant' for immediate scroll (no animation) on restore
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
+    }
+  }, [])  // Only run once on mount
+
   // Persist messages to localStorage (survives mobile OAuth redirects)
   useEffect(() => {
     if (messages.length > 0) {
