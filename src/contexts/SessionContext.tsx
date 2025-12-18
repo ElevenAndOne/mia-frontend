@@ -260,7 +260,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   }
 
-  const login = async (): Promise<boolean> => {
+  const login = async (onPopupClosed?: () => void): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -314,6 +314,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             if (popup.closed) {
               clearInterval(pollTimer)
               window.removeEventListener('message', messageHandler)
+
+              // Notify caller that popup has closed (for loading screen)
+              onPopupClosed?.()
 
               // Complete OAuth by creating database session - pass user_id if we received it
               try {
@@ -641,7 +644,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     return false
   }
 
-  const loginMeta = async (): Promise<boolean> => {
+  const loginMeta = async (onPopupClosed?: () => void): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -675,6 +678,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           try {
             if (popup.closed) {
               clearInterval(pollTimer)
+
+              // Notify caller that popup has closed (for loading screen)
+              onPopupClosed?.()
 
               // Check Meta auth status
               const statusResponse = await apiFetch('/api/oauth/meta/status', {

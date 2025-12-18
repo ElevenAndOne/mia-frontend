@@ -5,9 +5,10 @@ import { useState } from 'react'
 interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
   onMetaAuthSuccess?: () => void  // New callback for Meta-first flow
+  onOAuthPopupClosed?: (platform: 'google' | 'meta') => void  // Called when popup closes (triggers App-level loading)
 }
 
-const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess }: FigmaLoginModalProps) => {
+const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed }: FigmaLoginModalProps) => {
   const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
@@ -20,8 +21,8 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess }: FigmaLoginModalPr
         setIsGoogleLoading(true)
         setGoogleLoadingMessage('Opening Google sign-in...')
 
-        // Use new SessionContext login method
-        const success = await login()
+        // Use new SessionContext login method with popup close callback
+        const success = await login(() => onOAuthPopupClosed?.('google'))
 
         if (success) {
           setGoogleLoadingMessage('Authentication successful!')
@@ -52,7 +53,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess }: FigmaLoginModalPr
         setIsMetaLoading(true)
         setMetaLoadingMessage('Opening Meta sign-in...')
 
-        const success = await loginMeta()
+        const success = await loginMeta(() => onOAuthPopupClosed?.('meta'))
 
         if (success) {
           setMetaLoadingMessage('Authentication successful!')
@@ -110,7 +111,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess }: FigmaLoginModalPr
         console.log('[LOGIN] No valid session, redirecting to Google OAuth')
         setGoogleLoadingMessage('Redirecting to sign in...')
 
-        const success = await login()
+        const success = await login(() => onOAuthPopupClosed?.('google'))
 
         if (success) {
           setGoogleLoadingMessage('Authentication successful!')

@@ -5,8 +5,9 @@ import { useSession } from './contexts/SessionContext'
 
 // Critical path components - load immediately
 import VideoIntroView from './components/VideoIntroView'
-import AccountSelectionPage from './components/AccountSelectionPage'
+import CombinedAccountSelection from './components/CombinedAccountSelection'
 import MetaAccountSelectionPage from './components/MetaAccountSelectionPage'
+import LoadingScreen from './components/LoadingScreen'
 
 // Lazy load all other pages - only downloaded when needed
 const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
@@ -16,7 +17,7 @@ const OptimizeInsightsStreaming = lazy(() => import('./components/OptimizeInsigh
 const ProtectInsightsStreaming = lazy(() => import('./components/ProtectInsightsStreaming'))
 const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
-const OnboardingChat = lazy(() => import('./components/OnboardingChat'))
+const OnboardingChat = lazy(() => import('./components/OnboardingChatV2'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -39,6 +40,9 @@ function App() {
     }
     return 'video-intro'
   })
+
+  // Track OAuth loading state (shows LoadingScreen at App level when popup closes)
+  const [oauthLoadingPlatform, setOauthLoadingPlatform] = useState<'google' | 'meta' | null>(null)
 
   // Track if user is in Meta-first flow (authenticated via Meta, not Google)
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
@@ -131,6 +135,9 @@ function App() {
     // This will be triggered by the FigmaLoginModal for Google auth
     // We need to manually transition since we disabled auto-transition on video-intro
 
+    // Clear OAuth loading (CombinedAccountSelection has its own loading)
+    setOauthLoadingPlatform(null)
+
     // Check if user already has a selected account (returning user via "Log in")
     if (selectedAccount) {
       // Returning user with saved account → go directly to main page
@@ -145,6 +152,10 @@ function App() {
     // This will be triggered by the FigmaLoginModal for Meta auth (Meta-first flow)
     // Go to Meta account selection page
     console.log('[APP] Meta auth success, going to Meta account selection')
+
+    // Clear OAuth loading
+    setOauthLoadingPlatform(null)
+
     setAppState('meta-account-selection')
   }
 
@@ -166,17 +177,19 @@ function App() {
     setPendingInsightType(null)
   }
 
-  // Only show global loading spinner during initial load, NOT during onboarding
-  // OnboardingChat has its own loading states (typing indicator) and must not unmount during Meta OAuth
-  if (isLoading && appState !== 'onboarding-chat') {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Fetching accounts...</p>
-        </div>
-      </div>
-    )
+  // Show OAuth loading screen (triggered when popup closes)
+  // This is rendered above everything to prevent video flash during transition
+  if (oauthLoadingPlatform) {
+    return <LoadingScreen platform={oauthLoadingPlatform} />
+  }
+
+  // Show loading screen ONLY when fetching accounts after OAuth (not at app start)
+  // - Skip if on video-intro (user hasn't logged in yet)
+  // - Skip if on onboarding-chat (has its own loading states)
+  if (isLoading && appState !== 'onboarding-chat' && appState !== 'video-intro') {
+    // Determine which platform we're loading for based on auth state
+    const loadingPlatform = isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null
+    return <LoadingScreen platform={loadingPlatform} />
   }
 
   return (
@@ -197,6 +210,7 @@ function App() {
                 onAuthSuccess={handleAuthSuccess}
                 onMetaAuthSuccess={handleMetaAuthSuccess}
                 hasSeenIntro={hasSeenIntro}
+                onOAuthPopupClosed={setOauthLoadingPlatform}
               />
             </motion.div>
           )}
@@ -209,7 +223,7 @@ function App() {
               transition={{ duration: 0.5 }}
               className="w-full h-full"
             >
-              <AccountSelectionPage
+              <CombinedAccountSelection
                 onAccountSelected={() => {}}
                 onBack={() => logout()}
               />
