@@ -359,22 +359,32 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 const statusData = await statusResponse.json()
 
                 if (statusData.authenticated) {
+                  console.log('[SESSION login()] Google authenticated, calling refreshAccounts...')
                   // Fetch accounts
                   await refreshAccounts()
+                  console.log('[SESSION login()] refreshAccounts complete, setting state...')
 
-                  setState(prev => ({
-                    ...prev,
-                    isAuthenticated: true,
-                    isLoading: false,
-                    hasSeenIntro: statusData.user_info?.has_seen_intro || prev.hasSeenIntro,  // Update from backend
-                    user: {
-                      name: statusData.user_info?.name || statusData.name || 'User',
-                      email: statusData.user_info?.email || statusData.email || '',
-                      picture_url: statusData.user_info?.picture || statusData.picture || '',
-                      google_user_id: statusData.user_info?.id || statusData.user_id || ''
+                  setState(prev => {
+                    console.log('[SESSION login()] Previous state:', {
+                      isAuthenticated: prev.isAuthenticated,
+                      isMetaAuthenticated: prev.isMetaAuthenticated,
+                      hasSelectedAccount: !!prev.selectedAccount
+                    })
+                    return {
+                      ...prev,
+                      isAuthenticated: true,
+                      isLoading: false,
+                      hasSeenIntro: statusData.user_info?.has_seen_intro || prev.hasSeenIntro,  // Update from backend
+                      user: {
+                        name: statusData.user_info?.name || statusData.name || 'User',
+                        email: statusData.user_info?.email || statusData.email || '',
+                        picture_url: statusData.user_info?.picture || statusData.picture || '',
+                        google_user_id: statusData.user_info?.id || statusData.user_id || ''
+                      }
                     }
-                  }))
+                  })
 
+                  console.log('[SESSION login()] Resolving with true')
                   resolve(true)
                 } else {
                   setState(prev => ({
@@ -476,6 +486,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }
 
   const refreshAccounts = async (): Promise<void> => {
+    console.log('[SESSION refreshAccounts()] Starting...')
     try {
       const response = await apiFetch('/api/accounts/available', {
         headers: {
@@ -486,11 +497,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       if (response.ok) {
         const data = await response.json()
         const accounts = data.accounts || []
+        console.log('[SESSION refreshAccounts()] Got accounts:', accounts.length)
         setState(prev => {
           // Also update selectedAccount if it exists in the new accounts list
           const updatedSelectedAccount = prev.selectedAccount
             ? accounts.find((acc: AccountMapping) => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
             : null
+          console.log('[SESSION refreshAccounts()] prev.selectedAccount:', prev.selectedAccount?.id, 'updatedSelectedAccount:', updatedSelectedAccount?.id)
           return {
             ...prev,
             availableAccounts: accounts,

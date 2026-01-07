@@ -519,10 +519,27 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   // Generate unique ID
   const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+  // Debug: Log component mount/unmount
+  useEffect(() => {
+    console.log('[ONBOARDING] Component MOUNTED')
+    return () => {
+      console.log('[ONBOARDING] Component UNMOUNTED')
+    }
+  }, [])
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [displayedMessages, isTyping])
+
+  // Debug: Log when selector modals change
+  useEffect(() => {
+    console.log('[ONBOARDING] showGoogleSelector changed to:', showGoogleSelector)
+  }, [showGoogleSelector])
+
+  useEffect(() => {
+    console.log('[ONBOARDING] showMetaSelector changed to:', showMetaSelector)
+  }, [showMetaSelector])
 
   // Process message queue
   useEffect(() => {
@@ -856,9 +873,13 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
 
   // Connect Google (for Meta-first users)
   const handleConnectGoogle = async () => {
+    console.log('[ONBOARDING] handleConnectGoogle called')
     try {
+      console.log('[ONBOARDING] Calling login()...')
       const success = await login()
+      console.log('[ONBOARDING] login() returned:', success)
       if (success) {
+        console.log('[ONBOARDING] Setting showGoogleSelector to true')
         setShowGoogleSelector(true)
       } else {
         queueMessages([

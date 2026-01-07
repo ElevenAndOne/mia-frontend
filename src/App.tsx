@@ -49,6 +49,7 @@ function App() {
 
   // Save appState to localStorage when it changes
   useEffect(() => {
+    console.log('[APP] appState changed to:', appState)
     localStorage.setItem('mia_app_state', appState)
   }, [appState])
 
@@ -83,13 +84,22 @@ function App() {
 
   // Handle authentication state changes - but only after video intro
   useEffect(() => {
+    console.log('[APP EFFECT] Running with:', {
+      isLoading,
+      appState,
+      isAuthenticated,
+      isMetaAuthenticated,
+      isAnyAuthenticated,
+      hasSelectedAccount: !!selectedAccount,
+      hasSeenIntro
+    })
     if (isLoading) return // Wait for session to initialize
 
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
-        console.log('[APP] Returning user with session - skipping intro video to main')
+        console.log('[APP] !!! REDIRECTING TO MAIN from video-intro - returning user with session')
         setAppState('main')
         return
       }
@@ -124,6 +134,7 @@ function App() {
 
     // Don't auto-redirect if user is in onboarding chat - let the chat handle navigation
     if (appState === 'onboarding-chat') {
+      console.log('[APP EFFECT] In onboarding-chat, returning early (no redirect)')
       return
     }
 
