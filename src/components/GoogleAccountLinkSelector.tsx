@@ -47,11 +47,37 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
       await refreshAccounts()
 
       // Get user_id from session - required for the ad-accounts endpoint
-      const userId = user?.google_user_id
+      // Wait for google_user_id to be available (state update timing issue after OAuth)
+      let userId = user?.google_user_id
       if (!userId) {
-        setError('User not authenticated with Google')
-        setIsLoading(false)
-        return
+        console.log('[GoogleAccountLinkSelector] Waiting for google_user_id to be available...')
+        // Poll for up to 5 seconds (10 attempts at 500ms intervals)
+        for (let i = 0; i < 10 && !userId; i++) {
+          await new Promise(resolve => setTimeout(resolve, 500))
+          // Re-check - note: this requires the component to re-render with new user state
+          // So we'll try fetching from status endpoint directly instead
+          try {
+            const statusResponse = await apiFetch('/api/oauth/google/status', {
+              headers: { 'X-Session-ID': sessionId || '' }
+            })
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json()
+              if (statusData.authenticated && (statusData.user_info?.id || statusData.user_id)) {
+                userId = statusData.user_info?.id || statusData.user_id
+                console.log('[GoogleAccountLinkSelector] Got user_id from status:', userId)
+                break
+              }
+            }
+          } catch (e) {
+            console.log('[GoogleAccountLinkSelector] Status check attempt', i + 1, 'failed')
+          }
+        }
+
+        if (!userId) {
+          setError('User not authenticated with Google. Please try again.')
+          setIsLoading(false)
+          return
+        }
       }
 
       // Fetch discovered Google Ads accounts from the ad-accounts endpoint

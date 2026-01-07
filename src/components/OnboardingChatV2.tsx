@@ -15,6 +15,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from '../contexts/SessionContext'
 import { useOnboarding, BronzeFact } from '../contexts/OnboardingContext'
+import { useOnboardingStreaming } from '../hooks/useOnboardingStreaming'
 import MetaAccountSelector from './MetaAccountSelector'
 import GoogleAccountLinkSelector from './GoogleAccountLinkSelector'
 
@@ -485,6 +486,16 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     loadOnboardingStatus,
   } = useOnboarding()
 
+  // Streaming hook for real insights from backend
+  const {
+    streamedText,
+    isStreaming,
+    isComplete: streamComplete,
+    error: streamError,
+    startStreaming,
+    reset: resetStreaming
+  } = useOnboardingStreaming()
+
   // Message state
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([])
   const [messageQueue, setMessageQueue] = useState<Omit<ChatMessage, 'id'>[]>([])
@@ -494,6 +505,11 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   // Modal state
   const [showMetaSelector, setShowMetaSelector] = useState(false)
   const [showGoogleSelector, setShowGoogleSelector] = useState(false)
+
+  // Streaming state
+  const [isStreamingInsight, setIsStreamingInsight] = useState(false)
+  const [isStreamingCombined, setIsStreamingCombined] = useState(false)
+  const [selectedInsightType, setSelectedInsightType] = useState<'grow' | 'optimise' | 'protect'>('grow')
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -518,8 +534,8 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     // Show typing indicator
     setIsTyping(true)
 
-    // Determine delay based on message type
-    const delay = nextMessage.type === 'explainer-box' ? 2000 : 1000
+    // Determine delay based on message type - 2 seconds for all messages for natural pacing
+    const delay = nextMessage.type === 'explainer-box' ? 2500 : 2000
 
     setTimeout(() => {
       // Add message to displayed
@@ -554,6 +570,61 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
       initializeChat()
     }
   }, [selectedAccount])
+
+  // Handle streaming completion
+  useEffect(() => {
+    if (streamComplete && (isStreamingInsight || isStreamingCombined)) {
+      const handleStreamComplete = async () => {
+        // Add the streamed text as a Mia message
+        if (streamedText) {
+          addImmediateMessage({ type: 'mia', content: streamedText })
+        }
+
+        const wasCombined = isStreamingCombined
+
+        // Reset streaming state
+        setIsStreamingInsight(false)
+        setIsStreamingCombined(false)
+        resetStreaming()
+
+        await advanceStep()
+
+        if (wasCombined) {
+          // After combined streaming, go to completion
+          queueMessages([
+            { type: 'mia', content: "Perfect! You're fully set up with cross-platform insights." },
+            {
+              type: 'choice-buttons',
+              choices: [
+                { label: "Let's go!", action: "finish", variant: 'primary' }
+              ]
+            }
+          ])
+        } else {
+          // After single-platform streaming, prompt for second platform
+          const hasMetaConnected = platformsConnected.includes('meta') ||
+                                   platformsConnected.includes('meta_ads') ||
+                                   platformsConnected.includes('facebook')
+          const hasGoogleConnected = platformsConnected.includes('google_ads')
+
+          const connectAction = hasMetaConnected && !hasGoogleConnected ? 'connect_google' : 'connect_meta'
+          const connectLabel = hasMetaConnected && !hasGoogleConnected ? 'Connect Google Ads' : 'Connect Meta'
+
+          queueMessages([
+            { type: 'mia', content: "Great! You're getting the hang of it. Now let's link your second account for even deeper insights." },
+            {
+              type: 'choice-buttons',
+              choices: [
+                { label: connectLabel, action: connectAction, variant: 'primary' },
+                { label: "Skip for now", action: "skip_connect", variant: 'secondary' }
+              ]
+            }
+          ])
+        }
+      }
+      handleStreamComplete()
+    }
+  }, [streamComplete, isStreamingInsight, isStreamingCombined])
 
   const initializeChat = async () => {
     const accountName = selectedAccount?.name || 'your account'
@@ -703,55 +774,51 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     ])
   }
 
-  // Handle insight type selection
+  // Handle insight type selection - uses real streaming from backend
   const handleInsightChoice = async (type: 'grow' | 'optimise' | 'protect') => {
     setCurrentProgress(3)
+    setSelectedInsightType(type)
 
     queueMessages([
       { type: 'mia', content: "Cool! I'm doing my magic and analysing your info." },
     ])
 
-    // Simulate loading (the data is already cached from account selection)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // Brief delay for UX, then start streaming real insights
+    await new Promise(resolve => setTimeout(resolve, 1500))
 
-    // Show insight card (placeholder data for now - will be replaced with real API data)
-    const insightData: InsightData = {
-      type,
-      platform: 'google_ads',
-      title: 'Your Google campaigns are crushing it on performance:',
-      metrics: [
-        { value: 'R4.24', label: 'per conversion', badge: 'Exceptionally efficient' },
-        { value: '2.84%', label: 'CTR', badge: 'Signal of high intent' }
-      ],
-      description: "This tells us people already know your brand when they search — they're not browsing, they're ready to act."
-    }
-
-    queueMessages([
-      { type: 'insight-card', insightData },
-      { type: 'mia', content: "Great! You're getting the hang of it. Now let's link your second account" },
-    ])
-
-    // Determine which platform to suggest
-    const hasMetaConnected = platformsConnected.includes('meta') ||
-                             platformsConnected.includes('meta_ads') ||
-                             platformsConnected.includes('facebook')
-    const hasGoogleConnected = platformsConnected.includes('google_ads')
-
-    const connectAction = hasMetaConnected && !hasGoogleConnected ? 'connect_google' : 'connect_meta'
-    const connectLabel = hasMetaConnected && !hasGoogleConnected ? 'Connect Google Ads' : 'Connect Meta'
-
-    // Add connect buttons after insight card
-    setTimeout(() => {
+    // Start streaming real insights from backend
+    if (sessionId) {
+      setIsStreamingInsight(true)
+      setIsStreamingCombined(false)
+      startStreaming(sessionId, platformsConnected)
+      // The streaming completion handler (useEffect) will handle the rest
+    } else {
+      // Fallback if no session - show static message
       queueMessages([
-        {
-          type: 'choice-buttons',
-          choices: [
-            { label: connectLabel, action: connectAction, variant: 'primary' },
-            { label: "Skip for now", action: "skip_connect", variant: 'secondary' }
-          ]
-        }
+        { type: 'mia', content: "I'm still analyzing your data. You can check the Grow page for detailed insights." },
       ])
-    }, 1000)
+
+      // Prompt for second platform
+      const hasMetaConnected = platformsConnected.includes('meta') ||
+                               platformsConnected.includes('meta_ads') ||
+                               platformsConnected.includes('facebook')
+      const hasGoogleConnected = platformsConnected.includes('google_ads')
+
+      const connectAction = hasMetaConnected && !hasGoogleConnected ? 'connect_google' : 'connect_meta'
+      const connectLabel = hasMetaConnected && !hasGoogleConnected ? 'Connect Google Ads' : 'Connect Meta'
+
+      setTimeout(() => {
+        queueMessages([
+          {
+            type: 'choice-buttons',
+            choices: [
+              { label: connectLabel, action: connectAction, variant: 'primary' },
+              { label: "Skip for now", action: "skip_connect", variant: 'secondary' }
+            ]
+          }
+        ])
+      }, 1000)
+    }
   }
 
   // Connect Meta
@@ -810,7 +877,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     }
   }
 
-  // Handle Meta account linked
+  // Handle Meta account linked - shows combined insights before completion
   const handleMetaAccountLinked = async () => {
     setShowMetaSelector(false)
     await refreshAccounts()
@@ -818,18 +885,33 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     setCurrentProgress(4)
 
     queueMessages([
-      { type: 'mia', content: "Congrats! You've connected your second platform." },
-      { type: 'mia', content: "Now you're all set to go and explore by combining different platforms and running your insights." },
-      {
-        type: 'choice-buttons',
-        choices: [
-          { label: "Let's go!", action: "finish", variant: 'primary' }
-        ]
-      }
+      { type: 'mia', content: "Perfect - Meta is now connected!" },
+      { type: 'mia', content: "I'm now analyzing both platforms together..." },
     ])
+
+    // Brief delay then start combined insights streaming
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    if (sessionId) {
+      setIsStreamingInsight(false)
+      setIsStreamingCombined(true)
+      startStreaming(sessionId, ['google_ads', 'meta_ads'])
+      // The streaming completion handler will show the "Let's go!" button
+    } else {
+      // Fallback if no session
+      queueMessages([
+        { type: 'mia', content: "You're all set with cross-platform insights!" },
+        {
+          type: 'choice-buttons',
+          choices: [
+            { label: "Let's go!", action: "finish", variant: 'primary' }
+          ]
+        }
+      ])
+    }
   }
 
-  // Handle Google account linked (for Meta-first users)
+  // Handle Google account linked (for Meta-first users) - shows combined insights before completion
   const handleGoogleAccountLinked = async () => {
     setShowGoogleSelector(false)
     await refreshAccounts()
@@ -837,15 +919,30 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     setCurrentProgress(4)
 
     queueMessages([
-      { type: 'mia', content: "Congrats! You've connected your second platform." },
-      { type: 'mia', content: "Now you're all set to go and explore by combining different platforms and running your insights." },
-      {
-        type: 'choice-buttons',
-        choices: [
-          { label: "Let's go!", action: "finish", variant: 'primary' }
-        ]
-      }
+      { type: 'mia', content: "Perfect - Google Ads is now connected!" },
+      { type: 'mia', content: "I'm now analyzing both platforms together..." },
     ])
+
+    // Brief delay then start combined insights streaming
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    if (sessionId) {
+      setIsStreamingInsight(false)
+      setIsStreamingCombined(true)
+      startStreaming(sessionId, ['google_ads', 'meta_ads'])
+      // The streaming completion handler will show the "Let's go!" button
+    } else {
+      // Fallback if no session
+      queueMessages([
+        { type: 'mia', content: "You're all set with cross-platform insights!" },
+        {
+          type: 'choice-buttons',
+          choices: [
+            { label: "Let's go!", action: "finish", variant: 'primary' }
+          ]
+        }
+      ])
+    }
   }
 
   // Skip connecting second platform
@@ -890,9 +987,9 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
             ))}
           </AnimatePresence>
 
-          {/* Typing indicator (at bottom when visible) */}
+          {/* Typing indicator (at bottom when visible) - shows during message queue AND streaming */}
           <AnimatePresence>
-            {isTyping && <TypingIndicator />}
+            {(isTyping || isStreaming) && <TypingIndicator />}
           </AnimatePresence>
 
           {/* Scroll anchor */}

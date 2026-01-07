@@ -113,6 +113,20 @@ function App() {
       return
     }
 
+    // If user is logged out, always reset to video-intro regardless of current state
+    if (!isAnyAuthenticated && !selectedAccount) {
+      if (appState !== 'video-intro') {
+        console.log('[APP] User logged out - resetting to video intro')
+        setAppState('video-intro')
+      }
+      return
+    }
+
+    // Don't auto-redirect if user is in onboarding chat - let the chat handle navigation
+    if (appState === 'onboarding-chat') {
+      return
+    }
+
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
       // User has selected an account - check if onboarding needed
@@ -124,10 +138,6 @@ function App() {
       // Note: video-intro case already returned above, so no need to check
       // Note: Don't redirect if already on meta-account-selection (Meta-first flow)
       setAppState('account-selection')
-    } else if (!isAnyAuthenticated && !selectedAccount) {
-      // User logged out - reset to video intro
-      // Note: video-intro case already returned above
-      setAppState('video-intro')
     }
   }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
 
@@ -183,12 +193,19 @@ function App() {
     return <LoadingScreen platform={oauthLoadingPlatform} />
   }
 
-  // Show loading screen ONLY when fetching accounts after OAuth (not at app start)
-  // - Skip if on video-intro (user hasn't logged in yet)
-  // - Skip if on onboarding-chat (has its own loading states)
-  if (isLoading && appState !== 'onboarding-chat' && appState !== 'video-intro') {
+  // Show loading screen when session is loading
+  // Exception: video-intro doesn't need loading screen (user hasn't logged in yet)
+  // Exception: account-selection pages have their own loading
+  // Exception: onboarding-chat handles its own loading states (don't unmount it during refresh)
+  if (isLoading && appState !== 'video-intro' && appState !== 'account-selection' && appState !== 'meta-account-selection' && appState !== 'onboarding-chat') {
     // Determine which platform we're loading for based on auth state
     const loadingPlatform = isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null
+    return <LoadingScreen platform={loadingPlatform} />
+  }
+
+  // If we're in onboarding-chat but session data isn't ready, show loading
+  if (appState === 'onboarding-chat' && (!isAnyAuthenticated || !selectedAccount)) {
+    const loadingPlatform = isMetaFirstFlow ? 'meta' : 'google'
     return <LoadingScreen platform={loadingPlatform} />
   }
 
