@@ -46,8 +46,8 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
       // Fetch pages from backend (uses PostgreSQL cache with 7-day TTL)
       // Pass refresh=true to bypass cache and fetch fresh from Meta API
       const url = forceRefresh
-        ? '/api/oauth/meta/api/organic/facebook-pages?refresh=true'
-        : '/api/oauth/meta/api/organic/facebook-pages'
+        ? '/api/oauth/meta/organic/facebook-pages?refresh=true'
+        : '/api/oauth/meta/organic/facebook-pages'
 
       const response = await apiFetch(url, {
         headers: {
@@ -101,7 +101,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
       }
 
       // Link Facebook Page to account (or unlink if selectedPageId is null)
-      const response = await apiFetch('/api/oauth/meta/api/organic/link-page', {
+      const response = await apiFetch('/api/oauth/meta/organic/link-page', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
