@@ -353,8 +353,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       let authUrl: string | null = null
 
       // Get auth URL based on platform
+      const frontendOrigin = encodeURIComponent(window.location.origin)
       if (integrationId === 'google') {
-        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}`)
+        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
@@ -472,7 +473,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <div
-      className="w-full h-screen bg-white flex flex-col overflow-hidden"
+      className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden"
       style={{ fontFamily: 'Figtree, sans-serif', maxWidth: '393px', margin: '0 auto' }}
     >
       {/* Header */}

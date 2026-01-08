@@ -18,16 +18,20 @@
       body {
         overscroll-behavior-y: contain;
         -webkit-overflow-scrolling: touch;
-        position: relative; /* Changed from fixed */
+        position: relative;
         width: 100%;
-        min-height: 100vh; /* Changed from height: 100% */
+        height: 100dvh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
         margin: 0;
         padding: 0;
       }
       #root {
         width: 100%;
-        min-height: 100vh; /* Changed from height: 100% */
-        overflow-x: hidden; /* Allow vertical scroll but prevent horizontal */
+        height: 100dvh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
+        overflow-x: hidden;
         overflow-y: auto;
       }
     </style>

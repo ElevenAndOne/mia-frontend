@@ -264,8 +264,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      // Get auth URL
-      const authUrlResponse = await apiFetch('/api/oauth/google/auth-url')
+      // Get auth URL (pass frontend_origin for mobile/LAN testing redirect)
+      const frontendOrigin = encodeURIComponent(window.location.origin)
+      const authUrlResponse = await apiFetch(`/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}`)
 
       if (!authUrlResponse.ok) {
         throw new Error('Failed to get auth URL')

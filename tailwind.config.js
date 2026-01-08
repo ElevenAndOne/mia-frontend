@@ -6,6 +6,21 @@ export default {
   ],
   theme: {
     extend: {
+      height: {
+        'screen-dvh': '100dvh',
+        'screen-svh': '100svh',
+        'screen-lvh': '100lvh',
+      },
+      minHeight: {
+        'screen-dvh': '100dvh',
+        'screen-svh': '100svh',
+        'screen-lvh': '100lvh',
+      },
+      maxHeight: {
+        'screen-dvh': '100dvh',
+        'screen-svh': '100svh',
+        'screen-lvh': '100lvh',
+      },
       colors: {
         mia: {
           red: '#D00603',

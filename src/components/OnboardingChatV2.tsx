@@ -674,15 +674,16 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
         }
       ])
     } else {
-      // No Bronze data - skip to explainers
+      // No Bronze data - offer to go to Integrations or continue
       queueMessages([
-        { type: 'mia', content: "I'm connecting to your data..." },
+        { type: 'mia', content: "I couldn't find any recent campaign data for this account." },
+        { type: 'mia', content: "This might mean your campaigns haven't run recently, or you need to connect a different platform." },
         {
           type: 'mia',
-          content: "Would you like to see what I can help you with?",
+          content: "What would you like to do?",
           choices: [
-            { label: "Yes!", action: "show_explainers", variant: 'primary' },
-            { label: "Skip", action: "skip", variant: 'secondary' }
+            { label: "Manage Integrations", action: "go_integrations", variant: 'primary' },
+            { label: "Continue anyway", action: "show_explainers", variant: 'secondary' }
           ]
         }
       ])
@@ -706,6 +707,8 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
       connect_google: "Connect Google Ads",
       skip_connect: "Skip for now",
       finish: "Let's go!",
+      go_integrations: "Manage Integrations",
+      continue_anyway: "Continue anyway",
     }
 
     // Add user message
@@ -719,6 +722,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
         await handleSkipToExplainers()
         break
       case 'show_explainers':
+      case 'continue_anyway':
         await showExplainerBoxes()
         break
       case 'grow':
@@ -739,6 +743,11 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
       case 'finish':
         await handleFinish()
         break
+      case 'go_integrations':
+        // Skip onboarding and go to integrations
+        await skipOnboarding()
+        onConnectPlatform('integrations')
+        break
     }
   }
 
@@ -748,14 +757,33 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     const followupFact = await fetchBronzeFollowup()
 
     if (followupFact) {
+      // Dynamic reaction based on actual metric values
+      const metricValue = followupFact.metric_value || 0
+      let reactionMessage = ""
+
+      if (metricValue === 0) {
+        reactionMessage = "Hmm, looks like there wasn't much activity in this period."
+      } else if (metricValue < 100) {
+        reactionMessage = "Some engagement here! Let's see how we can improve this."
+      } else if (metricValue < 1000) {
+        reactionMessage = "Nice! You're getting some good traction here."
+      } else {
+        reactionMessage = "🔥 Amazing! These are great stats!"
+      }
+
       queueMessages([
         { type: 'bronze-card', bronzeFact: followupFact },
-        { type: 'mia', content: "🔥 Amazing! These are great stats" },
+        { type: 'mia', content: reactionMessage },
         { type: 'mia', content: "But now what...? 🤔" },
         {
           type: 'mia',
           content: "Don't stress, I got you. I specialise in taking your stats and comparing them against each other. We can look into three areas:"
         },
+      ])
+    } else {
+      // No followup data available
+      queueMessages([
+        { type: 'mia', content: "I couldn't find click data for this period. Let me show you what else I can help with:" },
       ])
     }
 
@@ -988,11 +1016,28 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     onComplete()
   }
 
+  // Handle going to integrations from header
+  const handleGoToIntegrations = async () => {
+    await skipOnboarding()
+    onConnectPlatform('integrations')
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Progress dots - top right */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Header with progress dots and settings button */}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
         <ProgressDots current={currentProgress} total={4} />
+        {/* Settings/Integrations button - always visible */}
+        <button
+          onClick={handleGoToIntegrations}
+          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+          title="Manage Integrations"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
       </div>
 
       {/* Messages area - auto-scroll to bottom */}

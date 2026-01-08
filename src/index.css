@@ -36,8 +36,10 @@
 }
 
 html, body {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   overflow: hidden;
   position: fixed;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
@@ -197,4 +199,43 @@ html, body {
   -ms-user-select: text !important;
   user-select: text !important;
   cursor: text;
+}
+
+/* Dynamic Viewport Height utilities for mobile browser compatibility */
+/* These handle the browser URL bar and bottom navigation on mobile */
+.h-dvh {
+  height: 100vh; /* Fallback */
+  height: 100dvh;
+}
+
+.min-h-dvh {
+  min-height: 100vh; /* Fallback */
+  min-height: 100dvh;
+}
+
+.max-h-dvh {
+  max-height: 100vh; /* Fallback */
+  max-height: 100dvh;
+}
+
+/* Small viewport height (when browser UI is fully visible) */
+.h-svh {
+  height: 100vh;
+  height: 100svh;
+}
+
+/* Large viewport height (when browser UI is hidden) */
+.h-lvh {
+  height: 100vh;
+  height: 100lvh;
+}
+
+/* iOS Safari specific fix */
+@supports (-webkit-touch-callout: none) {
+  .h-dvh, html, body, #root {
+    height: -webkit-fill-available;
+  }
+  .min-h-dvh {
+    min-height: -webkit-fill-available;
+  }
 }
