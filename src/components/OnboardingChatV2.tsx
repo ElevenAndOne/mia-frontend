@@ -510,6 +510,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   const [isStreamingInsight, setIsStreamingInsight] = useState(false)
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
   const [selectedInsightType, setSelectedInsightType] = useState<'grow' | 'optimise' | 'protect'>('grow')
+  const [initialBronzeFact, setInitialBronzeFact] = useState<BronzeFact | null>(null)
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -661,18 +662,41 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     const bronzeFact = await fetchBronzeHighlight()
 
     if (bronzeFact) {
-      // Queue Bronze card and follow-up question
-      queueMessages([
-        { type: 'bronze-card', bronzeFact },
-        {
-          type: 'mia',
-          content: "Want to see how many of those people actually clicked?",
-          choices: [
-            { label: "Yes, show me!", action: "show_clicks", variant: 'primary' },
-            { label: "Later", action: "skip_clicks", variant: 'secondary' }
-          ]
-        }
-      ])
+      // Store for later reference when showing reaction messages
+      setInitialBronzeFact(bronzeFact)
+
+      const reachValue = bronzeFact.metric_value || 0
+
+      // Queue Bronze card with context-appropriate follow-up
+      if (reachValue === 0) {
+        // No reach - don't ask about clicks, suggest connecting another platform or exploring features
+        queueMessages([
+          { type: 'bronze-card', bronzeFact },
+          { type: 'mia', content: "Looks like there hasn't been much activity recently." },
+          { type: 'mia', content: "No worries! This could mean your campaigns are paused, or we just need to look at a different time period." },
+          {
+            type: 'mia',
+            content: "Let me show you what I can help with:",
+            choices: [
+              { label: "Show me", action: "show_explainers", variant: 'primary' },
+              { label: "Manage Integrations", action: "go_integrations", variant: 'secondary' }
+            ]
+          }
+        ])
+      } else {
+        // Has reach - ask about clicks
+        queueMessages([
+          { type: 'bronze-card', bronzeFact },
+          {
+            type: 'mia',
+            content: "Want to see how many of those people actually clicked?",
+            choices: [
+              { label: "Yes, show me!", action: "show_clicks", variant: 'primary' },
+              { label: "Later", action: "skip_clicks", variant: 'secondary' }
+            ]
+          }
+        ])
+      }
     } else {
       // No Bronze data - offer to go to Integrations or continue
       queueMessages([
@@ -757,24 +781,44 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     const followupFact = await fetchBronzeFollowup()
 
     if (followupFact) {
-      // Dynamic reaction based on actual metric values
-      const metricValue = followupFact.metric_value || 0
-      let reactionMessage = ""
+      // Build dynamic reaction message based on actual metric values
+      const clickValue = followupFact.metric_value || 0
+      const reachValue = initialBronzeFact?.metric_value || 0
+      const formattedClicks = clickValue.toLocaleString()
+      const formattedReach = reachValue.toLocaleString()
 
-      if (metricValue === 0) {
-        reactionMessage = "Hmm, looks like there wasn't much activity in this period."
-      } else if (metricValue < 100) {
-        reactionMessage = "Some engagement here! Let's see how we can improve this."
-      } else if (metricValue < 1000) {
-        reactionMessage = "Nice! You're getting some good traction here."
+      // Extract CTR from the followup fact's detail field (e.g., "With 2.03% click-through rate")
+      // This is the actual CTR calculated from clicks/impressions, not clicks/reach
+      const ctrMatch = followupFact.detail?.match(/(\d+\.?\d*)%/)
+      const actualCTR = ctrMatch ? ctrMatch[1] : null
+
+      let reactionMessage = ""
+      let followupMessage = ""
+
+      if (clickValue === 0) {
+        reactionMessage = "Hmm, looks like there weren't many clicks in this period."
+        followupMessage = "No worries though - I can help you figure out how to change that! 🤔"
+      } else if (clickValue < 100) {
+        reactionMessage = `${formattedClicks} clicks - let's see how we can boost that!`
+        followupMessage = actualCTR
+          ? `That's a ${actualCTR}% click-through rate. I can help you improve it! 🤔`
+          : "I can help you improve those numbers! 🤔"
+      } else if (clickValue < 1000) {
+        reactionMessage = `Nice! ${formattedClicks} clicks from ${formattedReach} reach.`
+        followupMessage = actualCTR
+          ? `That's a ${actualCTR}% click-through rate - solid foundation to build on! 🤔`
+          : "Solid foundation to build on! 🤔"
       } else {
-        reactionMessage = "🔥 Amazing! These are great stats!"
+        reactionMessage = `🔥 ${formattedClicks} clicks! That's impressive engagement.`
+        followupMessage = actualCTR
+          ? `With a ${actualCTR}% CTR, you're doing great. But what's next? 🤔`
+          : `From ${formattedReach} reach, that's great performance. But what's next? 🤔`
       }
 
       queueMessages([
         { type: 'bronze-card', bronzeFact: followupFact },
         { type: 'mia', content: reactionMessage },
-        { type: 'mia', content: "But now what...? 🤔" },
+        { type: 'mia', content: followupMessage },
         {
           type: 'mia',
           content: "Don't stress, I got you. I specialise in taking your stats and comparing them against each other. We can look into three areas:"
