@@ -92,7 +92,7 @@ interface SessionProviderProps {
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
   const [state, setState] = useState<SessionState>({
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true,  // Start true to prevent race condition in App.tsx redirect logic
     hasSeenIntro: false,
     user: null,
     sessionId: null,
