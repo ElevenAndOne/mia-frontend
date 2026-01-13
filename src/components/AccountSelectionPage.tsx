@@ -34,7 +34,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     sessionId
   } = useSession()
 
-  const [isSelecting, setIsSelecting] = useState(false)
+  const [selectingAccountId, setSelectingAccountId] = useState<string | null>(null)
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
@@ -143,9 +143,9 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
 
   // Direct account selection - no industry required
   const handleAccountSelect = async (account: AccountMapping) => {
-    if (isSelecting) return
+    if (selectingAccountId) return
 
-    setIsSelecting(true)
+    setSelectingAccountId(account.id)
     clearError()
 
     try {
@@ -157,7 +157,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error selecting account:', err)
     } finally {
-      setIsSelecting(false)
+      setSelectingAccountId(null)
     }
   }
 
@@ -338,9 +338,9 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 1) }}
                   onClick={() => handleAccountSelect(account)}
-                  disabled={isSelecting}
+                  disabled={selectingAccountId !== null}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
-                    isSelecting
+                    selectingAccountId !== null
                       ? 'opacity-60 cursor-not-allowed'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
@@ -396,7 +396,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
                     </div>
                   </div>
 
-                  {isSelecting && (
+                  {selectingAccountId === account.id && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
