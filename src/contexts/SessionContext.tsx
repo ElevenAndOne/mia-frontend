@@ -26,6 +26,17 @@ export interface UserProfile {
   meta_user_id?: string
 }
 
+// Jan 2025: Workspace/Tenant support
+export interface Workspace {
+  tenant_id: string
+  name: string
+  slug: string
+  role: 'owner' | 'admin' | 'analyst' | 'viewer'  // Jan 2025: Updated roles per brief
+  onboarding_completed: boolean
+  connected_platforms: string[]
+  member_count: number
+}
+
 export interface MetaAuthState {
   isMetaAuthenticated: boolean
   metaUser: {
@@ -51,6 +62,10 @@ export interface SessionState extends MetaAuthState {
   selectedAccount: AccountMapping | null
   availableAccounts: AccountMapping[]
 
+  // Workspace/Tenant state (Jan 2025)
+  activeWorkspace: Workspace | null
+  availableWorkspaces: Workspace[]
+
   // Error state
   error: string | null
 }
@@ -65,6 +80,11 @@ export interface SessionActions {
   // Account selection actions
   selectAccount: (accountId: string) => Promise<boolean>
   refreshAccounts: () => Promise<void>
+
+  // Workspace actions (Jan 2025)
+  createWorkspace: (name: string) => Promise<Workspace | null>
+  switchWorkspace: (tenantId: string) => Promise<boolean>
+  refreshWorkspaces: () => Promise<void>
 
   // Utility actions
   clearError: () => void
@@ -98,6 +118,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     sessionId: null,
     selectedAccount: null,
     availableAccounts: [],
+    activeWorkspace: null,  // Jan 2025: Workspace support
+    availableWorkspaces: [],  // Jan 2025: Workspace support
     error: null,
     isMetaAuthenticated: false,
     metaUser: null
@@ -167,11 +189,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (storedSessionId) {
           console.log('[SESSION] Found stored session, validating...', storedSessionId)
 
-          // PERF FIX (Dec 1): Fetch session validation AND accounts in parallel
+          // PERF FIX (Dec 1): Fetch session validation, accounts, AND workspaces in parallel
           // This saves ~500-1000ms by not waiting for validation before fetching accounts
-          const [sessionResponse, accountsResponse] = await Promise.all([
+          const [sessionResponse, accountsResponse, workspacesResponse, currentWorkspaceResponse] = await Promise.all([
             apiFetch(`/api/session/validate?session_id=${storedSessionId}`),
             apiFetch('/api/accounts/available', {
+              headers: { 'X-Session-ID': storedSessionId }
+            }),
+            apiFetch('/api/tenants', {
+              headers: { 'X-Session-ID': storedSessionId }
+            }),
+            apiFetch('/api/tenants/current', {
               headers: { 'X-Session-ID': storedSessionId }
             })
           ])
@@ -197,6 +225,42 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 }
               }
 
+              // Jan 2025: Load workspaces
+              let availableWorkspaces: Workspace[] = []
+              let activeWorkspace: Workspace | null = null
+
+              if (workspacesResponse.ok) {
+                const workspacesData = await workspacesResponse.json()
+                availableWorkspaces = (workspacesData.tenants || []).map((t: any) => ({
+                  tenant_id: t.tenant_id,
+                  name: t.name,
+                  slug: t.slug,
+                  role: t.role,
+                  onboarding_completed: t.onboarding_completed,
+                  connected_platforms: t.connected_platforms || [],
+                  member_count: t.member_count || 1
+                }))
+                console.log('[SESSION] Loaded workspaces:', availableWorkspaces.length)
+              }
+
+              if (currentWorkspaceResponse.ok) {
+                const currentData = await currentWorkspaceResponse.json()
+                if (currentData.tenant_id) {
+                  activeWorkspace = availableWorkspaces.find(
+                    w => w.tenant_id === currentData.tenant_id
+                  ) || {
+                    tenant_id: currentData.tenant_id,
+                    name: currentData.tenant_name || 'Workspace',
+                    slug: currentData.tenant_slug || '',
+                    role: currentData.role || 'member',
+                    onboarding_completed: false,
+                    connected_platforms: [],
+                    member_count: 1
+                  }
+                  console.log('[SESSION] Active workspace:', activeWorkspace.tenant_id)
+                }
+              }
+
               setState(prev => ({
                 ...prev,
                 sessionId: storedSessionId,
@@ -211,6 +275,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 },
                 selectedAccount: fullSelectedAccount,
                 availableAccounts: availableAccounts,
+                availableWorkspaces: availableWorkspaces,  // Jan 2025
+                activeWorkspace: activeWorkspace,  // Jan 2025
                 isLoading: false
               }))
 
@@ -516,6 +582,125 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }
     } catch (error) {
       console.error('[SESSION] Failed to refresh accounts:', error)
+    }
+  }
+
+  // Jan 2025: Workspace methods
+  const refreshWorkspaces = async (): Promise<void> => {
+    console.log('[SESSION refreshWorkspaces()] Starting...')
+    try {
+      const response = await apiFetch('/api/tenants', {
+        headers: {
+          'X-Session-ID': state.sessionId || ''
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const workspaces: Workspace[] = (data.tenants || []).map((t: any) => ({
+          tenant_id: t.tenant_id,
+          name: t.name,
+          slug: t.slug,
+          role: t.role,
+          onboarding_completed: t.onboarding_completed,
+          connected_platforms: t.connected_platforms || [],
+          member_count: t.member_count || 1
+        }))
+        console.log('[SESSION refreshWorkspaces()] Got workspaces:', workspaces.length)
+        setState(prev => ({
+          ...prev,
+          availableWorkspaces: workspaces
+        }))
+      } else {
+        console.error('[SESSION] Workspaces API failed:', response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error('[SESSION] Failed to refresh workspaces:', error)
+    }
+  }
+
+  const createWorkspace = async (name: string): Promise<Workspace | null> => {
+    console.log('[SESSION createWorkspace()] Creating workspace:', name)
+    try {
+      const response = await apiFetch('/api/tenants', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': state.sessionId || ''
+        },
+        body: JSON.stringify({ name })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const workspace: Workspace = {
+          tenant_id: data.tenant_id,
+          name: data.name,
+          slug: data.slug,
+          role: 'owner',
+          onboarding_completed: false,
+          connected_platforms: [],
+          member_count: 1
+        }
+        console.log('[SESSION createWorkspace()] Created:', workspace.tenant_id)
+
+        // Add to available workspaces and set as active
+        setState(prev => ({
+          ...prev,
+          availableWorkspaces: [...prev.availableWorkspaces, workspace],
+          activeWorkspace: workspace
+        }))
+
+        return workspace
+      } else {
+        console.error('[SESSION] Create workspace failed:', response.status, response.statusText)
+        return null
+      }
+    } catch (error) {
+      console.error('[SESSION] Create workspace error:', error)
+      return null
+    }
+  }
+
+  const switchWorkspace = async (tenantId: string): Promise<boolean> => {
+    console.log('[SESSION switchWorkspace()] Switching to:', tenantId)
+    try {
+      const response = await apiFetch('/api/tenants/switch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': state.sessionId || ''
+        },
+        body: JSON.stringify({ tenant_id: tenantId })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Find the workspace in available workspaces
+        const workspace = state.availableWorkspaces.find(w => w.tenant_id === tenantId)
+
+        setState(prev => ({
+          ...prev,
+          activeWorkspace: workspace || {
+            tenant_id: tenantId,
+            name: data.tenant_name || 'Workspace',
+            slug: data.tenant_slug || '',
+            role: data.role || 'member',
+            onboarding_completed: false,
+            connected_platforms: [],
+            member_count: 1
+          }
+        }))
+
+        console.log('[SESSION switchWorkspace()] Switched to:', tenantId)
+        return true
+      } else {
+        console.error('[SESSION] Switch workspace failed:', response.status, response.statusText)
+        return false
+      }
+    } catch (error) {
+      console.error('[SESSION] Switch workspace error:', error)
+      return false
     }
   }
 
@@ -871,6 +1056,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     logoutMeta,
     selectAccount,
     refreshAccounts,
+    createWorkspace,
+    switchWorkspace,
+    refreshWorkspaces,
     clearError,
     generateSessionId,
     checkExistingAuth,

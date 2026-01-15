@@ -4,6 +4,8 @@ import { apiFetch } from '../utils/api'
 import { usePlatformPreferences } from '../hooks/usePlatformPreferences'
 import BrevoConnectionModal from './BrevoConnectionModal'
 import DateRangeSelector from './DateRangeSelector'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
+import CreateWorkspaceModal from './CreateWorkspaceModal'
 
 interface MainViewProps {
   onLogout: () => void
@@ -43,11 +45,13 @@ const formatDateRangeDisplay = (dateRange: string): string => {
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
-  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user } = useSession()
+  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
   const [showAccountSelector, setShowAccountSelector] = useState(false) // New state for account selection popout
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false) // Jan 2025: Workspace switcher
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false) // Jan 2025: Create workspace modal
   const [isChatLoading, setIsChatLoading] = useState(false) // Track chat loading state
   const [isAccountSwitching, setIsAccountSwitching] = useState(false)
   const [showBrevoModal, setShowBrevoModal] = useState(false) // Brevo connection modal
@@ -220,7 +224,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuick
               </button>
 
               {/* New Clean Menu Dropdown */}
-              {showBurgerMenu && !showAccountSelector && (
+              {showBurgerMenu && !showAccountSelector && !showWorkspaceSwitcher && (
                 <div className="absolute top-8 left-0 bg-white rounded-lg shadow-lg border border-gray-200 min-w-64 z-30">
                   {/* Accounts Button */}
                   <button
@@ -237,6 +241,28 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuick
                       <div>
                         <div className="font-medium text-gray-900 text-sm">Accounts</div>
                         <div className="text-xs text-gray-500">{selectedAccount?.name}</div>
+                      </div>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-100"></div>
+
+                  {/* Workspaces Button - Jan 2025 */}
+                  <button
+                    onClick={() => setShowWorkspaceSwitcher(true)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
+                        {activeWorkspace?.name?.charAt(0)?.toUpperCase() || 'W'}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">Workspaces</div>
+                        <div className="text-xs text-gray-500">{activeWorkspace?.name || 'No workspace'}</div>
                       </div>
                     </div>
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,6 +306,21 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuick
                     <div className="font-medium text-gray-900 text-base">Sign Out</div>
                   </button>
                 </div>
+              )}
+
+              {/* Workspace Switcher Popout - Jan 2025 */}
+              {showBurgerMenu && showWorkspaceSwitcher && (
+                <WorkspaceSwitcher
+                  onClose={() => {
+                    setShowWorkspaceSwitcher(false)
+                    setShowBurgerMenu(false)
+                  }}
+                  onCreateWorkspace={() => {
+                    setShowWorkspaceSwitcher(false)
+                    setShowBurgerMenu(false)
+                    setShowCreateWorkspaceModal(true)
+                  }}
+                />
               )}
 
               {/* Account Selector Popout */}
@@ -687,6 +728,17 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuick
         onClose={() => setShowDatePicker(false)}
         selectedRange={dateRange}
         onApply={(range) => setDateRange(range)}
+      />
+
+      {/* Create Workspace Modal - Jan 2025 */}
+      <CreateWorkspaceModal
+        isOpen={showCreateWorkspaceModal}
+        onClose={() => setShowCreateWorkspaceModal(false)}
+        onSuccess={(tenantId) => {
+          console.log('[MAIN-VIEW] Workspace created:', tenantId)
+          // Refresh the page to load new workspace
+          window.location.reload()
+        }}
       />
     </div>
   )

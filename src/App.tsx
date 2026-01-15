@@ -8,6 +8,7 @@ import VideoIntroView from './components/VideoIntroView'
 import CombinedAccountSelection from './components/CombinedAccountSelection'
 import MetaAccountSelectionPage from './components/MetaAccountSelectionPage'
 import LoadingScreen from './components/LoadingScreen'
+import CreateWorkspaceModal from './components/CreateWorkspaceModal'
 
 // Lazy load all other pages - only downloaded when needed
 const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
@@ -29,7 +30,7 @@ const LazyLoadSpinner = () => (
 type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
 
 function App() {
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces } = useSession()
 
   // Persist appState to localStorage so page refresh keeps you on the same page
   const [appState, setAppState] = useState<AppState>(() => {
@@ -43,6 +44,9 @@ function App() {
 
   // Track OAuth loading state (shows LoadingScreen at App level when popup closes)
   const [oauthLoadingPlatform, setOauthLoadingPlatform] = useState<'google' | 'meta' | null>(null)
+
+  // Workspace creation modal state (shown after account selection for new users)
+  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false)
 
   // Track if user is in Meta-first flow (authenticated via Meta, not Google)
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
@@ -140,17 +144,25 @@ function App() {
 
     // Check for account selection (works for both authenticated and bypass mode)
     if (selectedAccount && appState === 'account-selection') {
-      // User has selected an account - check if onboarding needed
-      // For new flow: go to onboarding-chat instead of integrations
-      // TODO: Check onboarding status from backend to determine if complete
-      setAppState('onboarding-chat')
+      // User has selected an account - check if workspace exists
+      // New users need to create a workspace before proceeding to onboarding
+      if (!activeWorkspace && availableWorkspaces.length === 0) {
+        // No workspace exists - show create workspace modal
+        console.log('[APP] No workspace found - showing create workspace modal')
+        setShowCreateWorkspaceModal(true)
+        // Don't advance to onboarding-chat yet - wait for workspace creation
+      } else {
+        // Workspace exists - proceed to onboarding
+        console.log('[APP] Workspace exists - proceeding to onboarding-chat')
+        setAppState('onboarding-chat')
+      }
     } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection' && appState !== 'meta-account-selection') {
       // User is authenticated (Google OR Meta) but needs to select an account
       // Note: video-intro case already returned above, so no need to check
       // Note: Don't redirect if already on meta-account-selection (Meta-first flow)
       setAppState('account-selection')
     }
-  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro])
+  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro, activeWorkspace, availableWorkspaces])
 
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal for Google auth
@@ -442,6 +454,23 @@ function App() {
         insightType={pendingInsightType || 'grow'}
       />
       </Suspense>
+
+      {/* Create Workspace Modal - shown after account selection for new users */}
+      <CreateWorkspaceModal
+        isOpen={showCreateWorkspaceModal}
+        required={true}
+        onClose={() => {
+          // For first-time users, don't allow closing without creating
+          // They must create a workspace to proceed
+          console.log('[APP] Create workspace modal close attempted - workspace required')
+        }}
+        onSuccess={(tenantId) => {
+          console.log('[APP] Workspace created:', tenantId)
+          setShowCreateWorkspaceModal(false)
+          // Now proceed to onboarding
+          setAppState('onboarding-chat')
+        }}
+      />
     </div>
   )
 }
