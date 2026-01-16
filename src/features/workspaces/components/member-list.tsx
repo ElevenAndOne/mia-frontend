@@ -79,7 +79,7 @@ const MemberList = ({ members, isLoading, onUpdateRole, onRemoveMember }: Member
               <select
                 value={member.role}
                 onChange={(e) => onUpdateRole(member.user_id, e.target.value)}
-                className="text-xs border border-gray-200 rounded px-2 py-1"
+                className="text-xs border border-gray-200 rounded-sm px-2 py-1"
               >
                 <option value="admin">Admin</option>
                 <option value="analyst">Analyst</option>

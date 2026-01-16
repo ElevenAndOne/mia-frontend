@@ -223,7 +223,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-gray-900 truncate">{account.account_name}</h3>
                           {account.is_primary && (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                            <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-sm">
                               Primary
                             </span>
                           )}

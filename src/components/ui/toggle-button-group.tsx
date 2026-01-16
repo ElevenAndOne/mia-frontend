@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils/utils'
 
 export interface ToggleOption<T extends string = string> {
   value: T
@@ -65,12 +65,12 @@ export function ToggleButtonGroup<T extends string = string>({
               sizeStyles[size],
               fullWidth && 'flex-1',
               isSelected
-                ? 'bg-white text-gray-900 shadow-sm'
+                ? 'bg-white text-gray-900 shadow-xs'
                 : 'text-gray-600 hover:text-gray-900'
             )}
           >
             {option.icon && (
-              <span className={cn('flex-shrink-0', option.label && 'mr-2')}>
+              <span className={cn('shrink-0', option.label && 'mr-2')}>
                 {option.icon}
               </span>
             )}

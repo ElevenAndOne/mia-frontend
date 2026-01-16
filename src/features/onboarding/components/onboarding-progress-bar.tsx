@@ -50,7 +50,7 @@ const OnboardingProgressBar: React.FC<OnboardingProgressBarProps> = ({
                   backgroundColor: isCompleted ? '#000' : '#E5E7EB',
                 }}
                 transition={{ duration: 0.3 }}
-                className={`w-3 h-3 rounded-sm ${
+                className={`w-3 h-3 rounded-xs ${
                   isCompleted ? 'bg-black' : 'bg-gray-200'
                 }`}
               />

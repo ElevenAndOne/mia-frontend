@@ -132,7 +132,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-900 via-purple-700 to-blue-800">
+    <div className="relative w-full h-full overflow-hidden bg-linear-to-br from-purple-900 via-purple-700 to-blue-800">
       {/* Fullscreen Video Background */}
       <video
         ref={videoRef}
@@ -154,7 +154,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
           className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer"
           onClick={handleTapToPlay}
         >
-          <div className="bg-white/20 backdrop-blur-sm rounded-full p-6 mb-4">
+          <div className="bg-white/20 backdrop-blur-xs rounded-full p-6 mb-4">
             <svg className="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
             </svg>

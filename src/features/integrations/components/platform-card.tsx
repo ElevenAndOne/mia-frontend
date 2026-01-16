@@ -63,7 +63,7 @@ const PlatformCard = ({
           }`}
         >
           <div className="flex items-start gap-3 mb-2">
-            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
               <img src={icon} alt="" className="w-10 h-10" loading="lazy" />
             </div>
             <div className="flex-1 min-w-0 overflow-hidden">
@@ -72,7 +72,7 @@ const PlatformCard = ({
               </div>
               <p className="text-xs text-gray-500 truncate">{description}</p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Platform Gear Menu - unified dropdown for all platforms */}
               <PlatformGearMenu
                 platformId={id}
@@ -120,7 +120,7 @@ const PlatformCard = ({
     <div className="bg-white border border-gray-200 rounded-xl p-3 overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-          <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 flex items-center justify-center shrink-0">
             <img src={icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -131,7 +131,7 @@ const PlatformCard = ({
         <button
           onClick={() => onConnect?.(id)}
           disabled={isDisabled || isConnecting || id === 'linkedin' || id === 'tiktok'}
-          className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
+          className={`px-4 py-2 rounded-lg font-medium text-xs shrink-0 ${
             id === 'linkedin' || id === 'tiktok'
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : isConnecting

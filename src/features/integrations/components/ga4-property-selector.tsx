@@ -255,7 +255,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
               {error && !isLoading && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex items-start">
-                    <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
                     <div className="flex-1">
@@ -309,7 +309,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                               {/* Checkbox */}
                               <button
                                 onClick={() => togglePropertySelection(property.property_id)}
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
                                   isSelected
                                     ? 'bg-orange-600 border-orange-600'
                                     : 'border-gray-300 bg-white hover:border-gray-400'
@@ -326,7 +326,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium text-gray-900 truncate">{property.display_name}</p>
                                   {isPrimary && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-green-100 text-green-800">
                                       Primary
                                     </span>
                                   )}
@@ -339,7 +339,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                               {isSelected && !isPrimary && (
                                 <button
                                   onClick={() => setPrimary(property.property_id)}
-                                  className="px-3 py-1 text-xs font-medium text-orange-700 bg-white border border-orange-300 rounded hover:bg-orange-50 transition-colors"
+                                  className="px-3 py-1 text-xs font-medium text-orange-700 bg-white border border-orange-300 rounded-sm hover:bg-orange-50 transition-colors"
                                 >
                                   Set as Primary
                                 </button>

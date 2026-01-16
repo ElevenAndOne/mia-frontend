@@ -37,7 +37,7 @@ function CustomCaption(props: CaptionProps) {
       <select
         value={displayMonth.getMonth()}
         onChange={handleMonthChange}
-        className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
       >
         {months.map((month, index) => (
           <option key={month} value={index}>
@@ -48,7 +48,7 @@ function CustomCaption(props: CaptionProps) {
       <select
         value={displayMonth.getFullYear()}
         onChange={handleYearChange}
-        className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
       >
         {years.map((year) => (
           <option key={year} value={year}>
@@ -183,7 +183,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
               />
             </div>
             {dateRange?.from && dateRange?.to && (
-              <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded">
+              <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded-sm">
                 <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
               </div>
             )}

@@ -111,12 +111,12 @@ const ChatPanel = ({ selectedPlatforms, dateRange, onClose }: ChatPanelProps) =>
       </div>
 
       {/* Chat Input - Fixed at bottom and centered */}
-      <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center" style={{ paddingBottom: '5rem' }}>
+      <div className="shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center" style={{ paddingBottom: '5rem' }}>
         <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
           <input
             type="text"
             placeholder="Ask about your marketing performance..."
-            className="flex-1 px-4 py-3.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="flex-1 px-4 py-3.5 border border-gray-300 rounded-full focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 const target = e.target as HTMLInputElement

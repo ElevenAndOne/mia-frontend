@@ -77,12 +77,12 @@ const BronzeFactCard: React.FC<BronzeFactCardProps> = ({
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className={`bg-gradient-to-br ${platformConfig.bgColor} rounded-xl p-4 border border-gray-100 shadow-sm`}
+      className={`bg-linear-to-br ${platformConfig.bgColor} rounded-xl p-4 border border-gray-100 shadow-xs`}
     >
       <div className="flex items-start gap-3">
         {/* Platform icon */}
         <div
-          className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm flex-shrink-0"
+          className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-xs shrink-0"
           style={{ color: platformConfig.color }}
         >
           <span className="text-sm font-bold">{platformConfig.icon}</span>

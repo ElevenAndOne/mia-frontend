@@ -78,7 +78,7 @@ const StreamingInsightsDemo = ({
   return (
     <div className="w-full h-full flex flex-col bg-white">
       {/* Header */}
-      <div className={`bg-gradient-to-r ${getGradientColor()} p-4 flex items-center justify-between`}>
+      <div className={`bg-linear-to-r ${getGradientColor()} p-4 flex items-center justify-between`}>
         {onBack && (
           <button
             onClick={onBack}

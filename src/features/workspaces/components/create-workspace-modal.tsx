@@ -108,7 +108,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder="e.g., My Agency, Client Name"
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                     error ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
                   autoFocus

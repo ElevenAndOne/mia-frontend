@@ -96,7 +96,7 @@ const TypingMessage: React.FC<TypingMessageProps> = ({
     >
       {/* Mia avatar - only show if there's content */}
       {hasContent && (
-        <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
+        <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
           <span className="text-white text-xs font-bold">M</span>
         </div>
       )}
@@ -104,7 +104,7 @@ const TypingMessage: React.FC<TypingMessageProps> = ({
       <div className={`flex-1 space-y-2 ${!hasContent ? 'ml-10' : ''}`}>
         {/* Message bubble - only render if there's content */}
         {hasContent && (
-          <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm max-w-[85%] cursor-pointer">
+          <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-xs max-w-[85%] cursor-pointer">
             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
               {displayedText}
               {isTyping && <span className="animate-pulse ml-0.5">|</span>}

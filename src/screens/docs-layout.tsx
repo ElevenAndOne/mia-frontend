@@ -10,9 +10,9 @@ const DocsLayout = ({ children, title }: DocsLayoutProps) => {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen-dvh bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen-dvh bg-linear-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

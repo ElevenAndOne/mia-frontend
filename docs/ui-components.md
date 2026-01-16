@@ -33,7 +33,7 @@ import { Button, ButtonBlack, ButtonOrange, ButtonGreen } from '@/components/ui'
 
 ```tsx
 interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost' | 'link'
+  variant?: 'primary' | 'secondary' | 'danger' | 'outline-solid' | 'ghost' | 'link'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   isLoading?: boolean

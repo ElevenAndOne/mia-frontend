@@ -172,7 +172,7 @@ const InviteList = ({ invites, isLoading, onCreateInvite, onRevokeInvite }: Invi
               type="text"
               value={createdInviteLink}
               readOnly
-              className="flex-1 text-sm text-gray-600 bg-transparent outline-none"
+              className="flex-1 text-sm text-gray-600 bg-transparent outline-hidden"
             />
             <ButtonBlack
               onClick={() => copyToClipboard(createdInviteLink)}

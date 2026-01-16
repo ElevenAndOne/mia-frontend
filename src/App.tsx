@@ -1,44 +1,41 @@
-import { useEffect, lazy, Suspense } from 'react'
-// Note: react-router-dom may be needed for future routing features
-import { motion, AnimatePresence } from 'framer-motion'
+import { lazy, Suspense, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useSession } from './contexts/session-context'
-import { useAppRouter } from './hooks/use-app-router'
-import { useOAuthHandler } from './hooks/use-o-auth-handler'
-import { useModalManager } from './hooks/use-modal-manager'
+import { useModalContext } from './contexts/modal-context'
+import { useAppNavigation } from './hooks/use-app-navigation'
+import LoadingScreen from './components/ui/loading-screen'
+import CreateWorkspaceModal from './features/workspaces/components/create-workspace-modal'
 
 // Critical path components - load immediately
 import VideoIntroView from './screens/video-intro-view'
 import CombinedAccountSelection from './screens/combined-account-selection'
 import MetaAccountSelectionPage from './screens/meta-account-selection-page'
-import LoadingScreen from './components/ui/loading-screen'
-import CreateWorkspaceModal from './features/workspaces/components/create-workspace-modal'
 
-// Lazy load all other pages - only downloaded when needed
+// Lazy loaded screens
 const MainViewCopy = lazy(() => import('./screens/main-view-copy'))
 const IntegrationsPage = lazy(() => import('./screens/integrations-page'))
+const OnboardingChat = lazy(() => import('./screens/onboarding-chat-v2'))
+const InviteLandingPage = lazy(() => import('./screens/invite-landing-page'))
+const WorkspaceSettingsPage = lazy(() => import('./screens/workspace-settings-page'))
 const GrowInsightsStreaming = lazy(() => import('./features/insights/components/grow-insights-streaming'))
 const OptimizeInsightsStreaming = lazy(() => import('./features/insights/components/optimize-insights-streaming'))
 const ProtectInsightsStreaming = lazy(() => import('./features/insights/components/protect-insights-streaming'))
 const SummaryInsights = lazy(() => import('./features/insights/components/summary-insights'))
 const InsightsDatePickerModal = lazy(() => import('./features/insights/components/insights-date-picker-modal'))
-const OnboardingChat = lazy(() => import('./screens/onboarding-chat-v2'))
-const InviteLandingPage = lazy(() => import('./screens/invite-landing-page'))
-const WorkspaceSettingsPage = lazy(() => import('./screens/workspace-settings-page'))
 
-// Loading spinner for lazy-loaded components
-const LazyLoadSpinner = () => (
+const LazySpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-gray-50">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
   </div>
 )
 
 function App() {
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces, logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
-
-  // Custom hooks for state management
-  const { appState, setAppState, inviteId, setInviteId } = useAppRouter()
-  const { oauthLoadingPlatform, setOAuthLoading, clearOAuthLoading } = useOAuthHandler()
+  const { logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
+  const { selectedAccount, hasSeenIntro, isAuthenticated, isMetaAuthenticated, activeWorkspace } = useSession()
+  const { goToMain, goToAccountSetup, goToMetaAccountSetup, goToOnboarding, goToIntegrations, goToInsights, goToHome } = useAppNavigation()
   const {
+    oauthLoadingPlatform,
+    setOAuthLoading,
     showCreateWorkspaceModal,
     setShowCreateWorkspaceModal,
     showInsightsDatePicker,
@@ -48,14 +45,11 @@ function App() {
     openInsightsDatePicker,
     closeInsightsDatePicker,
     handleInsightsDateGenerate
-  } = useModalManager()
+  } = useModalContext()
 
-  // Track if user is in Meta-first flow (authenticated via Meta, not Google)
-  const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  // Preload critical images - simplified single strategy (link preload)
-  // Browser handles caching automatically - no need for manual cache objects
+  // Preload critical images
   useEffect(() => {
     const criticalImages = [
       '/icons/Vector.png',
@@ -64,7 +58,6 @@ function App() {
       '/images/Optimise Nav.png',
       '/images/Protect Nav.png'
     ]
-
     criticalImages.forEach(src => {
       const link = document.createElement('link')
       link.rel = 'preload'
@@ -74,435 +67,139 @@ function App() {
     })
   }, [])
 
-  // Handle authentication state changes - but only after video intro
-  useEffect(() => {
-    console.log('[APP EFFECT] Running with:', {
-      isLoading,
-      appState,
-      isAuthenticated,
-      isMetaAuthenticated,
-      isAnyAuthenticated,
-      hasSelectedAccount: !!selectedAccount,
-      hasSeenIntro
-    })
-    if (isLoading) return // Wait for session to initialize
-
-    // Don't redirect if user is viewing an invite page
-    if (appState === 'invite') {
-      console.log('[APP EFFECT] On invite page, skipping redirects')
-      return
-    }
-
-    // Allow returning users to skip intro video
-    if (appState === 'video-intro') {
-      // Priority 1: User has seen intro before + has valid session → Skip to main
-      if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
-        console.log('[APP] !!! REDIRECTING TO MAIN from video-intro - returning user with session')
-        setAppState('main')
-        return
-      }
-
-      // Priority 2: User has seen intro before + authenticated but no account → Skip to account selection
-      if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        console.log('[APP] Returning user authenticated - skipping intro to account selection')
-        setAppState('account-selection')
-        return
-      }
-
-      // Priority 3: User has seen intro before + logged out → Stay on video-intro (shows login modal)
-      if (hasSeenIntro && !isAnyAuthenticated) {
-        console.log('[APP] Returning user logged out - staying on video intro (login modal visible)')
-        // Stay on video-intro state - VideoIntroView will show login modal automatically
-        return
-      }
-
-      // Priority 4: First time user → Watch video
-      console.log('[APP] First time user - showing intro video')
-      return
-    }
-
-    // If user is logged out, always reset to video-intro regardless of current state
-    if (!isAnyAuthenticated && !selectedAccount) {
-      if (appState !== 'video-intro') {
-        console.log('[APP] User logged out - resetting to video intro')
-        setAppState('video-intro')
-      }
-      return
-    }
-
-    // Don't auto-redirect if user is in onboarding chat - let the chat handle navigation
-    if (appState === 'onboarding-chat') {
-      console.log('[APP EFFECT] In onboarding-chat, returning early (no redirect)')
-      return
-    }
-
-    // Check for account selection (works for both authenticated and bypass mode)
-    if (selectedAccount && appState === 'account-selection') {
-      // User has selected an account - check if workspace exists
-      // New users need to create a workspace before proceeding to onboarding
-      if (!activeWorkspace && availableWorkspaces.length === 0) {
-        // No workspace exists - show create workspace modal
-        console.log('[APP] No workspace found - showing create workspace modal')
-        setShowCreateWorkspaceModal(true)
-        // Don't advance to onboarding-chat yet - wait for workspace creation
-      } else {
-        // Workspace exists - proceed to onboarding
-        console.log('[APP] Workspace exists - proceeding to onboarding-chat')
-        setAppState('onboarding-chat')
-      }
-    } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection' && appState !== 'meta-account-selection') {
-      // User is authenticated (Google OR Meta) but needs to select an account
-      // Note: video-intro case already returned above, so no need to check
-      // Note: Don't redirect if already on meta-account-selection (Meta-first flow)
-      setAppState('account-selection')
-    }
-  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro, activeWorkspace, availableWorkspaces, setAppState, setShowCreateWorkspaceModal])
-
-  const handleAuthSuccess = () => {
-    // This will be triggered by the FigmaLoginModal for Google auth
-    // We need to manually transition since we disabled auto-transition on video-intro
-
-    // Clear OAuth loading (CombinedAccountSelection has its own loading)
-    clearOAuthLoading()
-
-    // Check if user already has a selected account (returning user via "Log in")
-    if (selectedAccount) {
-      // Returning user with saved account → go directly to main page
-      setAppState('main')
-    } else {
-      // New user → go to account selection
-      setAppState('account-selection')
-    }
-  }
-
-  const handleMetaAuthSuccess = () => {
-    // This will be triggered by the FigmaLoginModal for Meta auth (Meta-first flow)
-    // Go to Meta account selection page
-    console.log('[APP] Meta auth success, going to Meta account selection')
-
-    // Clear OAuth loading
-    clearOAuthLoading()
-
-    setAppState('meta-account-selection')
-  }
-
-  const onInsightsDateGenerate = (dateRange: string) => {
-    const insightType = handleInsightsDateGenerate(dateRange)
-
-    // Navigate to the appropriate insights page
-    if (insightType === 'grow') {
-      setAppState('grow-quick')
-    } else if (insightType === 'optimize') {
-      setAppState('optimize-quick')
-    } else if (insightType === 'protect') {
-      setAppState('protect-quick')
-    }
-  }
-
-  // Show OAuth loading screen (triggered when popup closes)
-  // This is rendered above everything to prevent video flash during transition
+  // OAuth loading screen
   if (oauthLoadingPlatform) {
     return <LoadingScreen platform={oauthLoadingPlatform} />
   }
 
-  // Show loading screen when session is loading
-  // Exception: video-intro doesn't need loading screen (user hasn't logged in yet)
-  // Exception: account-selection pages have their own loading
-  // Exception: onboarding-chat handles its own loading states (don't unmount it during refresh)
-  if (isLoading && appState !== 'video-intro' && appState !== 'account-selection' && appState !== 'meta-account-selection' && appState !== 'onboarding-chat') {
-    // Determine which platform we're loading for based on auth state
-    const loadingPlatform = isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null
-    return <LoadingScreen platform={loadingPlatform} />
-  }
-
-  // If we're in onboarding-chat but session data isn't ready, show loading
-  if (appState === 'onboarding-chat' && (!isAnyAuthenticated || !selectedAccount)) {
-    const loadingPlatform = isMetaFirstFlow ? 'meta' : 'google'
-    return <LoadingScreen platform={loadingPlatform} />
+  const onInsightsDateGenerate = (dateRange: string) => {
+    const insightType = handleInsightsDateGenerate(dateRange)
+    if (insightType) {
+      goToInsights(insightType as 'grow' | 'optimize' | 'protect' | 'summary')
+    }
   }
 
   return (
     <div className="w-full h-full relative">
-      {/* Content */}
-      <div className="w-full h-full">
-        <Suspense fallback={<LazyLoadSpinner />}>
-        <AnimatePresence mode="wait">
-          {appState === 'video-intro' && (
-            <motion.div
-              key="video-intro"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
+      <Suspense fallback={<LazySpinner />}>
+        <Routes>
+          {/* Public routes */}
+          <Route
+            path="/"
+            element={
               <VideoIntroView
-                onAuthSuccess={handleAuthSuccess}
-                onMetaAuthSuccess={handleMetaAuthSuccess}
+                onAuthSuccess={() => selectedAccount ? goToMain() : goToAccountSetup()}
+                onMetaAuthSuccess={() => goToMetaAccountSetup()}
                 hasSeenIntro={hasSeenIntro}
                 onOAuthPopupClosed={setOAuthLoading}
               />
-            </motion.div>
-          )}
-
-          {appState === 'account-selection' && (
-            <motion.div
-              key="account-selection"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <CombinedAccountSelection
-                onAccountSelected={() => {}}
-                onBack={() => logout()}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'meta-account-selection' && isMetaAuthenticated && (
-            <motion.div
-              key="meta-account-selection"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <MetaAccountSelectionPage
-                onAccountSelected={() => {
-                  // After Meta account selection, go to onboarding chat
-                  setAppState('onboarding-chat')
-                }}
-                onBack={() => logout()}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'onboarding-chat' && isAnyAuthenticated && selectedAccount && (
-            <motion.div
-              key="onboarding-chat"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <OnboardingChat
-                onComplete={() => setAppState('main')}
-                onSkip={() => setAppState('main')}
-                onConnectPlatform={async (platformId) => {
-                  // Open OAuth popup inline - stay in onboarding
-                  if (platformId === 'meta_ads' || platformId === 'meta' || platformId === 'facebook_organic') {
-                    console.log('[ONBOARDING] Opening Meta OAuth popup...')
-                    const success = await loginMeta()
-                    if (success) {
-                      console.log('[ONBOARDING] Meta connected successfully')
-                      // Refresh accounts to get updated platform connections
-                      await refreshAccounts()
-                    }
-                  } else {
-                    // For other platforms, go to integrations (or implement their OAuth)
-                    localStorage.setItem('pending_platform_connect', platformId)
-                    setAppState('integrations')
-                  }
-                }}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'main' && selectedAccount && (
-            <motion.div
-              key="main"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              <MainViewCopy
-                onLogout={async () => {
-                  await logout()
-                  // Reset app state to video intro after logout
-                  setAppState('video-intro')
-                }}
-                onIntegrationsClick={() => setAppState('integrations')}
-                onWorkspaceSettingsClick={() => setAppState('workspace-settings')}
-                onSummaryQuickClick={(platforms) => {
-                  setAppState('summary-quick')
-                }}
-                onGrowQuickClick={(platforms) => {
-                  openInsightsDatePicker('grow', platforms || [])
-                }}
-                onOptimizeQuickClick={(platforms) => {
-                  openInsightsDatePicker('optimize', platforms || [])
-                }}
-                onProtectQuickClick={(platforms) => {
-                  openInsightsDatePicker('protect', platforms || [])
-                }}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'integrations' && isAnyAuthenticated && (
-            <motion.div
-              key="integrations"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <IntegrationsPage
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'grow-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="grow-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <GrowInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'optimize-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="optimize-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <OptimizeInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'protect-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="protect-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <ProtectInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'summary-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="summary-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <SummaryInsights
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'invite' && inviteId && (
-            <motion.div
-              key="invite"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
+            }
+          />
+          <Route
+            path="/invite/:inviteId"
+            element={
               <InviteLandingPage
-                inviteId={inviteId}
+                inviteId={window.location.pathname.split('/invite/')[1] || ''}
                 onAccepted={async (tenantId) => {
-                  console.log('[APP] Invite accepted, joining workspace:', tenantId)
-                  // Clear invite URL from browser
                   window.history.replaceState({}, '', '/')
-                  setInviteId(null)
-                  // Refresh workspaces to include the new one
                   await refreshWorkspaces()
-                  // Switch to the new workspace
                   await switchWorkspace(tenantId)
-                  // Go to main page (or account selection if not logged in)
-                  if (isAnyAuthenticated && selectedAccount) {
-                    setAppState('main')
-                  } else if (isAnyAuthenticated) {
-                    setAppState('account-selection')
-                  } else {
-                    setAppState('video-intro')
-                  }
+                  if (isAnyAuthenticated && selectedAccount) goToMain()
+                  else if (isAnyAuthenticated) goToAccountSetup()
+                  else goToHome()
                 }}
                 onBack={() => {
-                  // Clear invite URL and go to home
                   window.history.replaceState({}, '', '/')
-                  setInviteId(null)
-                  setAppState('video-intro')
+                  goToHome()
                 }}
               />
-            </motion.div>
-          )}
+            }
+          />
 
-          {appState === 'workspace-settings' && isAnyAuthenticated && activeWorkspace && (
-            <motion.div
-              key="workspace-settings"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <WorkspaceSettingsPage
-                onBack={() => setAppState('main')}
+          {/* Setup routes */}
+          <Route
+            path="/setup/account"
+            element={<CombinedAccountSelection onAccountSelected={() => {}} onBack={() => logout()} />}
+          />
+          <Route
+            path="/setup/meta-account"
+            element={<MetaAccountSelectionPage onAccountSelected={() => goToOnboarding()} onBack={() => logout()} />}
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <OnboardingChat
+                onComplete={() => goToMain()}
+                onSkip={() => goToMain()}
+                onConnectPlatform={async (platformId) => {
+                  if (['meta_ads', 'meta', 'facebook_organic'].includes(platformId)) {
+                    const success = await loginMeta()
+                    if (success) await refreshAccounts()
+                  } else {
+                    localStorage.setItem('pending_platform_connect', platformId)
+                    goToIntegrations()
+                  }
+                }}
               />
-            </motion.div>
-          )}
+            }
+          />
 
-        </AnimatePresence>
-        </Suspense>
-      </div>
+          {/* App routes */}
+          <Route
+            path="/app"
+            element={
+              <MainViewCopy
+                onLogout={async () => { await logout(); goToHome() }}
+                onIntegrationsClick={() => goToIntegrations()}
+                onWorkspaceSettingsClick={() => goToInsights('summary')}
+                onSummaryQuickClick={() => goToInsights('summary')}
+                onGrowQuickClick={(platforms) => openInsightsDatePicker('grow', platforms || [])}
+                onOptimizeQuickClick={(platforms) => openInsightsDatePicker('optimize', platforms || [])}
+                onProtectQuickClick={(platforms) => openInsightsDatePicker('protect', platforms || [])}
+              />
+            }
+          />
+          <Route path="/app/integrations" element={<IntegrationsPage onBack={() => goToMain()} />} />
+          <Route path="/app/settings" element={<WorkspaceSettingsPage onBack={() => goToMain()} />} />
+          <Route
+            path="/app/insights/grow"
+            element={<GrowInsightsStreaming onBack={() => goToMain()} initialDateRange={selectedInsightDateRange} platforms={pendingPlatforms} />}
+          />
+          <Route
+            path="/app/insights/optimize"
+            element={<OptimizeInsightsStreaming onBack={() => goToMain()} initialDateRange={selectedInsightDateRange} platforms={pendingPlatforms} />}
+          />
+          <Route
+            path="/app/insights/protect"
+            element={<ProtectInsightsStreaming onBack={() => goToMain()} initialDateRange={selectedInsightDateRange} platforms={pendingPlatforms} />}
+          />
+          <Route
+            path="/app/insights/summary"
+            element={<SummaryInsights onBack={() => goToMain()} />}
+          />
 
-      {/* Insights Date Picker Modal */}
-      <Suspense fallback={null}>
-      <InsightsDatePickerModal
-        isOpen={showInsightsDatePicker}
-        onClose={closeInsightsDatePicker}
-        onGenerate={onInsightsDateGenerate}
-        insightType={pendingInsightType || 'grow'}
-      />
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Suspense>
 
-      {/* Create Workspace Modal - shown after account selection for new users */}
+      {/* Modals */}
+      <Suspense fallback={null}>
+        <InsightsDatePickerModal
+          isOpen={showInsightsDatePicker}
+          onClose={closeInsightsDatePicker}
+          onGenerate={onInsightsDateGenerate}
+          insightType={pendingInsightType || 'grow'}
+        />
+      </Suspense>
+
       <CreateWorkspaceModal
         isOpen={showCreateWorkspaceModal}
         required={true}
-        onClose={() => {
-          // For first-time users, don't allow closing without creating
-          // They must create a workspace to proceed
-          console.log('[APP] Create workspace modal close attempted - workspace required')
-        }}
+        onClose={() => {}}
         onSuccess={(tenantId) => {
-          console.log('[APP] Workspace created:', tenantId)
           setShowCreateWorkspaceModal(false)
-          // Now proceed to onboarding
-          setAppState('onboarding-chat')
+          goToOnboarding()
         }}
       />
     </div>

@@ -158,7 +158,7 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
       <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
         {/* Number + Title */}
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+          <div className="shrink-0 w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
             {index + 1}
           </div>
           <h3 className="flex-1 text-base font-semibold text-gray-900 leading-snug">
@@ -194,7 +194,7 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
 
         {/* Action */}
         {(insight.action || (isCurrentCard && currentSection === 'action')) && (
-          <div className="pl-10 bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+          <div className="pl-10 bg-blue-50 border-l-4 border-blue-500 p-3 rounded-sm">
             <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}>
               <span className="font-bold text-blue-700">Action:</span>{' '}
               <MarkdownText
@@ -220,7 +220,7 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
       />
 
       {/* Header */}
-      <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
+      <div className="flex items-center px-4 py-3 relative z-20 shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
           {/* Empty space for symmetry */}
         </div>

@@ -36,7 +36,7 @@ export const InsightCardPreview: React.FC<InsightCardPreviewProps> = ({ data }) 
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm max-w-[90%]"
+      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs max-w-[90%]"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
