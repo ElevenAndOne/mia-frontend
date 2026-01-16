@@ -11,13 +11,17 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@features': path.resolve(__dirname, './src/features'),
+      '@screens': path.resolve(__dirname, './src/screens'),
       '@components': path.resolve(__dirname, './src/components'),
-      '@scenes': path.resolve(__dirname, './src/scenes'),
       '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@services': path.resolve(__dirname, './src/services'),
+      '@types': path.resolve(__dirname, './src/types'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@contexts': path.resolve(__dirname, './src/contexts'),
       '@lib': path.resolve(__dirname, './src/lib'),
       '@assets': path.resolve(__dirname, './src/assets'),
       '@styles': path.resolve(__dirname, './src/styles'),
-      '@types': path.resolve(__dirname, './src/types'),
     },
   },
   server: {
@@ -49,8 +53,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Split large libraries for better mobile loading
-          'framer-motion': ['framer-motion'],
-          'three': ['three', '@react-three/fiber', '@react-three/drei']
+          'framer-motion': ['framer-motion']
         }
       }
     }

@@ -1,26 +1,29 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 // Note: react-router-dom may be needed for future routing features
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from './contexts/SessionContext'
+import { useAppRouter } from './hooks/useAppRouter'
+import { useOAuthHandler } from './hooks/useOAuthHandler'
+import { useModalManager } from './hooks/useModalManager'
 
 // Critical path components - load immediately
-import VideoIntroView from './components/VideoIntroView'
-import CombinedAccountSelection from './components/CombinedAccountSelection'
-import MetaAccountSelectionPage from './components/MetaAccountSelectionPage'
-import LoadingScreen from './components/LoadingScreen'
-import CreateWorkspaceModal from './components/CreateWorkspaceModal'
+import VideoIntroView from './screens/VideoIntroView'
+import CombinedAccountSelection from './screens/CombinedAccountSelection'
+import MetaAccountSelectionPage from './screens/MetaAccountSelectionPage'
+import LoadingScreen from './components/ui/LoadingScreen'
+import CreateWorkspaceModal from './features/workspaces/components/CreateWorkspaceModal'
 
 // Lazy load all other pages - only downloaded when needed
-const MainViewCopy = lazy(() => import('./components/MainViewCopy'))
-const IntegrationsPage = lazy(() => import('./components/IntegrationsPage'))
-const GrowInsightsStreaming = lazy(() => import('./components/GrowInsightsStreaming'))
-const OptimizeInsightsStreaming = lazy(() => import('./components/OptimizeInsightsStreaming'))
-const ProtectInsightsStreaming = lazy(() => import('./components/ProtectInsightsStreaming'))
-const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
-const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
-const OnboardingChat = lazy(() => import('./components/OnboardingChatV2'))
-const InviteLandingPage = lazy(() => import('./components/InviteLandingPage'))
-const WorkspaceSettingsPage = lazy(() => import('./components/WorkspaceSettingsPage'))
+const MainViewCopy = lazy(() => import('./screens/MainViewCopy'))
+const IntegrationsPage = lazy(() => import('./screens/IntegrationsPage'))
+const GrowInsightsStreaming = lazy(() => import('./features/insights/components/GrowInsightsStreaming'))
+const OptimizeInsightsStreaming = lazy(() => import('./features/insights/components/OptimizeInsightsStreaming'))
+const ProtectInsightsStreaming = lazy(() => import('./features/insights/components/ProtectInsightsStreaming'))
+const SummaryInsights = lazy(() => import('./features/insights/components/SummaryInsights'))
+const InsightsDatePickerModal = lazy(() => import('./features/insights/components/InsightsDatePickerModal'))
+const OnboardingChat = lazy(() => import('./screens/OnboardingChatV2'))
+const InviteLandingPage = lazy(() => import('./screens/InviteLandingPage'))
+const WorkspaceSettingsPage = lazy(() => import('./screens/WorkspaceSettingsPage'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -29,59 +32,27 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick' | 'invite' | 'workspace-settings'
-
 function App() {
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces, logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
 
-  // Persist appState to localStorage so page refresh keeps you on the same page
-  const [appState, setAppState] = useState<AppState>(() => {
-    const saved = localStorage.getItem('mia_app_state')
-    // Only restore valid states (not video-intro or account-selection which need fresh auth check)
-    if (saved && ['main', 'integrations', 'onboarding-chat', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick', 'workspace-settings'].includes(saved)) {
-      return saved as AppState
-    }
-    return 'video-intro'
-  })
-
-  // Track OAuth loading state (shows LoadingScreen at App level when popup closes)
-  const [oauthLoadingPlatform, setOauthLoadingPlatform] = useState<'google' | 'meta' | null>(null)
-
-  // Workspace creation modal state (shown after account selection for new users)
-  const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false)
-
-  // Invite page state (for /invite/{invite_id} URLs)
-  const [inviteId, setInviteId] = useState<string | null>(null)
+  // Custom hooks for state management
+  const { appState, setAppState, inviteId, setInviteId } = useAppRouter()
+  const { oauthLoadingPlatform, setOAuthLoading, clearOAuthLoading } = useOAuthHandler()
+  const {
+    showCreateWorkspaceModal,
+    setShowCreateWorkspaceModal,
+    showInsightsDatePicker,
+    pendingInsightType,
+    selectedInsightDateRange,
+    pendingPlatforms,
+    openInsightsDatePicker,
+    closeInsightsDatePicker,
+    handleInsightsDateGenerate
+  } = useModalManager()
 
   // Track if user is in Meta-first flow (authenticated via Meta, not Google)
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
-
-  // Save appState to localStorage when it changes
-  useEffect(() => {
-    console.log('[APP] appState changed to:', appState)
-    localStorage.setItem('mia_app_state', appState)
-  }, [appState])
-
-  // Detect invite URL on mount (/invite/{invite_id})
-  useEffect(() => {
-    const path = window.location.pathname
-    const inviteMatch = path.match(/^\/invite\/([a-zA-Z0-9_-]+)$/)
-    if (inviteMatch) {
-      const id = inviteMatch[1]
-      console.log('[APP] Detected invite URL, invite_id:', id)
-      setInviteId(id)
-      setAppState('invite')
-    }
-  }, [])
-
-  // Support both Google and Meta authentication
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
-
-  // Date picker modal state
-  const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
-  const [pendingInsightType, setPendingInsightType] = useState<'grow' | 'optimize' | 'protect' | null>(null)
-  const [selectedInsightDateRange, setSelectedInsightDateRange] = useState<string>('30_days')
-  const [pendingPlatforms, setPendingPlatforms] = useState<string[]>([]) // Store selected platforms for insights
 
   // Preload critical images - simplified single strategy (link preload)
   // Browser handles caching automatically - no need for manual cache objects
@@ -122,7 +93,7 @@ function App() {
       return
     }
 
-    // ✅ FIX: Allow returning users to skip intro video
+    // Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
@@ -185,14 +156,14 @@ function App() {
       // Note: Don't redirect if already on meta-account-selection (Meta-first flow)
       setAppState('account-selection')
     }
-  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro, activeWorkspace, availableWorkspaces])
+  }, [isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, appState, hasSeenIntro, activeWorkspace, availableWorkspaces, setAppState, setShowCreateWorkspaceModal])
 
   const handleAuthSuccess = () => {
     // This will be triggered by the FigmaLoginModal for Google auth
     // We need to manually transition since we disabled auto-transition on video-intro
 
     // Clear OAuth loading (CombinedAccountSelection has its own loading)
-    setOauthLoadingPlatform(null)
+    clearOAuthLoading()
 
     // Check if user already has a selected account (returning user via "Log in")
     if (selectedAccount) {
@@ -210,27 +181,22 @@ function App() {
     console.log('[APP] Meta auth success, going to Meta account selection')
 
     // Clear OAuth loading
-    setOauthLoadingPlatform(null)
+    clearOAuthLoading()
 
     setAppState('meta-account-selection')
   }
 
-  const { logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
-
-  const handleInsightsDateGenerate = (dateRange: string) => {
-    setSelectedInsightDateRange(dateRange)
-    setShowInsightsDatePicker(false)
+  const onInsightsDateGenerate = (dateRange: string) => {
+    const insightType = handleInsightsDateGenerate(dateRange)
 
     // Navigate to the appropriate insights page
-    if (pendingInsightType === 'grow') {
+    if (insightType === 'grow') {
       setAppState('grow-quick')
-    } else if (pendingInsightType === 'optimize') {
+    } else if (insightType === 'optimize') {
       setAppState('optimize-quick')
-    } else if (pendingInsightType === 'protect') {
+    } else if (insightType === 'protect') {
       setAppState('protect-quick')
     }
-
-    setPendingInsightType(null)
   }
 
   // Show OAuth loading screen (triggered when popup closes)
@@ -273,7 +239,7 @@ function App() {
                 onAuthSuccess={handleAuthSuccess}
                 onMetaAuthSuccess={handleMetaAuthSuccess}
                 hasSeenIntro={hasSeenIntro}
-                onOAuthPopupClosed={setOauthLoadingPlatform}
+                onOAuthPopupClosed={setOAuthLoading}
               />
             </motion.div>
           )}
@@ -359,28 +325,21 @@ function App() {
                 onIntegrationsClick={() => setAppState('integrations')}
                 onWorkspaceSettingsClick={() => setAppState('workspace-settings')}
                 onSummaryQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
                   setAppState('summary-quick')
                 }}
                 onGrowQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('grow')
-                  setShowInsightsDatePicker(true)
+                  openInsightsDatePicker('grow', platforms || [])
                 }}
                 onOptimizeQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('optimize')
-                  setShowInsightsDatePicker(true)
+                  openInsightsDatePicker('optimize', platforms || [])
                 }}
                 onProtectQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('protect')
-                  setShowInsightsDatePicker(true)
+                  openInsightsDatePicker('protect', platforms || [])
                 }}
               />
             </motion.div>
           )}
-          
+
           {appState === 'integrations' && isAnyAuthenticated && (
             <motion.div
               key="integrations"
@@ -524,11 +483,8 @@ function App() {
       <Suspense fallback={null}>
       <InsightsDatePickerModal
         isOpen={showInsightsDatePicker}
-        onClose={() => {
-          setShowInsightsDatePicker(false)
-          setPendingInsightType(null)
-        }}
-        onGenerate={handleInsightsDateGenerate}
+        onClose={closeInsightsDatePicker}
+        onGenerate={onInsightsDateGenerate}
         insightType={pendingInsightType || 'grow'}
       />
       </Suspense>

@@ -1,0 +1,375 @@
+{
+  "rename_mappings": {
+    "root": [
+      {
+        "from": "src/App.tsx",
+        "to": "src/app.tsx"
+      }
+    ],
+    "components": [
+      {
+        "from": "src/components/AccountSelectionPage.tsx",
+        "to": "src/components/account-selection-page.tsx"
+      },
+      {
+        "from": "src/components/MetaAccountSelectionPage.tsx",
+        "to": "src/components/meta-account-selection-page.tsx"
+      },
+      {
+        "from": "src/components/MainViewCopy.tsx",
+        "to": "src/components/main-view.tsx",
+        "note": "Dropped 'Copy' suffix"
+      },
+      {
+        "from": "src/components/IntegrationsPage.tsx",
+        "to": "src/components/integrations-page.tsx"
+      },
+      {
+        "from": "src/components/OnboardingChatV2.tsx",
+        "to": "src/components/onboarding-chat.tsx",
+        "note": "Dropped 'V2' suffix"
+      },
+      {
+        "from": "src/components/WorkspaceSettingsPage.tsx",
+        "to": "src/components/workspace-settings-page.tsx"
+      },
+      {
+        "from": "src/components/InviteLandingPage.tsx",
+        "to": "src/components/invite-landing-page.tsx"
+      },
+      {
+        "from": "src/components/CombinedAccountSelection.tsx",
+        "to": "src/components/combined-account-selection.tsx"
+      },
+      {
+        "from": "src/components/VideoIntroView.tsx",
+        "to": "src/components/video-intro-view.tsx"
+      },
+      {
+        "from": "src/components/LoadingScreen.tsx",
+        "to": "src/components/loading-screen.tsx"
+      },
+      {
+        "from": "src/components/DateRangeSelector.tsx",
+        "to": "src/components/date-range-selector.tsx"
+      },
+      {
+        "from": "src/components/MicroCelebration.tsx",
+        "to": "src/components/micro-celebration.tsx"
+      },
+      {
+        "from": "src/components/FigmaLoginModal.tsx",
+        "to": "src/components/figma-login-modal.tsx"
+      },
+      {
+        "from": "src/components/BronzeFactCard.tsx",
+        "to": "src/components/bronze-fact-card.tsx"
+      },
+      {
+        "from": "src/components/TypingMessage.tsx",
+        "to": "src/components/typing-message.tsx"
+      },
+      {
+        "from": "src/components/OnboardingProgressBar.tsx",
+        "to": "src/components/onboarding-progress-bar.tsx"
+      },
+      {
+        "from": "src/components/BottomQuestionBar.tsx",
+        "to": "src/components/bottom-question-bar.tsx"
+      },
+      {
+        "from": "src/components/BrevoAccountSelector.tsx",
+        "to": "src/components/brevo-account-selector.tsx"
+      },
+      {
+        "from": "src/components/BrevoApiKeyModal.tsx",
+        "to": "src/components/brevo-api-key-modal.tsx"
+      },
+      {
+        "from": "src/components/BrevoConnectionModal.tsx",
+        "to": "src/components/brevo-connection-modal.tsx"
+      },
+      {
+        "from": "src/components/CreateWorkspaceModal.tsx",
+        "to": "src/components/create-workspace-modal.tsx"
+      },
+      {
+        "from": "src/components/FacebookPageSelector.tsx",
+        "to": "src/components/facebook-page-selector.tsx"
+      },
+      {
+        "from": "src/components/GA4PropertySelector.tsx",
+        "to": "src/components/ga4-property-selector.tsx"
+      },
+      {
+        "from": "src/components/GoogleAccountLinkSelector.tsx",
+        "to": "src/components/google-account-link-selector.tsx"
+      },
+      {
+        "from": "src/components/GoogleAccountSelector.tsx",
+        "to": "src/components/google-account-selector.tsx"
+      },
+      {
+        "from": "src/components/GrowInsightsStreaming.tsx",
+        "to": "src/components/grow-insights-streaming.tsx"
+      },
+      {
+        "from": "src/components/HubSpotAccountSelector.tsx",
+        "to": "src/components/hubspot-account-selector.tsx"
+      },
+      {
+        "from": "src/components/InsightsDatePickerModal.tsx",
+        "to": "src/components/insights-date-picker-modal.tsx"
+      },
+      {
+        "from": "src/components/MailchimpAccountSelector.tsx",
+        "to": "src/components/mailchimp-account-selector.tsx"
+      },
+      {
+        "from": "src/components/MetaAccountSelector.tsx",
+        "to": "src/components/meta-account-selector.tsx"
+      },
+      {
+        "from": "src/components/OptimizeInsightsStreaming.tsx",
+        "to": "src/components/optimize-insights-streaming.tsx"
+      },
+      {
+        "from": "src/components/PlatformGearMenu.tsx",
+        "to": "src/components/platform-gear-menu.tsx"
+      },
+      {
+        "from": "src/components/ProtectInsightsStreaming.tsx",
+        "to": "src/components/protect-insights-streaming.tsx"
+      },
+      {
+        "from": "src/components/StreamingInsightsDemo.tsx",
+        "to": "src/components/streaming-insights-demo.tsx"
+      },
+      {
+        "from": "src/components/SummaryInsights.tsx",
+        "to": "src/components/summary-insights.tsx"
+      },
+      {
+        "from": "src/components/WorkspaceSwitcher.tsx",
+        "to": "src/components/workspace-switcher.tsx"
+      }
+    ],
+    "component_tests": [
+      {
+        "from": "src/components/__tests__/BottomQuestionBar.test.tsx",
+        "to": "src/components/__tests__/bottom-question-bar.test.tsx"
+      },
+      {
+        "from": "src/components/__tests__/FigmaLoginModal.test.tsx",
+        "to": "src/components/__tests__/figma-login-modal.test.tsx"
+      }
+    ],
+    "contexts": [
+      {
+        "from": "src/contexts/SessionContext.tsx",
+        "to": "src/contexts/session-context.tsx"
+      },
+      {
+        "from": "src/contexts/OnboardingContext.tsx",
+        "to": "src/contexts/onboarding-context.tsx"
+      }
+    ],
+    "context_tests": [
+      {
+        "from": "src/contexts/__tests__/SessionContext.test.tsx",
+        "to": "src/contexts/__tests__/session-context.test.tsx"
+      }
+    ],
+    "features_accounts": [
+      {
+        "from": "src/features/accounts/components/AccountSwitcher.tsx",
+        "to": "src/features/accounts/components/account-switcher.tsx"
+      }
+    ],
+    "features_chat": [
+      {
+        "from": "src/features/chat/components/ChatPanel.tsx",
+        "to": "src/features/chat/components/chat-panel.tsx"
+      }
+    ],
+    "features_insights": [
+      {
+        "from": "src/features/insights/components/InsightsNavigation.tsx",
+        "to": "src/features/insights/components/insights-navigation.tsx"
+      }
+    ],
+    "features_integrations_components": [
+      {
+        "from": "src/features/integrations/components/ConnectionModals.tsx",
+        "to": "src/features/integrations/components/connection-modals.tsx"
+      },
+      {
+        "from": "src/features/integrations/components/PlatformCard.tsx",
+        "to": "src/features/integrations/components/platform-card.tsx"
+      },
+      {
+        "from": "src/features/integrations/components/PlatformSelector.tsx",
+        "to": "src/features/integrations/components/platform-selector.tsx"
+      }
+    ],
+    "features_integrations_hooks": [
+      {
+        "from": "src/features/integrations/hooks/useIntegrationModals.ts",
+        "to": "src/features/integrations/hooks/use-integration-modals.ts"
+      },
+      {
+        "from": "src/features/integrations/hooks/usePlatformConnectionHandlers.ts",
+        "to": "src/features/integrations/hooks/use-platform-connection-handlers.ts"
+      }
+    ],
+    "features_onboarding_components": [
+      {
+        "from": "src/features/onboarding/components/BronzeCardV2.tsx",
+        "to": "src/features/onboarding/components/bronze-card.tsx",
+        "note": "Dropped 'V2' suffix"
+      },
+      {
+        "from": "src/features/onboarding/components/ExplainerBox.tsx",
+        "to": "src/features/onboarding/components/explainer-box.tsx"
+      },
+      {
+        "from": "src/features/onboarding/components/InsightCardPreview.tsx",
+        "to": "src/features/onboarding/components/insight-card-preview.tsx"
+      },
+      {
+        "from": "src/features/onboarding/components/MessageBubble.tsx",
+        "to": "src/features/onboarding/components/message-bubble.tsx"
+      },
+      {
+        "from": "src/features/onboarding/components/ProgressDots.tsx",
+        "to": "src/features/onboarding/components/progress-dots.tsx"
+      },
+      {
+        "from": "src/features/onboarding/components/TypingIndicator.tsx",
+        "to": "src/features/onboarding/components/typing-indicator.tsx"
+      }
+    ],
+    "features_onboarding_hooks": [
+      {
+        "from": "src/features/onboarding/hooks/useMessageQueue.ts",
+        "to": "src/features/onboarding/hooks/use-message-queue.ts"
+      },
+      {
+        "from": "src/features/onboarding/hooks/useOnboardingFlow.ts",
+        "to": "src/features/onboarding/hooks/use-onboarding-flow.ts"
+      },
+      {
+        "from": "src/features/onboarding/hooks/usePlatformConnection.ts",
+        "to": "src/features/onboarding/hooks/use-platform-connection.ts"
+      }
+    ],
+    "features_workspaces_components": [
+      {
+        "from": "src/features/workspaces/components/InviteList.tsx",
+        "to": "src/features/workspaces/components/invite-list.tsx"
+      },
+      {
+        "from": "src/features/workspaces/components/MemberList.tsx",
+        "to": "src/features/workspaces/components/member-list.tsx"
+      }
+    ],
+    "features_workspaces_hooks": [
+      {
+        "from": "src/features/workspaces/hooks/useWorkspaceInvites.ts",
+        "to": "src/features/workspaces/hooks/use-workspace-invites.ts"
+      },
+      {
+        "from": "src/features/workspaces/hooks/useWorkspaceMembers.ts",
+        "to": "src/features/workspaces/hooks/use-workspace-members.ts"
+      }
+    ],
+    "hooks": [
+      {
+        "from": "src/hooks/useAppRouter.ts",
+        "to": "src/hooks/use-app-router.ts"
+      },
+      {
+        "from": "src/hooks/useIntegrationStatus.ts",
+        "to": "src/hooks/use-integration-status.ts"
+      },
+      {
+        "from": "src/hooks/useModalManager.ts",
+        "to": "src/hooks/use-modal-manager.ts"
+      },
+      {
+        "from": "src/hooks/useOAuthHandler.ts",
+        "to": "src/hooks/use-oauth-handler.ts"
+      },
+      {
+        "from": "src/hooks/useOnboardingStreaming.ts",
+        "to": "src/hooks/use-onboarding-streaming.ts"
+      },
+      {
+        "from": "src/hooks/usePlatformPreferences.ts",
+        "to": "src/hooks/use-platform-preferences.ts"
+      },
+      {
+        "from": "src/hooks/useStreamingInsights.ts",
+        "to": "src/hooks/use-streaming-insights.ts"
+      },
+      {
+        "from": "src/hooks/useStreamingInsightsParsed.ts",
+        "to": "src/hooks/use-streaming-insights-parsed.ts"
+      },
+      {
+        "from": "src/hooks/useTypingQueue.ts",
+        "to": "src/hooks/use-typing-queue.ts"
+      }
+    ],
+    "pages_docs": [
+      {
+        "from": "src/pages/docs/DocsLayout.tsx",
+        "to": "src/pages/docs/docs-layout.tsx"
+      },
+      {
+        "from": "src/pages/docs/IntegrationGuidePage.tsx",
+        "to": "src/pages/docs/integration-guide-page.tsx"
+      },
+      {
+        "from": "src/pages/docs/VideoTutorialPage.tsx",
+        "to": "src/pages/docs/video-tutorial-page.tsx"
+      }
+    ],
+    "services": [
+      {
+        "from": "src/services/accountService.ts",
+        "to": "src/services/account-service.ts"
+      },
+      {
+        "from": "src/services/metaAds.ts",
+        "to": "src/services/meta-ads.ts"
+      }
+    ],
+    "utils": [
+      {
+        "from": "src/utils/clearMetaAuth.ts",
+        "to": "src/utils/clear-meta-auth.ts"
+      }
+    ]
+  },
+  "summary": {
+    "total_files_to_rename": 85,
+    "special_renames": [
+      {
+        "file": "MainViewCopy.tsx",
+        "new_name": "main-view.tsx",
+        "reason": "Remove 'Copy' suffix"
+      },
+      {
+        "file": "OnboardingChatV2.tsx",
+        "new_name": "onboarding-chat.tsx",
+        "reason": "Remove 'V2' suffix"
+      },
+      {
+        "file": "BronzeCardV2.tsx",
+        "new_name": "bronze-card.tsx",
+        "reason": "Remove 'V2' suffix"
+      }
+    ]
+  }
+}

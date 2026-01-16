@@ -231,7 +231,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               if (workspacesResponse.ok) {
                 const workspacesData = await workspacesResponse.json()
-                availableWorkspaces = (workspacesData.tenants || []).map((t: any) => ({
+                interface TenantResponse {
+                  tenant_id: string
+                  name: string
+                  slug: string
+                  role: 'owner' | 'admin' | 'analyst' | 'viewer'
+                  onboarding_completed: boolean
+                  connected_platforms?: string[]
+                  member_count?: number
+                }
+                availableWorkspaces = (workspacesData.tenants || []).map((t: TenantResponse) => ({
                   tenant_id: t.tenant_id,
                   name: t.name,
                   slug: t.slug,
@@ -599,7 +608,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       if (response.ok) {
         const data = await response.json()
-        const workspaces: Workspace[] = (data.tenants || []).map((t: any) => ({
+        interface TenantResponse {
+          tenant_id: string
+          name: string
+          slug: string
+          role: 'owner' | 'admin' | 'analyst' | 'viewer'
+          onboarding_completed: boolean
+          connected_platforms?: string[]
+          member_count?: number
+        }
+        const workspaces: Workspace[] = (data.tenants || []).map((t: TenantResponse) => ({
           tenant_id: t.tenant_id,
           name: t.name,
           slug: t.slug,
@@ -716,7 +734,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     try {
 
-      const requestBody: any = {
+      const requestBody: {
+        account_id: string
+        session_id: string
+        industry?: string
+      } = {
         account_id: accountId,
         session_id: state.sessionId
       }
