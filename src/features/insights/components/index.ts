@@ -1,1 +1,1 @@
-export { default as InsightsNavigation } from './InsightsNavigation'
+export { default as InsightsNavigation } from './insights-navigation'

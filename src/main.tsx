@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { SessionProvider } from './contexts/session-context-shim'
-import { OnboardingProvider } from './contexts/OnboardingContext'
+import { OnboardingProvider } from './contexts/onboarding-context'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization

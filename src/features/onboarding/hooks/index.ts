@@ -4,9 +4,9 @@
  * Centralizes exports for all onboarding hooks.
  */
 
-export { useMessageQueue } from './useMessageQueue'
-export type { ChatMessage, InsightData, MessageType } from './useMessageQueue'
+export { useMessageQueue } from './use-message-queue'
+export type { ChatMessage, InsightData, MessageType } from './use-message-queue'
 
-export { usePlatformConnection } from './usePlatformConnection'
+export { usePlatformConnection } from './use-platform-connection'
 
-export { useOnboardingFlow } from './useOnboardingFlow'
+export { useOnboardingFlow } from './use-onboarding-flow'

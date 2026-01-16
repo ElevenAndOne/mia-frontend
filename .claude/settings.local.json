@@ -18,7 +18,8 @@
       "Bash(curl:*)",
       "Bash(wc:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

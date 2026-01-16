@@ -1,2 +1,2 @@
-export { default as InviteList } from './InviteList'
-export { default as MemberList } from './MemberList'
+export { default as InviteList } from './invite-list'
+export { default as MemberList } from './member-list'

@@ -1,5 +1,5 @@
-export { useWorkspaceMembers } from './useWorkspaceMembers'
-export type { Member } from './useWorkspaceMembers'
+export { useWorkspaceMembers } from './use-workspace-members'
+export type { Member } from './use-workspace-members'
 
-export { useWorkspaceInvites } from './useWorkspaceInvites'
-export type { Invite } from './useWorkspaceInvites'
+export { useWorkspaceInvites } from './use-workspace-invites'
+export type { Invite } from './use-workspace-invites'

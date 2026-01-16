@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AccountMapping } from '../types'
-import { accountService } from '../services/accountService'
+import { accountService } from '../services/account-service'
 import { useAuth } from './auth-context'
 import { useWorkspace } from './workspace-context'
 

@@ -1,29 +1,29 @@
 import { useEffect, lazy, Suspense } from 'react'
 // Note: react-router-dom may be needed for future routing features
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSession } from './contexts/SessionContext'
-import { useAppRouter } from './hooks/useAppRouter'
-import { useOAuthHandler } from './hooks/useOAuthHandler'
-import { useModalManager } from './hooks/useModalManager'
+import { useSession } from './contexts/session-context'
+import { useAppRouter } from './hooks/use-app-router'
+import { useOAuthHandler } from './hooks/use-o-auth-handler'
+import { useModalManager } from './hooks/use-modal-manager'
 
 // Critical path components - load immediately
-import VideoIntroView from './screens/VideoIntroView'
-import CombinedAccountSelection from './screens/CombinedAccountSelection'
-import MetaAccountSelectionPage from './screens/MetaAccountSelectionPage'
-import LoadingScreen from './components/ui/LoadingScreen'
-import CreateWorkspaceModal from './features/workspaces/components/CreateWorkspaceModal'
+import VideoIntroView from './screens/video-intro-view'
+import CombinedAccountSelection from './screens/combined-account-selection'
+import MetaAccountSelectionPage from './screens/meta-account-selection-page'
+import LoadingScreen from './components/ui/loading-screen'
+import CreateWorkspaceModal from './features/workspaces/components/create-workspace-modal'
 
 // Lazy load all other pages - only downloaded when needed
-const MainViewCopy = lazy(() => import('./screens/MainViewCopy'))
-const IntegrationsPage = lazy(() => import('./screens/IntegrationsPage'))
-const GrowInsightsStreaming = lazy(() => import('./features/insights/components/GrowInsightsStreaming'))
-const OptimizeInsightsStreaming = lazy(() => import('./features/insights/components/OptimizeInsightsStreaming'))
-const ProtectInsightsStreaming = lazy(() => import('./features/insights/components/ProtectInsightsStreaming'))
-const SummaryInsights = lazy(() => import('./features/insights/components/SummaryInsights'))
-const InsightsDatePickerModal = lazy(() => import('./features/insights/components/InsightsDatePickerModal'))
-const OnboardingChat = lazy(() => import('./screens/OnboardingChatV2'))
-const InviteLandingPage = lazy(() => import('./screens/InviteLandingPage'))
-const WorkspaceSettingsPage = lazy(() => import('./screens/WorkspaceSettingsPage'))
+const MainViewCopy = lazy(() => import('./screens/main-view-copy'))
+const IntegrationsPage = lazy(() => import('./screens/integrations-page'))
+const GrowInsightsStreaming = lazy(() => import('./features/insights/components/grow-insights-streaming'))
+const OptimizeInsightsStreaming = lazy(() => import('./features/insights/components/optimize-insights-streaming'))
+const ProtectInsightsStreaming = lazy(() => import('./features/insights/components/protect-insights-streaming'))
+const SummaryInsights = lazy(() => import('./features/insights/components/summary-insights'))
+const InsightsDatePickerModal = lazy(() => import('./features/insights/components/insights-date-picker-modal'))
+const OnboardingChat = lazy(() => import('./screens/onboarding-chat-v2'))
+const InviteLandingPage = lazy(() => import('./screens/invite-landing-page'))
+const WorkspaceSettingsPage = lazy(() => import('./screens/workspace-settings-page'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (

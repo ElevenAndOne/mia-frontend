@@ -1,5 +1,5 @@
-export { default as PlatformCard } from './PlatformCard'
-export type { PlatformCardProps } from './PlatformCard'
+export { default as PlatformCard } from './platform-card'
+export type { PlatformCardProps } from './platform-card'
 
-export { default as ConnectionModals } from './ConnectionModals'
-export type { ConnectionModalsProps } from './ConnectionModals'
+export { default as ConnectionModals } from './connection-modals'
+export type { ConnectionModalsProps } from './connection-modals'
