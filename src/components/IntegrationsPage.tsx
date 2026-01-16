@@ -62,7 +62,7 @@ interface PlatformStatus {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts } = useSession()
+  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts, activeWorkspace } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
   const {
@@ -353,28 +353,31 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       let authUrl: string | null = null
 
       // Get auth URL based on platform
+      // Jan 2025: Include tenant_id for workspace-scoped credential storage
       const frontendOrigin = encodeURIComponent(window.location.origin)
+      const tenantParam = activeWorkspace?.tenant_id ? `&tenant_id=${activeWorkspace.tenant_id}` : ''
+
       if (integrationId === 'google') {
-        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}`)
+        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}${tenantParam}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
-        const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}`)
+        const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}${tenantParam}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'hubspot') {
-        const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}`)
+        const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}${tenantParam}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'mailchimp') {
-        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?session_id=${sessionId}`)
+        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?session_id=${sessionId}${tenantParam}`)
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
@@ -575,6 +578,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
                               else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
                             }}
+                            onReconnect={
+                              // OAuth platforms can reconnect to refresh credentials / link to workspace
+                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(integration.id)
+                                ? () => handleConnect(integration.id)
+                                : undefined
+                            }
                             onAddAccount={
                               ['brevo', 'hubspot', 'mailchimp'].includes(integration.id)
                                 ? () => {

@@ -19,6 +19,8 @@ const ProtectInsightsStreaming = lazy(() => import('./components/ProtectInsights
 const SummaryInsights = lazy(() => import('./components/SummaryInsights'))
 const InsightsDatePickerModal = lazy(() => import('./components/InsightsDatePickerModal'))
 const OnboardingChat = lazy(() => import('./components/OnboardingChatV2'))
+const InviteLandingPage = lazy(() => import('./components/InviteLandingPage'))
+const WorkspaceSettingsPage = lazy(() => import('./components/WorkspaceSettingsPage'))
 
 // Loading spinner for lazy-loaded components
 const LazyLoadSpinner = () => (
@@ -27,7 +29,7 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick'
+type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick' | 'invite' | 'workspace-settings'
 
 function App() {
   const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces } = useSession()
@@ -36,7 +38,7 @@ function App() {
   const [appState, setAppState] = useState<AppState>(() => {
     const saved = localStorage.getItem('mia_app_state')
     // Only restore valid states (not video-intro or account-selection which need fresh auth check)
-    if (saved && ['main', 'integrations', 'onboarding-chat', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick'].includes(saved)) {
+    if (saved && ['main', 'integrations', 'onboarding-chat', 'grow-quick', 'optimize-quick', 'protect-quick', 'summary-quick', 'workspace-settings'].includes(saved)) {
       return saved as AppState
     }
     return 'video-intro'
@@ -48,6 +50,9 @@ function App() {
   // Workspace creation modal state (shown after account selection for new users)
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false)
 
+  // Invite page state (for /invite/{invite_id} URLs)
+  const [inviteId, setInviteId] = useState<string | null>(null)
+
   // Track if user is in Meta-first flow (authenticated via Meta, not Google)
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
 
@@ -56,6 +61,18 @@ function App() {
     console.log('[APP] appState changed to:', appState)
     localStorage.setItem('mia_app_state', appState)
   }, [appState])
+
+  // Detect invite URL on mount (/invite/{invite_id})
+  useEffect(() => {
+    const path = window.location.pathname
+    const inviteMatch = path.match(/^\/invite\/([a-zA-Z0-9_-]+)$/)
+    if (inviteMatch) {
+      const id = inviteMatch[1]
+      console.log('[APP] Detected invite URL, invite_id:', id)
+      setInviteId(id)
+      setAppState('invite')
+    }
+  }, [])
 
   // Support both Google and Meta authentication
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
@@ -98,6 +115,12 @@ function App() {
       hasSeenIntro
     })
     if (isLoading) return // Wait for session to initialize
+
+    // Don't redirect if user is viewing an invite page
+    if (appState === 'invite') {
+      console.log('[APP EFFECT] On invite page, skipping redirects')
+      return
+    }
 
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
@@ -192,7 +215,7 @@ function App() {
     setAppState('meta-account-selection')
   }
 
-  const { logout, loginMeta, refreshAccounts } = useSession()
+  const { logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
 
   const handleInsightsDateGenerate = (dateRange: string) => {
     setSelectedInsightDateRange(dateRange)
@@ -334,6 +357,7 @@ function App() {
                   setAppState('video-intro')
                 }}
                 onIntegrationsClick={() => setAppState('integrations')}
+                onWorkspaceSettingsClick={() => setAppState('workspace-settings')}
                 onSummaryQuickClick={(platforms) => {
                   setPendingPlatforms(platforms || [])
                   setAppState('summary-quick')
@@ -433,6 +457,60 @@ function App() {
               className="w-full h-full"
             >
               <SummaryInsights
+                onBack={() => setAppState('main')}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'invite' && inviteId && (
+            <motion.div
+              key="invite"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <InviteLandingPage
+                inviteId={inviteId}
+                onAccepted={async (tenantId) => {
+                  console.log('[APP] Invite accepted, joining workspace:', tenantId)
+                  // Clear invite URL from browser
+                  window.history.replaceState({}, '', '/')
+                  setInviteId(null)
+                  // Refresh workspaces to include the new one
+                  await refreshWorkspaces()
+                  // Switch to the new workspace
+                  await switchWorkspace(tenantId)
+                  // Go to main page (or account selection if not logged in)
+                  if (isAnyAuthenticated && selectedAccount) {
+                    setAppState('main')
+                  } else if (isAnyAuthenticated) {
+                    setAppState('account-selection')
+                  } else {
+                    setAppState('video-intro')
+                  }
+                }}
+                onBack={() => {
+                  // Clear invite URL and go to home
+                  window.history.replaceState({}, '', '/')
+                  setInviteId(null)
+                  setAppState('video-intro')
+                }}
+              />
+            </motion.div>
+          )}
+
+          {appState === 'workspace-settings' && isAnyAuthenticated && activeWorkspace && (
+            <motion.div
+              key="workspace-settings"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <WorkspaceSettingsPage
                 onBack={() => setAppState('main')}
               />
             </motion.div>

@@ -10,6 +10,7 @@ import CreateWorkspaceModal from './CreateWorkspaceModal'
 interface MainViewProps {
   onLogout: () => void
   onIntegrationsClick?: () => void
+  onWorkspaceSettingsClick?: () => void
   onSummaryQuickClick?: (platforms?: string[]) => void
   onGrowQuickClick?: (platforms?: string[]) => void
   onOptimizeQuickClick?: (platforms?: string[]) => void
@@ -44,7 +45,7 @@ const formatDateRangeDisplay = (dateRange: string): string => {
   return '90d'
 }
 
-const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
+const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace } = useSession()
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
@@ -319,6 +320,11 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onSummaryQuick
                     setShowWorkspaceSwitcher(false)
                     setShowBurgerMenu(false)
                     setShowCreateWorkspaceModal(true)
+                  }}
+                  onSettings={() => {
+                    setShowWorkspaceSwitcher(false)
+                    setShowBurgerMenu(false)
+                    onWorkspaceSettingsClick?.()
                   }}
                 />
               )}

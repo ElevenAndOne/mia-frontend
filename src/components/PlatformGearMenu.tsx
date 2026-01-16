@@ -9,6 +9,7 @@ interface PlatformGearMenuProps {
   sessionId: string | null
   onManage: () => void
   onAddAccount?: () => void
+  onReconnect?: () => void
   onDisconnectSuccess: () => void
 }
 
@@ -19,6 +20,7 @@ const PlatformGearMenu = ({
   sessionId,
   onManage,
   onAddAccount,
+  onReconnect,
   onDisconnectSuccess
 }: PlatformGearMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,6 +32,9 @@ const PlatformGearMenu = ({
 
   // Platforms that support adding multiple accounts
   const supportsMultiAccount = ['brevo', 'hubspot', 'mailchimp'].includes(platformId)
+
+  // OAuth platforms that support reconnecting (to refresh credentials / link to workspace)
+  const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(platformId)
 
   // Google Ads disconnect is disabled - it's the main account switcher and removing
   // credentials would break all linked accounts. Users can manage accounts instead.
@@ -140,6 +145,23 @@ const PlatformGearMenu = ({
             </svg>
             Manage Accounts
           </button>
+
+          {/* Reconnect - for OAuth platforms to refresh/link credentials to workspace */}
+          {supportsReconnect && onReconnect && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsOpen(false)
+                onReconnect()
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reconnect
+            </button>
+          )}
 
           {/* Add Account - only for multi-account platforms */}
           {supportsMultiAccount && onAddAccount && (

@@ -245,15 +245,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               if (currentWorkspaceResponse.ok) {
                 const currentData = await currentWorkspaceResponse.json()
-                if (currentData.tenant_id) {
+                // Backend returns { "active_tenant": { "tenant_id": ... } }
+                const activeTenant = currentData.active_tenant
+                if (activeTenant?.tenant_id) {
                   activeWorkspace = availableWorkspaces.find(
-                    w => w.tenant_id === currentData.tenant_id
+                    w => w.tenant_id === activeTenant.tenant_id
                   ) || {
-                    tenant_id: currentData.tenant_id,
-                    name: currentData.tenant_name || 'Workspace',
-                    slug: currentData.tenant_slug || '',
-                    role: currentData.role || 'member',
-                    onboarding_completed: false,
+                    tenant_id: activeTenant.tenant_id,
+                    name: activeTenant.name || 'Workspace',
+                    slug: activeTenant.slug || '',
+                    role: activeTenant.role || 'member',
+                    onboarding_completed: activeTenant.onboarding_completed || false,
                     connected_platforms: [],
                     member_count: 1
                   }
