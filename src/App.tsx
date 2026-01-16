@@ -122,6 +122,19 @@ function App() {
       return
     }
 
+    // Check for pending invite after login
+    // If user logged in and has a pending invite, redirect to invite page
+    if (isAnyAuthenticated) {
+      const pendingInvite = localStorage.getItem('mia_pending_invite')
+      if (pendingInvite) {
+        console.log('[APP EFFECT] Found pending invite after login:', pendingInvite)
+        localStorage.removeItem('mia_pending_invite')
+        setInviteId(pendingInvite)
+        setAppState('invite')
+        return
+      }
+    }
+
     // ✅ FIX: Allow returning users to skip intro video
     if (appState === 'video-intro') {
       // Priority 1: User has seen intro before + has valid session → Skip to main

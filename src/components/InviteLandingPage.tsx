@@ -195,6 +195,13 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
 
   // Login prompt
   if (showLoginPrompt) {
+    const handleSignInClick = () => {
+      // Store invite_id in localStorage so we can return after login
+      localStorage.setItem('mia_pending_invite', inviteId)
+      console.log('[INVITE] Stored pending invite:', inviteId)
+      onBack() // Go to login
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -208,7 +215,7 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
             Please sign in to accept this invite and join <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
           </p>
           <button
-            onClick={onBack}
+            onClick={handleSignInClick}
             className="w-full px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors mb-3"
           >
             Sign In
