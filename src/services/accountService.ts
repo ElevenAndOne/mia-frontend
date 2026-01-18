@@ -212,33 +212,37 @@ class AccountService {
           })
         } else {
           // Regular business: Use primary GA4 property + put rest in GA4-only
-          let primaryGA4
-          
+          let primaryGA4: RawGA4Property | undefined
+
           if (primaryWebsite && websiteGA4Map?.has(primaryWebsite)) {
             // Use the specified primary website
             primaryGA4 = websiteGA4Map.get(primaryWebsite)
           } else {
             // Fall back to best name match
-            primaryGA4 = businessGA4Properties.find(p => 
+            primaryGA4 = businessGA4Properties.find(p =>
               p.display_name.toLowerCase().includes(businessName.toLowerCase().split(' ')[0]) ||
               p.display_name.toLowerCase().includes('ga4')
             ) || businessGA4Properties[0]
           }
-          
-          // Create combined account with primary GA4
-          combined.push({
-            id: `combined_${adsAccount.customer_id}_${primaryGA4.property_id}`,
-            name: businessName,
-            google_ads_id: adsAccount.customer_id,
-            ga4_property_id: primaryGA4.property_id,
-            display_name: businessName,
-            ads_data: adsAccount,
-            ga4_data: primaryGA4
-          })
-          
+
+          // Only create combined account if we have a primary GA4
+          if (primaryGA4) {
+            // Create combined account with primary GA4
+            combined.push({
+              id: `combined_${adsAccount.customer_id}_${primaryGA4.property_id}`,
+              name: businessName,
+              google_ads_id: adsAccount.customer_id,
+              ga4_property_id: primaryGA4.property_id,
+              display_name: businessName,
+              ads_data: adsAccount,
+              ga4_data: primaryGA4
+            })
+          }
+
           // Put remaining GA4 properties in GA4-only tab
+          const primaryPropertyId = primaryGA4?.property_id
           businessGA4Properties.forEach(property => {
-            if (property.property_id !== primaryGA4.property_id) {
+            if (property.property_id !== primaryPropertyId) {
               ga4Only.push({
                 id: `ga4_${property.property_id}`,
                 name: property.display_name,
@@ -332,7 +336,7 @@ class AccountService {
   /**
    * Create intelligent business mapping with URL-based matching
    */
-  private async createBusinessMap(googleAdsAccounts: RawGoogleAdsAccount[], ga4Properties: RawGA4Property[]): Promise<Map<string, {adsAccount?: RawGoogleAdsAccount, ga4Properties: RawGA4Property[], websiteGA4Map?: Map<string, RawGA4Property>}>> {
+  private async createBusinessMap(googleAdsAccounts: RawGoogleAdsAccount[], ga4Properties: RawGA4Property[]): Promise<Map<string, {adsAccount?: RawGoogleAdsAccount, ga4Properties: RawGA4Property[], websiteGA4Map?: Map<string, RawGA4Property>, primaryWebsite?: string}>> {
     const businessMap = new Map()
     
     // Group GA4 properties by business AND create website mapping

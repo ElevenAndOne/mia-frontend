@@ -72,8 +72,8 @@ export interface SessionState extends MetaAuthState {
 
 export interface SessionActions {
   // Authentication actions
-  login: () => Promise<boolean>
-  loginMeta: () => Promise<boolean>
+  login: (onPopupClosed?: () => void) => Promise<boolean>
+  loginMeta: (onPopupClosed?: () => void) => Promise<boolean>
   logout: () => Promise<void>
   logoutMeta: () => Promise<void>
 
@@ -407,7 +407,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 const completeResponse = await apiFetch(completeUrl, {
                   method: 'POST',
                   headers: {
-                    'X-Session-ID': state.sessionId
+                    'X-Session-ID': state.sessionId || ''
                   }
                 })
 
@@ -430,7 +430,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               // Check auth status
               const statusResponse = await apiFetch('/api/oauth/google/status', {
                 headers: {
-                  'X-Session-ID': state.sessionId
+                  'X-Session-ID': state.sessionId || ''
                 }
               })
               if (statusResponse.ok) {
@@ -549,6 +549,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         sessionId: newSessionId,
         selectedAccount: null,
         availableAccounts: [],
+        activeWorkspace: null,
+        availableWorkspaces: [],
         error: null,
         isMetaAuthenticated: false,
         metaUser: null
@@ -752,7 +754,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': state.sessionId
+          'X-Session-ID': state.sessionId || ''
         },
         body: JSON.stringify(requestBody)
       })

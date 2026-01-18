@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSession } from '../contexts/session-context'
+import { useSession } from '../contexts/session-context-shim'
 import { useWorkspaceMembers } from '../features/workspaces/hooks/use-workspace-members'
 import { useWorkspaceInvites } from '../features/workspaces/hooks/use-workspace-invites'
 import MemberList from '../features/workspaces/components/member-list'

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DayPicker, DateRange, CaptionProps } from 'react-day-picker'
-import 'react-day-picker/dist/style.css'
+import { DayPicker } from 'react-day-picker'
+import type { DateRange } from 'react-day-picker'
+import 'react-day-picker/style.css'
 import { format } from 'date-fns'
 
 interface InsightsDatePickerModalProps {
@@ -29,56 +30,6 @@ const INSIGHT_DESCRIPTIONS = {
   grow: 'Discover opportunities to scale your best-performing campaigns and creatives',
   optimize: 'Identify inefficiencies and improve ROI across your marketing channels',
   protect: 'Safeguard your high-performing campaigns from potential risks'
-}
-
-// Custom caption component with month/year dropdowns
-function CustomCaption(props: CaptionProps) {
-  const { displayMonth } = props
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 9 + i)
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newMonth = parseInt(e.target.value)
-    const newDate = new Date(displayMonth.getFullYear(), newMonth, 1)
-    props.onMonthChange?.(newDate)
-  }
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newYear = parseInt(e.target.value)
-    const newDate = new Date(newYear, displayMonth.getMonth(), 1)
-    props.onMonthChange?.(newDate)
-  }
-
-  return (
-    <div className="flex justify-center gap-2 pb-2">
-      <select
-        value={displayMonth.getMonth()}
-        onChange={handleMonthChange}
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-      >
-        {months.map((month, index) => (
-          <option key={month} value={index}>
-            {month}
-          </option>
-        ))}
-      </select>
-      <select
-        value={displayMonth.getFullYear()}
-        onChange={handleYearChange}
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-      >
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
 }
 
 const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: InsightsDatePickerModalProps) => {
@@ -113,6 +64,10 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
   }
 
   const isGenerateDisabled = selectedRange === 'custom' && (!dateRange?.from || !dateRange?.to)
+
+  // Calculate start month for dropdown (10 years ago)
+  const startMonth = new Date()
+  startMonth.setFullYear(startMonth.getFullYear() - 10)
 
   return (
     <AnimatePresence>
@@ -192,9 +147,8 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
                     numberOfMonths={1}
                     disabled={{ after: new Date() }}
                     captionLayout="dropdown"
-                    components={{
-                      Caption: CustomCaption
-                    }}
+                    startMonth={startMonth}
+                    endMonth={new Date()}
                     classNames={{
                       months: "flex flex-col",
                       month: "space-y-4",
@@ -227,7 +181,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
             {/* Helper Text */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
               <p className="text-xs text-purple-800">
-                💡 Choose a date range with active campaign data for the most relevant insights.
+                Choose a date range with active campaign data for the most relevant insights.
                 You can change the date range anytime after generating insights.
               </p>
             </div>

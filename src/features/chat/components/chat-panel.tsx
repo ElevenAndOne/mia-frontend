@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 import { apiFetch } from '../../../utils/api'
 
 interface ChatPanelProps {

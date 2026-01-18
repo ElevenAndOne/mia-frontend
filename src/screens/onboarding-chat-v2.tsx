@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSession } from '../contexts/session-context'
+import { useSession } from '../contexts/session-context-shim'
 import { useOnboarding, BronzeFact } from '../contexts/onboarding-context'
 import { useOnboardingStreaming } from '../features/onboarding/hooks/use-onboarding-streaming'
 import MetaAccountSelector from '../features/integrations/components/meta-account-selector'

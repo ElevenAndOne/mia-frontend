@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useSession } from './contexts/session-context'
+import { useSession } from './contexts/session-context-shim'
 import { useModalContext } from './contexts/modal-context'
 import { useAppNavigation } from './hooks/use-app-navigation'
 import LoadingScreen from './components/ui/loading-screen'

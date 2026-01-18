@@ -1,5 +1,5 @@
 import { Member } from '../hooks/use-workspace-members'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 import { IconButton } from '@/components/ui'
 
 interface MemberListProps {

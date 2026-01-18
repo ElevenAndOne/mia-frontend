@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useSession, AccountMapping } from '../contexts/session-context'
+import { useSession, AccountMapping } from '../contexts/session-context-shim'
 import { apiFetch } from '../utils/api'
 
 interface AccountSelectionPageProps {

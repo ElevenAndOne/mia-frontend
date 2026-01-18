@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { useSession } from '../contexts/session-context'
+import { useSession } from '../contexts/session-context-shim'
 import { useIntegrationStatus } from '../features/integrations/hooks/use-integration-status'
 import { useIntegrationModals } from '../features/integrations/hooks/use-integration-modals'
 import { usePlatformConnectionHandlers } from '../features/integrations/hooks/use-platform-connection-handlers'
@@ -446,7 +446,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           await refreshAccounts()
         }}
         currentAccountData={currentAccountData}
-        selectedAccount={selectedAccount}
+        selectedAccount={selectedAccount ?? undefined}
         ga4Properties={ga4Properties}
         linkedGA4Properties={linkedGA4Properties}
       />

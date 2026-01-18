@@ -11,7 +11,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { apiFetch } from '../utils/api'
-import { useSession } from './session-context'
+import { useSession } from './session-context-shim'
 
 // Onboarding steps
 export const ONBOARDING_STEPS = {

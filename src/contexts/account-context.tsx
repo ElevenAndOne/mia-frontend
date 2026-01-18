@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AccountMapping } from '../types'
-import { accountService } from '../services/account-service'
+import { apiFetch } from '../utils/api'
 import { useAuth } from './auth-context'
 import { useWorkspace } from './workspace-context'
 
@@ -36,15 +36,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true)
     try {
-      const accounts = await accountService.discoverAccounts(
-        sessionId,
-        activeWorkspace.tenant_id
-      )
-      setAvailableAccounts(accounts)
+      const response = await apiFetch('/api/accounts/available', {
+        headers: {
+          'X-Session-ID': sessionId,
+          'X-Tenant-ID': activeWorkspace.tenant_id
+        }
+      })
 
-      // Set selected account (first one, or previously selected)
-      if (accounts.length > 0 && !selectedAccount) {
-        setSelectedAccount(accounts[0])
+      if (response.ok) {
+        const data = await response.json()
+        const accounts: AccountMapping[] = data.accounts || []
+        setAvailableAccounts(accounts)
+
+        // Set selected account (first one, or previously selected)
+        if (accounts.length > 0 && !selectedAccount) {
+          setSelectedAccount(accounts[0])
+        }
       }
     } catch (error) {
       console.error('Failed to fetch accounts:', error)

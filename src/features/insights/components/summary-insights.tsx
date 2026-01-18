@@ -1,6 +1,6 @@
 import { apiFetch } from '../../../utils/api'
 import { useState, useEffect } from 'react'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 import DateRangeSelector from '../../../components/ui/date-range-selector'
 
 interface SummaryInsightsProps {

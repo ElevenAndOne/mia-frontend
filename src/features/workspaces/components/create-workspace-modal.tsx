@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean

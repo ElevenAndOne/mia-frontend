@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useSession } from '../../contexts/session-context'
+import { useSession } from '../../contexts/session-context-shim'
 import { useState } from 'react'
 
 interface FigmaLoginModalProps {

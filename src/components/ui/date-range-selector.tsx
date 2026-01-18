@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { DayPicker, DateRange, CaptionProps } from 'react-day-picker'
-import 'react-day-picker/dist/style.css'
+import { DayPicker } from 'react-day-picker'
+import type { DateRange } from 'react-day-picker'
+import 'react-day-picker/style.css'
 import { format } from 'date-fns'
 
 interface DateRangeSelectorProps {
@@ -8,56 +9,6 @@ interface DateRangeSelectorProps {
   onClose: () => void
   selectedRange: string
   onApply: (range: string) => void
-}
-
-// Custom caption component with month/year dropdowns
-function CustomCaption(props: CaptionProps) {
-  const { displayMonth } = props
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 9 + i) // Last 10 years
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newMonth = parseInt(e.target.value)
-    const newDate = new Date(displayMonth.getFullYear(), newMonth, 1)
-    props.onMonthChange?.(newDate)
-  }
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newYear = parseInt(e.target.value)
-    const newDate = new Date(newYear, displayMonth.getMonth(), 1)
-    props.onMonthChange?.(newDate)
-  }
-
-  return (
-    <div className="flex justify-center gap-2 pb-2">
-      <select
-        value={displayMonth.getMonth()}
-        onChange={handleMonthChange}
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-      >
-        {months.map((month, index) => (
-          <option key={month} value={index}>
-            {month}
-          </option>
-        ))}
-      </select>
-      <select
-        value={displayMonth.getFullYear()}
-        onChange={handleYearChange}
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-      >
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
 }
 
 const DATE_RANGE_OPTIONS = [
@@ -117,6 +68,10 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
     setShowCustomPicker(false)
   }
 
+  // Calculate start month for dropdown (10 years ago)
+  const startMonth = new Date()
+  startMonth.setFullYear(startMonth.getFullYear() - 10)
+
   return (
     <>
       {/* Backdrop */}
@@ -158,15 +113,14 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
                 numberOfMonths={1}
                 disabled={{ after: new Date() }}
                 captionLayout="dropdown"
-                components={{
-                  Caption: CustomCaption
-                }}
+                startMonth={startMonth}
+                endMonth={new Date()}
                 classNames={{
                   months: "flex flex-col",
                   month: "space-y-4",
                   caption: "flex justify-center pt-1 relative items-center mb-2",
                   caption_label: "text-sm font-medium",
-                  nav: "hidden", // Hide navigation arrows since we have dropdowns
+                  nav: "hidden",
                   table: "w-full border-collapse space-y-1",
                   head_row: "flex",
                   head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
@@ -191,7 +145,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
         )}
 
         {/* Apply Button */}
-        <div className="border-t border-gray-200 p-2" style={{ paddingBottom: '1rem' }}>
+        <div className="border-t border-gray-200 p-2 pb-4">
           <button
             onClick={handleApply}
             disabled={showCustomPicker && (!dateRange?.from || !dateRange?.to)}

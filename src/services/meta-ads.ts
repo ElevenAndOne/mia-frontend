@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { apiFetch } from '../utils/api'
 
 interface MetaAdsAccount {
   id: string
@@ -32,6 +32,13 @@ interface MetaCampaign {
   metrics?: CampaignMetrics
 }
 
+const getSessionId = () => sessionStorage.getItem('session_id') || ''
+
+const getHeaders = (): HeadersInit => ({
+  'Content-Type': 'application/json',
+  'X-Session-ID': getSessionId()
+})
+
 class MetaAdsService {
   async getAccounts(): Promise<MetaAdsAccount[]> {
     return this.getAdAccounts()
@@ -39,13 +46,10 @@ class MetaAdsService {
 
   async getAdAccounts(): Promise<MetaAdsAccount[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/oauth/meta/accounts`, {
+      const response = await apiFetch('/api/oauth/meta/accounts', {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionStorage.getItem('session_id') || ''
-        }
+        headers: getHeaders()
       })
 
       if (!response.ok) {
@@ -61,22 +65,19 @@ class MetaAdsService {
 
   async getCampaigns(accountId: string, includeMetrics: boolean = true): Promise<MetaCampaign[]> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/oauth/meta/accounts/${accountId}/campaigns`,
-        {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionStorage.getItem('session_id') || ''
-          }
-        }
-      )
-
       const searchParams = new URLSearchParams()
       if (includeMetrics) {
         searchParams.append('include_metrics', 'true')
       }
+
+      const response = await apiFetch(
+        `/api/oauth/meta/accounts/${accountId}/campaigns?${searchParams}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+          headers: getHeaders()
+        }
+      )
 
       if (!response.ok) {
         throw new Error(`Failed to fetch Meta campaigns: ${response.status}`)
@@ -95,15 +96,12 @@ class MetaAdsService {
     endDate: string
   ): Promise<CampaignMetrics> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/oauth/meta/accounts/${accountId}/performance?start_date=${startDate}&end_date=${endDate}`,
+      const response = await apiFetch(
+        `/api/oauth/meta/accounts/${accountId}/performance?start_date=${startDate}&end_date=${endDate}`,
         {
           method: 'GET',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionStorage.getItem('session_id') || ''
-          }
+          headers: getHeaders()
         }
       )
 
@@ -125,15 +123,12 @@ class MetaAdsService {
         searchParams.append('campaign_id', campaignId)
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/oauth/meta/accounts/${accountId}/adsets?${searchParams}`,
+      const response = await apiFetch(
+        `/api/oauth/meta/accounts/${accountId}/adsets?${searchParams}`,
         {
           method: 'GET',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionStorage.getItem('session_id') || ''
-          }
+          headers: getHeaders()
         }
       )
 
@@ -155,15 +150,12 @@ class MetaAdsService {
         searchParams.append('adset_id', adSetId)
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/oauth/meta/accounts/${accountId}/ads?${searchParams}`,
+      const response = await apiFetch(
+        `/api/oauth/meta/accounts/${accountId}/ads?${searchParams}`,
         {
           method: 'GET',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-ID': sessionStorage.getItem('session_id') || ''
-          }
+          headers: getHeaders()
         }
       )
 

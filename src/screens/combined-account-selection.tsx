@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSession, AccountMapping } from '../contexts/session-context'
+import { useSession, AccountMapping } from '../contexts/session-context-shim'
 import { apiFetch } from '../utils/api'
 import LoadingScreen from '../components/ui/loading-screen'
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { apiFetch } from '../../../utils/api'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 
 interface BrevoApiKeyModalProps {
   isOpen: boolean

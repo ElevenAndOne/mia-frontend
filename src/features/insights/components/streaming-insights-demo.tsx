@@ -10,7 +10,7 @@
  * 3. Parse the complete response when isComplete is true
  */
 import { useEffect } from 'react'
-import { useSession } from '../../../contexts/session-context'
+import { useSession } from '../../../contexts/session-context-shim'
 import { useStreamingInsights } from '../hooks/use-streaming-insights'
 
 interface StreamingInsightsDemoProps {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useSession } from '../contexts/session-context'
+import { useSession } from '../contexts/session-context-shim'
 import { usePlatformPreferences } from '../hooks/use-platform-preferences'
 import BrevoConnectionModal from '../features/integrations/components/brevo-connection-modal'
 import DateRangeSelector from '../components/ui/date-range-selector'

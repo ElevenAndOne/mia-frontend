@@ -3,6 +3,9 @@ import { AuthProvider, useAuth } from './auth-context'
 import { WorkspaceProvider, useWorkspace } from './workspace-context'
 import { AccountProvider, useAccount } from './account-context'
 
+// Re-export types from original session-context for backward compatibility
+export type { AccountMapping, UserProfile, Workspace, MetaAuthState, SessionState, SessionActions } from './session-context'
+
 /**
  * @deprecated This is a compatibility shim for gradual migration.
  * New code should use useAuth(), useWorkspace(), and useAccount() directly.

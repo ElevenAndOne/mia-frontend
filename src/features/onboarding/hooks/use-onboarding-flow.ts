@@ -15,8 +15,8 @@ interface UseOnboardingFlowProps {
   isStreamingInsight: boolean
   isStreamingCombined: boolean
   platformsConnected: string[]
-  fetchBronzeHighlight: () => Promise<BronzeFact | null>
-  loadOnboardingStatus: () => Promise<void>
+  fetchBronzeHighlight: (platform?: string) => Promise<BronzeFact | null>
+  loadOnboardingStatus: () => Promise<string | null>
   advanceStep: () => Promise<void>
   resetStreaming: () => void
   queueMessages: (messages: any[]) => void

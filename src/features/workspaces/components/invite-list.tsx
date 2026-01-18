@@ -137,7 +137,7 @@ const InviteList = ({ invites, isLoading, onCreateInvite, onRevokeInvite }: Invi
           {/* Actions */}
           <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="outline-solid"
               onClick={() => {
                 setShowCreateInvite(false)
                 setInviteEmail('')
