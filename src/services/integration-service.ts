@@ -91,14 +91,15 @@ export const integrationService = {
   },
 
   /**
-   * Link HubSpot account
+   * Link HubSpot portal
+   * Uses /api/oauth/hubspot/link-portal endpoint per API spec
    */
   async linkHubSpot(
     sessionId: string,
     accountId: string,
     portalId: string
   ): Promise<void> {
-    await apiPost('/api/integrations/hubspot/link', {
+    await apiPost('/api/oauth/hubspot/link-portal', {
       session_id: sessionId,
       account_id: accountId,
       portal_id: portalId

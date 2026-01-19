@@ -7,7 +7,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== 'undefined' && window.location.hostname.includes('ondigitalocean.app')
     ? 'https://dolphin-app-b869e.ondigitalocean.app'
-    : 'http://localhost:8000')
+    : 'http://192.168.101.199:800')
 
 /**
  * Create a full API URL from a relative path

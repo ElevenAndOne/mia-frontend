@@ -24,11 +24,14 @@ export const authService = {
 
   /**
    * Initiate Google OAuth flow
+   * Uses /api/oauth/google/auth-url endpoint per API spec
    */
   async loginWithGoogle(): Promise<boolean> {
     try {
+      const frontendOrigin = encodeURIComponent(window.location.origin)
+      const sessionId = storage.getSessionId()
       const response = await apiGet<{ auth_url: string }>(
-        '/api/auth/google/initiate'
+        `/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}`
       )
 
       // Open OAuth popup
@@ -60,11 +63,13 @@ export const authService = {
 
   /**
    * Initiate Meta OAuth flow
+   * Uses /api/oauth/meta/auth-url endpoint per API spec
    */
   async loginWithMeta(): Promise<boolean> {
     try {
+      const sessionId = storage.getSessionId()
       const response = await apiGet<{ auth_url: string }>(
-        '/api/auth/meta/initiate'
+        `/api/oauth/meta/auth-url?session_id=${sessionId}`
       )
 
       // Open OAuth popup
@@ -95,13 +100,14 @@ export const authService = {
 
   /**
    * Logout and clear session
+   * Uses /api/oauth/google/logout endpoint per API spec
    */
   async logout(): Promise<void> {
     const sessionId = storage.getSessionId()
     if (!sessionId) return
 
     try {
-      await apiPost('/api/auth/logout', { session_id: sessionId })
+      await apiPost('/api/oauth/google/logout', { session_id: sessionId })
     } catch (error) {
       console.error('Logout API call failed:', error)
     } finally {
