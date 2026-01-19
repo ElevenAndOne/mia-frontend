@@ -27,13 +27,73 @@ interface IntegrationStatusResult {
   invalidate: () => void
 }
 
-async function fetchIntegrationStatus(sessionId: string, selectedAccountId?: string | number): Promise<{
+async function fetchIntegrationStatus(
+  sessionId: string,
+  selectedAccountId?: string | number,
+  tenantId?: string
+): Promise<{
   platformStatus: PlatformStatus
   currentAccountData: any
   ga4Properties: any[]
   linkedGA4Properties: any[]
 }> {
+  // TENANT WORKSPACE FIX (Jan 2025):
+  // If tenant_id is provided, fetch tenant-level integration status instead of account-level
+  // This allows viewers to see workspace integrations without needing personal credentials
+  if (tenantId) {
+    const tenantResponse = await apiFetch(`/api/tenants/${tenantId}/integrations`, {
+      headers: { 'X-Session-ID': sessionId }
+    })
+
+    if (tenantResponse.ok) {
+      const tenantData = await tenantResponse.json()
+      const now = new Date().toISOString()
+
+      // Map tenant platform_status to our PlatformStatus format
+      const platformStatus: PlatformStatus = {
+        google: {
+          connected: tenantData.platform_status?.google_ads || false,
+          linked: tenantData.platform_status?.google_ads || false,
+          last_synced: now
+        },
+        ga4: {
+          connected: tenantData.platform_status?.ga4 || false,
+          linked: tenantData.platform_status?.ga4 || false,
+          last_synced: now
+        },
+        meta: {
+          connected: tenantData.platform_status?.meta_ads || false,
+          linked: tenantData.platform_status?.meta_ads || false,
+          last_synced: now
+        },
+        facebook_organic: {
+          connected: tenantData.platform_status?.facebook_organic || false,
+          linked: tenantData.platform_status?.facebook_organic || false,
+          last_synced: now
+        },
+        brevo: {
+          connected: tenantData.platform_status?.brevo || false,
+          linked: tenantData.platform_status?.brevo || false,
+          last_synced: now
+        },
+        hubspot: {
+          connected: tenantData.platform_status?.hubspot || false,
+          linked: tenantData.platform_status?.hubspot || false,
+          last_synced: now
+        },
+        mailchimp: {
+          connected: tenantData.platform_status?.mailchimp || false,
+          linked: tenantData.platform_status?.mailchimp || false,
+          last_synced: now
+        }
+      }
+
+      return { platformStatus, currentAccountData: null, ga4Properties: [], linkedGA4Properties: [] }
+    }
+  }
+
   // ACCOUNT ISOLATION FIX (Dec 5, 2025):
+  // Fallback to account-level status if no tenant_id (legacy behavior)
   // We only need to fetch account data - platform "connected" status is based on account-level IDs
   // Removed redundant user-level credential checks (hubspot/mailchimp/brevo/meta/google status endpoints)
   const accountsResponse = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
@@ -99,15 +159,16 @@ async function fetchIntegrationStatus(sessionId: string, selectedAccountId?: str
 
 export function useIntegrationStatus(
   sessionId: string | null,
-  selectedAccountId?: string | number
+  selectedAccountId?: string | number,
+  tenantId?: string
 ): IntegrationStatusResult {
   const queryClient = useQueryClient()
 
-  const queryKey = ['integration-status', sessionId, selectedAccountId]
+  const queryKey = ['integration-status', sessionId, selectedAccountId, tenantId]
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey,
-    queryFn: () => fetchIntegrationStatus(sessionId!, selectedAccountId),
+    queryFn: () => fetchIntegrationStatus(sessionId!, selectedAccountId, tenantId),
     enabled: !!sessionId,
     // Keep data fresh for 2 minutes (integration status doesn't change often)
     staleTime: 2 * 60 * 1000,

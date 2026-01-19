@@ -233,7 +233,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
       case 'analyst':
         return <span className="text-green-500" title="Analyst">&#128200;</span>
       default:
-        return <span className="text-gray-400" title="Viewer">&#128065;</span>
+        return <span className="text-amber-500" title="Viewer">&#128065;</span>
     }
   }
 
@@ -242,7 +242,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
       case 'owner': return 'bg-yellow-100 text-yellow-800'
       case 'admin': return 'bg-blue-100 text-blue-800'
       case 'analyst': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      default: return 'bg-amber-100 text-amber-800'
     }
   }
 

@@ -65,6 +65,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts, activeWorkspace } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
+  // Jan 2025: Pass tenant_id to fetch workspace-level integration status
   const {
     platformStatus,
     currentAccountData,
@@ -73,7 +74,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     isLoading: loading,
     isRefetching,
     invalidate: invalidateIntegrationStatus
-  } = useIntegrationStatus(sessionId, selectedAccount?.id)
+  } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
