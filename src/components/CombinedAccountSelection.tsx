@@ -35,7 +35,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     sessionId
   } = useSession()
 
-  const [isSelecting, setIsSelecting] = useState(false)
+  const [selectingAccountId, setSelectingAccountId] = useState<string | null>(null)
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
@@ -143,8 +143,8 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
   }
 
   const handleAccountSelect = async (account: AccountMapping) => {
-    if (isSelecting) return
-    setIsSelecting(true)
+    if (selectingAccountId) return
+    setSelectingAccountId(account.id)
     clearError()
 
     try {
@@ -153,7 +153,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     } catch (err) {
       console.error('[ACCOUNT-SELECTION] Error selecting account:', err)
     } finally {
-      setIsSelecting(false)
+      setSelectingAccountId(null)
     }
   }
 
@@ -385,55 +385,58 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                     // For non-MCC users, show all accounts
                     return true
                   })
-                  .map((account) => (
-                    <button
-                      key={account.id}
-                      onClick={() => handleAccountSelect(account)}
-                      disabled={isSelecting}
-                      className={`
-                        w-full p-4 rounded-xl border-2 transition-all text-left
-                        ${isSelecting
-                          ? 'opacity-60 cursor-not-allowed border-gray-200'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                            style={{ backgroundColor: account.color || '#E5E7EB' }}
-                          >
-                            {getAccountIcon(account.business_type)}
+                  .map((account) => {
+                    const isThisAccountSelecting = selectingAccountId === account.id
+                    return (
+                      <button
+                        key={account.id}
+                        onClick={() => handleAccountSelect(account)}
+                        disabled={!!selectingAccountId}
+                        className={`
+                          w-full p-4 rounded-xl border-2 transition-all text-left
+                          ${selectingAccountId && !isThisAccountSelecting
+                            ? 'opacity-60 cursor-not-allowed border-gray-200'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                              style={{ backgroundColor: account.color || '#E5E7EB' }}
+                            >
+                              {getAccountIcon(account.business_type)}
+                            </div>
+
+                            <div className="min-w-0">
+                              <h3 className="font-medium text-gray-900 truncate">
+                                {account.name}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                {account.google_ads_id ? `Ads: ${account.google_ads_id}` :
+                                 account.meta_ads_id ? `Meta: ${account.meta_ads_id}` :
+                                 'Account'}
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate">
-                              {account.name}
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              {account.google_ads_id ? `Ads: ${account.google_ads_id}` :
-                               account.meta_ads_id ? `Meta: ${account.meta_ads_id}` :
-                               'Account'}
-                            </p>
-                          </div>
+                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </div>
 
-                        <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-
-                      {isSelecting && (
-                        <div className="mt-3 flex items-center justify-center">
-                          <div className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                            <span className="text-sm text-gray-600">Connecting...</span>
+                        {isThisAccountSelecting && (
+                          <div className="mt-3 flex items-center justify-center">
+                            <div className="flex items-center space-x-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                              <span className="text-sm text-gray-600">Connecting...</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                        )}
+                      </button>
+                    )
+                  })}
               </div>
             )}
           </motion.div>
