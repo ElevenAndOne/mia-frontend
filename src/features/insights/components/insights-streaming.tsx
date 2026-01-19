@@ -62,11 +62,9 @@ const insightConfigs: Record<InsightType, InsightConfig> = {
 // Markdown text renderer with deep link support
 const MarkdownText = ({
   text,
-  googleAdsId,
   metaAdsId,
 }: {
   text: string
-  googleAdsId?: string
   metaAdsId?: string
 }) => {
   const convertDeepLink = (linkUrl: string): string => {
@@ -186,6 +184,7 @@ export const InsightsStreaming = ({
       startStreaming(type, sessionId, selectedDateRange, platforms)
     }
     return () => stopStreaming()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateRange, sessionId, type])
 
   const handleRetry = () => {
@@ -210,7 +209,7 @@ export const InsightsStreaming = ({
         {(insight.insight || (isCurrentCard && currentSection === 'insight')) && (
           <div className="pl-10">
             <p className="text-sm text-gray-800 leading-relaxed font-medium">
-              <MarkdownText text={insight.insight} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
+              <MarkdownText text={insight.insight} metaAdsId={selectedAccount?.meta_ads_id} />
             </p>
           </div>
         )}
@@ -218,7 +217,7 @@ export const InsightsStreaming = ({
         {(insight.interpretation || (isCurrentCard && currentSection === 'interpretation')) && (
           <div className="pl-10">
             <p className="text-sm text-gray-700 leading-relaxed italic">
-              <MarkdownText text={insight.interpretation} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
+              <MarkdownText text={insight.interpretation} metaAdsId={selectedAccount?.meta_ads_id} />
             </p>
           </div>
         )}
@@ -227,7 +226,7 @@ export const InsightsStreaming = ({
           <div className={cn('pl-10 p-3 rounded-sm border-l-4', config.bgColor, config.borderColor)}>
             <p className="text-sm text-gray-900 leading-relaxed font-medium" style={{ whiteSpace: 'pre-line' }}>
               <span className={cn('font-bold', config.textColor)}>Action:</span>{' '}
-              <MarkdownText text={insight.action} googleAdsId={selectedAccount?.google_ads_id} metaAdsId={selectedAccount?.meta_ads_id} />
+              <MarkdownText text={insight.action} metaAdsId={selectedAccount?.meta_ads_id} />
             </p>
           </div>
         )}

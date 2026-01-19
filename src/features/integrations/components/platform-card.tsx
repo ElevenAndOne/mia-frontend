@@ -44,7 +44,7 @@ const PlatformCard = ({
   connectingId
 }: PlatformCardProps) => {
   const { id, name, description, icon } = platform
-  const { connected, dataPoints, lastSync, autoSync } = status
+  const { connected, dataPoints, lastSync } = status
 
   const isConnecting = connectingId === id
 

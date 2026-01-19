@@ -13,7 +13,6 @@ const InsightsNavigation = ({
   onGrowClick,
   onOptimizeClick,
   onProtectClick,
-  onSummaryClick,
   onChatClick,
   selectedPlatforms
 }: InsightsNavigationProps) => {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import FigmaLoginModal from '../components/ui/figma-login-modal'
 
 interface VideoIntroViewProps {
@@ -13,13 +13,9 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   const [showLoginModal, setShowLoginModal] = useState(hasSeenIntro)  // ✅ Show immediately if returning user
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
-  const [videoLoaded, setVideoLoaded] = useState(false)
   const [videoPlaying, setVideoPlaying] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const modalTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   // ✅ CRITICAL: Auto-show login modal for returning users (signed out / session expired)
   useEffect(() => {
@@ -27,6 +23,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
       console.log('[VIDEO-INTRO] Returning user detected - showing login modal immediately')
       setShowLoginModal(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSeenIntro])
 
   useEffect(() => {
@@ -78,7 +75,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
     }
 
     const handleLoadedMetadata = () => {
-      setVideoLoaded(true)
+      // Video metadata loaded
     }
 
     const handleCanPlayThrough = () => {
@@ -117,6 +114,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
         clearTimeout(modalTimerRef.current)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Remove videoPhase dependency to prevent effect re-running
 
   // Handle tap to play for iOS
@@ -140,7 +138,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
         muted
         autoPlay
         playsInline
-        // @ts-ignore - webkit prefix for iOS
+        // @ts-expect-error - webkit prefix for iOS
         webkit-playsinline="true"
         preload="auto"
         style={{ willChange: 'transform' }}

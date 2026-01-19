@@ -101,7 +101,7 @@ function triggerHaptic(type: 'success' | 'milestone' | 'complete') {
         navigator.vibrate([50])
         break
     }
-  } catch (err) {
+  } catch {
     // Haptic not supported or blocked
     console.log('[HAPTIC] Vibration not available')
   }

@@ -96,6 +96,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
       console.log('[MainView] Refreshing accounts to get latest platform connections...')
       refreshAccounts()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only on mount
 
   const getAccountIcon = useCallback((businessType: string) => {

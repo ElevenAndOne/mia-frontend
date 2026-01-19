@@ -55,6 +55,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
 
   useEffect(() => {
     fetchSummary()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDateRange])
 
   const fetchSummary = async () => {

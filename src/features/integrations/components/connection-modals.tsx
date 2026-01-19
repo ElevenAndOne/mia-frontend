@@ -34,10 +34,10 @@ export interface ConnectionModalsProps {
     setShowGA4PropertySelector: (show: boolean) => void
   }
   onSuccess: () => void
-  currentAccountData?: any
+  currentAccountData?: { id: string; name: string; google_ads_id?: string; ga4_property_id?: string }
   selectedAccount?: { id: string; name: string }
-  ga4Properties?: any[]
-  linkedGA4Properties?: any[]
+  ga4Properties?: { id: string; name: string; property_id: string }[]
+  linkedGA4Properties?: { id: string; name: string; property_id: string }[]
 }
 
 /**

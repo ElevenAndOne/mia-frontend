@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { AccountMapping } from '../types'
 import { apiFetch } from '../utils/api'
 import { useAuth } from './auth-context'
@@ -24,14 +24,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [availableAccounts, setAvailableAccounts] = useState<AccountMapping[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Fetch accounts when authenticated and workspace is selected
-  useEffect(() => {
-    if (isAuthenticated && sessionId && activeWorkspace) {
-      refreshAccounts()
-    }
-  }, [isAuthenticated, sessionId, activeWorkspace])
-
-  const refreshAccounts = async (): Promise<void> => {
+  const refreshAccounts = useCallback(async (): Promise<void> => {
     if (!sessionId || !activeWorkspace) return
 
     setIsLoading(true)
@@ -58,7 +51,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [sessionId, activeWorkspace, selectedAccount])
+
+  // Fetch accounts when authenticated and workspace is selected
+  useEffect(() => {
+    if (isAuthenticated && sessionId && activeWorkspace) {
+      refreshAccounts()
+    }
+  }, [isAuthenticated, sessionId, activeWorkspace, refreshAccounts])
 
   const selectAccount = async (accountId: string): Promise<boolean> => {
     const account = availableAccounts.find(a => a.id === accountId)
@@ -84,6 +84,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAccount() {
   const context = useContext(AccountContext)
   if (!context) {

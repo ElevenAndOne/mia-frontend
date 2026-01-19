@@ -31,7 +31,7 @@ const LazySpinner = () => (
 
 function App() {
   const { logout, loginMeta, refreshAccounts, refreshWorkspaces, switchWorkspace } = useSession()
-  const { selectedAccount, hasSeenIntro, isAuthenticated, isMetaAuthenticated, activeWorkspace } = useSession()
+  const { selectedAccount, hasSeenIntro, isAuthenticated, isMetaAuthenticated } = useSession()
   const { goToMain, goToAccountSetup, goToMetaAccountSetup, goToOnboarding, goToIntegrations, goToInsights, goToHome } = useAppNavigation()
   const {
     oauthLoadingPlatform,
@@ -197,7 +197,7 @@ function App() {
         isOpen={showCreateWorkspaceModal}
         required={true}
         onClose={() => {}}
-        onSuccess={(tenantId) => {
+        onSuccess={() => {
           setShowCreateWorkspaceModal(false)
           goToOnboarding()
         }}

@@ -18,46 +18,8 @@ interface Integration {
   autoSync?: boolean
 }
 
-interface PlatformStatus {
-  google: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  meta: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  facebook_organic: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  brevo: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  hubspot: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  mailchimp: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-  ga4: {
-    connected: boolean
-    linked: boolean
-    last_synced?: string
-  }
-}
-
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts, activeWorkspace } = useSession()
+  const { sessionId, selectedAccount, refreshAccounts, activeWorkspace } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
   const {
@@ -66,7 +28,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     ga4Properties,
     linkedGA4Properties,
     isLoading: loading,
-    isRefetching,
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id)
 
@@ -106,7 +67,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
       const diffDays = Math.floor(diffHours / 24)
       return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-    } catch (e) {
+    } catch {
       return 'Just now'
     }
   }, [])

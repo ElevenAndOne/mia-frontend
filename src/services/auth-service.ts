@@ -15,7 +15,7 @@ export const authService = {
         `/api/session/validate?session_id=${sessionId}`
       )
       return response
-    } catch (error) {
+    } catch {
       // Session invalid, clear it
       storage.clearSessionId()
       return null

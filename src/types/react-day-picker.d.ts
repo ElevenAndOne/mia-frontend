@@ -4,7 +4,7 @@
  */
 
 declare module 'react-day-picker' {
-  import type { ComponentProps, ReactElement } from 'react'
+  import type { ReactElement } from 'react'
 
   export interface DateRange {
     from: Date | undefined

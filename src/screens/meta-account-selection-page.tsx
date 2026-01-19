@@ -10,12 +10,10 @@ interface MetaAccountSelectionPageProps {
 const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSelectionPageProps) => {
   const {
     availableAccounts,
-    selectedAccount,
     selectAccount,
     isLoading,
     error,
     clearError,
-    sessionId,
     metaUser,
     refreshAccounts
   } = useSession()
@@ -38,6 +36,7 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
     if (hasFetchedRef.current) return
     hasFetchedRef.current = true
     fetchAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // NOTE: Auto-select removed for Meta-first flow
@@ -50,6 +49,7 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
       console.log('[META-ACCOUNT-SELECTION] Accounts loaded:', availableAccounts.length, 'total,', metaAccounts.length, 'Meta accounts')
       setIsFetchingAccounts(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableAccounts])
 
   const fetchAccounts = async () => {

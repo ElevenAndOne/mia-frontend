@@ -37,7 +37,7 @@ export default defineConfig({
         '/api': {
           target: 'http://localhost:8000',
           changeOrigin: true,
-          configure: (_proxy, _options) => {
+          configure: () => {
             // Updated to match unified backend port (8000)
           }
         },

@@ -49,6 +49,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     if (hasFetchedRef.current) return
     hasFetchedRef.current = true
     fetchMCCAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Auto-select MCC if there's only one
@@ -56,6 +57,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     if (mccAccounts.length === 1 && !selectedMCC) {
       handleMCCSelect(mccAccounts[0].customer_id)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mccAccounts])
 
   // Auto-select and proceed if there's only one user-based account (no Google Ads)
@@ -69,6 +71,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
         })
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMCCs, mccAccounts, availableAccounts])
 
   // Load available accounts after MCC is selected
@@ -76,6 +79,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     if (selectedMCC && availableAccounts.length === 0) {
       refreshAccounts()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMCC])
 
   // Show Step 2 with small delay for smooth animation

@@ -58,7 +58,7 @@ export const logoutMeta = async (sessionId?: string): Promise<void> => {
       }
     })
 
-    const result = await response.json()
+    await response.json()
 
   } catch (error) {
     console.error('[LOGOUT-META] Error during Meta logout:', error)

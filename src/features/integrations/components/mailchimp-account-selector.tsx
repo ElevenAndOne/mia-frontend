@@ -38,7 +38,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
         const data = await response.json()
 
         if (data.success && data.accounts) {
-          return data.accounts.map((acc: any) => ({
+          return data.accounts.map((acc: { id: string; mailchimp_account_name: string; mailchimp_account_id: string; is_primary?: boolean }) => ({
             id: acc.id,
             label: acc.mailchimp_account_name,
             description: `ID: ${acc.mailchimp_account_id}`,

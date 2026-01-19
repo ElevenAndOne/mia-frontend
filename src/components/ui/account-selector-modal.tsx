@@ -66,7 +66,7 @@ export function AccountSelectorModal<T extends SelectableItem>({
     if (isOpen) {
       loadAccounts()
     }
-  }, [isOpen])
+  }, [isOpen, loadAccounts])
 
   const loadAccounts = useCallback(async () => {
     setIsLoading(true)

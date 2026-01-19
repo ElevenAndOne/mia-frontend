@@ -5,11 +5,11 @@
  * Handles Bronze card display, streaming insights, and platform connection prompts.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { BronzeFact } from '../../../contexts/onboarding-context'
 
 interface UseOnboardingFlowProps {
-  selectedAccount: any
+  selectedAccount: { id: string; name: string } | null
   streamComplete: boolean
   streamedText: string
   isStreamingInsight: boolean
@@ -19,8 +19,8 @@ interface UseOnboardingFlowProps {
   loadOnboardingStatus: () => Promise<string | null>
   advanceStep: () => Promise<void>
   resetStreaming: () => void
-  queueMessages: (messages: any[]) => void
-  addImmediateMessage: (message: any) => void
+  queueMessages: (messages: { type: string; content?: string; bronzeFact?: BronzeFact; choices?: { label: string; action: string; variant?: string }[]; explainerType?: string }[]) => void
+  addImmediateMessage: (message: { type: string; content?: string }) => void
   setIsStreamingInsight: (value: boolean) => void
   setIsStreamingCombined: (value: boolean) => void
   setInitialBronzeFact: (fact: BronzeFact | null) => void
@@ -122,6 +122,7 @@ export const useOnboardingFlow = ({
       hasInitialized.current = true
       initializeChat()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount])
 
   // Handle streaming completion
@@ -177,6 +178,7 @@ export const useOnboardingFlow = ({
       }
       handleStreamComplete()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streamComplete, isStreamingInsight, isStreamingCombined])
 
   return {

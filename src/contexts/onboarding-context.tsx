@@ -14,6 +14,7 @@ import { apiFetch } from '../utils/api'
 import { useSession } from './session-context-shim'
 
 // Onboarding steps
+// eslint-disable-next-line react-refresh/only-export-components
 export const ONBOARDING_STEPS = {
   NOT_STARTED: 0,
   FIRST_PLATFORM_CONNECTED: 1,
@@ -78,7 +79,7 @@ export interface OnboardingActions {
   skipOnboarding: () => Promise<void>
 
   // Available platforms
-  getAvailablePlatforms: () => Promise<any[]>
+  getAvailablePlatforms: () => Promise<{ id: string; name: string; connected: boolean }[]>
 
   // Clear state
   reset: () => void
@@ -88,6 +89,7 @@ type OnboardingContextType = OnboardingState & OnboardingActions
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useOnboarding = () => {
   const context = useContext(OnboardingContext)
   if (context === undefined) {
@@ -129,6 +131,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     if (sessionId && selectedAccount) {
       loadOnboardingStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selectedAccount?.id])
 
   const loadOnboardingStatus = useCallback(async (forceRefresh = false): Promise<string | null> => {
@@ -196,6 +199,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       isLoadingRef.current = false
     }
     return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
   const advanceStep = useCallback(async () => {
@@ -415,7 +419,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
   }, [sessionId])
 
-  const getAvailablePlatforms = useCallback(async (): Promise<any[]> => {
+  const getAvailablePlatforms = useCallback(async (): Promise<{ id: string; name: string; connected: boolean }[]> => {
     if (!sessionId) return []
 
     try {

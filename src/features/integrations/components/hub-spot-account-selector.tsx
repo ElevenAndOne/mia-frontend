@@ -38,7 +38,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
         const data = await response.json()
 
         if (data.success && data.accounts) {
-          return data.accounts.map((acc: any) => ({
+          return data.accounts.map((acc: { id: string; account_name: string; portal_id: string; is_primary?: boolean }) => ({
             id: acc.id,
             label: acc.account_name,
             description: `Portal ID: ${acc.portal_id}`,

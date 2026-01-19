@@ -86,6 +86,7 @@ export function usePlatformPreferences({
     }
 
     loadPreferences()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selectedAccountId]) // Reload when session or account changes
 
   // Detect newly connected platforms and auto-enable them

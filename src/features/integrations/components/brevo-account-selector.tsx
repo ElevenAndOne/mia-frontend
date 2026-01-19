@@ -38,7 +38,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
         const data = await response.json()
 
         if (data.success && data.accounts) {
-          return data.accounts.map((acc: any) => ({
+          return data.accounts.map((acc: { id: string; account_name: string; created_at: string; is_primary?: boolean }) => ({
             id: acc.id,
             label: acc.account_name,
             description: `Added ${new Date(acc.created_at).toLocaleDateString()}`,

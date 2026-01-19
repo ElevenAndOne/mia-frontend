@@ -15,23 +15,15 @@ interface MCCAccount {
   manager: boolean
 }
 
-interface GoogleAdsAccount {
-  customer_id: string
-  descriptive_name: string
-  manager: boolean
-}
-
 const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPageProps) => {
   const {
     availableAccounts,
-    selectedAccount,
     selectAccount,
     isLoading,
     error,
     clearError,
     user,
     refreshAccounts,
-    sessionId
   } = useSession()
 
   const [selectingAccountId, setSelectingAccountId] = useState<string | null>(null)
@@ -47,6 +39,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     if (hasFetchedRef.current) return
     hasFetchedRef.current = true
     fetchMCCAccounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Auto-select MCC if there's only one
@@ -54,6 +47,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     if (mccAccounts.length === 1 && !selectedMCC) {
       handleMCCSelect(mccAccounts[0].customer_id)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mccAccounts])
 
   // Auto-select and proceed if there's only one user-based account (no Google Ads)
@@ -71,6 +65,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
         })
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMCCs, mccAccounts, availableAccounts])
 
   // Load available accounts after MCC is selected
@@ -78,6 +73,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
     if (selectedMCC && availableAccounts.length === 0) {
       refreshAccounts()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMCC])
 
   const fetchMCCAccounts = async () => {

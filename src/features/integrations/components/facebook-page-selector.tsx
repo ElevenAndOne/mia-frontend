@@ -55,9 +55,10 @@ const FacebookPageSelector = ({
         const data = await response.json()
 
         if (data.success && data.facebook_pages) {
-          const pages = data.facebook_pages
-            .sort((a: any, b: any) => a.name.localeCompare(b.name))
-            .map((page: any) => ({
+          type RawPage = { id: string; name: string; category: string; fan_count: number; access_token: string }
+          const pages = (data.facebook_pages as RawPage[])
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((page) => ({
               id: page.id,
               label: page.name,
               description: `${page.category}${page.fan_count > 0 ? ` • ${page.fan_count.toLocaleString()} followers` : ''}`,
@@ -78,9 +79,10 @@ const FacebookPageSelector = ({
         const data = await response.json()
 
         if (data.success && data.facebook_pages) {
-          const pages = data.facebook_pages
-            .sort((a: any, b: any) => a.name.localeCompare(b.name))
-            .map((page: any) => ({
+          type RawPage = { id: string; name: string; category: string; fan_count: number; access_token: string }
+          const pages = (data.facebook_pages as RawPage[])
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((page) => ({
               id: page.id,
               label: page.name,
               description: `${page.category}${page.fan_count > 0 ? ` • ${page.fan_count.toLocaleString()} followers` : ''}`,

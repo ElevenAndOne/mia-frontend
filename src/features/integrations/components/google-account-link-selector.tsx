@@ -36,6 +36,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
     if (isOpen) {
       fetchGoogleAccounts()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const fetchGoogleAccounts = async () => {
@@ -68,7 +69,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
                 break
               }
             }
-          } catch (e) {
+          } catch {
             console.log('[GoogleAccountLinkSelector] Status check attempt', i + 1, 'failed')
           }
         }

@@ -54,7 +54,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onChoiceS
 
     if (fact.metric_value) {
       // Try to split headline around the number
-      const numberStr = fact.metric_value.toLocaleString()
       const parts = fact.headline.split(/[\d,]+/)
       if (parts.length >= 2) {
         headlineText = parts[0].trim()
@@ -70,7 +69,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onChoiceS
     let secondaryMetric: { value: string; label: string } | undefined
     if (fact.detail) {
       // Check for patterns like "With 7577 conversions" or "5.33% click through rate"
-      const detailMatch = fact.detail.match(/(?:With\s+)?([\d,\.%]+)\s+(.+)/i)
+      const detailMatch = fact.detail.match(/(?:With\s+)?([\d,.%]+)\s+(.+)/i)
       if (detailMatch) {
         secondaryMetric = { value: detailMatch[1], label: detailMatch[2] }
       }

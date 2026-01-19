@@ -12,6 +12,7 @@ export type { AccountMapping, UserProfile, Workspace, MetaAuthState, SessionStat
  *
  * This shim provides the old SessionContext API by combining the new contexts.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSession() {
   const auth = useAuth()
   const workspace = useWorkspace()

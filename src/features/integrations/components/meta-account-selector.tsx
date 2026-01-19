@@ -56,9 +56,10 @@ const MetaAccountSelector = ({
         const data = await response.json()
 
         if (data.success && data.accounts) {
-          return data.accounts
-            .sort((a: any, b: any) => a.name.localeCompare(b.name))
-            .map((acc: any) => ({
+          type RawMetaAccount = { id: string; name: string; currency: string; status: string }
+          return (data.accounts as RawMetaAccount[])
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((acc) => ({
               id: acc.id,
               label: acc.name,
               description: `ID: ${acc.id} • ${acc.currency}`,

@@ -97,6 +97,7 @@ type SessionContextType = SessionState & SessionActions
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSession = () => {
   const context = useContext(SessionContext)
   if (context === undefined) {
@@ -415,7 +416,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   throw new Error(`OAuth complete failed: ${completeResponse.status}`)
                 }
 
-                const completeData = await completeResponse.json()
+                await completeResponse.json()
               } catch (error) {
                 console.error('[SESSION] OAuth complete error:', error)
                 setState(prev => ({
@@ -760,7 +761,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       })
 
       if (response.ok) {
-        const data = await response.json()
+        await response.json()
 
         // Find the full account details
         const account = state.availableAccounts.find(acc => acc.id === accountId)

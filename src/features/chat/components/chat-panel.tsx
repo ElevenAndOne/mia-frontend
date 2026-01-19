@@ -8,7 +8,7 @@ interface ChatPanelProps {
   onClose: () => void
 }
 
-const ChatPanel = ({ selectedPlatforms, dateRange, onClose }: ChatPanelProps) => {
+const ChatPanel = ({ dateRange }: ChatPanelProps) => {
   const { sessionId, selectedAccount, user } = useSession()
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [isChatLoading, setIsChatLoading] = useState(false)

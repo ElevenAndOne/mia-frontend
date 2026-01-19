@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { Workspace } from '../types'
 import { workspaceService } from '../services/workspace-service'
 import { useAuth } from './auth-context'
@@ -23,14 +23,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [availableWorkspaces, setAvailableWorkspaces] = useState<Workspace[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Fetch workspaces when authenticated
-  useEffect(() => {
-    if (isAuthenticated && sessionId) {
-      refreshWorkspaces()
-    }
-  }, [isAuthenticated, sessionId])
-
-  const refreshWorkspaces = async (): Promise<void> => {
+  const refreshWorkspaces = useCallback(async (): Promise<void> => {
     if (!sessionId) return
 
     setIsLoading(true)
@@ -47,7 +40,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [sessionId, activeWorkspace])
+
+  // Fetch workspaces when authenticated
+  useEffect(() => {
+    if (isAuthenticated && sessionId) {
+      refreshWorkspaces()
+    }
+  }, [isAuthenticated, sessionId, refreshWorkspaces])
 
   const createWorkspace = async (name: string): Promise<Workspace | null> => {
     if (!sessionId) return null
@@ -89,6 +89,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useWorkspace() {
   const context = useContext(WorkspaceContext)
   if (!context) {

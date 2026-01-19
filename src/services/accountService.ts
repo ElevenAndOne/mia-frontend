@@ -115,7 +115,7 @@ class AccountService {
   /**
    * Fetch Google Ads accounts using MCP tool
    */
-  private async fetchGoogleAdsAccounts(): Promise<any> {
+  private async fetchGoogleAdsAccounts(): Promise<{ accounts: RawGoogleAdsAccount[] }> {
     
     const response = await apiFetch('/api/mcp/google-ads-accounts', {
       method: 'POST',
@@ -140,7 +140,7 @@ class AccountService {
   /**
    * Fetch GA4 properties using MCP tool
    */
-  private async fetchGA4Properties(): Promise<any> {
+  private async fetchGA4Properties(): Promise<{ properties: RawGA4Property[] }> {
     
     const response = await apiFetch('/api/mcp/ga4-properties', {
       method: 'POST',
@@ -308,7 +308,7 @@ class AccountService {
    */
   private extractDomain(displayName: string): string | null {
     // Match URLs like "https://petspreference.co.za/" or "goodbyeboring.co.za"
-    const urlMatch = displayName.match(/https?:\/\/([^\/\s]+)|([a-zA-Z0-9-]+\.(?:co\.za|com|org|net|co\.uk))/i)
+    const urlMatch = displayName.match(/https?:\/\/([^/\s]+)|([a-zA-Z0-9-]+\.(?:co\.za|com|org|net|co\.uk))/i)
     if (urlMatch) {
       return urlMatch[1] || urlMatch[2]
     }

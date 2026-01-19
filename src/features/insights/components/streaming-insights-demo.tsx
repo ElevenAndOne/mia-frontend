@@ -47,6 +47,7 @@ const StreamingInsightsDemo = ({
     return () => {
       stopStreaming()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, insightType, dateRange, platforms])
 
   // Handle retry

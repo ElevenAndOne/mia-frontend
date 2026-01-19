@@ -66,7 +66,7 @@ export const useWorkspaceInvites = () => {
     try {
       setError(null)
 
-      const body: any = { role: params.role }
+      const body: { role: string; email?: string } = { role: params.role }
       if (params.email?.trim()) {
         body.email = params.email.trim()
       }

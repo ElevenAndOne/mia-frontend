@@ -11,8 +11,8 @@
  * - Casual tone with emojis
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useSession } from '../contexts/session-context-shim'
 import { useOnboarding, BronzeFact } from '../contexts/onboarding-context'
 import { useOnboardingStreaming } from '../features/onboarding/hooks/use-onboarding-streaming'
@@ -34,14 +34,11 @@ interface OnboardingChatV2Props {
 // =============================================================================
 const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   onComplete,
-  onSkip,
   onConnectPlatform,
 }) => {
   const { selectedAccount, sessionId, login, loginMeta, refreshAccounts } = useSession()
   const {
-    step,
     platformsConnected,
-    platformCount,
     fetchBronzeHighlight,
     fetchBronzeFollowup,
     advanceStep,
@@ -55,7 +52,6 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     streamedText,
     isStreaming,
     isComplete: streamComplete,
-    error: streamError,
     startStreaming,
     reset: resetStreaming
   } = useOnboardingStreaming()
@@ -83,7 +79,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   // Streaming state
   const [isStreamingInsight, setIsStreamingInsight] = useState(false)
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
-  const [selectedInsightType, setSelectedInsightType] = useState<'grow' | 'optimise' | 'protect'>('grow')
+  const [, setSelectedInsightType] = useState<'grow' | 'optimise' | 'protect'>('grow')
   const [initialBronzeFact, setInitialBronzeFact] = useState<BronzeFact | null>(null)
 
   // Refs
