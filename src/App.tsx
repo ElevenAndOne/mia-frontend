@@ -53,6 +53,9 @@ function App() {
   // Invite page state (for /invite/{invite_id} URLs)
   const [inviteId, setInviteId] = useState<string | null>(null)
 
+  // Track if user just accepted an invite (to skip onboarding)
+  const [justAcceptedInvite, setJustAcceptedInvite] = useState(false)
+
   // Track if user is in Meta-first flow (authenticated via Meta, not Google)
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
 
@@ -187,8 +190,13 @@ function App() {
         console.log('[APP] No workspace found - showing create workspace modal')
         setShowCreateWorkspaceModal(true)
         // Don't advance to onboarding-chat yet - wait for workspace creation
+      } else if (justAcceptedInvite) {
+        // User just joined via invite - skip onboarding and go directly to main
+        console.log('[APP] Invite accepted - skipping onboarding, going to main')
+        setJustAcceptedInvite(false)
+        setAppState('main')
       } else {
-        // Workspace exists - proceed to onboarding
+        // Workspace exists - proceed to onboarding (new user creating first workspace)
         console.log('[APP] Workspace exists - proceeding to onboarding-chat')
         setAppState('onboarding-chat')
       }
@@ -491,6 +499,8 @@ function App() {
                   // Clear invite URL from browser
                   window.history.replaceState({}, '', '/')
                   setInviteId(null)
+                  // Mark that user just accepted an invite (to skip onboarding)
+                  setJustAcceptedInvite(true)
                   // Refresh workspaces to include the new one
                   await refreshWorkspaces()
                   // Switch to the new workspace
