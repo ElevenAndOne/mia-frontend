@@ -41,12 +41,14 @@ async function fetchIntegrationStatus(
   // If tenant_id is provided, fetch tenant-level integration status instead of account-level
   // This allows viewers to see workspace integrations without needing personal credentials
   if (tenantId) {
+    console.log('[INTEGRATION-STATUS] Fetching tenant-level status for tenant:', tenantId)
     const tenantResponse = await apiFetch(`/api/tenants/${tenantId}/integrations`, {
       headers: { 'X-Session-ID': sessionId }
     })
 
     if (tenantResponse.ok) {
       const tenantData = await tenantResponse.json()
+      console.log('[INTEGRATION-STATUS] Tenant integration data:', tenantData)
       const now = new Date().toISOString()
 
       // Map tenant platform_status to our PlatformStatus format
@@ -89,11 +91,14 @@ async function fetchIntegrationStatus(
       }
 
       return { platformStatus, currentAccountData: null, ga4Properties: [], linkedGA4Properties: [] }
+    } else {
+      console.error('[INTEGRATION-STATUS] Tenant endpoint failed:', tenantResponse.status, tenantResponse.statusText)
     }
   }
 
   // ACCOUNT ISOLATION FIX (Dec 5, 2025):
   // Fallback to account-level status if no tenant_id (legacy behavior)
+  console.log('[INTEGRATION-STATUS] Using account-level status (tenant_id:', tenantId, ')')
   // We only need to fetch account data - platform "connected" status is based on account-level IDs
   // Removed redundant user-level credential checks (hubspot/mailchimp/brevo/meta/google status endpoints)
   const accountsResponse = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
