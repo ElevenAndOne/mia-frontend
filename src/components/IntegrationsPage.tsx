@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../contexts/SessionContext'
 import { apiFetch } from '../utils/api'
-import { toast } from 'react-toastify'
 import { useIntegrationStatus } from '../hooks/useIntegrationStatus'
 import MetaAccountSelector from './MetaAccountSelector'
 import FacebookPageSelector from './FacebookPageSelector'
@@ -312,7 +311,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const handleConnect = async (integrationId: string) => {
     // Jan 2025: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
-      toast.error('Only workspace owners and admins can manage integrations')
+      alert('Only workspace owners and admins can manage integrations')
       return
     }
 
