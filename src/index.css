@@ -1,7 +1,49 @@
 @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Figtree:wght@300;400;500;600;700&display=swap');
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import 'tailwindcss';
+
+/* Tailwind v4 Theme Configuration */
+@theme {
+  /* Custom colors - mia brand */
+  --color-mia-red: #D00603;
+  --color-mia-pink: #F189CB;
+  --color-mia-green: #82EBA1;
+  --color-mia-yellow: #C9F84A;
+  --color-mia-cyan: #3CDDF9;
+  --color-mia-purple: #9A3698;
+  --color-mia-deep-purple: #2A3698;
+
+  /* Custom colors - neutral */
+  --color-neutral-black: #000000;
+  --color-neutral-white: #FFFFFF;
+  --color-neutral-grey: #E8E8E8;
+  --color-neutral-dark-grey: #666666;
+  --color-neutral-light-grey: #F5F5F5;
+
+  /* Custom fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+
+  /* Custom animations */
+  --animate-gradient: gradient 8s ease infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 3s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Custom keyframes */
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1.3); }
+  50% { opacity: 0.8; transform: scale(1.6); }
+}
 
 /* iPhone 16 Pro Optimized CSS Variables */
 :root {
@@ -10,17 +52,17 @@
   --flow-purple: #9D81F2;
   --flow-yellow: #FFD700; /* More golden yellow, less greenish */
   --flow-white: #FFFFFF;
-  
+
   /* Context Colors */
   --context-blue: #A7D3FF;
   --context-orange: #FFC5B0;
   --context-purple: #CCC2FF;
   --context-mint: #A2FAE0;
-  
+
   /* Mia Circle Gradient */
   --mia-inner: #FFFFFF;
   --mia-outer: #C9F84A;
-  
+
   /* iPhone 16 Pro Safe Areas */
   --safe-top: 59px;
   --safe-bottom: 34px;
@@ -29,10 +71,12 @@
 }
 
 /* Reset & iPhone 16 Pro Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 html, body {
@@ -70,15 +114,15 @@ html, body {
   overflow: visible; /* Allow dropdowns to show outside container */
   /* Center on all screens */
   margin: 0 auto;
-  
+
   /* Target styling from Figma */
   border-radius: 55px;
   background: #FFF;
-  
+
   /* Center vertically on larger screens */
   top: 50%;
   transform: translateY(-50%);
-  
+
   /* Add subtle shadow for depth */
   box-shadow: 0px 10px 50px rgba(0, 0, 0, 0.1);
 }
@@ -174,7 +218,7 @@ html, body {
     -ms-user-select: text;
     user-select: text;
   }
-  
+
   /* Enable text selection for chat content, responses, and analysis */
   .chat-message,
   .response-text,

@@ -5,7 +5,7 @@ import React from 'react'
 // Mock framer-motion to avoid animation issues in tests
 vi.mock('framer-motion', () => ({
   motion: {
-    div: (props: any) => {
+    div: (props: React.PropsWithChildren<Record<string, unknown>>) => {
       const { children, ...rest } = props
       return React.createElement('div', rest, children)
     },
