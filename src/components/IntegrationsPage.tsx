@@ -310,9 +310,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleConnect = async (integrationId: string) => {
-    // Jan 2025: Role-based access control - only owners and admins can manage integrations
+    // PHASE 2: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
       alert('Only workspace owners and admins can manage integrations')
+      return
+    }
+
+    // PHASE 2: Require workspace context for OAuth
+    if (!activeWorkspace?.tenant_id) {
+      alert('Please select a workspace first')
+      return
+    }
+
+    // PHASE 2: Require session
+    if (!sessionId) {
+      alert('Session expired. Please log in again.')
       return
     }
 
@@ -355,39 +367,68 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setConnectingId(integrationId)
 
     try {
-      console.log(`Connecting to ${integrationId} with sessionId:`, sessionId)
+      console.log(`[PHASE2] Connecting to ${integrationId}`)
+      console.log(`[PHASE2] Session: ${sessionId}`)
+      console.log(`[PHASE2] Tenant: ${activeWorkspace.tenant_id}`)
 
       let authUrl: string | null = null
 
-      // Get auth URL based on platform
-      // Jan 2025: Include tenant_id for workspace-scoped credential storage
-      const frontendOrigin = encodeURIComponent(window.location.origin)
-      const tenantParam = activeWorkspace?.tenant_id ? `&tenant_id=${activeWorkspace.tenant_id}` : ''
+      // PHASE 2: OAuth requires tenant_id (REQUIRED) and X-Session-ID header (REQUIRED)
+      const tenant_id = activeWorkspace.tenant_id
 
       if (integrationId === 'google') {
-        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}${tenantParam}`)
+        const frontendOrigin = encodeURIComponent(window.location.origin)
+        const response = await apiFetch(`/api/oauth/google/auth-url?tenant_id=${tenant_id}&frontend_origin=${frontendOrigin}`, {
+          headers: {
+            'X-Session-ID': sessionId
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
+        } else {
+          const error = await response.json()
+          throw new Error(error.detail || 'Failed to get auth URL')
         }
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
-        const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(`/api/oauth/meta/auth-url?tenant_id=${tenant_id}`, {
+          headers: {
+            'X-Session-ID': sessionId
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
+        } else {
+          const error = await response.json()
+          throw new Error(error.detail || 'Failed to get auth URL')
         }
       } else if (integrationId === 'hubspot') {
-        const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(`/api/oauth/hubspot/auth-url?tenant_id=${tenant_id}`, {
+          headers: {
+            'X-Session-ID': sessionId
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
+        } else {
+          const error = await response.json()
+          throw new Error(error.detail || 'Failed to get auth URL')
         }
       } else if (integrationId === 'mailchimp') {
-        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?tenant_id=${tenant_id}`, {
+          headers: {
+            'X-Session-ID': sessionId
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
+        } else {
+          const error = await response.json()
+          throw new Error(error.detail || 'Failed to get auth URL')
         }
       }
 

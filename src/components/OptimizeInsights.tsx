@@ -97,7 +97,7 @@ interface InsightsResponse {
 }
 
 const OptimizeInsights = ({ onBack, initialDateRange = '30_days', platforms }: OptimizeInsightsProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -147,6 +147,11 @@ const OptimizeInsights = ({ onBack, initialDateRange = '30_days', platforms }: O
 
       if (!sessionId) {
         throw new Error('No session found. Please log in again.')
+      }
+
+      // PHASE 2: Validate workspace context
+      if (!activeWorkspace) {
+        throw new Error('No workspace selected. Please select or create a workspace first.')
       }
 
       const response = await apiFetch('/api/quick-insights/optimize', {
