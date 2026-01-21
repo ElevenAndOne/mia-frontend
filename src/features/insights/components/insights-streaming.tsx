@@ -142,7 +142,7 @@ export const InsightsStreaming = ({
   platforms,
 }: InsightsStreamingProps) => {
   const config = insightConfigs[type]
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
   const [selectedDateRange, setSelectedDateRange] = useState(initialDateRange)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
 
@@ -179,15 +179,23 @@ export const InsightsStreaming = ({
   }
 
   useEffect(() => {
+    // PHASE 2: Validate workspace context
+    if (!activeWorkspace) {
+      return
+    }
     if (sessionId) {
       reset()
       startStreaming(type, sessionId, selectedDateRange, platforms)
     }
     return () => stopStreaming()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDateRange, sessionId, type])
+  }, [selectedDateRange, sessionId, type, activeWorkspace])
 
   const handleRetry = () => {
+    // PHASE 2: Validate workspace context
+    if (!activeWorkspace) {
+      return
+    }
     if (sessionId) {
       reset()
       startStreaming(type, sessionId, selectedDateRange, platforms)
@@ -285,6 +293,13 @@ export const InsightsStreaming = ({
 
       {/* Content */}
       <div className="flex-1 bg-white p-6 pb-32 overflow-y-auto rounded-t-2xl -mt-4">
+        {/* PHASE 2: Workspace validation message */}
+        {!activeWorkspace && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-yellow-800 text-sm">No workspace selected. Please select or create a workspace first.</p>
+          </div>
+        )}
+
         {isStreaming && insights.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className={cn('w-12 h-12 border-4 border-gray-200 rounded-full animate-spin mb-4', config.spinnerColor)} />

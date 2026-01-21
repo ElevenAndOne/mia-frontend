@@ -99,7 +99,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}

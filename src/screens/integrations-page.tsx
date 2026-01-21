@@ -74,78 +74,76 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
-    if (!platformStatus) return []
-
     return [
       {
         id: 'google',
         name: 'Google Ads',
         description: 'Advertising campaigns',
         icon: '/icons/google-ads.svg',
-        connected: platformStatus.google?.connected || false,
-        dataPoints: platformStatus.google?.connected ? 15000 : undefined,
-        lastSync: platformStatus.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
-        autoSync: platformStatus.google?.connected ? true : undefined
+        connected: platformStatus?.google?.connected || false,
+        dataPoints: platformStatus?.google?.connected ? 15000 : undefined,
+        lastSync: platformStatus?.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
+        autoSync: platformStatus?.google?.connected ? true : undefined
       },
       {
         id: 'ga4',
         name: 'Google Analytics 4',
         description: 'Website and app analytics',
         icon: '/icons/google_analytics.svg',
-        connected: platformStatus.ga4?.connected || false,
-        dataPoints: platformStatus.ga4?.connected ? 17587 : undefined,
-        lastSync: platformStatus.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
-        autoSync: platformStatus.ga4?.connected ? true : undefined
+        connected: platformStatus?.ga4?.connected || false,
+        dataPoints: platformStatus?.ga4?.connected ? 17587 : undefined,
+        lastSync: platformStatus?.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
+        autoSync: platformStatus?.ga4?.connected ? true : undefined
       },
       {
         id: 'meta',
         name: 'Meta Ads',
         description: 'Paid advertising campaigns',
         icon: '/icons/meta-color.svg',
-        connected: platformStatus.meta?.connected || false,
-        dataPoints: platformStatus.meta?.connected ? 8500 : undefined,
-        lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
-        autoSync: platformStatus.meta?.connected ? true : undefined
+        connected: platformStatus?.meta?.connected || false,
+        dataPoints: platformStatus?.meta?.connected ? 8500 : undefined,
+        lastSync: platformStatus?.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
+        autoSync: platformStatus?.meta?.connected ? true : undefined
       },
       {
         id: 'facebook_organic',
         name: 'Facebook',
         description: 'Page posts, engagement & reach',
         icon: '/icons/facebook-48.png',
-        connected: platformStatus.facebook_organic?.connected || false,
-        dataPoints: platformStatus.facebook_organic?.connected ? 2500 : undefined,
-        lastSync: platformStatus.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
-        autoSync: platformStatus.facebook_organic?.connected ? true : undefined
+        connected: platformStatus?.facebook_organic?.connected || false,
+        dataPoints: platformStatus?.facebook_organic?.connected ? 2500 : undefined,
+        lastSync: platformStatus?.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
+        autoSync: platformStatus?.facebook_organic?.connected ? true : undefined
       },
       {
         id: 'brevo',
         name: 'Brevo',
         description: 'Email marketing and campaigns',
         icon: '/icons/brevo.jpeg',
-        connected: platformStatus.brevo?.connected || false,
-        dataPoints: platformStatus.brevo?.connected ? 3800 : undefined,
-        lastSync: platformStatus.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
-        autoSync: platformStatus.brevo?.connected ? false : undefined
+        connected: platformStatus?.brevo?.connected || false,
+        dataPoints: platformStatus?.brevo?.connected ? 3800 : undefined,
+        lastSync: platformStatus?.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
+        autoSync: platformStatus?.brevo?.connected ? false : undefined
       },
       {
         id: 'hubspot',
         name: 'HubSpot',
         description: 'CRM and marketing automation',
         icon: '/icons/hubspot.svg',
-        connected: platformStatus.hubspot?.connected || false,
-        dataPoints: platformStatus.hubspot?.connected ? 5200 : undefined,
-        lastSync: platformStatus.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
-        autoSync: platformStatus.hubspot?.connected ? true : undefined
+        connected: platformStatus?.hubspot?.connected || false,
+        dataPoints: platformStatus?.hubspot?.connected ? 5200 : undefined,
+        lastSync: platformStatus?.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
+        autoSync: platformStatus?.hubspot?.connected ? true : undefined
       },
       {
         id: 'mailchimp',
         name: 'Mailchimp',
         description: 'Email marketing and campaigns',
         icon: '/icons/radio buttons/mailchimp.png',
-        connected: platformStatus.mailchimp?.connected || false,
-        dataPoints: platformStatus.mailchimp?.connected ? 4500 : undefined,
-        lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
-        autoSync: platformStatus.mailchimp?.connected ? true : undefined
+        connected: platformStatus?.mailchimp?.connected || false,
+        dataPoints: platformStatus?.mailchimp?.connected ? 4500 : undefined,
+        lastSync: platformStatus?.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
+        autoSync: platformStatus?.mailchimp?.connected ? true : undefined
       },
       {
         id: 'linkedin',
@@ -324,7 +322,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           <div className="space-y-2 pl-2">
             <Link
               to="/docs/integration-guide"
-              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
+              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-left hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
@@ -341,7 +339,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
             <Link
               to="/docs/video-tutorial"
-              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
+              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-left hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
@@ -357,7 +355,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               </div>
             </Link>
 
-            <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
+            <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-left hover:bg-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

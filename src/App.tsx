@@ -119,11 +119,11 @@ function App() {
           {/* Setup routes */}
           <Route
             path="/setup/account"
-            element={<CombinedAccountSelection onAccountSelected={() => {}} onBack={() => logout()} />}
+            element={<CombinedAccountSelection onAccountSelected={() => {}} onBack={() => goToMain()} />}
           />
           <Route
             path="/setup/meta-account"
-            element={<MetaAccountSelectionPage onAccountSelected={() => goToOnboarding()} onBack={() => logout()} />}
+            element={<MetaAccountSelectionPage onAccountSelected={() => goToOnboarding()} onBack={async () => { await logout(); goToHome() }} />}
           />
           <Route
             path="/onboarding"

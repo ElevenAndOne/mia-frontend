@@ -184,7 +184,7 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
   return (
     <div className="w-full h-full bg-white overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
       {/* Header */}
-      <div className="px-6 pt-4 pb-4 text-center">
+      <div className="px-6 py-4 text-center">
         {onBack && (
           <div className="flex justify-start mb-2">
             <button

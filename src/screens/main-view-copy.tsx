@@ -143,7 +143,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   return (
     <div className="w-full h-full safe-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
-      <div className={`flex items-center px-4 py-1 relative z-20 shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
+      <div className={`flex items-center px-4 py-4 relative z-20 shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}

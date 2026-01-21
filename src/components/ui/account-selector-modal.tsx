@@ -61,13 +61,6 @@ export function AccountSelectorModal<T extends SelectableItem>({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Fetch accounts when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadAccounts()
-    }
-  }, [isOpen, loadAccounts])
-
   const loadAccounts = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -92,6 +85,13 @@ export function AccountSelectorModal<T extends SelectableItem>({
       setIsLoading(false)
     }
   }, [config])
+
+  // Fetch accounts when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadAccounts()
+    }
+  }, [isOpen, loadAccounts])
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
