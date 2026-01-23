@@ -210,7 +210,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange])
 
   return (
-    <div className="w-full h-full relative bg-white flex flex-col overflow-hidden">
+    <div className="w-full h-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
       <div className={`flex items-center px-4 py-1 safe-top relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
@@ -673,7 +673,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             </div>
 
             {/* Chat Input - Fixed at bottom and centered */}
-            <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center" style={{ paddingBottom: '5rem' }}>
+            <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center safe-bottom">
               <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
                 <input
                   type="text"

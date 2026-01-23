@@ -288,7 +288,7 @@ const OptimizeInsightsStreaming = ({ onBack, initialDateRange = '30_days', platf
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 bg-white p-6 pb-32 overflow-y-auto rounded-t-2xl -mt-4">
+      <div className="flex-1 bg-white p-6 pb-6 safe-bottom overflow-y-auto rounded-t-2xl -mt-4">
         {/* Loading state - only show if no insights yet */}
         {isStreaming && insights.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">

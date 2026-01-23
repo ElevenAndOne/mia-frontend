@@ -45,8 +45,8 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Background for the fixed container */
-  background: linear-gradient(135deg, #f0f2f5 0%, #e8eaf0 100%);
+  /* NO background - let components fill the space */
+  background: #ffffff;
   /* Mobile touch optimizations */
   -webkit-touch-callout: none;
   -webkit-user-select: none;

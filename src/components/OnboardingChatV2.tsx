@@ -1085,7 +1085,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
       </div>
 
       {/* Messages area - auto-scroll to bottom */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 safe-bottom">
         <div className="flex flex-col gap-3 min-h-full justify-end">
           <AnimatePresence>
             {displayedMessages.map((message) => (
