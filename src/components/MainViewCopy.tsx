@@ -210,7 +210,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange])
 
   return (
-    <div className="w-full h-full safe-full relative bg-white flex flex-col">
+    <div className="w-full min-h-full safe-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
       <div className={`flex items-center px-4 py-1 relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
