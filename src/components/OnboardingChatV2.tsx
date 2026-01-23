@@ -1067,9 +1067,9 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white overflow-hidden">
       {/* Header with progress dots and settings button */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-3 safe-top">
         <ProgressDots current={currentProgress} total={4} />
         {/* Settings/Integrations button - always visible */}
         <button
