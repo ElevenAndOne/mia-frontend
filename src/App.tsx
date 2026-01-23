@@ -277,7 +277,7 @@ function App() {
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-screen-dvh relative">
       {/* Content */}
       <div className="w-full h-full">
         <Suspense fallback={<LazyLoadSpinner />}>
