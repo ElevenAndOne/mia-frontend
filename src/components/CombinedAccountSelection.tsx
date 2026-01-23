@@ -270,11 +270,16 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                         </h3>
                         <p className="text-sm text-gray-500">
                           {(() => {
-                            // Show count of accounts we actually have set up, not MCC's total
-                            const availableCount = mcc.sub_account_ids?.filter(id =>
+                            // Show count of accounts that will be displayed (sub-accounts + standalone)
+                            const mccSubAccounts = mcc.sub_account_ids?.filter(id =>
                               availableAccounts.some(a => a.google_ads_id === id)
-                            ).length ?? mcc.account_count
-                            return `${availableCount} Account${availableCount !== 1 ? 's' : ''}`
+                            ).length ?? 0
+                            // Also count standalone accounts (they're always shown alongside MCC accounts)
+                            const standaloneCount = availableAccounts.filter(a =>
+                              a.google_ads_account_type === 'standalone' && a.google_ads_id
+                            ).length
+                            const totalCount = mccSubAccounts + standaloneCount
+                            return `${totalCount} Account${totalCount !== 1 ? 's' : ''}`
                           })()}
                         </p>
                       </div>
@@ -371,15 +376,19 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                     const isValidType = account.id.startsWith('google_') || account.id.startsWith('user_') || account.id.startsWith('meta_')
                     if (!isValidType) return false
 
-                    // If user has multiple MCCs and selected one, filter strictly by that MCC's sub-accounts
+                    // If user has multiple MCCs and selected one, filter by MCC's sub-accounts + standalone accounts
                     if (selectedMCC && showMCCStep) {
                       const selectedMCCData = mccAccounts.find(m => m.customer_id === selectedMCC)
                       if (selectedMCCData?.sub_account_ids?.length) {
-                        // Only show accounts that belong to the selected MCC
-                        return selectedMCCData.sub_account_ids.includes(account.google_ads_id || '')
+                        // Show accounts that either:
+                        // 1. Belong to the selected MCC (google_ads_id in sub_account_ids)
+                        // 2. OR are standalone (not managed by any MCC)
+                        const isOwnedBySelectedMCC = selectedMCCData.sub_account_ids.includes(account.google_ads_id || '')
+                        const isStandalone = account.google_ads_account_type === 'standalone'
+                        return isOwnedBySelectedMCC || isStandalone
                       }
-                      // MCC selected but no sub_account_ids data - show nothing
-                      return false
+                      // MCC selected but no sub_account_ids data - show only standalone accounts
+                      return account.google_ads_account_type === 'standalone'
                     }
 
                     // For non-MCC users, show all accounts

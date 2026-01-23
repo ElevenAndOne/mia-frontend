@@ -41,14 +41,27 @@ async function fetchIntegrationStatus(
   // If tenant_id is provided, fetch tenant-level integration status instead of account-level
   // This allows viewers to see workspace integrations without needing personal credentials
   if (tenantId) {
-    console.log('[INTEGRATION-STATUS] Fetching tenant-level status for tenant:', tenantId)
+    console.log('[INTEGRATION-STATUS] ========================================')
+    console.log('[INTEGRATION-STATUS] 🔍 FETCHING TENANT STATUS')
+    console.log('[INTEGRATION-STATUS] tenant_id:', tenantId)
+    console.log('[INTEGRATION-STATUS] session_id:', sessionId)
+    console.log('[INTEGRATION-STATUS] ========================================')
+
     const tenantResponse = await apiFetch(`/api/tenants/${tenantId}/integrations`, {
       headers: { 'X-Session-ID': sessionId }
     })
 
     if (tenantResponse.ok) {
       const tenantData = await tenantResponse.json()
-      console.log('[INTEGRATION-STATUS] Tenant integration data:', tenantData)
+      console.log('[INTEGRATION-STATUS] ========================================')
+      console.log('[INTEGRATION-STATUS] 📥 RECEIVED FROM API')
+      console.log('[INTEGRATION-STATUS] Full response:', tenantData)
+      console.log('[INTEGRATION-STATUS] platform_status:', tenantData.platform_status)
+      console.log('[INTEGRATION-STATUS] google_ads:', tenantData.platform_status?.google_ads)
+      console.log('[INTEGRATION-STATUS] ga4:', tenantData.platform_status?.ga4)
+      console.log('[INTEGRATION-STATUS] meta_ads:', tenantData.platform_status?.meta_ads)
+      console.log('[INTEGRATION-STATUS] ========================================')
+
       const now = new Date().toISOString()
 
       // Map tenant platform_status to our PlatformStatus format
@@ -89,6 +102,13 @@ async function fetchIntegrationStatus(
           last_synced: now
         }
       }
+
+      console.log('[INTEGRATION-STATUS] ========================================')
+      console.log('[INTEGRATION-STATUS] 🎯 FINAL MAPPED STATUS')
+      console.log('[INTEGRATION-STATUS] google.connected:', platformStatus.google.connected)
+      console.log('[INTEGRATION-STATUS] ga4.connected:', platformStatus.ga4.connected)
+      console.log('[INTEGRATION-STATUS] meta.connected:', platformStatus.meta.connected)
+      console.log('[INTEGRATION-STATUS] ========================================')
 
       return { platformStatus, currentAccountData: null, ga4Properties: [], linkedGA4Properties: [] }
     } else {
