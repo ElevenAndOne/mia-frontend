@@ -248,7 +248,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
 
   if (!activeWorkspace) {
     return (
-      <div className="w-full h-screen bg-white flex items-center justify-center">
+      <div className="w-full h-screen-dvh bg-white flex items-center justify-center">
         <p className="text-gray-500">No workspace selected</p>
       </div>
     )
