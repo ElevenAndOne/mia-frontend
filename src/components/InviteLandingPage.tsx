@@ -14,7 +14,7 @@ interface InviteDetails {
 
 interface InviteLandingPageProps {
   inviteId: string
-  onAccepted: (tenantId: string) => void
+  onAccepted: (tenantId: string, skipAccountSelection?: boolean) => void
   onBack: () => void
 }
 
@@ -96,8 +96,8 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
       const data = await response.json()
       console.log('[INVITE] Invite accepted:', data)
 
-      // Redirect to the workspace
-      onAccepted(data.tenant_id)
+      // Redirect to the workspace (pass full data object for skip_account_selection flag)
+      onAccepted(data.tenant_id, data.skip_account_selection || false)
     } catch (err) {
       console.error('[INVITE] Error accepting invite:', err)
       setError(err instanceof Error ? err.message : 'Failed to accept invite')

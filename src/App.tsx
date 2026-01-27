@@ -494,8 +494,9 @@ function App() {
             >
               <InviteLandingPage
                 inviteId={inviteId}
-                onAccepted={async (tenantId) => {
+                onAccepted={async (tenantId, skipAccountSelection) => {
                   console.log('[APP] Invite accepted, joining workspace:', tenantId)
+                  console.log('[APP] Skip account selection:', skipAccountSelection)
                   // Clear invite URL from browser
                   window.history.replaceState({}, '', '/')
                   setInviteId(null)
@@ -505,8 +506,12 @@ function App() {
                   await refreshWorkspaces()
                   // Switch to the new workspace
                   await switchWorkspace(tenantId)
-                  // Go to main page (or account selection if not logged in)
-                  if (isAnyAuthenticated && selectedAccount) {
+                  // CRITICAL FIX (Jan 2026): Skip account selection for invited members
+                  // They should go straight to workspace homepage with workspace's accounts
+                  if (skipAccountSelection && isAnyAuthenticated) {
+                    console.log('[APP] Invited member - skipping account selection, going to main page')
+                    setAppState('main')
+                  } else if (isAnyAuthenticated && selectedAccount) {
                     setAppState('main')
                   } else if (isAnyAuthenticated) {
                     setAppState('account-selection')

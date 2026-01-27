@@ -266,8 +266,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               setState(prev => ({
                 ...prev,
                 sessionId: storedSessionId,
-                isAuthenticated: data.platforms?.google || false,
-                isMetaAuthenticated: data.platforms?.meta || false,  // ✅ Restore Meta auth state!
+                // CRITICAL FIX (Jan 2026): Use user_authenticated instead of platforms
+                // User is "authenticated" if they logged in via OAuth, NOT if workspace has platforms
+                isAuthenticated: data.user_authenticated?.google || data.platforms?.google || false,
+                isMetaAuthenticated: data.user_authenticated?.meta || data.platforms?.meta || false,  // ✅ Restore Meta auth state!
                 hasSeenIntro: data.user?.has_seen_intro || false,  // ✅ CRITICAL: Restore has_seen_intro!
                 user: {
                   name: data.user.name,
@@ -287,7 +289,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 localStorage.setItem('mia_last_user_id', data.user.user_id)
               }
 
-              console.log('[SESSION] Restored auth state: Google=' + (data.platforms?.google || false) + ', Meta=' + (data.platforms?.meta || false))
+              console.log('[SESSION] Restored auth state: Google=' + (data.user_authenticated?.google || data.platforms?.google || false) + ', Meta=' + (data.user_authenticated?.meta || data.platforms?.meta || false))
               return
             } else {
               console.log('[SESSION] Session invalid or expired, creating new session')
@@ -609,10 +611,22 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           member_count: t.member_count || 1
         }))
         console.log('[SESSION refreshWorkspaces()] Got workspaces:', workspaces.length)
-        setState(prev => ({
-          ...prev,
-          availableWorkspaces: workspaces
-        }))
+
+        // CRITICAL FIX (Jan 2026): Also update activeWorkspace if it matches one of the refreshed workspaces
+        // This ensures main page icons update after connecting platforms
+        setState(prev => {
+          const updatedActiveWorkspace = prev.activeWorkspace
+            ? workspaces.find(w => w.tenant_id === prev.activeWorkspace?.tenant_id) || prev.activeWorkspace
+            : null
+
+          console.log('[SESSION refreshWorkspaces()] Updated activeWorkspace connected_platforms:', updatedActiveWorkspace?.connected_platforms)
+
+          return {
+            ...prev,
+            availableWorkspaces: workspaces,
+            activeWorkspace: updatedActiveWorkspace
+          }
+        })
       } else {
         console.error('[SESSION] Workspaces API failed:', response.status, response.statusText)
       }

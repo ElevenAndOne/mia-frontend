@@ -47,6 +47,9 @@ const formatDateRangeDisplay = (dateRange: string): string => {
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace } = useSession()
+
+  console.log('[MainViewCopy] activeWorkspace:', activeWorkspace)
+  console.log('[MainViewCopy] connected_platforms:', activeWorkspace?.connected_platforms)
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
@@ -62,24 +65,27 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, Mailchimp, HubSpot
+  // CRITICAL: Platform IDs must match backend TenantIntegration.platform values
   const platformConfig = useMemo(() => [
     { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id' },
     { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
-    { id: 'meta', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
+    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
     { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
     { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
     { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', accountKey: 'mailchimp_account_id' },
     { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id' },
   ], [])
 
-  // Get connected platforms from selected account - memoized
+  // CRITICAL FIX (Jan 2026): Get connected platforms from WORKSPACE, not from selectedAccount
+  // This ensures proper workspace isolation - each workspace has its own platform connections
   const connectedPlatforms = useMemo(() => {
-    if (!selectedAccount) return []
-    return platformConfig.filter(p => {
-      const value = (selectedAccount as any)[p.accountKey]
-      return value && value !== ''
-    }).map(p => p.id)
-  }, [selectedAccount, platformConfig])
+    // Use workspace-level connected_platforms array from backend
+    if (activeWorkspace?.connected_platforms) {
+      return activeWorkspace.connected_platforms
+    }
+    // Fallback to empty array if no workspace or no platforms connected
+    return []
+  }, [activeWorkspace])
 
   // Platform preferences with caching and debounced saves
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({

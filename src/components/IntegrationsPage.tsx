@@ -62,7 +62,7 @@ interface PlatformStatus {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts, activeWorkspace } = useSession()
+  const { sessionId, user, selectedAccount, isAuthenticated, isMetaAuthenticated, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
   // Jan 2025: Pass tenant_id to fetch workspace-level integration status
@@ -362,29 +362,47 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Get auth URL based on platform
       // Jan 2025: Include tenant_id for workspace-scoped credential storage
       const frontendOrigin = encodeURIComponent(window.location.origin)
-      const tenantParam = activeWorkspace?.tenant_id ? `&tenant_id=${activeWorkspace.tenant_id}` : ''
+      const tenantParam = activeWorkspace?.tenant_id ? `tenant_id=${activeWorkspace.tenant_id}` : ''
+
+      // CRITICAL FIX (Jan 2026): Send X-Session-ID as header, not query param
+      // Backend OAuth endpoints expect session ID in header for workspace integration
+      const authHeaders = {
+        'X-Session-ID': sessionId || ''
+      }
 
       if (integrationId === 'google') {
-        const response = await apiFetch(`/api/oauth/google/auth-url?session_id=${sessionId}&frontend_origin=${frontendOrigin}${tenantParam}`)
+        const response = await apiFetch(
+          `/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}${tenantParam ? '&' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
-        const response = await apiFetch(`/api/oauth/meta/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(
+          `/api/oauth/meta/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'hubspot') {
-        const response = await apiFetch(`/api/oauth/hubspot/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(
+          `/api/oauth/hubspot/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
         }
       } else if (integrationId === 'mailchimp') {
-        const response = await apiFetch(`/api/oauth/mailchimp/auth-url?session_id=${sessionId}${tenantParam}`)
+        const response = await apiFetch(
+          `/api/oauth/mailchimp/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
         if (response.ok) {
           const data = await response.json()
           authUrl = data.auth_url
@@ -460,9 +478,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             }
           }
 
-          // Refresh integration status
+          // Refresh integration status AND workspace list
+          // CRITICAL FIX (Jan 2026): Refresh workspaces to update connected_platforms for main page icons
           console.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
 
           setSelectedIntegration(integrationId)
           setConnectingId(null)
@@ -602,6 +622,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             }
                             onDisconnectSuccess={() => {
                               invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
                               refreshAccounts()
                             }}
                           />
@@ -868,6 +889,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
           setShowGoogleAccountSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -880,6 +902,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentGoogleAccountName={selectedAccount?.name}
@@ -894,6 +917,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
           setShowBrevoAccountSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -906,6 +930,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -918,6 +943,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
           setShowMailchimpAccountSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -930,6 +956,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
           setShowFacebookPageSelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
@@ -944,6 +971,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
           invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
