@@ -101,7 +101,7 @@ interface OnboardingProviderProps {
 }
 
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, refreshWorkspaces } = useSession()
 
   const [state, setState] = useState<OnboardingState>({
     step: 0,
@@ -388,11 +388,17 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           completed: true,
           step: ONBOARDING_STEPS.COMPLETED,
         }))
+
+        // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
+        // This ensures main page icons show correctly after onboarding without requiring page refresh
+        console.log('[ONBOARDING] Refreshing workspace data after completion...')
+        await refreshWorkspaces()
+        console.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
       }
     } catch (err) {
       console.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected])
+  }, [sessionId, state.platformsConnected, refreshWorkspaces])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return
@@ -409,11 +415,15 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           skipped: true,
           step: 3, // Skipped second platform
         }))
+
+        // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
+        console.log('[ONBOARDING] Refreshing workspace data after skip...')
+        await refreshWorkspaces()
       }
     } catch (err) {
       console.error('[ONBOARDING] Skip error:', err)
     }
-  }, [sessionId])
+  }, [sessionId, refreshWorkspaces])
 
   const getAvailablePlatforms = useCallback(async (): Promise<any[]> => {
     if (!sessionId) return []

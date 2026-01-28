@@ -312,10 +312,20 @@ const AccountSelectionPage = ({ onAccountSelected, onBack }: AccountSelectionPag
           {availableAccounts.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📊</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Accounts Available</h3>
-              <p className="text-gray-600 text-sm">
-                Please contact support to set up your marketing accounts.
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Advertising Accounts Found</h3>
+              <p className="text-gray-600 text-sm mb-6">
+                The connected Google account doesn't have any Google Ads accounts.
+                <br />
+                You can go back and connect a different account, or connect platforms from the Integrations page.
               </p>
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Go Back
+                </button>
+              )}
             </div>
           ) : (
             <motion.div

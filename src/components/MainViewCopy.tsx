@@ -46,10 +46,13 @@ const formatDateRangeDisplay = (dateRange: string): string => {
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onSummaryQuickClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
-  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace } = useSession()
+  const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace, refreshWorkspaces } = useSession()
 
-  console.log('[MainViewCopy] activeWorkspace:', activeWorkspace)
-  console.log('[MainViewCopy] connected_platforms:', activeWorkspace?.connected_platforms)
+  // Debug logging with timestamp
+  const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
+  console.log(`[${timestamp}] [MainViewCopy RENDER] activeWorkspace:`, activeWorkspace?.tenant_id, activeWorkspace?.name)
+  console.log(`[${timestamp}] [MainViewCopy RENDER] connected_platforms:`, activeWorkspace?.connected_platforms)
+
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
@@ -79,11 +82,17 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   // CRITICAL FIX (Jan 2026): Get connected platforms from WORKSPACE, not from selectedAccount
   // This ensures proper workspace isolation - each workspace has its own platform connections
   const connectedPlatforms = useMemo(() => {
+    const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
+    console.log(`[${timestamp}] [MainViewCopy useMemo] Computing connectedPlatforms...`)
+    console.log(`[${timestamp}] [MainViewCopy useMemo] activeWorkspace?.connected_platforms:`, activeWorkspace?.connected_platforms)
+
     // Use workspace-level connected_platforms array from backend
     if (activeWorkspace?.connected_platforms) {
+      console.log(`[${timestamp}] [MainViewCopy useMemo] Returning:`, activeWorkspace.connected_platforms)
       return activeWorkspace.connected_platforms
     }
     // Fallback to empty array if no workspace or no platforms connected
+    console.log(`[${timestamp}] [MainViewCopy useMemo] No platforms, returning empty array`)
     return []
   }, [activeWorkspace])
 
@@ -94,12 +103,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     connectedPlatforms
   })
 
-  // Refresh accounts on mount to get latest platform connections
-  // This ensures platform icons update after returning from Integrations page
+  // Refresh accounts AND workspaces on mount to get latest platform connections
+  // This ensures platform icons update after returning from Integrations page or completing onboarding
   useEffect(() => {
     if (sessionId) {
-      console.log('[MainView] Refreshing accounts to get latest platform connections...')
+      console.log('[MainView] Refreshing accounts and workspaces to get latest platform connections...')
       refreshAccounts()
+      // CRITICAL FIX (Jan 2026): Also refresh workspace data to update connected_platforms
+      refreshWorkspaces().catch(err => console.error('[MainView] Failed to refresh workspaces:', err))
     }
   }, []) // Only on mount
 

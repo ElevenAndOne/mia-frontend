@@ -24,6 +24,7 @@ export interface UserProfile {
   picture_url: string
   google_user_id: string
   meta_user_id?: string
+  onboarding_completed?: boolean  // Jan 2026: User-level onboarding flag
 }
 
 // Jan 2025: Workspace/Tenant support
@@ -241,25 +242,41 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   member_count: t.member_count || 1
                 }))
                 console.log('[SESSION] Loaded workspaces:', availableWorkspaces.length)
+                console.log('[SESSION] Workspace connected_platforms:', availableWorkspaces.map(w => ({
+                  name: w.name,
+                  tenant_id: w.tenant_id,
+                  connected: w.connected_platforms
+                })))
               }
 
               if (currentWorkspaceResponse.ok) {
                 const currentData = await currentWorkspaceResponse.json()
                 // Backend returns { "active_tenant": { "tenant_id": ... } }
                 const activeTenant = currentData.active_tenant
+                console.log('[SESSION] Backend /current response:', activeTenant)
+
                 if (activeTenant?.tenant_id) {
-                  activeWorkspace = availableWorkspaces.find(
+                  const foundWorkspace = availableWorkspaces.find(
                     w => w.tenant_id === activeTenant.tenant_id
-                  ) || {
-                    tenant_id: activeTenant.tenant_id,
-                    name: activeTenant.name || 'Workspace',
-                    slug: activeTenant.slug || '',
-                    role: activeTenant.role || 'member',
-                    onboarding_completed: activeTenant.onboarding_completed || false,
-                    connected_platforms: [],
-                    member_count: 1
+                  )
+
+                  if (foundWorkspace) {
+                    console.log('[SESSION] Found workspace in availableWorkspaces:', foundWorkspace.name, 'connected:', foundWorkspace.connected_platforms)
+                    activeWorkspace = foundWorkspace
+                  } else {
+                    console.log('[SESSION] Workspace not in availableWorkspaces, using fallback with backend data')
+                    activeWorkspace = {
+                      tenant_id: activeTenant.tenant_id,
+                      name: activeTenant.name || 'Workspace',
+                      slug: activeTenant.slug || '',
+                      role: activeTenant.role || 'member',
+                      onboarding_completed: activeTenant.onboarding_completed || false,
+                      connected_platforms: activeTenant.connected_platforms || [],  // CRITICAL FIX: Use backend data!
+                      member_count: activeTenant.member_count || 1
+                    }
                   }
-                  console.log('[SESSION] Active workspace:', activeWorkspace.tenant_id)
+
+                  console.log('[SESSION] Final activeWorkspace:', activeWorkspace.tenant_id, activeWorkspace.name, 'connected_platforms:', activeWorkspace.connected_platforms)
                 }
               }
 
@@ -275,7 +292,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   name: data.user.name,
                   email: data.user.email,
                   picture_url: data.user.picture_url,
-                  google_user_id: data.user.user_id
+                  google_user_id: data.user.user_id,
+                  onboarding_completed: data.user?.onboarding_completed || false  // Jan 2026: User-level onboarding flag
                 },
                 selectedAccount: fullSelectedAccount,
                 availableAccounts: availableAccounts,
@@ -699,16 +717,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           ...prev,
           activeWorkspace: workspace || {
             tenant_id: tenantId,
-            name: data.tenant_name || 'Workspace',
-            slug: data.tenant_slug || '',
+            name: data.name || 'Workspace',
+            slug: data.slug || '',
             role: data.role || 'member',
-            onboarding_completed: false,
-            connected_platforms: [],
+            onboarding_completed: data.onboarding_completed || false,
+            connected_platforms: data.connected_platforms || [],  // CRITICAL FIX: Use backend data!
             member_count: 1
           }
         }))
 
-        console.log('[SESSION switchWorkspace()] Switched to:', tenantId)
+        console.log('[SESSION switchWorkspace()] Switched to:', tenantId, 'connected_platforms:', data.connected_platforms)
         return true
       } else {
         console.error('[SESSION] Switch workspace failed:', response.status, response.statusText)

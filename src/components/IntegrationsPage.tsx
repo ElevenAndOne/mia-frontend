@@ -381,8 +381,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
+        // CRITICAL FIX (Jan 2026): Pass frontend_origin for proper redirect after OAuth
         const response = await apiFetch(
-          `/api/oauth/meta/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          `/api/oauth/meta/auth-url?frontend_origin=${frontendOrigin}${tenantParam ? '&' + tenantParam : ''}`,
           { headers: authHeaders }
         )
         if (response.ok) {

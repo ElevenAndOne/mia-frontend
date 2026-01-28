@@ -32,7 +32,7 @@ const LazyLoadSpinner = () => (
 type AppState = 'video-intro' | 'account-selection' | 'meta-account-selection' | 'onboarding-chat' | 'main' | 'integrations' | 'grow-quick' | 'optimize-quick' | 'protect-quick' | 'summary-quick' | 'invite' | 'workspace-settings'
 
 function App() {
-  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, selectedAccount, isLoading, sessionId, hasSeenIntro, activeWorkspace, availableWorkspaces, user } = useSession()
 
   // Persist appState to localStorage so page refresh keeps you on the same page
   const [appState, setAppState] = useState<AppState>(() => {
@@ -195,9 +195,26 @@ function App() {
         console.log('[APP] Invite accepted - skipping onboarding, going to main')
         setJustAcceptedInvite(false)
         setAppState('main')
+      } else if (user?.onboarding_completed) {
+        // CRITICAL FIX (Jan 2026): User completed onboarding in ANY workspace - skip onboarding
+        // This prevents onboarding from repeating when creating workspace 2
+        console.log('[APP] ========================================')
+        console.log('[APP] ONBOARDING CHECK: User already completed onboarding')
+        console.log('[APP] User:', user?.email)
+        console.log('[APP] Onboarding Completed:', user?.onboarding_completed)
+        console.log('[APP] Active Workspace:', activeWorkspace?.name, '(', activeWorkspace?.tenant_id, ')')
+        console.log('[APP] Action: SKIPPING ONBOARDING - Going to main page')
+        console.log('[APP] ========================================')
+        setAppState('main')
       } else {
-        // Workspace exists - proceed to onboarding (new user creating first workspace)
-        console.log('[APP] Workspace exists - proceeding to onboarding-chat')
+        // Workspace exists but user hasn't completed onboarding - proceed to onboarding
+        console.log('[APP] ========================================')
+        console.log('[APP] ONBOARDING CHECK: User has NOT completed onboarding')
+        console.log('[APP] User:', user?.email)
+        console.log('[APP] Onboarding Completed:', user?.onboarding_completed || false)
+        console.log('[APP] Active Workspace:', activeWorkspace?.name, '(', activeWorkspace?.tenant_id, ')')
+        console.log('[APP] Action: STARTING ONBOARDING')
+        console.log('[APP] ========================================')
         setAppState('onboarding-chat')
       }
     } else if (isAnyAuthenticated && !selectedAccount && appState !== 'account-selection' && appState !== 'meta-account-selection') {
@@ -309,7 +326,17 @@ function App() {
             >
               <CombinedAccountSelection
                 onAccountSelected={() => {}}
-                onBack={() => logout()}
+                onBack={() => {
+                  // CRITICAL FIX (Jan 2026): If user has workspace, go to main page instead of logout
+                  // This handles case where connecting Google with no ads to workspace
+                  if (activeWorkspace) {
+                    console.log('[APP] Account selection back pressed - going to main (workspace exists)')
+                    setAppState('main')
+                  } else {
+                    console.log('[APP] Account selection back pressed - logging out (no workspace)')
+                    logout()
+                  }
+                }}
               />
             </motion.div>
           )}
