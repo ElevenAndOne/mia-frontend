@@ -1,102 +1,101 @@
 // =============================================================================
-// SENTRY CONFIGURATION - Currently Disabled
-// To enable: Uncomment the entire block below
+// SENTRY CONFIGURATION - Error Tracking & Performance Monitoring
 // =============================================================================
-// import * as Sentry from "@sentry/react";
-//
-// // Determine sample rates based on environment (maximum privacy)
-// const isDevelopment = import.meta.env.MODE === 'development';
-// const tracesRate = isDevelopment ? 1.0 : 0.03; // 100% dev, 3% production
-// const replaysSessionRate = isDevelopment ? 0.5 : 0.02; // 50% dev, 2% production
-// const replaysErrorRate = isDevelopment ? 1.0 : 1.0; // Always capture errors
-//
-// Sentry.init({
-//   dsn: import.meta.env.VITE_SENTRY_DSN,
-//   integrations: [
-//     // React-specific integrations
-//     Sentry.browserTracingIntegration({
-//       // Don't track certain routes that may contain sensitive data
-//       shouldCreateSpanForRequest: (url) => {
-//         // Skip tracking for OAuth callbacks and credential endpoints
-//         const sensitiveRoutes = ['/oauth/', '/callback', '/credentials'];
-//         return !sensitiveRoutes.some(route => url.includes(route));
-//       },
-//     }),
-//     Sentry.replayIntegration({
-//       // Maximum privacy protection
-//       maskAllText: true, // Mask ALL text content
-//       maskAllInputs: true, // Mask all input fields
-//       blockAllMedia: true, // Block all images/videos
-//       // Additional privacy: Block specific elements
-//       block: [
-//         '.sentry-block', // Elements with this class
-//         '[data-sensitive]', // Elements with this attribute
-//         '.user-email',
-//         '.account-name',
-//         '.workspace-name',
-//       ],
-//       // Don't record network requests/responses (may contain API data)
-//       networkDetailAllowUrls: [],
-//       // Mask specific network request/response headers
-//       networkCaptureBodies: false,
-//       networkRequestHeaders: [],
-//       networkResponseHeaders: [],
-//     }),
-//   ],
-//   // Performance Monitoring - Lower rates for privacy and cost
-//   tracesSampleRate: tracesRate,
-//   // Session Replay - Minimal recording to protect user privacy
-//   replaysSessionSampleRate: replaysSessionRate, // Very low rate for normal sessions
-//   replaysOnErrorSampleRate: replaysErrorRate, // Still capture errors
-//   // Environment detection
-//   environment: import.meta.env.MODE,
-//   // Privacy settings
-//   beforeSend(event) {
-//     // Additional client-side scrubbing
-//     // Remove user IP address
-//     if (event.user) {
-//       delete event.user.ip_address;
-//       // Mask email if present
-//       if (event.user.email) {
-//         event.user.email = '[REDACTED]';
-//       }
-//     }
-//
-//     // Remove potentially sensitive request data
-//     if (event.request) {
-//       delete event.request.cookies;
-//
-//       // Scrub sensitive headers
-//       if (event.request.headers) {
-//         const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
-//         sensitiveHeaders.forEach(header => {
-//           if (event.request.headers[header]) {
-//             event.request.headers[header] = '[REDACTED]';
-//           }
-//         });
-//       }
-//     }
-//
-//     return event;
-//   },
-//   // Don't send breadcrumbs for sensitive actions
-//   beforeBreadcrumb(breadcrumb) {
-//     // Filter out breadcrumbs that might contain sensitive data
-//     if (breadcrumb.category === 'console') {
-//       // Don't send console logs to Sentry
-//       return null;
-//     }
-//     if (breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') {
-//       // Check if the URL contains sensitive endpoints
-//       const sensitiveEndpoints = ['/oauth/', '/credentials', '/token'];
-//       if (sensitiveEndpoints.some(endpoint => breadcrumb.data?.url?.includes(endpoint))) {
-//         // Redact the URL and data
-//         breadcrumb.data = { url: '[REDACTED]' };
-//       }
-//     }
-//     return breadcrumb;
-//   },
-// });
+import * as Sentry from "@sentry/react";
+
+// Determine sample rates based on environment (maximum privacy)
+const isDevelopment = import.meta.env.MODE === 'development';
+const tracesRate = isDevelopment ? 1.0 : 0.03; // 100% dev, 3% production
+const replaysSessionRate = isDevelopment ? 0.5 : 0.02; // 50% dev, 2% production
+const replaysErrorRate = isDevelopment ? 1.0 : 1.0; // Always capture errors
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  integrations: [
+    // React-specific integrations
+    Sentry.browserTracingIntegration({
+      // Don't track certain routes that may contain sensitive data
+      shouldCreateSpanForRequest: (url) => {
+        // Skip tracking for OAuth callbacks and credential endpoints
+        const sensitiveRoutes = ['/oauth/', '/callback', '/credentials'];
+        return !sensitiveRoutes.some(route => url.includes(route));
+      },
+    }),
+    Sentry.replayIntegration({
+      // Maximum privacy protection
+      maskAllText: true, // Mask ALL text content
+      maskAllInputs: true, // Mask all input fields
+      blockAllMedia: true, // Block all images/videos
+      // Additional privacy: Block specific elements
+      block: [
+        '.sentry-block', // Elements with this class
+        '[data-sensitive]', // Elements with this attribute
+        '.user-email',
+        '.account-name',
+        '.workspace-name',
+      ],
+      // Don't record network requests/responses (may contain API data)
+      networkDetailAllowUrls: [],
+      // Mask specific network request/response headers
+      networkCaptureBodies: false,
+      networkRequestHeaders: [],
+      networkResponseHeaders: [],
+    }),
+  ],
+  // Performance Monitoring - Lower rates for privacy and cost
+  tracesSampleRate: tracesRate,
+  // Session Replay - Minimal recording to protect user privacy
+  replaysSessionSampleRate: replaysSessionRate, // Very low rate for normal sessions
+  replaysOnErrorSampleRate: replaysErrorRate, // Still capture errors
+  // Environment detection
+  environment: import.meta.env.MODE,
+  // Privacy settings
+  beforeSend(event) {
+    // Additional client-side scrubbing
+    // Remove user IP address
+    if (event.user) {
+      delete event.user.ip_address;
+      // Mask email if present
+      if (event.user.email) {
+        event.user.email = '[REDACTED]';
+      }
+    }
+
+    // Remove potentially sensitive request data
+    if (event.request) {
+      delete event.request.cookies;
+
+      // Scrub sensitive headers
+      if (event.request.headers) {
+        const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
+        sensitiveHeaders.forEach(header => {
+          if (event.request.headers[header]) {
+            event.request.headers[header] = '[REDACTED]';
+          }
+        });
+      }
+    }
+
+    return event;
+  },
+  // Don't send breadcrumbs for sensitive actions
+  beforeBreadcrumb(breadcrumb) {
+    // Filter out breadcrumbs that might contain sensitive data
+    if (breadcrumb.category === 'console') {
+      // Don't send console logs to Sentry
+      return null;
+    }
+    if (breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') {
+      // Check if the URL contains sensitive endpoints
+      const sensitiveEndpoints = ['/oauth/', '/credentials', '/token'];
+      if (sensitiveEndpoints.some(endpoint => breadcrumb.data?.url?.includes(endpoint))) {
+        // Redact the URL and data
+        breadcrumb.data = { url: '[REDACTED]' };
+      }
+    }
+    return breadcrumb;
+  },
+});
 // =============================================================================
 
 import React from 'react'
@@ -133,18 +132,15 @@ const queryClient = new QueryClient({
 })
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <SessionProvider>
-        <OnboardingProvider>
-          <App />
-        </OnboardingProvider>
-      </SessionProvider>
-    </QueryClientProvider>
-  </BrowserRouter>,
+  <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <SessionProvider>
+          <OnboardingProvider>
+            <App />
+          </OnboardingProvider>
+        </SessionProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </Sentry.ErrorBoundary>,
 )
-
-// NOTE: When Sentry is enabled, wrap the app with:
-// <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
-//   {/* ... app content ... */}
-// </Sentry.ErrorBoundary>
