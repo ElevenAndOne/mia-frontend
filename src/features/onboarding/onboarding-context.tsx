@@ -4,14 +4,20 @@ import type {
   OnboardingStep,
   OnboardingState,
   OnboardingAction,
+  OnboardingNumericStep,
+  BronzeHighlight,
 } from './types';
 import { OnboardingContext } from './onboarding-context-value';
 
 const initialState: OnboardingState = {
   currentStep: 'landing',
+  numericStep: 0,
   provider: null,
   selectedAccountId: null,
   selectedCampaignIds: [],
+  growTaskId: null,
+  growInsightsReady: false,
+  bronzeHighlight: null,
 };
 
 function getNextStep(state: OnboardingState): OnboardingStep {
@@ -114,6 +120,30 @@ function onboardingReducer(
     case 'RESET':
       return initialState;
 
+    case 'SET_NUMERIC_STEP':
+      return {
+        ...state,
+        numericStep: action.step,
+      };
+
+    case 'SET_GROW_TASK':
+      return {
+        ...state,
+        growTaskId: action.taskId,
+      };
+
+    case 'SET_GROW_INSIGHTS_READY':
+      return {
+        ...state,
+        growInsightsReady: action.ready,
+      };
+
+    case 'SET_BRONZE_HIGHLIGHT':
+      return {
+        ...state,
+        bronzeHighlight: action.highlight,
+      };
+
     default:
       return state;
   }
@@ -150,6 +180,22 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     dispatch({ type: 'RESET' });
   }, []);
 
+  const setNumericStep = useCallback((step: OnboardingNumericStep) => {
+    dispatch({ type: 'SET_NUMERIC_STEP', step });
+  }, []);
+
+  const setGrowTask = useCallback((taskId: string) => {
+    dispatch({ type: 'SET_GROW_TASK', taskId });
+  }, []);
+
+  const setGrowInsightsReady = useCallback((ready: boolean) => {
+    dispatch({ type: 'SET_GROW_INSIGHTS_READY', ready });
+  }, []);
+
+  const setBronzeHighlight = useCallback((highlight: BronzeHighlight) => {
+    dispatch({ type: 'SET_BRONZE_HIGHLIGHT', highlight });
+  }, []);
+
   const value = {
     ...state,
     login,
@@ -158,6 +204,10 @@ export function OnboardingProvider({ children }: OnboardingProviderProps) {
     nextStep,
     back,
     reset,
+    setNumericStep,
+    setGrowTask,
+    setGrowInsightsReady,
+    setBronzeHighlight,
   };
 
   return (

@@ -1,5 +1,6 @@
 import { AuthProvider } from './features/auth/auth-context';
 import { OnboardingProvider } from './features/onboarding/onboarding-context';
+import { ChatProvider } from './features/chat';
 import { useOnboarding } from './features/onboarding/use-onboarding';
 
 // Screens
@@ -29,7 +30,9 @@ export function App() {
   return (
     <AuthProvider>
       <OnboardingProvider>
-        <Router />
+        <ChatProvider>
+          <Router />
+        </ChatProvider>
       </OnboardingProvider>
     </AuthProvider>
   );

@@ -4,78 +4,94 @@ import type {
   MetaAdAccount,
   MetaCampaign,
 } from './types';
-import {
-  mockGoogleAccounts,
-  mockGoogleCampaigns,
-} from '../../mocks/google-accounts';
-import { mockMetaAdAccounts, mockMetaCampaigns } from '../../mocks/meta-accounts';
 
-// ============================================================
-// API INTEGRATION POINT
-// Replace mock data returns with actual API calls.
-// Each function documents the expected API endpoint.
-// ============================================================
-
-const SIMULATED_DELAY = 300;
-
-function simulateDelay(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const onboardingService = {
   /**
    * Fetch Google Ads accounts for authenticated user
    *
-   * FUTURE: GET /api/integrations/google/accounts
-   * Headers: Authorization: Bearer {accessToken}
+   * Endpoint: GET /api/integrations/google/accounts
    */
   async getGoogleAccounts(): Promise<GoogleAccount[]> {
-    await simulateDelay();
-    return mockGoogleAccounts;
+    const response = await fetch(`${API_BASE}/integrations/google/accounts`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch Google accounts');
+    }
+    return response.json();
   },
 
   /**
    * Fetch campaigns for a Google Ads account
    *
-   * FUTURE: GET /api/integrations/google/accounts/{accountId}/campaigns
+   * Endpoint: GET /api/integrations/google/accounts/{accountId}/campaigns
    */
   async getGoogleCampaigns(accountId: string): Promise<GoogleCampaign[]> {
-    await simulateDelay();
-    return mockGoogleCampaigns.filter(c => c.accountId === accountId);
+    const response = await fetch(
+      `${API_BASE}/integrations/google/accounts/${accountId}/campaigns`,
+      {
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch Google campaigns');
+    }
+    return response.json();
   },
 
   /**
    * Fetch Meta Ad accounts for authenticated user
    *
-   * FUTURE: GET /api/integrations/meta/ad-accounts
+   * Endpoint: GET /api/integrations/meta/ad-accounts
    */
   async getMetaAccounts(): Promise<MetaAdAccount[]> {
-    await simulateDelay();
-    return mockMetaAdAccounts;
+    const response = await fetch(`${API_BASE}/integrations/meta/ad-accounts`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch Meta accounts');
+    }
+    return response.json();
   },
 
   /**
    * Fetch campaigns for a Meta Ad account
    *
-   * FUTURE: GET /api/integrations/meta/ad-accounts/{accountId}/campaigns
+   * Endpoint: GET /api/integrations/meta/ad-accounts/{accountId}/campaigns
    */
   async getMetaCampaigns(accountId: string): Promise<MetaCampaign[]> {
-    await simulateDelay();
-    return mockMetaCampaigns.filter(c => c.accountId === accountId);
+    const response = await fetch(
+      `${API_BASE}/integrations/meta/ad-accounts/${accountId}/campaigns`,
+      {
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch Meta campaigns');
+    }
+    return response.json();
   },
 
   /**
    * Save selected account and campaigns
    *
-   * FUTURE: POST /api/onboarding/complete
-   * Body: { provider, accountId, campaignIds }
+   * Endpoint: POST /api/onboarding/complete
    */
   async saveSelections(data: {
     provider: string;
     accountId: string;
     campaignIds: string[];
   }): Promise<void> {
-    await simulateDelay();
-    console.log('Selections saved:', data);
+    const response = await fetch(`${API_BASE}/onboarding/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to save selections');
+    }
   },
 };

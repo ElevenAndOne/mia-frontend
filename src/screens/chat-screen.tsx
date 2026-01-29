@@ -1,56 +1,269 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { Layout } from '../components/layout';
 import { Button } from '../components/button';
 import { useOnboarding } from '../features/onboarding/use-onboarding';
 import { useAuth } from '../features/auth/use-auth';
-
-type Message = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-};
+import { useChat, useStreaming, chatService } from '../features/chat';
+import type { ChoiceAction } from '../features/chat';
+import {
+  ChatContainer,
+  ChatMessage,
+  TypingIndicator,
+} from '../components/chat';
 
 export function ChatScreen() {
   const { user } = useAuth();
-  const { provider, selectedAccountId, selectedCampaignIds, reset } = useOnboarding();
+  const {
+    provider,
+    selectedAccountId,
+    selectedCampaignIds,
+    reset: resetOnboarding,
+    setBronzeHighlight,
+  } = useOnboarding();
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: `Welcome${user?.name ? `, ${user.name}` : ''}! Your ${provider ?? 'ad'} account is connected with ${selectedCampaignIds.length} campaign${selectedCampaignIds.length !== 1 ? 's' : ''} selected. How can I help you today?`,
-    },
-  ]);
-  const [input, setInput] = useState('');
+  const {
+    messages,
+    isTyping,
+    queueMessages,
+    addImmediateMessage,
+    reset: resetChat,
+  } = useChat();
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const {
+    streamedText,
+    isStreaming,
+    isComplete: streamComplete,
+    startStreaming,
+    reset: resetStreaming,
+  } = useStreaming();
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input,
+  const hasInitialized = useRef(false);
+  const streamingMessageId = useRef<string | null>(null);
+
+  // Initialize chat with welcome sequence
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initChat = async () => {
+      // Queue welcome messages
+      queueMessages([
+        {
+          type: 'mia',
+          content: `Hey${user?.name ? ` ${user.name}` : ''}! I'm Mia, your marketing assistant.`,
+        },
+        {
+          type: 'mia',
+          content: `Great news - your ${provider ?? 'ad'} account is connected with ${selectedCampaignIds.length} campaign${selectedCampaignIds.length !== 1 ? 's' : ''} selected.`,
+        },
+        {
+          type: 'mia',
+          content: "Let me show you what I found in your data...",
+        },
+      ]);
+
+      // Fetch bronze highlight
+      try {
+        const highlight = await chatService.fetchBronzeHighlight();
+        setBronzeHighlight(highlight);
+
+        // Queue bronze card after initial messages
+        setTimeout(() => {
+          queueMessages([
+            {
+              type: 'bronze-card',
+              title: highlight.title,
+              highlight: highlight.highlight,
+              metric: highlight.metric,
+              trend: highlight.trend,
+            },
+            {
+              type: 'mia',
+              content: highlight.explanation,
+            },
+            {
+              type: 'mia',
+              content: "I can help you in three key areas. Which would you like to explore?",
+            },
+            {
+              type: 'explainer-box',
+              title: 'Grow',
+              content: "Find new ways to reach more of the right people and scale your business faster.",
+              icon: 'grow',
+            },
+            {
+              type: 'explainer-box',
+              title: 'Optimise',
+              content: "Spot what's working so you can fine-tune and get better results with less effort.",
+              icon: 'optimise',
+            },
+            {
+              type: 'explainer-box',
+              title: 'Protect',
+              content: "Keep an eye on performance drops and wasted spend before problems grow.",
+              icon: 'protect',
+            },
+            {
+              type: 'choice-buttons',
+              buttons: [
+                { id: '1', label: 'Grow', action: 'grow', variant: 'primary' },
+                { id: '2', label: 'Optimise', action: 'optimise', variant: 'secondary' },
+                { id: '3', label: 'Protect', action: 'protect', variant: 'secondary' },
+              ],
+            },
+          ]);
+        }, 8000); // Wait for initial messages
+      } catch {
+        // If bronze fetch fails, continue with generic flow
+        setTimeout(() => {
+          queueMessages([
+            {
+              type: 'mia',
+              content: "I can help you grow your audience, optimise performance, or protect your budget. What interests you most?",
+            },
+            {
+              type: 'choice-buttons',
+              buttons: [
+                { id: '1', label: 'Grow', action: 'grow', variant: 'primary' },
+                { id: '2', label: 'Optimise', action: 'optimise', variant: 'secondary' },
+                { id: '3', label: 'Protect', action: 'protect', variant: 'secondary' },
+              ],
+            },
+          ]);
+        }, 6000);
+      }
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    initChat();
+  }, [
+    user?.name,
+    provider,
+    selectedCampaignIds.length,
+    queueMessages,
+    setBronzeHighlight,
+  ]);
 
-    // Mock AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content:
-          'This is a placeholder response. AI integration coming in Phase 2!',
+  // Handle streaming text updates
+  useEffect(() => {
+    if (streamedText && streamingMessageId.current) {
+      // Find and update the streaming message
+      // The chat context handles this via updateStreamingMessage
+    }
+  }, [streamedText]);
+
+  // Handle stream completion
+  useEffect(() => {
+    if (streamComplete && streamingMessageId.current) {
+      streamingMessageId.current = null;
+      resetStreaming();
+
+      // Add follow-up options
+      setTimeout(() => {
+        queueMessages([
+          {
+            type: 'mia',
+            content: "What would you like to do next?",
+          },
+          {
+            type: 'choice-buttons',
+            buttons: [
+              { id: '1', label: 'View full insights', action: 'view-insights', variant: 'primary' },
+              { id: '2', label: 'Connect another platform', action: 'connect-meta', variant: 'secondary' },
+              { id: '3', label: 'Start over', action: 'skip', variant: 'outline' },
+            ],
+          },
+        ]);
+      }, 1000);
+    }
+  }, [streamComplete, resetStreaming, queueMessages]);
+
+  const handleChoiceSelect = useCallback(
+    (action: string) => {
+      const choiceAction = action as ChoiceAction;
+
+      // Add user selection as a message
+      const actionLabels: Record<string, string> = {
+        grow: 'Grow',
+        optimise: 'Optimise',
+        protect: 'Protect',
+        'connect-google': 'Connect Google',
+        'connect-meta': 'Connect Meta',
+        'view-insights': 'View full insights',
+        skip: 'Start over',
       };
-      setMessages(prev => [...prev, aiMessage]);
-    }, 1000);
-  };
 
-  const handleStartOver = () => {
-    reset();
-  };
+      addImmediateMessage({
+        type: 'user',
+        content: actionLabels[action] || action,
+      });
+
+      switch (choiceAction) {
+        case 'grow':
+        case 'optimise':
+        case 'protect':
+          // Start streaming insights
+          queueMessages([
+            {
+              type: 'mia',
+              content: `Great choice! Let me analyze your ${choiceAction} opportunities...`,
+            },
+          ]);
+
+          // Start streaming after a delay
+          setTimeout(() => {
+            const streamUrl = chatService.getGrowSummaryStreamUrl();
+            streamingMessageId.current = `stream-${Date.now()}`;
+
+            // Add a placeholder message that will be updated with streaming content
+            addImmediateMessage({
+              type: 'mia',
+              content: '',
+              isStreaming: true,
+            });
+
+            startStreaming(streamUrl);
+          }, 3000);
+          break;
+
+        case 'connect-meta':
+        case 'connect-google':
+          queueMessages([
+            {
+              type: 'mia',
+              content: "I'll help you connect another platform. This will give me more data to work with!",
+            },
+            {
+              type: 'mia',
+              content: "Head to the integrations page to connect your accounts.",
+            },
+          ]);
+          break;
+
+        case 'view-insights':
+          queueMessages([
+            {
+              type: 'mia',
+              content: "Opening your full insights dashboard...",
+            },
+          ]);
+          break;
+
+        case 'skip':
+          resetChat();
+          resetOnboarding();
+          break;
+
+        default:
+          queueMessages([
+            {
+              type: 'mia',
+              content: "I'm not sure how to help with that yet. Try selecting one of the options above!",
+            },
+          ]);
+      }
+    },
+    [addImmediateMessage, queueMessages, startStreaming, resetChat, resetOnboarding]
+  );
 
   return (
     <Layout>
@@ -62,42 +275,25 @@ export function ChatScreen() {
               Connected: {provider} account ({selectedAccountId})
             </p>
           </div>
-          <Button variant="outline" onClick={handleStartOver}>
+          <Button variant="outline" onClick={() => { resetChat(); resetOnboarding(); }}>
             Start Over
           </Button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <ChatContainer>
           {messages.map(message => (
-            <div
+            <ChatMessage
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                {message.content}
-              </div>
-            </div>
+              message={
+                message.type === 'mia' && message.isStreaming && streamedText
+                  ? { ...message, content: streamedText }
+                  : message
+              }
+              onChoiceSelect={handleChoiceSelect}
+            />
           ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex gap-2 border-t border-gray-200 px-4 py-4">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <Button type="submit" disabled={!input.trim()}>
-            Send
-          </Button>
-        </form>
+          {(isTyping || isStreaming) && <TypingIndicator />}
+        </ChatContainer>
       </div>
     </Layout>
   );

@@ -1,47 +1,48 @@
 import type { AuthProvider, User } from './types';
-import { mockUsers } from '../../mocks/users';
-
-// ============================================================
-// API INTEGRATION POINT
-// Replace mock implementations with real API calls here.
-// The interface remains the same - only the implementation changes.
-// ============================================================
-
-const SIMULATED_DELAY = 500;
-
-function simulateDelay(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, SIMULATED_DELAY));
-}
+import { oauthService } from './oauth-service';
 
 export const authService = {
   /**
-   * Authenticate user with provider
-   *
-   * FUTURE: Replace with OAuth flow
-   * - Google: googleapis.com/oauth2/v4/token
-   * - Meta: graph.facebook.com/oauth/access_token
+   * Get user from current session
+   * For OAuth providers, call this after OAuth success to get user data
+   */
+  async getCurrentUser(): Promise<User | null> {
+    return oauthService.getCurrentUser();
+  },
+
+  /**
+   * Login with provider
+   * For OAuth (google/meta), this is called after OAuth popup completes
+   * For email, this handles the email auth flow
    */
   async login(provider: AuthProvider): Promise<User> {
-    await simulateDelay();
-    return mockUsers[provider];
+    if (provider === 'email') {
+      // TODO: Implement email auth flow
+      throw new Error('Email auth not yet implemented');
+    }
+
+    // For OAuth providers, the actual login happens via popup
+    // This method is called after OAuth success to get user data
+    const user = await oauthService.getCurrentUser();
+    if (!user) {
+      throw new Error('Failed to get user after OAuth');
+    }
+    return user;
   },
 
   /**
    * Validate existing session
-   *
-   * FUTURE: Call /api/auth/session endpoint
    */
   async validateSession(): Promise<User | null> {
-    await simulateDelay();
-    return null;
+    const session = await oauthService.getSession();
+    if (!session) return null;
+    return oauthService.getCurrentUser();
   },
 
   /**
    * Log out user
-   *
-   * FUTURE: Call /api/auth/logout and clear tokens
    */
   async logout(): Promise<void> {
-    await simulateDelay();
+    await oauthService.logout();
   },
 };
