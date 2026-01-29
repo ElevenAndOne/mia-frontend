@@ -1,35 +1,36 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { AuthProvider } from './features/auth/auth-context';
+import { OnboardingProvider } from './features/onboarding/onboarding-context';
+import { useOnboarding } from './features/onboarding/use-onboarding';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Screens
+import { LandingScreen } from './screens/landing-screen';
+import { GoogleAccountsScreen } from './screens/google/google-accounts-screen';
+import { GoogleCampaignsScreen } from './screens/google/google-campaigns-screen';
+import { MetaAccountsScreen } from './screens/meta/meta-accounts-screen';
+import { MetaCampaignsScreen } from './screens/meta/meta-campaigns-screen';
+import { ChatScreen } from './screens/chat-screen';
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+function Router() {
+  const { currentStep } = useOnboarding();
+
+  const screens = {
+    landing: <LandingScreen />,
+    'google-accounts': <GoogleAccountsScreen />,
+    'google-campaigns': <GoogleCampaignsScreen />,
+    'meta-accounts': <MetaAccountsScreen />,
+    'meta-campaigns': <MetaCampaignsScreen />,
+    chat: <ChatScreen />,
+  };
+
+  return screens[currentStep] ?? <LandingScreen />;
 }
 
-export default App
+export function App() {
+  return (
+    <AuthProvider>
+      <OnboardingProvider>
+        <Router />
+      </OnboardingProvider>
+    </AuthProvider>
+  );
+}

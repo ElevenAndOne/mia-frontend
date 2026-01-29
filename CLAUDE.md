@@ -54,6 +54,14 @@
 - Prefer composition over custom CSS
 - Keep styles close to components
 
+## Responsive Design
+
+- Application must work on both desktop and mobile browsers
+- UI should be fluid and responsive, not limited to fixed breakpoints
+- Use Tailwind's responsive utilities (sm:, md:, lg:, etc.) when needed
+- Test layouts at various viewport sizes, not just specific device sizes
+- Mobile-first approach: start with mobile layout, enhance for larger screens
+
 ## TypeScript
 
 - No `any`
