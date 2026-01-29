@@ -1,20 +1,23 @@
-export type AuthProvider = 'google' | 'meta' | 'email';
+/**
+ * Authentication types
+ */
 
-export type User = {
-  id: string;
-  email: string;
-  name: string;
-  avatarUrl: string | null;
-  provider: AuthProvider;
-};
+export interface UserProfile {
+  name: string
+  email: string
+  picture_url: string
+  google_user_id: string
+  meta_user_id?: string
+  onboarding_completed?: boolean
+}
 
-export type AuthState = {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-};
+export interface MetaUser {
+  id: string
+  name: string
+  email?: string
+}
 
-export type AuthContextValue = AuthState & {
-  login: (provider: AuthProvider) => Promise<void>;
-  logout: () => void;
-};
+export interface MetaAuthState {
+  isMetaAuthenticated: boolean
+  metaUser: MetaUser | null
+}
