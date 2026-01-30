@@ -60,7 +60,7 @@ export const ChatInput = ({
   const canSubmit = message.trim() && !disabled && hasSelectedPlatforms
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6 safe-bottom">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
       {/* Main input container */}
       <div className="bg-gray-100 rounded-2xl overflow-visible">
         {/* Text input row */}

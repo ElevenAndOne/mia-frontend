@@ -57,7 +57,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
             )}
           </button>
 
-          <button
+          {/* <button
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
             title="Good response"
           >
@@ -105,7 +105,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
               <circle cx="19" cy="12" r="1" />
               <circle cx="5" cy="12" r="1" />
             </svg>
-          </button>
+          </button> */}
         </div>
       )}
     </div>
