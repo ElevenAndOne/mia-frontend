@@ -21,7 +21,7 @@ const CHOICE_LABELS: Record<string, string> = {
 export const WELCOME_MESSAGES: ChatMessageInput[] = [
   { type: 'mia', content: "Congrats! 🥳 You're connected" },
   { type: 'mia', content: "Hi I'm Mia, but you probably already know that." },
-  { type: 'mia', content: "We'll get to know each other much better :P" },
+  { type: 'mia', content: "We'll get to know each other much better!" },
   { type: 'mia', content: "Let's start with some stats" }
 ]
 

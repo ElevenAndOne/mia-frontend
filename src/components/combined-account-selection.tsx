@@ -19,9 +19,9 @@ interface MCCAccount {
 
 /**
  * Combined MCC + Account Selection page
- * - Step 1: MCC profiles (only for users with 2+ MCCs)
- * - Step 2: Slides up after MCC selection
- * - For non-MCC users, shows accounts directly
+ * - For users with 2+ MCCs: Shows accordion-style MCC selection with inline sub-accounts
+ * - Standalone accounts shown in separate section below MCCs
+ * - For non-MCC users: Shows accounts directly
  */
 const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccountSelectionProps) => {
   const {
@@ -39,7 +39,6 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
   const [mccAccounts, setMccAccounts] = useState<MCCAccount[]>([])
   const [selectedMCC, setSelectedMCC] = useState<string | null>(null)
   const [isFetchingMCCs, setIsFetchingMCCs] = useState(true)
-  const [step2Visible, setStep2Visible] = useState(false)
 
   // Ref to prevent duplicate fetches
   const hasFetchedRef = useRef(false)
@@ -81,16 +80,6 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMCC])
-
-  // Show Step 2 with small delay for smooth animation
-  useEffect(() => {
-    if (selectedMCC || mccAccounts.length <= 1) {
-      const timer = setTimeout(() => setStep2Visible(true), 100)
-      return () => clearTimeout(timer)
-    } else {
-      setStep2Visible(false)
-    }
-  }, [selectedMCC, mccAccounts.length])
 
   const fetchMCCAccounts = async () => {
     try {
@@ -141,9 +130,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
   }
 
   const handleMCCDeselect = () => {
-    setStep2Visible(false)
-    // Small delay before actually deselecting for smooth animation
-    setTimeout(() => setSelectedMCC(null), 300)
+    setSelectedMCC(null)
   }
 
   const handleAccountSelect = async (account: AccountMapping) => {
@@ -246,6 +233,11 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
           >
             {mccAccounts.map((mcc, index) => {
               const isSelected = selectedMCC === mcc.customer_id
+              // Get sub-accounts for this MCC
+              const mccSubAccounts = availableAccounts.filter(a =>
+                mcc.sub_account_ids?.includes(a.google_ads_id || '') &&
+                a.google_ads_account_type !== 'mcc'
+              )
 
               return (
                 <motion.div
@@ -253,151 +245,110 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 1) }}
-                  onClick={() => !isSelected && handleMCCSelect(mcc.customer_id)}
-                  className={`
-                    w-full p-4 rounded-xl border-2 transition-all text-left cursor-pointer
-                    ${isSelected
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                    }
-                  `}
+                  className="space-y-2"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg">
-                        🏢
-                      </div>
-
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {mcc.descriptive_name}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {(() => {
-                            // Show count of accounts that will be displayed (sub-accounts + standalone)
-                            const mccSubAccounts = mcc.sub_account_ids?.filter(id =>
-                              availableAccounts.some(a => a.google_ads_id === id)
-                            ).length ?? 0
-                            // Also count standalone accounts (they're always shown alongside MCC accounts)
-                            const standaloneCount = availableAccounts.filter(a =>
-                              a.google_ads_account_type === 'standalone' && a.google_ads_id
-                            ).length
-                            const totalCount = mccSubAccounts + standaloneCount
-                            return `${totalCount} Account${totalCount !== 1 ? 's' : ''}`
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right side: Checkmark + Gear when selected, Chevron when not */}
-                    {isSelected ? (
-                      <div className="flex items-center gap-2">
-                        {/* Checkmark */}
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                  {/* MCC Header - clickable to expand/collapse */}
+                  <div
+                    onClick={() => isSelected ? handleMCCDeselect() : handleMCCSelect(mcc.customer_id)}
+                    className={`
+                      w-full p-4 rounded-xl border-2 transition-all text-left cursor-pointer
+                      ${isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg">
+                          🏢
                         </div>
-                        {/* Gear icon */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleMCCDeselect()
-                          }}
-                          className="p-1 hover:bg-blue-100 rounded-full transition-colors"
-                        >
-                          <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </button>
+                        <div>
+                          <h3 className="font-medium text-gray-900">{mcc.descriptive_name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {mccSubAccounts.length} Account{mccSubAccounts.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
                       </div>
-                    ) : (
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {/* Chevron - rotates when expanded */}
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isSelected ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                    )}
+                    </div>
                   </div>
+
+                  {/* Sub-accounts - expand inline when MCC is selected */}
+                  <AnimatePresence>
+                    {isSelected && mccSubAccounts.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="pl-4 space-y-2 overflow-hidden"
+                      >
+                        {mccSubAccounts.map((account) => {
+                          const isThisAccountSelecting = selectingAccountId === account.id
+                          return (
+                            <button
+                              key={account.id}
+                              onClick={() => handleAccountSelect(account)}
+                              disabled={!!selectingAccountId}
+                              className={`
+                                w-full p-3 rounded-lg border transition-all text-left
+                                ${selectingAccountId && !isThisAccountSelecting
+                                  ? 'opacity-60 cursor-not-allowed border-gray-200'
+                                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                                }
+                              `}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                                    style={{ backgroundColor: account.color || '#E5E7EB' }}
+                                  >
+                                    📊
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="font-medium text-gray-900 text-sm truncate">{account.name}</h4>
+                                    <p className="text-xs text-gray-500">Ads: {account.google_ads_id}</p>
+                                  </div>
+                                </div>
+                                {isThisAccountSelecting ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600" />
+                                ) : (
+                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )
             })}
           </motion.div>
-        </div>
-      )}
 
-      {/* Divider (only when Step 2 visible and there was MCC step) */}
-      <AnimatePresence>
-        {step2Visible && showMCCStep && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="border-t border-gray-200 mx-6 my-4"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* STEP 2: Account Selection (slides up after MCC selected) */}
-      <AnimatePresence>
-        {step2Visible && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="px-6 pb-8"
-          >
-            {showMCCStep && (
-              <div className="mb-3">
-                <h2 className="text-base font-semibold text-gray-900">Step 2: Select Marketing Account</h2>
-                <p className="text-sm text-gray-500">Choose the account you'd like to analyze</p>
-              </div>
-            )}
-
-            {!showMCCStep && (
-              <div className="mb-3">
-                <p className="text-sm text-gray-500">Select the account you'd like to analyze</p>
-              </div>
-            )}
-
-            {availableAccounts.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-5xl mb-3">📊</div>
-                <h3 className="text-base font-medium text-gray-900 mb-1">No Accounts Available</h3>
-                <p className="text-gray-600 text-sm">
-                  Please contact support to set up your marketing accounts.
-                </p>
-              </div>
-            ) : (
+          {/* Standalone Accounts - shown at Step 1 level, selectable without choosing an MCC */}
+          {availableAccounts.filter(a =>
+            a.google_ads_account_type === 'standalone' &&
+            (a.id.startsWith('google_') || a.id.startsWith('user_'))
+          ).length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-500 mb-3">Standalone Accounts</h3>
               <div className="space-y-3">
                 {availableAccounts
-                  .filter(account => {
-                    // Filter out MCC accounts
-                    if (account.google_ads_account_type === 'mcc') return false
-
-                    // Basic type check
-                    const isValidType = account.id.startsWith('google_') || account.id.startsWith('user_') || account.id.startsWith('meta_')
-                    if (!isValidType) return false
-
-                    // If user has multiple MCCs and selected one, filter by MCC's sub-accounts + standalone accounts
-                    if (selectedMCC && showMCCStep) {
-                      const selectedMCCData = mccAccounts.find(m => m.customer_id === selectedMCC)
-                      if (selectedMCCData?.sub_account_ids?.length) {
-                        // Show accounts that either:
-                        // 1. Belong to the selected MCC (google_ads_id in sub_account_ids)
-                        // 2. OR are standalone (not managed by any MCC)
-                        const isOwnedBySelectedMCC = selectedMCCData.sub_account_ids.includes(account.google_ads_id || '')
-                        const isStandalone = account.google_ads_account_type === 'standalone'
-                        return isOwnedBySelectedMCC || isStandalone
-                      }
-                      // MCC selected but no sub_account_ids data - show only standalone accounts
-                      return account.google_ads_account_type === 'standalone'
-                    }
-
-                    // For non-MCC users, show all accounts
-                    return true
-                  })
+                  .filter(a => a.google_ads_account_type === 'standalone' && (a.id.startsWith('google_') || a.id.startsWith('user_')))
                   .map((account) => {
                     const isThisAccountSelecting = selectingAccountId === account.id
                     return (
@@ -417,44 +368,114 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                           <div className="flex items-center space-x-3">
                             <div
                               className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                              style={{ backgroundColor: account.color || '#E5E7EB' }}
+                              style={{ backgroundColor: account.color || '#6B7280' }}
                             >
-                              {getAccountIcon(account.business_type)}
+                              🏢
                             </div>
-
                             <div className="min-w-0">
-                              <h3 className="font-medium text-gray-900 truncate">
-                                {account.name}
-                              </h3>
-                              <p className="text-sm text-gray-500">
-                                {account.google_ads_id ? `Ads: ${account.google_ads_id}` :
-                                 account.meta_ads_id ? `Meta: ${account.meta_ads_id}` :
-                                 'Account'}
-                              </p>
+                              <h3 className="font-medium text-gray-900 truncate">{account.name}</h3>
+                              <p className="text-xs text-gray-500">Standalone Account • Ads: {account.google_ads_id}</p>
                             </div>
                           </div>
-
-                          <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
+                          {isThisAccountSelecting ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-gray-600" />
+                          ) : (
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
                         </div>
-
-                        {isThisAccountSelecting && (
-                          <div className="mt-3 flex items-center justify-center">
-                            <div className="flex items-center space-x-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                              <span className="text-sm text-gray-600">Connecting...</span>
-                            </div>
-                          </div>
-                        )}
                       </button>
                     )
                   })}
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Direct Account Selection (for users without multiple MCCs) */}
+      {!showMCCStep && (
+        <div className="px-6 pb-8">
+          <div className="mb-3">
+            <p className="text-sm text-gray-500">Select the account you'd like to analyze</p>
+          </div>
+
+          {availableAccounts.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-5xl mb-3">📊</div>
+              <h3 className="text-base font-medium text-gray-900 mb-1">No Accounts Available</h3>
+              <p className="text-gray-600 text-sm">
+                Please contact support to set up your marketing accounts.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {availableAccounts
+                .filter(account => {
+                  // Filter out MCC accounts
+                  if (account.google_ads_account_type === 'mcc') return false
+
+                  // Basic type check
+                  const isValidType = account.id.startsWith('google_') || account.id.startsWith('user_') || account.id.startsWith('meta_')
+                  return isValidType
+                })
+                .map((account) => {
+                  const isThisAccountSelecting = selectingAccountId === account.id
+                  return (
+                    <button
+                      key={account.id}
+                      onClick={() => handleAccountSelect(account)}
+                      disabled={!!selectingAccountId}
+                      className={`
+                        w-full p-4 rounded-xl border-2 transition-all text-left
+                        ${selectingAccountId && !isThisAccountSelecting
+                          ? 'opacity-60 cursor-not-allowed border-gray-200'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+                            style={{ backgroundColor: account.color || '#E5E7EB' }}
+                          >
+                            {getAccountIcon(account.business_type)}
+                          </div>
+
+                          <div className="min-w-0">
+                            <h3 className="font-medium text-gray-900 truncate">
+                              {account.name}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {account.google_ads_id ? `Ads: ${account.google_ads_id}` :
+                               account.meta_ads_id ? `Meta: ${account.meta_ads_id}` :
+                               'Account'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+
+                      {isThisAccountSelecting && (
+                        <div className="mt-3 flex items-center justify-center">
+                          <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                            <span className="text-sm text-gray-600">Connecting...</span>
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

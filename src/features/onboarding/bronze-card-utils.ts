@@ -12,10 +12,13 @@ const parseHeadline = (fact: BronzeFact): { headlineText: string; metricLabelTex
   let metricLabelText = fact.detail || ''
 
   if (typeof fact.metric_value === 'number') {
-    const parts = fact.headline.split(/[\d,]+/)
-    if (parts.length >= 2) {
-      headlineText = parts[0].trim()
-      metricLabelText = parts[1]?.trim() || fact.detail || ''
+    // Use indexOf to split on the metric value, preserving "30 days" etc.
+    const formattedValue = fact.metric_value.toLocaleString()
+    const valueIndex = fact.headline.indexOf(formattedValue)
+
+    if (valueIndex !== -1) {
+      headlineText = fact.headline.substring(0, valueIndex).trim()
+      metricLabelText = fact.headline.substring(valueIndex + formattedValue.length).trim() || fact.detail || ''
     } else {
       headlineText = fact.headline
     }
