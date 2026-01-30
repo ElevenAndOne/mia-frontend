@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { apiFetch } from '../../../utils/api'
-import { ModalShell } from '../../../components/modal-shell'
+import { Modal } from '../../overlay'
 
 interface GoogleAccount {
   customer_id: string
@@ -161,7 +161,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
   }
 
   return (
-    <ModalShell isOpen={isOpen} onClose={handleClose} panelClassName="max-w-md p-6">
+    <Modal isOpen={isOpen} onClose={handleClose} size="md" showCloseButton={false} panelClassName="p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -289,7 +289,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
                 </button>
               </div>
             )}
-    </ModalShell>
+    </Modal>
   )
 }
 

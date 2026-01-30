@@ -58,6 +58,14 @@
   --screen-width: 393px;
   --screen-height: 852px;
   --page-gutter: 16px;
+
+  /* Overlay Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-overlay-backdrop: 1200;
+  --z-overlay: 1300;
+  --z-popover: 1400;
+  --z-tooltip: 1500;
 }
 
 /* Reset & iPhone 16 Pro Base Styles */

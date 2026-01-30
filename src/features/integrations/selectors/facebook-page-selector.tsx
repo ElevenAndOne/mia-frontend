@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
-import { ModalShell } from '../../../components/modal-shell'
+import { Modal } from '../../overlay'
 
 interface FacebookPage {
   id: string
@@ -150,7 +150,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
   }
 
   return (
-    <ModalShell isOpen={isOpen} onClose={handleClose} panelClassName="max-w-md p-6">
+    <Modal isOpen={isOpen} onClose={handleClose} size="md" showCloseButton={false} panelClassName="p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -321,7 +321,7 @@ const FacebookPageSelector = ({ isOpen, onClose, onSuccess, currentAccountName, 
                 </button>
               </div>
             )}
-    </ModalShell>
+    </Modal>
   )
 }
 

@@ -105,6 +105,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { SessionProvider } from './contexts/session-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
+import { OverlayProvider } from './features/overlay'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization
@@ -140,7 +141,9 @@ ReactDOM.createRoot(rootElement).render(
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <OnboardingProvider>
-            <App />
+            <OverlayProvider>
+              <App />
+            </OverlayProvider>
           </OnboardingProvider>
         </SessionProvider>
       </QueryClientProvider>

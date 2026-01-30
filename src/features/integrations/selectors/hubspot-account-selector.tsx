@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
-import { ModalShell } from '../../../components/modal-shell'
+import { Modal } from '../../overlay'
 
 interface HubSpotAccount {
   id: number
@@ -137,9 +137,11 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   }
 
   return (
-    <ModalShell
+    <Modal
       isOpen={isOpen}
       onClose={onClose}
+      size="md"
+      showCloseButton={false}
       panelClassName="max-w-md max-h-[80vh] overflow-hidden"
     >
           {/* Header */}
@@ -272,7 +274,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
               </button>
             </div>
           )}
-    </ModalShell>
+    </Modal>
   )
 }
 

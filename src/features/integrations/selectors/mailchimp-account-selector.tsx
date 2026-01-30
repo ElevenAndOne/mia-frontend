@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
-import { ModalShell } from '../../../components/modal-shell'
+import { Modal } from '../../overlay'
 
 interface MailchimpAccount {
   id: number
@@ -141,9 +141,11 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
   }
 
   return (
-    <ModalShell
+    <Modal
       isOpen={isOpen}
       onClose={onClose}
+      size="md"
+      showCloseButton={false}
       panelClassName="max-w-md max-h-[90vh] overflow-y-auto"
     >
           {/* Header */}
@@ -272,7 +274,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
               </>
             )}
           </div>
-    </ModalShell>
+    </Modal>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Sheet } from '../../overlay'
 
 interface DateRangeOption {
   id: string
@@ -28,7 +28,7 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
           const start = new Date(today)
           start.setDate(today.getDate() - 7)
           return { start, end: today }
-        }
+        },
       },
       {
         id: '30_days',
@@ -38,7 +38,7 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
           const start = new Date(today)
           start.setDate(today.getDate() - 30)
           return { start, end: today }
-        }
+        },
       },
       {
         id: '3_months',
@@ -48,7 +48,7 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
           const start = new Date(today)
           start.setMonth(today.getMonth() - 3)
           return { start, end: today }
-        }
+        },
       },
       {
         id: '6_months',
@@ -58,7 +58,7 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
           const start = new Date(today)
           start.setMonth(today.getMonth() - 6)
           return { start, end: today }
-        }
+        },
       },
       {
         id: '1_year',
@@ -68,8 +68,8 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
           const start = new Date(today)
           start.setFullYear(today.getFullYear() - 1)
           return { start, end: today }
-        }
-      }
+        },
+      },
     ]
   }, [])
 
@@ -87,63 +87,34 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 z-40"
-            onClick={onClose}
-          />
-
-          {/* Sheet */}
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 max-h-[70vh] overflow-hidden"
+    <Sheet isOpen={isOpen} onClose={onClose} position="bottom" showHandle className="max-h-[70vh]">
+      {/* Options */}
+      <div className="px-4 pb-8">
+        {dateOptions.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => handleSelect(option.value)}
+            className={`w-full flex items-center justify-between py-4 px-2 rounded-lg transition-colors ${
+              selectedRange === option.value ? 'bg-gray-100' : 'hover:bg-gray-50'
+            }`}
           >
-            {/* Handle */}
-            <div className="flex justify-center py-3">
-              <div className="w-10 h-1 bg-gray-300 rounded-full" />
+            <div className="text-left">
+              <div className="font-medium text-gray-900">{option.label}</div>
+              <div className="text-sm text-gray-500">{formatDateRange(option)}</div>
             </div>
 
-            {/* Options */}
-            <div className="px-4 pb-8">
-              {dateOptions.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleSelect(option.value)}
-                  className={`w-full flex items-center justify-between py-4 px-2 rounded-lg transition-colors ${
-                    selectedRange === option.value ? 'bg-gray-100' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="text-left">
-                    <div className="font-medium text-gray-900">{option.label}</div>
-                    <div className="text-sm text-gray-500">{formatDateRange(option)}</div>
-                  </div>
-
-                  {/* Radio indicator */}
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    selectedRange === option.value
-                      ? 'border-gray-900 bg-gray-900'
-                      : 'border-gray-300'
-                  }`}>
-                    {selectedRange === option.value && (
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                    )}
-                  </div>
-                </button>
-              ))}
+            {/* Radio indicator */}
+            <div
+              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                selectedRange === option.value ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
+              }`}
+            >
+              {selectedRange === option.value && <div className="w-2 h-2 rounded-full bg-white" />}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </button>
+        ))}
+      </div>
+    </Sheet>
   )
 }
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { format } from 'date-fns'
-import { ModalShell } from './modal-shell'
+import { Modal } from '../features/overlay'
 
 interface InsightsDatePickerModalProps {
   isOpen: boolean
@@ -16,19 +16,19 @@ const DATE_RANGE_OPTIONS = [
   { value: '14_days', label: 'Last 14 days' },
   { value: '30_days', label: 'Last 30 days' },
   { value: '90_days', label: 'Last 90 days' },
-  { value: 'custom', label: 'Custom range' }
+  { value: 'custom', label: 'Custom range' },
 ]
 
 const INSIGHT_TITLES = {
   grow: 'Grow Insights',
   optimize: 'Optimize Insights',
-  protect: 'Protect Insights'
+  protect: 'Protect Insights',
 }
 
 const INSIGHT_DESCRIPTIONS = {
   grow: 'Discover opportunities to scale your best-performing campaigns and creatives',
   optimize: 'Identify inefficiencies and improve ROI across your marketing channels',
-  protect: 'Safeguard your high-performing campaigns from potential risks'
+  protect: 'Safeguard your high-performing campaigns from potential risks',
 }
 
 const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: InsightsDatePickerModalProps) => {
@@ -65,11 +65,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
   const isGenerateDisabled = selectedRange === 'custom' && (!dateRange?.from || !dateRange?.to)
 
   return (
-    <ModalShell
-      isOpen={isOpen}
-      onClose={onClose}
-      panelClassName="max-w-md p-4 max-h-[85vh] overflow-y-auto"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} size="md" showCloseButton={false} panelClassName="p-4 max-h-[85vh] overflow-y-auto">
       {/* Header */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
@@ -85,9 +81,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
 
       {/* Date Range Selection */}
       <div className="space-y-2 mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Select analysis period
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Select analysis period</label>
         {DATE_RANGE_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -102,7 +96,11 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
               <span className="font-medium">{option.label}</span>
               {selectedRange === option.value && (
                 <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               )}
             </div>
@@ -140,7 +138,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
                 day_outside: 'text-gray-400 opacity-50',
                 day_disabled: 'text-gray-400 opacity-50',
                 day_range_middle: 'aria-selected:bg-purple-100 aria-selected:text-purple-900',
-                day_hidden: 'invisible'
+                day_hidden: 'invisible',
               }}
             />
           </div>
@@ -155,7 +153,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
       {/* Helper Text */}
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
         <p className="text-xs text-purple-800">
-          💡 Choose a date range with active campaign data for the most relevant insights. You can change the date range
+          Choose a date range with active campaign data for the most relevant insights. You can change the date range
           anytime after generating insights.
         </p>
       </div>
@@ -176,7 +174,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
           Generate Insights
         </button>
       </div>
-    </ModalShell>
+    </Modal>
   )
 }
 
