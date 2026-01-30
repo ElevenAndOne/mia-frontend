@@ -65,6 +65,13 @@ function App() {
     localStorage.setItem('mia_app_state', appState)
   }, [appState])
 
+  useEffect(() => {
+    document.body.classList.toggle('full-bleed', appState === 'video-intro')
+    return () => {
+      document.body.classList.remove('full-bleed')
+    }
+  }, [appState])
+
   // Detect invite URL on mount (/invite/{invite_id})
   useEffect(() => {
     const path = window.location.pathname
@@ -368,7 +375,6 @@ function App() {
             >
               <OnboardingChat
                 onComplete={() => setAppState('main')}
-                onSkip={() => setAppState('main')}
                 onConnectPlatform={async (platformId) => {
                   // Open OAuth popup inline - stay in onboarding
                   if (platformId === 'meta_ads' || platformId === 'meta' || platformId === 'facebook_organic') {

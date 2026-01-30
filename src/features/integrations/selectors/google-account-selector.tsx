@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from '../../../contexts/session-context'
+import { ModalShell } from '../../../components/modal-shell'
 
 interface GoogleAccountSelectorProps {
   isOpen: boolean
@@ -70,22 +70,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={handleClose}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
+    <ModalShell isOpen={isOpen} onClose={handleClose} panelClassName="max-w-md p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -241,10 +226,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
                 </button>
               </div>
             )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    </ModalShell>
   )
 }
 

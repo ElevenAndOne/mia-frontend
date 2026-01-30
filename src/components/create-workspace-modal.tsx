@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useSession } from '../contexts/session-context'
+import { ModalShell } from './modal-shell'
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean
@@ -50,74 +50,62 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={required ? undefined : onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {required ? 'Create Your First Workspace' : 'Create Workspace'}
-                </h2>
-                {!required && (
-                  <button
-                    onClick={onClose}
-                    className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-                  >
-                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      closeOnOverlayClick={!required}
+      panelClassName="max-w-md overflow-hidden"
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {required ? 'Create Your First Workspace' : 'Create Workspace'}
+          </h2>
+          {!required && (
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
 
-            {/* Content */}
-            <div className="px-6 py-5">
-              <p className="text-gray-600 text-sm mb-4">
-                {required
-                  ? 'Name your workspace to get started. You can invite team members later.'
-                  : 'Create a workspace to organize your marketing data and collaborate with your team.'}
-              </p>
+      {/* Content */}
+      <div className="px-6 py-5">
+        <p className="text-gray-600 text-sm mb-4">
+          {required
+            ? 'Name your workspace to get started. You can invite team members later.'
+            : 'Create a workspace to organize your marketing data and collaborate with your team.'}
+        </p>
 
-              {/* Workspace Name Input */}
-              <div className="mb-4">
-                <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Workspace Name
-                </label>
-                <input
-                  id="workspace-name"
-                  type="text"
-                  value={workspaceName}
-                  onChange={(e) => {
-                    setWorkspaceName(e.target.value)
-                    setError(null)
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="e.g., My Agency, Client Name"
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                    error ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                  }`}
-                  autoFocus
-                  disabled={isCreating}
-                />
-                {error && (
-                  <p className="mt-1.5 text-sm text-red-500">{error}</p>
-                )}
-              </div>
+        {/* Workspace Name Input */}
+        <div className="mb-4">
+          <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-1.5">
+            Workspace Name
+          </label>
+          <input
+            id="workspace-name"
+            type="text"
+            value={workspaceName}
+            onChange={(e) => {
+              setWorkspaceName(e.target.value)
+              setError(null)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="e.g., My Agency, Client Name"
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              error ? 'border-red-300 bg-red-50' : 'border-gray-200'
+            }`}
+            autoFocus
+            disabled={isCreating}
+          />
+          {error && <p className="mt-1.5 text-sm text-red-500">{error}</p>}
+        </div>
 
               {/* Features Preview */}
               <div className="bg-gray-50 rounded-xl p-4 mb-2">
@@ -145,36 +133,33 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-              {!required && (
-                <button
-                  onClick={onClose}
-                  disabled={isCreating}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                onClick={handleCreate}
-                disabled={isCreating || !workspaceName.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
-              >
-                {isCreating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Workspace'
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* Footer */}
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+        {!required && (
+          <button
+            onClick={onClose}
+            disabled={isCreating}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          onClick={handleCreate}
+          disabled={isCreating || !workspaceName.trim()}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+        >
+          {isCreating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              Creating...
+            </>
+          ) : (
+            'Create Workspace'
+          )}
+        </button>
+      </div>
+    </ModalShell>
   )
 }
 

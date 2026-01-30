@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { useSession } from '../contexts/session-context'
 import { useState } from 'react'
 
@@ -139,10 +138,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
   }
 
   return (
-    <motion.div
-      initial={{ y: '100%' }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.8, ease: 'easeInOut' }}
+    <div
       className="fixed left-0 right-0 z-50"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom)',
@@ -162,7 +158,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
         <button
           onClick={() => handleLoginClick('Google')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
+          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-gray-100 cursor-not-allowed'
               : 'bg-white hover:bg-gray-50 active:bg-gray-100'
@@ -192,7 +188,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
         <button
           onClick={() => handleLoginClick('Meta')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
+          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-gray-100 cursor-not-allowed'
               : 'bg-white hover:bg-gray-50 active:bg-gray-100'
@@ -219,7 +215,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
         <button
           onClick={() => handleLoginClick('Email')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-white border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 transition-colors touch-manipulation min-h-[44px] ${
+          className={`w-full bg-white border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-gray-100 cursor-not-allowed'
               : 'hover:bg-gray-50 active:bg-gray-100'
@@ -235,7 +231,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
         <button
           onClick={() => handleLoginClick('Login')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-black text-white rounded-2xl py-3 px-6 font-medium transition-colors touch-manipulation min-h-[44px] ${
+          className={`w-full bg-black text-white rounded-2xl py-3 px-6 font-medium touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
               ? 'opacity-50 cursor-not-allowed'
               : 'hover:bg-gray-800 active:bg-gray-700'
@@ -244,7 +240,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
           Log in
         </button>
       </div>
-    </motion.div>
+    </div>
   )
 }
 

@@ -1,0 +1,22 @@
+interface BookmarkButtonProps {
+  onClick?: () => void
+  className?: string
+}
+
+export const BookmarkButton = ({ onClick, className = '' }: BookmarkButtonProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`text-gray-400 hover:text-gray-600 ${className}`.trim()}
+    aria-label="Bookmark"
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+      />
+    </svg>
+  </button>
+)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { ModalShell } from '../../../components/modal-shell'
 
 interface MailchimpAccount {
   id: number
@@ -140,17 +140,12 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-        >
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      panelClassName="max-w-md max-h-[90vh] overflow-y-auto"
+    >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
             <div className="flex items-center justify-between">
@@ -277,9 +272,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
               </>
             )}
           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </ModalShell>
   )
 }
 

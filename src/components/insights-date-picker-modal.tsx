@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { format } from 'date-fns'
+import { ModalShell } from './modal-shell'
 
 interface InsightsDatePickerModalProps {
   isOpen: boolean
@@ -65,140 +65,118 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
   const isGenerateDisabled = selectedRange === 'custom' && (!dateRange?.from || !dateRange?.to)
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto p-4"
-            onClick={(e) => e.stopPropagation()}
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      panelClassName="max-w-md p-4 max-h-[85vh] overflow-y-auto"
+    >
+      {/* Header */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold text-gray-900">{INSIGHT_TITLES[insightType]}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <p className="text-sm text-gray-600">{INSIGHT_DESCRIPTIONS[insightType]}</p>
+      </div>
+
+      {/* Date Range Selection */}
+      <div className="space-y-2 mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Select analysis period
+        </label>
+        {DATE_RANGE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => handleRangeSelect(option.value)}
+            className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${
+              selectedRange === option.value
+                ? 'border-purple-600 bg-purple-50 text-purple-900'
+                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+            }`}
           >
-            {/* Header */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {INSIGHT_TITLES[insightType]}
-                </h2>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-sm text-gray-600">
-                {INSIGHT_DESCRIPTIONS[insightType]}
-              </p>
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{option.label}</span>
+              {selectedRange === option.value && (
+                <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
             </div>
+          </button>
+        ))}
+      </div>
 
-            {/* Date Range Selection */}
-            <div className="space-y-2 mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select analysis period
-              </label>
-              {DATE_RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleRangeSelect(option.value)}
-                  className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${
-                    selectedRange === option.value
-                      ? 'border-purple-600 bg-purple-50 text-purple-900'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{option.label}</span>
-                    {selectedRange === option.value && (
-                      <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              ))}
+      {/* Custom Date Picker */}
+      {showCustomPicker && (
+        <div className="border-t border-gray-200 pt-3 mb-3">
+          <p className="text-xs font-medium text-gray-700 mb-3">Select date range</p>
+          <div className="flex justify-center">
+            <DayPicker
+              mode="range"
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={1}
+              disabled={{ after: new Date() }}
+              captionLayout="dropdown"
+              classNames={{
+                months: 'flex flex-col',
+                month: 'space-y-4',
+                caption: 'flex justify-center pt-1 relative items-center mb-2',
+                caption_label: 'text-sm font-medium',
+                nav: 'hidden',
+                table: 'w-full border-collapse space-y-1',
+                head_row: 'flex',
+                head_cell: 'text-gray-500 rounded-md w-9 font-normal text-[0.8rem]',
+                row: 'flex w-full mt-2',
+                cell: 'text-center text-sm p-0 relative [&:has([aria-selected])]:bg-purple-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-md',
+                day_selected:
+                  'bg-purple-600 text-white hover:bg-purple-600 hover:text-white focus:bg-purple-600 focus:text-white',
+                day_today: 'bg-gray-100 text-gray-900',
+                day_outside: 'text-gray-400 opacity-50',
+                day_disabled: 'text-gray-400 opacity-50',
+                day_range_middle: 'aria-selected:bg-purple-100 aria-selected:text-purple-900',
+                day_hidden: 'invisible'
+              }}
+            />
+          </div>
+          {dateRange?.from && dateRange?.to && (
+            <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded text-center">
+              <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
             </div>
-
-            {/* Custom Date Picker */}
-            {showCustomPicker && (
-              <div className="border-t border-gray-200 pt-3 mb-3">
-                <p className="text-xs font-medium text-gray-700 mb-3">
-                  Select date range
-                </p>
-                <div className="flex justify-center">
-                  <DayPicker
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={1}
-                    disabled={{ after: new Date() }}
-                    captionLayout="dropdown"
-                    classNames={{
-                      months: "flex flex-col",
-                      month: "space-y-4",
-                      caption: "flex justify-center pt-1 relative items-center mb-2",
-                      caption_label: "text-sm font-medium",
-                      nav: "hidden",
-                      table: "w-full border-collapse space-y-1",
-                      head_row: "flex",
-                      head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
-                      row: "flex w-full mt-2",
-                      cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-purple-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                      day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-md",
-                      day_selected: "bg-purple-600 text-white hover:bg-purple-600 hover:text-white focus:bg-purple-600 focus:text-white",
-                      day_today: "bg-gray-100 text-gray-900",
-                      day_outside: "text-gray-400 opacity-50",
-                      day_disabled: "text-gray-400 opacity-50",
-                      day_range_middle: "aria-selected:bg-purple-100 aria-selected:text-purple-900",
-                      day_hidden: "invisible",
-                    }}
-                  />
-                </div>
-                {dateRange?.from && dateRange?.to && (
-                  <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded text-center">
-                    <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Helper Text */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
-              <p className="text-xs text-purple-800">
-                💡 Choose a date range with active campaign data for the most relevant insights.
-                You can change the date range anytime after generating insights.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              <button
-                onClick={onClose}
-                className="flex-1 px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerateDisabled}
-                className="flex-1 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              >
-                Generate Insights
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
+          )}
+        </div>
       )}
-    </AnimatePresence>
+
+      {/* Helper Text */}
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 mb-3">
+        <p className="text-xs text-purple-800">
+          💡 Choose a date range with active campaign data for the most relevant insights. You can change the date range
+          anytime after generating insights.
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={onClose}
+          className="flex-1 px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerateDisabled}
+          className="flex-1 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+        >
+          Generate Insights
+        </button>
+      </div>
+    </ModalShell>
   )
 }
 
