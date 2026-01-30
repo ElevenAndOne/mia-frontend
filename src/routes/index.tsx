@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
 import { ProtectedRoute } from './protected-route'
 import { useSession } from '../contexts/session-context'
 
@@ -8,6 +7,7 @@ import { useSession } from '../contexts/session-context'
 import VideoIntroView from '../components/video-intro-view'
 import CombinedAccountSelection from '../components/combined-account-selection'
 import MetaAccountSelectionPage from '../components/meta-account-selection-page'
+import { AppShell } from '../components/app-shell'
 
 // Lazy load all other pages
 const MainView = lazy(() => import('../components/main-view'))
@@ -27,41 +27,32 @@ const LazyLoadSpinner = () => (
   </div>
 )
 
-const pageTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.3 }
-}
-
-const slideTransition = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-  transition: { duration: 0.3 }
-}
-
 // Wrapper components that use hooks for navigation
 
 const ChatViewWrapper = () => {
   const navigate = useNavigate()
   const { logout } = useSession()
 
+  const handleNewChat = () => {
+    // Trigger new chat by navigating to home with a state flag
+    navigate('/home', { state: { newChat: true } })
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="w-full h-full"
+    <AppShell
+      onNewChat={handleNewChat}
+      onIntegrationsClick={() => navigate('/integrations')}
     >
-      <ChatView
-        onIntegrationsClick={() => navigate('/integrations')}
-        onLogout={async () => {
-          await logout()
-          navigate('/')
-        }}
-      />
-    </motion.div>
+      <div className="w-full h-full">
+        <ChatView
+          onIntegrationsClick={() => navigate('/integrations')}
+          onLogout={async () => {
+            await logout()
+            navigate('/')
+          }}
+        />
+      </div>
+    </AppShell>
   )
 }
 
@@ -70,12 +61,7 @@ const MainViewWrapper = () => {
   const { logout } = useSession()
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="w-full h-full"
-    >
+    <div className="w-full h-full">
       <MainView
         onLogout={async () => {
           await logout()
@@ -104,25 +90,35 @@ const MainViewWrapper = () => {
           navigate(`/insights/protect?${params.toString()}`, { state: { showDatePicker: true } })
         }}
       />
-    </motion.div>
+    </div>
   )
 }
 
 const IntegrationsWrapper = () => {
   const navigate = useNavigate()
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
-      <IntegrationsPage onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <IntegrationsPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
 const WorkspaceSettingsWrapper = () => {
   const navigate = useNavigate()
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
-      <WorkspaceSettingsPage onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <WorkspaceSettingsPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
@@ -133,13 +129,18 @@ const GrowInsightsWrapper = () => {
   const dateRange = searchParams.get('range') || '30_days'
 
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <GrowInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <GrowInsightsStreaming
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
@@ -150,13 +151,18 @@ const OptimizeInsightsWrapper = () => {
   const dateRange = searchParams.get('range') || '30_days'
 
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <OptimizeInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <OptimizeInsightsStreaming
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
@@ -167,22 +173,32 @@ const ProtectInsightsWrapper = () => {
   const dateRange = searchParams.get('range') || '30_days'
 
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <ProtectInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <ProtectInsightsStreaming
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
 const SummaryInsightsWrapper = () => {
   const navigate = useNavigate()
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <SummaryInsights onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+    >
+      <div className="w-full h-full">
+        <SummaryInsights onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
@@ -196,7 +212,7 @@ const InviteWrapper = ({ onAccepted }: { onAccepted: (tenantId: string, skip?: b
   }
 
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
+    <div className="w-full h-full">
       <InviteLandingPage
         inviteId={inviteId}
         onAccepted={onAccepted}
@@ -205,7 +221,7 @@ const InviteWrapper = ({ onAccepted }: { onAccepted: (tenantId: string, skip?: b
           navigate('/')
         }}
       />
-    </motion.div>
+    </div>
   )
 }
 
@@ -237,20 +253,19 @@ export const AppRoutes = ({
 
   return (
     <Suspense fallback={<LazyLoadSpinner />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+      <Routes location={location}>
           {/* Public Routes */}
           <Route
             path="/"
             element={
-              <motion.div {...pageTransition} className="w-full h-full">
+              <div className="w-full h-full">
                 <VideoIntroView
                   onAuthSuccess={onAuthSuccess}
                   onMetaAuthSuccess={onMetaAuthSuccess}
                   hasSeenIntro={hasSeenIntro}
                   onOAuthPopupClosed={onOAuthPopupClosed}
                 />
-              </motion.div>
+              </div>
             }
           />
 
@@ -264,7 +279,7 @@ export const AppRoutes = ({
             path="/login"
             element={
               <ProtectedRoute>
-                <motion.div {...pageTransition} className="w-full h-full">
+                <div className="w-full h-full">
                   <CombinedAccountSelection
                     onAccountSelected={() => {}}
                     onBack={() => {
@@ -276,7 +291,7 @@ export const AppRoutes = ({
                       }
                     }}
                   />
-                </motion.div>
+                </div>
               </ProtectedRoute>
             }
           />
@@ -285,7 +300,7 @@ export const AppRoutes = ({
             path="/login/meta"
             element={
               <ProtectedRoute requireMetaAuth>
-                <motion.div {...pageTransition} className="w-full h-full">
+                <div className="w-full h-full">
                   <MetaAccountSelectionPage
                     onAccountSelected={() => navigate('/onboarding')}
                     onBack={() => {
@@ -293,7 +308,7 @@ export const AppRoutes = ({
                       navigate('/')
                     }}
                   />
-                </motion.div>
+                </div>
               </ProtectedRoute>
             }
           />
@@ -384,8 +399,7 @@ export const AppRoutes = ({
               </ProtectedRoute>
             }
           />
-        </Routes>
-      </AnimatePresence>
+      </Routes>
     </Suspense>
   )
 }

@@ -467,7 +467,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   return (
     <div
       className="w-full h-screen bg-white flex flex-col overflow-hidden"
-      style={{ fontFamily: 'Figtree, sans-serif', maxWidth: '393px', margin: '0 auto' }}
     >
       {/* Header */}
       <div className="px-4 py-4 border-b border-gray-100 shrink-0">
@@ -491,7 +490,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
         {/* Connected Sources Section */}
         {!loading && connectedSources.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-6 max-w-3xl mx-auto w-full">
             <div className="mb-4">
               <h2 className="text-base font-semibold text-gray-900">{connectedSources.length} Sources</h2>
               <p className="text-xs text-gray-500">Connect your data sources to unlock powerful new insights</p>
@@ -616,7 +615,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
         {/* Available Integrations Section */}
         {!loading && availableSources.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-6 max-w-3xl mx-auto w-full">
             <h2 className="text-base font-semibold text-gray-900 mb-1">Available Integrations</h2>
             <p className="text-xs text-gray-500 mb-4">Connect your data sources to unlock powerful new insights</p>
 
@@ -658,7 +657,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         )}
 
         {/* Need Help Section */}
-        <div className="mb-4">
+        <div className="mb-4 max-w-3xl mx-auto w-full">
           <h2 className="text-base font-semibold text-gray-900 mb-1">Need help?</h2>
           <p className="text-xs text-gray-500 mb-3">Having trouble connecting your data sources? Here are some helpful resources:</p>
 

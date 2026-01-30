@@ -1,5 +1,5 @@
 /**
- * Core streaming hook that provides SSE streaming with typing effect.
+ * Core streaming hook that provides SSE streaming.
  * Used by useStreamingInsights, useStreamingInsightsParsed, and useOnboardingStreaming.
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -12,21 +12,11 @@ export interface StreamingState {
 }
 
 export interface StreamingConfig {
-  tickInterval?: number // Milliseconds between typing ticks (default: 14)
-  charsPerTick?: number // Characters to add per tick (default: 1)
   timeout?: number // Request timeout in ms (default: none)
-}
-
-export interface StreamingRefs {
-  pendingTextRef: React.MutableRefObject<string>
-  displayedTextRef: React.MutableRefObject<string>
-  streamDoneRef: React.MutableRefObject<boolean>
 }
 
 export interface UseStreamingCoreReturn {
   state: StreamingState
-  refs: StreamingRefs
-  startTypingEffect: () => void
   stopStreaming: () => void
   reset: () => void
   processSSEStream: (
@@ -35,12 +25,7 @@ export interface UseStreamingCoreReturn {
   ) => Promise<void>
 }
 
-const DEFAULT_TICK_INTERVAL = 14 // ~70 chars/sec
-const DEFAULT_CHARS_PER_TICK = 1
-
 export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreReturn {
-  const tickInterval = config?.tickInterval ?? DEFAULT_TICK_INTERVAL
-  const charsPerTick = config?.charsPerTick ?? DEFAULT_CHARS_PER_TICK
   const timeout = config?.timeout
 
   const [state, setState] = useState<StreamingState>({
@@ -51,59 +36,19 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
-  const pendingTextRef = useRef<string>('')
-  const displayedTextRef = useRef<string>('')
-  const typingIntervalRef = useRef<number | null>(null)
-  const streamDoneRef = useRef<boolean>(false)
+  const textRef = useRef<string>('')
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current)
-      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
   }, [])
 
-  const startTypingEffect = useCallback(() => {
-    if (typingIntervalRef.current) return
-
-    typingIntervalRef.current = window.setInterval(() => {
-      if (pendingTextRef.current.length > 0) {
-        const charsToAdd = pendingTextRef.current.slice(0, charsPerTick)
-        pendingTextRef.current = pendingTextRef.current.slice(charsPerTick)
-        displayedTextRef.current += charsToAdd
-
-        setState(prev => ({
-          ...prev,
-          text: displayedTextRef.current
-        }))
-      } else if (streamDoneRef.current) {
-        if (typingIntervalRef.current) {
-          clearInterval(typingIntervalRef.current)
-          typingIntervalRef.current = null
-        }
-        setState(prev => ({
-          ...prev,
-          isStreaming: false,
-          isComplete: true
-        }))
-      }
-    }, tickInterval)
-  }, [tickInterval, charsPerTick])
-
   const reset = useCallback(() => {
-    pendingTextRef.current = ''
-    displayedTextRef.current = ''
-    streamDoneRef.current = false
-
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current)
-      typingIntervalRef.current = null
-    }
+    textRef.current = ''
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -124,18 +69,8 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
       abortControllerRef.current = null
     }
 
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current)
-      typingIntervalRef.current = null
-    }
-
-    // Show all remaining text immediately
-    displayedTextRef.current += pendingTextRef.current
-    pendingTextRef.current = ''
-
     setState(prev => ({
       ...prev,
-      text: displayedTextRef.current,
       isStreaming: false
     }))
   }, [])
@@ -145,14 +80,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     options: RequestInit
   ) => {
     // Reset state
-    pendingTextRef.current = ''
-    displayedTextRef.current = ''
-    streamDoneRef.current = false
-
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current)
-      typingIntervalRef.current = null
-    }
+    textRef.current = ''
 
     setState({
       text: '',
@@ -170,8 +98,6 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         abortControllerRef.current?.abort()
       }, timeout)
     }
-
-    startTypingEffect()
 
     try {
       const response = await fetch(url, {
@@ -197,7 +123,11 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         const { done, value } = await reader.read()
 
         if (done) {
-          streamDoneRef.current = true
+          setState(prev => ({
+            ...prev,
+            isStreaming: false,
+            isComplete: true
+          }))
           break
         }
 
@@ -210,14 +140,19 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
             try {
               const parsed = JSON.parse(message.slice(6))
               if (parsed.text) {
-                pendingTextRef.current += parsed.text
+                // Append text immediately as it streams
+                textRef.current += parsed.text
+                setState(prev => ({
+                  ...prev,
+                  text: textRef.current
+                }))
               } else if (parsed.done) {
-                streamDoneRef.current = true
+                setState(prev => ({
+                  ...prev,
+                  isStreaming: false,
+                  isComplete: true
+                }))
               } else if (parsed.error) {
-                if (typingIntervalRef.current) {
-                  clearInterval(typingIntervalRef.current)
-                  typingIntervalRef.current = null
-                }
                 setState(prev => ({
                   ...prev,
                   isStreaming: false,
@@ -234,14 +169,9 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     } catch (error) {
       if (timeoutId) clearTimeout(timeoutId)
 
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current)
-        typingIntervalRef.current = null
-      }
-
       if (error instanceof Error && error.name === 'AbortError') {
         // Check if timeout vs user cancel
-        if (timeout && displayedTextRef.current.length === 0) {
+        if (timeout && textRef.current.length === 0) {
           setState(prev => ({
             ...prev,
             isStreaming: false,
@@ -258,16 +188,10 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         }))
       }
     }
-  }, [startTypingEffect, timeout])
+  }, [timeout])
 
   return {
     state,
-    refs: {
-      pendingTextRef,
-      displayedTextRef,
-      streamDoneRef
-    },
-    startTypingEffect,
     stopStreaming,
     reset,
     processSSEStream

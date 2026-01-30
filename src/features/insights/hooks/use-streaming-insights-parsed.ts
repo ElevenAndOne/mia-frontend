@@ -2,7 +2,7 @@
  * Hook for streaming insights with real-time parsing into structured cards
  * Uses the same smooth typing effect, but parses the displayed text into structured cards
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useStreamingCore } from './use-streaming-core'
 import { createApiUrl } from '../../../utils/api'
 
@@ -113,9 +113,15 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     processSSEStream,
     stopStreaming,
     reset
-  } = useStreamingCore({ tickInterval: 14 })
+  } = useStreamingCore()
 
   const parsed = useMemo(() => parseInsights(state.text), [state.text])
+
+  useEffect(() => {
+    if (state.isComplete && parsed.insights.length > 0) {
+      console.log('Insights fully streamed:', parsed.insights)
+    }
+  }, [state.isComplete, parsed.insights])
 
   const startStreaming = useCallback(async (
     insightType: 'grow' | 'optimize' | 'protect',
