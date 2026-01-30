@@ -32,6 +32,7 @@ export function Popover({
   const floatingRef = useRef<HTMLDivElement>(null)
   const { isMobile, registerOverlay, unregisterOverlay, getZIndex } = useOverlayContext()
   const overlayId = useId()
+  const shouldUseSheet = isMobile && mobileAdaptation === 'sheet'
 
   // Register/unregister overlay for stacking management
   useEffect(() => {
@@ -47,11 +48,11 @@ export function Popover({
     offset,
     flip: true,
     shift: true,
-    isOpen: isOpen && !isMobile,
+    isOpen: isOpen && !shouldUseSheet,
   })
 
   // Click outside handling
-  useClickOutside([anchorRef, floatingRef], onClose, isOpen && closeOnOutsideClick && !isMobile)
+  useClickOutside([anchorRef, floatingRef], onClose, isOpen && closeOnOutsideClick && !shouldUseSheet)
 
   // Escape key handling
   useEscapeKey(onClose, isOpen && closeOnEscape)
@@ -59,7 +60,7 @@ export function Popover({
   const zIndex = getZIndex(overlayId)
 
   // Mobile adaptation: render as Sheet
-  if (isMobile && mobileAdaptation === 'sheet') {
+  if (shouldUseSheet) {
     return (
       <Sheet isOpen={isOpen} onClose={onClose} position="bottom">
         <div className={`p-4 ${className}`.trim()}>{children}</div>

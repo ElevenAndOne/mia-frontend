@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
-import { Sheet } from '../../overlay'
+import { useMemo, type RefObject } from 'react'
+import { Popover } from '../../overlay'
+import { Radio } from '../../../components/radio'
 
 interface DateRangeOption {
   id: string
@@ -8,14 +9,15 @@ interface DateRangeOption {
   getDateRange: () => { start: Date; end: Date }
 }
 
-interface DateRangeSheetProps {
+interface DateRangePopoverProps {
   isOpen: boolean
   onClose: () => void
+  anchorRef: RefObject<HTMLButtonElement | null>
   selectedRange: string
   onSelect: (range: string) => void
 }
 
-export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: DateRangeSheetProps) => {
+export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, onSelect }: DateRangePopoverProps) => {
   const dateOptions: DateRangeOption[] = useMemo(() => {
     const today = new Date()
 
@@ -73,6 +75,28 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
     ]
   }, [])
 
+  const handleSelect = (value: string) => {
+    onSelect(value)
+    onClose()
+  }
+
+  return (
+    <Popover isOpen={isOpen} onClose={onClose} anchorRef={anchorRef} placement="top-start" className="min-w-[240px]" mobileAdaptation="none" >
+      <div className="flex flex-col p-1 gap-0.5">
+        {dateOptions.map((option) => (
+          <DateRangeItem
+            key={option.id}
+            option={option}
+            active={selectedRange === option.value}
+            onClick={() => handleSelect(option.value)}
+          />
+        ))}
+      </div>
+    </Popover>
+  )
+}
+
+function DateRangeItem({ option, active, onClick }: { option: DateRangeOption, active: boolean, onClick: () => void }) {
   const formatDateRange = (option: DateRangeOption): string => {
     const { start, end } = option.getDateRange()
     const formatDate = (date: Date) => {
@@ -81,41 +105,24 @@ export const DateRangeSheet = ({ isOpen, onClose, selectedRange, onSelect }: Dat
     return `${formatDate(start)} - ${formatDate(end)}`
   }
 
-  const handleSelect = (value: string) => {
-    onSelect(value)
-    onClose()
-  }
-
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} position="bottom" showHandle className="max-h-[70vh]">
-      {/* Options */}
-      <div className="px-4 pb-8">
-        {dateOptions.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => handleSelect(option.value)}
-            className={`w-full flex items-center justify-between py-4 px-2 rounded-lg transition-colors ${
-              selectedRange === option.value ? 'bg-gray-100' : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="text-left">
-              <div className="font-medium text-gray-900">{option.label}</div>
-              <div className="text-sm text-gray-500">{formatDateRange(option)}</div>
-            </div>
-
-            {/* Radio indicator */}
-            <div
-              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedRange === option.value ? 'border-gray-900 bg-gray-900' : 'border-gray-300'
-              }`}
-            >
-              {selectedRange === option.value && <div className="w-2 h-2 rounded-full bg-white" />}
-            </div>
-          </button>
-        ))}
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${active ? 'bg-gray-100' : 'hover:bg-gray-50'
+        }`}
+    >
+      <div className="text-left">
+        <div className="font-medium text-gray-900 text-sm">{option.label}</div>
+        <div className="text-xs text-gray-500">{formatDateRange(option)}</div>
       </div>
-    </Sheet>
+
+      {/* Radio indicator */}
+      <Radio active={active} />
+    </button>
   )
 }
 
-export default DateRangeSheet
+
+// Keep backward compatible export name
+export const DateRangeSheet = DateRangePopover
+export default DateRangePopover

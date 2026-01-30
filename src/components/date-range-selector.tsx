@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, type RefObject } from 'react'
 import { DayPicker, type DateRange } from 'react-day-picker'
 import 'react-day-picker/dist/style.css'
 import { format } from 'date-fns'
-import { useEscapeKey, useClickOutside, OverlayPortal } from '../features/overlay'
+import { Popover } from '../features/overlay'
 
 interface DateRangeSelectorProps {
   isOpen: boolean
   onClose: () => void
   selectedRange: string
   onApply: (range: string) => void
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 const DATE_RANGE_OPTIONS = [
@@ -19,18 +20,14 @@ const DATE_RANGE_OPTIONS = [
   { value: 'custom', label: 'Custom range' },
 ]
 
-const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRangeSelectorProps) => {
+const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef }: DateRangeSelectorProps) => {
   const [tempSelection, setTempSelection] = useState(selectedRange)
   const [showCustomPicker, setShowCustomPicker] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  // Use overlay hooks for consistent behavior
-  useEscapeKey(onClose, isOpen)
-  useClickOutside([panelRef], onClose, isOpen)
 
   // Sync temp selection when selectedRange changes (from parent)
   useEffect(() => {
+    if (!isOpen) return
     setTempSelection(selectedRange)
     // If selectedRange is custom format (YYYY-MM-DD_YYYY-MM-DD), parse it
     if (selectedRange.includes('_') && selectedRange.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
@@ -39,10 +36,9 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
       setShowCustomPicker(true)
     } else {
       setDateRange(undefined)
+      setShowCustomPicker(false)
     }
-  }, [selectedRange])
-
-  if (!isOpen) return null
+  }, [isOpen, selectedRange])
 
   const handleOptionClick = (value: string) => {
     setTempSelection(value)
@@ -74,16 +70,15 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
   }
 
   return (
-    <OverlayPortal>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20" style={{ zIndex: 1200 }} onClick={onClose} />
-
-      {/* Dropdown */}
-      <div
-        ref={panelRef}
-        className={`fixed top-16 right-4 bg-white rounded-lg shadow-xl overflow-y-auto max-h-[75vh] transition-all ${showCustomPicker ? 'w-80' : 'w-64'}`}
-        style={{ zIndex: 1300 }}
-      >
+    <Popover
+      isOpen={isOpen}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement="bottom-end"
+      className={`max-h-[75vh] ${showCustomPicker ? 'w-80' : 'w-64'}`}
+      mobileAdaptation="none"
+    >
+      <div className="max-h-[75vh] overflow-y-auto">
         {DATE_RANGE_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -143,7 +138,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
         )}
 
         {/* Apply Button */}
-        <div className="border-t border-gray-200 p-2" style={{ paddingBottom: '1rem' }}>
+        <div className="border-t border-gray-200 p-2">
           <button
             onClick={handleApply}
             disabled={showCustomPicker && (!dateRange?.from || !dateRange?.to)}
@@ -153,7 +148,7 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRang
           </button>
         </div>
       </div>
-    </OverlayPortal>
+    </Popover>
   )
 }
 

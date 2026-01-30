@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSession } from '../contexts/session-context'
 import { apiFetch } from '../utils/api'
 import { usePlatformPreferences } from '../features/integrations/hooks/use-platform-preferences'
@@ -65,6 +65,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   const [showMore, setShowMore] = useState(false) // Toggle for More button
   const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
   const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
+  const datePickerButtonRef = useRef<HTMLButtonElement>(null)
 
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, Mailchimp, HubSpot
@@ -416,6 +417,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
             {/* Date Range Picker Button (Right) */}
             <button
+              ref={datePickerButtonRef}
+              type="button"
               onClick={() => setShowDatePicker(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
               title="Change date range"
@@ -750,6 +753,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
         onClose={() => setShowDatePicker(false)}
         selectedRange={dateRange}
         onApply={(range) => setDateRange(range)}
+        anchorRef={datePickerButtonRef}
       />
 
       {/* Create Workspace Modal - Jan 2025 */}

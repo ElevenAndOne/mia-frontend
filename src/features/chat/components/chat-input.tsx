@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import type { KeyboardEvent } from 'react'
-import DateRangeSheet from './date-range-sheet'
+import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
 import { Icon } from '../../../components/icon'
 
 interface Platform {
   id: string
   name: string
-  icon: string
+  icon: React.ReactNode
   connected: boolean
 }
 
@@ -23,21 +23,12 @@ interface ChatInputProps {
   hasSelectedPlatforms?: boolean
 }
 
-export const ChatInput = ({
-  onSubmit,
-  disabled = false,
-  placeholder = 'Start chatting...',
-  dateRange,
-  onDateRangeChange,
-  platforms,
-  selectedPlatforms,
-  onPlatformToggle,
-  hasSelectedPlatforms = false
-}: ChatInputProps) => {
+export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start chatting...', dateRange, onDateRangeChange, platforms, selectedPlatforms, onPlatformToggle, hasSelectedPlatforms = false }: ChatInputProps) => {
   const [message, setMessage] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const calendarButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubmit = () => {
     if (message.trim() && !disabled) {
@@ -83,13 +74,22 @@ export const ChatInput = ({
           <div className="flex items-center gap-1 relative">
             {/* Calendar button */}
             <button
+              ref={calendarButtonRef}
               type="button"
-              onClick={() => setShowDatePicker(true)}
+              onClick={() => setShowDatePicker(!showDatePicker)}
               className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"
               title="Select date range"
             >
               <Icon.calendar size={18} />
             </button>
+
+            <DateRangePopover
+              isOpen={showDatePicker}
+              onClose={() => setShowDatePicker(false)}
+              anchorRef={calendarButtonRef}
+              selectedRange={dateRange}
+              onSelect={onDateRangeChange}
+            />
 
             {/* Platform selector button */}
             <div className="relative">
@@ -134,13 +134,6 @@ export const ChatInput = ({
         </div>
       </div>
 
-      {/* Date Range Sheet */}
-      <DateRangeSheet
-        isOpen={showDatePicker}
-        onClose={() => setShowDatePicker(false)}
-        selectedRange={dateRange}
-        onSelect={onDateRangeChange}
-      />
     </div>
   )
 }

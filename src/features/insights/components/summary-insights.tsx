@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { getDateRangeDisplay } from '../../../utils/date-display'
@@ -22,6 +22,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   const [error, setError] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
+  const datePickerButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     fetchSummary()
@@ -71,6 +72,8 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   // Date picker button for TopBar right slot
   const datePickerButton = (
     <button
+      ref={datePickerButtonRef}
+      type="button"
       onClick={() => setIsDateSelectorOpen(!isDateSelectorOpen)}
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors active:scale-95"
     >
@@ -89,6 +92,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
         onClose={() => setIsDateSelectorOpen(false)}
         selectedRange={selectedDateRange}
         onApply={setSelectedDateRange}
+        anchorRef={datePickerButtonRef}
       />
 
       {/* Top Bar */}

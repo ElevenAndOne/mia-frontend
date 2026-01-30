@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { MarkdownText } from '../../../components/markdown-text'
@@ -81,6 +81,7 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
   const { sessionId, selectedAccount } = useSession()
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
+  const datePickerButtonRef = useRef<HTMLButtonElement>(null)
 
   const {
     insights,
@@ -117,6 +118,8 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
   // Date picker button for TopBar right slot
   const datePickerButton = (
     <button
+      ref={datePickerButtonRef}
+      type="button"
       onClick={() => setIsDateSelectorOpen(!isDateSelectorOpen)}
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors active:scale-95"
     >
@@ -193,6 +196,7 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
         onClose={() => setIsDateSelectorOpen(false)}
         selectedRange={selectedDateRange}
         onApply={setSelectedDateRange}
+        anchorRef={datePickerButtonRef}
       />
 
       {/* Top Bar */}

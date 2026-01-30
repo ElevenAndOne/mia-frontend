@@ -9,6 +9,7 @@ import ChatEmptyState from './chat-empty-state'
 import ChatInput from './chat-input'
 import ChatMessage from './chat-message'
 import QuickActions from './quick-actions'
+import { Logo } from '../../../components/logo'
 
 interface Message {
   id: string
@@ -57,13 +58,13 @@ export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
   // Platform configuration - maps to backend platform IDs
   // Note: platformStatus uses 'google' and 'meta' keys, but we use 'google_ads' and 'meta_ads' for consistency
   const platformConfig = useMemo(() => [
-    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', statusKey: 'google' },
-    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', statusKey: 'ga4' },
-    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', statusKey: 'meta' },
-    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', statusKey: 'facebook_organic' },
-    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', statusKey: 'brevo' },
-    { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', statusKey: 'mailchimp' },
-    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', statusKey: 'hubspot' },
+    { id: 'google_ads', name: 'Google Ads', icon: <Logo.google_ads />, statusKey: 'google' },
+    { id: 'ga4', name: 'Google Analytics', icon: <Logo.google_analytics />, statusKey: 'ga4' },
+    { id: 'meta_ads', name: 'Meta Ads', icon: <Logo.meta />, statusKey: 'meta' },
+    { id: 'facebook_organic', name: 'Facebook Organic', icon: <Logo.facebook />, statusKey: 'facebook_organic' },
+    { id: 'brevo', name: 'Brevo', icon: <Logo.brevo />, statusKey: 'brevo' },
+    { id: 'mailchimp', name: 'Mailchimp', icon: <Logo.mailchimp />, statusKey: 'mailchimp' },
+    { id: 'hubspot', name: 'HubSpot', icon: <Logo.hubspot />, statusKey: 'hubspot' },
   ], [])
 
   // Get connected platforms from platformStatus (same source as integrations page)
