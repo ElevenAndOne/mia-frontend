@@ -5,9 +5,10 @@ interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
   onMetaAuthSuccess?: () => void  // New callback for Meta-first flow
   onOAuthPopupClosed?: (platform: 'google' | 'meta') => void  // Called when popup closes (triggers App-level loading)
+  onOAuthStart?: () => void  // Called when OAuth popup opens (hides video immediately)
 }
 
-const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed }: FigmaLoginModalProps) => {
+const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed, onOAuthStart }: FigmaLoginModalProps) => {
   const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
@@ -19,6 +20,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
       try {
         setIsGoogleLoading(true)
         setGoogleLoadingMessage('Opening Google sign-in...')
+        onOAuthStart?.()  // Hide video immediately
 
         // Use new SessionContext login method with popup close callback
         const success = await login(() => onOAuthPopupClosed?.('google'))
@@ -51,6 +53,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
       try {
         setIsMetaLoading(true)
         setMetaLoadingMessage('Opening Meta sign-in...')
+        onOAuthStart?.()  // Hide video immediately
 
         const success = await loginMeta(() => onOAuthPopupClosed?.('meta'))
 
@@ -109,6 +112,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
         // No valid session found - redirect to Google OAuth (same as "Continue with Google")
         console.log('[LOGIN] No valid session, redirecting to Google OAuth')
         setGoogleLoadingMessage('Redirecting to sign in...')
+        onOAuthStart?.()  // Hide video immediately
 
         const success = await login(() => onOAuthPopupClosed?.('google'))
 
