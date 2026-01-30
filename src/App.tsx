@@ -25,7 +25,8 @@ function App() {
     loginMeta,
     refreshAccounts,
     refreshWorkspaces,
-    switchWorkspace
+    switchWorkspace,
+    connectingPlatform
   } = useSession()
 
   // OAuth loading state
@@ -227,15 +228,20 @@ function App() {
     return <LoadingScreen platform={oauthLoadingPlatform} />
   }
 
-  // Show loading for protected routes
-  if (isLoading && location.pathname !== '/' && !location.pathname.startsWith('/login') && location.pathname !== '/onboarding') {
-    const loadingPlatform = isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null
+  // Don't show loading screen if we're connecting a second platform during onboarding
+  // This prevents OnboardingChat from unmounting when adding Meta as second platform
+  const isConnectingSecondPlatform = connectingPlatform && isAnyAuthenticated && selectedAccount
+
+  // Show loading for protected routes (but not when connecting second platform)
+  if (isLoading && !isConnectingSecondPlatform && location.pathname !== '/' && !location.pathname.startsWith('/login') && location.pathname !== '/onboarding') {
+    // Use connectingPlatform if set (explicit), otherwise infer from auth state
+    const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
     return <LoadingScreen platform={loadingPlatform} />
   }
 
-  // Show loading for onboarding if session not ready
-  if (location.pathname === '/onboarding' && (!isAnyAuthenticated || !selectedAccount)) {
-    const loadingPlatform = isMetaFirstFlow ? 'meta' : 'google'
+  // Show loading for onboarding if session not ready (but not when connecting second platform)
+  if (location.pathname === '/onboarding' && (!isAnyAuthenticated || !selectedAccount) && !isConnectingSecondPlatform) {
+    const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
     return <LoadingScreen platform={loadingPlatform} />
   }
 

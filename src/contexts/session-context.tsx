@@ -35,6 +35,8 @@ export interface SessionState extends MetaAuthState {
   activeWorkspace: Workspace | null
   availableWorkspaces: Workspace[]
   error: string | null
+  // Track which platform is actively being connected (for correct loading messages)
+  connectingPlatform: 'google' | 'meta' | null
 }
 
 export interface SessionActions {
@@ -69,7 +71,8 @@ const INITIAL_STATE: SessionState = {
   availableWorkspaces: [],
   error: null,
   isMetaAuthenticated: false,
-  metaUser: null
+  metaUser: null,
+  connectingPlatform: null
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- useSession hook must be co-located with SessionContext
@@ -243,7 +246,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Google Login
   const login = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
       const authData = await googleAuthService.getGoogleAuthUrl()
@@ -282,7 +285,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   ...prev,
                   isAuthenticated: true,
                   isLoading: false,
-                  hasSeenIntro: statusData.user_info?.has_seen_intro || prev.hasSeenIntro,
+                  connectingPlatform: null,
+                  // Always set hasSeenIntro to true after successful OAuth
+                  hasSeenIntro: true,
                   user: {
                     name: statusData.user_info?.name || statusData.name || 'User',
                     email: statusData.user_info?.email || statusData.email || '',
@@ -292,14 +297,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 }))
                 resolve(true)
               } else {
-                setState(prev => ({ ...prev, isLoading: false, error: 'Authentication failed' }))
+                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
                 resolve(false)
               }
             }
           } catch (error) {
             clearInterval(pollTimer)
             console.error('[SESSION] Auth polling error:', error)
-            setState(prev => ({ ...prev, isLoading: false, error: 'Authentication failed' }))
+            setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
             resolve(false)
           }
         }, 3000)
@@ -307,7 +312,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         setTimeout(() => {
           clearInterval(pollTimer)
           if (!popup.closed) popup.close()
-          setState(prev => ({ ...prev, isLoading: false, error: 'Authentication timed out' }))
+          setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication timed out' }))
           resolve(false)
         }, 300000)
       })
@@ -316,6 +321,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({
         ...prev,
         isLoading: false,
+        connectingPlatform: null,
         error: error instanceof Error ? error.message : 'Login failed'
       }))
       return false
@@ -324,7 +330,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
     try {
       const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '')
@@ -349,9 +355,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 setState(prev => ({
                   ...prev,
                   isLoading: false,
+                  connectingPlatform: null,
                   isMetaAuthenticated: true,
-                  isAuthenticated: false,
-                  user: completeData.user ? {
+                  // Preserve existing Google auth status - don't reset to false when adding Meta as second platform
+                  // isAuthenticated is unchanged (kept from prev)
+                  // Always set hasSeenIntro to true after successful OAuth
+                  hasSeenIntro: true,
+                  // Only update user if not already authenticated (Meta-first flow)
+                  user: !prev.isAuthenticated && completeData.user ? {
                     google_user_id: completeData.user.id,
                     name: completeData.user.name || 'Meta User',
                     email: completeData.user.email || '',
@@ -367,14 +378,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 await refreshAccounts()
                 resolve(true)
               } else {
-                setState(prev => ({ ...prev, isLoading: false, error: 'Meta authentication failed' }))
+                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
                 resolve(false)
               }
             }
           } catch (error) {
             clearInterval(pollTimer)
             console.error('[SESSION] Meta auth polling error:', error)
-            setState(prev => ({ ...prev, isLoading: false, error: 'Meta authentication failed' }))
+            setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
             resolve(false)
           }
         }, 3000)
@@ -382,7 +393,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         setTimeout(() => {
           clearInterval(pollTimer)
           if (!popup.closed) popup.close()
-          setState(prev => ({ ...prev, isLoading: false, error: 'Meta authentication timed out' }))
+          setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication timed out' }))
           resolve(false)
         }, 300000)
       })
@@ -391,6 +402,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({
         ...prev,
         isLoading: false,
+        connectingPlatform: null,
         error: error instanceof Error ? error.message : 'Meta login failed'
       }))
       return false

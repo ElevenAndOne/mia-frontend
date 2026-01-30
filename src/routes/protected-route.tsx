@@ -21,14 +21,20 @@ export const ProtectedRoute = ({
     isMetaAuthenticated,
     selectedAccount,
     activeWorkspace,
-    isLoading
+    isLoading,
+    connectingPlatform
   } = useSession()
 
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
 
-  if (isLoading) {
-    const loadingPlatform = isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null
+  // Don't show loading screen if we're connecting a second platform during onboarding
+  // This prevents OnboardingChat from unmounting when adding Meta as second platform
+  const isConnectingSecondPlatform = connectingPlatform && isAnyAuthenticated && selectedAccount
+
+  if (isLoading && !isConnectingSecondPlatform) {
+    // Use connectingPlatform if set (explicit), otherwise infer from auth state
+    const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
     return <LoadingScreen platform={loadingPlatform} />
   }
 

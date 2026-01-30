@@ -20,7 +20,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
         : 'Setting up your workspace...'
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full bg-white">
+    <div className="flex flex-col items-center justify-center h-screen w-screen bg-white fixed inset-0">
       {/* Mia logo with glow effect */}
       <div className="relative">
         {/* Glow effect behind logo */}
