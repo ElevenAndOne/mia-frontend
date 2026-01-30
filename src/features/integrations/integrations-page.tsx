@@ -11,6 +11,7 @@ import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import PlatformGearMenu from '../../components/platform-gear-menu'
+import { TopBar } from '../../components/top-bar'
 
 interface Integration {
   id: string
@@ -469,15 +470,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       className="w-full h-screen bg-white flex flex-col overflow-hidden"
     >
       {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-        <button onClick={onBack} className="flex items-center gap-2 text-gray-600 mb-3">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="text-sm font-medium">Back</span>
-        </button>
-        <h1 className="text-xl font-bold text-gray-900">Integrations</h1>
-      </div>
+      <TopBar
+        title="Integrations"
+        onBack={onBack}
+        className="border-b border-gray-100"
+      />
 
       {/* Content - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 py-4">

@@ -13,9 +13,7 @@ import { AppShell } from '../components/app-shell'
 const MainView = lazy(() => import('../components/main-view'))
 const ChatView = lazy(() => import('../features/chat/components/chat-view'))
 const IntegrationsPage = lazy(() => import('../features/integrations/integrations-page'))
-const GrowInsightsStreaming = lazy(() => import('../features/insights/components/grow-insights'))
-const OptimizeInsightsStreaming = lazy(() => import('../features/insights/components/optimize-insights'))
-const ProtectInsightsStreaming = lazy(() => import('../features/insights/components/protect-insights'))
+const InsightPage = lazy(() => import('../features/insights/components/insight-page'))
 const SummaryInsights = lazy(() => import('../features/insights/components/summary-insights'))
 const OnboardingChat = lazy(() => import('../features/onboarding/components/onboarding-chat'))
 const InviteLandingPage = lazy(() => import('../components/invite-landing-page'))
@@ -134,7 +132,8 @@ const GrowInsightsWrapper = () => {
       onIntegrationsClick={() => navigate('/integrations')}
     >
       <div className="w-full h-full">
-        <GrowInsightsStreaming
+        <InsightPage
+          insightType="grow"
           onBack={() => navigate('/home')}
           initialDateRange={dateRange}
           platforms={platforms}
@@ -156,7 +155,8 @@ const OptimizeInsightsWrapper = () => {
       onIntegrationsClick={() => navigate('/integrations')}
     >
       <div className="w-full h-full">
-        <OptimizeInsightsStreaming
+        <InsightPage
+          insightType="optimize"
           onBack={() => navigate('/home')}
           initialDateRange={dateRange}
           platforms={platforms}
@@ -178,7 +178,8 @@ const ProtectInsightsWrapper = () => {
       onIntegrationsClick={() => navigate('/integrations')}
     >
       <div className="w-full h-full">
-        <ProtectInsightsStreaming
+        <InsightPage
+          insightType="protect"
           onBack={() => navigate('/home')}
           initialDateRange={dateRange}
           platforms={platforms}
