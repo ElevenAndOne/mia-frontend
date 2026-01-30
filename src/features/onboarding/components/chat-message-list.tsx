@@ -19,8 +19,11 @@ export const ChatMessageList = ({
   onChoiceSelect,
   endRef
 }: ChatMessageListProps) => (
-  <div className="flex-1 overflow-y-auto px-4 pt-6 pb-6 safe-bottom">
-    <div className="flex flex-col gap-3 min-h-full justify-end">
+  <div className="flex-1 h-full overflow-y-auto px-4 pt-6 pb-6 safe-bottom">
+    <div className="flex flex-col gap-3 min-h-full">
+      {/* Spacer pushes messages to bottom when content is short */}
+      <div className="flex-1" />
+
       <AnimatePresence>
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} onChoiceSelect={onChoiceSelect} />

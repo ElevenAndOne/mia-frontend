@@ -34,7 +34,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
   }, [displayedMessages, isTyping, isStreaming])
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex flex-col h-full bg-white">
       <ChatHeader current={currentProgress} total={4} onManageIntegrations={handleGoToIntegrations} />
 
       <ChatMessageList

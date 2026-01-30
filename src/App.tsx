@@ -300,79 +300,72 @@ function App() {
   }
 
   return (
-    <div className="w-full h-screen-dvh relative">
+    <div className="w-screen h-screen">
       {/* Content */}
       <div className="w-full h-full">
         <Suspense fallback={<LazyLoadSpinner />}>
-        <AnimatePresence mode="wait">
-          {appState === 'video-intro' && (
-            <motion.div
-              key="video-intro"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <VideoIntroView
-                onAuthSuccess={handleAuthSuccess}
-                onMetaAuthSuccess={handleMetaAuthSuccess}
-                hasSeenIntro={hasSeenIntro}
-                onOAuthPopupClosed={setOauthLoadingPlatform}
-              />
-            </motion.div>
-          )}
+          <AnimatePresence mode="wait">
+            {appState === 'video-intro' && (
+              <motion.div
+                key="video-intro"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full"
+              >
+                <VideoIntroView
+                  onAuthSuccess={handleAuthSuccess}
+                  onMetaAuthSuccess={handleMetaAuthSuccess}
+                  hasSeenIntro={hasSeenIntro}
+                  onOAuthPopupClosed={setOauthLoadingPlatform}
+                />
+              </motion.div>
+            )}
 
-          {appState === 'account-selection' && (
-            <motion.div
-              key="account-selection"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <CombinedAccountSelection
-                onAccountSelected={() => {}}
-                onBack={() => {
-                  // CRITICAL FIX (Jan 2026): If user has workspace, go to main page instead of logout
-                  // This handles case where connecting Google with no ads to workspace
-                  if (activeWorkspace) {
-                    console.log('[APP] Account selection back pressed - going to main (workspace exists)')
-                    setAppState('main')
-                  } else {
-                    console.log('[APP] Account selection back pressed - logging out (no workspace)')
-                    logout()
-                  }
-                }}
-              />
-            </motion.div>
-          )}
+            {appState === 'account-selection' && (
+              <motion.div
+                key="account-selection"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full"
+              >
+                <CombinedAccountSelection
+                  onAccountSelected={() => { }}
+                  onBack={() => {
+                    // CRITICAL FIX (Jan 2026): If user has workspace, go to main page instead of logout
+                    // This handles case where connecting Google with no ads to workspace
+                    if (activeWorkspace) {
+                      console.log('[APP] Account selection back pressed - going to main (workspace exists)')
+                      setAppState('main')
+                    } else {
+                      console.log('[APP] Account selection back pressed - logging out (no workspace)')
+                      logout()
+                    }
+                  }}
+                />
+              </motion.div>
+            )}
 
-          {appState === 'meta-account-selection' && isMetaAuthenticated && (
-            <motion.div
-              key="meta-account-selection"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full h-full"
-            >
-              <MetaAccountSelectionPage
-                onAccountSelected={() => {
-                  // After Meta account selection, go to onboarding chat
-                  setAppState('onboarding-chat')
-                }}
-                onBack={() => logout()}
-              />
-            </motion.div>
-          )}
+            {appState === 'meta-account-selection' && isMetaAuthenticated && (
+              <motion.div
+                key="meta-account-selection"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full"
+              >
+                <MetaAccountSelectionPage
+                  onAccountSelected={() => {
+                    // After Meta account selection, go to onboarding chat
+                    setAppState('onboarding-chat')
+                  }}
+                  onBack={() => logout()}
+                />
+              </motion.div>
+            )}
 
-          {appState === 'onboarding-chat' && isAnyAuthenticated && selectedAccount && (
-            <motion.div
-              key="onboarding-chat"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
+            {appState === 'onboarding-chat' && isAnyAuthenticated && selectedAccount && (
               <OnboardingChat
                 onComplete={() => setAppState('main')}
                 onConnectPlatform={async (platformId) => {
@@ -392,205 +385,204 @@ function App() {
                   }
                 }}
               />
-            </motion.div>
-          )}
+            )}
 
-          {appState === 'main' && selectedAccount && (
-            <motion.div
-              key="main"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              <MainView
-                onLogout={async () => {
-                  await logout()
-                  // Reset app state to video intro after logout
-                  setAppState('video-intro')
-                }}
-                onIntegrationsClick={() => setAppState('integrations')}
-                onWorkspaceSettingsClick={() => setAppState('workspace-settings')}
-                onSummaryQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setAppState('summary-quick')
-                }}
-                onGrowQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('grow')
-                  setShowInsightsDatePicker(true)
-                }}
-                onOptimizeQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('optimize')
-                  setShowInsightsDatePicker(true)
-                }}
-                onProtectQuickClick={(platforms) => {
-                  setPendingPlatforms(platforms || [])
-                  setPendingInsightType('protect')
-                  setShowInsightsDatePicker(true)
-                }}
-              />
-            </motion.div>
-          )}
-          
-          {appState === 'integrations' && isAnyAuthenticated && (
-            <motion.div
-              key="integrations"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <IntegrationsPage
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'grow-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="grow-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <GrowInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'optimize-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="optimize-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <OptimizeInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'protect-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="protect-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <ProtectInsightsStreaming
-                onBack={() => setAppState('main')}
-                initialDateRange={selectedInsightDateRange}
-                platforms={pendingPlatforms}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'summary-quick' && isAnyAuthenticated && (
-            <motion.div
-              key="summary-quick"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <SummaryInsights
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
-
-          {appState === 'invite' && inviteId && (
-            <motion.div
-              key="invite"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <InviteLandingPage
-                inviteId={inviteId}
-                onAccepted={async (tenantId, skipAccountSelection) => {
-                  console.log('[APP] Invite accepted, joining workspace:', tenantId)
-                  console.log('[APP] Skip account selection:', skipAccountSelection)
-                  // Clear invite URL from browser
-                  window.history.replaceState({}, '', '/')
-                  setInviteId(null)
-                  // Mark that user just accepted an invite (to skip onboarding)
-                  setJustAcceptedInvite(true)
-                  // Refresh workspaces to include the new one
-                  await refreshWorkspaces()
-                  // Switch to the new workspace
-                  await switchWorkspace(tenantId)
-                  // CRITICAL FIX (Jan 2026): Skip account selection for invited members
-                  // They should go straight to workspace homepage with workspace's accounts
-                  if (skipAccountSelection && isAnyAuthenticated) {
-                    console.log('[APP] Invited member - skipping account selection, going to main page')
-                    setAppState('main')
-                  } else if (isAnyAuthenticated && selectedAccount) {
-                    setAppState('main')
-                  } else if (isAnyAuthenticated) {
-                    setAppState('account-selection')
-                  } else {
+            {appState === 'main' && selectedAccount && (
+              <motion.div
+                key="main"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full h-full"
+              >
+                <MainView
+                  onLogout={async () => {
+                    await logout()
+                    // Reset app state to video intro after logout
                     setAppState('video-intro')
-                  }
-                }}
-                onBack={() => {
-                  // Clear invite URL and go to home
-                  window.history.replaceState({}, '', '/')
-                  setInviteId(null)
-                  setAppState('video-intro')
-                }}
-              />
-            </motion.div>
-          )}
+                  }}
+                  onIntegrationsClick={() => setAppState('integrations')}
+                  onWorkspaceSettingsClick={() => setAppState('workspace-settings')}
+                  onSummaryQuickClick={(platforms) => {
+                    setPendingPlatforms(platforms || [])
+                    setAppState('summary-quick')
+                  }}
+                  onGrowQuickClick={(platforms) => {
+                    setPendingPlatforms(platforms || [])
+                    setPendingInsightType('grow')
+                    setShowInsightsDatePicker(true)
+                  }}
+                  onOptimizeQuickClick={(platforms) => {
+                    setPendingPlatforms(platforms || [])
+                    setPendingInsightType('optimize')
+                    setShowInsightsDatePicker(true)
+                  }}
+                  onProtectQuickClick={(platforms) => {
+                    setPendingPlatforms(platforms || [])
+                    setPendingInsightType('protect')
+                    setShowInsightsDatePicker(true)
+                  }}
+                />
+              </motion.div>
+            )}
 
-          {appState === 'workspace-settings' && isAnyAuthenticated && activeWorkspace && (
-            <motion.div
-              key="workspace-settings"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full h-full"
-            >
-              <WorkspaceSettingsPage
-                onBack={() => setAppState('main')}
-              />
-            </motion.div>
-          )}
+            {appState === 'integrations' && isAnyAuthenticated && (
+              <motion.div
+                key="integrations"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <IntegrationsPage
+                  onBack={() => setAppState('main')}
+                />
+              </motion.div>
+            )}
 
-        </AnimatePresence>
+            {appState === 'grow-quick' && isAnyAuthenticated && (
+              <motion.div
+                key="grow-quick"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <GrowInsightsStreaming
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </motion.div>
+            )}
+
+            {appState === 'optimize-quick' && isAnyAuthenticated && (
+              <motion.div
+                key="optimize-quick"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <OptimizeInsightsStreaming
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </motion.div>
+            )}
+
+            {appState === 'protect-quick' && isAnyAuthenticated && (
+              <motion.div
+                key="protect-quick"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <ProtectInsightsStreaming
+                  onBack={() => setAppState('main')}
+                  initialDateRange={selectedInsightDateRange}
+                  platforms={pendingPlatforms}
+                />
+              </motion.div>
+            )}
+
+            {appState === 'summary-quick' && isAnyAuthenticated && (
+              <motion.div
+                key="summary-quick"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <SummaryInsights
+                  onBack={() => setAppState('main')}
+                />
+              </motion.div>
+            )}
+
+            {appState === 'invite' && inviteId && (
+              <motion.div
+                key="invite"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <InviteLandingPage
+                  inviteId={inviteId}
+                  onAccepted={async (tenantId, skipAccountSelection) => {
+                    console.log('[APP] Invite accepted, joining workspace:', tenantId)
+                    console.log('[APP] Skip account selection:', skipAccountSelection)
+                    // Clear invite URL from browser
+                    window.history.replaceState({}, '', '/')
+                    setInviteId(null)
+                    // Mark that user just accepted an invite (to skip onboarding)
+                    setJustAcceptedInvite(true)
+                    // Refresh workspaces to include the new one
+                    await refreshWorkspaces()
+                    // Switch to the new workspace
+                    await switchWorkspace(tenantId)
+                    // CRITICAL FIX (Jan 2026): Skip account selection for invited members
+                    // They should go straight to workspace homepage with workspace's accounts
+                    if (skipAccountSelection && isAnyAuthenticated) {
+                      console.log('[APP] Invited member - skipping account selection, going to main page')
+                      setAppState('main')
+                    } else if (isAnyAuthenticated && selectedAccount) {
+                      setAppState('main')
+                    } else if (isAnyAuthenticated) {
+                      setAppState('account-selection')
+                    } else {
+                      setAppState('video-intro')
+                    }
+                  }}
+                  onBack={() => {
+                    // Clear invite URL and go to home
+                    window.history.replaceState({}, '', '/')
+                    setInviteId(null)
+                    setAppState('video-intro')
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {appState === 'workspace-settings' && isAnyAuthenticated && activeWorkspace && (
+              <motion.div
+                key="workspace-settings"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full h-full"
+              >
+                <WorkspaceSettingsPage
+                  onBack={() => setAppState('main')}
+                />
+              </motion.div>
+            )}
+
+          </AnimatePresence>
         </Suspense>
       </div>
 
       {/* Insights Date Picker Modal */}
       <Suspense fallback={null}>
-      <InsightsDatePickerModal
-        isOpen={showInsightsDatePicker}
-        onClose={() => {
-          setShowInsightsDatePicker(false)
-          setPendingInsightType(null)
-        }}
-        onGenerate={handleInsightsDateGenerate}
-        insightType={pendingInsightType || 'grow'}
-      />
+        <InsightsDatePickerModal
+          isOpen={showInsightsDatePicker}
+          onClose={() => {
+            setShowInsightsDatePicker(false)
+            setPendingInsightType(null)
+          }}
+          onGenerate={handleInsightsDateGenerate}
+          insightType={pendingInsightType || 'grow'}
+        />
       </Suspense>
 
       {/* Create Workspace Modal - shown after account selection for new users */}

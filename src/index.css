@@ -58,13 +58,6 @@ html, body {
   overscroll-behavior: contain;
 }
 
-#root {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  padding-inline: var(--page-gutter);
-}
-
 body.full-bleed #root {
   padding-inline: 0;
 }

@@ -26,7 +26,7 @@ export const useMessageQueue = (): MessageQueueState => {
   }, [])
 
   useEffect(() => {
-    if (messageQueue.length === 0 || isTyping || processingQueue.current) return
+    if (messageQueue.length === 0 || processingQueue.current) return
 
     processingQueue.current = true
     const nextMessage = messageQueue[0]
@@ -47,9 +47,8 @@ export const useMessageQueue = (): MessageQueueState => {
     return () => {
       window.clearTimeout(timeoutId)
       processingQueue.current = false
-      setIsTyping(false)
     }
-  }, [isTyping, messageQueue])
+  }, [messageQueue])
 
   return {
     displayedMessages,
