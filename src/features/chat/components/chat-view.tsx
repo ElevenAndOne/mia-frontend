@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { apiFetch } from '../../../utils/api'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
+import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import ChatLayout from './chat-layout'
 import ChatEmptyState from './chat-empty-state'
 import ChatInput from './chat-input'
@@ -22,39 +23,66 @@ interface ChatViewProps {
 
 export const ChatView = ({ onIntegrationsClick, onLogout: _onLogout }: ChatViewProps) => {
   const navigate = useNavigate()
-  const { user, sessionId, selectedAccount, activeWorkspace, refreshWorkspaces } = useSession()
+  const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [dateRange, setDateRange] = useState('30_days')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Refresh workspaces on mount to get latest platform connections
+  // Use the same integration status hook as the integrations page
+  // This ensures consistent platform connection status across the app
+  const { platformStatus, isLoading: isLoadingStatus } = useIntegrationStatus(
+    sessionId,
+    selectedAccount?.id,
+    activeWorkspace?.tenant_id
+  )
+
+  // Debug logging for platform status
   useEffect(() => {
-    if (sessionId) {
-      refreshWorkspaces().catch(err => console.error('[ChatView] Failed to refresh workspaces:', err))
+    console.log('[ChatView] ========================================')
+    console.log('[ChatView] sessionId:', sessionId)
+    console.log('[ChatView] selectedAccount?.id:', selectedAccount?.id)
+    console.log('[ChatView] activeWorkspace?.tenant_id:', activeWorkspace?.tenant_id)
+    console.log('[ChatView] isLoadingStatus:', isLoadingStatus)
+    console.log('[ChatView] platformStatus:', platformStatus)
+    if (platformStatus) {
+      console.log('[ChatView] google.connected:', platformStatus.google?.connected)
+      console.log('[ChatView] ga4.connected:', platformStatus.ga4?.connected)
+      console.log('[ChatView] meta.connected:', platformStatus.meta?.connected)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only on mount
+    console.log('[ChatView] ========================================')
+  }, [sessionId, selectedAccount?.id, activeWorkspace?.tenant_id, platformStatus, isLoadingStatus])
 
   // Platform configuration - maps to backend platform IDs
+  // Note: platformStatus uses 'google' and 'meta' keys, but we use 'google_ads' and 'meta_ads' for consistency
   const platformConfig = useMemo(() => [
-    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png' },
-    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png' },
-    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png' },
-    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png' },
-    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png' },
-    { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png' },
-    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png' },
+    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', statusKey: 'google' },
+    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', statusKey: 'ga4' },
+    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', statusKey: 'meta' },
+    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', statusKey: 'facebook_organic' },
+    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', statusKey: 'brevo' },
+    { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', statusKey: 'mailchimp' },
+    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', statusKey: 'hubspot' },
   ], [])
 
-  // Get connected platforms from workspace
+  // Get connected platforms from platformStatus (same source as integrations page)
   const connectedPlatforms = useMemo(() => {
-    if (activeWorkspace?.connected_platforms) {
-      return activeWorkspace.connected_platforms
+    if (!platformStatus) {
+      console.log('[ChatView] connectedPlatforms: platformStatus is null, returning []')
+      return []
     }
-    return []
-  }, [activeWorkspace])
+
+    const connected = platformConfig
+      .filter(p => {
+        const status = platformStatus[p.statusKey as keyof typeof platformStatus]
+        return status?.connected
+      })
+      .map(p => p.id)
+
+    console.log('[ChatView] connectedPlatforms:', connected)
+    return connected
+  }, [platformStatus, platformConfig])
 
   // Platform preferences with caching and debounced saves
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({

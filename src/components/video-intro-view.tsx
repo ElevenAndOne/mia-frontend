@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import FigmaLoginModal from './figma-login-modal'
 
 interface VideoIntroViewProps {
@@ -13,11 +13,11 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   const [showLoginModal, setShowLoginModal] = useState(hasSeenIntro)  // Show immediately if returning user
   const [videoPhase, setVideoPhase] = useState<'intro' | 'looping'>('intro')
   const [modalTimerSet, setModalTimerSet] = useState(false)
-  const [videoLoaded, setVideoLoaded] = useState(false)
+  const [_videoLoaded, setVideoLoaded] = useState(false)
   const [videoPlaying, setVideoPlaying] = useState(false)
   const [oauthStarted, setOAuthStarted] = useState(false)  // Hide video immediately when OAuth starts
   const videoRef = useRef<HTMLVideoElement>(null)
-  const modalTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Auto-show login modal for returning users (signed out / session expired)
   useEffect(() => {

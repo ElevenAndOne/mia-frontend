@@ -121,8 +121,6 @@ export const ChatInput = ({
               />
             </div>
 
-            {/* Mode label */}
-            <span className="text-gray-500 text-sm ml-2">Normal</span>
           </div>
 
           {/* Submit button */}
