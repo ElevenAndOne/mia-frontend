@@ -6,9 +6,10 @@ interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
   onMetaAuthSuccess?: () => void  // New callback for Meta-first flow
   onOAuthPopupClosed?: (platform: 'google' | 'meta') => void  // Called when popup closes (triggers App-level loading)
+  onOAuthStart?: () => void  // Called immediately when OAuth button clicked (hides video)
 }
 
-const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed }: FigmaLoginModalProps) => {
+const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed, onOAuthStart }: FigmaLoginModalProps) => {
   const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
@@ -16,6 +17,9 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed 
   const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
 
   const handleLoginClick = async (method: string) => {
+    // Immediately notify parent to hide video (prevents flash during OAuth)
+    onOAuthStart?.()
+
     if (method === 'Google') {
       try {
         setIsGoogleLoading(true)

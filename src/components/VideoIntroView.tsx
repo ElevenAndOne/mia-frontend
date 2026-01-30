@@ -15,6 +15,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   const [modalTimerSet, setModalTimerSet] = useState(false)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const [videoPlaying, setVideoPlaying] = useState(false)
+  const [oauthStarted, setOAuthStarted] = useState(false)  // Hide video immediately when OAuth starts
   const videoRef = useRef<HTMLVideoElement>(null)
   const modalTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -133,20 +134,22 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-900 via-purple-700 to-blue-800">
-      {/* Fullscreen Video Background */}
-      <video
-        ref={videoRef}
-        className="absolute inset-0 w-full h-full object-cover"
-        muted
-        autoPlay
-        playsInline
-        // @ts-ignore - webkit prefix for iOS
-        webkit-playsinline="true"
-        preload="auto"
-        style={{ willChange: 'transform' }}
-      >
-        <source src="/videos/Mia_AppIntroVideo_compressed_fixed.mp4" type="video/mp4" />
-      </video>
+      {/* Fullscreen Video Background - hidden when OAuth starts to prevent flash */}
+      {!oauthStarted && (
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          muted
+          autoPlay
+          playsInline
+          // @ts-ignore - webkit prefix for iOS
+          webkit-playsinline="true"
+          preload="auto"
+          style={{ willChange: 'transform' }}
+        >
+          <source src="/videos/Mia_AppIntroVideo_compressed_fixed.mp4" type="video/mp4" />
+        </video>
+      )}
 
       {/* Tap to Play overlay for iOS when video not playing */}
       {!videoPlaying && !showLoginModal && !hasSeenIntro && (
@@ -193,6 +196,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
             onAuthSuccess={onAuthSuccess}
             onMetaAuthSuccess={onMetaAuthSuccess}
             onOAuthPopupClosed={onOAuthPopupClosed}
+            onOAuthStart={() => setOAuthStarted(true)}
           />
         )}
       </AnimatePresence>

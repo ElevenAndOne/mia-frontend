@@ -341,14 +341,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onChoiceSelect }
     let metricLabelText = fact.detail || ''
 
     if (fact.metric_value) {
-      // Try to split headline around the number
-      const numberStr = fact.metric_value.toLocaleString()
-      const parts = fact.headline.split(/[\d,]+/)
-      if (parts.length >= 2) {
-        headlineText = parts[0].trim()
-        metricLabelText = parts[1]?.trim() || fact.detail || ''
+      // Split headline around the specific metric value (not all numbers)
+      // This preserves "30 days" in "people in the last 30 days"
+      const formattedValue = fact.metric_value.toLocaleString()
+      const valueIndex = fact.headline.indexOf(formattedValue)
+
+      if (valueIndex !== -1) {
+        headlineText = fact.headline.substring(0, valueIndex).trim()
+        metricLabelText = fact.headline.substring(valueIndex + formattedValue.length).trim() || fact.detail || ''
       } else {
-        headlineText = fact.headline
+        // Fallback: try without locale formatting (plain number)
+        const plainValue = String(fact.metric_value)
+        const plainIndex = fact.headline.indexOf(plainValue)
+        if (plainIndex !== -1) {
+          headlineText = fact.headline.substring(0, plainIndex).trim()
+          metricLabelText = fact.headline.substring(plainIndex + plainValue.length).trim() || fact.detail || ''
+        } else {
+          headlineText = fact.headline
+        }
       }
     } else {
       headlineText = fact.headline
@@ -654,7 +664,7 @@ const OnboardingChatV2: React.FC<OnboardingChatV2Props> = ({
     queueMessages([
       { type: 'mia', content: "Congrats! 🥳 You're connected" },
       { type: 'mia', content: "Hi I'm Mia, but you probably already know that." },
-      { type: 'mia', content: "We'll get to know each other much better :P" },
+      { type: 'mia', content: "We'll get to know each other much better!" },
       { type: 'mia', content: "Let's start with some stats" },
     ])
 

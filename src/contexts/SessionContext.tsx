@@ -16,6 +16,7 @@ export interface AccountMapping {
   color: string
   display_name: string
   google_ads_account_type?: string  // "mcc", "standalone", or "mcc_subaccount"
+  parent_mcc_id?: string | null  // MCC customer_id if sub-account, null if standalone
 }
 
 export interface UserProfile {
