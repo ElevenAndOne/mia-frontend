@@ -128,7 +128,7 @@ const PlatformGearMenu = ({
       {isOpen && createPortal(
         <div
           ref={menuRef}
-          className="fixed w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-[100] py-1"
+          className="fixed w-44 bg-white rounded-lg shadow-lg border border-gray-200 z-100 py-1"
           style={{ top: menuPosition.top, left: menuPosition.left }}
         >
           {/* Manage Accounts */}
@@ -201,7 +201,7 @@ const PlatformGearMenu = ({
 
       {/* Custom Confirmation Modal */}
       {showConfirmDisconnect && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]" onClick={() => setShowConfirmDisconnect(false)}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-200" onClick={() => setShowConfirmDisconnect(false)}>
           <div className="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Disconnect {platformName}?</h3>
             <p className="text-sm text-gray-600 mb-4">

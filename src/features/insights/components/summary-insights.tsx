@@ -109,7 +109,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
       />
 
       {/* Header */}
-      <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
+      <div className="flex items-center px-4 py-3 relative z-20 shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
           {/* Empty space for symmetry */}
         </div>
@@ -196,7 +196,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
         {summary && !isLoading && !error && (
           <div className="space-y-6">
             {/* Executive Summary Box */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+            <div className="bg-linear-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 16C6.68629 16 4 13.3137 4 10C4 6.68629 6.68629 4 10 4C13.3137 4 16 6.68629 16 10C16 13.3137 13.3137 16 10 16Z" fill="#2563EB"/>

@@ -220,7 +220,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
                               isSelected
                                 ? 'border-blue-600 bg-blue-600'
                                 : 'border-gray-300'

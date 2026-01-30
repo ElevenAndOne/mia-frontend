@@ -160,7 +160,7 @@ const ProtectInsightsStreaming = ({ onBack, initialDateRange = '30_days', platfo
       <div key={index} className="bg-white border border-gray-200 rounded-lg p-5 space-y-3">
         {/* Number + Title */}
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+          <div className="shrink-0 w-7 h-7 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
             {index + 1}
           </div>
           <h3 className="flex-1 text-base font-semibold text-gray-900 leading-snug">
@@ -219,7 +219,7 @@ const ProtectInsightsStreaming = ({ onBack, initialDateRange = '30_days', platfo
       />
 
       {/* Header */}
-      <div className="flex items-center px-4 py-3 relative z-20 flex-shrink-0 bg-white">
+      <div className="flex items-center px-4 py-3 relative z-20 shrink-0 bg-white">
         <div className="flex-1 flex justify-start pl-2">
           {/* Empty space for symmetry */}
         </div>

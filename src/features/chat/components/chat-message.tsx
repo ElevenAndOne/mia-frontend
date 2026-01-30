@@ -29,7 +29,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
     <div className="mb-6">
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
-        <div className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap font-mono text-sm bg-gray-50 rounded-lg p-4 border border-gray-100">
+        <div className="text-gray-900 leading-relaxed whitespace-pre-wrap font-mono text-sm bg-gray-50 rounded-lg p-4 border border-gray-100">
           {content}
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-1" />

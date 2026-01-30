@@ -3,7 +3,7 @@ import type { BronzeCardData } from '../onboarding-chat-types'
 import { BookmarkButton } from './bookmark-button'
 import { PlatformIcon } from './platform-icon'
 
-interface BronzeCardProps extends BronzeCardData {}
+type BronzeCardProps = BronzeCardData
 
 const PLATFORM_STYLES: Record<string, { iconBg: string }> = {
   google_ads: { iconBg: 'bg-white' },
@@ -13,13 +13,13 @@ const PLATFORM_STYLES: Record<string, { iconBg: string }> = {
 
 const VARIANT_STYLES = {
   primary: {
-    bg: 'bg-gradient-to-br from-teal-50 to-green-100',
+    bg: 'bg-linear-to-br from-teal-50 to-green-100',
     border: 'border-teal-200',
     badgeBg: 'bg-teal-100',
     badgeText: 'text-teal-700'
   },
   secondary: {
-    bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
+    bg: 'bg-linear-to-br from-blue-50 to-blue-100',
     border: 'border-blue-200',
     badgeBg: 'bg-blue-100',
     badgeText: 'text-blue-700'
@@ -47,7 +47,7 @@ export const BronzeCard = ({
     >
       <div className="flex items-start gap-3">
         <div
-          className={`${platformConfig.iconBg} w-10 h-10 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}
+          className={`${platformConfig.iconBg} w-10 h-10 rounded-lg flex items-center justify-center shadow-sm shrink-0`}
         >
           <PlatformIcon platform={platform} />
         </div>

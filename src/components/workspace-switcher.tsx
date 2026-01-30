@@ -114,7 +114,7 @@ const WorkspaceSwitcher = ({ onClose, onCreateWorkspace, onSettings }: Workspace
               }`}
             >
               {/* Workspace Icon */}
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
                 {workspace.name.charAt(0).toUpperCase()}
               </div>
 

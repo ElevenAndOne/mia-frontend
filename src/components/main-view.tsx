@@ -228,7 +228,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   return (
     <div className="w-full h-full relative bg-white flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
-      <div className={`flex items-center px-4 py-1 safe-top relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
+      <div className={`flex items-center px-4 py-1 safe-top relative z-20 shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}
@@ -274,7 +274,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
+                      <div className="w-6 h-6 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
                         {activeWorkspace?.name?.charAt(0)?.toUpperCase() || 'W'}
                       </div>
                       <div>
@@ -689,7 +689,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             </div>
 
             {/* Chat Input - Fixed at bottom and centered */}
-            <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center safe-bottom">
+            <div className="shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center safe-bottom">
               <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
                 <input
                   type="text"

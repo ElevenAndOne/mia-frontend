@@ -21,7 +21,7 @@ interface ChatViewProps {
   onLogout?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick, onLogout: _onLogout }: ChatViewProps) => {
+export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
   const navigate = useNavigate()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
