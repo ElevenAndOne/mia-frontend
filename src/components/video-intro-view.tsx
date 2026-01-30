@@ -132,8 +132,8 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-900 via-purple-700 to-blue-800">
-      {/* Fullscreen Video Background - hidden when OAuth starts to prevent flash */}
-      {!oauthStarted && (
+      {/* Fullscreen Video Background - hidden for returning users and when OAuth starts */}
+      {!oauthStarted && !hasSeenIntro && (
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
