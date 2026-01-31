@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/session-context'
 import { apiFetch } from '../utils/api'
+import CreateWorkspaceModal from './create-workspace-modal'
+import { BackButton } from './back-button'
+import { Spinner } from './spinner'
+import { Icon } from './icon'
+import type { Workspace } from '../features/workspace/types'
 
 interface Member {
   user_id: string
@@ -27,12 +32,16 @@ interface WorkspaceSettingsPageProps {
 }
 
 const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
-  const { activeWorkspace, sessionId, user } = useSession()
+  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces } = useSession()
+
+  // View state - null = overview, string = detail view for specific workspace
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'members' | 'invites'>('members')
   const [members, setMembers] = useState<Member[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Invite creation state
@@ -44,24 +53,29 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
 
-  // Check if current user can manage (admin or owner)
-  const canManage = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
-  const isOwner = activeWorkspace?.role === 'owner'
+  // Get the selected workspace from availableWorkspaces
+  const selectedWorkspace = selectedWorkspaceId
+    ? availableWorkspaces.find(w => w.tenant_id === selectedWorkspaceId)
+    : null
 
-  // Fetch members and invites
+  // Check if current user can manage the selected workspace
+  const canManage = selectedWorkspace?.role === 'owner' || selectedWorkspace?.role === 'admin'
+  const isOwner = selectedWorkspace?.role === 'owner'
+
+  // Fetch members and invites when a workspace is selected
   useEffect(() => {
     const fetchData = async () => {
-      if (!activeWorkspace?.tenant_id || !sessionId) return
+      if (!selectedWorkspaceId || !sessionId) return
 
       try {
         setLoading(true)
         setError(null)
 
         const [membersRes, invitesRes] = await Promise.all([
-          apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/members`, {
+          apiFetch(`/api/tenants/${selectedWorkspaceId}/members`, {
             headers: { 'X-Session-ID': sessionId }
           }),
-          canManage ? apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/invites`, {
+          canManage ? apiFetch(`/api/tenants/${selectedWorkspaceId}/invites`, {
             headers: { 'X-Session-ID': sessionId }
           }) : Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
         ])
@@ -84,10 +98,10 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
     }
 
     fetchData()
-  }, [activeWorkspace?.tenant_id, sessionId, canManage])
+  }, [selectedWorkspaceId, sessionId, canManage])
 
   const handleCreateInvite = async () => {
-    if (!activeWorkspace?.tenant_id || !sessionId) return
+    if (!selectedWorkspaceId || !sessionId) return
 
     try {
       setCreatingInvite(true)
@@ -98,7 +112,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
         body.email = inviteEmail.trim()
       }
 
-      const response = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/invites`, {
+      const response = await apiFetch(`/api/tenants/${selectedWorkspaceId}/invites`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,12 +147,12 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   }
 
   const handleRevokeInvite = async (inviteId: string) => {
-    if (!activeWorkspace?.tenant_id || !sessionId) return
+    if (!selectedWorkspaceId || !sessionId) return
     if (!confirm('Are you sure you want to revoke this invite?')) return
 
     try {
       const response = await apiFetch(
-        `/api/tenants/${activeWorkspace.tenant_id}/invites/${inviteId}`,
+        `/api/tenants/${selectedWorkspaceId}/invites/${inviteId}`,
         {
           method: 'DELETE',
           headers: { 'X-Session-ID': sessionId }
@@ -158,12 +172,12 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   }
 
   const handleRemoveMember = async (userId: string) => {
-    if (!activeWorkspace?.tenant_id || !sessionId) return
+    if (!selectedWorkspaceId || !sessionId) return
     if (!confirm('Are you sure you want to remove this member?')) return
 
     try {
       const response = await apiFetch(
-        `/api/tenants/${activeWorkspace.tenant_id}/members/${userId}`,
+        `/api/tenants/${selectedWorkspaceId}/members/${userId}`,
         {
           method: 'DELETE',
           headers: { 'X-Session-ID': sessionId }
@@ -184,11 +198,11 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   }
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
-    if (!activeWorkspace?.tenant_id || !sessionId) return
+    if (!selectedWorkspaceId || !sessionId) return
 
     try {
       const response = await apiFetch(
-        `/api/tenants/${activeWorkspace.tenant_id}/members/${userId}/role`,
+        `/api/tenants/${selectedWorkspaceId}/members/${userId}/role`,
         {
           method: 'PUT',
           headers: {
@@ -224,6 +238,28 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
     }
   }
 
+  const handleWorkspaceCreated = async () => {
+    setShowCreateModal(false)
+    await refreshWorkspaces()
+  }
+
+  const handleSelectWorkspace = (workspace: Workspace) => {
+    setSelectedWorkspaceId(workspace.tenant_id)
+    setActiveTab('members')
+    setMembers([])
+    setInvites([])
+    setShowCreateInvite(false)
+    setCreatedInviteLink(null)
+    setError(null)
+  }
+
+  const handleBackToOverview = () => {
+    setSelectedWorkspaceId(null)
+    setMembers([])
+    setInvites([])
+    setError(null)
+  }
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
@@ -246,40 +282,116 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
     }
   }
 
-  if (!activeWorkspace) {
+  // Overview view - show all workspaces
+  if (!selectedWorkspaceId) {
+    return (
+      <div className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-4 py-4 border-b border-gray-100 shrink-0">
+          <BackButton onClick={onBack} label="Back" />
+          <h1 className="text-xl font-bold text-gray-900 mt-2">Workspaces</h1>
+          <p className="text-sm text-gray-500">{availableWorkspaces.length} workspace{availableWorkspaces.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        {/* Workspace List */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
+          <div className="space-y-3">
+            {availableWorkspaces.map((workspace) => {
+              const isActive = workspace.tenant_id === activeWorkspace?.tenant_id
+              const canManageWorkspace = workspace.role === 'owner' || workspace.role === 'admin'
+
+              return (
+                <button
+                  key={workspace.tenant_id}
+                  onClick={() => handleSelectWorkspace(workspace)}
+                  className={`w-full text-left rounded-xl p-4 flex items-center gap-3 transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 border border-blue-200'
+                      : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  {/* Workspace Icon */}
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+                    {workspace.name.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* Workspace Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 truncate">{workspace.name}</span>
+                      {isActive && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">Active</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                      <span className={`px-1.5 py-0.5 rounded ${getRoleBadgeColor(workspace.role)}`}>
+                        {workspace.role}
+                      </span>
+                      <span>·</span>
+                      <span>{workspace.member_count} member{workspace.member_count !== 1 ? 's' : ''}</span>
+                      {!canManageWorkspace && (
+                        <>
+                          <span>·</span>
+                          <span className="text-gray-400">View only</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chevron */}
+                  <Icon.chevron_right size={20} className="text-gray-400 shrink-0" />
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Create New Workspace Button */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full mt-4 py-3 px-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 font-medium flex items-center justify-center gap-2 hover:border-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <Icon.plus size={20} />
+            Create New Workspace
+          </button>
+        </div>
+
+        {/* Create Workspace Modal */}
+        <CreateWorkspaceModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleWorkspaceCreated}
+        />
+      </div>
+    )
+  }
+
+  // Detail view - show members/invites for selected workspace
+  if (!selectedWorkspace) {
     return (
       <div className="w-full h-screen-dvh bg-white flex items-center justify-center">
-        <p className="text-gray-500">No workspace selected</p>
+        <p className="text-gray-500">Workspace not found</p>
       </div>
     )
   }
 
   return (
-    <div
-      className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden"
-      style={{ fontFamily: 'Figtree, sans-serif', maxWidth: '393px', margin: '0 auto' }}
-    >
+    <div className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-        <button onClick={onBack} className="flex items-center gap-2 text-gray-600 mb-3">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="text-sm font-medium">Back</span>
-        </button>
-        <div className="flex items-center gap-3">
+        <BackButton onClick={handleBackToOverview} label="All Workspaces" />
+        <div className="flex items-center gap-3 mt-2">
           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
-            {activeWorkspace.name.charAt(0).toUpperCase()}
+            {selectedWorkspace.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{activeWorkspace.name}</h1>
-            <p className="text-xs text-gray-500 capitalize">Your role: {activeWorkspace.role}</p>
+            <h1 className="text-xl font-bold text-gray-900">{selectedWorkspace.name}</h1>
+            <p className="text-xs text-gray-500 capitalize">Your role: {selectedWorkspace.role}</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-100">
+      <div className="flex border-b border-gray-100 max-w-3xl mx-auto w-full">
         <button
           onClick={() => setActiveTab('members')}
           className={`flex-1 py-3 text-sm font-medium transition-colors ${
@@ -305,7 +417,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -315,7 +427,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+            <Spinner size="md" variant="dark" />
           </div>
         ) : activeTab === 'members' ? (
           /* Members Tab */
@@ -366,9 +478,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                       className="p-1 text-red-500 hover:bg-red-50 rounded"
                       title="Remove member"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <Icon.x_close size={16} />
                     </button>
                   )}
                 </div>
@@ -384,9 +494,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                 onClick={() => setShowCreateInvite(true)}
                 className="w-full py-3 px-4 bg-black text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <Icon.plus size={20} />
                 Create Invite Link
               </button>
             )}
@@ -477,9 +585,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
             {createdInviteLink && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <Icon.check_circle size={20} className="text-green-600" />
                   <span className="font-medium text-green-800">Invite created!</span>
                 </div>
                 <div className="bg-white rounded-lg p-3 flex items-center gap-2">
@@ -531,18 +637,14 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                           className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
                           title="Copy invite link"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
+                          <Icon.copy_01 size={16} />
                         </button>
                         <button
                           onClick={() => handleRevokeInvite(invite.invite_id)}
                           className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
                           title="Revoke invite"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <Icon.trash_01 size={16} />
                         </button>
                       </div>
                     </div>

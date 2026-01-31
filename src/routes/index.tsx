@@ -36,18 +36,22 @@ const ChatViewWrapper = () => {
     navigate('/home', { state: { newChat: true } })
   }
 
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <AppShell
       onNewChat={handleNewChat}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <ChatView
           onIntegrationsClick={() => navigate('/integrations')}
-          onLogout={async () => {
-            await logout()
-            navigate('/')
-          }}
+          onLogout={handleLogout}
         />
       </div>
     </AppShell>
@@ -94,10 +98,19 @@ const MainViewWrapper = () => {
 
 const IntegrationsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <IntegrationsPage onBack={() => navigate('/home')} />
@@ -108,10 +121,19 @@ const IntegrationsWrapper = () => {
 
 const WorkspaceSettingsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <WorkspaceSettingsPage onBack={() => navigate('/home')} />
@@ -122,14 +144,22 @@ const WorkspaceSettingsWrapper = () => {
 
 const GrowInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <InsightPage
@@ -145,14 +175,22 @@ const GrowInsightsWrapper = () => {
 
 const OptimizeInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <InsightPage
@@ -168,14 +206,22 @@ const OptimizeInsightsWrapper = () => {
 
 const ProtectInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <InsightPage
@@ -191,10 +237,19 @@ const ProtectInsightsWrapper = () => {
 
 const SummaryInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <SummaryInsights onBack={() => navigate('/home')} />

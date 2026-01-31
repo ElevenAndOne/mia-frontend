@@ -1,0 +1,86 @@
+/* ──────────────────────────────────────────────────────────── */
+/* TYPOGRAPHY  */
+/* ──────────────────────────────────────────────────────────── */
+/* ─── Titles ────────────────────────────────────────────────── */
+.title-h1 {
+	@apply text-6xl font-semibold
+}
+
+.title-h2 {
+	@apply text-5xl font-semibold
+}
+
+.title-h3 {
+	@apply text-4xl font-semibold
+}
+
+.title-h4 {
+	@apply text-3xl font-semibold
+}
+
+.title-h5 {
+	@apply text-2xl font-semibold
+}
+
+.title-h6 {
+	@apply text-xl font-semibold
+}
+
+/* Labels */
+.label-lg {
+	@apply text-2xl font-semibold
+}
+
+.label-bg {
+	@apply text-lg font-semibold
+}
+
+.label-md {
+	@apply text-base font-semibold
+}
+
+.label-sm {
+	@apply text-sm font-semibold
+}
+
+.label-xs {
+	@apply text-xs font-semibold
+}
+
+/* ─── Paragraph ──────────────────────────────────────────────── */
+.paragraph-lg {
+	@apply text-2xl font-normal
+}
+
+.paragraph-bg {
+	@apply text-lg font-normal
+}
+
+.paragraph-md {
+	@apply text-base font-normal
+}
+
+.paragraph-sm {
+	@apply text-sm font-normal
+}
+
+.paragraph-xs {
+	@apply text-xs font-normal
+}
+
+/* ─── Subheading ──────────────────────────────────────────────── */
+.subheading-bg {
+	@apply text-base font-medium
+}
+
+.subheading-md {
+	@apply text-sm font-medium
+}
+
+.subheading-sm {
+	@apply text-xs font-medium
+}
+
+.subheading-xs {
+	@apply text-xs font-medium
+}

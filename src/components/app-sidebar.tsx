@@ -1,19 +1,25 @@
-import { useSession } from '../contexts/session-context'
 import { Icon } from './icon'
+import { SidebarWorkspaceSwitcher } from './sidebar-workspace-switcher'
+import { SidebarUserMenu } from './sidebar-user-menu'
 
 interface AppSidebarProps {
   onNewChat?: () => void
   onIntegrationsClick?: () => void
+  onLogout: () => void
+  onWorkspaceSettings?: () => void
 }
 
-export const AppSidebar = ({ onNewChat, onIntegrationsClick }: AppSidebarProps) => {
-  const { user } = useSession()
-
+export const AppSidebar = ({
+  onNewChat,
+  onIntegrationsClick,
+  onLogout,
+  onWorkspaceSettings
+}: AppSidebarProps) => {
   return (
     <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-gray-100 bg-white">
-      {/* Logo */}
-      <div className="w-12 h-12 flex items-center justify-center mb-4">
-        <img src="/icons/mia-logo.png" alt="MIA" className="w-full h-full" />
+      {/* Workspace Switcher */}
+      <div className="mb-4">
+        <SidebarWorkspaceSwitcher />
       </div>
 
       {/* Nav Icons */}
@@ -25,24 +31,15 @@ export const AppSidebar = ({ onNewChat, onIntegrationsClick }: AppSidebarProps) 
         >
           <Icon.pencil_line size={20} />
         </button>
-
-        <button
-          onClick={onIntegrationsClick}
-          className="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-          title="Integrations"
-        >
-          <Icon.globe_01 size={20} />
-        </button>
       </nav>
 
-      {/* Bottom section - User avatar */}
+      {/* Bottom section - User Menu */}
       <div className="mt-auto">
-        <button
-          className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-sm font-medium text-yellow-900"
-          title={user?.name || 'User'}
-        >
-          {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-        </button>
+        <SidebarUserMenu
+          onIntegrationsClick={onIntegrationsClick}
+          onWorkspaceSettings={onWorkspaceSettings}
+          onLogout={onLogout}
+        />
       </div>
     </aside>
   )

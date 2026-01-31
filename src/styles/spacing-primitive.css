@@ -1,0 +1,4 @@
+@theme {
+}
+
+@custom-variant mobile (@media (max-width: 480px));

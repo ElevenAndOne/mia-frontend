@@ -5,12 +5,25 @@ interface AppShellProps {
   children: ReactNode
   onNewChat?: () => void
   onIntegrationsClick?: () => void
+  onLogout: () => void
+  onWorkspaceSettings?: () => void
 }
 
-export const AppShell = ({ children, onNewChat, onIntegrationsClick }: AppShellProps) => {
+export const AppShell = ({
+  children,
+  onNewChat,
+  onIntegrationsClick,
+  onLogout,
+  onWorkspaceSettings
+}: AppShellProps) => {
   return (
     <div className="flex h-full w-full bg-white">
-      <AppSidebar onNewChat={onNewChat} onIntegrationsClick={onIntegrationsClick} />
+      <AppSidebar
+        onNewChat={onNewChat}
+        onIntegrationsClick={onIntegrationsClick}
+        onLogout={onLogout}
+        onWorkspaceSettings={onWorkspaceSettings}
+      />
       <main className="flex-1 flex flex-col min-w-0">
         {children}
       </main>

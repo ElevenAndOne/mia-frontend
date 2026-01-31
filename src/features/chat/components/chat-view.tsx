@@ -204,15 +204,12 @@ export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
       <div className="flex-1 flex flex-col h-full pt-14 md:pt-0">
         {!hasMessages ? (
           <>
-            <ChatEmptyState userName={user?.name?.split(' ')[0]} />
-
-            {/* Quick action suggestions */}
-            <div className="px-4 pb-4">
+            <ChatEmptyState userName={user?.name?.split(' ')[0]}>
               <QuickActions
                 onAction={handleQuickAction}
                 disabled={isLoading || !hasSelectedPlatforms}
               />
-            </div>
+            </ChatEmptyState>
 
             <ChatInput
               onSubmit={handleSubmit}
