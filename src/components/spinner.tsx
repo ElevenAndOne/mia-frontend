@@ -14,9 +14,9 @@ const SIZE_CLASSES: Record<SpinnerSize, string> = {
 }
 
 const VARIANT_CLASSES: Record<SpinnerVariant, string> = {
-  primary: 'border-blue-200 border-t-blue-600',
+  primary: 'border-utility-brand-200 border-t-utility-brand-600',
   light: 'border-white/30 border-t-white',
-  dark: 'border-gray-200 border-t-gray-900',
+  dark: 'border-secondary border-t-utility-brand-600',
 }
 
 export function Spinner({ size = 'md', variant = 'primary', className = '' }: SpinnerProps) {

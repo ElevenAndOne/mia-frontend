@@ -16,7 +16,7 @@ export const AppSidebar = ({
   onWorkspaceSettings
 }: AppSidebarProps) => {
   return (
-    <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-gray-100 bg-white">
+    <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-tertiary bg-primary">
       {/* Workspace Switcher */}
       <div className="mb-4">
         <SidebarWorkspaceSwitcher />
@@ -26,7 +26,7 @@ export const AppSidebar = ({
       <nav className="flex flex-col items-center gap-4">
         <button
           onClick={onNewChat}
-          className="w-9 h-9 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+          className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           title="New chat"
         >
           <Icon.pencil_line size={20} />

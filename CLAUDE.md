@@ -50,6 +50,18 @@ If those are the only differences, creating a new component is not allowed.
 - If you add a second instance of a duplicated pattern, you must refactor immediately, not later.
 - New components must represent a reusable, named abstraction with a clear purpose and explicit props. A block of JSX with click handlers is not a component.
 
+## Component creation rules (strict)
+
+- When asked to create a component, you must first classify the request as either:
+  - **Generic UI pattern** (switch, segmented control, toggle group, button group, card, list item), or
+  - **Context-specific component** tied to a single feature/page.
+- If it can reasonably be generic, **implement the generic component first** in `src/components` and configure it via props.
+- Context-specific components are only allowed when:
+  - The component is tightly coupled to a specific domain/feature, **and**
+  - The structure/behavior does not make sense outside that context.
+- **Never** embed domain-specific logic, labels, or icons inside a generic component. Inject everything via props.
+- **Do not** recreate a reusable UI pattern using raw JSX if a generic component exists or can be extended.
+
 ### Single-use components (narrow exception)
 
 A new component used only once is allowed only when it is required to keep a parent file within the size limits or to keep responsibilities separate. In that case:
@@ -73,6 +85,8 @@ If those conditions are not met, keep the JSX inline in the parent component and
   - They must not fetch data.
   - They must not perform formatting, transformation, or business logic beyond trivial conditional rendering.
   - Event handlers must delegate to hook actions or props; no inline logic beyond calling those functions.
+- Generic components must be domain-agnostic: no theme handling, feature flags, API calls, or business rules.
+- Domain logic must live in hooks, services, or utilities and be injected into components via props.
 - Hooks own state, side effects, and orchestration.
 - Services own API calls.
 - Utilities own pure, reusable logic (formatters, parsers, calculations).
@@ -96,6 +110,9 @@ If there is any reasonable chance logic could be reused in the future, it belong
 - One component per file.
 - Prefer named exports.
 - Hooks must start with `use`.
+- **Do not** name generic components after the first use case.
+  - Bad: `ThemeSelector`
+  - Good: `SegmentedControl`, `ToggleGroup`, `Switch`
 
 ## State
 

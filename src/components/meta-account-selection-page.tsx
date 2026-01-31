@@ -100,24 +100,24 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
 
   if (isFetchingAccounts || (isLoading && metaAccounts.length === 0)) {
     return (
-      <div className="w-full h-full bg-white flex items-center justify-center" style={{ maxWidth: '393px', margin: '0 auto' }}>
+      <div className="w-full h-full bg-primary flex items-center justify-center" style={{ maxWidth: '393px', margin: '0 auto' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Meta Ad accounts...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-utility-info-600 mx-auto mb-4"></div>
+          <p className="paragraph-sm text-tertiary">Loading Meta Ad accounts...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full h-full bg-white overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
+    <div className="w-full h-full bg-primary overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
       {/* Header */}
       <div className="px-6 pt-4 pb-4 text-center">
         {onBack && (
           <div className="flex justify-start mb-2">
             <button
               onClick={onBack}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-tertiary rounded-full transition-colors"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -136,18 +136,18 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="w-12 h-12 rounded-full mx-auto mb-2 bg-blue-100 flex items-center justify-center"
+            className="w-12 h-12 rounded-full mx-auto mb-2 bg-utility-info-200 flex items-center justify-center"
           >
             <svg viewBox="0 0 24 24" className="w-7 h-7">
               <path fill="#0866FF" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
             </svg>
           </motion.div>
 
-          <h1 className="text-xl font-semibold text-black mb-1">
+          <h1 className="title-h6 text-primary mb-1">
             Welcome{metaUser?.name ? `, ${metaUser.name}` : ''}!
           </h1>
 
-          <p className="text-gray-600 text-sm">
+          <p className="paragraph-sm text-tertiary">
             Select your Meta Ad account to analyze
           </p>
         </motion.div>
@@ -159,9 +159,9 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 rounded-lg p-4"
+            className="bg-error-primary border border-error-subtle rounded-lg p-4"
           >
-            <p className="text-red-600 text-sm">{error || fetchError}</p>
+            <p className="paragraph-sm text-error">{error || fetchError}</p>
           </motion.div>
         </div>
       )}
@@ -170,9 +170,9 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
       <div className="px-6 pb-8">
         {metaAccounts.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📊</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Meta Ad Accounts Found</h3>
-            <p className="text-gray-600 text-sm">
+            <div className="title-h1 mb-4">📊</div>
+            <h3 className="subheading-bg text-primary mb-2">No Meta Ad Accounts Found</h3>
+            <p className="paragraph-sm text-tertiary">
               Make sure you have access to at least one Meta Ads account.
             </p>
           </div>
@@ -194,12 +194,12 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
                 className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                   isSelecting
                     ? 'opacity-60 cursor-not-allowed'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    : 'border-secondary hover:border-utility-info-300 hover:bg-utility-info-100'
                 }`}
               >
                 <div className="flex items-center space-x-4">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-medium text-white bg-blue-500"
+                    className="w-12 h-12 rounded-full flex items-center justify-center label-lg text-white bg-utility-info-500"
                   >
                     <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -208,19 +208,19 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-gray-900 truncate">
+                      <h3 className="label-md text-primary truncate">
                         {account.name}
                       </h3>
-                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
 
-                    <p className="text-sm text-gray-600 mb-1">
+                    <p className="paragraph-sm text-tertiary mb-1">
                       Meta Ads Account
                     </p>
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 paragraph-xs text-quaternary">
                       {account.meta_ads_id && (
                         <span className="flex items-center">
                           <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -240,8 +240,8 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
                     className="mt-3 flex items-center justify-center"
                   >
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span className="text-sm text-gray-600">Connecting...</span>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-utility-info-600"></div>
+                      <span className="paragraph-sm text-tertiary">Connecting...</span>
                     </div>
                   </motion.div>
                 )}

@@ -72,7 +72,7 @@ export function Dropdown({
         item.divider ? (
           <div
             key={`divider-${index}`}
-            className="border-t border-gray-200 my-1"
+            className="border-t border-secondary my-1"
             role="separator"
           />
         ) : (
@@ -81,12 +81,12 @@ export function Dropdown({
             type="button"
             onClick={() => handleItemClick(item)}
             disabled={item.disabled}
-            className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+            className={`w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 transition-colors ${
               item.disabled
-                ? 'text-gray-400 cursor-not-allowed'
+                ? 'text-placeholder-subtle cursor-not-allowed'
                 : item.destructive
-                  ? 'text-red-600 hover:bg-red-50'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'text-error hover:bg-error-primary'
+                  : 'text-secondary hover:bg-tertiary'
             }`}
             role="menuitem"
           >
@@ -117,7 +117,7 @@ export function Dropdown({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            className={`fixed bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-44 overflow-hidden ${className}`.trim()}
+            className={`fixed bg-primary rounded-xl shadow-lg border border-secondary py-1 min-w-44 overflow-hidden ${className}`.trim()}
             style={{
               left: position?.x ?? 0,
               top: position?.y ?? 0,

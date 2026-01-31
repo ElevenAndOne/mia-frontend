@@ -85,7 +85,7 @@ export function Sheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/20"
+            className="fixed inset-0 bg-overlay/20"
             style={{ zIndex }}
             onClick={closeOnOutsideClick ? onClose : undefined}
             aria-hidden="true"
@@ -98,7 +98,7 @@ export function Sheet({
             animate={variant.animate}
             exit={variant.exit}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`${variant.className} bg-white shadow-xl overflow-hidden ${className}`.trim()}
+            className={`${variant.className} bg-primary shadow-xl overflow-hidden ${className}`.trim()}
             style={{ zIndex: zIndex + 1 }}
             role="dialog"
             aria-modal="true"
@@ -108,14 +108,14 @@ export function Sheet({
             {/* Handle indicator (bottom sheets only) */}
             {showHandle && position === 'bottom' && (
               <div className="flex justify-center py-3">
-                <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                <div className="w-10 h-1 bg-tertiary rounded-full" />
               </div>
             )}
 
             {/* Header with title */}
             {title && (
               <div className="px-4 pb-2">
-                <h2 id={titleId} className="text-lg font-semibold text-gray-900">
+                <h2 id={titleId} className="label-bg text-primary">
                   {title}
                 </h2>
               </div>

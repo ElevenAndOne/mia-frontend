@@ -68,7 +68,7 @@ const CreateWorkspaceModal = ({
     >
       {/* Content */}
       <div className="px-6 py-5">
-        <p className="text-gray-600 text-sm mb-4">
+        <p className="paragraph-sm text-tertiary mb-4">
           {required
             ? 'Name your workspace to get started. You can invite team members later.'
             : 'Create a workspace to organize your marketing data and collaborate with your team.'}
@@ -76,7 +76,7 @@ const CreateWorkspaceModal = ({
 
         {/* Workspace Name Input */}
         <div className="mb-4">
-          <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label htmlFor="workspace-name" className="block subheading-md text-secondary mb-1.5">
             Workspace Name
           </label>
           <input
@@ -89,21 +89,21 @@ const CreateWorkspaceModal = ({
             }}
             onKeyDown={handleKeyDown}
             placeholder="e.g., My Agency, Client Name"
-            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              error ? 'border-red-300 bg-red-50' : 'border-gray-200'
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent transition-all ${
+              error ? 'border-error-subtle bg-error-primary' : 'border-secondary'
             }`}
             autoFocus
             disabled={isCreating}
           />
-          {error && <p className="mt-1.5 text-sm text-red-500">{error}</p>}
+          {error && <p className="mt-1.5 paragraph-sm text-error">{error}</p>}
         </div>
 
         {/* Features Preview */}
-        <div className="bg-gray-50 rounded-xl p-4 mb-2">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">What you get:</h4>
-          <ul className="space-y-2 text-sm text-gray-600">
+        <div className="bg-secondary rounded-xl p-4 mb-2">
+          <h4 className="subheading-md text-secondary mb-2">What you get:</h4>
+          <ul className="space-y-2 paragraph-sm text-tertiary">
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -113,7 +113,7 @@ const CreateWorkspaceModal = ({
               Shared platform connections
             </li>
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -123,7 +123,7 @@ const CreateWorkspaceModal = ({
               Team collaboration
             </li>
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -137,12 +137,12 @@ const CreateWorkspaceModal = ({
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+      <div className="px-6 py-4 bg-secondary border-t border-tertiary flex justify-end gap-3">
         {!required && (
           <button
             onClick={onClose}
             disabled={isCreating}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
           >
             Cancel
           </button>
@@ -150,7 +150,7 @@ const CreateWorkspaceModal = ({
         <button
           onClick={handleCreate}
           disabled={isCreating || !workspaceName.trim()}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 subheading-md text-primary-onbrand bg-brand-solid hover:bg-brand-solid-hover disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
         >
           {isCreating ? (
             <>

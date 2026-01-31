@@ -124,7 +124,7 @@ const FacebookPageSelector = ({
       title="Link Facebook Page"
       subtitle={currentAccountName ? `to ${currentAccountName}` : undefined}
       icon={<img src="/icons/facebook.png" alt="Facebook" className="w-6 h-6" />}
-      iconBgColor="bg-blue-100"
+      iconBgColor="bg-utility-info-200"
       isLoading={state.isLoading}
       loadingMessage="Loading your Facebook Pages..."
       error={state.error}
@@ -140,10 +140,10 @@ const FacebookPageSelector = ({
       accentColor="blue"
       headerExtra={
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-gray-700">Select a Facebook Page</label>
+          <label className="block subheading-md text-secondary">Select a Facebook Page</label>
           <button
             onClick={() => fetchFacebookPages(true)}
-            className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+            className="paragraph-xs text-utility-info-600 hover:text-utility-info-700 hover:underline"
           >
             Refresh list
           </button>
@@ -169,8 +169,8 @@ const FacebookPageSelector = ({
         ))}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-        <p className="text-xs text-blue-800">
+      <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mt-4">
+        <p className="paragraph-xs text-utility-info-700">
           Select a Facebook Page to enable organic social insights for your{' '}
           {currentAccountName || 'account'}.
         </p>

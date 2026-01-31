@@ -6,23 +6,23 @@ import { PlatformIcon } from './platform-icon'
 type BronzeCardProps = BronzeCardData
 
 const PLATFORM_STYLES: Record<string, { iconBg: string }> = {
-  google_ads: { iconBg: 'bg-white' },
-  meta_ads: { iconBg: 'bg-white' },
-  ga4: { iconBg: 'bg-white' }
+  google_ads: { iconBg: 'bg-primary' },
+  meta_ads: { iconBg: 'bg-primary' },
+  ga4: { iconBg: 'bg-primary' }
 }
 
 const VARIANT_STYLES = {
   primary: {
-    bg: 'bg-linear-to-br from-teal-50 to-green-100',
-    border: 'border-teal-200',
-    badgeBg: 'bg-teal-100',
-    badgeText: 'text-teal-700'
+    bg: 'bg-linear-to-br from-utility-teal-100 to-utility-success-200',
+    border: 'border-utility-teal-200',
+    badgeBg: 'bg-utility-teal-100',
+    badgeText: 'text-utility-teal-700'
   },
   secondary: {
-    bg: 'bg-linear-to-br from-blue-50 to-blue-100',
-    border: 'border-blue-200',
-    badgeBg: 'bg-blue-100',
-    badgeText: 'text-blue-700'
+    bg: 'bg-linear-to-br from-utility-info-100 to-utility-info-200',
+    border: 'border-utility-info-300',
+    badgeBg: 'bg-utility-info-200',
+    badgeText: 'text-utility-info-700'
   }
 }
 
@@ -53,13 +53,13 @@ export const BronzeCard = ({
         </div>
 
         <div className="flex-1">
-          <p className="text-gray-600 text-sm">{headline}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{formattedValue}</p>
-          <p className="text-gray-600 text-sm">{metricLabel}</p>
+          <p className="paragraph-sm text-tertiary">{headline}</p>
+          <p className="title-h4 text-primary mt-1">{formattedValue}</p>
+          <p className="paragraph-sm text-tertiary">{metricLabel}</p>
 
           {secondaryMetric && (
             <div
-              className={`${styles.badgeBg} ${styles.badgeText} inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs mt-2`}
+              className={`${styles.badgeBg} ${styles.badgeText} inline-flex items-center gap-1 px-2 py-1 rounded-full subheading-sm mt-2`}
             >
               <span className="font-semibold">With {secondaryMetric.value}</span>
               <span>{secondaryMetric.label}</span>

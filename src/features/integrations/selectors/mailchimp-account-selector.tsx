@@ -124,11 +124,11 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
       title="Mailchimp Accounts"
       subtitle="Select which Mailchimp account to use with this Google Ads account"
       icon={
-        <svg className="w-6 h-6 text-yellow-600" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-6 h-6 text-warning" viewBox="0 0 24 24" fill="currentColor">
           <path d="M18.2 11.8c-.3-.3-.5-.7-.5-1.1 0-.4.2-.8.5-1.1.3-.3.5-.7.5-1.1 0-.8-.7-1.5-1.5-1.5h-1c-.4 0-.8-.2-1.1-.5-.3-.3-.5-.7-.5-1.1V4.5c0-.8-.7-1.5-1.5-1.5s-1.5.7-1.5 1.5v.9c0 .4-.2.8-.5 1.1-.3.3-.7.5-1.1.5h-.9c-.8 0-1.5.7-1.5 1.5 0 .4.2.8.5 1.1.3.3.5.7.5 1.1 0 .4-.2.8-.5 1.1-.3.3-.5.7-.5 1.1v.9c0 .8.7 1.5 1.5 1.5h.9c.4 0 .8.2 1.1.5.3.3.5.7.5 1.1v.9c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5v-.9c0-.4.2-.8.5-1.1.3-.3.7-.5 1.1-.5h.9c.8 0 1.5-.7 1.5-1.5v-.9c0-.4.2-.8.5-1.1z" />
         </svg>
       }
-      iconBgColor="bg-yellow-100"
+      iconBgColor="bg-utility-warning-100"
       isLoading={state.isLoading}
       loadingMessage="Loading Mailchimp accounts..."
       error={state.error}

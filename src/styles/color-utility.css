@@ -105,13 +105,13 @@
     /* =========================================================== */
 
     /* Brand Colors */
-    --color-utility-brand-100: var(--color-orange-100);
-    --color-utility-brand-200: var(--color-orange-200);
-    --color-utility-brand-300: var(--color-orange-300);
-    --color-utility-brand-400: var(--color-orange-400);
-    --color-utility-brand-500: var(--color-orange-500);
-    --color-utility-brand-600: var(--color-orange-600);
-    --color-utility-brand-700: var(--color-orange-700);
+    --color-utility-brand-100: var(--color-purple-100);
+    --color-utility-brand-200: var(--color-purple-200);
+    --color-utility-brand-300: var(--color-purple-300);
+    --color-utility-brand-400: var(--color-purple-400);
+    --color-utility-brand-500: var(--color-purple-500);
+    --color-utility-brand-600: var(--color-purple-600);
+    --color-utility-brand-700: var(--color-purple-700);
 
     /* Error Colors */
     --color-utility-error-100: var(--color-red-100);

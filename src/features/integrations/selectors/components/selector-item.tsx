@@ -14,27 +14,27 @@ interface SelectorItemProps {
 
 const ACCENT_COLORS = {
   blue: {
-    selected: 'border-blue-500 bg-blue-50',
-    checkbox: 'border-blue-600 bg-blue-600',
+    selected: 'border-utility-info-500 bg-utility-info-100',
+    checkbox: 'border-utility-info-600 bg-utility-info-600',
   },
   green: {
-    selected: 'border-green-500 bg-green-50',
-    checkbox: 'border-green-600 bg-green-600',
+    selected: 'border-utility-success-500 bg-success-primary',
+    checkbox: 'border-utility-success-600 bg-utility-success-600',
   },
   orange: {
-    selected: 'border-orange-500 bg-orange-50',
-    checkbox: 'border-orange-600 bg-orange-600',
+    selected: 'border-brand bg-brand-primary',
+    checkbox: 'border-brand bg-brand-solid',
   },
   black: {
-    selected: 'border-gray-900 bg-gray-50',
-    checkbox: 'border-gray-900 bg-gray-900',
+    selected: 'border-primary bg-secondary',
+    checkbox: 'border-primary bg-primary-solid',
   },
 }
 
 const BADGE_COLORS = {
-  blue: 'bg-blue-100 text-blue-700',
-  green: 'bg-green-100 text-green-700',
-  gray: 'bg-gray-100 text-gray-600',
+  blue: 'bg-utility-info-200 text-utility-info-700',
+  green: 'bg-success-secondary text-success',
+  gray: 'bg-tertiary text-tertiary',
 }
 
 export function SelectorItem({
@@ -60,7 +60,7 @@ export function SelectorItem({
       } ${
         isSelected
           ? colors.selected
-          : 'border-gray-200 bg-white hover:border-gray-300'
+          : 'border-secondary bg-primary hover:border-primary'
       }`}
     >
       <div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export function SelectorItem({
         {selectionStyle === 'radio' ? (
           <div
             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-              isSelected ? colors.checkbox.replace('bg-', 'border-').replace(' bg-', ' ') : 'border-gray-300'
+              isSelected ? colors.checkbox.replace('bg-', 'border-').replace(' bg-', ' ') : 'border-primary'
             }`}
           >
             {isSelected && (
@@ -78,11 +78,11 @@ export function SelectorItem({
         ) : (
           <div
             className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
-              isSelected ? colors.checkbox : 'border-gray-300'
+              isSelected ? colors.checkbox : 'border-primary'
             }`}
           >
             {isSelected && (
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-3 h-3 text-primary-onbrand" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -96,14 +96,14 @@ export function SelectorItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900 truncate">{title}</p>
+            <p className="subheading-md text-primary truncate">{title}</p>
             {badge && (
-              <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE_COLORS[badgeColor]}`}>
+              <span className={`subheading-sm px-2 py-0.5 rounded-full ${BADGE_COLORS[badgeColor]}`}>
                 {badge}
               </span>
             )}
           </div>
-          {subtitle && <p className="text-sm text-gray-500 truncate">{subtitle}</p>}
+          {subtitle && <p className="paragraph-sm text-quaternary truncate">{subtitle}</p>}
           {children}
         </div>
 
@@ -114,7 +114,7 @@ export function SelectorItem({
               e.stopPropagation()
               onRemove()
             }}
-            className="ml-2 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+            className="ml-2 text-placeholder-subtle hover:text-error transition-colors shrink-0"
             title="Remove"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -20,8 +20,8 @@ const InviteLandingPage = lazy(() => import('../components/invite-landing-page')
 const WorkspaceSettingsPage = lazy(() => import('../components/workspace-settings-page'))
 
 const LazyLoadSpinner = () => (
-  <div className="w-full h-full flex items-center justify-center bg-gray-50">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+  <div className="w-full h-full flex items-center justify-center bg-secondary">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
   </div>
 )
 
@@ -52,6 +52,7 @@ const ChatViewWrapper = () => {
         <ChatView
           onIntegrationsClick={() => navigate('/integrations')}
           onLogout={handleLogout}
+          onWorkspaceSettings={() => navigate('/settings/workspace')}
         />
       </div>
     </AppShell>

@@ -14,8 +14,8 @@ export const MessageBubble = ({ message, onChoiceSelect }: MessageBubbleProps) =
   if (message.type === 'user') {
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
-        <div className="bg-black text-white px-4 py-2 rounded-2xl max-w-[80%]">
-          <p className="text-sm">{message.content}</p>
+        <div className="bg-brand-solid text-primary-onbrand px-4 py-2 rounded-2xl max-w-[80%]">
+          <p className="paragraph-sm">{message.content}</p>
         </div>
       </motion.div>
     )
@@ -43,8 +43,8 @@ export const MessageBubble = ({ message, onChoiceSelect }: MessageBubbleProps) =
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2">
-      <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%] w-fit">
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+      <div className="bg-tertiary text-primary px-4 py-2 rounded-2xl max-w-[85%] w-fit">
+        <p className="paragraph-sm whitespace-pre-wrap">{message.content}</p>
       </div>
 
       {message.choices && message.choices.length > 0 && (

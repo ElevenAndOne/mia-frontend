@@ -1,17 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Figtree:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@import "./styles/color-primitives.css";
+@import "./styles/color-tokens.css";
+@import "./styles/color-utility.css";
+@import "./styles/spacing-primitive.css";
+@import "./styles/property-utilities.css";
+@import "./styles/tokens.css";
+@import "./styles/dark-theme.css";
 
 /* Tailwind v4 Theme Extensions */
 @theme {
-  /* Mia Brand Colors */
-  --color-mia-red: #D00603;
-  --color-mia-pink: #F189CB;
-  --color-mia-green: #82EBA1;
-  --color-mia-yellow: #C9F84A;
-  --color-mia-cyan: #3CDDF9;
-  --color-mia-purple: #9A3698;
-  --color-mia-deep-purple: #2A3698;
-
   /* Custom Animations */
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
@@ -36,21 +35,15 @@
 
 /* iPhone 16 Pro Optimized CSS Variables */
 :root {
-  /* Exact Figma Colors - Adjusted */
-  --flow-blue: #0793F2;
-  --flow-purple: #9D81F2;
-  --flow-yellow: #FFD700; /* More golden yellow, less greenish */
-  --flow-white: #FFFFFF;
-  
   /* Context Colors */
-  --context-blue: #A7D3FF;
-  --context-orange: #FFC5B0;
-  --context-purple: #CCC2FF;
-  --context-mint: #A2FAE0;
-  
+  --context-blue: var(--color-utility-blue-200);
+  --context-orange: var(--color-utility-orange-200);
+  --context-purple: var(--color-utility-purple-200);
+  --context-mint: var(--color-utility-teal-200);
+
   /* Mia Circle Gradient */
-  --mia-inner: #FFFFFF;
-  --mia-outer: #C9F84A;
+  --mia-inner: var(--text-color-white);
+  --mia-outer: var(--color-utility-warning-400);
   
   /* iPhone 16 Pro Safe Areas */
   --safe-top: 59px;
@@ -88,8 +81,9 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--text-color-primary);
   /* NO background - let components fill the space */
-  background: #ffffff;
+  background: var(--background-color-primary);
   /* Mobile touch optimizations */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -114,7 +108,7 @@ body.full-bleed #root {
   
   /* Target styling from Figma */
   border-radius: 55px;
-  background: #FFF;
+  background: var(--background-color-primary);
   
   /* Center vertically on larger screens */
   top: 50%;
@@ -193,7 +187,7 @@ body.full-bleed #root {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  color: #333;
+  color: var(--text-color-primary);
 }
 
 /* Context Theme Classes */

@@ -263,34 +263,34 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <span className="text-yellow-500" title="Owner">&#9733;</span>
+        return <span className="text-warning" title="Owner">&#9733;</span>
       case 'admin':
-        return <span className="text-blue-500" title="Admin">&#128737;</span>
+        return <span className="text-utility-info-500" title="Admin">&#128737;</span>
       case 'analyst':
-        return <span className="text-green-500" title="Analyst">&#128200;</span>
+        return <span className="text-success" title="Analyst">&#128200;</span>
       default:
-        return <span className="text-amber-500" title="Viewer">&#128065;</span>
+        return <span className="text-warning" title="Viewer">&#128065;</span>
     }
   }
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'owner': return 'bg-yellow-100 text-yellow-800'
-      case 'admin': return 'bg-blue-100 text-blue-800'
-      case 'analyst': return 'bg-green-100 text-green-800'
-      default: return 'bg-amber-100 text-amber-800'
+      case 'owner': return 'bg-utility-warning-100 text-utility-warning-700'
+      case 'admin': return 'bg-utility-info-100 text-utility-info-700'
+      case 'analyst': return 'bg-utility-success-100 text-utility-success-700'
+      default: return 'bg-utility-warning-100 text-utility-warning-700'
     }
   }
 
   // Overview view - show all workspaces
   if (!selectedWorkspaceId) {
     return (
-      <div className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden">
+      <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-4 border-b border-gray-100 shrink-0">
+        <div className="px-4 py-4 border-b border-tertiary shrink-0">
           <BackButton onClick={onBack} label="Back" />
-          <h1 className="text-xl font-bold text-gray-900 mt-2">Workspaces</h1>
-          <p className="text-sm text-gray-500">{availableWorkspaces.length} workspace{availableWorkspaces.length !== 1 ? 's' : ''}</p>
+          <h1 className="title-h6 text-primary mt-2">Workspaces</h1>
+          <p className="paragraph-sm text-quaternary">{availableWorkspaces.length} workspace{availableWorkspaces.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Workspace List */}
@@ -306,24 +306,24 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                   onClick={() => handleSelectWorkspace(workspace)}
                   className={`w-full text-left rounded-xl p-4 flex items-center gap-3 transition-colors ${
                     isActive
-                      ? 'bg-blue-50 border border-blue-200'
-                      : 'bg-gray-50 hover:bg-gray-100'
+                      ? 'bg-secondary border border-secondary'
+                      : 'bg-secondary hover:bg-tertiary'
                   }`}
                 >
                   {/* Workspace Icon */}
-                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-brand-solid flex items-center justify-center label-bg text-primary-onbrand shrink-0">
                     {workspace.name.charAt(0).toUpperCase()}
                   </div>
 
                   {/* Workspace Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 truncate">{workspace.name}</span>
+                      <span className="label-md text-primary truncate">{workspace.name}</span>
                       {isActive && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">Active</span>
+                        <span className="px-2 py-0.5 rounded-full label-xs bg-secondary text-white">Active</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                    <div className="flex items-center gap-2 paragraph-xs text-quaternary mt-0.5">
                       <span className={`px-1.5 py-0.5 rounded ${getRoleBadgeColor(workspace.role)}`}>
                         {workspace.role}
                       </span>
@@ -332,14 +332,14 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                       {!canManageWorkspace && (
                         <>
                           <span>·</span>
-                          <span className="text-gray-400">View only</span>
+                          <span className="text-placeholder-subtle">View only</span>
                         </>
                       )}
                     </div>
                   </div>
 
                   {/* Chevron */}
-                  <Icon.chevron_right size={20} className="text-gray-400 shrink-0" />
+                  <Icon.chevron_right size={20} className="text-placeholder-subtle shrink-0" />
                 </button>
               )
             })}
@@ -348,7 +348,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
           {/* Create New Workspace Button */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="w-full mt-4 py-3 px-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 font-medium flex items-center justify-center gap-2 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            className="w-full mt-4 py-3 px-4 border-2 border-dashed border-primary rounded-xl subheading-md text-tertiary flex items-center justify-center gap-2 hover:border-secondary hover:text-secondary transition-colors"
           >
             <Icon.plus size={20} />
             Create New Workspace
@@ -368,36 +368,36 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   // Detail view - show members/invites for selected workspace
   if (!selectedWorkspace) {
     return (
-      <div className="w-full h-screen-dvh bg-white flex items-center justify-center">
-        <p className="text-gray-500">Workspace not found</p>
+      <div className="w-full h-screen-dvh bg-primary flex items-center justify-center">
+        <p className="paragraph-sm text-quaternary">Workspace not found</p>
       </div>
     )
   }
 
   return (
-    <div className="w-full h-screen-dvh bg-white flex flex-col overflow-hidden">
+    <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-100 shrink-0">
+      <div className="px-4 py-4 border-b border-tertiary shrink-0">
         <BackButton onClick={handleBackToOverview} label="All Workspaces" />
         <div className="flex items-center gap-3 mt-2">
-          <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+          <div className="w-10 h-10 rounded-xl bg-brand-solid flex items-center justify-center label-bg text-primary-onbrand">
             {selectedWorkspace.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{selectedWorkspace.name}</h1>
-            <p className="text-xs text-gray-500 capitalize">Your role: {selectedWorkspace.role}</p>
+            <h1 className="title-h6 text-primary">{selectedWorkspace.name}</h1>
+            <p className="paragraph-xs text-quaternary capitalize">Your role: {selectedWorkspace.role}</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 max-w-3xl mx-auto w-full">
+      <div className="flex border-b border-tertiary max-w-3xl mx-auto w-full">
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex-1 py-3 text-sm font-medium transition-colors ${
+          className={`flex-1 py-3 subheading-md transition-colors ${
             activeTab === 'members'
-              ? 'text-black border-b-2 border-black'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-primary border-b-2 border-brand'
+              : 'text-quaternary hover:text-secondary'
           }`}
         >
           Members ({members.length})
@@ -405,10 +405,10 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
         {canManage && (
           <button
             onClick={() => setActiveTab('invites')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 subheading-md transition-colors ${
               activeTab === 'invites'
-                ? 'text-black border-b-2 border-black'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-primary border-b-2 border-brand'
+                : 'text-quaternary hover:text-secondary'
             }`}
           >
             Invites ({invites.filter(i => i.status === 'pending').length})
@@ -420,8 +420,8 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
+            <p className="paragraph-sm text-error">{error}</p>
           </div>
         )}
 
@@ -435,28 +435,28 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
             {members.map(member => (
               <div
                 key={member.user_id}
-                className="bg-gray-50 rounded-xl p-4 flex items-center gap-3"
+                className="bg-secondary rounded-xl p-4 flex items-center gap-3"
               >
                 {member.picture_url ? (
                   <img src={member.picture_url} alt="" className="w-10 h-10 rounded-full" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-600 font-medium">
+                  <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center">
+                    <span className="label-sm text-tertiary">
                       {member.name?.charAt(0) || member.email?.charAt(0) || '?'}
                     </span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className="subheading-md text-primary truncate">
                       {member.name || member.email || 'Unknown'}
                     </p>
                     {getRoleIcon(member.role)}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                  <p className="paragraph-xs text-quaternary truncate">{member.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                  <span className={`px-2 py-1 rounded-full label-xs ${getRoleBadgeColor(member.role)}`}>
                     {member.role}
                   </span>
                   {/* Role change dropdown - only for owners, and can't change own role or other owners */}
@@ -464,7 +464,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                     <select
                       value={member.role}
                       onChange={(e) => handleUpdateRole(member.user_id, e.target.value)}
-                      className="text-xs border border-gray-200 rounded px-2 py-1"
+                      className="paragraph-xs border border-secondary rounded px-2 py-1"
                     >
                       <option value="admin">Admin</option>
                       <option value="analyst">Analyst</option>
@@ -475,7 +475,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                   {canManage && member.role !== 'owner' && member.user_id !== user?.google_user_id && (
                     <button
                       onClick={() => handleRemoveMember(member.user_id)}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      className="p-1 text-error hover:bg-error-primary rounded"
                       title="Remove member"
                     >
                       <Icon.x_close size={16} />
@@ -492,7 +492,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
             {!showCreateInvite && !createdInviteLink && (
               <button
                 onClick={() => setShowCreateInvite(true)}
-                className="w-full py-3 px-4 bg-black text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors"
               >
                 <Icon.plus size={20} />
                 Create Invite Link
@@ -501,27 +501,27 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
 
             {/* Create Invite Form */}
             {showCreateInvite && !createdInviteLink && (
-              <div className="bg-gray-50 rounded-xl p-4 space-y-4">
-                <h3 className="font-semibold text-gray-900">Create Invite</h3>
+              <div className="bg-secondary rounded-xl p-4 space-y-4">
+                <h3 className="label-md text-primary">Create Invite</h3>
 
                 {/* Invite Type Toggle */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsLinkInvite(true)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                       isLinkInvite
-                        ? 'bg-black text-white'
-                        : 'bg-white text-gray-700 border border-gray-200'
+                        ? 'bg-brand-solid text-primary-onbrand'
+                        : 'bg-primary text-secondary border border-secondary'
                     }`}
                   >
                     Anyone with link
                   </button>
                   <button
                     onClick={() => setIsLinkInvite(false)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                       !isLinkInvite
-                        ? 'bg-black text-white'
-                        : 'bg-white text-gray-700 border border-gray-200'
+                        ? 'bg-brand-solid text-primary-onbrand'
+                        : 'bg-primary text-secondary border border-secondary'
                     }`}
                   >
                     Specific email
@@ -535,22 +535,22 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="colleague@company.com"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm"
+                    className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
                   />
                 )}
 
                 {/* Role Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                  <label className="block subheading-md text-secondary mb-2">Role</label>
                   <div className="grid grid-cols-3 gap-2">
                     {['admin', 'analyst', 'viewer'].map(role => (
                       <button
                         key={role}
                         onClick={() => setInviteRole(role)}
-                        className={`py-2 px-3 rounded-lg text-sm font-medium capitalize transition-colors ${
+                        className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${
                           inviteRole === role
                             ? getRoleBadgeColor(role)
-                            : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                            : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
                         }`}
                       >
                         {role}
@@ -566,14 +566,14 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                       setShowCreateInvite(false)
                       setInviteEmail('')
                     }}
-                    className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="flex-1 py-2 px-4 border border-secondary rounded-lg subheading-md text-secondary hover:bg-secondary"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreateInvite}
                     disabled={creatingInvite || (!isLinkInvite && !inviteEmail.trim())}
-                    className="flex-1 py-2 px-4 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {creatingInvite ? 'Creating...' : 'Create'}
                   </button>
@@ -583,21 +583,21 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
 
             {/* Created Invite Link */}
             {createdInviteLink && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+              <div className="bg-success-primary border border-utility-success-300 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <Icon.check_circle size={20} className="text-green-600" />
-                  <span className="font-medium text-green-800">Invite created!</span>
+                  <Icon.check_circle size={20} className="text-success" />
+                  <span className="subheading-md text-success">Invite created!</span>
                 </div>
-                <div className="bg-white rounded-lg p-3 flex items-center gap-2">
+                <div className="bg-primary rounded-lg p-3 flex items-center gap-2">
                   <input
                     type="text"
                     value={createdInviteLink}
                     readOnly
-                    className="flex-1 text-sm text-gray-600 bg-transparent outline-none"
+                    className="flex-1 paragraph-sm text-tertiary bg-transparent outline-none"
                   />
                   <button
                     onClick={() => copyToClipboard(createdInviteLink)}
-                    className="px-3 py-1 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
+                    className="px-3 py-1 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
                   >
                     {copySuccess ? 'Copied!' : 'Copy'}
                   </button>
@@ -607,7 +607,7 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                     setCreatedInviteLink(null)
                     setShowCreateInvite(false)
                   }}
-                  className="w-full py-2 text-sm text-gray-600 hover:text-gray-800"
+                  className="w-full py-2 paragraph-sm text-tertiary hover:text-primary"
                 >
                   Done
                 </button>
@@ -617,31 +617,31 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
             {/* Pending Invites List */}
             {invites.filter(i => i.status === 'pending').length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-700">Pending Invites</h3>
+                <h3 className="subheading-md text-secondary">Pending Invites</h3>
                 {invites
                   .filter(i => i.status === 'pending')
                   .map(invite => (
                     <div
                       key={invite.invite_id}
-                      className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between"
+                      className="bg-primary border border-secondary rounded-xl p-3 flex items-center justify-between"
                     >
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="subheading-md text-primary">
                           {invite.email || 'Anyone with link'}
                         </p>
-                        <p className="text-xs text-gray-500 capitalize">{invite.role}</p>
+                        <p className="paragraph-xs text-quaternary capitalize">{invite.role}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => copyToClipboard(`${window.location.origin}/invite/${invite.invite_id}`)}
-                          className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                          className="p-2 text-quaternary hover:bg-tertiary rounded-lg"
                           title="Copy invite link"
                         >
                           <Icon.copy_01 size={16} />
                         </button>
                         <button
                           onClick={() => handleRevokeInvite(invite.invite_id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-error hover:bg-error-primary rounded-lg"
                           title="Revoke invite"
                         >
                           <Icon.trash_01 size={16} />

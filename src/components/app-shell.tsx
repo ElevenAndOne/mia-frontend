@@ -17,7 +17,7 @@ export const AppShell = ({
   onWorkspaceSettings
 }: AppShellProps) => {
   return (
-    <div className="flex h-full w-full bg-white">
+    <div className="flex h-full w-full bg-primary">
       <AppSidebar
         onNewChat={onNewChat}
         onIntegrationsClick={onIntegrationsClick}

@@ -83,21 +83,21 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef 
           <button
             key={option.value}
             onClick={() => handleOptionClick(option.value)}
-            className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+            className={`w-full px-3 py-2 text-left transition-colors ${
               tempSelection === option.value
-                ? 'bg-purple-50 text-purple-900 font-medium'
-                : 'text-gray-700 hover:bg-gray-50'
+                ? 'bg-utility-purple-100 text-utility-purple-700 subheading-md'
+                : 'text-secondary hover:bg-secondary paragraph-sm'
             }`}
           >
             {option.label}
-            {tempSelection === option.value && <span className="float-right text-purple-600">✓</span>}
+            {tempSelection === option.value && <span className="float-right text-utility-purple-600">✓</span>}
           </button>
         ))}
 
         {/* Custom Date Picker */}
         {showCustomPicker && (
-          <div className="border-t border-gray-200 p-3">
-            <p className="text-xs font-medium text-gray-700 mb-3">Select date range</p>
+          <div className="border-t border-secondary p-3">
+            <p className="subheading-sm text-secondary mb-3">Select date range</p>
             <div className="rdp-custom-wrapper">
               <DayPicker
                 mode="range"
@@ -110,26 +110,26 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef 
                   months: 'flex flex-col',
                   month: 'space-y-4',
                   caption: 'flex justify-center pt-1 relative items-center mb-2',
-                  caption_label: 'text-sm font-medium',
+                  caption_label: 'subheading-md',
                   nav: 'hidden', // Hide navigation arrows since we have dropdowns
                   table: 'w-full border-collapse space-y-1',
                   head_row: 'flex',
-                  head_cell: 'text-gray-500 rounded-md w-9 font-normal text-[0.8rem]',
+                  head_cell: 'paragraph-xs text-quaternary rounded-md w-9',
                   row: 'flex w-full mt-2',
-                  cell: 'text-center text-sm p-0 relative [&:has([aria-selected])]:bg-purple-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
-                  day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-md',
+                  cell: 'text-center paragraph-sm p-0 relative [&:has([aria-selected])]:bg-utility-purple-200 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                  day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-tertiary rounded-md',
                   day_selected:
-                    'bg-purple-600 text-white hover:bg-purple-600 hover:text-white focus:bg-purple-600 focus:text-white',
-                  day_today: 'bg-gray-100 text-gray-900',
-                  day_outside: 'text-gray-400 opacity-50',
-                  day_disabled: 'text-gray-400 opacity-50',
-                  day_range_middle: 'aria-selected:bg-purple-100 aria-selected:text-purple-900',
+                    'bg-utility-purple-600 text-primary-onbrand hover:bg-utility-purple-600 hover:text-primary-onbrand focus:bg-utility-purple-600 focus:text-primary-onbrand',
+                  day_today: 'bg-tertiary text-primary',
+                  day_outside: 'text-placeholder-subtle opacity-50',
+                  day_disabled: 'text-placeholder-subtle opacity-50',
+                  day_range_middle: 'aria-selected:bg-utility-purple-200 aria-selected:text-utility-purple-700',
                   day_hidden: 'invisible',
                 }}
               />
             </div>
             {dateRange?.from && dateRange?.to && (
-              <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded">
+              <div className="mt-3 paragraph-xs text-tertiary bg-utility-purple-100 p-2 rounded">
                 <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} -{' '}
                 {format(dateRange.to, 'MMM d, yyyy')}
               </div>
@@ -138,11 +138,11 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef 
         )}
 
         {/* Apply Button */}
-        <div className="border-t border-gray-200 p-2">
+        <div className="border-t border-secondary p-2">
           <button
             onClick={handleApply}
             disabled={showCustomPicker && (!dateRange?.from || !dateRange?.to)}
-            className="w-full px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 bg-utility-purple-600 text-primary-onbrand subheading-md rounded-md hover:bg-utility-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Apply
           </button>

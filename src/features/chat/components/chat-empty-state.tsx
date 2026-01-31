@@ -10,10 +10,10 @@ export const ChatEmptyState = ({ userName, children }: ChatEmptyStateProps) => {
   return (
     <div className="flex-1 flex flex-col gap-8 items-center justify-center px-4">
       <div className="text-center max-w-md">
-        <h1 className="text-2xl md:text-3xl font-normal text-gray-900 mb-1">
+        <h1 className="paragraph-lg md:title-h4 text-primary font-normal md:font-normal mb-1">
           {greeting}
         </h1>
-        <p className="text-2xl md:text-3xl font-normal text-gray-900">
+        <p className="paragraph-lg md:title-h4 text-primary font-normal md:font-normal">
           What can I help with?
         </p>
       </div>

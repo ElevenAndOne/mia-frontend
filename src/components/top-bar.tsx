@@ -20,18 +20,16 @@ export function TopBar({
   className = ''
 }: TopBarProps) {
   return (
-    <div className={`flex items-center px-4 py-3 bg-white shrink-0 ${className}`}>
+    <div className={`flex items-center px-4 py-3 bg-primary shrink-0 ${className}`}>
       {/* Left section: Back button + Title */}
       <div className="flex items-center gap-1">
         {onBack && (
           <BackButton onClick={onBack} label={backLabel} variant="dark" />
         )}
         <h1
-          className="text-xl font-normal text-black"
+          className="title-h6 text-primary"
           style={{
             fontFamily: 'Geologica, sans-serif',
-            fontSize: '20px',
-            fontWeight: 400,
             lineHeight: '110%'
           }}
         >

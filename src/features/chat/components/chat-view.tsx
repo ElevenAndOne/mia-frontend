@@ -20,9 +20,10 @@ interface Message {
 interface ChatViewProps {
   onIntegrationsClick?: () => void
   onLogout?: () => void
+  onWorkspaceSettings?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
+export const ChatView = ({ onIntegrationsClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
   const navigate = useNavigate()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
@@ -200,6 +201,8 @@ export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
     <ChatLayout
       onIntegrationsClick={onIntegrationsClick}
       onNewChat={handleNewChat}
+      onLogout={onLogout}
+      onWorkspaceSettings={onWorkspaceSettings}
     >
       <div className="flex-1 flex flex-col h-full pt-14 md:pt-0">
         {!hasMessages ? (
@@ -238,13 +241,13 @@ export const ChatView = ({ onIntegrationsClick }: ChatViewProps) => {
                 {/* Loading indicator */}
                 {isLoading && (
                   <div className="mb-6">
-                    <div className="flex items-center gap-2 text-gray-500">
+                    <div className="flex items-center gap-2 text-quaternary">
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
-                      <span className="text-sm">Thinking...</span>
+                      <span className="paragraph-sm">Thinking...</span>
                     </div>
                   </div>
                 )}

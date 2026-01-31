@@ -52,7 +52,7 @@ export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextPr
             href={actualUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline font-medium"
+            className="text-utility-info-600 hover:text-utility-info-700 underline font-medium"
           >
             {linkText}
           </a>
@@ -65,7 +65,7 @@ export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextPr
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline font-medium"
+            className="text-utility-info-600 hover:text-utility-info-700 underline font-medium"
           >
             {part}
           </a>

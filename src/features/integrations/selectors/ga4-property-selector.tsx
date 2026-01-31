@@ -204,20 +204,20 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-brand-secondary rounded-full flex items-center justify-center">
                   <img src="/icons/google_analytics.svg" alt="GA4" className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Link GA4 Properties</h2>
+                  <h2 className="title-h6 text-primary">Link GA4 Properties</h2>
                   {currentAccountName && (
-                    <p className="text-sm text-gray-500">to {currentAccountName}</p>
+                    <p className="paragraph-sm text-quaternary">to {currentAccountName}</p>
                   )}
                 </div>
               </div>
               <button
                 onClick={handleClose}
                 disabled={isLinking}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-placeholder-subtle hover:text-tertiary transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -230,20 +230,20 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
               {/* Loading State */}
               {isLoading && (
                 <div className="py-8 text-center">
-                  <div className="inline-block w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
-                  <p className="mt-4 text-gray-600">Loading your GA4 properties...</p>
+                  <div className="inline-block w-8 h-8 border-4 border-utility-brand-200 border-t-utility-brand-600 rounded-full animate-spin"></div>
+                  <p className="mt-4 paragraph-sm text-tertiary">Loading your GA4 properties...</p>
                 </div>
               )}
 
               {/* Error State */}
               {error && !isLoading && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="bg-error-primary border border-error-subtle rounded-lg p-4">
                   <div className="flex items-start">
-                    <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-error mt-0.5 mr-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
                     <div className="flex-1">
-                      <p className="text-sm text-red-800">{error}</p>
+                      <p className="paragraph-sm text-error">{error}</p>
                     </div>
                   </div>
                 </div>
@@ -251,12 +251,12 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
               {/* Success State */}
               {success && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
                   <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-success mr-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <p className="text-sm font-medium text-green-800">GA4 property linked successfully!</p>
+                    <p className="subheading-md text-success">GA4 property linked successfully!</p>
                   </div>
                 </div>
               )}
@@ -266,12 +266,12 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block subheading-md text-secondary">
                         Select GA4 Properties ({selectedPropertyIds.length} selected)
                       </label>
                       <button
                         onClick={() => fetchGA4Properties(true)}
-                        className="text-xs text-orange-600 hover:text-orange-700 hover:underline"
+                        className="paragraph-xs text-brand-teriary hover:text-brand-secondary hover:underline"
                       >
                         Refresh list
                       </button>
@@ -285,8 +285,8 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                             key={property.property_id}
                             className={`relative p-4 rounded-lg border-2 transition-all ${
                               isSelected
-                                ? 'border-orange-500 bg-orange-50'
-                                : 'border-gray-200 bg-white'
+                                ? 'border-brand bg-brand-primary'
+                                : 'border-secondary bg-primary'
                             }`}
                           >
                             <div className="flex items-center gap-3">
@@ -295,12 +295,12 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                                 onClick={() => togglePropertySelection(property.property_id)}
                                 className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
                                   isSelected
-                                    ? 'bg-orange-600 border-orange-600'
-                                    : 'border-gray-300 bg-white hover:border-gray-400'
+                                    ? 'bg-brand-solid border-brand'
+                                    : 'border-primary bg-primary hover:border-secondary'
                                 }`}
                               >
                                 {isSelected && (
-                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <svg className="w-3 h-3 text-primary-onbrand" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                   </svg>
                                 )}
@@ -308,14 +308,14 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                               {/* Property Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <p className="font-medium text-gray-900 truncate">{property.display_name}</p>
+                                  <p className="subheading-md text-primary truncate">{property.display_name}</p>
                                   {isPrimary && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded subheading-sm bg-success-secondary text-success">
                                       Primary
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-500 truncate">
+                                <p className="paragraph-sm text-quaternary truncate">
                                   Property ID: {property.property_id}
                                 </p>
                               </div>
@@ -323,7 +323,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                               {isSelected && !isPrimary && (
                                 <button
                                   onClick={() => setPrimary(property.property_id)}
-                                  className="px-3 py-1 text-xs font-medium text-orange-700 bg-white border border-orange-300 rounded hover:bg-orange-50 transition-colors"
+                                  className="px-3 py-1 subheading-sm text-brand-secondary bg-primary border border-utility-brand-300 rounded hover:bg-brand-primary transition-colors"
                                 >
                                   Set as Primary
                                 </button>
@@ -336,8 +336,8 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                   </div>
 
                   {/* Helper Text */}
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                    <p className="text-xs text-orange-800">
+                  <div className="bg-brand-primary border border-utility-brand-200 rounded-lg p-3">
+                    <p className="paragraph-xs text-brand-primary">
                       💡 Select one or more GA4 properties to link to your {currentAccountName || 'Google Ads'} account for website analytics.
                     </p>
                   </div>
@@ -347,11 +347,11 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
               {/* No Properties Found */}
               {!isLoading && !error && properties.length === 0 && (
                 <div className="py-8 text-center">
-                  <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-16 h-16 mx-auto text-placeholder-subtle mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <p className="text-gray-600">No GA4 properties found</p>
-                  <p className="text-sm text-gray-500 mt-2">Make sure you have access to at least one GA4 property</p>
+                  <p className="paragraph-sm text-tertiary">No GA4 properties found</p>
+                  <p className="paragraph-sm text-quaternary mt-2">Make sure you have access to at least one GA4 property</p>
                 </div>
               )}
             </div>
@@ -362,14 +362,14 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                 <button
                   onClick={handleClose}
                   disabled={isLinking}
-                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleLinkProperties}
                   disabled={isLinking}
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="flex-1 px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg hover:bg-brand-solid-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center subheading-md"
                 >
                   {isLinking ? (
                     <>

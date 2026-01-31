@@ -27,7 +27,7 @@ export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 min-w-[240px]"
+          className="absolute bottom-full left-0 mb-2 bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden z-50 min-w-[240px]"
         >
           <div className="flex flex-col p-1 gap-0.5">
             {platforms.map((platform) => {
@@ -55,13 +55,13 @@ function PlatformItem({ platform, isSelected, isDisabled, onToggle }: PlatformIt
     <button
       onClick={() => !isDisabled && onToggle(platform.id)}
       disabled={isDisabled}
-      className={`w-full flex items-center justify-between px-2 py-2 transition-colors rounded-lg ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+      className={`w-full flex items-center justify-between px-2 py-2 transition-colors rounded-lg ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-secondary'}`}
     >
       <div className="flex items-center gap-3">
         <div className="w-6 h-6 flex items-center justify-center shrink-0 rounded-md overflow-clip">
           {platform.icon}
         </div>
-        <span className={`w-full font-medium text-left text-sm ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
+        <span className={`w-full subheading-md text-left ${isDisabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
           {platform.name}
         </span>
       </div>
@@ -80,8 +80,8 @@ type ToggleProps = {
 function Toggle({ isSelected, isDisabled }: ToggleProps) {
   return (
     <div className='w-8.5 h-6 p-1'>
-      <div className={`rounded-full relative transition-colors w-full h-full ${isSelected && !isDisabled ? 'bg-gray-900' : 'bg-gray-200'}`} >
-        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${isSelected && !isDisabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
+      <div className={`rounded-full relative transition-colors w-full h-full ${isSelected && !isDisabled ? 'bg-brand-solid' : 'bg-quaternary'}`} >
+        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-primary shadow transition-transform ${isSelected && !isDisabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
       </div>
     </div>
   )

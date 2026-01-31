@@ -151,7 +151,7 @@ const PlatformGearMenu = ({
           e.stopPropagation()
           setIsOpen(!isOpen)
         }}
-        className="w-5 h-5 text-gray-800 hover:opacity-70 transition-opacity"
+        className="w-5 h-5 text-primary hover:opacity-70 transition-opacity"
         title={`${platformName} options`}
         disabled={isDisconnecting}
       >
@@ -183,22 +183,22 @@ const PlatformGearMenu = ({
         showCloseButton={false}
         panelClassName="p-6"
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Disconnect {platformName}?</h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <h3 className="label-bg text-primary mb-2">Disconnect {platformName}?</h3>
+        <p className="paragraph-sm text-tertiary mb-4">
           This will remove your credentials. You'll need to re-authenticate to use {platformName} again.
         </p>
         <div className="flex gap-3">
           <button
             onClick={() => setShowConfirmDisconnect(false)}
             disabled={isDisconnecting}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleDisconnectConfirm}
             disabled={isDisconnecting}
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+            className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
           >
             {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
           </button>

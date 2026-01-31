@@ -20,7 +20,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
         : 'Setting up your workspace...'
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full bg-white">
+    <div className="flex flex-col items-center justify-center h-full w-full bg-primary">
       {/* Mia logo with glow effect */}
       <div className="relative">
         {/* Glow effect behind logo */}
@@ -28,9 +28,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
           <div
             className="w-24 h-24 rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(154, 54, 152, 0.4) 0%, rgba(154, 54, 152, 0) 70%)',
+              background: 'radial-gradient(circle, var(--color-utility-purple-500) 0%, transparent 70%)',
               filter: 'blur(20px)',
-              transform: 'scale(1.5)'
+              transform: 'scale(1.5)',
+              opacity: 0.4,
             }}
           />
         </div>
@@ -44,15 +45,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
       </div>
 
       {/* Loading text */}
-      <p className="mt-8 text-gray-600 text-lg font-medium">
+      <p className="mt-8 paragraph-bg text-tertiary">
         {loadingText}
       </p>
 
       {/* Subtle loading dots */}
       <div className="flex items-center gap-1 mt-3">
-        <div className="w-2 h-2 bg-mia-purple rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-2 h-2 bg-mia-purple rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="w-2 h-2 bg-mia-purple rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
       </div>
     </div>
   )

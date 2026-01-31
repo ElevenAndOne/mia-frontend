@@ -8,7 +8,7 @@ export const ProgressDots = ({ current, total }: ProgressDotsProps) => (
     {Array.from({ length: total }, (_, i) => (
       <div
         key={i}
-        className={`w-2 h-2 rounded-full transition-colors ${i < current ? 'bg-black' : 'bg-gray-300'}`}
+        className={`w-2 h-2 rounded-full transition-colors ${i < current ? 'bg-brand-solid' : 'bg-tertiary'}`}
       />
     ))}
   </div>

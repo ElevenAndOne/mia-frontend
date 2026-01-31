@@ -32,15 +32,15 @@ interface AccountSelectorModalProps {
 }
 
 const ACCENT_BUTTON_CLASSES: Record<AccentColor, string> = {
-  blue: 'bg-blue-600 hover:bg-blue-700',
-  green: 'bg-green-600 hover:bg-green-700',
-  orange: 'bg-orange-600 hover:bg-orange-700',
-  black: 'bg-black hover:bg-gray-800',
+  blue: 'bg-utility-info-600 hover:bg-utility-info-700',
+  green: 'bg-utility-success-600 hover:bg-utility-success-700',
+  orange: 'bg-brand-solid hover:bg-brand-solid-hover',
+  black: 'bg-primary-solid hover:bg-primary-solid hover:opacity-90',
 }
 
 function DefaultEmptyIcon() {
   return (
-    <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-16 h-16 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -57,7 +57,7 @@ export function AccountSelectorModal({
   title,
   subtitle,
   icon,
-  iconBgColor = 'bg-blue-100',
+  iconBgColor = 'bg-utility-info-200',
   isLoading,
   loadingMessage = 'Loading...',
   error,
@@ -85,8 +85,8 @@ export function AccountSelectorModal({
             {icon}
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+            <h2 className="title-h6 text-primary">{title}</h2>
+            {subtitle && <p className="paragraph-sm text-quaternary">{subtitle}</p>}
           </div>
         </div>
         <CloseButton onClick={onClose} disabled={isSubmitting} />
@@ -98,7 +98,7 @@ export function AccountSelectorModal({
         {isLoading && (
           <div className="py-8 text-center">
             <Spinner className="mx-auto" />
-            <p className="mt-4 text-gray-600">{loadingMessage}</p>
+            <p className="mt-4 paragraph-sm text-tertiary">{loadingMessage}</p>
           </div>
         )}
 
@@ -112,8 +112,8 @@ export function AccountSelectorModal({
         {!isLoading && !success && isEmpty && (
           <div className="py-8 text-center">
             <div className="mx-auto mb-4">{emptyIcon || <DefaultEmptyIcon />}</div>
-            <p className="text-gray-600">{emptyMessage}</p>
-            {emptySubMessage && <p className="text-sm text-gray-500 mt-2">{emptySubMessage}</p>}
+            <p className="paragraph-sm text-tertiary">{emptyMessage}</p>
+            {emptySubMessage && <p className="paragraph-sm text-quaternary mt-2">{emptySubMessage}</p>}
           </div>
         )}
 
@@ -132,14 +132,14 @@ export function AccountSelectorModal({
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={onSubmit}
             disabled={isSubmitting || submitDisabled}
-            className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${ACCENT_BUTTON_CLASSES[accentColor]}`}
+            className={`flex-1 px-4 py-2 subheading-md text-primary-onbrand rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${ACCENT_BUTTON_CLASSES[accentColor]}`}
           >
             {isSubmitting ? (
               <>

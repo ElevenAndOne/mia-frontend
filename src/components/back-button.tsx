@@ -19,9 +19,9 @@ export function BackButton({
   className = ''
 }: BackButtonProps) {
   const iconSize = size === 'sm' ? 'w-4 h-3' : 'w-4 h-3.5'
-  const textSize = size === 'sm' ? 'text-xs' : 'text-sm'
+  const textStyle = size === 'sm' ? 'subheading-sm' : 'subheading-md'
   const iconColor = variant === 'light' ? 'white' : 'currentColor'
-  const textColor = variant === 'light' ? 'text-white' : 'text-gray-600'
+  const textColor = variant === 'light' ? 'text-white' : 'text-tertiary'
 
   return (
     <button
@@ -41,7 +41,7 @@ export function BackButton({
         />
       </svg>
       {label && (
-        <span className={`font-medium ${textSize}`}>{label}</span>
+        <span className={textStyle}>{label}</span>
       )}
     </button>
   )

@@ -83,7 +83,7 @@ export function Tooltip({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.1 }}
-              className="fixed px-2.5 py-1.5 bg-gray-800 text-white text-xs rounded-lg shadow-lg pointer-events-none whitespace-nowrap"
+              className="fixed px-2.5 py-1.5 bg-primary-solid text-white paragraph-xs rounded-lg shadow-lg pointer-events-none whitespace-nowrap"
               style={{
                 left: position?.x ?? 0,
                 top: position?.y ?? 0,

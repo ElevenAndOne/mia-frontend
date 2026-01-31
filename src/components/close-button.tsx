@@ -26,7 +26,7 @@ export function CloseButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`${sizes.button} rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`${sizes.button} rounded-full flex items-center justify-center text-placeholder-subtle hover:text-tertiary hover:bg-tertiary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       aria-label={ariaLabel}
     >
       <svg

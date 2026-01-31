@@ -65,7 +65,7 @@ export function Modal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className={`fixed inset-0 bg-black/40 flex items-center justify-center p-4 ${overlayClassName}`.trim()}
+            className={`fixed inset-0 bg-overlay/40 flex items-center justify-center p-4 ${overlayClassName}`.trim()}
             style={{ zIndex }}
             onClick={closeOnOverlayClick ? onClose : undefined}
             role="presentation"
@@ -77,7 +77,7 @@ export function Modal({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className={`relative bg-white rounded-2xl shadow-2xl w-full ${SIZE_CLASSES[size]} ${panelClassName}`.trim()}
+              className={`relative bg-primary rounded-2xl shadow-2xl w-full ${SIZE_CLASSES[size]} ${panelClassName}`.trim()}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -86,9 +86,9 @@ export function Modal({
             >
               {/* Header with title and close button */}
               {(title || showCloseButton) && (
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-tertiary">
                   {title && (
-                    <h2 id={titleId} className="text-xl font-semibold text-gray-900">
+                    <h2 id={titleId} className="title-h6 text-primary">
                       {title}
                     </h2>
                   )}
@@ -97,11 +97,11 @@ export function Modal({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                      className="w-8 h-8 rounded-full hover:bg-tertiary flex items-center justify-center transition-colors"
                       aria-label="Close modal"
                     >
                       <svg
-                        className="w-5 h-5 text-gray-500"
+                        className="w-5 h-5 text-tertiary"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"

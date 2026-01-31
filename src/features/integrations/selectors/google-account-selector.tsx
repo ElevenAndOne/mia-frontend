@@ -64,7 +64,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       title="Switch Google Ads Account"
       subtitle="Select an account to view its data"
       icon={<img src="/icons/google-ads.svg" alt="Google Ads" className="w-6 h-6" />}
-      iconBgColor="bg-blue-100"
+      iconBgColor="bg-utility-info-200"
       isLoading={false}
       error={state.error}
       success={state.success}
@@ -80,7 +80,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       accentColor="green"
     >
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block subheading-md text-secondary mb-2">
           Select Google Ads Account
         </label>
         <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -99,8 +99,8 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
-        <p className="text-xs text-green-800">
+      <div className="bg-success-primary border border-utility-success-300 rounded-lg p-3 mt-4">
+        <p className="paragraph-xs text-success">
           Switching accounts will load that account's integrations and data.
         </p>
       </div>

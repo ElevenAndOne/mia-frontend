@@ -8,20 +8,20 @@ interface AlertProps {
 
 const VARIANT_STYLES: Record<AlertVariant, { container: string; icon: string }> = {
   error: {
-    container: 'bg-red-50 border-red-200',
-    icon: 'text-red-600',
+    container: 'bg-error-primary border-error-subtle',
+    icon: 'text-error',
   },
   success: {
-    container: 'bg-green-50 border-green-200',
-    icon: 'text-green-600',
+    container: 'bg-success-primary border-utility-success-300',
+    icon: 'text-success',
   },
   info: {
-    container: 'bg-blue-50 border-blue-200',
-    icon: 'text-blue-600',
+    container: 'bg-utility-info-100 border-utility-info-300',
+    icon: 'text-utility-info-600',
   },
   warning: {
-    container: 'bg-yellow-50 border-yellow-200',
-    icon: 'text-yellow-600',
+    container: 'bg-warning-primary border-utility-warning-300',
+    icon: 'text-warning',
   },
 }
 
@@ -88,7 +88,7 @@ export function Alert({ variant, children, className = '' }: AlertProps) {
     <div className={`border rounded-lg p-4 ${styles.container} ${className}`}>
       <div className="flex items-start">
         <IconComponent className={`w-5 h-5 ${styles.icon} mt-0.5 mr-3 shrink-0`} />
-        <div className="flex-1 text-sm text-gray-800">{children}</div>
+        <div className="flex-1 paragraph-sm text-primary">{children}</div>
       </div>
     </div>
   )

@@ -166,14 +166,14 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
   }
 
   return (
-    <div className="w-full h-full bg-white overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
+    <div className="w-full h-full bg-primary overflow-y-auto" style={{ maxWidth: '393px', margin: '0 auto' }}>
       {/* Header */}
       <div className="px-6 pt-4 pb-4 text-center">
         {onBack && (
           <div className="flex justify-start mb-2">
             <button
               onClick={onBack}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-tertiary rounded-full transition-colors"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -194,11 +194,11 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
               transition={{ delay: 0.1 }}
               src={user.picture_url}
               alt={user.name}
-              className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-gray-200"
+              className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-secondary"
             />
           )}
 
-          <h1 className="text-xl font-semibold text-black mb-1">
+          <h1 className="title-h6 text-primary mb-1">
             Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
           </h1>
         </motion.div>
@@ -210,9 +210,9 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 rounded-lg p-4"
+            className="bg-error-primary border border-error-subtle rounded-lg p-4"
           >
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="paragraph-sm text-error">{error}</p>
           </motion.div>
         </div>
       )}
@@ -221,8 +221,8 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
       {showMCCStep && (
         <div className="px-6 pb-4">
           <div className="mb-3">
-            <h2 className="text-base font-semibold text-gray-900">Step 1: Select Manager Account</h2>
-            <p className="text-sm text-gray-500">Choose which Manager Account to use</p>
+            <h2 className="label-md text-primary">Step 1: Select Manager Account</h2>
+            <p className="paragraph-sm text-quaternary">Choose which Manager Account to use</p>
           </div>
 
           <motion.div
@@ -253,26 +253,26 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                     className={`
                       w-full p-4 rounded-xl border-2 transition-all text-left cursor-pointer
                       ${isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'border-brand bg-brand-primary'
+                        : 'border-secondary hover:border-primary hover:bg-secondary'
                       }
                     `}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg">
+                        <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center paragraph-bg">
                           🏢
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900">{mcc.descriptive_name}</h3>
-                          <p className="text-sm text-gray-500">
+                          <h3 className="subheading-bg text-primary">{mcc.descriptive_name}</h3>
+                          <p className="paragraph-sm text-quaternary">
                             {mccSubAccounts.length} Account{mccSubAccounts.length !== 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
                       {/* Chevron - rotates when expanded */}
                       <svg
-                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isSelected ? 'rotate-90' : ''}`}
+                        className={`w-5 h-5 text-placeholder-subtle transition-transform duration-200 ${isSelected ? 'rotate-90' : ''}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -302,28 +302,28 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                               className={`
                                 w-full p-3 rounded-lg border transition-all text-left
                                 ${selectingAccountId && !isThisAccountSelecting
-                                  ? 'opacity-60 cursor-not-allowed border-gray-200'
-                                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                                  ? 'opacity-60 cursor-not-allowed border-secondary'
+                                  : 'border-secondary hover:border-brand-alt hover:bg-brand-primary'
                                 }
                               `}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3">
                                   <div
-                                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                                    style={{ backgroundColor: account.color || '#E5E7EB' }}
+                                    className="w-8 h-8 rounded-full flex items-center justify-center paragraph-sm"
+                                    style={{ backgroundColor: account.color || 'var(--background-color-quaternary)' }}
                                   >
                                     📊
                                   </div>
                                   <div className="min-w-0">
-                                    <h4 className="font-medium text-gray-900 text-sm truncate">{account.name}</h4>
-                                    <p className="text-xs text-gray-500">Ads: {account.google_ads_id}</p>
+                                    <h4 className="subheading-md text-primary truncate">{account.name}</h4>
+                                    <p className="paragraph-xs text-quaternary">Ads: {account.google_ads_id}</p>
                                   </div>
                                 </div>
                                 {isThisAccountSelecting ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600" />
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-utility-brand-600" />
                                 ) : (
-                                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                   </svg>
                                 )}
@@ -344,8 +344,8 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
             a.google_ads_account_type === 'standalone' &&
             (a.id.startsWith('google_') || a.id.startsWith('user_'))
           ).length > 0 && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Standalone Accounts</h3>
+            <div className="mt-6 pt-4 border-t border-secondary">
+              <h3 className="subheading-md text-quaternary mb-3">Standalone Accounts</h3>
               <div className="space-y-3">
                 {availableAccounts
                   .filter(a => a.google_ads_account_type === 'standalone' && (a.id.startsWith('google_') || a.id.startsWith('user_')))
@@ -359,28 +359,28 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                         className={`
                           w-full p-4 rounded-xl border-2 transition-all text-left
                           ${selectingAccountId && !isThisAccountSelecting
-                            ? 'opacity-60 cursor-not-allowed border-gray-200'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            ? 'opacity-60 cursor-not-allowed border-secondary'
+                            : 'border-secondary hover:border-primary hover:bg-secondary'
                           }
                         `}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                              style={{ backgroundColor: account.color || '#6B7280' }}
+                              className="w-10 h-10 rounded-full flex items-center justify-center paragraph-bg"
+                              style={{ backgroundColor: account.color || 'var(--background-color-quaternary)' }}
                             >
                               🏢
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-medium text-gray-900 truncate">{account.name}</h3>
-                              <p className="text-xs text-gray-500">Standalone Account • Ads: {account.google_ads_id}</p>
+                              <h3 className="subheading-bg text-primary truncate">{account.name}</h3>
+                              <p className="paragraph-xs text-quaternary">Standalone Account • Ads: {account.google_ads_id}</p>
                             </div>
                           </div>
                           {isThisAccountSelecting ? (
-                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-gray-600" />
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-utility-brand-600" />
                           ) : (
-                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           )}
@@ -398,14 +398,14 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
       {!showMCCStep && (
         <div className="px-6 pb-8">
           <div className="mb-3">
-            <p className="text-sm text-gray-500">Select the account you'd like to analyze</p>
+            <p className="paragraph-sm text-quaternary">Select the account you'd like to analyze</p>
           </div>
 
           {availableAccounts.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-5xl mb-3">📊</div>
-              <h3 className="text-base font-medium text-gray-900 mb-1">No Accounts Available</h3>
-              <p className="text-gray-600 text-sm">
+              <div className="title-h2 mb-3">📊</div>
+              <h3 className="subheading-bg text-primary mb-1">No Accounts Available</h3>
+              <p className="paragraph-sm text-tertiary">
                 Please contact support to set up your marketing accounts.
               </p>
             </div>
@@ -430,25 +430,25 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                       className={`
                         w-full p-4 rounded-xl border-2 transition-all text-left
                         ${selectingAccountId && !isThisAccountSelecting
-                          ? 'opacity-60 cursor-not-allowed border-gray-200'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? 'opacity-60 cursor-not-allowed border-secondary'
+                          : 'border-secondary hover:border-primary hover:bg-secondary'
                         }
                       `}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-                            style={{ backgroundColor: account.color || '#E5E7EB' }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center paragraph-bg"
+                            style={{ backgroundColor: account.color || 'var(--background-color-quaternary)' }}
                           >
                             {getAccountIcon(account.business_type)}
                           </div>
 
                           <div className="min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate">
+                            <h3 className="subheading-bg text-primary truncate">
                               {account.name}
                             </h3>
-                            <p className="text-sm text-gray-500">
+                            <p className="paragraph-sm text-quaternary">
                               {account.google_ads_id ? `Ads: ${account.google_ads_id}` :
                                account.meta_ads_id ? `Meta: ${account.meta_ads_id}` :
                                'Account'}
@@ -456,7 +456,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                           </div>
                         </div>
 
-                        <svg className="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-placeholder-subtle shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -465,7 +465,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
                         <div className="mt-3 flex items-center justify-center">
                           <div className="flex items-center space-x-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                            <span className="text-sm text-gray-600">Connecting...</span>
+                            <span className="paragraph-sm text-tertiary">Connecting...</span>
                           </div>
                         </div>
                       )}

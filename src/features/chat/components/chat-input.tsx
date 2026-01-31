@@ -48,7 +48,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
       {/* Main input container */}
-      <div className="bg-gray-100 rounded-2xl overflow-visible">
+      <div className="bg-tertiary rounded-2xl overflow-visible">
         {/* Text input row */}
         <div className="px-4 py-3">
           <input
@@ -59,7 +59,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="w-full bg-transparent outline-none text-gray-900 placeholder-gray-500 text-base"
+            className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md"
           />
         </div>
 
@@ -71,7 +71,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
               ref={calendarButtonRef}
               type="button"
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-300 transition-colors"
+              className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors"
               title="Select date range"
             >
               <Icon.calendar size={18} />
@@ -92,8 +92,8 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                   hasSelectedPlatforms
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    ? 'bg-brand-solid text-primary-onbrand'
+                    : 'bg-quaternary text-tertiary hover:bg-tertiary'
                 }`}
                 title="Select platforms"
               >
@@ -118,8 +118,8 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
             disabled={!canSubmit}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
               canSubmit
-                ? 'bg-gray-700 text-white hover:bg-gray-800'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                : 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
             }`}
             title="Send message"
           >

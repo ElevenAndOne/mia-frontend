@@ -151,7 +151,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
     >
       {/* White Modal - 4 buttons layout (Google, Meta, Email, Login) */}
       <div
-        className="bg-white rounded-t-[38px] px-6 py-5 shadow-2xl touch-manipulation"
+        className="bg-primary rounded-t-[38px] px-6 py-5 shadow-2xl touch-manipulation"
         style={{
           touchAction: 'manipulation',
           height: '270px', // Adjusted for 4 buttons
@@ -162,16 +162,16 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         <button
           onClick={() => handleLoginClick('Google')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'bg-white hover:bg-gray-50 active:bg-gray-100'
+              ? 'bg-tertiary cursor-not-allowed'
+              : 'bg-primary hover:bg-secondary active:bg-tertiary'
           }`}
         >
           {isGoogleLoading ? (
             <>
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-              <span className="text-gray-600 font-medium">{googleLoadingMessage}</span>
+              <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin"></div>
+              <span className="subheading-md text-tertiary">{googleLoadingMessage}</span>
             </>
           ) : (
             <>
@@ -183,7 +183,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
               </div>
-              <span className="text-gray-900 font-medium">Continue with Google</span>
+              <span className="subheading-bg text-primary">Continue with Google</span>
             </>
           )}
         </button>
@@ -192,16 +192,16 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         <button
           onClick={() => handleLoginClick('Meta')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'bg-white hover:bg-gray-50 active:bg-gray-100'
+              ? 'bg-tertiary cursor-not-allowed'
+              : 'bg-primary hover:bg-secondary active:bg-tertiary'
           }`}
         >
           {isMetaLoading ? (
             <>
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-              <span className="text-gray-600 font-medium">{metaLoadingMessage}</span>
+              <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin"></div>
+              <span className="subheading-md text-tertiary">{metaLoadingMessage}</span>
             </>
           ) : (
             <>
@@ -210,7 +210,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
                   <path fill="#0866FF" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
               </div>
-              <span className="text-gray-900 font-medium">Continue with Meta</span>
+              <span className="subheading-bg text-primary">Continue with Meta</span>
             </>
           )}
         </button>
@@ -219,26 +219,26 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         <button
           onClick={() => handleLoginClick('Email')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-white border border-gray-200 rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full bg-primary border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
-              ? 'bg-gray-100 cursor-not-allowed'
-              : 'hover:bg-gray-50 active:bg-gray-100'
+              ? 'bg-tertiary cursor-not-allowed'
+              : 'hover:bg-secondary active:bg-tertiary'
           }`}
         >
-          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-gray-600">
+          <svg viewBox="0 0 24 24" className="w-5 h-5 text-tertiary fill-current">
             <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
           </svg>
-          <span className="text-gray-900 font-medium">Sign up with email</span>
+          <span className="subheading-bg text-primary">Sign up with email</span>
         </button>
 
         {/* Log in Button - Black */}
         <button
           onClick={() => handleLoginClick('Login')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-black text-white rounded-2xl py-3 px-6 font-medium touch-manipulation min-h-[44px] ${
+          className={`w-full bg-brand-solid text-primary-onbrand rounded-2xl py-3 px-6 subheading-bg touch-manipulation min-h-[44px] ${
             isGoogleLoading || isMetaLoading
               ? 'opacity-50 cursor-not-allowed'
-              : 'hover:bg-gray-800 active:bg-gray-700'
+              : 'hover:bg-brand-solid-hover'
           }`}
         >
           Log in

@@ -43,21 +43,21 @@ export const QuickActions = ({ onAction, disabled = false }: QuickActionsProps) 
           onClick={() => onAction(action.id)}
           disabled={disabled}
           className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all ${disabled
-              ? 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm active:scale-[0.98]'
+              ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
+              : 'bg-primary border-secondary hover:border-primary hover:shadow-sm active:scale-[0.98]'
             }`}
         >
           <div className="flex items-center gap-2">
-            <div className={`shrink-0 ${disabled ? 'text-gray-300' : 'text-gray-500'}`}>
+            <div className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
               {action.icon}
             </div>
 
-            <div className={`font-medium text-sm ${disabled ? 'text-gray-400' : 'text-gray-900'}`}>
+            <div className={`subheading-md ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
               {action.label}
             </div>
           </div>
           <div className="min-w-0">
-            <div className={`text-xs mt-0.5 ${disabled ? 'text-gray-300' : 'text-gray-500'}`}>
+            <div className={`paragraph-xs mt-0.5 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
               {action.description}
             </div>
           </div>

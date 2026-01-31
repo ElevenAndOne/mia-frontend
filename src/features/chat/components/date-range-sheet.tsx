@@ -108,12 +108,12 @@ function DateRangeItem({ option, active, onClick }: { option: DateRangeOption, a
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${active ? 'bg-gray-100' : 'hover:bg-gray-50'
+      className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${active ? 'bg-tertiary' : 'hover:bg-secondary'
         }`}
     >
       <div className="text-left">
-        <div className="font-medium text-gray-900 text-sm">{option.label}</div>
-        <div className="text-xs text-gray-500">{formatDateRange(option)}</div>
+        <div className="subheading-md text-primary">{option.label}</div>
+        <div className="paragraph-xs text-quaternary">{formatDateRange(option)}</div>
       </div>
 
       {/* Radio indicator */}

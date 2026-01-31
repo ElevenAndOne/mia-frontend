@@ -10,7 +10,7 @@ interface VideoIntroViewProps {
 
 const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed }: VideoIntroViewProps) => {
   return (
-    <div className="relative w-full h-full overflow-hidden bg-linear-to-br from-purple-900 via-purple-700 to-blue-800">
+    <div className="relative w-full h-full overflow-hidden bg-linear-to-br from-utility-purple-700 via-utility-purple-600 to-utility-blue-700">
       <AnimatePresence>
         <FigmaLoginModal
           onAuthSuccess={onAuthSuccess}
