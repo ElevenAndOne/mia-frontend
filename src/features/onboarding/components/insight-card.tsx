@@ -9,7 +9,7 @@ interface InsightCardProps {
 
 const TYPE_STYLES = {
   grow: { badgeBg: 'bg-green-100', badgeText: 'text-green-700', metricColor: 'text-green-600' },
-  optimise: { badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700', metricColor: 'text-yellow-600' },
+  optimize: { badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700', metricColor: 'text-yellow-600' },
   protect: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', metricColor: 'text-blue-600' }
 }
 

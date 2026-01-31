@@ -8,7 +8,7 @@ const CHOICE_LABELS: Record<string, string> = {
   show_explainers: 'Yes!',
   skip: 'Skip',
   grow: 'Grow',
-  optimise: 'Optimise',
+  optimize: 'Optimise',
   protect: 'Protect',
   connect_meta: 'Connect Meta',
   connect_google: 'Connect Google Ads',
@@ -152,7 +152,7 @@ export const buildNoClickMessages = (): ChatMessageInput[] => [
 
 export const buildExplainerMessages = (): ChatMessageInput[] => [
   { type: 'explainer-box', explainerType: 'grow' },
-  { type: 'explainer-box', explainerType: 'optimise' },
+  { type: 'explainer-box', explainerType: 'optimize' },
   { type: 'explainer-box', explainerType: 'protect' },
   {
     type: 'mia',
@@ -163,7 +163,7 @@ export const buildExplainerMessages = (): ChatMessageInput[] => [
     content: 'Which would you like to look at first?',
     choices: [
       { label: 'Grow', action: 'grow', variant: 'secondary' },
-      { label: 'Optimise', action: 'optimise', variant: 'secondary' },
+      { label: 'Optimise', action: 'optimize', variant: 'secondary' },
       { label: 'Protect', action: 'protect', variant: 'secondary' }
     ]
   }

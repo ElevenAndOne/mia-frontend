@@ -3,13 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
 import { Icon } from '../../../components/icon'
-
-interface Platform {
-  id: string
-  name: string
-  icon: React.ReactNode
-  connected: boolean
-}
+import type { Platform } from '../types'
 
 interface ChatInputProps {
   onSubmit: (message: string) => void

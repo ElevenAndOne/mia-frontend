@@ -1,13 +1,7 @@
 import { useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEscapeKey, useClickOutside } from '../../overlay'
-
-interface Platform {
-  id: string
-  name: string
-  icon: React.ReactNode
-  connected: boolean
-}
+import type { Platform } from '../types'
 
 interface PlatformSelectorProps {
   isOpen: boolean

@@ -16,7 +16,7 @@ const EXPLAINER_CONFIG = {
     border: 'border-green-200',
     titleColor: 'text-green-700'
   },
-  optimise: {
+  optimize: {
     icon: '⚡',
     title: 'Optimise',
     description: "Spot what's working in your marketing so you can fine-tune and get ",
