@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Icon } from '../../../components/icon'
+import { useClipboard } from '../../../hooks/use-clipboard'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
@@ -8,13 +8,7 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageProps) => {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const { copied, copy } = useClipboard()
 
   if (role === 'user') {
     return (
@@ -42,7 +36,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
       {!isStreaming && (
         <div className="flex items-center gap-1 mt-2">
           <button
-            onClick={handleCopy}
+            onClick={() => copy(content)}
             className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title={copied ? 'Copied!' : 'Copy'}
           >

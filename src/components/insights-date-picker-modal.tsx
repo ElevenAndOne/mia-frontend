@@ -1,9 +1,10 @@
-import { useState, useRef, useId, useEffect } from 'react'
-import { DayPicker, type DateRange } from 'react-day-picker'
-import 'react-day-picker/dist/style.css'
-import { format } from 'date-fns'
+import { useRef, useId, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { OverlayPortal, useEscapeKey, useClickOutside, useOverlayContext } from '../features/overlay'
+import { CloseButton } from './close-button'
+import { DateRangeCalendar } from './date-range-calendar'
+import { useDateRangeSelection } from '../hooks/use-date-range-selection'
+import { DEFAULT_DATE_RANGE_OPTIONS, formatRangeSpan } from '../utils/date-range'
 
 interface InsightsDatePickerModalProps {
   isOpen: boolean
@@ -11,14 +12,6 @@ interface InsightsDatePickerModalProps {
   onGenerate: (dateRange: string) => void
   insightType: 'grow' | 'optimize' | 'protect'
 }
-
-const DATE_RANGE_OPTIONS = [
-  { value: '7_days', label: 'Last 7 days' },
-  { value: '14_days', label: 'Last 14 days' },
-  { value: '30_days', label: 'Last 30 days' },
-  { value: '90_days', label: 'Last 90 days' },
-  { value: 'custom', label: 'Custom range' },
-]
 
 const INSIGHT_TITLES = {
   grow: 'Grow Insights',
@@ -33,12 +26,18 @@ const INSIGHT_DESCRIPTIONS = {
 }
 
 const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: InsightsDatePickerModalProps) => {
-  const [selectedRange, setSelectedRange] = useState('30_days')
-  const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const panelRef = useRef<HTMLDivElement>(null)
   const { registerOverlay, unregisterOverlay, getZIndex } = useOverlayContext()
   const overlayId = useId()
+  const {
+    selectedRange,
+    showCustomPicker,
+    dateRange,
+    setDateRange,
+    selectRange,
+    getResolvedRangeValue,
+    isSelectionValid,
+  } = useDateRangeSelection({ initialRange: '30_days', isOpen })
 
   // Register/unregister overlay for stacking management
   useEffect(() => {
@@ -54,33 +53,11 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
 
   const zIndex = getZIndex(overlayId)
 
-  const handleRangeSelect = (value: string) => {
-    setSelectedRange(value)
-    if (value === 'custom') {
-      setShowCustomPicker(true)
-      // Set default dates (today and 30 days ago) if no range selected
-      if (!dateRange?.from || !dateRange?.to) {
-        const today = new Date()
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(today.getDate() - 30)
-        setDateRange({ from: thirtyDaysAgo, to: today })
-      }
-    } else {
-      setShowCustomPicker(false)
-    }
-  }
-
   const handleGenerate = () => {
-    if (selectedRange === 'custom' && dateRange?.from && dateRange?.to) {
-      const startStr = format(dateRange.from, 'yyyy-MM-dd')
-      const endStr = format(dateRange.to, 'yyyy-MM-dd')
-      onGenerate(`${startStr}_${endStr}`)
-    } else {
-      onGenerate(selectedRange)
-    }
+    onGenerate(getResolvedRangeValue())
   }
 
-  const isGenerateDisabled = selectedRange === 'custom' && (!dateRange?.from || !dateRange?.to)
+  const isGenerateDisabled = !isSelectionValid
 
   return (
     <AnimatePresence>
@@ -101,11 +78,7 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="title-h6 text-primary">{INSIGHT_TITLES[insightType]}</h2>
-                  <button onClick={onClose} className="text-placeholder-subtle hover:text-tertiary transition-colors">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  <CloseButton onClick={onClose} />
                 </div>
                 <p className="paragraph-sm text-tertiary">{INSIGHT_DESCRIPTIONS[insightType]}</p>
               </div>
@@ -113,10 +86,10 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
               {/* Date Range Selection */}
               <div className="space-y-2 mb-4">
                 <label className="block subheading-md text-secondary mb-3">Select analysis period</label>
-                {DATE_RANGE_OPTIONS.map((option) => (
+                {DEFAULT_DATE_RANGE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
-                    onClick={() => handleRangeSelect(option.value)}
+                    onClick={() => selectRange(option.value)}
                     className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${
                       selectedRange === option.value
                         ? 'border-utility-purple-600 bg-utility-purple-100 text-utility-purple-700 subheading-md'
@@ -144,38 +117,11 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
                 <div className="border-t border-secondary pt-3 mb-3">
                   <p className="subheading-sm text-secondary mb-3">Select date range</p>
                   <div className="flex justify-center">
-                    <DayPicker
-                      mode="range"
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={1}
-                      disabled={{ after: new Date() }}
-                      captionLayout="dropdown"
-                      classNames={{
-                        months: 'flex flex-col',
-                        month: 'space-y-4',
-                        caption: 'flex justify-center pt-1 relative items-center mb-2',
-                        caption_label: 'subheading-md',
-                        nav: 'hidden',
-                        table: 'w-full border-collapse space-y-1',
-                        head_row: 'flex',
-                        head_cell: 'paragraph-xs text-quaternary rounded-md w-9',
-                        row: 'flex w-full mt-2',
-                        cell: 'text-center paragraph-sm p-0 relative [&:has([aria-selected])]:bg-utility-purple-200 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
-                        day: 'h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-tertiary rounded-md',
-                        day_selected:
-                          'bg-utility-purple-600 text-primary-onbrand hover:bg-utility-purple-600 hover:text-primary-onbrand focus:bg-utility-purple-600 focus:text-primary-onbrand',
-                        day_today: 'bg-tertiary text-primary',
-                        day_outside: 'text-placeholder-subtle opacity-50',
-                        day_disabled: 'text-placeholder-subtle opacity-50',
-                        day_range_middle: 'aria-selected:bg-utility-purple-200 aria-selected:text-utility-purple-700',
-                        day_hidden: 'invisible',
-                      }}
-                    />
+                    <DateRangeCalendar selected={dateRange} onSelect={setDateRange} />
                   </div>
                   {dateRange?.from && dateRange?.to && (
                     <div className="mt-3 paragraph-xs text-tertiary bg-utility-purple-100 p-2 rounded text-center">
-                      <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
+                      <strong>Selected:</strong> {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
                     </div>
                   )}
                 </div>

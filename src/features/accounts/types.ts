@@ -18,3 +18,29 @@ export interface AccountMapping {
   display_name: string
   google_ads_account_type?: string
 }
+
+export interface AccountSelectionItem {
+  id: string
+  name: string
+  detail: string
+  icon: string
+  iconBackground: string
+  isSelecting: boolean
+  disabled: boolean
+}
+
+export interface MccSelectionItem {
+  id: string
+  name: string
+  accountCountLabel: string
+  isSelected: boolean
+  subAccounts: AccountSelectionItem[]
+}
+
+export interface MetaAccountSelectionItem {
+  id: string
+  name: string
+  metaAdsId?: string
+  isSelecting: boolean
+  disabled: boolean
+}

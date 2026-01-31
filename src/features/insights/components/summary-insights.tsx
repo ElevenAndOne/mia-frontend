@@ -1,74 +1,23 @@
-import { apiFetch } from '../../../utils/api'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { Spinner } from '../../../components/spinner'
 import { getDateRangeDisplay } from '../../../utils/date-display'
 import DateRangeSelector from '../../../components/date-range-selector'
+import { useSummaryInsights } from '../hooks/use-summary-insights'
 
 interface SummaryInsightsProps {
   onBack?: () => void
 }
 
-interface SummaryResponse {
-  success: boolean
-  type: string
-  summary: string
-}
-
 const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   const { sessionId } = useSession()
-  const [summary, setSummary] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<string>('30_days')
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
   const datePickerButtonRef = useRef<HTMLButtonElement>(null)
+  const { summary, isLoading, error, refresh } = useSummaryInsights(sessionId, selectedDateRange)
 
-  useEffect(() => {
-    fetchSummary()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDateRange])
-
-  const fetchSummary = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      if (!sessionId) {
-        throw new Error('No session found. Please log in again.')
-      }
-
-      const response = await apiFetch('/api/quick-insights/summary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          date_range: selectedDateRange
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result: SummaryResponse = await response.json()
-
-      if (result.success) {
-        setSummary(result.summary)
-      } else {
-        throw new Error('Failed to fetch summary')
-      }
-
-    } catch (error) {
-      console.error('[SUMMARY-INSIGHTS] Error:', error)
-      setError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const fetchSummary = refresh
 
   // Date picker button for TopBar right slot
   const datePickerButton = (

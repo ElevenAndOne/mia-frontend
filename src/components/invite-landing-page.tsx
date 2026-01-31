@@ -1,16 +1,8 @@
-import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/session-context'
-import { apiFetch } from '../utils/api'
-
-interface InviteDetails {
-  invite_id: string
-  tenant_name: string
-  role: string
-  is_valid: boolean
-  is_link_invite: boolean
-  status: string
-  expires_at: string | null
-}
+import { UserAvatar } from './user-avatar'
+import { WorkspaceRoleIcon } from '../features/workspace/components/workspace-role-icon'
+import { getWorkspaceRoleDescription } from '../features/workspace/utils/role'
+import { useInviteLanding } from '../features/workspace/hooks/use-invite-landing'
 
 interface InviteLandingPageProps {
   inviteId: string
@@ -22,143 +14,23 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
   const { isAuthenticated, isMetaAuthenticated, sessionId, user } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [accepting, setAccepting] = useState(false)
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const {
+    inviteDetails,
+    loading,
+    error,
+    accepting,
+    showLoginPrompt,
+    dismissLoginPrompt,
+    handleSignIn,
+    handleAccept,
+  } = useInviteLanding({
+    inviteId,
+    sessionId,
+    isAuthenticated: isAnyAuthenticated,
+    onAccepted,
+    onSignIn: onBack,
+  })
 
-  // Fetch invite details on mount
-  useEffect(() => {
-    const fetchInviteDetails = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const response = await apiFetch(`/api/tenants/invites/${inviteId}/details`)
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('This invite link is invalid or has expired.')
-          } else {
-            setError('Failed to load invite details.')
-          }
-          return
-        }
-
-        const data = await response.json()
-        setInviteDetails(data)
-
-        if (!data.is_valid) {
-          if (data.status === 'accepted') {
-            setError('This invite has already been used.')
-          } else if (data.status === 'revoked') {
-            setError('This invite has been revoked.')
-          } else if (data.status === 'expired') {
-            setError('This invite has expired.')
-          } else {
-            setError('This invite is no longer valid.')
-          }
-        }
-      } catch (err) {
-        console.error('[INVITE] Error fetching invite details:', err)
-        setError('Failed to load invite details. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchInviteDetails()
-  }, [inviteId])
-
-  const handleAccept = async () => {
-    if (!isAnyAuthenticated) {
-      setShowLoginPrompt(true)
-      return
-    }
-
-    try {
-      setAccepting(true)
-      setError(null)
-
-      const response = await apiFetch(`/api/tenants/invites/${inviteId}/accept`, {
-        method: 'POST',
-        headers: {
-          'X-Session-ID': sessionId || ''
-        }
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Failed to accept invite')
-      }
-
-      const data = await response.json()
-      console.log('[INVITE] Invite accepted:', data)
-
-      // Redirect to the workspace (pass full data object for skip_account_selection flag)
-      onAccepted(data.tenant_id, data.skip_account_selection || false)
-    } catch (err) {
-      console.error('[INVITE] Error accepting invite:', err)
-      setError(err instanceof Error ? err.message : 'Failed to accept invite')
-    } finally {
-      setAccepting(false)
-    }
-  }
-
-  const getRoleDescription = (role: string): string => {
-    switch (role) {
-      case 'admin':
-        return 'Full access to manage workspace settings, members, and integrations'
-      case 'analyst':
-        return 'Access to view and analyze data, create reports'
-      case 'viewer':
-        return 'Read-only access to view dashboards and reports'
-      default:
-        return 'Access to the workspace'
-    }
-  }
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return (
-          <div className="w-12 h-12 rounded-full bg-utility-info-100 flex items-center justify-center">
-            <svg className="w-6 h-6 text-utility-info-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )
-      case 'analyst':
-        return (
-          <div className="w-12 h-12 rounded-full bg-success-secondary flex items-center justify-center">
-            <svg className="w-6 h-6 text-success" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-              <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-            </svg>
-          </div>
-        )
-      case 'viewer':
-        return (
-          <div className="w-12 h-12 rounded-full bg-tertiary flex items-center justify-center">
-            <svg className="w-6 h-6 text-tertiary" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )
-      default:
-        return (
-          <div className="w-12 h-12 rounded-full bg-utility-purple-200 flex items-center justify-center">
-            <svg className="w-6 h-6 text-utility-purple-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </div>
-        )
-    }
-  }
-
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
@@ -170,7 +42,6 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
     )
   }
 
-  // Error state
   if (error && !inviteDetails?.is_valid) {
     return (
       <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
@@ -193,15 +64,7 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
     )
   }
 
-  // Login prompt
   if (showLoginPrompt) {
-    const handleSignInClick = () => {
-      // Store invite_id in localStorage so we can return after login
-      localStorage.setItem('mia_pending_invite', inviteId)
-      console.log('[INVITE] Stored pending invite:', inviteId)
-      onBack() // Go to login
-    }
-
     return (
       <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -215,13 +78,13 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
             Please sign in to accept this invite and join <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
           </p>
           <button
-            onClick={handleSignInClick}
+            onClick={handleSignIn}
             className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors mb-3"
           >
             Sign In
           </button>
           <button
-            onClick={() => setShowLoginPrompt(false)}
+            onClick={dismissLoginPrompt}
             className="paragraph-sm text-quaternary hover:text-secondary"
           >
             Back to invite
@@ -231,7 +94,6 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
     )
   }
 
-  // Valid invite
   return (
     <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
       <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full">
@@ -251,13 +113,13 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
         {/* Role info */}
         <div className="bg-secondary rounded-xl p-4 mb-6">
           <div className="flex items-center gap-4">
-            {getRoleIcon(inviteDetails?.role || '')}
+            <WorkspaceRoleIcon role={inviteDetails?.role || ''} variant="badge" size="lg" />
             <div>
               <p className="label-md text-primary capitalize">
                 {inviteDetails?.role} Role
               </p>
               <p className="paragraph-sm text-tertiary">
-                {getRoleDescription(inviteDetails?.role || '')}
+                {getWorkspaceRoleDescription(inviteDetails?.role || '')}
               </p>
             </div>
           </div>
@@ -268,13 +130,12 @@ const InviteLandingPage = ({ inviteId, onAccepted, onBack }: InviteLandingPagePr
           <div className="border border-secondary rounded-xl p-4 mb-6">
             <p className="paragraph-sm text-quaternary mb-2">Joining as</p>
             <div className="flex items-center gap-3">
-              {user.picture_url ? (
-                <img src={user.picture_url} alt="" className="w-10 h-10 rounded-full" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center">
-                  <span className="subheading-md text-tertiary">{user.name?.charAt(0)}</span>
-                </div>
-              )}
+              <UserAvatar
+                name={user.name}
+                imageUrl={user.picture_url}
+                size="md"
+                fallbackClassName="bg-quaternary text-tertiary"
+              />
               <div>
                 <p className="subheading-bg text-primary">{user.name}</p>
                 <p className="paragraph-sm text-quaternary">{user.email}</p>

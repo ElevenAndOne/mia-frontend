@@ -1,16 +1,6 @@
-/**
- * GoogleAccountLinkSelector - For Meta-first users connecting Google during onboarding
- *
- * This is different from GoogleAccountSelector which SWITCHES accounts.
- * This component LINKS a Google Ads account to the existing selected Meta account.
- */
-
-import { useState, useEffect } from 'react'
-import { useSession } from '../../../contexts/session-context'
-import { apiFetch } from '../../../utils/api'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
-import type { GoogleAccount } from '../types'
+import { useGoogleAccountLinkSelector } from './hooks/use-google-account-link-selector'
 
 interface GoogleAccountLinkSelectorProps {
   isOpen: boolean
@@ -26,165 +16,51 @@ function GoogleIcon() {
   )
 }
 
-const GoogleAccountLinkSelector = ({
-  isOpen,
-  onClose,
-  onSuccess,
-}: GoogleAccountLinkSelectorProps) => {
-  const { sessionId, selectedAccount, refreshAccounts, user } = useSession()
-  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([])
-  const [selectedGoogleId, setSelectedGoogleId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLinking, setIsLinking] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchGoogleAccounts()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
-
-  const fetchGoogleAccounts = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // First refresh accounts to trigger Google Ads discovery
-      await refreshAccounts()
-
-      // Get user_id from session - required for the ad-accounts endpoint
-      let userId = user?.google_user_id
-      if (!userId) {
-        // Poll for up to 5 seconds (10 attempts at 500ms intervals)
-        for (let i = 0; i < 10 && !userId; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 500))
-          try {
-            const statusResponse = await apiFetch('/api/oauth/google/status', {
-              headers: { 'X-Session-ID': sessionId || '' },
-            })
-            if (statusResponse.ok) {
-              const statusData = await statusResponse.json()
-              if (statusData.authenticated && (statusData.user_info?.id || statusData.user_id)) {
-                userId = statusData.user_info?.id || statusData.user_id
-                break
-              }
-            }
-          } catch {
-            // Continue polling
-          }
-        }
-
-        if (!userId) {
-          setError('User not authenticated with Google. Please try again.')
-          setIsLoading(false)
-          return
-        }
-      }
-
-      // Fetch discovered Google Ads accounts from the ad-accounts endpoint
-      const response = await apiFetch(`/api/oauth/google/ad-accounts?user_id=${userId}`, {
-        headers: { 'X-Session-ID': sessionId || '' },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.ad_accounts) {
-          setGoogleAccounts(data.ad_accounts)
-          if (data.ad_accounts.length === 1) {
-            setSelectedGoogleId(data.ad_accounts[0].customer_id)
-          }
-        } else {
-          setError('No Google Ads accounts found')
-        }
-      } else {
-        setError('Failed to fetch Google Ads accounts')
-      }
-    } catch {
-      setError('Failed to load Google Ads accounts')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleLinkAccount = async () => {
-    if (!selectedGoogleId || !selectedAccount) {
-      setError('Please select a Google Ads account')
-      return
-    }
-
-    setIsLinking(true)
-    setError(null)
-
-    try {
-      const selectedGoogle = googleAccounts.find((a) => a.customer_id === selectedGoogleId)
-
-      const response = await apiFetch('/api/accounts/link-google', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || '',
-        },
-        body: JSON.stringify({
-          google_ads_customer_id: selectedGoogleId,
-          login_customer_id: selectedGoogle?.login_customer_id,
-          target_account_id: selectedAccount.id,
-        }),
-      })
-
-      if (response.ok) {
-        await refreshAccounts()
-        onSuccess(selectedGoogleId)
-        onClose()
-      } else {
-        const data = await response.json()
-        setError(data.detail || 'Failed to link Google Ads account')
-      }
-    } catch {
-      setError('Failed to link Google Ads account')
-    } finally {
-      setIsLinking(false)
-    }
-  }
-
-  const handleClose = () => {
-    if (!isLinking) {
-      setSelectedGoogleId(null)
-      setError(null)
-      onClose()
-    }
-  }
+const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountLinkSelectorProps) => {
+  const {
+    isLoading,
+    isSubmitting,
+    error,
+    success,
+    selectedId,
+    accountItems,
+    isEmpty,
+    subtitle,
+    setSelectedId,
+    handleLinkAccount,
+    handleClose,
+  } = useGoogleAccountLinkSelector({ isOpen, onClose, onSuccess })
 
   return (
     <AccountSelectorModal
       isOpen={isOpen}
       onClose={handleClose}
       title="Select Google Ads Account"
-      subtitle={`Link to your ${selectedAccount?.name || 'account'}`}
+      subtitle={subtitle}
       icon={<GoogleIcon />}
       iconBgColor="bg-utility-info-200"
       isLoading={isLoading}
       loadingMessage="Loading Google Ads accounts..."
       error={error}
-      success={false}
-      isEmpty={googleAccounts.length === 0}
+      success={success}
+      isEmpty={isEmpty}
       emptyMessage="No Google Ads accounts found"
       emptySubMessage="Make sure you have access to Google Ads"
-      isSubmitting={isLinking}
+      isSubmitting={isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel="Link Account"
       submitLoadingLabel="Linking..."
-      submitDisabled={!selectedGoogleId}
+      submitDisabled={!selectedId}
       accentColor="blue"
     >
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {googleAccounts.map((account) => (
+        {accountItems.map((account) => (
           <SelectorItem
-            key={account.customer_id}
-            isSelected={selectedGoogleId === account.customer_id}
-            onSelect={() => setSelectedGoogleId(account.customer_id)}
-            title={account.descriptive_name || `Account ${account.customer_id}`}
-            subtitle={`ID: ${account.customer_id}${account.manager ? ' (Manager Account)' : ''}`}
+            key={account.id}
+            isSelected={selectedId === account.id}
+            onSelect={() => setSelectedId(account.id)}
+            title={account.title}
+            subtitle={account.subtitle}
             accentColor="blue"
           />
         ))}

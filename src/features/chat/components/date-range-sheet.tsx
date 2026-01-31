@@ -1,13 +1,7 @@
-import { useMemo, type RefObject } from 'react'
+import { type RefObject } from 'react'
 import { Popover } from '../../overlay'
 import { Radio } from '../../../components/radio'
-
-interface DateRangeOption {
-  id: string
-  label: string
-  value: string
-  getDateRange: () => { start: Date; end: Date }
-}
+import { CHAT_DATE_RANGE_OPTIONS, formatRangeSpan, parseDateRangeValue } from '../../../utils/date-range'
 
 interface DateRangePopoverProps {
   isOpen: boolean
@@ -18,63 +12,6 @@ interface DateRangePopoverProps {
 }
 
 export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, onSelect }: DateRangePopoverProps) => {
-  const dateOptions: DateRangeOption[] = useMemo(() => {
-    const today = new Date()
-
-    return [
-      {
-        id: '7_days',
-        label: 'Last 7 days',
-        value: '7_days',
-        getDateRange: () => {
-          const start = new Date(today)
-          start.setDate(today.getDate() - 7)
-          return { start, end: today }
-        },
-      },
-      {
-        id: '30_days',
-        label: 'Last 30 days',
-        value: '30_days',
-        getDateRange: () => {
-          const start = new Date(today)
-          start.setDate(today.getDate() - 30)
-          return { start, end: today }
-        },
-      },
-      {
-        id: '3_months',
-        label: 'Last 3 months',
-        value: '90_days',
-        getDateRange: () => {
-          const start = new Date(today)
-          start.setMonth(today.getMonth() - 3)
-          return { start, end: today }
-        },
-      },
-      {
-        id: '6_months',
-        label: 'Last 6 months',
-        value: '180_days',
-        getDateRange: () => {
-          const start = new Date(today)
-          start.setMonth(today.getMonth() - 6)
-          return { start, end: today }
-        },
-      },
-      {
-        id: '1_year',
-        label: 'Last year',
-        value: '365_days',
-        getDateRange: () => {
-          const start = new Date(today)
-          start.setFullYear(today.getFullYear() - 1)
-          return { start, end: today }
-        },
-      },
-    ]
-  }, [])
-
   const handleSelect = (value: string) => {
     onSelect(value)
     onClose()
@@ -83,7 +20,7 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
   return (
     <Popover isOpen={isOpen} onClose={onClose} anchorRef={anchorRef} placement="top-start" className="min-w-[240px]" mobileAdaptation="none" >
       <div className="flex flex-col p-1 gap-0.5">
-        {dateOptions.map((option) => (
+        {CHAT_DATE_RANGE_OPTIONS.map((option) => (
           <DateRangeItem
             key={option.id}
             option={option}
@@ -96,14 +33,9 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
   )
 }
 
-function DateRangeItem({ option, active, onClick }: { option: DateRangeOption, active: boolean, onClick: () => void }) {
-  const formatDateRange = (option: DateRangeOption): string => {
-    const { start, end } = option.getDateRange()
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    }
-    return `${formatDate(start)} - ${formatDate(end)}`
-  }
+function DateRangeItem({ option, active, onClick }: { option: { label: string; value: string }, active: boolean, onClick: () => void }) {
+  const parsed = parseDateRangeValue(option.value)
+  const rangeLabel = parsed ? formatRangeSpan(parsed.start, parsed.end) : ''
 
   return (
     <button
@@ -113,7 +45,7 @@ function DateRangeItem({ option, active, onClick }: { option: DateRangeOption, a
     >
       <div className="text-left">
         <div className="subheading-md text-primary">{option.label}</div>
-        <div className="paragraph-xs text-quaternary">{formatDateRange(option)}</div>
+        <div className="paragraph-xs text-quaternary">{rangeLabel}</div>
       </div>
 
       {/* Radio indicator */}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSession } from '../contexts/session-context'
-import { apiFetch } from '../utils/api'
+import { formatDateRangeDisplay } from '../utils/date-range'
+import { getAccountIcon } from '../utils/account-icon'
+import { sendChatMessage } from '../features/chat/services/chat-service'
 import { usePlatformPreferences } from '../features/integrations/hooks/use-platform-preferences'
 import BrevoConnectionModal from './brevo-connection-modal'
 import DateRangeSelector from './date-range-selector'
@@ -15,34 +17,6 @@ interface MainViewProps {
   onGrowQuickClick?: (platforms?: string[]) => void
   onOptimizeQuickClick?: (platforms?: string[]) => void
   onProtectQuickClick?: (platforms?: string[]) => void
-}
-
-// Helper function to format date range for display
-const formatDateRangeDisplay = (dateRange: string): string => {
-  // Handle preset ranges
-  if (dateRange === '7_days') return '7d'
-  if (dateRange === '14_days') return '14d'
-  if (dateRange === '30_days') return '30d'
-  if (dateRange === '90_days') return '90d'
-
-  // Handle custom range (format: YYYY-MM-DD_YYYY-MM-DD)
-  if (dateRange.includes('_') && dateRange.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
-    const [startStr, endStr] = dateRange.split('_')
-    const start = new Date(startStr)
-    const end = new Date(endStr)
-
-    // Format: "Aug 1 - Nov 16" (no year to keep it compact)
-    const formatDate = (date: Date) => {
-      const month = date.toLocaleDateString('en-US', { month: 'short' })
-      const day = date.getDate()
-      return `${month} ${day}`
-    }
-
-    return `${formatDate(start)} - ${formatDate(end)}`
-  }
-
-  // Fallback
-  return '90d'
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
@@ -148,20 +122,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     }
   }, [isAccountSwitching, selectAccount, onIntegrationsClick])
 
-  const getAccountIcon = useCallback((businessType: string) => {
-    switch (businessType?.toLowerCase()) {
-      case 'food':
-        return '🍎'
-      case 'engineering':
-        return '⚙️'
-      case 'retail':
-        return '🏪'
-      default:
-        return '🏢'
-    }
-  }, [])
-
-
   const handleChatSubmit = useCallback(async (message: string) => {
     if (!message.trim()) return
 
@@ -181,27 +141,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
     try {
       
-      const response = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          message: message,
-          session_id: sessionId,
-          user_id: user?.google_user_id || '',
-          google_ads_id: selectedAccount?.google_ads_id,
-          ga4_property_id: selectedAccount?.ga4_property_id,
-          date_range: dateRange
-        }),
+      const result = await sendChatMessage({
+        message,
+        session_id: sessionId,
+        user_id: user?.google_user_id || '',
+        google_ads_id: selectedAccount?.google_ads_id,
+        ga4_property_id: selectedAccount?.ga4_property_id,
+        date_range: dateRange,
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const result = await response.json()
 
       setIsChatLoading(false) // Remove loading state
 
@@ -424,7 +371,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
               title="Change date range"
             >
               <img src="/icons/calendar.svg" alt="Calendar" className="w-3.5 h-3.5" />
-              <span>{formatDateRangeDisplay(dateRange)}</span>
+              <span>{formatDateRangeDisplay(dateRange, 'short')}</span>
             </button>
           </>
         )}

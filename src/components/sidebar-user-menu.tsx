@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/theme-context'
 import { Popover } from '../features/overlay'
 import { Icon } from './icon'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
+import { UserAvatar } from './user-avatar'
 
 interface SidebarUserMenuProps {
   onIntegrationsClick?: () => void
@@ -54,26 +55,6 @@ export const SidebarUserMenu = ({
     setTheme(value)
   }
 
-  const renderAvatar = (size: 'sm' | 'lg' = 'sm') => {
-    const sizeClasses = size === 'lg' ? 'w-12 h-12 paragraph-bg' : 'w-8 h-8 paragraph-sm'
-
-    if (user?.picture_url) {
-      return (
-        <img
-          src={user.picture_url}
-          alt={user.name || 'User'}
-          className={`${sizeClasses} rounded-full object-cover`}
-        />
-      )
-    }
-
-    return (
-      <div className={`${sizeClasses} rounded-full bg-utility-warning-400 flex items-center justify-center font-medium text-utility-warning-700`}>
-        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-      </div>
-    )
-  }
-
   return (
     <>
       <button
@@ -84,7 +65,11 @@ export const SidebarUserMenu = ({
         aria-expanded={isOpen}
         aria-label={`User menu for ${user?.name || 'User'}`}
       >
-        {renderAvatar('sm')}
+        <UserAvatar
+          name={user?.name || 'User'}
+          imageUrl={user?.picture_url}
+          size="sm"
+        />
       </button>
 
       <Popover
@@ -97,7 +82,11 @@ export const SidebarUserMenu = ({
         {/* User Header */}
         <div className="px-4 py-4 border-b border-tertiary">
           <div className="flex items-center gap-3">
-            {renderAvatar('lg')}
+            <UserAvatar
+              name={user?.name || 'User'}
+              imageUrl={user?.picture_url}
+              size="lg"
+            />
             <div className="flex-1 min-w-0">
               <p className="label-md text-primary truncate">
                 {user?.name || 'User'}

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
-import { apiFetch } from '../utils/api'
 import { Dropdown, Modal, type DropdownItem } from '../features/overlay'
+import { usePlatformDisconnect } from '../features/integrations/hooks/use-platform-disconnect'
 
 interface PlatformGearMenuProps {
   platformId: string
@@ -24,9 +24,19 @@ const PlatformGearMenu = ({
   onDisconnectSuccess,
 }: PlatformGearMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
-  const [isDisconnecting, setIsDisconnecting] = useState(false)
   const [showConfirmDisconnect, setShowConfirmDisconnect] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const { isDisconnecting, handleDisconnect } = usePlatformDisconnect({
+    sessionId,
+    platformId,
+    onSuccess: () => {
+      setShowConfirmDisconnect(false)
+      onDisconnectSuccess()
+    },
+    onError: () => {
+      alert(`Failed to disconnect ${platformName}. Please try again.`)
+    },
+  })
 
   // Platforms that support adding multiple accounts
   const supportsMultiAccount = ['brevo', 'hubspot', 'mailchimp'].includes(platformId)
@@ -113,31 +123,7 @@ const PlatformGearMenu = ({
   }, [supportsReconnect, supportsMultiAccount, canDisconnect, onManage, onReconnect, onAddAccount])
 
   const handleDisconnectConfirm = async () => {
-    if (!sessionId) return
-
-    setIsDisconnecting(true)
-    try {
-      const response = await apiFetch(`/api/platform/${platformId}/disconnect`, {
-        method: 'POST',
-        headers: {
-          'X-Session-ID': sessionId,
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to disconnect')
-      }
-
-      console.log(`[PLATFORM-DISCONNECT] ${platformName} disconnected successfully`)
-      setShowConfirmDisconnect(false)
-      onDisconnectSuccess()
-    } catch (error) {
-      console.error(`[PLATFORM-DISCONNECT] Error disconnecting ${platformName}:`, error)
-      alert(`Failed to disconnect ${platformName}. Please try again.`)
-    } finally {
-      setIsDisconnecting(false)
-    }
+    await handleDisconnect()
   }
 
   if (!isConnected) return null
