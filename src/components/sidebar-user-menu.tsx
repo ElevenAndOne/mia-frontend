@@ -7,12 +7,14 @@ import { SegmentedControl, type SegmentedControlOption } from './segmented-contr
 
 interface SidebarUserMenuProps {
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onWorkspaceSettings?: () => void
   onLogout: () => void
 }
 
 export const SidebarUserMenu = ({
   onIntegrationsClick,
+  onHelpClick,
   onWorkspaceSettings,
   onLogout
 }: SidebarUserMenuProps) => {
@@ -36,6 +38,11 @@ export const SidebarUserMenu = ({
   const handleIntegrations = () => {
     setIsOpen(false)
     onIntegrationsClick?.()
+  }
+
+  const handleHelp = () => {
+    setIsOpen(false)
+    onHelpClick?.()
   }
 
   const handleWorkspaceSettings = () => {
@@ -126,6 +133,17 @@ export const SidebarUserMenu = ({
             >
               <Icon.globe_01 size={18} className="text-tertiary" />
               <span>Integrations</span>
+            </button>
+          )}
+
+          {onHelpClick && (
+            <button
+              onClick={handleHelp}
+              className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+              role="menuitem"
+            >
+              <Icon.help_circle size={18} className="text-tertiary" />
+              <span>Help</span>
             </button>
           )}
 

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../contexts/session-context'
 import { apiFetch } from '../utils/api'
 import CreateWorkspaceModal from './create-workspace-modal'
-import { BackButton } from './back-button'
 import { Spinner } from './spinner'
 import { Icon } from './icon'
 import type { Workspace } from '../features/workspace/types'
+import { TopBar } from './top-bar'
 
 interface Member {
   user_id: string
@@ -287,11 +287,11 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
     return (
       <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-4 border-b border-tertiary shrink-0">
-          <BackButton onClick={onBack} label="Back" />
-          <h1 className="title-h6 text-primary mt-2">Workspaces</h1>
-          <p className="paragraph-sm text-quaternary">{availableWorkspaces.length} workspace{availableWorkspaces.length !== 1 ? 's' : ''}</p>
-        </div>
+        <TopBar
+          title="Workspaces"
+          onBack={onBack}
+          className="border-b border-tertiary"
+        />
 
         {/* Workspace List */}
         <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
@@ -304,11 +304,10 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                 <button
                   key={workspace.tenant_id}
                   onClick={() => handleSelectWorkspace(workspace)}
-                  className={`w-full text-left rounded-xl p-4 flex items-center gap-3 transition-colors ${
-                    isActive
-                      ? 'bg-secondary border border-secondary'
-                      : 'bg-secondary hover:bg-tertiary'
-                  }`}
+                  className={`w-full text-left rounded-xl p-4 flex items-center gap-3 transition-colors ${isActive
+                    ? 'bg-secondary border border-secondary'
+                    : 'bg-secondary hover:bg-tertiary'
+                    }`}
                 >
                   {/* Workspace Icon */}
                   <div className="w-10 h-10 rounded-xl bg-brand-solid flex items-center justify-center label-bg text-primary-onbrand shrink-0">
@@ -377,39 +376,31 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
   return (
     <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-4 border-b border-tertiary shrink-0">
-        <BackButton onClick={handleBackToOverview} label="All Workspaces" />
-        <div className="flex items-center gap-3 mt-2">
-          <div className="w-10 h-10 rounded-xl bg-brand-solid flex items-center justify-center label-bg text-primary-onbrand">
-            {selectedWorkspace.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="title-h6 text-primary">{selectedWorkspace.name}</h1>
-            <p className="paragraph-xs text-quaternary capitalize">Your role: {selectedWorkspace.role}</p>
-          </div>
-        </div>
-      </div>
+      <TopBar
+        title="Workspace Settings"
+        onBack={handleBackToOverview}
+        className="border-b border-tertiary"
+      />
+
 
       {/* Tabs */}
       <div className="flex border-b border-tertiary max-w-3xl mx-auto w-full">
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex-1 py-3 subheading-md transition-colors ${
-            activeTab === 'members'
-              ? 'text-primary border-b-2 border-brand'
-              : 'text-quaternary hover:text-secondary'
-          }`}
+          className={`flex-1 py-3 subheading-md transition-colors ${activeTab === 'members'
+            ? 'text-primary border-b-2 border-brand'
+            : 'text-quaternary hover:text-secondary'
+            }`}
         >
           Members ({members.length})
         </button>
         {canManage && (
           <button
             onClick={() => setActiveTab('invites')}
-            className={`flex-1 py-3 subheading-md transition-colors ${
-              activeTab === 'invites'
-                ? 'text-primary border-b-2 border-brand'
-                : 'text-quaternary hover:text-secondary'
-            }`}
+            className={`flex-1 py-3 subheading-md transition-colors ${activeTab === 'invites'
+              ? 'text-primary border-b-2 border-brand'
+              : 'text-quaternary hover:text-secondary'
+              }`}
           >
             Invites ({invites.filter(i => i.status === 'pending').length})
           </button>
@@ -508,21 +499,19 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsLinkInvite(true)}
-                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
-                      isLinkInvite
-                        ? 'bg-brand-solid text-primary-onbrand'
-                        : 'bg-primary text-secondary border border-secondary'
-                    }`}
+                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${isLinkInvite
+                      ? 'bg-brand-solid text-primary-onbrand'
+                      : 'bg-primary text-secondary border border-secondary'
+                      }`}
                   >
                     Anyone with link
                   </button>
                   <button
                     onClick={() => setIsLinkInvite(false)}
-                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
-                      !isLinkInvite
-                        ? 'bg-brand-solid text-primary-onbrand'
-                        : 'bg-primary text-secondary border border-secondary'
-                    }`}
+                    className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${!isLinkInvite
+                      ? 'bg-brand-solid text-primary-onbrand'
+                      : 'bg-primary text-secondary border border-secondary'
+                      }`}
                   >
                     Specific email
                   </button>
@@ -547,11 +536,10 @@ const WorkspaceSettingsPage = ({ onBack }: WorkspaceSettingsPageProps) => {
                       <button
                         key={role}
                         onClick={() => setInviteRole(role)}
-                        className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${
-                          inviteRole === role
-                            ? getRoleBadgeColor(role)
-                            : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
-                        }`}
+                        className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${inviteRole === role
+                          ? getRoleBadgeColor(role)
+                          : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
+                          }`}
                       >
                         {role}
                       </button>

@@ -5,6 +5,7 @@ import { SidebarUserMenu } from './sidebar-user-menu'
 interface AppSidebarProps {
   onNewChat?: () => void
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onLogout: () => void
   onWorkspaceSettings?: () => void
 }
@@ -12,6 +13,7 @@ interface AppSidebarProps {
 export const AppSidebar = ({
   onNewChat,
   onIntegrationsClick,
+  onHelpClick,
   onLogout,
   onWorkspaceSettings
 }: AppSidebarProps) => {
@@ -37,6 +39,7 @@ export const AppSidebar = ({
       <div className="mt-auto">
         <SidebarUserMenu
           onIntegrationsClick={onIntegrationsClick}
+          onHelpClick={onHelpClick}
           onWorkspaceSettings={onWorkspaceSettings}
           onLogout={onLogout}
         />

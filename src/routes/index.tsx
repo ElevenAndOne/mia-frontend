@@ -18,6 +18,7 @@ const SummaryInsights = lazy(() => import('../features/insights/components/summa
 const OnboardingChat = lazy(() => import('../features/onboarding/components/onboarding-chat'))
 const InviteLandingPage = lazy(() => import('../components/invite-landing-page'))
 const WorkspaceSettingsPage = lazy(() => import('../components/workspace-settings-page'))
+const HelpPage = lazy(() => import('../components/help-page'))
 
 const LazyLoadSpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -45,12 +46,14 @@ const ChatViewWrapper = () => {
     <AppShell
       onNewChat={handleNewChat}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <ChatView
           onIntegrationsClick={() => navigate('/integrations')}
+          onHelpClick={() => navigate('/help')}
           onLogout={handleLogout}
           onWorkspaceSettings={() => navigate('/settings/workspace')}
         />
@@ -110,11 +113,36 @@ const IntegrationsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
       <div className="w-full h-full">
         <IntegrationsPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
+  )
+}
+
+const HelpWrapper = () => {
+  const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
+  return (
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <HelpPage onBack={() => navigate('/home')} />
       </div>
     </AppShell>
   )
@@ -133,6 +161,7 @@ const WorkspaceSettingsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
@@ -159,6 +188,7 @@ const GrowInsightsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
@@ -190,6 +220,7 @@ const OptimizeInsightsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
@@ -221,6 +252,7 @@ const ProtectInsightsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
@@ -249,6 +281,7 @@ const SummaryInsightsWrapper = () => {
     <AppShell
       onNewChat={() => navigate('/home', { state: { newChat: true } })}
       onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
       onLogout={handleLogout}
       onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
@@ -407,6 +440,15 @@ export const AppRoutes = ({
             element={
               <ProtectedRoute>
                 <IntegrationsWrapper />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute>
+                <HelpWrapper />
               </ProtectedRoute>
             }
           />

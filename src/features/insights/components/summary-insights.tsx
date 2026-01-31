@@ -2,6 +2,7 @@ import { apiFetch } from '../../../utils/api'
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
+import { Spinner } from '../../../components/spinner'
 import { getDateRangeDisplay } from '../../../utils/date-display'
 import DateRangeSelector from '../../../components/date-range-selector'
 
@@ -16,7 +17,7 @@ interface SummaryResponse {
 }
 
 const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId } = useSession()
   const [summary, setSummary] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -103,29 +104,11 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
         className="relative z-20 border-b border-tertiary"
       />
 
-      {/* Gradient Hero Section */}
-      <div
-        className="relative flex items-center justify-center px-4 py-6 overflow-hidden"
-        style={{ minHeight: '80px' }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, var(--color-utility-brand-700) 0%, var(--color-utility-brand-600) 50%, var(--color-utility-brand-500) 100%)'
-          }}
-        />
-        {selectedAccount && (
-          <span className="paragraph-sm text-primary-onbrand opacity-80 relative z-10">
-            {selectedAccount.name}
-          </span>
-        )}
-      </div>
-
       {/* Content Area */}
-      <div className="flex-1 bg-primary p-6 pb-6 safe-bottom overflow-y-auto rounded-t-2xl -mt-4 relative z-10">
+      <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
-            <div className="w-12 h-12 border-4 border-secondary border-t-utility-info-600 rounded-full animate-spin mb-4"></div>
+            <Spinner size="lg" variant="primary" className="mb-4" />
             <p className="paragraph-sm text-tertiary">Generating executive summary...</p>
           </div>
         )}

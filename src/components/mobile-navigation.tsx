@@ -10,6 +10,7 @@ interface MobileNavigationProps {
   onClose: () => void
   onNewChat?: () => void
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
 }
@@ -21,6 +22,7 @@ export const MobileNavigation = ({
   onClose,
   onNewChat,
   onIntegrationsClick,
+  onHelpClick,
   onLogout,
   onWorkspaceSettings
 }: MobileNavigationProps) => {
@@ -42,6 +44,11 @@ export const MobileNavigation = ({
 
   const handleIntegrations = () => {
     onIntegrationsClick?.()
+    onClose()
+  }
+
+  const handleHelp = () => {
+    onHelpClick?.()
     onClose()
   }
 
@@ -165,6 +172,16 @@ export const MobileNavigation = ({
           <Icon.globe_01 size={20} className="text-tertiary" />
           <span className="paragraph-sm">Integrations</span>
         </button>
+
+        {onHelpClick && (
+          <button
+            onClick={handleHelp}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.help_circle size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Help</span>
+          </button>
+        )}
       </div>
 
       {/* Divider */}
@@ -290,6 +307,16 @@ export const MobileNavigation = ({
           >
             <Icon.globe_01 size={18} className="text-tertiary" />
             <span>Integrations</span>
+          </button>
+        )}
+
+        {onHelpClick && (
+          <button
+            onClick={handleHelp}
+            className="w-full px-4 py-3 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.help_circle size={18} className="text-tertiary" />
+            <span>Help</span>
           </button>
         )}
 

@@ -5,6 +5,7 @@ interface AppShellProps {
   children: ReactNode
   onNewChat?: () => void
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onLogout: () => void
   onWorkspaceSettings?: () => void
 }
@@ -13,6 +14,7 @@ export const AppShell = ({
   children,
   onNewChat,
   onIntegrationsClick,
+  onHelpClick,
   onLogout,
   onWorkspaceSettings
 }: AppShellProps) => {
@@ -21,6 +23,7 @@ export const AppShell = ({
       <AppSidebar
         onNewChat={onNewChat}
         onIntegrationsClick={onIntegrationsClick}
+        onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
       />

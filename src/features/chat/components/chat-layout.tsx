@@ -5,6 +5,7 @@ import { MobileNavigation } from '../../../components/mobile-navigation'
 interface ChatLayoutProps {
   children: ReactNode
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onNewChat?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
@@ -13,6 +14,7 @@ interface ChatLayoutProps {
 export const ChatLayout = ({ 
   children, 
   onIntegrationsClick, 
+  onHelpClick,
   onNewChat,
   onLogout,
   onWorkspaceSettings
@@ -55,6 +57,7 @@ export const ChatLayout = ({
         onClose={() => setIsMobileNavOpen(false)}
         onNewChat={onNewChat}
         onIntegrationsClick={onIntegrationsClick}
+        onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
       />

@@ -19,11 +19,12 @@ interface Message {
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
+export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
   const navigate = useNavigate()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
@@ -200,6 +201,7 @@ export const ChatView = ({ onIntegrationsClick, onLogout, onWorkspaceSettings }:
   return (
     <ChatLayout
       onIntegrationsClick={onIntegrationsClick}
+      onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}

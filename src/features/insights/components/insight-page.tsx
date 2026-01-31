@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { MarkdownText } from '../../../components/markdown-text'
+import { Spinner } from '../../../components/spinner'
 import { getDateRangeDisplay } from '../../../utils/date-display'
 import DateRangeSelector from '../../../components/date-range-selector'
 import { useStreamingInsightsParsed } from '../hooks/use-streaming-insights-parsed'
@@ -13,14 +14,11 @@ interface InsightConfig {
   title: string
   sectionTitle: string
   loadingMessage: string
-  backgroundImage: string
-  gradient: string
   colors: {
     badge: string
     actionBg: string
     actionBorder: string
     actionLabel: string
-    spinner: string
   }
 }
 
@@ -29,42 +27,33 @@ const INSIGHT_CONFIGS: Record<InsightType, InsightConfig> = {
     title: 'Grow',
     sectionTitle: 'Key Growth Opportunities',
     loadingMessage: 'Analyzing your growth opportunities...',
-    backgroundImage: '/images/Grow Nav.png',
-    gradient: 'linear-gradient(135deg, var(--color-utility-brand-700) 0%, var(--color-utility-brand-600) 50%, var(--color-utility-brand-500) 100%)',
     colors: {
       badge: 'bg-utility-brand-500',
       actionBg: 'bg-brand-primary',
       actionBorder: 'border-brand',
-      actionLabel: 'text-brand-primary',
-      spinner: 'border-t-utility-brand-600'
+      actionLabel: 'text-brand-primary'
     }
   },
   optimize: {
     title: 'Optimise',
     sectionTitle: 'Key Optimization Opportunities',
     loadingMessage: 'Analyzing optimization opportunities...',
-    backgroundImage: '/images/Optimise Nav.png',
-    gradient: 'linear-gradient(135deg, var(--color-utility-info-700) 0%, var(--color-utility-info-600) 50%, var(--color-utility-info-500) 100%)',
     colors: {
       badge: 'bg-utility-info-500',
       actionBg: 'bg-utility-info-100',
       actionBorder: 'border-utility-info-500',
-      actionLabel: 'text-utility-info-700',
-      spinner: 'border-t-utility-info-600'
+      actionLabel: 'text-utility-info-700'
     }
   },
   protect: {
     title: 'Protect',
     sectionTitle: 'Key Risk Areas',
     loadingMessage: 'Analyzing potential risks...',
-    backgroundImage: '/images/Protect Nav.png',
-    gradient: 'linear-gradient(135deg, var(--color-utility-success-700) 0%, var(--color-utility-success-600) 50%, var(--color-utility-success-500) 100%)',
     colors: {
       badge: 'bg-utility-success-500',
       actionBg: 'bg-success-primary',
       actionBorder: 'border-utility-success-500',
-      actionLabel: 'text-success',
-      spinner: 'border-t-utility-success-600'
+      actionLabel: 'text-success'
     }
   }
 }
@@ -207,36 +196,12 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
         className="relative z-20 border-b border-tertiary"
       />
 
-      {/* Gradient Hero Section */}
-      <div
-        className="relative flex items-center justify-center px-4 py-6 overflow-hidden"
-        style={{ minHeight: '80px' }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background: config.gradient,
-            backgroundImage: `url("${config.backgroundImage}")`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
-          }}
-        />
-        {selectedAccount && (
-          <span
-            className="paragraph-sm text-primary-onbrand opacity-80 relative z-10"
-          >
-            {selectedAccount.name}
-          </span>
-        )}
-      </div>
-
       {/* Content Area */}
-      <div className="flex-1 bg-primary p-6 pb-6 safe-bottom overflow-y-auto rounded-t-2xl -mt-4 relative z-10">
+      <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
         {/* Loading state - only show if no insights yet */}
         {isStreaming && insights.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
-            <div className={`w-12 h-12 border-4 border-secondary ${config.colors.spinner} rounded-full animate-spin mb-4`}></div>
+            <Spinner size="lg" variant="primary" className="mb-4" />
             <p className="paragraph-sm text-tertiary">{config.loadingMessage}</p>
           </div>
         )}
