@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type RefObject } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEscapeKey, useClickOutside } from '../../overlay'
 import type { Platform } from '../types'
@@ -9,14 +9,19 @@ interface PlatformSelectorProps {
   platforms: Platform[]
   selectedPlatforms: string[]
   onToggle: (platformId: string) => void
+  /** Anchor element ref - clicks on this element won't trigger close */
+  anchorRef?: RefObject<HTMLElement | null>
 }
 
-export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms, onToggle }: PlatformSelectorProps) => {
+export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms, onToggle, anchorRef }: PlatformSelectorProps) => {
   const popupRef = useRef<HTMLDivElement>(null)
+
+  // Build refs array - include anchor if provided to prevent close when clicking trigger
+  const clickOutsideRefs = anchorRef ? [popupRef, anchorRef] : [popupRef]
 
   // Use overlay hooks for consistent behavior
   useEscapeKey(onClose, isOpen)
-  useClickOutside([popupRef], onClose, isOpen)
+  useClickOutside(clickOutsideRefs, onClose, isOpen)
 
   return (
     <AnimatePresence>

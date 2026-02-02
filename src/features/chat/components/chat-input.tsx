@@ -23,6 +23,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
+  const platformButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubmit = () => {
     if (message.trim() && !disabled) {
@@ -88,6 +89,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
             {/* Platform selector button */}
             <div className="relative">
               <button
+                ref={platformButtonRef}
                 type="button"
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
@@ -106,6 +108,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
                 platforms={platforms}
                 selectedPlatforms={selectedPlatforms}
                 onToggle={onPlatformToggle}
+                anchorRef={platformButtonRef}
               />
             </div>
 

@@ -59,20 +59,34 @@ type SessionContextType = SessionState & SessionActions
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
-const INITIAL_STATE: SessionState = {
-  isAuthenticated: false,
-  isLoading: true,
-  hasSeenIntro: false,
-  user: null,
-  sessionId: null,
-  selectedAccount: null,
-  availableAccounts: [],
-  activeWorkspace: null,
-  availableWorkspaces: [],
-  error: null,
-  isMetaAuthenticated: false,
-  metaUser: null,
-  connectingPlatform: null
+// Lazy initializer - called fresh on each mount to detect OAuth redirect synchronously
+const getInitialState = (): SessionState => {
+  // Detect OAuth redirect synchronously to prevent video flash
+  let connectingPlatform: 'google' | 'meta' | null = null
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search)
+    const oauthComplete = urlParams.get('oauth_complete')
+    if (oauthComplete === 'google' || oauthComplete === 'meta') {
+      console.log(`[SESSION] OAuth redirect detected in initial state: ${oauthComplete}`)
+      connectingPlatform = oauthComplete
+    }
+  }
+
+  return {
+    isAuthenticated: false,
+    isLoading: true,
+    hasSeenIntro: false,
+    user: null,
+    sessionId: null,
+    selectedAccount: null,
+    availableAccounts: [],
+    activeWorkspace: null,
+    availableWorkspaces: [],
+    error: null,
+    isMetaAuthenticated: false,
+    metaUser: null,
+    connectingPlatform
+  }
 }
 
 // eslint-disable-next-line react-refresh/only-export-components -- useSession hook must be co-located with SessionContext
@@ -89,7 +103,7 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
-  const [state, setState] = useState<SessionState>(INITIAL_STATE)
+  const [state, setState] = useState<SessionState>(getInitialState)
 
   // Refresh accounts helper
   const refreshAccounts = useCallback(async (): Promise<void> => {
@@ -149,14 +163,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           storeSessionId(sessionId)
         }
 
-        // Handle mobile OAuth redirect
-        if (oauthComplete === 'google') {
-          console.log('[SESSION] Mobile OAuth redirect detected')
+        // Handle mobile OAuth redirect - set connectingPlatform IMMEDIATELY to hide video
+        if (oauthComplete === 'google' || oauthComplete === 'meta') {
+          console.log(`[SESSION] Mobile OAuth redirect detected: ${oauthComplete}`)
+          setState(prev => ({ ...prev, connectingPlatform: oauthComplete as 'google' | 'meta' }))
           const authUserId = urlParams.get('user_id')
           window.history.replaceState({}, '', window.location.pathname)
           localStorage.removeItem('mia_oauth_pending')
           localStorage.removeItem('mia_oauth_return_url')
-          await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+          if (oauthComplete === 'google') {
+            await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+          }
         }
 
         // Validate existing session
@@ -249,6 +266,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
+      // Get OAuth URL - backend uses UA detection to determine popup vs redirect flow
       const authData = await googleAuthService.getGoogleAuthUrl()
 
       // Mobile redirect flow
@@ -460,13 +478,33 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      await accountService.selectAccount(state.sessionId, accountId, industry)
+      const response = await accountService.selectAccount(state.sessionId, accountId, industry)
       const account = state.availableAccounts.find(acc => acc.id === accountId)
+
+      // Handle auto-created workspace from backend
+      let newWorkspace: Workspace | null = null
+      if (response.workspace) {
+        console.log('[SESSION] Workspace auto-created:', response.workspace)
+        newWorkspace = {
+          tenant_id: response.workspace.tenant_id,
+          name: response.workspace.name,
+          slug: response.workspace.name.toLowerCase().replace(/\s+/g, '-'),
+          role: 'owner',
+          onboarding_completed: false,
+          connected_platforms: [],
+          member_count: 1
+        }
+      }
 
       setState(prev => ({
         ...prev,
         selectedAccount: account || null,
-        isLoading: false
+        isLoading: false,
+        // Set workspace if auto-created
+        ...(newWorkspace ? {
+          activeWorkspace: newWorkspace,
+          availableWorkspaces: [...prev.availableWorkspaces, newWorkspace]
+        } : {})
       }))
       return true
     } catch (error) {

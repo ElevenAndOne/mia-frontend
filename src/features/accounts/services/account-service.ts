@@ -10,6 +10,11 @@ export interface AccountsResponse {
 
 export interface SelectAccountResponse {
   success: boolean
+  workspace?: {
+    tenant_id: string
+    name: string
+    auto_created?: boolean
+  }
 }
 
 /**

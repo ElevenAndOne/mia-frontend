@@ -78,6 +78,31 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     connectedPlatforms
   })
 
+  // FEB 2026: Show guidance when platforms need additional configuration
+  // GA4 and Facebook Organic share auth with Google Ads and Meta Ads respectively,
+  // but require property/page selection in Integrations
+  // FIX (Feb 2026): Check if property/page is SELECTED, not just if platform is in connectedPlatforms
+  // connectedPlatforms shows OAuth completion, but user still needs to pick specific property/page
+  const configurationGuidance = useMemo(() => {
+    const needsConfig: string[] = []
+
+    // Google Ads connected but GA4 property not selected
+    // Check selectedAccount.ga4_property_id instead of connectedPlatforms.includes('ga4')
+    if (connectedPlatforms.includes('google_ads') && !selectedAccount?.ga4_property_id) {
+      needsConfig.push('Google Analytics property')
+    }
+
+    // Meta Ads connected but Facebook Page not selected
+    // Check selectedAccount.facebook_page_id instead of connectedPlatforms.includes('facebook_organic')
+    if (connectedPlatforms.includes('meta_ads') && !selectedAccount?.facebook_page_id) {
+      needsConfig.push('Facebook Page')
+    }
+
+    if (needsConfig.length === 0) return null
+
+    return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
+  }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
+
   // Refresh accounts AND workspaces on mount to get latest platform connections
   // This ensures platform icons update after returning from Integrations page or completing onboarding
   useEffect(() => {
@@ -394,8 +419,22 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
               </p>
             </div>
 
+            {/* Configuration Guidance Banner - FEB 2026 */}
+            {configurationGuidance && (
+              <button
+                onClick={() => onIntegrationsClick?.()}
+                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 bg-utility-info-100 border border-utility-info-300 rounded-full text-utility-info-700 paragraph-xs hover:bg-utility-info-200 transition-colors"
+                style={{ marginTop: '-45px' }}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span>{configurationGuidance}</span>
+              </button>
+            )}
+
             {/* Platform Toggles - Show all 6 platforms */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: '-10px' }}>
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: configurationGuidance ? '5px' : '-10px' }}>
               {platformConfig.map(platform => {
                 const isConnected = connectedPlatforms.includes(platform.id)
                 const isSelected = selectedPlatforms.includes(platform.id)

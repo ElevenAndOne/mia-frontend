@@ -229,6 +229,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setShowBrevoModal(false)
       setBrevoApiKey('')
       invalidateIntegrationStatus()
+      // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
+      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err))
 
     } catch (error) {
       console.error('[Brevo] API key submission error:', error)
@@ -262,6 +264,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Close modal and refresh connections
       setShowBrevoModal(false)
       invalidateIntegrationStatus()
+      // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
+      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err))
 
     } catch (error) {
       console.error('[Brevo] Unlink error:', error)

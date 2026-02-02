@@ -37,9 +37,12 @@ export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextPr
   const renderWithLinks = (text: string) => {
     const cleanText = stripMarkers(text)
     const bulletText = convertBullets(cleanText)
-    const parts = bulletText.split(/(\[.*?\]\((?:https?:\/\/.*?|DEEPLINK:.*?)\)|https?:\/\/[^\s]+)/)
+    // FEB 2026: Improved regex to prevent hyperlink bleeding
+    // - Link text [^[\]]+ cannot contain nested brackets (prevents [BEST] from being captured)
+    // - URL [^)]+ cannot contain closing paren (more explicit boundary)
+    const parts = bulletText.split(/(\[[^\[\]]+\]\((?:https?:\/\/[^)]+|DEEPLINK:[^)]+)\)|https?:\/\/[^\s]+)/)
     return parts.map((part, index) => {
-      const linkMatch = part.match(/\[(.*?)\]\(((?:https?:\/\/|DEEPLINK:).*?)\)/)
+      const linkMatch = part.match(/\[([^\[\]]+)\]\(((?:https?:\/\/|DEEPLINK:)[^)]+)\)/)
       if (linkMatch) {
         const [, linkText, linkUrl] = linkMatch
         const actualUrl = convertDeepLink(linkUrl)

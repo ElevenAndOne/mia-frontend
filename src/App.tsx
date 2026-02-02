@@ -158,17 +158,21 @@ function App() {
   }, [location, navigate])
 
   const handleAuthSuccess = () => {
-    setOauthLoadingPlatform(null)
+    // Navigate FIRST, then clear loading platform
+    // This prevents the video from flashing during the brief moment between clearing loading and navigation
     if (selectedAccount) {
       navigate('/home')
     } else {
       navigate('/login')
     }
+    // Clear loading platform after navigation is initiated
+    setOauthLoadingPlatform(null)
   }
 
   const handleMetaAuthSuccess = () => {
-    setOauthLoadingPlatform(null)
+    // Navigate FIRST, then clear loading platform
     navigate('/login/meta')
+    setOauthLoadingPlatform(null)
   }
 
   const handleOnboardingComplete = () => {
@@ -231,6 +235,19 @@ function App() {
   // Don't show loading screen if we're connecting a second platform during onboarding
   // This prevents OnboardingChat from unmounting when adding Meta as second platform
   const isConnectingSecondPlatform = connectingPlatform && isAnyAuthenticated && selectedAccount
+
+  // Show loading when OAuth is in progress (connectingPlatform set) on the intro page
+  // This prevents the video from flashing while we're completing auth and navigating away
+  if (location.pathname === '/' && connectingPlatform) {
+    return <LoadingScreen platform={connectingPlatform} />
+  }
+
+  // Show loading on intro page when authenticated but haven't navigated yet
+  // This handles the brief moment between auth completion and navigation
+  if (location.pathname === '/' && isAnyAuthenticated && isLoading) {
+    const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
+    return <LoadingScreen platform={loadingPlatform} />
+  }
 
   // Show loading for protected routes (but not when connecting second platform)
   if (isLoading && !isConnectingSecondPlatform && location.pathname !== '/' && !location.pathname.startsWith('/login') && location.pathname !== '/onboarding') {

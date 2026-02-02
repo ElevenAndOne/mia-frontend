@@ -106,10 +106,25 @@ export const fetchIntegrationStatus = async (
   selectedAccountId?: string | number,
   tenantId?: string,
 ): Promise<IntegrationStatusData> => {
+  // FEB 2026 FIX: Always fetch account data for linked_ga4_properties, ga4_property_id, etc.
+  // The tenant endpoint only returns platform connection status, not the actual account-level data
+  // needed to show which GA4 properties are linked, which Facebook page is selected, etc.
+  const accountStatus = await fetchAccountIntegrationStatus(sessionId, selectedAccountId)
+
+  // If in tenant context, use tenant-level platform status (from TenantIntegration table)
+  // but keep the account-level data for currentAccountData, ga4Properties, linkedGA4Properties
   if (tenantId) {
     const tenantStatus = await fetchTenantIntegrationStatus(sessionId, tenantId)
-    if (tenantStatus) return tenantStatus
+    if (tenantStatus) {
+      return {
+        platformStatus: tenantStatus.platformStatus,
+        // Keep account-level data from accountStatus
+        currentAccountData: accountStatus.currentAccountData,
+        ga4Properties: accountStatus.ga4Properties,
+        linkedGA4Properties: accountStatus.linkedGA4Properties,
+      }
+    }
   }
 
-  return fetchAccountIntegrationStatus(sessionId, selectedAccountId)
+  return accountStatus
 }
