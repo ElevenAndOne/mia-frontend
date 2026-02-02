@@ -26,14 +26,7 @@ const VARIANT_STYLES = {
   }
 }
 
-export const BronzeCard = ({
-  platform,
-  headline,
-  metricValue,
-  metricLabel,
-  secondaryMetric,
-  variant = 'primary'
-}: BronzeCardProps) => {
+export const BronzeCard = ({ platform, headline, metricValue, metricLabel, secondaryMetric, variant = 'primary' }: BronzeCardProps) => {
   const styles = VARIANT_STYLES[variant]
   const platformConfig = PLATFORM_STYLES[platform] || PLATFORM_STYLES.google_ads
   const formattedValue = typeof metricValue === 'number' ? metricValue.toLocaleString() : metricValue

@@ -3,7 +3,7 @@ import ChatEmptyState from './chat-empty-state'
 import ChatInput from './chat-input'
 import ChatMessage from './chat-message'
 import QuickActions from './quick-actions'
-import { useChatView } from '../hooks/use-chat-view'
+import { useChatView } from '../hooks/use-chat-view.tsx'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
