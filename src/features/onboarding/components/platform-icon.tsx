@@ -30,7 +30,7 @@ export const PlatformIcon = ({ platform, className = DEFAULT_CLASS_NAME }: Platf
 
   return (
     <span className={className} aria-hidden="true">
-      <span className="text-sm font-bold text-gray-600">G</span>
+      <span className="label-sm text-tertiary">G</span>
     </span>
   )
 }

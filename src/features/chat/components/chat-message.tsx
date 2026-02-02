@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { Icon } from '../../../components/icon'
+import { useClipboard } from '../../../hooks/use-clipboard'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
@@ -7,19 +8,13 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageProps) => {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const { copied, copy } = useClipboard()
 
   if (role === 'user') {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[80%] md:max-w-[60%] bg-gray-100 rounded-3xl px-4 py-3">
-          <p className="text-gray-900 text-base whitespace-pre-wrap">{content}</p>
+        <div className="max-w-[80%] md:max-w-[60%] bg-tertiary rounded-3xl px-4 py-3">
+          <p className="paragraph-md text-primary whitespace-pre-wrap">{content}</p>
         </div>
       </div>
     )
@@ -29,10 +24,10 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
     <div className="mb-6">
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
-        <div className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap font-mono text-sm bg-gray-50 rounded-lg p-4 border border-gray-100">
+        <div className="text-primary leading-relaxed whitespace-pre-wrap font-mono paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary">
           {content}
           {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-1" />
+            <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />
           )}
         </div>
       </div>
@@ -41,24 +36,19 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
       {!isStreaming && (
         <div className="flex items-center gap-1 mt-2">
           <button
-            onClick={handleCopy}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            onClick={() => copy(content)}
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title={copied ? 'Copied!' : 'Copy'}
           >
             {copied ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <Icon.check size={16} />
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
+              <Icon.copy_01 size={16} />
             )}
           </button>
 
           {/* <button
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title="Good response"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +57,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title="Bad response"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,7 +66,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title="Share"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +77,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title="Regenerate"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -97,7 +87,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title="More options"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

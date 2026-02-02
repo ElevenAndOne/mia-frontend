@@ -12,7 +12,7 @@ export const ChatHeader = ({ current, total, onManageIntegrations }: ChatHeaderP
     <button
       type="button"
       onClick={onManageIntegrations}
-      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+      className="p-2 text-placeholder-subtle hover:text-tertiary hover:bg-tertiary rounded-full transition-colors"
       title="Manage Integrations"
       aria-label="Manage Integrations"
     >

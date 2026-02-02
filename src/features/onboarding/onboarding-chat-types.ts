@@ -1,4 +1,4 @@
-export type ExplainerType = 'grow' | 'optimise' | 'protect'
+export type ExplainerType = 'grow' | 'optimize' | 'protect'
 
 export type MessageType =
   | 'mia'

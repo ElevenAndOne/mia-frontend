@@ -1,154 +1,85 @@
-import { useState, useEffect } from 'react'
-import { DayPicker, type DateRange } from 'react-day-picker'
-import 'react-day-picker/dist/style.css'
-import { format } from 'date-fns'
+import { type RefObject } from 'react'
+import { Popover } from '../features/overlay'
+import { DateRangeCalendar } from './date-range-calendar'
+import { useDateRangeSelection } from '../hooks/use-date-range-selection'
+import { DEFAULT_DATE_RANGE_OPTIONS, formatRangeSpan } from '../utils/date-range'
 
 interface DateRangeSelectorProps {
   isOpen: boolean
   onClose: () => void
   selectedRange: string
   onApply: (range: string) => void
+  anchorRef: RefObject<HTMLElement | null>
 }
 
-const DATE_RANGE_OPTIONS = [
-  { value: '7_days', label: 'Last 7 days' },
-  { value: '14_days', label: 'Last 14 days' },
-  { value: '30_days', label: 'Last 30 days' },
-  { value: '90_days', label: 'Last 90 days' },
-  { value: 'custom', label: 'Custom range' }
-]
-
-const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply }: DateRangeSelectorProps) => {
-  const [tempSelection, setTempSelection] = useState(selectedRange)
-  const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
-
-  // Sync temp selection when selectedRange changes (from parent)
-  useEffect(() => {
-    setTempSelection(selectedRange)
-    // If selectedRange is custom format (YYYY-MM-DD_YYYY-MM-DD), parse it
-    if (selectedRange.includes('_') && selectedRange.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
-      const [start, end] = selectedRange.split('_')
-      setDateRange({ from: new Date(start), to: new Date(end) })
-      setShowCustomPicker(true)
-    } else {
-      setDateRange(undefined)
-    }
-  }, [selectedRange])
-
-  if (!isOpen) return null
-
-  const handleOptionClick = (value: string) => {
-    setTempSelection(value)
-    if (value === 'custom') {
-      setShowCustomPicker(true)
-      // Set default dates (today and 30 days ago) if no range selected
-      if (!dateRange?.from || !dateRange?.to) {
-        const today = new Date()
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(today.getDate() - 30)
-        setDateRange({ from: thirtyDaysAgo, to: today })
-      }
-    } else {
-      setShowCustomPicker(false)
-    }
-  }
+const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef }: DateRangeSelectorProps) => {
+  const {
+    selectedRange: tempSelection,
+    showCustomPicker,
+    dateRange,
+    setDateRange,
+    selectRange,
+    getResolvedRangeValue,
+    isSelectionValid,
+  } = useDateRangeSelection({ initialRange: selectedRange, isOpen })
 
   const handleApply = () => {
-    if (tempSelection === 'custom' && dateRange?.from && dateRange?.to) {
-      // Format: YYYY-MM-DD_YYYY-MM-DD
-      const startStr = format(dateRange.from, 'yyyy-MM-dd')
-      const endStr = format(dateRange.to, 'yyyy-MM-dd')
-      onApply(`${startStr}_${endStr}`)
-    } else {
-      onApply(tempSelection)
-    }
+    onApply(getResolvedRangeValue())
     onClose()
-    setShowCustomPicker(false)
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40"
-        onClick={onClose}
-      />
-
-      {/* Dropdown */}
-      <div className={`fixed top-16 right-4 bg-white rounded-lg shadow-xl z-50 overflow-y-auto max-h-[75vh] transition-all ${showCustomPicker ? 'w-80' : 'w-64'}`}>
-        {DATE_RANGE_OPTIONS.map((option) => (
+    <Popover
+      isOpen={isOpen}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement="bottom-end"
+      className={`max-h-[75vh] ${showCustomPicker ? 'w-80' : 'w-64'}`}
+      mobileAdaptation="none"
+    >
+      <div className="max-h-[75vh] overflow-y-auto">
+        {DEFAULT_DATE_RANGE_OPTIONS.map((option) => (
           <button
             key={option.value}
-            onClick={() => handleOptionClick(option.value)}
-            className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+            onClick={() => selectRange(option.value)}
+            className={`w-full px-3 py-2 text-left transition-colors ${
               tempSelection === option.value
-                ? 'bg-purple-50 text-purple-900 font-medium'
-                : 'text-gray-700 hover:bg-gray-50'
+                ? 'bg-utility-purple-100 text-utility-purple-700 subheading-md'
+                : 'text-secondary hover:bg-secondary paragraph-sm'
             }`}
           >
             {option.label}
-            {tempSelection === option.value && (
-              <span className="float-right text-purple-600">✓</span>
-            )}
+            {tempSelection === option.value && <span className="float-right text-utility-purple-600">✓</span>}
           </button>
         ))}
 
         {/* Custom Date Picker */}
         {showCustomPicker && (
-          <div className="border-t border-gray-200 p-3">
-            <p className="text-xs font-medium text-gray-700 mb-3">
-              Select date range
-            </p>
+          <div className="border-t border-secondary p-3">
+            <p className="subheading-sm text-secondary mb-3">Select date range</p>
             <div className="rdp-custom-wrapper">
-              <DayPicker
-                mode="range"
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={1}
-                disabled={{ after: new Date() }}
-                captionLayout="dropdown"
-                classNames={{
-                  months: "flex flex-col",
-                  month: "space-y-4",
-                  caption: "flex justify-center pt-1 relative items-center mb-2",
-                  caption_label: "text-sm font-medium",
-                  nav: "hidden", // Hide navigation arrows since we have dropdowns
-                  table: "w-full border-collapse space-y-1",
-                  head_row: "flex",
-                  head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
-                  row: "flex w-full mt-2",
-                  cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-purple-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-md",
-                  day_selected: "bg-purple-600 text-white hover:bg-purple-600 hover:text-white focus:bg-purple-600 focus:text-white",
-                  day_today: "bg-gray-100 text-gray-900",
-                  day_outside: "text-gray-400 opacity-50",
-                  day_disabled: "text-gray-400 opacity-50",
-                  day_range_middle: "aria-selected:bg-purple-100 aria-selected:text-purple-900",
-                  day_hidden: "invisible",
-                }}
-              />
+              <DateRangeCalendar selected={dateRange} onSelect={setDateRange} />
             </div>
             {dateRange?.from && dateRange?.to && (
-              <div className="mt-3 text-xs text-gray-600 bg-purple-50 p-2 rounded">
-                <strong>Selected:</strong> {format(dateRange.from, 'MMM d, yyyy')} - {format(dateRange.to, 'MMM d, yyyy')}
+              <div className="mt-3 paragraph-xs text-tertiary bg-utility-purple-100 p-2 rounded">
+                <strong>Selected:</strong> {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
               </div>
             )}
           </div>
         )}
 
         {/* Apply Button */}
-        <div className="border-t border-gray-200 p-2" style={{ paddingBottom: '1rem' }}>
+        <div className="border-t border-secondary p-2">
           <button
             onClick={handleApply}
-            disabled={showCustomPicker && (!dateRange?.from || !dateRange?.to)}
-            className="w-full px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!isSelectionValid}
+            className="w-full px-4 py-2 bg-utility-purple-600 text-primary-onbrand subheading-md rounded-md hover:bg-utility-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Apply
           </button>
         </div>
       </div>
-    </>
+    </Popover>
   )
 }
 

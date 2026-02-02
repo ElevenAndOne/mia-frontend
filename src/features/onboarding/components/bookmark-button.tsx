@@ -7,7 +7,7 @@ export const BookmarkButton = ({ onClick, className = '' }: BookmarkButtonProps)
   <button
     type="button"
     onClick={onClick}
-    className={`text-gray-400 hover:text-gray-600 ${className}`.trim()}
+    className={`text-placeholder-subtle hover:text-tertiary ${className}`.trim()}
     aria-label="Bookmark"
   >
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

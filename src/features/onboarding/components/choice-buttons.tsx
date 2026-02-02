@@ -13,10 +13,10 @@ export const ChoiceButtons = ({ choices, onSelect, className = '' }: ChoiceButto
         key={`${choice.action}-${idx}`}
         type="button"
         onClick={() => onSelect?.(choice.action)}
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+        className={`px-4 py-2 rounded-full subheading-md transition-colors ${
           choice.variant === 'primary'
-            ? 'bg-black text-white hover:bg-gray-800'
-            : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-50'
+            ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+            : 'bg-primary text-primary border border-primary hover:bg-secondary'
         }`}
       >
         {choice.label}

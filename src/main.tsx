@@ -104,7 +104,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { SessionProvider } from './contexts/session-context'
+import { ThemeProvider } from './contexts/theme-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
+import { OverlayProvider } from './features/overlay'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization
@@ -138,11 +140,15 @@ ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <OnboardingProvider>
-            <App />
-          </OnboardingProvider>
-        </SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <OnboardingProvider>
+              <OverlayProvider>
+                <App />
+              </OverlayProvider>
+            </OnboardingProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
   </Sentry.ErrorBoundary>,

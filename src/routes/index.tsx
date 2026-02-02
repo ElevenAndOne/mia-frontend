@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
 import { ProtectedRoute } from './protected-route'
 import { useSession } from '../contexts/session-context'
 
@@ -8,38 +7,24 @@ import { useSession } from '../contexts/session-context'
 import VideoIntroView from '../components/video-intro-view'
 import CombinedAccountSelection from '../components/combined-account-selection'
 import MetaAccountSelectionPage from '../components/meta-account-selection-page'
+import { AppShell } from '../components/app-shell'
 
 // Lazy load all other pages
 const MainView = lazy(() => import('../components/main-view'))
 const ChatView = lazy(() => import('../features/chat/components/chat-view'))
 const IntegrationsPage = lazy(() => import('../features/integrations/integrations-page'))
-const GrowInsightsStreaming = lazy(() => import('../features/insights/components/grow-insights'))
-const OptimizeInsightsStreaming = lazy(() => import('../features/insights/components/optimize-insights'))
-const ProtectInsightsStreaming = lazy(() => import('../features/insights/components/protect-insights'))
+const InsightPage = lazy(() => import('../features/insights/components/insight-page'))
 const SummaryInsights = lazy(() => import('../features/insights/components/summary-insights'))
 const OnboardingChat = lazy(() => import('../features/onboarding/components/onboarding-chat'))
 const InviteLandingPage = lazy(() => import('../components/invite-landing-page'))
 const WorkspaceSettingsPage = lazy(() => import('../components/workspace-settings-page'))
+const HelpPage = lazy(() => import('../components/help-page'))
 
 const LazyLoadSpinner = () => (
-  <div className="w-full h-full flex items-center justify-center bg-gray-50">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
+  <div className="w-full h-full flex items-center justify-center bg-secondary">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
   </div>
 )
-
-const pageTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.3 }
-}
-
-const slideTransition = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-  transition: { duration: 0.3 }
-}
 
 // Wrapper components that use hooks for navigation
 
@@ -47,21 +32,33 @@ const ChatViewWrapper = () => {
   const navigate = useNavigate()
   const { logout } = useSession()
 
+  const handleNewChat = () => {
+    // Trigger new chat by navigating to home with a state flag
+    navigate('/home', { state: { newChat: true } })
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="w-full h-full"
+    <AppShell
+      onNewChat={handleNewChat}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
     >
-      <ChatView
-        onIntegrationsClick={() => navigate('/integrations')}
-        onLogout={async () => {
-          await logout()
-          navigate('/')
-        }}
-      />
-    </motion.div>
+      <div className="w-full h-full">
+        <ChatView
+          onIntegrationsClick={() => navigate('/integrations')}
+          onHelpClick={() => navigate('/help')}
+          onLogout={handleLogout}
+          onWorkspaceSettings={() => navigate('/settings/workspace')}
+        />
+      </div>
+    </AppShell>
   )
 }
 
@@ -70,12 +67,7 @@ const MainViewWrapper = () => {
   const { logout } = useSession()
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="w-full h-full"
-    >
+    <div className="w-full h-full">
       <MainView
         onLogout={async () => {
           await logout()
@@ -104,85 +96,199 @@ const MainViewWrapper = () => {
           navigate(`/insights/protect?${params.toString()}`, { state: { showDatePicker: true } })
         }}
       />
-    </motion.div>
+    </div>
   )
 }
 
 const IntegrationsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
-      <IntegrationsPage onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <IntegrationsPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
+  )
+}
+
+const HelpWrapper = () => {
+  const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
+  return (
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <HelpPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
 const WorkspaceSettingsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
-      <WorkspaceSettingsPage onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <WorkspaceSettingsPage onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
 const GrowInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
 
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <GrowInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <InsightPage
+          insightType="grow"
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
 const OptimizeInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
 
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <OptimizeInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <InsightPage
+          insightType="optimize"
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
 const ProtectInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
   const dateRange = searchParams.get('range') || '30_days'
 
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <ProtectInsightsStreaming
-        onBack={() => navigate('/home')}
-        initialDateRange={dateRange}
-        platforms={platforms}
-      />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <InsightPage
+          insightType="protect"
+          onBack={() => navigate('/home')}
+          initialDateRange={dateRange}
+          platforms={platforms}
+        />
+      </div>
+    </AppShell>
   )
 }
 
 const SummaryInsightsWrapper = () => {
   const navigate = useNavigate()
+  const { logout } = useSession()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   return (
-    <motion.div {...slideTransition} className="w-full h-full">
-      <SummaryInsights onBack={() => navigate('/home')} />
-    </motion.div>
+    <AppShell
+      onNewChat={() => navigate('/home', { state: { newChat: true } })}
+      onIntegrationsClick={() => navigate('/integrations')}
+      onHelpClick={() => navigate('/help')}
+      onLogout={handleLogout}
+      onWorkspaceSettings={() => navigate('/settings/workspace')}
+    >
+      <div className="w-full h-full">
+        <SummaryInsights onBack={() => navigate('/home')} />
+      </div>
+    </AppShell>
   )
 }
 
@@ -196,7 +302,7 @@ const InviteWrapper = ({ onAccepted }: { onAccepted: (tenantId: string, skip?: b
   }
 
   return (
-    <motion.div {...pageTransition} className="w-full h-full">
+    <div className="w-full h-full">
       <InviteLandingPage
         inviteId={inviteId}
         onAccepted={onAccepted}
@@ -205,7 +311,7 @@ const InviteWrapper = ({ onAccepted }: { onAccepted: (tenantId: string, skip?: b
           navigate('/')
         }}
       />
-    </motion.div>
+    </div>
   )
 }
 
@@ -237,20 +343,19 @@ export const AppRoutes = ({
 
   return (
     <Suspense fallback={<LazyLoadSpinner />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+      <Routes location={location}>
           {/* Public Routes */}
           <Route
             path="/"
             element={
-              <motion.div {...pageTransition} className="w-full h-full">
+              <div className="w-full h-full">
                 <VideoIntroView
                   onAuthSuccess={onAuthSuccess}
                   onMetaAuthSuccess={onMetaAuthSuccess}
                   hasSeenIntro={hasSeenIntro}
                   onOAuthPopupClosed={onOAuthPopupClosed}
                 />
-              </motion.div>
+              </div>
             }
           />
 
@@ -264,7 +369,7 @@ export const AppRoutes = ({
             path="/login"
             element={
               <ProtectedRoute>
-                <motion.div {...pageTransition} className="w-full h-full">
+                <div className="w-full h-full">
                   <CombinedAccountSelection
                     onAccountSelected={() => {}}
                     onBack={() => {
@@ -276,7 +381,7 @@ export const AppRoutes = ({
                       }
                     }}
                   />
-                </motion.div>
+                </div>
               </ProtectedRoute>
             }
           />
@@ -285,7 +390,7 @@ export const AppRoutes = ({
             path="/login/meta"
             element={
               <ProtectedRoute requireMetaAuth>
-                <motion.div {...pageTransition} className="w-full h-full">
+                <div className="w-full h-full">
                   <MetaAccountSelectionPage
                     onAccountSelected={() => navigate('/onboarding')}
                     onBack={() => {
@@ -293,7 +398,7 @@ export const AppRoutes = ({
                       navigate('/')
                     }}
                   />
-                </motion.div>
+                </div>
               </ProtectedRoute>
             }
           />
@@ -335,6 +440,15 @@ export const AppRoutes = ({
             element={
               <ProtectedRoute>
                 <IntegrationsWrapper />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute>
+                <HelpWrapper />
               </ProtectedRoute>
             }
           />
@@ -384,8 +498,7 @@ export const AppRoutes = ({
               </ProtectedRoute>
             }
           />
-        </Routes>
-      </AnimatePresence>
+      </Routes>
     </Suspense>
   )
 }

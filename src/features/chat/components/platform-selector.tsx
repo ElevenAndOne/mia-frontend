@@ -1,11 +1,7 @@
+import { useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-interface Platform {
-  id: string
-  name: string
-  icon: string
-  connected: boolean
-}
+import { useEscapeKey, useClickOutside } from '../../overlay'
+import type { Platform } from '../types'
 
 interface PlatformSelectorProps {
   isOpen: boolean
@@ -15,94 +11,79 @@ interface PlatformSelectorProps {
   onToggle: (platformId: string) => void
 }
 
-export const PlatformSelector = ({
-  isOpen,
-  onClose,
-  platforms,
-  selectedPlatforms,
-  onToggle
-}: PlatformSelectorProps) => {
+export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms, onToggle }: PlatformSelectorProps) => {
+  const popupRef = useRef<HTMLDivElement>(null)
+
+  // Use overlay hooks for consistent behavior
+  useEscapeKey(onClose, isOpen)
+  useClickOutside([popupRef], onClose, isOpen)
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40"
-            onClick={onClose}
-          />
+        <motion.div
+          ref={popupRef}
+          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+          transition={{ duration: 0.15 }}
+          className="absolute bottom-full left-0 mb-2 bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden z-50 min-w-[240px]"
+        >
+          <div className="flex flex-col p-1 gap-0.5">
+            {platforms.map((platform) => {
+              const isSelected = selectedPlatforms.includes(platform.id)
+              const isDisabled = !platform.connected
 
-          {/* Popup */}
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50 min-w-[240px]"
-          >
-            <div className="py-2">
-              {platforms.map((platform) => {
-                const isSelected = selectedPlatforms.includes(platform.id)
-                const isDisabled = !platform.connected
-
-                return (
-                  <button
-                    key={platform.id}
-                    onClick={() => !isDisabled && onToggle(platform.id)}
-                    disabled={isDisabled}
-                    className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${
-                      isDisabled
-                        ? 'opacity-50 cursor-not-allowed'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={platform.icon}
-                        alt={platform.name}
-                        className="w-6 h-6"
-                      />
-                      <span className={`font-medium ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
-                        {platform.name}
-                      </span>
-                    </div>
-
-                    {/* Toggle switch */}
-                    <div
-                      className={`w-11 h-6 rounded-full relative transition-colors ${
-                        isSelected && !isDisabled
-                          ? 'bg-gray-900'
-                          : 'bg-gray-200'
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                          isSelected && !isDisabled
-                            ? 'translate-x-6'
-                            : 'translate-x-1'
-                        }`}
-                      />
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Footer hint */}
-            {platforms.some(p => !p.connected) && (
-              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Connect more platforms in Integrations
-                </p>
-              </div>
-            )}
-          </motion.div>
-        </>
+              return <PlatformItem key={platform.id} platform={platform} isSelected={isSelected} isDisabled={isDisabled} onToggle={onToggle} />
+            })}
+          </div>
+        </motion.div>
       )}
     </AnimatePresence>
+  )
+}
+
+type PlatformItem = {
+  isSelected: boolean;
+  isDisabled: boolean;
+  platform: Platform;
+  onToggle: (id: string) => void;
+}
+
+function PlatformItem({ platform, isSelected, isDisabled, onToggle }: PlatformItem) {
+  return (
+    <button
+      onClick={() => !isDisabled && onToggle(platform.id)}
+      disabled={isDisabled}
+      className={`w-full flex items-center justify-between px-2 py-2 transition-colors rounded-lg ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-secondary'}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-6 h-6 flex items-center justify-center shrink-0 rounded-md overflow-clip">
+          {platform.icon}
+        </div>
+        <span className={`w-full subheading-md text-left ${isDisabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+          {platform.name}
+        </span>
+      </div>
+
+      {/* Toggle switch */}
+      <Toggle isSelected={isSelected} isDisabled={isDisabled} />
+    </button>
+  )
+}
+
+type ToggleProps = {
+  isSelected: boolean
+  isDisabled: boolean
+}
+
+function Toggle({ isSelected, isDisabled }: ToggleProps) {
+  return (
+    <div className='w-8.5 h-6 p-1'>
+      <div className={`rounded-full relative transition-colors w-full h-full ${isSelected && !isDisabled ? 'bg-brand-solid' : 'bg-quaternary'}`} >
+        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-primary shadow transition-transform ${isSelected && !isDisabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
+      </div>
+    </div>
   )
 }
 

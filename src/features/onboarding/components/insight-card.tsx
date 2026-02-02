@@ -8,9 +8,9 @@ interface InsightCardProps {
 }
 
 const TYPE_STYLES = {
-  grow: { badgeBg: 'bg-green-100', badgeText: 'text-green-700', metricColor: 'text-green-600' },
-  optimise: { badgeBg: 'bg-yellow-100', badgeText: 'text-yellow-700', metricColor: 'text-yellow-600' },
-  protect: { badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', metricColor: 'text-blue-600' }
+  grow: { badgeBg: 'bg-success-secondary', badgeText: 'text-success', metricColor: 'text-success' },
+  optimize: { badgeBg: 'bg-warning-secondary', badgeText: 'text-warning', metricColor: 'text-warning' },
+  protect: { badgeBg: 'bg-utility-info-200', badgeText: 'text-utility-info-700', metricColor: 'text-utility-info-600' }
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -29,10 +29,10 @@ export const InsightCard = ({ data }: InsightCardProps) => {
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm max-w-[90%]"
+      className="bg-primary border border-secondary rounded-2xl p-4 shadow-sm max-w-[90%]"
     >
       <div className="flex items-center justify-between mb-3">
-        <span className={`${styles.badgeBg} ${styles.badgeText} text-xs font-medium px-2 py-1 rounded-full`}>
+        <span className={`${styles.badgeBg} ${styles.badgeText} subheading-sm px-2 py-1 rounded-full`}>
           {typeLabel}
         </span>
         <BookmarkButton />
@@ -40,18 +40,18 @@ export const InsightCard = ({ data }: InsightCardProps) => {
 
       <div className="flex items-center gap-2 mb-2">
         {showIcon && <PlatformIcon platform={data.platform} className="inline-flex items-center justify-center w-5 h-5" />}
-        <span className="font-semibold text-gray-900">{platformLabel}</span>
+        <span className="label-md text-primary">{platformLabel}</span>
       </div>
 
-      <p className="text-gray-600 text-sm mb-3">{data.title}</p>
+      <p className="paragraph-sm text-tertiary mb-3">{data.title}</p>
 
       <div className="space-y-3 mb-4">
         {data.metrics.map((metric, idx) => (
           <div key={idx} className="flex items-baseline gap-2 flex-wrap">
-            <span className={`text-4xl font-bold ${styles.metricColor}`}>{metric.value}</span>
-            <span className="text-gray-600 text-sm">{metric.label}</span>
+            <span className={`title-h3 ${styles.metricColor}`}>{metric.value}</span>
+            <span className="paragraph-sm text-tertiary">{metric.label}</span>
             {metric.badge && (
-              <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-success-secondary text-success subheading-sm px-2 py-0.5 rounded-full">
                 {metric.badge}
               </span>
             )}
@@ -59,7 +59,7 @@ export const InsightCard = ({ data }: InsightCardProps) => {
         ))}
       </div>
 
-      <p className="text-gray-700 text-sm">{data.description}</p>
+      <p className="paragraph-sm text-secondary">{data.description}</p>
     </motion.div>
   )
 }

@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { useSession } from '../../contexts/session-context'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
@@ -11,6 +10,7 @@ import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import PlatformGearMenu from '../../components/platform-gear-menu'
+import { TopBar } from '../../components/top-bar'
 
 interface Integration {
   id: string
@@ -466,61 +466,56 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <div
-      className="w-full h-screen bg-white flex flex-col overflow-hidden"
-      style={{ fontFamily: 'Figtree, sans-serif', maxWidth: '393px', margin: '0 auto' }}
+      className="w-full h-screen bg-primary flex flex-col overflow-hidden"
     >
       {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-100 shrink-0">
-        <button onClick={onBack} className="flex items-center gap-2 text-gray-600 mb-3">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="text-sm font-medium">Back</span>
-        </button>
-        <h1 className="text-xl font-bold text-gray-900">Integrations</h1>
-      </div>
+      <TopBar
+        title="Integrations"
+        onBack={onBack}
+        className="border-b border-tertiary"
+      />
 
       {/* Content - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Loading State */}
         {loading && integrations.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
           </div>
         )}
 
         {/* Connected Sources Section */}
         {!loading && connectedSources.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-6 max-w-3xl mx-auto w-full">
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-900">{connectedSources.length} Sources</h2>
-              <p className="text-xs text-gray-500">Connect your data sources to unlock powerful new insights</p>
+              <h2 className="label-md text-primary">{connectedSources.length} Sources</h2>
+              <p className="paragraph-xs text-quaternary">Connect your data sources to unlock powerful new insights</p>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg mx-auto mb-1">
+              <div className="bg-secondary rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
                   <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-gray-500">Connected</p>
-                <p className="text-sm font-semibold text-gray-900">{connectedSources.length}</p>
+                <p className="paragraph-xs text-quaternary">Connected</p>
+                <p className="label-sm text-primary">{connectedSources.length}</p>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg mx-auto mb-1">
+              <div className="bg-secondary rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-utility-info-200 rounded-lg mx-auto mb-1">
                   <img src="/icons/datapoints.svg" alt="" className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-gray-500">Data Points</p>
-                <p className="text-sm font-semibold text-gray-900">{totalDataPoints.toLocaleString()}</p>
+                <p className="paragraph-xs text-quaternary">Data Points</p>
+                <p className="label-sm text-primary">{totalDataPoints.toLocaleString()}</p>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg mx-auto mb-1">
+              <div className="bg-secondary rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
                   <img src="/icons/autosync.svg" alt="" className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-gray-500">Auto-Sync</p>
-                <p className="text-sm font-semibold text-gray-900">{autoSyncCount}</p>
+                <p className="paragraph-xs text-quaternary">Auto-Sync</p>
+                <p className="label-sm text-primary">{autoSyncCount}</p>
               </div>
             </div>
 
@@ -535,23 +530,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       onClick={() => handleSelectIntegration(integration.id)}
                       className={`w-full text-left transition-all ${
                         isSelected
-                          ? 'bg-blue-50 border-2 border-blue-500'
-                          : 'bg-white border-2 border-gray-200'
-                      } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-blue-300 ${
+                          ? 'bg-utility-info-100 border-2 border-brand'
+                          : 'bg-primary border-2 border-secondary'
+                      } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${
                         loading ? 'opacity-50 pointer-events-none' : ''
                       }`}
                     >
-                      <div className="flex items-start gap-3 mb-2">
-                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                          <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
+                        <div className="flex items-start gap-3 mb-2">
+                          <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                            <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
                           </div>
-                          <p className="text-xs text-gray-500 truncate">{integration.description}</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-2">
+                            <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
+                            </div>
+                          <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
+                          </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           {/* Platform Gear Menu - unified dropdown for all platforms */}
                           <PlatformGearMenu
                             platformId={integration.id}
@@ -590,7 +585,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             }}
                           />
                           {isSelected ? (
-                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500">
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-brand-solid">
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                               </svg>
@@ -601,7 +596,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                         </div>
                       </div>
                       {integration.dataPoints && (
-                        <div className="flex items-center justify-between text-xs text-gray-500 mt-2 pl-[52px]">
+                        <div className="flex items-center justify-between paragraph-xs text-quaternary mt-2 pl-[52px]">
                           <span>{integration.dataPoints.toLocaleString()} data points</span>
                           <span>Last: {integration.lastSync}</span>
                         </div>
@@ -616,32 +611,32 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
         {/* Available Integrations Section */}
         {!loading && availableSources.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Available Integrations</h2>
-            <p className="text-xs text-gray-500 mb-4">Connect your data sources to unlock powerful new insights</p>
+          <div className="mb-6 max-w-3xl mx-auto w-full">
+            <h2 className="label-md text-primary mb-1">Available Integrations</h2>
+            <p className="paragraph-xs text-quaternary mb-4">Connect your data sources to unlock powerful new insights</p>
 
             <div className="space-y-2">
               {availableSources.map(integration => (
-                <div key={integration.id} className="bg-white border border-gray-200 rounded-xl p-3 overflow-hidden">
+                <div key={integration.id} className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0">
                         <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <h3 className="font-semibold text-sm text-gray-900 truncate">{integration.name}</h3>
-                        <p className="text-xs text-gray-500 truncate">{integration.description}</p>
+                        <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
+                        <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
                       disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg font-medium text-xs flex-shrink-0 ${
+                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
                         integration.id === 'linkedin' || integration.id === 'tiktok'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
                           : connectingId === integration.id
-                          ? 'bg-gray-600 text-white cursor-wait'
-                          : 'bg-black text-white hover:bg-gray-800'
+                          ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
+                          : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
                       }`}
                     >
                       {integration.id === 'linkedin' || integration.id === 'tiktok'
@@ -657,77 +652,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        {/* Need Help Section */}
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Need help?</h2>
-          <p className="text-xs text-gray-500 mb-3">Having trouble connecting your data sources? Here are some helpful resources:</p>
-
-          <div className="space-y-2 pl-2">
-            <Link
-              to="/docs/integration-guide"
-              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium text-sm text-gray-900">Integration Documentation</h3>
-                  <p className="text-xs text-gray-500">Step-by-step guides</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              to="/docs/video-tutorial"
-              className="block w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium text-sm text-gray-900">Setup Video Tutorial</h3>
-                  <p className="text-xs text-gray-500">Watch how to connect</p>
-                </div>
-              </div>
-            </Link>
-
-            <button className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-left hover:bg-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium text-sm text-gray-900">Contact Support</h3>
-                  <p className="text-xs text-gray-500">Get help from our team</p>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
+        
       </div>
 
       {/* Brevo API Key Modal */}
       {showBrevoModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+        <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
             {/* Header */}
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <img src="/icons/brevo.jpeg" alt="Brevo" className="w-10 h-10" />
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="title-h6 text-primary">
                   {currentAccountData?.brevo_api_key ? 'Manage Brevo Connection' : 'Connect Brevo'}
                 </h2>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="paragraph-sm text-tertiary">
                 {currentAccountData?.brevo_api_key
                   ? `Connected to ${currentAccountData.brevo_account_name || 'your Brevo account'} for ${selectedAccount?.name || 'this account'}`
                   : `Enter your Brevo API key to connect email marketing for ${selectedAccount?.name || 'this account'}.`
@@ -737,9 +677,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
             {/* Instructions - only show when NOT connected */}
             {!currentAccountData?.brevo_api_key && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-semibold text-blue-900 mb-2">How to get your API key:</h3>
-                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+              <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
+                <h3 className="subheading-md text-utility-info-700 mb-2">How to get your API key:</h3>
+                <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
                   <li>Log in to your Brevo account</li>
                   <li>Go to Settings → SMTP & API → API Keys</li>
                   <li>Click "Generate a new API key"</li>
@@ -749,7 +689,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   href="https://app.brevo.com/settings/keys/api"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
+                  className="inline-flex items-center gap-1 mt-3 subheading-sm text-utility-info-600 hover:text-utility-info-700"
                 >
                   Open Brevo API Settings
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -762,7 +702,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             {/* API Key Input - only show when NOT connected */}
             {!currentAccountData?.brevo_api_key && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block subheading-md text-secondary mb-2">
                   API Key
                 </label>
                 <input
@@ -770,11 +710,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   value={brevoApiKey}
                   onChange={(e) => setBrevoApiKey(e.target.value)}
                   placeholder="xkeysib-..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
                   disabled={brevoSubmitting}
                 />
                 {brevoError && (
-                  <p className="mt-2 text-xs text-red-600">{brevoError}</p>
+                  <p className="mt-2 paragraph-xs text-error">{brevoError}</p>
                 )}
               </div>
             )}
@@ -784,14 +724,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               <div className="mb-4 space-y-3">
                 {/* Account Name */}
                 {currentAccountData.brevo_account_name && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
                     <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <p className="text-sm font-semibold text-green-900">{currentAccountData.brevo_account_name}</p>
-                        <p className="text-xs text-green-700">Connected Brevo account</p>
+                        <p className="subheading-md text-success">{currentAccountData.brevo_account_name}</p>
+                        <p className="paragraph-xs text-success">Connected Brevo account</p>
                       </div>
                     </div>
                   </div>
@@ -799,10 +739,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
                 {/* Masked API Key */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block subheading-md text-secondary mb-2">
                     API Key
                   </label>
-                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-600">
+                  <div className="w-full px-4 py-3 border border-primary rounded-lg bg-secondary paragraph-sm font-mono text-tertiary">
                     {currentAccountData.brevo_api_key.substring(0, 10)}...
                   </div>
                 </div>
@@ -818,7 +758,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   setBrevoError('')
                 }}
                 disabled={brevoSubmitting}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
               >
                 {currentAccountData?.brevo_api_key ? 'Close' : 'Cancel'}
               </button>
@@ -826,7 +766,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <button
                   onClick={handleBrevoUnlink}
                   disabled={brevoSubmitting}
-                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {brevoSubmitting ? 'Unlinking...' : 'Unlink'}
                 </button>
@@ -834,7 +774,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <button
                   onClick={handleBrevoSubmit}
                   disabled={brevoSubmitting || !brevoApiKey.trim()}
-                  className="flex-1 px-4 py-3 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {brevoSubmitting ? 'Connecting...' : 'Connect'}
                 </button>

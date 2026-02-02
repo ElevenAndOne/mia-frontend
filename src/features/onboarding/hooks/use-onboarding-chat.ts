@@ -211,7 +211,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
           showExplainerBoxes()
           break
         case 'grow':
-        case 'optimise':
+        case 'optimize':
         case 'protect':
           await handleInsightChoice(action)
           break

@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSession } from '../contexts/session-context'
-import { apiFetch } from '../utils/api'
+import { formatDateRangeDisplay } from '../utils/date-range'
+import { getAccountIcon } from '../utils/account-icon'
+import { sendChatMessage } from '../features/chat/services/chat-service'
 import { usePlatformPreferences } from '../features/integrations/hooks/use-platform-preferences'
 import BrevoConnectionModal from './brevo-connection-modal'
 import DateRangeSelector from './date-range-selector'
@@ -15,34 +17,6 @@ interface MainViewProps {
   onGrowQuickClick?: (platforms?: string[]) => void
   onOptimizeQuickClick?: (platforms?: string[]) => void
   onProtectQuickClick?: (platforms?: string[]) => void
-}
-
-// Helper function to format date range for display
-const formatDateRangeDisplay = (dateRange: string): string => {
-  // Handle preset ranges
-  if (dateRange === '7_days') return '7d'
-  if (dateRange === '14_days') return '14d'
-  if (dateRange === '30_days') return '30d'
-  if (dateRange === '90_days') return '90d'
-
-  // Handle custom range (format: YYYY-MM-DD_YYYY-MM-DD)
-  if (dateRange.includes('_') && dateRange.match(/^\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}$/)) {
-    const [startStr, endStr] = dateRange.split('_')
-    const start = new Date(startStr)
-    const end = new Date(endStr)
-
-    // Format: "Aug 1 - Nov 16" (no year to keep it compact)
-    const formatDate = (date: Date) => {
-      const month = date.toLocaleDateString('en-US', { month: 'short' })
-      const day = date.getDate()
-      return `${month} ${day}`
-    }
-
-    return `${formatDate(start)} - ${formatDate(end)}`
-  }
-
-  // Fallback
-  return '90d'
 }
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
@@ -65,6 +39,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   const [showMore, setShowMore] = useState(false) // Toggle for More button
   const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
   const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
+  const datePickerButtonRef = useRef<HTMLButtonElement>(null)
 
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, Mailchimp, HubSpot
@@ -147,20 +122,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     }
   }, [isAccountSwitching, selectAccount, onIntegrationsClick])
 
-  const getAccountIcon = useCallback((businessType: string) => {
-    switch (businessType?.toLowerCase()) {
-      case 'food':
-        return '🍎'
-      case 'engineering':
-        return '⚙️'
-      case 'retail':
-        return '🏪'
-      default:
-        return '🏢'
-    }
-  }, [])
-
-
   const handleChatSubmit = useCallback(async (message: string) => {
     if (!message.trim()) return
 
@@ -180,27 +141,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
     try {
       
-      const response = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          message: message,
-          session_id: sessionId,
-          user_id: user?.google_user_id || '',
-          google_ads_id: selectedAccount?.google_ads_id,
-          ga4_property_id: selectedAccount?.ga4_property_id,
-          date_range: dateRange
-        }),
+      const result = await sendChatMessage({
+        message,
+        session_id: sessionId,
+        user_id: user?.google_user_id || '',
+        google_ads_id: selectedAccount?.google_ads_id,
+        ga4_property_id: selectedAccount?.ga4_property_id,
+        date_range: dateRange,
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const result = await response.json()
 
       setIsChatLoading(false) // Remove loading state
 
@@ -226,9 +174,9 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, user?.google_user_id])
 
   return (
-    <div className="w-full h-full relative bg-white flex flex-col">
+    <div className="w-full h-full relative bg-primary flex flex-col">
       {/* Header - Conditional: Burger Menu OR Back Button */}
-      <div className={`flex items-center px-4 py-1 safe-top relative z-20 flex-shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
+      <div className={`flex items-center px-4 py-1 safe-top relative z-20 shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
           <>
             {/* Menu Icon - Using Figma SVG */}
@@ -242,53 +190,53 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
               {/* New Clean Menu Dropdown */}
               {showBurgerMenu && !showAccountSelector && !showWorkspaceSwitcher && (
-                <div className="absolute top-8 left-0 bg-white rounded-lg shadow-lg border border-gray-200 min-w-64 z-30">
+                <div className="absolute top-8 left-0 bg-primary rounded-lg shadow-lg border border-secondary min-w-64 z-30">
                   {/* Accounts Button */}
                   <button
                     onClick={() => setShowAccountSelector(true)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                        className="w-6 h-6 rounded-full flex items-center justify-center paragraph-xs"
                         style={{ backgroundColor: selectedAccount?.color }}
                       >
                         {getAccountIcon(selectedAccount?.business_type || '')}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">Accounts</div>
-                        <div className="text-xs text-gray-500">{selectedAccount?.name}</div>
+                        <div className="subheading-md text-primary">Accounts</div>
+                        <div className="paragraph-xs text-quaternary">{selectedAccount?.name}</div>
                       </div>
                     </div>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
 
                   {/* Divider */}
-                  <div className="border-t border-gray-100"></div>
+                  <div className="border-t border-tertiary"></div>
 
                   {/* Workspaces Button - Jan 2025 */}
                   <button
                     onClick={() => setShowWorkspaceSwitcher(true)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                    className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
+                      <div className="w-6 h-6 rounded-lg bg-brand-solid flex items-center justify-center label-xs text-primary-onbrand">
                         {activeWorkspace?.name?.charAt(0)?.toUpperCase() || 'W'}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">Workspaces</div>
-                        <div className="text-xs text-gray-500">{activeWorkspace?.name || 'No workspace'}</div>
+                        <div className="subheading-md text-primary">Workspaces</div>
+                        <div className="paragraph-xs text-quaternary">{activeWorkspace?.name || 'No workspace'}</div>
                       </div>
                     </div>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
 
                   {/* Divider */}
-                  <div className="border-t border-gray-100"></div>
+                  <div className="border-t border-tertiary"></div>
 
                   {/* Integrations Button */}
                   <button
@@ -296,18 +244,18 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       onIntegrationsClick?.()
                       setShowBurgerMenu(false)
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
                   >
                     <div className="relative">
-                      <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-primary-solid flex items-center justify-center">
                         <img src="/icons/plugin.svg" alt="Integrations" className="w-3.5 h-3.5 brightness-0 invert" />
                       </div>
                     </div>
-                    <div className="font-medium text-gray-900 text-base">Integrations</div>
+                    <div className="subheading-bg text-primary">Integrations</div>
                   </button>
 
                   {/* Divider */}
-                  <div className="border-t border-gray-100"></div>
+                  <div className="border-t border-tertiary"></div>
 
                   {/* Sign Out Button */}
                   <button
@@ -315,12 +263,12 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       _onLogout()
                       setShowBurgerMenu(false)
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-700">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-secondary">
                       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    <div className="font-medium text-gray-900 text-base">Sign Out</div>
+                    <div className="subheading-bg text-primary">Sign Out</div>
                   </button>
                 </div>
               )}
@@ -347,16 +295,16 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
               {/* Account Selector Popout */}
               {showBurgerMenu && showAccountSelector && (
-                <div className="absolute top-8 left-0 bg-white rounded-lg shadow-lg border border-gray-200 min-w-64 z-30">
+                <div className="absolute top-8 left-0 bg-primary rounded-lg shadow-lg border border-secondary min-w-64 z-30">
                   {/* Back Button */}
                   <button
                     onClick={() => setShowAccountSelector(false)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100"
+                    className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3 border-b border-tertiary"
                   >
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                     </svg>
-                    <div className="font-medium text-gray-900 text-sm">Back</div>
+                    <div className="subheading-md text-primary">Back</div>
                   </button>
 
                   {/* Available Accounts */}
@@ -366,29 +314,29 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                         key={account.id}
                         onClick={() => handleAccountSwitch(account.id)}
                         disabled={isAccountSwitching || account.id === selectedAccount?.id}
-                        className={`w-full px-3 py-2 text-left rounded-lg flex items-center gap-3 text-sm transition-colors ${
+                        className={`w-full px-3 py-2 text-left rounded-lg flex items-center gap-3 paragraph-sm transition-colors ${
                           account.id === selectedAccount?.id
-                            ? 'bg-gray-50 text-gray-400 cursor-default'
-                            : 'hover:bg-gray-50 text-gray-700'
+                            ? 'bg-secondary text-placeholder-subtle cursor-default'
+                            : 'hover:bg-secondary text-secondary'
                         }`}
                       >
                         <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                          className="w-6 h-6 rounded-full flex items-center justify-center paragraph-xs"
                           style={{ backgroundColor: account.color }}
                         >
                           {getAccountIcon(account.business_type)}
                         </div>
                         <div className="flex-1">
-                          <div className="font-medium">{account.name}</div>
-                          <div className="text-xs text-gray-500">{account.business_type}</div>
+                          <div className="subheading-md text-primary">{account.name}</div>
+                          <div className="paragraph-xs text-quaternary">{account.business_type}</div>
                         </div>
                         {account.id === selectedAccount?.id && (
-                          <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
                         )}
                         {isAccountSwitching && account.id !== selectedAccount?.id && (
-                          <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-primary border-t-utility-info-500 rounded-full animate-spin"></div>
                         )}
                       </button>
                     ))}
@@ -403,7 +351,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             {/* Back Button (Left) */}
             <button
               onClick={() => setShowChat(false)}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-full border border-gray-100 text-gray-800 font-medium hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-full border border-tertiary text-primary subheading-md hover:bg-tertiary transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -412,16 +360,18 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             </button>
 
             {/* Mia Header (Center) - Absolutely positioned to stay centered */}
-            <h2 className="absolute left-1/2 transform -translate-x-1/2 text-lg font-semibold text-black">Mia</h2>
+            <h2 className="absolute left-1/2 transform -translate-x-1/2 label-bg text-primary">Mia</h2>
 
             {/* Date Range Picker Button (Right) */}
             <button
+              ref={datePickerButtonRef}
+              type="button"
               onClick={() => setShowDatePicker(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-gray-700 text-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary rounded-full border border-secondary subheading-md text-secondary hover:bg-secondary transition-colors whitespace-nowrap"
               title="Change date range"
             >
               <img src="/icons/calendar.svg" alt="Calendar" className="w-3.5 h-3.5" />
-              <span>{formatDateRangeDisplay(dateRange)}</span>
+              <span>{formatDateRangeDisplay(dateRange, 'short')}</span>
             </button>
           </>
         )}
@@ -432,28 +382,16 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
         {!showChat ? (
           <>
             {/* Greeting - Centered with uniform spacing */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center" style={{ width: '340px', marginTop: '-85px' }}>
-              <h2 style={{
-                color: '#1B1B1B',
-                textAlign: 'center',
-                fontFamily: 'Geologica, system-ui, sans-serif',
-                fontSize: '26px',
-                fontStyle: 'normal',
-                fontWeight: 400,
-                lineHeight: '110%',
-                letterSpacing: '-0.78px',
-                marginBottom: '4px'
-              }}>Hello {user?.name?.split(' ')[0] || 'there'}.</h2>
-              <p style={{
-                color: '#1B1B1B',
-                fontFamily: 'Geologica, system-ui, sans-serif',
-                fontSize: '26px',
-                fontStyle: 'normal',
-                fontWeight: 400,
-                lineHeight: '110%',
-                letterSpacing: '-0.78px',
-                margin: '0px'
-              }}>How can I help today?</p>
+            <div
+              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center"
+              style={{ width: '340px', marginTop: '-85px', fontFamily: 'Geologica, system-ui, sans-serif' }}
+            >
+              <h2 className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em] mb-1">
+                Hello {user?.name?.split(' ')[0] || 'there'}.
+              </h2>
+              <p className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em]">
+                How can I help today?
+              </p>
             </div>
 
             {/* Platform Toggles - Show all 6 platforms */}
@@ -483,7 +421,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       }}
                     />
                     {/* Tooltip */}
-                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-primary-solid text-primary-onbrand paragraph-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                       {platform.name}{!isConnected && ' (not connected)'}
                     </span>
                   </button>
@@ -494,7 +432,10 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             {/* New Button Layout - Horizontal Pills */}
 
             {/* Row 1: Grow, Optimise, Protect - Horizontal */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '55px' }}>
+            <div
+              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2"
+              style={{ marginTop: '55px', fontFamily: 'Geologica, system-ui, sans-serif' }}
+            >
               {onGrowQuickClick && (
                 <button
                   onClick={(e) => {
@@ -503,20 +444,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#000',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
                 >
                   Grow
                 </button>
@@ -530,20 +458,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#000',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
                 >
                   Optimise
                 </button>
@@ -557,20 +472,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
                     }
                   }}
-                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#000',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
                 >
                   Protect
                 </button>
@@ -579,50 +481,30 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
             {/* Row 2: More button OR Summary + Chat with Mia */}
             {!showMore ? (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ marginTop: '107px' }}>
+              <div
+                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                style={{ marginTop: '107px', fontFamily: 'Geologica, system-ui, sans-serif' }}
+              >
                 <button
                   onClick={(e) => {
                     e.preventDefault()
                     setShowMore(true)
                   }}
-                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#000',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    opacity: 0.5,
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-6 py-3 opacity-50 transition-all duration-200 active:scale-95 touch-manipulation"
                 >
                   More
                 </button>
               </div>
             ) : (
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2" style={{ marginTop: '107px', marginLeft: '5px' }}>
+              <div
+                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2"
+                style={{ marginTop: '107px', marginLeft: '5px', fontFamily: 'Geologica, system-ui, sans-serif' }}
+              >
                 {/* Summary button - disabled/coming soon */}
                 <button
                   disabled
                   title="Coming Soon"
-                  className="inline-flex items-center justify-center rounded-full cursor-not-allowed opacity-50"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#999',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    whiteSpace: 'nowrap'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full cursor-not-allowed opacity-50 bg-secondary text-quaternary paragraph-sm px-6 py-3 whitespace-nowrap"
                 >
                   Summary
                 </button>
@@ -632,21 +514,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                     e.preventDefault()
                     setTimeout(() => setShowChat(true), 150)
                   }}
-                  className="inline-flex items-center justify-center rounded-full transition-all duration-200 active:scale-95"
-                  style={{
-                    backgroundColor: '#E6E6E6',
-                    color: '#000',
-                    fontFamily: 'Geologica, system-ui, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    paddingLeft: '20px',
-                    paddingRight: '20px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    whiteSpace: 'nowrap',
-                    WebkitTapHighlightColor: 'transparent',
-                    touchAction: 'manipulation'
-                  }}
+                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation"
                 >
                   Chat with Mia
                 </button>
@@ -663,10 +531,10 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                 <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] p-3 rounded-2xl ${
                     message.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-50 text-gray-800 border border-gray-100'
+                      ? 'bg-brand-solid text-primary-onbrand'
+                      : 'bg-secondary text-primary border border-tertiary'
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed select-text">{message.content}</p>
+                    <p className="paragraph-sm whitespace-pre-wrap leading-relaxed select-text">{message.content}</p>
                   </div>
                 </div>
               ))}
@@ -674,14 +542,14 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
               {/* Loading Indicator */}
               {isChatLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 max-w-[85%]">
-                    <div className="flex items-center gap-2 text-gray-600">
+                  <div className="bg-secondary border border-tertiary rounded-2xl p-3 max-w-[85%]">
+                    <div className="flex items-center gap-2 text-tertiary">
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm">Mia is analyzing...</span>
+                      <span className="paragraph-sm">Mia is analyzing...</span>
                     </div>
                   </div>
                 </div>
@@ -689,12 +557,12 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
             </div>
 
             {/* Chat Input - Fixed at bottom and centered */}
-            <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-white flex justify-center safe-bottom">
+            <div className="shrink-0 p-4 border-t border-tertiary bg-primary flex justify-center safe-bottom">
               <div className="flex gap-2" style={{ maxWidth: '393px', width: '100%' }}>
                 <input
                   type="text"
                   placeholder="Ask about your marketing performance..."
-                  className="flex-1 px-4 py-3.5 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="flex-1 px-4 py-3.5 border border-primary rounded-full focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       const target = e.target as HTMLInputElement
@@ -711,7 +579,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                       input.value = ''
                     }
                   }}
-                  className="px-5 py-3.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="px-5 py-3.5 bg-brand-solid text-primary-onbrand rounded-full hover:bg-brand-solid-hover transition-colors subheading-md"
                   disabled={isChatLoading}
                 >
                   Send
@@ -750,6 +618,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
         onClose={() => setShowDatePicker(false)}
         selectedRange={dateRange}
         onApply={(range) => setDateRange(range)}
+        anchorRef={datePickerButtonRef}
       />
 
       {/* Create Workspace Modal - Jan 2025 */}

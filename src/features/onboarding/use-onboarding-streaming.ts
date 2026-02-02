@@ -1,5 +1,5 @@
 /**
- * Hook for streaming onboarding Grow summary with typing effect.
+ * Hook for streaming onboarding Grow summary.
  * Simpler than useStreamingInsightsParsed - no parsing, just text streaming.
  */
 import { useCallback } from 'react'
@@ -22,7 +22,7 @@ export function useOnboardingStreaming(): UseOnboardingStreamingReturn {
     processSSEStream,
     stopStreaming,
     reset
-  } = useStreamingCore({ tickInterval: 14, timeout: 65000 })
+  } = useStreamingCore({ timeout: 65000 })
 
   const startStreaming = useCallback(async (
     sessionId: string,

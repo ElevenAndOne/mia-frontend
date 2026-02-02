@@ -21,6 +21,29 @@ export function createApiUrl(path: string): string {
 }
 
 /**
+ * Create standard API headers with session ID
+ * @param sessionId - Session ID to include
+ * @param includeContentType - Whether to include Content-Type: application/json
+ * @returns Headers object
+ */
+export function createSessionHeaders(
+  sessionId?: string | null,
+  includeContentType = false
+): HeadersInit {
+  const headers: Record<string, string> = {}
+
+  if (sessionId) {
+    headers['X-Session-ID'] = sessionId
+  }
+
+  if (includeContentType) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  return headers
+}
+
+/**
  * Fetch wrapper that automatically uses the correct API base URL
  * @param path - API path (e.g., '/api/oauth/meta/auth-url')
  * @param options - Fetch options

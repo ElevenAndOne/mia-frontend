@@ -1,16 +1,22 @@
 import { useState } from 'react'
 import { useSession } from '../contexts/session-context'
-import { ModalShell } from './modal-shell'
+import { Modal } from '../features/overlay'
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean
   onClose: () => void
   defaultName?: string
   onSuccess?: (tenantId: string) => void
-  required?: boolean  // If true, user cannot dismiss the modal without creating
+  required?: boolean // If true, user cannot dismiss the modal without creating
 }
 
-const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, required = false }: CreateWorkspaceModalProps) => {
+const CreateWorkspaceModal = ({
+  isOpen,
+  onClose,
+  defaultName = '',
+  onSuccess,
+  required = false,
+}: CreateWorkspaceModalProps) => {
   const { createWorkspace } = useSession()
 
   const [workspaceName, setWorkspaceName] = useState(defaultName)
@@ -50,34 +56,19 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
   }
 
   return (
-    <ModalShell
+    <Modal
       isOpen={isOpen}
       onClose={onClose}
+      title={required ? 'Create Your First Workspace' : 'Create Workspace'}
+      size="md"
       closeOnOverlayClick={!required}
-      panelClassName="max-w-md overflow-hidden"
+      closeOnEscape={!required}
+      showCloseButton={!required}
+      panelClassName="overflow-hidden"
     >
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {required ? 'Create Your First Workspace' : 'Create Workspace'}
-          </h2>
-          {!required && (
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Content */}
       <div className="px-6 py-5">
-        <p className="text-gray-600 text-sm mb-4">
+        <p className="paragraph-sm text-tertiary mb-4">
           {required
             ? 'Name your workspace to get started. You can invite team members later.'
             : 'Create a workspace to organize your marketing data and collaborate with your team.'}
@@ -85,7 +76,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
 
         {/* Workspace Name Input */}
         <div className="mb-4">
-          <label htmlFor="workspace-name" className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label htmlFor="workspace-name" className="block subheading-md text-secondary mb-1.5">
             Workspace Name
           </label>
           <input
@@ -98,48 +89,60 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
             }}
             onKeyDown={handleKeyDown}
             placeholder="e.g., My Agency, Client Name"
-            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              error ? 'border-red-300 bg-red-50' : 'border-gray-200'
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent transition-all ${
+              error ? 'border-error-subtle bg-error-primary' : 'border-secondary'
             }`}
             autoFocus
             disabled={isCreating}
           />
-          {error && <p className="mt-1.5 text-sm text-red-500">{error}</p>}
+          {error && <p className="mt-1.5 paragraph-sm text-error">{error}</p>}
         </div>
 
-              {/* Features Preview */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-2">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">What you get:</h4>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Shared platform connections
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Team collaboration
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Role-based access control
-                  </li>
-                </ul>
-              </div>
-            </div>
+        {/* Features Preview */}
+        <div className="bg-secondary rounded-xl p-4 mb-2">
+          <h4 className="subheading-md text-secondary mb-2">What you get:</h4>
+          <ul className="space-y-2 paragraph-sm text-tertiary">
+            <li className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Shared platform connections
+            </li>
+            <li className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Team collaboration
+            </li>
+            <li className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-success" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Role-based access control
+            </li>
+          </ul>
+        </div>
+      </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+      <div className="px-6 py-4 bg-secondary border-t border-tertiary flex justify-end gap-3">
         {!required && (
           <button
             onClick={onClose}
             disabled={isCreating}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
           >
             Cancel
           </button>
@@ -147,7 +150,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
         <button
           onClick={handleCreate}
           disabled={isCreating || !workspaceName.trim()}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+          className="px-4 py-2 subheading-md text-primary-onbrand bg-brand-solid hover:bg-brand-solid-hover disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
         >
           {isCreating ? (
             <>
@@ -159,7 +162,7 @@ const CreateWorkspaceModal = ({ isOpen, onClose, defaultName = '', onSuccess, re
           )}
         </button>
       </div>
-    </ModalShell>
+    </Modal>
   )
 }
 

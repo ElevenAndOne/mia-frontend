@@ -1,6 +1,6 @@
 /**
  * Hook for streaming insights from Claude API via SSE
- * Provides real-time text streaming with smooth typing effect
+ * Provides real-time text streaming
  */
 import { useCallback } from 'react'
 import { useStreamingCore } from './use-streaming-core'
@@ -27,7 +27,7 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
     processSSEStream,
     stopStreaming,
     reset
-  } = useStreamingCore({ tickInterval: 15 })
+  } = useStreamingCore()
 
   const startStreaming = useCallback(async (
     insightType: 'grow' | 'optimize' | 'protect',
