@@ -13,7 +13,7 @@ interface ChatMessageListProps {
 }
 
 export const ChatMessageList = ({ messages, isTyping, isStreaming, onChoiceSelect, endRef}: ChatMessageListProps) => (
-  <div className="flex-1 h-full overflow-y-auto px-4 pt-6 pb-6 safe-bottom">
+  <div className="flex-1 h-full overflow-y-auto px-4 pb-6">
     <div className="flex flex-col gap-3 min-h-full max-w-3xl mx-auto w-full">
       {/* Spacer pushes messages to bottom when content is short */}
       <div className="flex-1" />
