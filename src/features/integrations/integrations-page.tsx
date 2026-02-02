@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
@@ -37,6 +37,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     isLoading: loading,
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
+
+  // FEB 2026 FIX: Invalidate integration status cache when leaving this page
+  // This ensures the main page (ChatView) fetches fresh data to show newly connected platforms
+  // Without this, the 2-minute React Query staleTime causes cached (stale) data to be used
+  useEffect(() => {
+    return () => {
+      console.log('[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page')
+      invalidateIntegrationStatus()
+      // Also refresh workspaces to update connected_platforms array
+      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+    }
+  }, [invalidateIntegrationStatus, refreshWorkspaces])
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
