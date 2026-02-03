@@ -7,7 +7,7 @@ interface HelpPageProps {
 
 const HelpPage = ({ onBack }: HelpPageProps) => {
   return (
-    <div className="w-full h-screen bg-primary flex flex-col overflow-hidden">
+    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar title="Help" onBack={onBack} className="border-b border-tertiary" />
 
       <div className="flex-1 overflow-y-auto px-4 py-4">

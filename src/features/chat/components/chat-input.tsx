@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
@@ -39,10 +39,9 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
     }
   }
 
-  // Focus input on mount
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+  // FEB 2026: Removed auto-focus on mount - bad UX on mobile
+  // Opens keyboard immediately when page loads, taking up screen space
+  // User can tap input when they want to type
 
   const canSubmit = message.trim() && !disabled && hasSelectedPlatforms
 

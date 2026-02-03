@@ -402,128 +402,118 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
         )}
       </div>
 
-      {/* Main Content - iPhone 16 Pro Layout */}
-      <div className="flex-1 flex flex-col items-center relative px-6 overflow-hidden">
+      {/* Main Content - Flexbox Layout (FEB 2026 FIX: replaced absolute positioning) */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {!showChat ? (
-          <>
-            {/* Greeting - Centered with uniform spacing */}
-            <div
-              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center"
-              style={{ width: '340px', marginTop: '-85px', fontFamily: 'Geologica, system-ui, sans-serif' }}
-            >
-              <h2 className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em] mb-1">
-                Hello {user?.name?.split(' ')[0] || 'there'}.
-              </h2>
-              <p className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em]">
-                How can I help today?
-              </p>
-            </div>
+          /* Home Screen - Centered content with proper flexbox */
+          <div className="flex-1 flex flex-col items-center justify-center px-6">
+            {/* Content wrapper - centers everything and provides consistent spacing */}
+            <div className="flex flex-col items-center gap-5 w-full max-w-sm" style={{ fontFamily: 'Geologica, system-ui, sans-serif' }}>
+              {/* Greeting */}
+              <div className="text-center">
+                <h2 className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em] mb-1">
+                  Hello {user?.name?.split(' ')[0] || 'there'}.
+                </h2>
+                <p className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em]">
+                  How can I help today?
+                </p>
+              </div>
 
-            {/* Configuration Guidance Banner - FEB 2026 */}
-            {configurationGuidance && (
-              <button
-                onClick={() => onIntegrationsClick?.()}
-                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 px-4 py-2 bg-utility-info-100 border border-utility-info-300 rounded-full text-utility-info-700 paragraph-xs hover:bg-utility-info-200 transition-colors"
-                style={{ marginTop: '-45px' }}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                <span>{configurationGuidance}</span>
-              </button>
-            )}
+              {/* Configuration Guidance Banner - FEB 2026 */}
+              {configurationGuidance && (
+                <button
+                  onClick={() => onIntegrationsClick?.()}
+                  className="flex items-center gap-2 px-4 py-2 bg-utility-info-100 border border-utility-info-300 rounded-full text-utility-info-700 paragraph-xs hover:bg-utility-info-200 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <span>{configurationGuidance}</span>
+                </button>
+              )}
 
-            {/* Platform Toggles - Show all 6 platforms */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center gap-3" style={{ marginTop: configurationGuidance ? '5px' : '-10px' }}>
-              {platformConfig.map(platform => {
-                const isConnected = connectedPlatforms.includes(platform.id)
-                const isSelected = selectedPlatforms.includes(platform.id)
+              {/* Platform Toggles - Show all 7 platforms */}
+              <div className="flex items-center justify-center gap-3">
+                {platformConfig.map(platform => {
+                  const isConnected = connectedPlatforms.includes(platform.id)
+                  const isSelected = selectedPlatforms.includes(platform.id)
 
-                return (
-                  <button
-                    key={platform.id}
-                    onClick={() => isConnected && togglePlatform(platform.id)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group relative"
-                    style={{
-                      opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.3,
-                      transform: isSelected ? 'scale(1)' : 'scale(0.9)',
-                      cursor: isConnected ? 'pointer' : 'not-allowed',
-                    }}
-                    disabled={!isConnected}
-                  >
-                    <img
-                      src={platform.icon}
-                      alt={platform.name}
-                      className="w-6 h-6"
+                  return (
+                    <button
+                      key={platform.id}
+                      onClick={() => isConnected && togglePlatform(platform.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group relative"
                       style={{
-                        filter: isConnected && isSelected ? 'none' : 'grayscale(100%)',
+                        opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.3,
+                        transform: isSelected ? 'scale(1)' : 'scale(0.9)',
+                        cursor: isConnected ? 'pointer' : 'not-allowed',
                       }}
-                    />
-                    {/* Tooltip */}
-                    <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-primary-solid text-primary-onbrand paragraph-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                      {platform.name}{!isConnected && ' (not connected)'}
-                    </span>
+                      disabled={!isConnected}
+                    >
+                      <img
+                        src={platform.icon}
+                        alt={platform.name}
+                        className="w-6 h-6"
+                        style={{
+                          filter: isConnected && isSelected ? 'none' : 'grayscale(100%)',
+                        }}
+                      />
+                      {/* Tooltip */}
+                      <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-primary-solid text-primary-onbrand paragraph-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        {platform.name}{!isConnected && ' (not connected)'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Row 1: Grow, Optimise, Protect - Horizontal Pills */}
+              <div className="flex gap-2 mt-2">
+                {onGrowQuickClick && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (onGrowQuickClick) {
+                        setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
+                      }
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                  >
+                    Grow
                   </button>
-                )
-              })}
-            </div>
+                )}
 
-            {/* New Button Layout - Horizontal Pills */}
+                {onOptimizeQuickClick && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (onOptimizeQuickClick) {
+                        setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
+                      }
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                  >
+                    Optimise
+                  </button>
+                )}
 
-            {/* Row 1: Grow, Optimise, Protect - Horizontal */}
-            <div
-              className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2"
-              style={{ marginTop: '55px', fontFamily: 'Geologica, system-ui, sans-serif' }}
-            >
-              {onGrowQuickClick && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (onGrowQuickClick) {
-                      setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
-                    }
-                  }}
-                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
-                >
-                  Grow
-                </button>
-              )}
+                {onProtectQuickClick && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (onProtectQuickClick) {
+                        setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
+                      }
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                  >
+                    Protect
+                  </button>
+                )}
+              </div>
 
-              {onOptimizeQuickClick && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (onOptimizeQuickClick) {
-                      setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
-                    }
-                  }}
-                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
-                >
-                  Optimise
-                </button>
-              )}
-
-              {onProtectQuickClick && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (onProtectQuickClick) {
-                      setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
-                    }
-                  }}
-                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
-                >
-                  Protect
-                </button>
-              )}
-            </div>
-
-            {/* Row 2: More button OR Summary + Chat with Mia */}
-            {!showMore ? (
-              <div
-                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
-                style={{ marginTop: '107px', fontFamily: 'Geologica, system-ui, sans-serif' }}
-              >
+              {/* Row 2: More button OR Summary + Chat with Mia */}
+              {!showMore ? (
                 <button
                   onClick={(e) => {
                     e.preventDefault()
@@ -533,34 +523,30 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                 >
                   More
                 </button>
-              </div>
-            ) : (
-              <div
-                className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 flex gap-2"
-                style={{ marginTop: '107px', marginLeft: '5px', fontFamily: 'Geologica, system-ui, sans-serif' }}
-              >
-                {/* Summary button - disabled/coming soon */}
-                <button
-                  disabled
-                  title="Coming Soon"
-                  className="inline-flex items-center justify-center rounded-full cursor-not-allowed opacity-50 bg-secondary text-quaternary paragraph-sm px-6 py-3 whitespace-nowrap"
-                >
-                  Summary
-                </button>
+              ) : (
+                <div className="flex gap-2">
+                  {/* Summary button - disabled/coming soon */}
+                  <button
+                    disabled
+                    title="Coming Soon"
+                    className="inline-flex items-center justify-center rounded-full cursor-not-allowed opacity-50 bg-secondary text-quaternary paragraph-sm px-6 py-3 whitespace-nowrap"
+                  >
+                    Summary
+                  </button>
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setTimeout(() => setShowChat(true), 150)
-                  }}
-                  className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation"
-                >
-                  Chat with Mia
-                </button>
-              </div>
-            )}
-
-          </>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setTimeout(() => setShowChat(true), 150)
+                    }}
+                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation"
+                  >
+                    Chat with Mia
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           /* Chat Interface - iPhone 16 Optimized with proper flex layout */
           <div className="w-full h-full flex flex-col" style={{ maxWidth: '393px' }}>

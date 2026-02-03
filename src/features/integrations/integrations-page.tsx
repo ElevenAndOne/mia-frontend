@@ -482,7 +482,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <div
-      className="w-full h-screen bg-primary flex flex-col overflow-hidden"
+      className="w-full h-dvh bg-primary flex flex-col overflow-hidden"
     >
       {/* Header */}
       <TopBar
