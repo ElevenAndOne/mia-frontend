@@ -86,11 +86,63 @@ export const buildNoBronzeMessages = (): ChatMessageInput[] => [
 ]
 
 const buildClickReaction = (followupFact: BronzeFact, initialBronzeFact: BronzeFact | null) => {
-  const clickValue = followupFact.metric_value ?? 0
+  const metricValue = followupFact.metric_value ?? 0
+  const metricName = followupFact.metric_name || 'clicks'
   const reachValue = initialBronzeFact?.metric_value ?? 0
-  const formattedClicks = clickValue.toLocaleString()
   const formattedReach = reachValue.toLocaleString()
 
+  // FEB 2026 FIX: Handle CTR as main metric (backend now returns CTR first)
+  const isCTR = metricName === 'ctr'
+
+  // Extract clicks from detail field if CTR is main metric
+  // Detail format: "With X clicks" or similar
+  const clicksMatch = followupFact.detail?.match(/(\d+,?\d*)\s*clicks/i)
+  const clicksFromDetail = clicksMatch ? parseInt(clicksMatch[1].replace(',', ''), 10) : null
+
+  if (isCTR) {
+    // CTR is the main metric - metricValue is the CTR percentage
+    const ctrValue = metricValue
+    const formattedCTR = ctrValue.toFixed(2)
+    const clicks = clicksFromDetail
+
+    if (ctrValue === 0) {
+      return {
+        reactionMessage: "Hmm, looks like there weren't many clicks in this period.",
+        followupMessage: 'No worries though - I can help you figure out how to change that! 🤔'
+      }
+    }
+
+    if (ctrValue < 1) {
+      return {
+        reactionMessage: `${formattedCTR}% CTR - let's see how we can boost that!`,
+        followupMessage: clicks
+          ? `With ${clicks.toLocaleString()} clicks, there's room to improve! 🤔`
+          : 'I can help you improve those numbers! 🤔'
+      }
+    }
+
+    if (ctrValue < 3) {
+      return {
+        reactionMessage: `Nice! ${formattedCTR}% click-through rate.`,
+        followupMessage: clicks
+          ? `${clicks.toLocaleString()} clicks - solid foundation to build on! 🤔`
+          : 'Solid foundation to build on! 🤔'
+      }
+    }
+
+    return {
+      reactionMessage: `🔥 ${formattedCTR}% CTR! That's impressive engagement.`,
+      followupMessage: clicks
+        ? `With ${clicks.toLocaleString()} clicks, you're doing great. But what's next? 🤔`
+        : `From ${formattedReach} reach, that's great performance. But what's next? 🤔`
+    }
+  }
+
+  // Legacy: clicks as main metric
+  const clickValue = metricValue
+  const formattedClicks = clickValue.toLocaleString()
+
+  // Try to extract CTR from detail field
   const ctrMatch = followupFact.detail?.match(/(\d+\.?\d*)%/)
   const actualCTR = ctrMatch ? ctrMatch[1] : null
 

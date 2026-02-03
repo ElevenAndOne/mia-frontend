@@ -156,11 +156,14 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     if (sessionId) {
       setIsStreamingInsight(false)
       setIsStreamingCombined(true)
-      startStreaming(sessionId, ['google_ads', 'meta_ads'])
+      // FEB 2026 FIX: Build combined platforms dynamically instead of hardcoding
+      // Meta was just connected, combine with existing platforms
+      const combinedPlatforms = [...new Set([...platformsConnected, 'meta_ads'])]
+      startStreaming(sessionId, combinedPlatforms)
     } else {
       queueMessages(buildCombinedFallbackMessages())
     }
-  }, [loadOnboardingStatus, queueMessages, refreshAccounts, sessionId, startStreaming])
+  }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
 
   const handleGoogleAccountLinked = useCallback(async () => {
     setShowGoogleSelector(false)
@@ -174,11 +177,14 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     if (sessionId) {
       setIsStreamingInsight(false)
       setIsStreamingCombined(true)
-      startStreaming(sessionId, ['google_ads', 'meta_ads'])
+      // FEB 2026 FIX: Build combined platforms dynamically instead of hardcoding
+      // Google was just connected, combine with existing platforms
+      const combinedPlatforms = [...new Set([...platformsConnected, 'google_ads'])]
+      startStreaming(sessionId, combinedPlatforms)
     } else {
       queueMessages(buildCombinedFallbackMessages())
     }
-  }, [loadOnboardingStatus, queueMessages, refreshAccounts, sessionId, startStreaming])
+  }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
 
   const handleSkip = useCallback(async () => {
     await skipOnboarding()
