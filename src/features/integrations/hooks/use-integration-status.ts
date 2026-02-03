@@ -27,8 +27,12 @@ export function useIntegrationStatus(
     queryKey,
     queryFn: () => fetchIntegrationStatus(sessionId!, selectedAccountId, tenantId),
     enabled: !!sessionId,
-    // Keep data fresh for 2 minutes (integration status doesn't change often)
-    staleTime: 2 * 60 * 1000,
+    // FEB 2026 FIX: Always refetch when component mounts
+    // This ensures fresh data when navigating back from Integrations page
+    // Without this, cached data is used and newly connected platforms don't appear
+    refetchOnMount: 'always',
+    // Keep data fresh for 30 seconds (reduced from 2 min to ensure updates propagate)
+    staleTime: 30 * 1000,
     // Cache for 5 minutes
     gcTime: 5 * 60 * 1000,
   })

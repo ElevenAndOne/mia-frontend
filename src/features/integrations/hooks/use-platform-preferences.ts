@@ -67,14 +67,17 @@ export function usePlatformPreferences({
 
     const loadPreferences = async () => {
       setIsLoading(true)
-      hasLoadedRef.current = false
+      // FEB 2026 FIX: Don't reset hasLoadedRef to false during reload
+      // This was causing a race condition where the "new platforms" effect
+      // would return early and never detect newly connected platforms
 
       const saved = await fetchPlatformPreferences(sessionId)
 
       if (saved.length > 0) {
-        // Filter to only connected platforms
-        const validPlatforms = saved.filter(p => connectedPlatforms.includes(p))
-        setSelectedPlatformsState(validPlatforms.length > 0 ? validPlatforms : connectedPlatforms)
+        // FEB 2026 FIX: Don't filter here against connectedPlatforms (stale closure bug)
+        // The filtering is already done at return value (line 166) which always uses
+        // the current connectedPlatforms. Filtering here used stale values from closure.
+        setSelectedPlatformsState(saved)
       } else {
         // No saved prefs - default to all connected
         setSelectedPlatformsState(connectedPlatforms)
