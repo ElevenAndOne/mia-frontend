@@ -1,21 +1,17 @@
+import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
-import { WorkspaceInvitesPanel } from './workspace-invites-panel'
+import { CreateInviteModal } from './create-invite-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
-import type { WorkspaceInviteRow, WorkspaceMemberRow, WorkspaceSettingsTab } from '../utils/workspace-settings'
+import type { WorkspacePersonRow } from '../utils/workspace-settings'
 
 interface WorkspaceSettingsDetailProps {
-  activeTab: WorkspaceSettingsTab
   canManage: boolean
   error: string | null
   loading: boolean
-  members: WorkspaceMemberRow[]
-  membersCount: number
+  people: WorkspacePersonRow[]
   onBack: () => void
-  onTabChange: (tab: WorkspaceSettingsTab) => void
-  pendingInviteCount: number
-  invites: WorkspaceInviteRow[]
-  showCreateInvite: boolean
+  showCreateInviteModal: boolean
   createdInviteLink: string | null
   inviteRole: string
   inviteEmail: string
@@ -23,11 +19,11 @@ interface WorkspaceSettingsDetailProps {
   creatingInvite: boolean
   copySuccess: boolean
   isCreateInviteDisabled: boolean
-  onOpenCreateInvite: () => void
+  onOpenCreateInviteModal: () => void
+  onCloseCreateInviteModal: () => void
   onInviteTypeChange: (isLinkInvite: boolean) => void
   onInviteEmailChange: (value: string) => void
   onInviteRoleChange: (role: string) => void
-  onCancelCreateInvite: () => void
   onCreateInvite: () => void
   onCopyInvite: (inviteLink: string) => void
   onCompleteInviteFlow: () => void
@@ -37,17 +33,12 @@ interface WorkspaceSettingsDetailProps {
 }
 
 export const WorkspaceSettingsDetail = ({
-  activeTab,
   canManage,
   error,
   loading,
-  members,
-  membersCount,
+  people,
   onBack,
-  onTabChange,
-  pendingInviteCount,
-  invites,
-  showCreateInvite,
+  showCreateInviteModal,
   createdInviteLink,
   inviteRole,
   inviteEmail,
@@ -55,11 +46,11 @@ export const WorkspaceSettingsDetail = ({
   creatingInvite,
   copySuccess,
   isCreateInviteDisabled,
-  onOpenCreateInvite,
+  onOpenCreateInviteModal,
+  onCloseCreateInviteModal,
   onInviteTypeChange,
   onInviteEmailChange,
   onInviteRoleChange,
-  onCancelCreateInvite,
   onCreateInvite,
   onCopyInvite,
   onCompleteInviteFlow,
@@ -68,35 +59,12 @@ export const WorkspaceSettingsDetail = ({
   onRemoveMember,
 }: WorkspaceSettingsDetailProps) => {
   return (
-    <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
+    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar
         title="Workspace Settings"
         onBack={onBack}
         className="border-b border-tertiary"
       />
-
-      <div className="flex border-b border-tertiary max-w-3xl mx-auto w-full">
-        <button
-          onClick={() => onTabChange('members')}
-          className={`flex-1 py-3 subheading-md transition-colors ${activeTab === 'members'
-            ? 'text-primary border-b-2 border-brand'
-            : 'text-quaternary hover:text-secondary'
-            }`}
-        >
-          Members ({membersCount})
-        </button>
-        {canManage && (
-          <button
-            onClick={() => onTabChange('invites')}
-            className={`flex-1 py-3 subheading-md transition-colors ${activeTab === 'invites'
-              ? 'text-primary border-b-2 border-brand'
-              : 'text-quaternary hover:text-secondary'
-              }`}
-          >
-            Invites ({pendingInviteCount})
-          </button>
-        )}
-      </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
         {error && (
@@ -105,39 +73,48 @@ export const WorkspaceSettingsDetail = ({
           </div>
         )}
 
+        {canManage && (
+          <button
+            onClick={onOpenCreateInviteModal}
+            className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
+          >
+            <Icon.plus size={20} />
+            Invite Member
+          </button>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Spinner size="md" variant="dark" />
           </div>
-        ) : activeTab === 'members' ? (
+        ) : (
           <WorkspaceMembersPanel
-            members={members}
+            people={people}
             onUpdateRole={onUpdateRole}
             onRemoveMember={onRemoveMember}
-          />
-        ) : (
-          <WorkspaceInvitesPanel
-            showCreateInvite={showCreateInvite}
-            createdInviteLink={createdInviteLink}
-            inviteRole={inviteRole}
-            inviteEmail={inviteEmail}
-            isLinkInvite={isLinkInvite}
-            creatingInvite={creatingInvite}
-            copySuccess={copySuccess}
-            isCreateInviteDisabled={isCreateInviteDisabled}
-            pendingInvites={invites}
-            onOpenCreateInvite={onOpenCreateInvite}
-            onInviteTypeChange={onInviteTypeChange}
-            onInviteEmailChange={onInviteEmailChange}
-            onInviteRoleChange={onInviteRoleChange}
-            onCancelCreateInvite={onCancelCreateInvite}
-            onCreateInvite={onCreateInvite}
             onCopyInvite={onCopyInvite}
-            onCompleteInviteFlow={onCompleteInviteFlow}
             onRevokeInvite={onRevokeInvite}
           />
         )}
       </div>
+
+      <CreateInviteModal
+        isOpen={showCreateInviteModal}
+        onClose={onCloseCreateInviteModal}
+        inviteRole={inviteRole}
+        inviteEmail={inviteEmail}
+        isLinkInvite={isLinkInvite}
+        creatingInvite={creatingInvite}
+        createdInviteLink={createdInviteLink}
+        copySuccess={copySuccess}
+        isCreateInviteDisabled={isCreateInviteDisabled}
+        onInviteTypeChange={onInviteTypeChange}
+        onInviteEmailChange={onInviteEmailChange}
+        onInviteRoleChange={onInviteRoleChange}
+        onCreateInvite={onCreateInvite}
+        onCopyInvite={onCopyInvite}
+        onComplete={onCompleteInviteFlow}
+      />
     </div>
   )
 }

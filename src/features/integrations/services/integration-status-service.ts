@@ -25,6 +25,41 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
   }
 }
 
+// Merges account-level credential status with tenant-level platform status.
+// If a platform has credentials at the account level, it should show as connected
+// even if the tenant integration table hasn't been updated yet.
+const mergePlatformStatus = (
+  tenantStatus: PlatformStatus,
+  accountData: AccountData | null
+): PlatformStatus => {
+  if (!accountData) return tenantStatus
+
+  const now = new Date().toISOString()
+  return {
+    google: accountData.google_ads_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.google,
+    ga4: accountData.ga4_property_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.ga4,
+    meta: accountData.meta_ads_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.meta,
+    facebook_organic: accountData.facebook_page_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.facebook_organic,
+    brevo: accountData.brevo_api_key
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.brevo,
+    hubspot: accountData.hubspot_portal_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.hubspot,
+    mailchimp: accountData.mailchimp_account_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.mailchimp,
+  }
+}
+
 export const fetchTenantIntegrationStatus = async (
   sessionId: string,
   tenantId: string,
@@ -111,14 +146,16 @@ export const fetchIntegrationStatus = async (
   // needed to show which GA4 properties are linked, which Facebook page is selected, etc.
   const accountStatus = await fetchAccountIntegrationStatus(sessionId, selectedAccountId)
 
-  // If in tenant context, use tenant-level platform status (from TenantIntegration table)
-  // but keep the account-level data for currentAccountData, ga4Properties, linkedGA4Properties
+  // If in tenant context, merge tenant-level and account-level platform status.
+  // Account credentials take precedence - if credentials exist, show as connected.
   if (tenantId) {
     const tenantStatus = await fetchTenantIntegrationStatus(sessionId, tenantId)
     if (tenantStatus) {
       return {
-        platformStatus: tenantStatus.platformStatus,
-        // Keep account-level data from accountStatus
+        platformStatus: mergePlatformStatus(
+          tenantStatus.platformStatus,
+          accountStatus.currentAccountData
+        ),
         currentAccountData: accountStatus.currentAccountData,
         ga4Properties: accountStatus.ga4Properties,
         linkedGA4Properties: accountStatus.linkedGA4Properties,

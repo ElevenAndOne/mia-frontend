@@ -22,15 +22,11 @@ const WorkspaceSettingsPage = () => {
     openCreateModal,
     closeCreateModal,
     handleWorkspaceCreated,
-    activeTab,
-    setActiveTab,
     canManage,
     loading,
     error,
-    memberRows,
-    pendingInvites,
-    pendingInviteCount,
-    showCreateInvite,
+    unifiedPeople,
+    showCreateInviteModal,
     inviteRole,
     inviteEmail,
     isLinkInvite,
@@ -45,8 +41,8 @@ const WorkspaceSettingsPage = () => {
     handleRemoveMember,
     handleUpdateRole,
     handleCopyInvite,
-    openCreateInvite,
-    cancelCreateInvite,
+    openCreateInviteModal,
+    closeCreateInviteModal,
     completeInviteFlow,
     setInviteRole,
     setInviteEmail,
@@ -74,22 +70,17 @@ const WorkspaceSettingsPage = () => {
           onWorkspaceCreated={handleWorkspaceCreated}
         />
       ) : !selectedWorkspace ? (
-        <div className="w-full h-screen-dvh bg-primary flex items-center justify-center">
+        <div className="w-full h-dvh bg-primary flex items-center justify-center">
           <p className="paragraph-sm text-quaternary">Workspace not found</p>
         </div>
       ) : (
         <WorkspaceSettingsDetail
-          activeTab={activeTab}
           canManage={canManage}
           error={error}
           loading={loading}
-          members={memberRows}
-          membersCount={memberRows.length}
+          people={unifiedPeople}
           onBack={handleBackToOverview}
-          onTabChange={setActiveTab}
-          pendingInviteCount={pendingInviteCount}
-          invites={pendingInvites}
-          showCreateInvite={showCreateInvite}
+          showCreateInviteModal={showCreateInviteModal}
           createdInviteLink={createdInviteLink}
           inviteRole={inviteRole}
           inviteEmail={inviteEmail}
@@ -97,11 +88,11 @@ const WorkspaceSettingsPage = () => {
           creatingInvite={creatingInvite}
           copySuccess={copySuccess}
           isCreateInviteDisabled={isCreateInviteDisabled}
-          onOpenCreateInvite={openCreateInvite}
+          onOpenCreateInviteModal={openCreateInviteModal}
+          onCloseCreateInviteModal={closeCreateInviteModal}
           onInviteTypeChange={setIsLinkInvite}
           onInviteEmailChange={setInviteEmail}
           onInviteRoleChange={setInviteRole}
-          onCancelCreateInvite={cancelCreateInvite}
           onCreateInvite={handleCreateInvite}
           onCopyInvite={handleCopyInvite}
           onCompleteInviteFlow={completeInviteFlow}

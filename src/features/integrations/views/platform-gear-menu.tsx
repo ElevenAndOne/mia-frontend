@@ -44,9 +44,9 @@ const PlatformGearMenu = ({
   // OAuth platforms that support reconnecting (to refresh credentials / link to workspace)
   const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(platformId)
 
-  // Google Ads disconnect is disabled - it's the main account switcher and removing
-  // credentials would break all linked accounts. Users can manage accounts instead.
-  const canDisconnect = platformId !== 'google'
+  // All platforms can be disconnected, including Google Ads
+  // This allows users to clear invalid connections (e.g., when google_ads_id is set but no valid account exists)
+  const canDisconnect = true
 
   // Build dropdown items based on platform capabilities
   const menuItems: DropdownItem[] = useMemo(() => {

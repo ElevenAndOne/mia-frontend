@@ -30,6 +30,19 @@ export interface WorkspaceInviteRow {
   link: string
 }
 
+export interface WorkspacePersonRow {
+  id: string
+  type: 'member' | 'invite'
+  name: string
+  email: string
+  role: string
+  roleBadgeClass: string
+  imageUrl?: string | null
+  canEditRole: boolean
+  canRemove: boolean
+  inviteLink?: string
+}
+
 export const buildWorkspaceOverviewItems = (
   workspaces: Workspace[],
   activeWorkspaceId?: string | null,
@@ -78,4 +91,35 @@ export const buildWorkspaceInviteRows = (
       role: invite.role,
       link: `${inviteBaseUrl}${invite.invite_id}`,
     }))
+}
+
+export const buildUnifiedPersonRows = (
+  memberRows: WorkspaceMemberRow[],
+  inviteRows: WorkspaceInviteRow[],
+): WorkspacePersonRow[] => {
+  const members: WorkspacePersonRow[] = memberRows.map((member) => ({
+    id: member.id,
+    type: 'member',
+    name: member.name,
+    email: member.email,
+    role: member.role,
+    roleBadgeClass: member.roleBadgeClass,
+    imageUrl: member.imageUrl,
+    canEditRole: member.canEditRole,
+    canRemove: member.canRemove,
+  }))
+
+  const invites: WorkspacePersonRow[] = inviteRows.map((invite) => ({
+    id: invite.id,
+    type: 'invite',
+    name: invite.emailLabel,
+    email: invite.emailLabel,
+    role: invite.role,
+    roleBadgeClass: getWorkspaceRoleBadgeClass(invite.role),
+    canEditRole: false,
+    canRemove: true,
+    inviteLink: invite.link,
+  }))
+
+  return [...members, ...invites]
 }
