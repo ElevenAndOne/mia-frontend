@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
+import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
 import { sendChatMessage } from '../services/chat-service'
 
@@ -21,7 +22,7 @@ export const useChatView = () => {
   const [dateRange, setDateRange] = useState('30_days')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { platformStatus } = useIntegrationStatus(
+  const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(
     sessionId,
     selectedAccount?.id,
     activeWorkspace?.tenant_id,
@@ -37,6 +38,11 @@ export const useChatView = () => {
       })
       .map((platform) => platform.id)
   }, [platformStatus])
+
+  const integrationPrompt = useIntegrationPrompt({
+    connectedPlatforms,
+    isLoading: integrationStatusLoading,
+  })
 
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({
     sessionId,
@@ -55,27 +61,6 @@ export const useChatView = () => {
 
   const hasSelectedPlatforms = selectedPlatforms.length > 0
   const hasMessages = messages.length > 0
-
-  // FEB 2026: Show guidance when platforms need additional configuration
-  // GA4 and Facebook Organic share auth with Google Ads and Meta Ads respectively,
-  // but require property/page selection in Integrations
-  const configurationGuidance = useMemo(() => {
-    const needsConfig: string[] = []
-
-    // Google Ads connected but GA4 property not selected
-    if (connectedPlatforms.includes('google_ads') && !selectedAccount?.ga4_property_id) {
-      needsConfig.push('Google Analytics property')
-    }
-
-    // Meta Ads connected but Facebook Page not selected
-    if (connectedPlatforms.includes('meta_ads') && !selectedAccount?.facebook_page_id) {
-      needsConfig.push('Facebook Page')
-    }
-
-    if (needsConfig.length === 0) return null
-
-    return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
-  }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -170,6 +155,6 @@ export const useChatView = () => {
     handleNewChat,
     handleSubmit,
     handleQuickAction,
-    configurationGuidance,
+    integrationPrompt,
   }
 }

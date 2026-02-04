@@ -16,16 +16,6 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const { isAuthenticated, isMetaAuthenticated, sessionId, user } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  useEffect(() => {
-    if (!inviteId) {
-      navigate('/')
-    }
-  }, [inviteId, navigate])
-
-  if (!inviteId) {
-    return null
-  }
-
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
     navigate('/')
@@ -41,16 +31,26 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     handleSignIn,
     handleAccept,
   } = useInviteLanding({
-    inviteId,
+    inviteId: inviteId || '',
     sessionId,
     isAuthenticated: isAnyAuthenticated,
     onAccepted,
     onSignIn: handleBack,
   })
 
+  useEffect(() => {
+    if (!inviteId) {
+      navigate('/')
+    }
+  }, [inviteId, navigate])
+
+  if (!inviteId) {
+    return null
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
+      <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto mb-4"></div>
           <p className="paragraph-sm text-tertiary">Loading invite...</p>
@@ -61,7 +61,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
 
   if (error && !inviteDetails?.is_valid) {
     return (
-      <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
+      <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-error-secondary flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +71,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           <h1 className="title-h6 text-primary mb-2">Invalid Invite</h1>
           <p className="paragraph-sm text-tertiary mb-6">{error}</p>
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors"
           >
             Go to Home
@@ -83,7 +83,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
 
   if (showLoginPrompt) {
     return (
-      <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
+      <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-utility-info-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-utility-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   }
 
   return (
-    <div className="min-h-screen-dvh bg-linear-to-br from-utility-gray-100 to-utility-gray-200 flex items-center justify-center p-4">
+    <div className="h-full flex items-center justify-center p-4">
       <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-6">
@@ -129,7 +129,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
 
         {/* Role info */}
         <div className="bg-secondary rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-4">
             <WorkspaceRoleIcon role={inviteDetails?.role || ''} variant="badge" size="lg" />
             <div>
               <p className="label-md text-primary capitalize">
@@ -188,7 +188,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           </button>
 
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors"
           >
             Decline

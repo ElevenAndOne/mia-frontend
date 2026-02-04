@@ -18,7 +18,7 @@ export const MccSelectionPanel = ({
   onSelectAccount,
 }: MccSelectionPanelProps) => {
   return (
-    <div className="px-6 pb-4">
+    <div className="max-w-3xl h-full mx-auto px-6 pb-4">
       <div className="mb-3">
         <h2 className="label-md text-primary">Step 1: Select Manager Account</h2>
         <p className="paragraph-sm text-quaternary">Choose which Manager Account to use</p>

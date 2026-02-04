@@ -58,7 +58,7 @@ const AccountSelectionPage = ({ onAccountSelected }: AccountSelectionPageProps) 
       />
 
       {error && (
-        <div className="mx-6 mb-4">
+        <div className="px-6 mb-4 max-w-3xl h-full mx-auto ">
           <Alert variant="error">{error}</Alert>
         </div>
       )}

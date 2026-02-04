@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
+import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
 import IntegrationsView from '../features/integrations/integrations-page'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
@@ -21,9 +22,9 @@ const IntegrationsPage = () => {
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <div className="w-full h-full">
+      <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
         <IntegrationsView onBack={() => navigate('/home')} />
-      </div>
+      </AnimatedPageWrapper>
     </AppShell>
   )
 }

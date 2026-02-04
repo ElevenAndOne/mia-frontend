@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react'
 import ChatLayout from '../components/chat-layout'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
 import QuickActions from '../components/quick-actions'
+import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
+import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 import { useChatView } from '../hooks/use-chat-view.tsx'
 
 interface ChatViewProps {
@@ -29,8 +32,31 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     handleNewChat,
     handleSubmit,
     handleQuickAction,
-    configurationGuidance,
+    integrationPrompt,
   } = useChatView()
+
+  const [promptDismissed, setPromptDismissed] = useState(false)
+
+  // Reset dismissal when missing platforms change
+  const missingKey = integrationPrompt?.missingPlatformIds.join('|') ?? ''
+  useEffect(() => {
+    if (!integrationPrompt) return
+    setPromptDismissed(false)
+  }, [missingKey, integrationPrompt])
+
+  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed
+
+  const handleIntegrationPromptAction = () => {
+    if (integrationPrompt) {
+      setIntegrationHighlight(integrationPrompt.missingPlatformIds)
+    }
+    setPromptDismissed(true)
+    onIntegrationsClick?.()
+  }
+
+  const handleIntegrationPromptClose = () => {
+    setPromptDismissed(true)
+  }
 
   return (
     <ChatLayout
@@ -41,24 +67,6 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <div className="flex-1 flex flex-col h-full pt-14 md:pt-0">
-        {/* FEB 2026: Configuration guidance banner */}
-        {configurationGuidance && (
-          <button
-            onClick={onIntegrationsClick}
-            className="mx-4 mt-4 p-3 bg-brand/10 border border-brand/20 rounded-lg text-left hover:bg-brand/15 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-brand flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="paragraph-sm text-primary">{configurationGuidance}</span>
-              <svg className="w-4 h-4 text-quaternary ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </button>
-        )}
-
         {!hasMessages ? (
           <>
             <ChatEmptyState userName={userName}>
@@ -129,6 +137,18 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
           </>
         )}
       </div>
+
+      {integrationPrompt && (
+        <IntegrationPromptModal
+          isOpen={showIntegrationPrompt}
+          title={integrationPrompt.title}
+          message={integrationPrompt.message}
+          missing={integrationPrompt.missing}
+          primaryActionLabel={integrationPrompt.primaryActionLabel}
+          onPrimaryAction={handleIntegrationPromptAction}
+          onClose={handleIntegrationPromptClose}
+        />
+      )}
     </ChatLayout>
   )
 }
