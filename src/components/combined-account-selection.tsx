@@ -63,6 +63,7 @@ const CombinedAccountSelection = ({ onAccountSelected, onBack }: CombinedAccount
         <DirectAccountSelectionPanel
           accounts={directAccounts}
           onSelectAccount={handleAccountSelect}
+          onSkip={onBack}
         />
       )}
     </NarrowPageContainer>

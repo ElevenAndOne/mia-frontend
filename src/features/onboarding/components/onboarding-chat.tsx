@@ -24,6 +24,8 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
     handleGoToIntegrations,
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
+    handleMetaSelectorSkipped,
+    handleGoogleSelectorSkipped,
     selectedAccountName
   } = useOnboardingChat({ onComplete, onConnectPlatform })
 
@@ -49,6 +51,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
         isOpen={showMetaSelector}
         onClose={() => setShowMetaSelector(false)}
         onSuccess={handleMetaAccountLinked}
+        onSkip={handleMetaSelectorSkipped}
         currentGoogleAccountName={selectedAccountName}
       />
 
@@ -56,6 +59,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
         isOpen={showGoogleSelector}
         onClose={() => setShowGoogleSelector(false)}
         onSuccess={handleGoogleAccountLinked}
+        onSkip={handleGoogleSelectorSkipped}
       />
     </div>
   )

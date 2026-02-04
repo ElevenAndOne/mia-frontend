@@ -29,11 +29,11 @@ export const fetchGoogleAdAccounts = async (
   }
 
   const data = await response.json()
-  if (!data.success || !data.ad_accounts) {
-    throw new Error('No Google Ads accounts found')
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to fetch Google Ads accounts')
   }
 
-  return data.ad_accounts
+  return data.ad_accounts || []
 }
 
 export const linkGoogleAdsAccount = async (payload: {

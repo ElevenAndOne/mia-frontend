@@ -99,7 +99,7 @@ function App() {
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        navigate('/login')
+        navigate('/home')
         return
       }
     }
@@ -160,11 +160,7 @@ function App() {
   const handleAuthSuccess = () => {
     // Navigate FIRST, then clear loading platform
     // This prevents the video from flashing during the brief moment between clearing loading and navigation
-    if (selectedAccount) {
-      navigate('/home')
-    } else {
-      navigate('/login')
-    }
+    navigate('/home')
     // Clear loading platform after navigation is initiated
     setOauthLoadingPlatform(null)
   }
@@ -202,7 +198,7 @@ function App() {
     } else if (isAnyAuthenticated && selectedAccount) {
       navigate('/home')
     } else if (isAnyAuthenticated) {
-      navigate('/login')
+      navigate('/home')
     } else {
       navigate('/')
     }

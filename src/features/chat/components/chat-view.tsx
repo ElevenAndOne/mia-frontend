@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react'
 import ChatLayout from './chat-layout'
 import ChatEmptyState from './chat-empty-state'
 import ChatInput from './chat-input'
 import ChatMessage from './chat-message'
 import QuickActions from './quick-actions'
 import { useChatView } from '../hooks/use-chat-view.tsx'
+import IntegrationPromptModal from '../../../components/integration-prompt-modal'
+import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
@@ -30,7 +33,18 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     handleSubmit,
     handleQuickAction,
     configurationGuidance,
+    integrationPrompt,
   } = useChatView()
+
+  const [promptDismissed, setPromptDismissed] = useState(false)
+  const missingKey = integrationPrompt?.missingPlatformIds.join('|') ?? ''
+
+  useEffect(() => {
+    if (!integrationPrompt) return
+    setPromptDismissed(false)
+  }, [missingKey, integrationPrompt])
+
+  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed
 
   return (
     <ChatLayout
@@ -41,6 +55,23 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <div className="flex-1 flex flex-col h-full pt-14 md:pt-0">
+        {integrationPrompt && (
+          <IntegrationPromptModal
+            isOpen={showIntegrationPrompt}
+            title={integrationPrompt.title}
+            message={integrationPrompt.message}
+            missing={integrationPrompt.missing}
+            primaryActionLabel={integrationPrompt.primaryActionLabel}
+            onPrimaryAction={() => {
+              setPromptDismissed(true)
+              setIntegrationHighlight(integrationPrompt.missingPlatformIds)
+              onIntegrationsClick?.()
+            }}
+            onClose={() => {
+              setPromptDismissed(true)
+            }}
+          />
+        )}
         {/* FEB 2026: Configuration guidance banner */}
         {configurationGuidance && (
           <button

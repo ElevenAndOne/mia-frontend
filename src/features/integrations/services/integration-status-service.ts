@@ -1,5 +1,6 @@
 import { apiFetch } from '../../../utils/api'
 import type { AccountData, GA4Property, LinkedGA4Property, PlatformStatus } from '../types'
+import { refreshGa4Properties } from './ga4-service'
 
 export interface IntegrationStatusData {
   platformStatus: PlatformStatus
@@ -56,6 +57,57 @@ export const fetchTenantIntegrationStatus = async (
   }
 }
 
+const buildAccountFlags = (account: AccountData | null): Partial<Record<keyof PlatformStatus, boolean>> => ({
+  google: Boolean(account?.google_ads_id),
+  ga4: Boolean(account?.ga4_property_id) || Boolean(account?.linked_ga4_properties?.length),
+  meta: Boolean(account?.meta_ads_id),
+  facebook_organic: Boolean(account?.facebook_page_id),
+  brevo: Boolean(account?.brevo_api_key),
+  hubspot: Boolean(account?.hubspot_portal_id),
+  mailchimp: Boolean(account?.mailchimp_account_id),
+})
+
+const applyAccountValidation = (
+  platformStatus: PlatformStatus,
+  accountFlags: Partial<Record<keyof PlatformStatus, boolean>>,
+): PlatformStatus => ({
+  google: {
+    ...platformStatus.google,
+    connected: platformStatus.google.connected && Boolean(accountFlags.google),
+    linked: platformStatus.google.linked && Boolean(accountFlags.google),
+  },
+  ga4: {
+    ...platformStatus.ga4,
+    connected: platformStatus.ga4.connected && Boolean(accountFlags.ga4),
+    linked: platformStatus.ga4.linked && Boolean(accountFlags.ga4),
+  },
+  meta: {
+    ...platformStatus.meta,
+    connected: platformStatus.meta.connected && Boolean(accountFlags.meta),
+    linked: platformStatus.meta.linked && Boolean(accountFlags.meta),
+  },
+  facebook_organic: {
+    ...platformStatus.facebook_organic,
+    connected: platformStatus.facebook_organic.connected && Boolean(accountFlags.facebook_organic),
+    linked: platformStatus.facebook_organic.linked && Boolean(accountFlags.facebook_organic),
+  },
+  brevo: {
+    ...platformStatus.brevo,
+    connected: platformStatus.brevo.connected && Boolean(accountFlags.brevo),
+    linked: platformStatus.brevo.linked && Boolean(accountFlags.brevo),
+  },
+  hubspot: {
+    ...platformStatus.hubspot,
+    connected: platformStatus.hubspot.connected && Boolean(accountFlags.hubspot),
+    linked: platformStatus.hubspot.linked && Boolean(accountFlags.hubspot),
+  },
+  mailchimp: {
+    ...platformStatus.mailchimp,
+    connected: platformStatus.mailchimp.connected && Boolean(accountFlags.mailchimp),
+    linked: platformStatus.mailchimp.linked && Boolean(accountFlags.mailchimp),
+  },
+})
+
 export const fetchAccountIntegrationStatus = async (
   sessionId: string,
   selectedAccountId?: string | number,
@@ -88,15 +140,16 @@ export const fetchAccountIntegrationStatus = async (
     }
   }
 
-  const platformStatus = buildPlatformStatus({
-    google: Boolean(currentAccountData?.google_ads_id),
-    ga4: Boolean(currentAccountData?.ga4_property_id),
-    meta: Boolean(currentAccountData?.meta_ads_id),
-    facebook_organic: Boolean(currentAccountData?.facebook_page_id),
-    brevo: Boolean(currentAccountData?.brevo_api_key),
-    hubspot: Boolean(currentAccountData?.hubspot_portal_id),
-    mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
-  })
+  if (ga4Properties.length === 0) {
+    try {
+      ga4Properties = await refreshGa4Properties(sessionId)
+    } catch (error) {
+      console.error('[INTEGRATIONS] GA4 refresh failed:', error)
+    }
+  }
+
+  const accountFlags = buildAccountFlags(currentAccountData)
+  const platformStatus = buildPlatformStatus(accountFlags)
 
   return { platformStatus, currentAccountData, ga4Properties, linkedGA4Properties }
 }
@@ -110,6 +163,7 @@ export const fetchIntegrationStatus = async (
   // The tenant endpoint only returns platform connection status, not the actual account-level data
   // needed to show which GA4 properties are linked, which Facebook page is selected, etc.
   const accountStatus = await fetchAccountIntegrationStatus(sessionId, selectedAccountId)
+  const accountFlags = buildAccountFlags(accountStatus.currentAccountData)
 
   // If in tenant context, use tenant-level platform status (from TenantIntegration table)
   // but keep the account-level data for currentAccountData, ga4Properties, linkedGA4Properties
@@ -117,7 +171,7 @@ export const fetchIntegrationStatus = async (
     const tenantStatus = await fetchTenantIntegrationStatus(sessionId, tenantId)
     if (tenantStatus) {
       return {
-        platformStatus: tenantStatus.platformStatus,
+        platformStatus: applyAccountValidation(tenantStatus.platformStatus, accountFlags),
         // Keep account-level data from accountStatus
         currentAccountData: accountStatus.currentAccountData,
         ga4Properties: accountStatus.ga4Properties,
@@ -126,5 +180,8 @@ export const fetchIntegrationStatus = async (
     }
   }
 
-  return accountStatus
+  return {
+    ...accountStatus,
+    platformStatus: applyAccountValidation(accountStatus.platformStatus, accountFlags),
+  }
 }

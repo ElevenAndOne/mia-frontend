@@ -20,6 +20,7 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
   const [isFetchingAccounts, setIsFetchingAccounts] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const hasFetchedRef = useRef(false)
+  const hasAutoSelectedRef = useRef(false)
 
   const metaAccounts = useMemo(() => {
     return availableAccounts.filter((account) =>
@@ -45,6 +46,7 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
     } catch (err) {
       console.error('[META-ACCOUNT-SELECTION] Error fetching accounts:', err)
       setFetchError('Failed to load accounts. Please try again.')
+    } finally {
       setIsFetchingAccounts(false)
     }
   }, [refreshAccounts])
@@ -81,6 +83,15 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
       setSelectingAccountId(null)
     }
   }, [selectingAccountId, clearError, selectAccount, onAccountSelected])
+
+  useEffect(() => {
+    if (hasAutoSelectedRef.current) return
+    if (isFetchingAccounts || isLoading) return
+    if (metaAccountItems.length !== 1) return
+
+    hasAutoSelectedRef.current = true
+    handleAccountSelect(metaAccountItems[0].id)
+  }, [metaAccountItems, isFetchingAccounts, isLoading, handleAccountSelect])
 
   const errorMessage = error || fetchError
   const isPageLoading = isFetchingAccounts || (isLoading && metaAccounts.length === 0)

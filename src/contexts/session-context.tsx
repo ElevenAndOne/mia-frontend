@@ -11,6 +11,7 @@ import * as metaAuthService from '../features/auth/services/meta-auth-service'
 import * as sessionService from '../features/auth/services/session-service'
 import * as workspaceService from '../features/workspace/services/workspace-service'
 import * as accountService from '../features/accounts/services/account-service'
+import { refreshGa4Properties } from '../features/integrations/services/ga4-service'
 import {
   generateSessionId,
   isMobile,
@@ -229,6 +230,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 isLoading: false
               }))
 
+              if (sessionData.user_authenticated?.google || sessionData.platforms?.google) {
+                refreshGa4Properties(storedSessionId).catch(error => {
+                  console.error('[SESSION] GA4 refresh failed after session validation:', error)
+                })
+              }
+
               if (sessionUser.user_id) {
                 localStorage.setItem('mia_last_user_id', sessionUser.user_id)
               }
@@ -299,6 +306,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               if (statusData.authenticated) {
                 await refreshAccounts()
+                if (state.sessionId) {
+                  refreshGa4Properties(state.sessionId).catch(error => {
+                    console.error('[SESSION] GA4 refresh failed after login:', error)
+                  })
+                }
                 setState(prev => ({
                   ...prev,
                   isAuthenticated: true,
@@ -431,23 +443,28 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const logout = useCallback(async (): Promise<void> => {
     setState(prev => ({ ...prev, isLoading: true }))
 
-    try {
-      await googleAuthService.logoutGoogle(state.sessionId || '')
+    // Always clear local state, regardless of API success
+    // This prevents redirect loops if the API call fails
+    const clearLocalState = () => {
       clearSessionStorage()
-
       const newSessionId = generateSessionId()
       storeSessionId(newSessionId)
-
       setState(prev => ({
         ...INITIAL_STATE,
         hasSeenIntro: prev.hasSeenIntro,
         sessionId: newSessionId,
         isLoading: false
       }))
+    }
+
+    try {
+      await googleAuthService.logoutGoogle(state.sessionId || '')
     } catch (error) {
       console.error('[SESSION] Logout error:', error)
-      setState(prev => ({ ...prev, isLoading: false, error: 'Logout failed' }))
+      // Continue with local state clear even if API fails
     }
+
+    clearLocalState()
   }, [state.sessionId])
 
   // Meta Logout
@@ -586,6 +603,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
 
         await refreshAccounts()
+        if (state.sessionId) {
+          refreshGa4Properties(state.sessionId).catch(error => {
+            console.error('[SESSION] GA4 refresh failed after auth check:', error)
+          })
+        }
 
         let selectedAccount: AccountMapping | null = null
         if (authData.selected_account) {

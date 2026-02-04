@@ -339,7 +339,15 @@ export const AppRoutes = ({
 }: AppRoutesProps) => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { logout, activeWorkspace } = useSession()
+  const { activeWorkspace } = useSession()
+
+  const handleAccountSelectionSkip = () => {
+    if (activeWorkspace) {
+      navigate('/home')
+      return
+    }
+    navigate('/home')
+  }
 
   return (
     <Suspense fallback={<LazyLoadSpinner />}>
@@ -372,14 +380,7 @@ export const AppRoutes = ({
                 <div className="w-full h-full">
                   <CombinedAccountSelection
                     onAccountSelected={() => {}}
-                    onBack={() => {
-                      if (activeWorkspace) {
-                        navigate('/home')
-                      } else {
-                        logout()
-                        navigate('/')
-                      }
-                    }}
+                    onBack={handleAccountSelectionSkip}
                   />
                 </div>
               </ProtectedRoute>
@@ -393,10 +394,8 @@ export const AppRoutes = ({
                 <div className="w-full h-full">
                   <MetaAccountSelectionPage
                     onAccountSelected={() => navigate('/onboarding')}
-                    onBack={() => {
-                      logout()
-                      navigate('/')
-                    }}
+                    onBack={handleAccountSelectionSkip}
+                    onSkip={handleAccountSelectionSkip}
                   />
                 </div>
               </ProtectedRoute>
@@ -419,7 +418,7 @@ export const AppRoutes = ({
           <Route
             path="/home"
             element={
-              <ProtectedRoute requireAccount>
+              <ProtectedRoute>
                 <ChatViewWrapper />
               </ProtectedRoute>
             }
@@ -429,7 +428,7 @@ export const AppRoutes = ({
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute requireAccount>
+              <ProtectedRoute>
                 <MainViewWrapper />
               </ProtectedRoute>
             }

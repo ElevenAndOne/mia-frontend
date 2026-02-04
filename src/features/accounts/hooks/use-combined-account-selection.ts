@@ -34,11 +34,9 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
   useEffect(() => {
     if (!isFetchingMccs && mccAccounts.length === 0 && availableAccounts.length === 1) {
       const account = availableAccounts[0]
-      if (account.id.startsWith('user_')) {
-        selectAccount(account.id).then((success) => {
-          if (success) onAccountSelected()
-        })
-      }
+      selectAccount(account.id).then((success) => {
+        if (success) onAccountSelected()
+      })
     }
   }, [isFetchingMccs, mccAccounts.length, availableAccounts, selectAccount, onAccountSelected])
 

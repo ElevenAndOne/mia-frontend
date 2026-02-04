@@ -33,6 +33,22 @@
   50% { background-position: 100% 50%; }
 }
 
+@keyframes integration-highlight {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--integration-highlight-glow, rgba(59, 130, 246, 0.18));
+  }
+  50% {
+    transform: scale(var(--integration-highlight-scale, 1.01));
+    box-shadow: 0 0 0 6px var(--integration-highlight-glow, rgba(59, 130, 246, 0.18));
+  }
+}
+
+.integration-highlight {
+  animation: integration-highlight var(--integration-highlight-duration, 1600ms) ease-in-out infinite;
+  will-change: transform, box-shadow;
+}
+
 /* iPhone 16 Pro Optimized CSS Variables */
 :root {
   /* Context Colors */

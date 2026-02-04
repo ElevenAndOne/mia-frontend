@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
@@ -10,6 +10,7 @@ interface MetaAccountSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  onSkip?: () => void
   currentGoogleAccountName?: string
   currentAccountData?: { meta_ads_id?: string } | null
 }
@@ -26,12 +27,14 @@ const MetaAccountSelector = ({
   isOpen,
   onClose,
   onSuccess,
+  onSkip,
   currentGoogleAccountName,
   currentAccountData,
 }: MetaAccountSelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [accounts, setAccounts] = useState<MetaAccount[]>([])
+  const hasAutoLinkedRef = useRef(false)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -40,10 +43,39 @@ const MetaAccountSelector = ({
 
   useEffect(() => {
     if (isOpen) {
+      hasAutoLinkedRef.current = false
       fetchMetaAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
+
+  const handleLinkAccount = async (accountId?: string) => {
+    await actions.withSubmitting(async () => {
+      const targetAccountId = accountId || state.selectedId
+      if (!targetAccountId) {
+        throw new Error('Please select a Meta account')
+      }
+
+      const response = await apiFetch('/api/oauth/meta/accounts/link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId || 'default',
+        },
+        body: JSON.stringify({
+          meta_account_id: targetAccountId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        actions.handleSuccess()
+      } else {
+        throw new Error(data.message || 'Failed to update Meta account')
+      }
+    })
+  }
 
   const fetchMetaAccounts = async () => {
     actions.setIsLoading(true)
@@ -69,6 +101,14 @@ const MetaAccountSelector = ({
           actions.setSelectedId(accountToUse.meta_ads_id)
         } else if (sortedAccounts.length === 1) {
           actions.setSelectedId(sortedAccounts[0].id)
+          if (!hasAutoLinkedRef.current) {
+            hasAutoLinkedRef.current = true
+            setTimeout(() => {
+              handleLinkAccount(sortedAccounts[0].id).catch(() => {
+                // Errors are handled by selector state
+              })
+            }, 0)
+          }
         }
       } else {
         actions.setError(data.error || 'Failed to fetch Meta accounts')
@@ -78,29 +118,6 @@ const MetaAccountSelector = ({
     } finally {
       actions.setIsLoading(false)
     }
-  }
-
-  const handleLinkAccount = async () => {
-    await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/meta/accounts/link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          meta_account_id: state.selectedId || '',
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to update Meta account')
-      }
-    })
   }
 
   return (
@@ -119,6 +136,8 @@ const MetaAccountSelector = ({
       isEmpty={accounts.length === 0}
       emptyMessage="No Meta ad accounts found"
       emptySubMessage="Make sure you have access to at least one Meta Ads account"
+      emptyActionLabel={onSkip ? "Continue without Meta" : undefined}
+      onEmptyAction={onSkip}
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel={`Apply (${state.selectedId ? '1' : '0'})`}

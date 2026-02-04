@@ -10,9 +10,10 @@ import { useMetaAccountSelection } from '../features/accounts/hooks/use-meta-acc
 interface MetaAccountSelectionPageProps {
   onAccountSelected: () => void
   onBack?: () => void
+  onSkip?: () => void
 }
 
-const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSelectionPageProps) => {
+const MetaAccountSelectionPage = ({ onAccountSelected, onBack, onSkip }: MetaAccountSelectionPageProps) => {
   const {
     metaUser,
     metaAccountItems,
@@ -52,6 +53,14 @@ const MetaAccountSelectionPage = ({ onAccountSelected, onBack }: MetaAccountSele
             <p className="paragraph-sm text-tertiary">
               Make sure you have access to at least one Meta Ads account.
             </p>
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                className="mt-6 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors"
+              >
+                Continue without Meta
+              </button>
+            )}
           </div>
         ) : (
           <motion.div

@@ -4,10 +4,14 @@ import { formatDateRangeDisplay } from '../utils/date-range'
 import { getAccountIcon } from '../utils/account-icon'
 import { sendChatMessage } from '../features/chat/services/chat-service'
 import { usePlatformPreferences } from '../features/integrations/hooks/use-platform-preferences'
+import { useIntegrationStatus } from '../features/integrations/hooks/use-integration-status'
+import { useIntegrationPrompt } from '../features/integrations/hooks/use-integration-prompt'
 import BrevoConnectionModal from './brevo-connection-modal'
 import DateRangeSelector from './date-range-selector'
 import WorkspaceSwitcher from './workspace-switcher'
 import CreateWorkspaceModal from './create-workspace-modal'
+import IntegrationPromptModal from './integration-prompt-modal'
+import { setIntegrationHighlight } from '../features/integrations/utils/integration-highlight'
 
 interface MainViewProps {
   onLogout: () => void
@@ -25,7 +29,6 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   // Debug logging with timestamp
   const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
   console.log(`[${timestamp}] [MainViewCopy RENDER] activeWorkspace:`, activeWorkspace?.tenant_id, activeWorkspace?.name)
-  console.log(`[${timestamp}] [MainViewCopy RENDER] connected_platforms:`, activeWorkspace?.connected_platforms)
 
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([])
@@ -40,36 +43,62 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
   const [dateRange, setDateRange] = useState('30_days') // Date range for chat queries
   const [showDatePicker, setShowDatePicker] = useState(false) // Show date picker modal
   const datePickerButtonRef = useRef<HTMLButtonElement>(null)
+  const [promptDismissed, setPromptDismissed] = useState(false)
 
   // Platform configuration - maps to backend platform IDs
   // Order: Google Ads, GA4, Meta, Facebook, Brevo, Mailchimp, HubSpot
   // CRITICAL: Platform IDs must match backend TenantIntegration.platform values
   const platformConfig = useMemo(() => [
-    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id' },
-    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id' },
-    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id' },
-    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id' },
-    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
-    { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', accountKey: 'mailchimp_account_id' },
-    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id' },
+    { id: 'google_ads', name: 'Google Ads', icon: '/icons/radio buttons/Google-ads.png', accountKey: 'google_ads_id', statusKey: 'google' },
+    { id: 'ga4', name: 'Google Analytics', icon: '/icons/radio buttons/Google-analytics.png', accountKey: 'ga4_property_id', statusKey: 'ga4' },
+    { id: 'meta_ads', name: 'Meta Ads', icon: '/icons/radio buttons/Meta.png', accountKey: 'meta_ads_id', statusKey: 'meta' },
+    { id: 'facebook_organic', name: 'Facebook Organic', icon: '/icons/radio buttons/Facebook.png', accountKey: 'facebook_page_id', statusKey: 'facebook_organic' },
+    { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key', statusKey: 'brevo' },
+    { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', accountKey: 'mailchimp_account_id', statusKey: 'mailchimp' },
+    { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id', statusKey: 'hubspot' },
   ], [])
 
-  // CRITICAL FIX (Jan 2026): Get connected platforms from WORKSPACE, not from selectedAccount
-  // This ensures proper workspace isolation - each workspace has its own platform connections
+  const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(
+    sessionId,
+    selectedAccount?.id,
+    activeWorkspace?.tenant_id,
+  )
+
+  // Use validated platform status (workspace-scoped + account validation)
   const connectedPlatforms = useMemo(() => {
     const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
     console.log(`[${timestamp}] [MainViewCopy useMemo] Computing connectedPlatforms...`)
-    console.log(`[${timestamp}] [MainViewCopy useMemo] activeWorkspace?.connected_platforms:`, activeWorkspace?.connected_platforms)
+    console.log(`[${timestamp}] [MainViewCopy useMemo] platformStatus:`, platformStatus)
 
-    // Use workspace-level connected_platforms array from backend
-    if (activeWorkspace?.connected_platforms) {
-      console.log(`[${timestamp}] [MainViewCopy useMemo] Returning:`, activeWorkspace.connected_platforms)
-      return activeWorkspace.connected_platforms
+    if (!platformStatus) {
+      console.log(`[${timestamp}] [MainViewCopy useMemo] No platform status, returning empty array`)
+      return []
     }
-    // Fallback to empty array if no workspace or no platforms connected
-    console.log(`[${timestamp}] [MainViewCopy useMemo] No platforms, returning empty array`)
-    return []
-  }, [activeWorkspace])
+
+    const connected = platformConfig
+      .filter((platform) => {
+        const status = platformStatus[platform.statusKey as keyof typeof platformStatus]
+        return status?.connected
+      })
+      .map((platform) => platform.id)
+
+    console.log(`[${timestamp}] [MainViewCopy useMemo] Returning:`, connected)
+    return connected
+  }, [platformStatus, platformConfig])
+
+  const integrationPrompt = useIntegrationPrompt({
+    connectedPlatforms,
+    isLoading: integrationStatusLoading,
+  })
+
+  const missingKey = integrationPrompt?.missingPlatformIds.join('|') ?? ''
+
+  useEffect(() => {
+    if (!integrationPrompt) return
+    setPromptDismissed(false)
+  }, [missingKey, integrationPrompt])
+
+  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed
 
   // Platform preferences with caching and debounced saves
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({
@@ -77,6 +106,8 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     selectedAccountId: selectedAccount?.id,
     connectedPlatforms
   })
+
+  const hasSelectedPlatforms = selectedPlatforms.length > 0
 
   // FEB 2026: Show guidance when platforms need additional configuration
   // GA4 and Facebook Organic share auth with Google Ads and Meta Ads respectively,
@@ -149,6 +180,7 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
   const handleChatSubmit = useCallback(async (message: string) => {
     if (!message.trim()) return
+    if (!hasSelectedPlatforms) return
 
     // Add user message to chat
     setChatMessages(prev => [...prev, { role: 'user', content: message }])
@@ -196,10 +228,27 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
       setIsChatLoading(false)
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
     }
-  }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, user?.google_user_id])
+  }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, user?.google_user_id, hasSelectedPlatforms])
 
   return (
     <div className="w-full h-full relative bg-primary flex flex-col">
+        {integrationPrompt && (
+          <IntegrationPromptModal
+            isOpen={showIntegrationPrompt}
+            title={integrationPrompt.title}
+            message={integrationPrompt.message}
+            missing={integrationPrompt.missing}
+            primaryActionLabel={integrationPrompt.primaryActionLabel}
+            onPrimaryAction={() => {
+              setPromptDismissed(true)
+              setIntegrationHighlight(integrationPrompt.missingPlatformIds)
+              onIntegrationsClick?.()
+            }}
+            onClose={() => {
+              setPromptDismissed(true)
+            }}
+          />
+        )}
       {/* Header - Conditional: Burger Menu OR Back Button */}
       <div className={`flex items-center px-4 py-1 safe-top relative z-20 shrink-0 ${!showChat ? 'justify-start' : 'justify-between'}`}>
         {!showChat ? (
@@ -471,13 +520,17 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
               <div className="flex gap-2 mt-2">
                 {onGrowQuickClick && (
                   <button
+                    disabled={!hasSelectedPlatforms}
                     onClick={(e) => {
                       e.preventDefault()
+                      if (!hasSelectedPlatforms) return
                       if (onGrowQuickClick) {
                         setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
                       }
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                    className={`inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation ${
+                      hasSelectedPlatforms ? '' : 'opacity-50 cursor-not-allowed'
+                    }`}
                   >
                     Grow
                   </button>
@@ -485,13 +538,17 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
                 {onOptimizeQuickClick && (
                   <button
+                    disabled={!hasSelectedPlatforms}
                     onClick={(e) => {
                       e.preventDefault()
+                      if (!hasSelectedPlatforms) return
                       if (onOptimizeQuickClick) {
                         setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
                       }
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                    className={`inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation ${
+                      hasSelectedPlatforms ? '' : 'opacity-50 cursor-not-allowed'
+                    }`}
                   >
                     Optimise
                   </button>
@@ -499,13 +556,17 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
                 {onProtectQuickClick && (
                   <button
+                    disabled={!hasSelectedPlatforms}
                     onClick={(e) => {
                       e.preventDefault()
+                      if (!hasSelectedPlatforms) return
                       if (onProtectQuickClick) {
                         setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
                       }
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
+                    className={`inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation ${
+                      hasSelectedPlatforms ? '' : 'opacity-50 cursor-not-allowed'
+                    }`}
                   >
                     Protect
                   </button>
@@ -535,11 +596,15 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
                   </button>
 
                   <button
+                    disabled={!hasSelectedPlatforms}
                     onClick={(e) => {
                       e.preventDefault()
+                      if (!hasSelectedPlatforms) return
                       setTimeout(() => setShowChat(true), 150)
                     }}
-                    className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation"
+                    className={`inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation ${
+                      hasSelectedPlatforms ? '' : 'opacity-50 cursor-not-allowed'
+                    }`}
                   >
                     Chat with Mia
                   </button>

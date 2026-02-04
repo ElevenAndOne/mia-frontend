@@ -4,11 +4,13 @@ import type { AccountSelectionItem } from '../types'
 interface DirectAccountSelectionPanelProps {
   accounts: AccountSelectionItem[]
   onSelectAccount: (accountId: string) => void
+  onSkip?: () => void
 }
 
 export const DirectAccountSelectionPanel = ({
   accounts,
   onSelectAccount,
+  onSkip,
 }: DirectAccountSelectionPanelProps) => {
   return (
     <div className="px-6 pb-8">
@@ -23,6 +25,14 @@ export const DirectAccountSelectionPanel = ({
           <p className="paragraph-sm text-tertiary">
             Please contact support to set up your marketing accounts.
           </p>
+          {onSkip && (
+            <button
+              onClick={onSkip}
+              className="mt-4 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors"
+            >
+              Skip for now
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

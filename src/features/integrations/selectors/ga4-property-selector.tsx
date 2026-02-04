@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
 import { Modal } from '../../overlay'
+import { refreshGa4Properties } from '../services/ga4-service'
 
 interface GA4Property {
   property_id: string
@@ -19,12 +20,13 @@ interface GA4PropertySelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  onSkip?: () => void
   currentAccountName?: string
   ga4Properties?: GA4Property[]  // Optional: pass pre-fetched properties
   linkedProperties?: LinkedGA4Property[]  // Already linked properties
 }
 
-const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties, linkedProperties }: GA4PropertySelectorProps) => {
+const GA4PropertySelector = ({ isOpen, onClose, onSuccess, onSkip, currentAccountName, ga4Properties, linkedProperties }: GA4PropertySelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
@@ -33,10 +35,12 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
   const [isLinking, setIsLinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const hasAutoLinkedRef = useRef(false)
 
   // Use pre-fetched properties if available, otherwise fetch
   useEffect(() => {
     if (isOpen) {
+      hasAutoLinkedRef.current = false
       if (ga4Properties && ga4Properties.length > 0) {
         // Sort pre-fetched properties alphabetically by display name (A-Z)
         const sortedProperties = [...ga4Properties].sort((a, b) =>
@@ -65,33 +69,26 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchGA4Properties is intentionally omitted to prevent re-fetching on every render
   }, [isOpen, ga4Properties, linkedProperties])
 
-  const fetchGA4Properties = async (forceRefresh: boolean = false) => {
+  const fetchGA4Properties = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // Pass refresh=true to bypass cache and fetch fresh from Google API
-      const url = forceRefresh
-        ? '/api/accounts/available?refresh=true'
-        : '/api/accounts/available'
+      if (!sessionId) {
+        setError('Missing session. Please try again.')
+        return
+      }
 
-      const response = await apiFetch(url, {
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
-      })
+      const data = await refreshGa4Properties(sessionId)
+      const sortedProperties = data.sort((a: GA4Property, b: GA4Property) =>
+        a.display_name.localeCompare(b.display_name)
+      )
+      setProperties(sortedProperties)
 
-      const data = await response.json()
-
-      if (data.success && data.ga4_properties) {
-        // Sort properties alphabetically by display name (A-Z)
-        const sortedProperties = data.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
-          a.display_name.localeCompare(b.display_name)
-        )
-        setProperties(sortedProperties)
-        // Don't auto-select - let user choose which properties to link
-      } else {
-        setError('Failed to fetch GA4 properties')
+      if (sortedProperties.length === 1) {
+        const onlyPropertyId = sortedProperties[0].property_id
+        setSelectedPropertyIds([onlyPropertyId])
+        setPrimaryPropertyId(onlyPropertyId)
       }
     } catch (err) {
       console.error('Error fetching GA4 properties:', err)
@@ -125,7 +122,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     setPrimaryPropertyId(propertyId)
   }
 
-  const handleLinkProperties = async () => {
+  const linkProperties = async (propertyIds: string[], primaryId: string | null) => {
     setIsLinking(true)
     setError(null)
 
@@ -137,18 +134,18 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
       const accountId = selectedAccount.id
 
-      if (selectedPropertyIds.length === 0) {
+      if (propertyIds.length === 0) {
         console.log('[GA4-PROPERTY-SELECTOR] Unlinking all GA4 properties from account', selectedAccount.name)
       } else {
-        console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
-        console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
+        console.log('[GA4-PROPERTY-SELECTOR] Linking', propertyIds.length, 'properties to account', selectedAccount.name)
+        console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryId)
       }
 
       // Order properties with primary first (or empty string if unlinking)
-      const orderedPropertyIds = selectedPropertyIds.length > 0
-        ? (primaryPropertyId
-          ? [primaryPropertyId, ...selectedPropertyIds.filter(id => id !== primaryPropertyId)]
-          : selectedPropertyIds)
+      const orderedPropertyIds = propertyIds.length > 0
+        ? (primaryId
+          ? [primaryId, ...propertyIds.filter(id => id !== primaryId)]
+          : propertyIds)
         : []
 
       // Join multiple property IDs with comma for backend storage (primary first)
@@ -190,6 +187,10 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     }
   }
 
+  const handleLinkProperties = async () => {
+    await linkProperties(selectedPropertyIds, primaryPropertyId)
+  }
+
   const handleClose = () => {
     if (!isLinking) {
       setSelectedPropertyIds([])
@@ -198,6 +199,21 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       onClose()
     }
   }
+
+  const handleSkip = () => {
+    handleClose()
+    onSkip?.()
+  }
+
+  useEffect(() => {
+    if (!isOpen || isLoading || isLinking || hasAutoLinkedRef.current) return
+    if (properties.length !== 1) return
+    if (!selectedAccount) return
+    if (linkedProperties?.some((property) => property.property_id === properties[0].property_id)) return
+
+    hasAutoLinkedRef.current = true
+    void linkProperties([properties[0].property_id], properties[0].property_id)
+  }, [isOpen, isLoading, isLinking, properties, linkedProperties, selectedAccount])
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="md" showCloseButton={false} panelClassName="p-6">
@@ -270,7 +286,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                         Select GA4 Properties ({selectedPropertyIds.length} selected)
                       </label>
                       <button
-                        onClick={() => fetchGA4Properties(true)}
+                        onClick={() => fetchGA4Properties()}
                         className="paragraph-xs text-brand-teriary hover:text-brand-secondary hover:underline"
                       >
                         Refresh list
@@ -352,6 +368,14 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
                   </svg>
                   <p className="paragraph-sm text-tertiary">No GA4 properties found</p>
                   <p className="paragraph-sm text-quaternary mt-2">Make sure you have access to at least one GA4 property</p>
+                  {onSkip && (
+                    <button
+                      onClick={handleSkip}
+                      className="mt-4 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors"
+                    >
+                      Continue without GA4
+                    </button>
+                  )}
                 </div>
               )}
             </div>

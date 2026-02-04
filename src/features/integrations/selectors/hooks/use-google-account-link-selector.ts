@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from '../../../../contexts/session-context'
 import { useSelectorState } from './use-selector-state'
 import { fetchGoogleAdAccounts, fetchGoogleAuthStatus, linkGoogleAdsAccount } from '../../services/google-account-link-service'
@@ -19,6 +19,7 @@ export const useGoogleAccountLinkSelector = ({
 }: UseGoogleAccountLinkSelectorParams) => {
   const { sessionId, selectedAccount, refreshAccounts, user } = useSession()
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([])
+  const hasAutoLinkedRef = useRef(false)
   const [state, actions] = useSelectorState<string>({ onClose })
   const { selectedId, isLoading, isSubmitting, error, success } = state
   const { setSelectedId, setIsLoading, setError, handleClose, resetState, withSubmitting } = actions
@@ -74,35 +75,46 @@ export const useGoogleAccountLinkSelector = ({
 
   useEffect(() => {
     if (!isOpen) return
+    hasAutoLinkedRef.current = false
     resetState()
     loadAccounts()
   }, [isOpen, resetState, loadAccounts])
 
-  const handleLinkAccount = useCallback(async () => {
+  const handleLinkAccount = useCallback(async (accountId?: string) => {
     if (!sessionId || !selectedAccount) {
       setError('Please select a Google Ads account')
       return
     }
 
-    if (!selectedId) {
+    const targetAccountId = accountId || selectedId
+    if (!targetAccountId) {
       setError('Please select a Google Ads account')
       return
     }
 
-    const selectedGoogle = googleAccounts.find((account) => account.customer_id === selectedId)
+    const selectedGoogle = googleAccounts.find((account) => account.customer_id === targetAccountId)
 
     await withSubmitting(async () => {
       await linkGoogleAdsAccount({
         sessionId,
         targetAccountId: selectedAccount.id,
-        googleAdsCustomerId: selectedId,
+        googleAdsCustomerId: targetAccountId,
         loginCustomerId: selectedGoogle?.login_customer_id,
       })
       await refreshAccounts()
-      onSuccess(selectedId)
+      onSuccess(targetAccountId)
       handleClose()
     })
   }, [sessionId, selectedAccount, selectedId, googleAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting])
+
+  useEffect(() => {
+    if (!isOpen || hasAutoLinkedRef.current) return
+    if (!selectedAccount || !selectedId) return
+    if (googleAccounts.length !== 1) return
+
+    hasAutoLinkedRef.current = true
+    handleLinkAccount(selectedId)
+  }, [isOpen, selectedAccount, selectedId, googleAccounts.length, handleLinkAccount])
 
   const accountItems = useMemo(() => {
     return googleAccounts.map((account) => ({

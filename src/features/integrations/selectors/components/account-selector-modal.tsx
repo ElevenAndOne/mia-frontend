@@ -21,6 +21,8 @@ interface AccountSelectorModalProps {
   emptyMessage?: string
   emptySubMessage?: string
   emptyIcon?: React.ReactNode
+  emptyActionLabel?: string
+  onEmptyAction?: () => void
   isSubmitting: boolean
   onSubmit: () => void
   submitLabel: string
@@ -67,6 +69,8 @@ export function AccountSelectorModal({
   emptyMessage = 'No items found',
   emptySubMessage,
   emptyIcon,
+  emptyActionLabel,
+  onEmptyAction,
   isSubmitting,
   onSubmit,
   submitLabel,
@@ -114,6 +118,14 @@ export function AccountSelectorModal({
             <div className="mx-auto mb-4">{emptyIcon || <DefaultEmptyIcon />}</div>
             <p className="paragraph-sm text-tertiary">{emptyMessage}</p>
             {emptySubMessage && <p className="paragraph-sm text-quaternary mt-2">{emptySubMessage}</p>}
+            {onEmptyAction && emptyActionLabel && (
+              <button
+                onClick={onEmptyAction}
+                className="mt-4 px-4 py-2 subheading-md text-secondary bg-tertiary rounded-lg hover:bg-quaternary transition-colors"
+              >
+                {emptyActionLabel}
+              </button>
+            )}
           </div>
         )}
 

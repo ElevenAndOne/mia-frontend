@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { Logo } from '../../../components/logo'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
+import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { sendChatMessage } from '../services/chat-service'
 
 interface ChatMessageItem {
@@ -31,7 +32,7 @@ export const useChatView = () => {
   const [dateRange, setDateRange] = useState('30_days')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { platformStatus } = useIntegrationStatus(
+  const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(
     sessionId,
     selectedAccount?.id,
     activeWorkspace?.tenant_id,
@@ -86,6 +87,11 @@ export const useChatView = () => {
 
     return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
   }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
+
+  const integrationPrompt = useIntegrationPrompt({
+    connectedPlatforms,
+    isLoading: integrationStatusLoading,
+  })
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -181,5 +187,6 @@ export const useChatView = () => {
     handleSubmit,
     handleQuickAction,
     configurationGuidance,
+    integrationPrompt,
   }
 }

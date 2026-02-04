@@ -6,6 +6,7 @@ interface GoogleAccountLinkSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: (linkedAccountId: string) => void
+  onSkip?: () => void
 }
 
 function GoogleIcon() {
@@ -16,7 +17,7 @@ function GoogleIcon() {
   )
 }
 
-const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountLinkSelectorProps) => {
+const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess, onSkip }: GoogleAccountLinkSelectorProps) => {
   const {
     isLoading,
     isSubmitting,
@@ -46,6 +47,8 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
       isEmpty={isEmpty}
       emptyMessage="No Google Ads accounts found"
       emptySubMessage="Make sure you have access to Google Ads"
+      emptyActionLabel={onSkip ? "Continue without Google Ads" : undefined}
+      onEmptyAction={onSkip}
       isSubmitting={isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel="Link Account"

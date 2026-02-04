@@ -14,7 +14,7 @@ const CHOICE_LABELS: Record<string, string> = {
   connect_google: 'Connect Google Ads',
   skip_connect: 'Skip for now',
   finish: "Let's go!",
-  go_integrations: 'Manage Integrations',
+  go_integrations: 'Skip Onboarding',
   continue_anyway: 'Continue anyway'
 }
 
@@ -52,7 +52,7 @@ export const buildBronzeNoReachMessages = (bronzeFact: BronzeFact): ChatMessageI
     content: 'Let me show you what I can help with:',
     choices: [
       { label: 'Show me', action: 'show_explainers', variant: 'primary' },
-      { label: 'Manage Integrations', action: 'go_integrations', variant: 'secondary' }
+      { label: 'Skip Onboarding', action: 'go_integrations', variant: 'secondary' }
     ]
   }
 ]
@@ -79,7 +79,7 @@ export const buildNoBronzeMessages = (): ChatMessageInput[] => [
     type: 'mia',
     content: 'What would you like to do?',
     choices: [
-      { label: 'Manage Integrations', action: 'go_integrations', variant: 'primary' },
+      { label: 'Skip Onboarding', action: 'go_integrations', variant: 'primary' },
       { label: 'Continue anyway', action: 'show_explainers', variant: 'secondary' }
     ]
   }

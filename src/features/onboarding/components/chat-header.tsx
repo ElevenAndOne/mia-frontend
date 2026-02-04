@@ -19,8 +19,8 @@ export const ChatHeader = ({ current, total, onManageIntegrations }: ChatHeaderP
         type="button"
         onClick={onManageIntegrations}
         className="p-2 text-placeholder-subtle hover:text-tertiary hover:bg-tertiary rounded-full transition-colors"
-        title="Manage Integrations"
-        aria-label="Manage Integrations"
+        title="Skip Onboarding"
+        aria-label="Skip Onboarding"
       >
         <Icon.settings_01 size={20} />
       </button>

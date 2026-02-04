@@ -4,6 +4,7 @@ import { useOnboarding } from '../onboarding-context'
 import type { BronzeFact } from '../onboarding-context'
 import { useOnboardingStreaming } from '../use-onboarding-streaming'
 import type { ExplainerType } from '../onboarding-chat-types'
+import { useIntegrationFlow } from '../../integrations/hooks/use-integration-flow'
 import {
   WELCOME_MESSAGES,
   buildBronzeNoReachMessages,
@@ -42,6 +43,8 @@ interface OnboardingChatState {
   handleGoToIntegrations: () => void
   handleMetaAccountLinked: () => void
   handleGoogleAccountLinked: () => void
+  handleMetaSelectorSkipped: () => void
+  handleGoogleSelectorSkipped: () => void
   selectedAccountName?: string
 }
 
@@ -56,6 +59,8 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     skipOnboarding,
     loadOnboardingStatus
   } = useOnboarding()
+
+  const { handleSkip: handleIntegrationSkip } = useIntegrationFlow({ skipOnboarding: true })
 
   const {
     streamedText,
@@ -185,6 +190,16 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       queueMessages(buildCombinedFallbackMessages())
     }
   }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
+
+  const handleMetaSelectorSkipped = useCallback(async () => {
+    setShowMetaSelector(false)
+    await handleIntegrationSkip(onComplete)
+  }, [handleIntegrationSkip, onComplete])
+
+  const handleGoogleSelectorSkipped = useCallback(async () => {
+    setShowGoogleSelector(false)
+    await handleIntegrationSkip(onComplete)
+  }, [handleIntegrationSkip, onComplete])
 
   const handleSkip = useCallback(async () => {
     await skipOnboarding()
@@ -324,6 +339,8 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     handleGoToIntegrations,
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
+    handleMetaSelectorSkipped,
+    handleGoogleSelectorSkipped,
     selectedAccountName: selectedAccount?.name
   }
 }

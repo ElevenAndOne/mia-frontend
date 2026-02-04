@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
+import { useIntegrationFlow } from './hooks/use-integration-flow'
+import { useIntegrationHighlight } from './hooks/use-integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
 import FacebookPageSelector from './selectors/facebook-page-selector'
 import GA4PropertySelector from './selectors/ga4-property-selector'
@@ -25,7 +27,7 @@ interface Integration {
 
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
   // Jan 2025: Pass tenant_id to fetch workspace-level integration status
@@ -38,17 +40,25 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
+  const { refreshIntegrationState, handleSkip } = useIntegrationFlow({
+    invalidateIntegrationStatus,
+  })
+
+  const { getHighlightProps } = useIntegrationHighlight({
+    durationMs: 1800,
+    scale: 1.01,
+    glowColor: 'rgba(16, 185, 129, 0.18)',
+  })
+
   // FEB 2026 FIX: Invalidate integration status cache when leaving this page
   // This ensures the main page (ChatView) fetches fresh data to show newly connected platforms
   // Without this, the 2-minute React Query staleTime causes cached (stale) data to be used
   useEffect(() => {
     return () => {
       console.log('[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page')
-      invalidateIntegrationStatus()
-      // Also refresh workspaces to update connected_platforms array
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+      void refreshIntegrationState()
     }
-  }, [invalidateIntegrationStatus, refreshWorkspaces])
+  }, [refreshIntegrationState])
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
@@ -240,9 +250,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Close modal and refresh connections
       setShowBrevoModal(false)
       setBrevoApiKey('')
-      invalidateIntegrationStatus()
-      // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err))
+      void refreshIntegrationState()
 
     } catch (error) {
       console.error('[Brevo] API key submission error:', error)
@@ -275,9 +283,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
-      invalidateIntegrationStatus()
-      // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err))
+      void refreshIntegrationState()
 
     } catch (error) {
       console.error('[Brevo] Unlink error:', error)
@@ -460,8 +466,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // Refresh integration status AND workspace list
           // CRITICAL FIX (Jan 2026): Refresh workspaces to update connected_platforms for main page icons
           console.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          void refreshIntegrationState()
 
           setSelectedIntegration(integrationId)
           setConnectingId(null)
@@ -595,9 +600,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                 : undefined
                             }
                             onDisconnectSuccess={() => {
-                              invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-                              refreshAccounts()
+                              void refreshIntegrationState()
                             }}
                           />
                           {isSelected ? (
@@ -632,38 +635,45 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <p className="paragraph-xs text-quaternary mb-4">Connect your data sources to unlock powerful new insights</p>
 
             <div className="space-y-2">
-              {availableSources.map(integration => (
-                <div key={integration.id} className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
+              {availableSources.map(integration => {
+                const highlightProps = getHighlightProps(integration.id)
+                return (
+                  <div
+                    key={integration.id}
+                    className={`bg-primary border border-secondary rounded-xl p-3 overflow-hidden ${highlightProps.className}`}
+                    style={highlightProps.style}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                          <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
+                          <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
-                        <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                        integration.id === 'linkedin' || integration.id === 'tiktok'
-                          ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
+                      <button
+                        onClick={() => handleConnect(integration.id)}
+                        disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
+                        className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
+                          integration.id === 'linkedin' || integration.id === 'tiktok'
+                            ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
+                            : connectingId === integration.id
+                            ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
+                            : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                        }`}
+                      >
+                        {integration.id === 'linkedin' || integration.id === 'tiktok'
+                          ? 'Soon'
                           : connectingId === integration.id
-                          ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
-                          : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
-                      }`}
-                    >
-                      {integration.id === 'linkedin' || integration.id === 'tiktok'
-                        ? 'Soon'
-                        : connectingId === integration.id
-                        ? 'Connecting...'
-                        : 'Connect'}
-                    </button>
+                          ? 'Connecting...'
+                          : 'Connect'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -804,12 +814,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <GoogleAccountSelector
         isOpen={showGoogleAccountSelector}
         onClose={() => setShowGoogleAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
           setShowGoogleAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
       />
 
@@ -817,13 +825,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <MetaAccountSelector
         isOpen={showMetaAccountSelector}
         onClose={() => setShowMetaAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
+        onSkip={() => handleSkip(() => setShowMetaAccountSelector(false))}
         currentGoogleAccountName={selectedAccount?.name}
         currentAccountData={currentAccountData}
       />
@@ -832,12 +839,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <BrevoAccountSelector
         isOpen={showBrevoAccountSelector}
         onClose={() => setShowBrevoAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
           setShowBrevoAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
       />
 
@@ -845,12 +850,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <HubSpotAccountSelector
         isOpen={showHubSpotAccountSelector}
         onClose={() => setShowHubSpotAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
       />
 
@@ -858,12 +861,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <MailchimpAccountSelector
         isOpen={showMailchimpAccountSelector}
         onClose={() => setShowMailchimpAccountSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
           setShowMailchimpAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
       />
 
@@ -871,13 +872,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <FacebookPageSelector
         isOpen={showFacebookPageSelector}
         onClose={() => setShowFacebookPageSelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
           setShowFacebookPageSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
+        onSkip={() => handleSkip(() => setShowFacebookPageSelector(false))}
         currentAccountName={selectedAccount?.name}
         currentAccountData={currentAccountData}
       />
@@ -886,13 +886,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       <GA4PropertySelector
         isOpen={showGA4PropertySelector}
         onClose={() => setShowGA4PropertySelector(false)}
-        onSuccess={async () => {
+        onSuccess={() => {
           console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+          void refreshIntegrationState()
         }}
+        onSkip={() => handleSkip(() => setShowGA4PropertySelector(false))}
         currentAccountName={selectedAccount?.name}
         ga4Properties={ga4Properties}
         linkedProperties={linkedGA4Properties}

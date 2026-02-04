@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
@@ -10,6 +10,7 @@ interface FacebookPageSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  onSkip?: () => void
   currentAccountName?: string
   currentAccountData?: { id?: string | number; name?: string; facebook_page_id?: string } | null
 }
@@ -18,12 +19,14 @@ const FacebookPageSelector = ({
   isOpen,
   onClose,
   onSuccess,
+  onSkip,
   currentAccountName,
   currentAccountData,
 }: FacebookPageSelectorProps) => {
   const { sessionId, selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
+  const hasAutoLinkedRef = useRef(false)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -33,10 +36,49 @@ const FacebookPageSelector = ({
 
   useEffect(() => {
     if (isOpen) {
+      hasAutoLinkedRef.current = false
       fetchFacebookPages()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
+
+  const handleLinkPage = async (pageId?: string) => {
+    if (!accountToUse) {
+      actions.setError('No account selected')
+      return
+    }
+
+    await actions.withSubmitting(async () => {
+      const targetPageId = pageId || state.selectedId
+      const selectedPage = targetPageId ? pages.find((p) => p.id === targetPageId) : null
+
+      const response = await apiFetch('/api/oauth/meta/organic/link-page', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId || 'default',
+        },
+        body: JSON.stringify({
+          page_id: targetPageId || '',
+          page_name: selectedPage?.name || '',
+          page_access_token: selectedPage?.access_token || '',
+          account_id: accountToUse.id,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to link Facebook Page')
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        actions.handleSuccess()
+      } else {
+        throw new Error(data.message || 'Failed to link Facebook Page')
+      }
+    })
+  }
 
   const fetchFacebookPages = async (forceRefresh: boolean = false) => {
     actions.setIsLoading(true)
@@ -63,6 +105,16 @@ const FacebookPageSelector = ({
 
         if (accountToUse?.facebook_page_id) {
           actions.setSelectedId(accountToUse.facebook_page_id)
+        } else if (sortedPages.length === 1) {
+          actions.setSelectedId(sortedPages[0].id)
+          if (!hasAutoLinkedRef.current) {
+            hasAutoLinkedRef.current = true
+            setTimeout(() => {
+              handleLinkPage(sortedPages[0].id).catch(() => {
+                // Errors are handled via selector state
+              })
+            }, 0)
+          }
         }
       } else {
         actions.setError('Failed to fetch Facebook Pages')
@@ -72,43 +124,6 @@ const FacebookPageSelector = ({
     } finally {
       actions.setIsLoading(false)
     }
-  }
-
-  const handleLinkPage = async () => {
-    if (!accountToUse) {
-      actions.setError('No account selected')
-      return
-    }
-
-    await actions.withSubmitting(async () => {
-      const selectedPage = state.selectedId ? pages.find((p) => p.id === state.selectedId) : null
-
-      const response = await apiFetch('/api/oauth/meta/organic/link-page', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          page_id: state.selectedId || '',
-          page_name: selectedPage?.name || '',
-          page_access_token: selectedPage?.access_token || '',
-          account_id: accountToUse.id,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to link Facebook Page')
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to link Facebook Page')
-      }
-    })
   }
 
   const formatFollowers = (count: number): string => {
@@ -133,6 +148,8 @@ const FacebookPageSelector = ({
       isEmpty={pages.length === 0}
       emptyMessage="No Facebook Pages found"
       emptySubMessage="Make sure you have access to at least one Facebook Page"
+      emptyActionLabel={onSkip ? 'Continue without Facebook Page' : undefined}
+      onEmptyAction={onSkip}
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkPage}
       submitLabel={`Apply (${state.selectedId ? '1' : '0'})`}
