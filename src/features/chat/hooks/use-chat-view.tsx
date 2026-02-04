@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
-import { Logo } from '../../../components/logo'
+import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
 import { sendChatMessage } from '../services/chat-service'
@@ -11,16 +11,6 @@ interface ChatMessageItem {
   role: 'user' | 'assistant'
   content: string
 }
-
-const CHAT_PLATFORM_CONFIG = [
-  { id: 'google_ads', name: 'Google Ads', icon: <Logo.google_ads />, statusKey: 'google' },
-  { id: 'ga4', name: 'Google Analytics', icon: <Logo.google_analytics />, statusKey: 'ga4' },
-  { id: 'meta_ads', name: 'Meta Ads', icon: <Logo.meta />, statusKey: 'meta' },
-  { id: 'facebook_organic', name: 'Facebook Organic', icon: <Logo.facebook />, statusKey: 'facebook_organic' },
-  { id: 'brevo', name: 'Brevo', icon: <Logo.brevo />, statusKey: 'brevo' },
-  { id: 'mailchimp', name: 'Mailchimp', icon: <Logo.mailchimp />, statusKey: 'mailchimp' },
-  { id: 'hubspot', name: 'HubSpot', icon: <Logo.hubspot />, statusKey: 'hubspot' },
-]
 
 export const useChatView = () => {
   const navigate = useNavigate()

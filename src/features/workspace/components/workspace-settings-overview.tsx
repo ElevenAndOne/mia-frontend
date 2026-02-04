@@ -1,6 +1,6 @@
 import { Icon } from '../../../components/icon'
 import { TopBar } from '../../../components/top-bar'
-import CreateWorkspaceModal from '../../../components/create-workspace-modal'
+import CreateWorkspaceModal from '../views/create-workspace-modal'
 import { WorkspaceListItem } from './workspace-list-item'
 import type { WorkspaceOverviewItem } from '../utils/workspace-settings'
 

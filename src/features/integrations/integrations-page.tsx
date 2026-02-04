@@ -9,7 +9,7 @@ import GoogleAccountSelector from './selectors/google-account-selector'
 import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
-import PlatformGearMenu from '../../components/platform-gear-menu'
+import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
 
 interface Integration {

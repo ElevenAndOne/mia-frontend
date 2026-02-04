@@ -1,3 +1,5 @@
+import { IconButton } from './icon-button'
+
 interface CloseButtonProps {
   onClick: () => void
   disabled?: boolean
@@ -6,10 +8,10 @@ interface CloseButtonProps {
   'aria-label'?: string
 }
 
-const SIZE_MAP = {
-  sm: { button: 'w-6 h-6', icon: 'w-4 h-4' },
-  md: { button: 'w-8 h-8', icon: 'w-5 h-5' },
-  lg: { button: 'w-10 h-10', icon: 'w-6 h-6' },
+const ICON_SIZE_MAP = {
+  sm: 'w-4 h-4',
+  md: 'w-5 h-5',
+  lg: 'w-6 h-6',
 }
 
 export function CloseButton({
@@ -19,18 +21,16 @@ export function CloseButton({
   className = '',
   'aria-label': ariaLabel = 'Close',
 }: CloseButtonProps) {
-  const sizes = SIZE_MAP[size]
-
   return (
-    <button
-      type="button"
+    <IconButton
       onClick={onClick}
       disabled={disabled}
-      className={`${sizes.button} rounded-full flex items-center justify-center text-placeholder-subtle hover:text-tertiary hover:bg-tertiary transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      size={size}
+      className={className}
       aria-label={ariaLabel}
     >
       <svg
-        className={sizes.icon}
+        className={ICON_SIZE_MAP[size]}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -38,6 +38,6 @@ export function CloseButton({
       >
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
       </svg>
-    </button>
+    </IconButton>
   )
 }

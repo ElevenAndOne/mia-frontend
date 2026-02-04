@@ -1,6 +1,6 @@
 import { Icon } from './icon'
-import { SidebarWorkspaceSwitcher } from './sidebar-workspace-switcher'
-import { SidebarUserMenu } from './sidebar-user-menu'
+import { SidebarWorkspaceSwitcher } from '../features/workspace/views/sidebar-workspace-switcher'
+import { SidebarUserMenu } from '../features/shell/views/sidebar-user-menu'
 
 interface AppSidebarProps {
   onNewChat?: () => void
