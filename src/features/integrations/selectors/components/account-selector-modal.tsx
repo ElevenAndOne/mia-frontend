@@ -1,7 +1,8 @@
 import { Modal } from '../../../overlay'
 import { Alert } from '../../../../components/alert'
 import { Spinner } from '../../../../components/spinner'
-import { CloseButton } from '../../../../components/close-button'
+import { IconButton } from '../../../../components/icon-button'
+import { Icon } from '../../../../components/icon'
 
 type AccentColor = 'blue' | 'green' | 'orange' | 'black'
 
@@ -89,7 +90,9 @@ export function AccountSelectorModal({
             {subtitle && <p className="paragraph-sm text-quaternary">{subtitle}</p>}
           </div>
         </div>
-        <CloseButton onClick={onClose} disabled={isSubmitting} />
+        <IconButton onClick={onClose} disabled={isSubmitting} aria-label="Close">
+          <Icon.x_close />
+        </IconButton>
       </div>
 
       {/* Content */}

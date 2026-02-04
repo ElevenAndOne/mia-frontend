@@ -1,11 +1,12 @@
 import { useRef, useId, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { OverlayPortal, useEscapeKey, useClickOutside, useOverlayContext } from '../../overlay'
-import { CloseButton } from '../../../components/close-button'
 import { DateRangeCalendar } from '../../../components/date-range-calendar'
 import { useDateRangeSelection } from '../../../hooks/use-date-range-selection'
 import { DEFAULT_DATE_RANGE_OPTIONS, formatRangeSpan } from '../../../utils/date-range'
 import { INSIGHT_DESCRIPTIONS, INSIGHT_TITLES, type InsightType } from '../config/insight-definitions'
+import { IconButton } from '../../../components/icon-button'
+import { Icon } from '../../../components/icon'
 
 interface InsightsDatePickerModalProps {
   isOpen: boolean
@@ -68,7 +69,9 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="title-h6 text-primary">{INSIGHT_TITLES[insightType]}</h2>
-                  <CloseButton onClick={onClose} />
+                  <IconButton onClick={onClose} aria-label="Close">
+                    <Icon.x_close />
+                  </IconButton>
                 </div>
                 <p className="paragraph-sm text-tertiary">{INSIGHT_DESCRIPTIONS[insightType]}</p>
               </div>
@@ -80,11 +83,10 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
                   <button
                     key={option.value}
                     onClick={() => selectRange(option.value)}
-                    className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${
-                      selectedRange === option.value
+                    className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${selectedRange === option.value
                         ? 'border-utility-purple-600 bg-utility-purple-100 text-utility-purple-700 subheading-md'
                         : 'border-secondary hover:border-primary text-secondary paragraph-sm'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="subheading-md">{option.label}</span>

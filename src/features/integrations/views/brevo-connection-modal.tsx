@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
 import { Modal } from '../../overlay'
-import { CloseButton } from '../../../components/close-button'
 import { Alert } from '../../../components/alert'
 import { useBrevoConnection } from '../hooks/use-brevo-connection'
+import { IconButton } from '../../../components/icon-button'
+import { Icon } from '../../../components/icon'
 
 interface BrevoConnectionModalProps {
   isOpen: boolean
@@ -38,7 +39,9 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
           </div>
           <h2 className="title-h6 text-primary">Connect Brevo</h2>
         </div>
-        <CloseButton onClick={handleClose} disabled={isConnecting} />
+        <IconButton onClick={handleClose} disabled={isConnecting} aria-label="Close">
+          <Icon.x_close />
+        </IconButton>
       </div>
 
       {/* Success Message */}
