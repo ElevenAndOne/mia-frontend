@@ -12,10 +12,11 @@ import {
 import { useWorkspaceSettings } from './use-workspace-settings'
 
 export const useWorkspaceSettingsPage = () => {
-  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces } = useSession()
+  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces, deleteWorkspace } = useSession()
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCreateInviteModal, setShowCreateInviteModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [inviteRole, setInviteRole] = useState('viewer')
   const [inviteEmail, setInviteEmail] = useState('')
   const [isLinkInvite, setIsLinkInvite] = useState(true)
@@ -165,6 +166,18 @@ export const useWorkspaceSettingsPage = () => {
     setIsLinkInvite(true)
   }, [])
 
+  const openDeleteModal = useCallback(() => setShowDeleteModal(true), [])
+  const closeDeleteModal = useCallback(() => setShowDeleteModal(false), [])
+
+  const handleDeleteWorkspace = useCallback(async (): Promise<boolean> => {
+    if (!selectedWorkspaceId) return false
+    const success = await deleteWorkspace(selectedWorkspaceId)
+    if (success) {
+      setSelectedWorkspaceId(null)
+    }
+    return success
+  }, [selectedWorkspaceId, deleteWorkspace])
+
   const isCreateInviteDisabled = creatingInvite || (!isLinkInvite && !inviteEmail.trim())
 
   return {
@@ -177,6 +190,7 @@ export const useWorkspaceSettingsPage = () => {
     closeCreateModal,
     handleWorkspaceCreated,
     canManage: Boolean(canManage),
+    isOwner: Boolean(isOwner),
     loading,
     error,
     unifiedPeople,
@@ -201,5 +215,9 @@ export const useWorkspaceSettingsPage = () => {
     setInviteRole,
     setInviteEmail,
     setIsLinkInvite,
+    showDeleteModal,
+    openDeleteModal,
+    closeDeleteModal,
+    handleDeleteWorkspace,
   }
 }

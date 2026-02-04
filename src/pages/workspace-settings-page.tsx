@@ -23,6 +23,7 @@ const WorkspaceSettingsPage = () => {
     closeCreateModal,
     handleWorkspaceCreated,
     canManage,
+    isOwner,
     loading,
     error,
     unifiedPeople,
@@ -47,6 +48,10 @@ const WorkspaceSettingsPage = () => {
     setInviteRole,
     setInviteEmail,
     setIsLinkInvite,
+    showDeleteModal,
+    openDeleteModal,
+    closeDeleteModal,
+    handleDeleteWorkspace,
   } = useWorkspaceSettingsPage()
 
   const handleBack = () => navigate('/home')
@@ -76,6 +81,8 @@ const WorkspaceSettingsPage = () => {
       ) : (
         <WorkspaceSettingsDetail
           canManage={canManage}
+          isOwner={isOwner}
+          workspace={selectedWorkspace}
           error={error}
           loading={loading}
           people={unifiedPeople}
@@ -99,6 +106,10 @@ const WorkspaceSettingsPage = () => {
           onRevokeInvite={handleRevokeInvite}
           onUpdateRole={handleUpdateRole}
           onRemoveMember={handleRemoveMember}
+          showDeleteModal={showDeleteModal}
+          onOpenDeleteModal={openDeleteModal}
+          onCloseDeleteModal={closeDeleteModal}
+          onDeleteWorkspace={handleDeleteWorkspace}
         />
       )}
     </AppShell>

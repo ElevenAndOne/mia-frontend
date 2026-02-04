@@ -2,11 +2,15 @@ import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { CreateInviteModal } from './create-invite-modal'
+import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
+import type { Workspace } from '../types'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
+  isOwner: boolean
+  workspace: Workspace
   error: string | null
   loading: boolean
   people: WorkspacePersonRow[]
@@ -30,10 +34,16 @@ interface WorkspaceSettingsDetailProps {
   onRevokeInvite: (inviteId: string) => void
   onUpdateRole: (userId: string, role: string) => void
   onRemoveMember: (userId: string) => void
+  showDeleteModal: boolean
+  onOpenDeleteModal: () => void
+  onCloseDeleteModal: () => void
+  onDeleteWorkspace: () => Promise<boolean>
 }
 
 export const WorkspaceSettingsDetail = ({
   canManage,
+  isOwner,
+  workspace,
   error,
   loading,
   people,
@@ -57,6 +67,10 @@ export const WorkspaceSettingsDetail = ({
   onRevokeInvite,
   onUpdateRole,
   onRemoveMember,
+  showDeleteModal,
+  onOpenDeleteModal,
+  onCloseDeleteModal,
+  onDeleteWorkspace,
 }: WorkspaceSettingsDetailProps) => {
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -96,6 +110,21 @@ export const WorkspaceSettingsDetail = ({
             onRevokeInvite={onRevokeInvite}
           />
         )}
+
+        {isOwner && (
+          <div className="mt-8 pt-6 border-t border-tertiary">
+            <h3 className="subheading-md text-error mb-2">Danger Zone</h3>
+            <p className="paragraph-sm text-tertiary mb-4">
+              Permanently delete this workspace and all its data.
+            </p>
+            <button
+              onClick={onOpenDeleteModal}
+              className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
+            >
+              Delete Workspace
+            </button>
+          </div>
+        )}
       </div>
 
       <CreateInviteModal
@@ -114,6 +143,13 @@ export const WorkspaceSettingsDetail = ({
         onCreateInvite={onCreateInvite}
         onCopyInvite={onCopyInvite}
         onComplete={onCompleteInviteFlow}
+      />
+
+      <DeleteWorkspaceModal
+        isOpen={showDeleteModal}
+        onClose={onCloseDeleteModal}
+        workspace={workspace}
+        onConfirm={onDeleteWorkspace}
       />
     </div>
   )

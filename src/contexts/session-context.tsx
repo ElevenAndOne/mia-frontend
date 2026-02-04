@@ -48,6 +48,7 @@ export interface SessionActions {
   refreshAccounts: () => Promise<void>
   createWorkspace: (name: string) => Promise<Workspace | null>
   switchWorkspace: (tenantId: string) => Promise<boolean>
+  deleteWorkspace: (tenantId: string) => Promise<boolean>
   refreshWorkspaces: () => Promise<void>
   clearError: () => void
   generateSessionId: () => string
@@ -439,7 +440,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       storeSessionId(newSessionId)
 
       setState(prev => ({
-        ...INITIAL_STATE,
+        ...getInitialState(),
         hasSeenIntro: prev.hasSeenIntro,
         sessionId: newSessionId,
         isLoading: false
@@ -506,6 +507,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           availableWorkspaces: [...prev.availableWorkspaces, newWorkspace]
         } : {})
       }))
+
+      // Refresh workspaces to ensure all existing workspaces are loaded
+      const workspaces = await workspaceService.fetchWorkspaces(state.sessionId)
+      if (workspaces.length > 0) {
+        setState(prev => ({
+          ...prev,
+          availableWorkspaces: workspaces,
+          activeWorkspace: prev.activeWorkspace || workspaces[0]
+        }))
+      }
+
       return true
     } catch (error) {
       console.error('[SESSION] Account selection error:', error)
@@ -574,6 +586,36 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       return false
     }
   }, [state.sessionId, state.availableWorkspaces])
+
+  // Delete Workspace
+  const deleteWorkspaceFn = useCallback(async (tenantId: string): Promise<boolean> => {
+    if (!state.sessionId) return false
+
+    try {
+      await workspaceService.deleteWorkspace(state.sessionId, tenantId)
+
+      // Remove from available workspaces and clear active if it was deleted
+      setState(prev => {
+        const updatedWorkspaces = prev.availableWorkspaces.filter(w => w.tenant_id !== tenantId)
+        const wasActive = prev.activeWorkspace?.tenant_id === tenantId
+
+        return {
+          ...prev,
+          availableWorkspaces: updatedWorkspaces,
+          activeWorkspace: wasActive ? (updatedWorkspaces[0] || null) : prev.activeWorkspace
+        }
+      })
+
+      return true
+    } catch (error) {
+      console.error('[SESSION] Delete workspace error:', error)
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to delete workspace'
+      }))
+      return false
+    }
+  }, [state.sessionId])
 
   // Check Existing Auth
   const checkExistingAuth = useCallback(async (): Promise<boolean> => {
@@ -666,6 +708,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     refreshAccounts,
     createWorkspace: createWorkspaceFn,
     switchWorkspace: switchWorkspaceFn,
+    deleteWorkspace: deleteWorkspaceFn,
     refreshWorkspaces,
     clearError,
     generateSessionId,

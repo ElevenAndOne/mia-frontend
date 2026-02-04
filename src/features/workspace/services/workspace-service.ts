@@ -135,3 +135,23 @@ export const switchWorkspace = async (
 
   return response.json()
 }
+
+/**
+ * Delete a workspace (owner only)
+ */
+export const deleteWorkspace = async (
+  sessionId: string,
+  tenantId: string
+): Promise<void> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    method: 'DELETE',
+    headers: {
+      'X-Session-ID': sessionId
+    }
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || `Delete workspace failed: ${response.status}`)
+  }
+}
