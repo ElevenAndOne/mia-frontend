@@ -12,6 +12,8 @@ interface WorkspaceListItemProps {
   className?: string
   dataAttribute?: string
   disabled?: boolean
+  /** Allow clicking on active workspace (for settings view). Default: false (for switcher) */
+  allowActiveSelect?: boolean
   activeClassName?: string
   inactiveClassName?: string
   showStatusIndicator?: boolean
@@ -35,6 +37,7 @@ export const WorkspaceListItem = ({
   className = '',
   dataAttribute,
   disabled = false,
+  allowActiveSelect = false,
   activeClassName = 'bg-secondary border border-secondary',
   inactiveClassName = 'hover:bg-secondary',
   showStatusIndicator = true,
@@ -81,7 +84,7 @@ export const WorkspaceListItem = ({
       data-workspace-item={dataAttribute}
       onClick={() => onSelect(workspace.tenant_id)}
       onKeyDown={onKeyDown}
-      disabled={isDisabled || isActive}
+      disabled={isDisabled || (!allowActiveSelect && isActive)}
       className={`w-full px-3 py-2 text-left rounded-lg flex items-center gap-3 paragraph-sm transition-colors ${
         isActive ? activeClassName : inactiveClassName
       } ${className}`.trim()}

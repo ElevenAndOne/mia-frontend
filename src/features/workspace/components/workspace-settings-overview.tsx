@@ -40,6 +40,7 @@ export const WorkspaceSettingsOverview = ({
               isActive={item.isActive}
               isSwitching={false}
               onSelect={onSelectWorkspace}
+              allowActiveSelect={true}
               variant="detailed"
               className="rounded-xl p-4 gap-3"
               activeClassName="bg-secondary border border-secondary"
