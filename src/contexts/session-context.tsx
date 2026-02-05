@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 // Import types from feature modules
 import type { AccountMapping } from '../features/accounts/types'
 import type { UserProfile, MetaAuthState } from '../features/auth/types'
-import type { Workspace } from '../features/workspace/types'
+import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 // Import services
 import * as googleAuthService from '../features/auth/services/google-auth-service'
@@ -22,7 +22,7 @@ import {
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
 export type { UserProfile, MetaAuthState } from '../features/auth/types'
-export type { Workspace } from '../features/workspace/types'
+export type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 export interface SessionState extends MetaAuthState {
   isAuthenticated: boolean
@@ -208,7 +208,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               sessionService.validateSession(storedSessionId).catch(() => ({ valid: false, user: null })),
               accountService.fetchAccounts(storedSessionId).catch(() => []),
               workspaceService.fetchWorkspaces(storedSessionId).catch(() => []),
-              workspaceService.fetchCurrentWorkspace(storedSessionId).catch(() => ({ active_tenant: null }))
+              workspaceService.fetchCurrentWorkspace(storedSessionId).catch(() => ({ tenant: null, active_tenant: null }))
             ])
 
             const sessionUser = sessionData.user
@@ -219,17 +219,19 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }
 
               let activeWorkspace: Workspace | null = null
-              const activeTenant = currentWorkspace.active_tenant
-              if (activeTenant?.tenant_id) {
-                const foundWorkspace = workspaces.find(w => w.tenant_id === activeTenant.tenant_id)
+              // Handle both old (active_tenant) and new (tenant) response formats
+              const activeTenant = currentWorkspace.tenant || currentWorkspace.active_tenant
+              const tenantId = activeTenant?.id || activeTenant?.tenant_id
+              if (tenantId) {
+                const foundWorkspace = workspaces.find(w => w.tenant_id === tenantId)
                 activeWorkspace = foundWorkspace || {
-                  tenant_id: activeTenant.tenant_id,
-                  name: activeTenant.name || 'Workspace',
-                  slug: activeTenant.slug || '',
-                  role: (activeTenant.role || 'member') as Workspace['role'],
-                  onboarding_completed: activeTenant.onboarding_completed || false,
-                  connected_platforms: activeTenant.connected_platforms || [],
-                  member_count: activeTenant.member_count || 1
+                  tenant_id: tenantId,
+                  name: activeTenant?.name || 'Workspace',
+                  slug: activeTenant?.slug || '',
+                  role: (activeTenant?.role || 'member') as WorkspaceRole,
+                  onboarding_completed: activeTenant?.onboarding_completed || false,
+                  connected_platforms: activeTenant?.connected_platforms || [],
+                  member_count: activeTenant?.member_count || 1
                 }
               }
 
@@ -337,6 +339,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               if (statusData.authenticated) {
                 await refreshAccounts()
+                await refreshWorkspaces()
                 setState(prev => ({
                   ...prev,
                   isAuthenticated: true,
@@ -347,7 +350,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   user: {
                     name: statusData.user_info?.name || statusData.name || 'User',
                     email: statusData.user_info?.email || statusData.email || '',
-                    picture_url: statusData.user_info?.picture || statusData.picture || '',
+                    picture_url: statusData.user_info?.picture || statusData.picture_url || statusData.picture || '',
                     google_user_id: statusData.user_info?.id || statusData.user_id || ''
                   }
                 }))
@@ -382,7 +385,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts])
+  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
@@ -454,6 +457,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 }))
 
                 await refreshAccounts()
+                await refreshWorkspaces()
                 resolve(true)
               } else {
                 setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
@@ -485,7 +489,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts])
+  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
 
   // Logout
   const logout = useCallback(async (): Promise<void> => {
@@ -632,9 +636,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         ...prev,
         activeWorkspace: workspace || {
           tenant_id: tenantId,
-          name: data.name || 'Workspace',
+          name: data.tenant_name || data.name || 'Workspace',
           slug: data.slug || '',
-          role: (data.role || 'member') as Workspace['role'],
+          role: (data.role || 'member') as WorkspaceRole,
           onboarding_completed: data.onboarding_completed || false,
           connected_platforms: data.connected_platforms || [],
           member_count: 1
@@ -700,7 +704,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             meta_ads_id: authData.selected_account.meta_ads_id,
             business_type: authData.selected_account.business_type || '',
             color: '',
-            display_name: authData.selected_account.name
+            display_name: authData.selected_account.name,
+            selected_mcc_id: authData.selected_account.selected_mcc_id
           }
         }
 
@@ -713,7 +718,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           user: {
             name: authData.user_info?.name || authData.name || 'User',
             email: authData.user_info?.email || authData.email || '',
-            picture_url: authData.user_info?.picture || authData.picture || '',
+            picture_url: authData.user_info?.picture || authData.picture_url || authData.picture || '',
             google_user_id: userId
           },
           selectedAccount

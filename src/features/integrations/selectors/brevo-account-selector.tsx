@@ -33,7 +33,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/accounts?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/oauth/brevo/accounts', {
         method: 'GET',
         headers: {
           'X-Session-ID': sessionId || 'default',
@@ -97,9 +97,12 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
 
     try {
       const response = await apiFetch(
-        `/api/oauth/brevo/disconnect?session_id=${sessionId}&brevo_id=${brevoId}`,
+        `/api/oauth/brevo/disconnect?brevo_id=${brevoId}`,
         {
           method: 'DELETE',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
         }
       )
 

@@ -13,13 +13,20 @@ const WorkspaceSwitcher = ({ onClose, onCreateWorkspace, onSettings }: Workspace
   const {
     activeWorkspace,
     availableWorkspaces,
-    switchWorkspace
+    switchWorkspace,
+    refreshWorkspaces,
+    refreshAccounts
   } = useSession()
 
   const { isSwitching, switchingId, handleSwitch } = useWorkspaceSwitcher({
     activeWorkspaceId: activeWorkspace?.tenant_id,
     switchWorkspace,
     onSuccess: onClose,
+    refreshAfterSwitch: async () => {
+      await refreshAccounts()
+      await refreshWorkspaces()
+    },
+    reloadOnSuccess: false,
   })
 
   return (

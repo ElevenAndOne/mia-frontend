@@ -30,7 +30,7 @@ export const MobileNavigation = ({
   onWorkspaceSettings
 }: MobileNavigationProps) => {
   const [currentView, setCurrentView] = useState<NavigationView>('main')
-  const { user, activeWorkspace, availableWorkspaces, switchWorkspace } = useSession()
+  const { user, activeWorkspace, availableWorkspaces, switchWorkspace, refreshWorkspaces, refreshAccounts } = useSession()
   const { theme, setTheme } = useTheme()
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
@@ -42,6 +42,11 @@ export const MobileNavigation = ({
     activeWorkspaceId: activeWorkspace?.tenant_id,
     switchWorkspace,
     onSuccess: onClose,
+    refreshAfterSwitch: async () => {
+      await refreshAccounts()
+      await refreshWorkspaces()
+    },
+    reloadOnSuccess: false,
   })
 
   const handleNewChat = () => {

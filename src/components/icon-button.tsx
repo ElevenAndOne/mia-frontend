@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type IconButtonVariant = 'ghost' | 'subtle' | 'outline' | 'solid'
@@ -22,16 +23,15 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: IconButtonSize
   children: ReactNode
   'aria-label'?: string
-  ref?: React.Ref<HTMLButtonElement>
 }
 
-export function IconButton({
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({
   variant = 'ghost',
   size = 'md',
   className = '',
   children,
   ...props
-}: IconButtonProps) {
+}, ref) {
   const classes = [
     SIZE_CLASSES[size],
     'rounded-full flex items-center justify-center transition-colors',
@@ -43,8 +43,8 @@ export function IconButton({
     .join(' ')
 
   return (
-    <button className={classes} type="button" {...props}>
+    <button ref={ref} className={classes} type="button" {...props}>
       {children}
     </button>
   )
-}
+})

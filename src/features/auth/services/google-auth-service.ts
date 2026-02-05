@@ -7,9 +7,22 @@ export interface GoogleAuthUrlResponse {
   auth_url: string
 }
 
+/**
+ * Google OAuth status response from /api/oauth/google/status
+ * Based on API documentation
+ */
 export interface GoogleAuthStatusResponse {
   authenticated: boolean
   needs_session_creation?: boolean
+  user_id?: string
+  email?: string
+  name?: string
+  picture_url?: string
+  /** Whether user has Google Ads access */
+  has_google_ads?: boolean
+  /** Whether user has GA4 access */
+  has_ga4?: boolean
+  /** Detailed user info object (alternative format) */
   user_info?: {
     id: string
     name: string
@@ -24,11 +37,10 @@ export interface GoogleAuthStatusResponse {
     ga4_property_id?: string
     meta_ads_id?: string
     business_type?: string
+    selected_mcc_id?: string
   }
-  name?: string
-  email?: string
+  /** Legacy fields for backward compatibility */
   picture?: string
-  user_id?: string
 }
 
 export interface GoogleCompleteResponse {
@@ -134,9 +146,12 @@ export const openGoogleOAuthPopup = (
   )
 
   let messageHandler: ((event: MessageEvent) => void) | null = null
+  const expectedOrigin = window.location.origin
 
   if (popup) {
     messageHandler = (event: MessageEvent) => {
+      if (event.source !== popup) return
+      if (event.origin !== expectedOrigin) return
       if (event.data?.type === 'oauth_complete' && event.data?.provider === 'google') {
         onMessage(event.data.user_id || null)
         if (messageHandler) {

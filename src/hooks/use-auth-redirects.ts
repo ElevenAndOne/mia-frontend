@@ -66,10 +66,17 @@ export const useAuthRedirects = ({
       } else if (justAcceptedInvite) {
         setJustAcceptedInvite(false)
         navigate('/home')
-      } else if (user?.onboarding_completed) {
-        navigate('/home')
       } else {
-        navigate('/onboarding')
+        // Check localStorage as fallback (backend may not return onboarding_completed flag)
+        const localStorageOnboardingComplete = activeWorkspace?.tenant_id
+          ? localStorage.getItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`) === 'true'
+          : false
+
+        if (user?.onboarding_completed || activeWorkspace?.onboarding_completed || localStorageOnboardingComplete) {
+          navigate('/home')
+        } else {
+          navigate('/onboarding')
+        }
       }
     }
   }, [
@@ -84,6 +91,7 @@ export const useAuthRedirects = ({
     isAnyAuthenticated,
     justAcceptedInvite,
     user?.onboarding_completed,
+    activeWorkspace?.onboarding_completed,
     navigate,
     setJustAcceptedInvite,
     setShowCreateWorkspaceModal,

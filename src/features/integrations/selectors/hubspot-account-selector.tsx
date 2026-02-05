@@ -33,7 +33,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/hubspot/accounts?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/oauth/hubspot/accounts', {
         method: 'GET',
         headers: {
           'X-Session-ID': sessionId || 'default',
@@ -69,7 +69,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
 
     await actions.withSubmitting(async () => {
       const response = await apiFetch(
-        `/api/oauth/hubspot/select-account?hubspot_id=${state.selectedId}&session_id=${sessionId}`,
+        `/api/oauth/hubspot/select-account?hubspot_id=${state.selectedId}`,
         {
           method: 'POST',
           headers: {
@@ -95,9 +95,12 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
 
     try {
       const response = await apiFetch(
-        `/api/oauth/hubspot/disconnect?session_id=${sessionId}&hubspot_id=${hubspotId}`,
+        `/api/oauth/hubspot/disconnect?hubspot_id=${hubspotId}`,
         {
           method: 'DELETE',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
         }
       )
 

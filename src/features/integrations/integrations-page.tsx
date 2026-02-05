@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
-import { apiFetch } from '../../utils/api'
+import { apiFetch, createSessionHeaders } from '../../utils/api'
+import { getTimeAgo } from '../../utils/date-display'
 import { useIntegrationStatus } from './hooks/use-integration-status'
 import { getIntegrationHighlight, clearIntegrationHighlight } from './utils/integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
@@ -50,6 +51,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }, [integrationStatusError, showToast])
 
+  const [connectingId, setConnectingId] = useState<string | null>(null)
+  const oauthPollTimerRef = useRef<number | null>(null)
+
   // FEB 2026 FIX: Invalidate integration status cache when leaving this page
   // This ensures the main page (ChatView) fetches fresh data to show newly connected platforms
   // Without this, the 2-minute React Query staleTime causes cached (stale) data to be used
@@ -59,10 +63,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       invalidateIntegrationStatus()
       // Also refresh workspaces to update connected_platforms array
       refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+      if (oauthPollTimerRef.current) {
+        window.clearInterval(oauthPollTimerRef.current)
+        oauthPollTimerRef.current = null
+      }
     }
   }, [invalidateIntegrationStatus, refreshWorkspaces])
-
-  const [connectingId, setConnectingId] = useState<string | null>(null)
 
   // Consolidated modal state - reduces useState hooks from 10+ to 1
   const [openModal, setOpenModal] = useState<string | null>(null)
@@ -108,28 +114,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowMailchimpAccountSelector = (show: boolean) => setOpenModal(show ? 'mailchimp' : null)
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
-
-  // Helper function to calculate "time ago" from ISO timestamp - memoized
-  const getTimeAgo = useCallback((isoTimestamp: string | undefined): string => {
-    if (!isoTimestamp) return 'Just now'
-
-    try {
-      const utcTimestamp = isoTimestamp.endsWith('Z') ? isoTimestamp : isoTimestamp + 'Z'
-      const now = new Date()
-      const then = new Date(utcTimestamp)
-      const diffMs = now.getTime() - then.getTime()
-      const diffMins = Math.floor(diffMs / 60000)
-
-      if (diffMins < 1) return 'Just now'
-      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
-      const diffHours = Math.floor(diffMins / 60)
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-      const diffDays = Math.floor(diffHours / 24)
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-    } catch {
-      return 'Just now'
-    }
-  }, [])
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
@@ -285,8 +269,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setBrevoError('')
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}`, {
-        method: 'DELETE'
+      const response = await apiFetch('/api/oauth/brevo/disconnect', {
+        method: 'DELETE',
+        headers: createSessionHeaders(sessionId)
       })
 
       if (!response.ok) {
@@ -336,7 +321,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     if (integrationId === 'facebook_organic') {
       // Check if Meta credentials exist
       try {
-        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
+        const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
+          headers: createSessionHeaders(sessionId)
+        })
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
@@ -429,9 +416,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       // Poll for popup close
-      const pollTimer = setInterval(async () => {
+      if (oauthPollTimerRef.current) {
+        window.clearInterval(oauthPollTimerRef.current)
+        oauthPollTimerRef.current = null
+      }
+
+      oauthPollTimerRef.current = window.setInterval(async () => {
         if (popup.closed) {
-          clearInterval(pollTimer)
+          if (oauthPollTimerRef.current) {
+            window.clearInterval(oauthPollTimerRef.current)
+            oauthPollTimerRef.current = null
+          }
           console.log(`${integrationId} popup closed, completing auth flow...`)
 
           // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials

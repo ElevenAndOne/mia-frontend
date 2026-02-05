@@ -6,7 +6,7 @@
  * - Saves debounce to backend (1 second after last change)
  */
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { apiFetch, createSessionHeaders } from '../../../utils/api'
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null
@@ -24,7 +24,9 @@ interface UsePlatformPreferencesResult {
 
 async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
   try {
-    const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
+    const response = await apiFetch('/api/account/platform-preferences', {
+      headers: createSessionHeaders(sessionId)
+    })
     if (response.ok) {
       const data = await response.json()
       return data.selected_platforms || []
@@ -38,7 +40,7 @@ async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
 async function savePlatformPreferences(sessionId: string, platforms: string[]): Promise<void> {
   await apiFetch('/api/account/platform-preferences', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: createSessionHeaders(sessionId, true),
     body: JSON.stringify({
       session_id: sessionId,
       selected_platforms: platforms

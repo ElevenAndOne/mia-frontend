@@ -1,27 +1,59 @@
 /**
  * Workspace API service
+ * Based on API documentation for /api/tenants endpoints
  */
 import { apiFetch } from '../../../utils/api'
-import type { Workspace } from '../types'
+import type { Workspace, WorkspaceRole } from '../types'
 
-// Raw API response type (role is string from backend)
+/**
+ * Raw API response type (role is string from backend)
+ * Supports both old (tenant_id) and new (id) response formats
+ */
 interface RawWorkspace {
-  tenant_id: string
+  /** New format uses 'id' */
+  id?: string
+  /** Old format uses 'tenant_id' */
+  tenant_id?: string
   name: string
   slug: string
   role: string
-  onboarding_completed: boolean
+  onboarding_completed?: boolean
   connected_platforms?: string[]
   member_count?: number
+  is_active?: boolean
 }
 
+/**
+ * Response from GET /api/tenants
+ * Handles both old (tenants) and new (workspaces) response keys
+ */
 export interface WorkspacesResponse {
-  tenants: RawWorkspace[]
+  /** New API format */
+  workspaces?: RawWorkspace[]
+  /** Legacy format */
+  tenants?: RawWorkspace[]
 }
 
+/**
+ * Response from GET /api/tenants/current
+ * Handles both old (active_tenant) and new (tenant) response keys
+ */
 export interface CurrentWorkspaceResponse {
-  active_tenant: {
-    tenant_id: string
+  /** New API format */
+  tenant?: {
+    id?: string
+    tenant_id?: string
+    name?: string
+    slug?: string
+    role?: string
+    onboarding_completed?: boolean
+    connected_platforms?: string[]
+    member_count?: number
+  } | null
+  /** Legacy format */
+  active_tenant?: {
+    id?: string
+    tenant_id?: string
     name?: string
     slug?: string
     role?: string
@@ -31,13 +63,31 @@ export interface CurrentWorkspaceResponse {
   } | null
 }
 
+/**
+ * Response from POST /api/tenants (create workspace)
+ */
 export interface CreateWorkspaceResponse {
-  tenant_id: string
-  name: string
-  slug: string
+  success?: boolean
+  tenant?: {
+    id: string
+    name: string
+    slug: string
+    created_at?: string
+    owner_id?: string
+  }
+  /** Legacy format fields */
+  tenant_id?: string
+  name?: string
+  slug?: string
 }
 
+/**
+ * Response from POST /api/tenants/switch
+ */
 export interface SwitchWorkspaceResponse {
+  success?: boolean
+  active_tenant_id?: string
+  tenant_name?: string
   name?: string
   slug?: string
   role?: string
@@ -47,6 +97,7 @@ export interface SwitchWorkspaceResponse {
 
 /**
  * Fetch all workspaces for the current user
+ * Handles both old (tenants) and new (workspaces) response formats
  */
 export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> => {
   const response = await apiFetch('/api/tenants', {
@@ -60,14 +111,17 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
   }
 
   const data: WorkspacesResponse = await response.json()
-  return (data.tenants || []).map((t): Workspace => ({
-    tenant_id: t.tenant_id,
+  // Handle both response formats
+  const rawWorkspaces = data.workspaces || data.tenants || []
+  return rawWorkspaces.map((t): Workspace => ({
+    tenant_id: t.id || t.tenant_id || '',
     name: t.name,
     slug: t.slug,
-    role: t.role as Workspace['role'],
-    onboarding_completed: t.onboarding_completed,
+    role: (t.role || 'member') as WorkspaceRole,
+    onboarding_completed: t.onboarding_completed ?? false,
     connected_platforms: t.connected_platforms || [],
-    member_count: t.member_count || 1
+    member_count: t.member_count || 1,
+    is_active: t.is_active
   }))
 }
 
@@ -92,11 +146,12 @@ export const fetchCurrentWorkspace = async (
 
 /**
  * Create a new workspace
+ * Returns normalized response handling both old and new formats
  */
 export const createWorkspace = async (
   sessionId: string,
   name: string
-): Promise<CreateWorkspaceResponse> => {
+): Promise<{ tenant_id: string; name: string; slug: string }> => {
   const response = await apiFetch('/api/tenants', {
     method: 'POST',
     headers: {
@@ -110,7 +165,13 @@ export const createWorkspace = async (
     throw new Error(`Create workspace failed: ${response.status}`)
   }
 
-  return response.json()
+  const data: CreateWorkspaceResponse = await response.json()
+  // Normalize response to consistent format
+  return {
+    tenant_id: data.tenant?.id || data.tenant_id || '',
+    name: data.tenant?.name || data.name || name,
+    slug: data.tenant?.slug || data.slug || ''
+  }
 }
 
 /**

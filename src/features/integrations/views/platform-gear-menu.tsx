@@ -142,6 +142,7 @@ const PlatformGearMenu = ({
           setIsOpen(!isOpen)
         }}
         className="w-5 h-5 text-primary hover:opacity-70 transition-opacity"
+        aria-label={`${platformName} options`}
         title={`${platformName} options`}
         disabled={isDisconnecting}>
           <Icon.dots_vertical />

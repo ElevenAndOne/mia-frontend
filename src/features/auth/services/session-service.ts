@@ -1,15 +1,20 @@
 /**
  * Session validation API service
  */
-import { apiFetch } from '../../../utils/api'
+import { apiFetch, createSessionHeaders } from '../../../utils/api'
 
+/**
+ * Session validation response from /api/session/validate
+ * Based on API documentation
+ */
 export interface SessionValidationResponse {
   valid: boolean
+  session_id?: string
   user?: {
+    user_id: string
     name: string
     email: string
     picture_url?: string
-    user_id: string
     has_seen_intro?: boolean
     onboarding_completed?: boolean
   }
@@ -20,22 +25,31 @@ export interface SessionValidationResponse {
     ga4_property_id?: string
     meta_ads_id?: string
     business_type?: string
+    selected_mcc_id?: string
   }
+  /** Distinguishes user authentication from platform connection */
   user_authenticated?: {
     google: boolean
     meta: boolean
   }
+  /** Platform connection status for IntegrationsPage */
   platforms?: {
     google: boolean
     meta: boolean
+    brevo: boolean
+    hubspot: boolean
+    mailchimp?: boolean
   }
+  expires_at?: string
 }
 
 /**
  * Validate an existing session
  */
 export const validateSession = async (sessionId: string): Promise<SessionValidationResponse> => {
-  const response = await apiFetch(`/api/session/validate?session_id=${sessionId}`)
+  const response = await apiFetch('/api/session/validate', {
+    headers: createSessionHeaders(sessionId)
+  })
 
   if (!response.ok) {
     throw new Error(`Session validation failed: ${response.status}`)

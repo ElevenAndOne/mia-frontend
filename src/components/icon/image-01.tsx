@@ -1,4 +1,4 @@
-export function Image01({ size = 24, strokeWidth = 2, className }: { size?: number; strokeWidth?: number; className?: string; }) {
+export function Image01({ size = 24, strokeWidth: _strokeWidth = 2, className }: { size?: number; strokeWidth?: number; className?: string; }) {
     return (
         <svg viewBox="0 0 24 24" fill="none" height={size} width={size} className={className} >
             <path fill-rule="evenodd" clip-rule="evenodd" d="M8.5 5.5C10.1569 5.5 11.5 6.84315 11.5 8.5C11.5 10.1569 10.1569 11.5 8.5 11.5C6.84315 11.5 5.5 10.1569 5.5 8.5C5.5 6.84315 6.84315 5.5 8.5 5.5ZM8.5 7.5C7.94772 7.5 7.5 7.94772 7.5 8.5C7.5 9.05229 7.94772 9.5 8.5 9.5C9.05229 9.5 9.5 9.05229 9.5 8.5C9.5 7.94772 9.05229 7.5 8.5 7.5Z" fill="black"/>

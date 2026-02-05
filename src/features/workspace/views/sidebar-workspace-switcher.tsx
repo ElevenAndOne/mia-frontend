@@ -9,11 +9,16 @@ export const SidebarWorkspaceSwitcher = () => {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
-  const { activeWorkspace, availableWorkspaces, switchWorkspace } = useSession()
+  const { activeWorkspace, availableWorkspaces, switchWorkspace, refreshWorkspaces, refreshAccounts } = useSession()
   const { switchingId, handleSwitch } = useWorkspaceSwitcher({
     activeWorkspaceId: activeWorkspace?.tenant_id,
     switchWorkspace,
     onSuccess: () => setIsOpen(false),
+    refreshAfterSwitch: async () => {
+      await refreshAccounts()
+      await refreshWorkspaces()
+    },
+    reloadOnSuccess: false,
   })
   const { handleKeyDown } = useRovingFocus({ selector: '[data-workspace-item]' })
 
