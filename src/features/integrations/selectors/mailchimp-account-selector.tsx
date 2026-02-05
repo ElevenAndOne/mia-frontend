@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
-import { useSession } from '../../../contexts/session-context'
+import { useMiaClient, type MailchimpAccount as SDKMailchimpAccount } from '../../../sdk'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { MailchimpAccount } from '../types'
+
+// Map SDK MailchimpAccount to local format
+const mapMailchimpAccount = (acc: SDKMailchimpAccount): MailchimpAccount => ({
+  id: acc.id,
+  mailchimp_account_id: acc.accountId,
+  mailchimp_account_name: acc.accountName,
+  is_primary: acc.isPrimary,
+})
 
 interface MailchimpAccountSelectorProps {
   isOpen: boolean
@@ -13,7 +20,7 @@ interface MailchimpAccountSelectorProps {
 }
 
 const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const mia = useMiaClient()
   const [accounts, setAccounts] = useState<MailchimpAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -33,26 +40,15 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/mailchimp/accounts?session_id=${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const sdkAccounts = await mia.platforms.mailchimp.getAccounts()
+      const mappedAccounts = sdkAccounts.map(mapMailchimpAccount)
+      setAccounts(mappedAccounts)
 
-      const data = await response.json()
-
-      if (data.success && data.accounts) {
-        setAccounts(data.accounts)
-
-        const primaryAccount = data.accounts.find((acc: MailchimpAccount) => acc.is_primary)
-        if (primaryAccount) {
-          actions.setSelectedId(primaryAccount.id)
-        } else if (data.accounts.length === 1) {
-          actions.setSelectedId(data.accounts[0].id)
-        }
-      } else {
-        actions.setError(data.error || 'Failed to fetch Mailchimp accounts')
+      const primaryAccount = mappedAccounts.find((acc) => acc.is_primary)
+      if (primaryAccount) {
+        actions.setSelectedId(primaryAccount.id)
+      } else if (mappedAccounts.length === 1) {
+        actions.setSelectedId(mappedAccounts[0].id)
       }
     } catch {
       actions.setError('Failed to load Mailchimp accounts. Please try again.')
@@ -62,29 +58,15 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
   }
 
   const handleSwitchAccount = async () => {
-    if (!state.selectedId) {
+    const selectedId = state.selectedId
+    if (!selectedId) {
       actions.setError('Please select an account')
       return
     }
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch(
-        `/api/oauth/mailchimp/set-primary?mailchimp_id=${state.selectedId}&session_id=${sessionId}`,
-        {
-          method: 'POST',
-          headers: {
-            'X-Session-ID': sessionId || 'default',
-          },
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.error || 'Failed to switch account')
-      }
+      await mia.platforms.mailchimp.setPrimary(selectedId)
+      actions.handleSuccess()
     })
   }
 
@@ -94,24 +76,9 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     }
 
     try {
-      const response = await apiFetch(
-        `/api/oauth/mailchimp/disconnect?session_id=${sessionId}&mailchimp_id=${mailchimpId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'X-Session-ID': sessionId || 'default',
-          },
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchMailchimpAccounts()
-        onSuccess?.()
-      } else {
-        actions.setError(data.message || 'Failed to remove Mailchimp account')
-      }
+      await mia.platforms.mailchimp.disconnect(mailchimpId)
+      await fetchMailchimpAccounts()
+      onSuccess?.()
     } catch {
       actions.setError('Failed to remove account. Please try again.')
     }

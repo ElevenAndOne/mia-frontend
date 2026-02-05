@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchSummaryInsights } from '../services/summary-service'
+import { useMiaClient } from '../../../sdk'
 
 export const useSummaryInsights = (sessionId: string | null, dateRange: string) => {
+  const mia = useMiaClient()
   const [summary, setSummary] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -15,9 +16,9 @@ export const useSummaryInsights = (sessionId: string | null, dateRange: string) 
         throw new Error('No session found. Please log in again.')
       }
 
-      const result = await fetchSummaryInsights(sessionId, dateRange)
+      const result = await mia.insights.getSummary(dateRange)
       if (result.success) {
-        setSummary(result.summary)
+        setSummary(result.summary || null)
       } else {
         throw new Error('Failed to fetch summary')
       }
@@ -26,7 +27,7 @@ export const useSummaryInsights = (sessionId: string | null, dateRange: string) 
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, dateRange])
+  }, [sessionId, dateRange, mia])
 
   useEffect(() => {
     refresh()

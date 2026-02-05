@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../../../contexts/session-context'
 import { useSelectorState } from './use-selector-state'
-import { fetchGoogleAdAccounts, fetchGoogleAuthStatus, linkGoogleAdsAccount } from '../../services/google-account-link-service'
+import { useMiaClient } from '../../../../sdk'
 import type { GoogleAccount } from '../../types'
 
 interface UseGoogleAccountLinkSelectorParams {
@@ -17,6 +17,7 @@ export const useGoogleAccountLinkSelector = ({
   onClose,
   onSuccess,
 }: UseGoogleAccountLinkSelectorParams) => {
+  const mia = useMiaClient()
   const { sessionId, selectedAccount, refreshAccounts, user } = useSession()
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([])
   const [state, actions] = useSelectorState<string>({ onClose })
@@ -30,8 +31,8 @@ export const useGoogleAccountLinkSelector = ({
     for (let i = 0; i < 10; i += 1) {
       await delay(500)
       try {
-        const status = await fetchGoogleAuthStatus(sessionId)
-        const userId = status?.user_info?.id || status?.user_id
+        const status = await mia.auth.google.getStatus()
+        const userId = status?.user_info?.id
         if (status?.authenticated && userId) {
           return userId
         }
@@ -41,7 +42,7 @@ export const useGoogleAccountLinkSelector = ({
     }
 
     return null
-  }, [user?.google_user_id, sessionId])
+  }, [user?.google_user_id, sessionId, mia])
 
   const loadAccounts = useCallback(async () => {
     setIsLoading(true)
@@ -60,7 +61,16 @@ export const useGoogleAccountLinkSelector = ({
         return
       }
 
-      const accounts = await fetchGoogleAdAccounts(sessionId, userId)
+      const { regularAccounts } = await mia.accounts.getMccAccounts(userId)
+      // Combine and map to GoogleAccount format
+      const accounts: GoogleAccount[] = [
+        ...regularAccounts.map((acc) => ({
+          customer_id: acc.customerId,
+          descriptive_name: acc.descriptiveName,
+          manager: acc.isManager,
+          login_customer_id: acc.loginCustomerId,
+        })),
+      ]
       setGoogleAccounts(accounts)
       if (accounts.length === 1) {
         setSelectedId(accounts[0].customer_id)
@@ -70,7 +80,7 @@ export const useGoogleAccountLinkSelector = ({
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, refreshAccounts, resolveGoogleUserId, setError, setIsLoading, setSelectedId])
+  }, [sessionId, refreshAccounts, resolveGoogleUserId, setError, setIsLoading, setSelectedId, mia])
 
   useEffect(() => {
     if (!isOpen) return
@@ -92,17 +102,16 @@ export const useGoogleAccountLinkSelector = ({
     const selectedGoogle = googleAccounts.find((account) => account.customer_id === selectedId)
 
     await withSubmitting(async () => {
-      await linkGoogleAdsAccount({
-        sessionId,
-        targetAccountId: selectedAccount.id,
-        googleAdsCustomerId: selectedId,
-        loginCustomerId: selectedGoogle?.login_customer_id,
-      })
+      await mia.accounts.linkGoogleAds(
+        selectedAccount.id,
+        selectedId,
+        selectedGoogle?.login_customer_id
+      )
       await refreshAccounts()
       onSuccess(selectedId)
       handleClose()
     })
-  }, [sessionId, selectedAccount, selectedId, googleAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting])
+  }, [sessionId, selectedAccount, selectedId, googleAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting, mia])
 
   const accountItems = useMemo(() => {
     return googleAccounts.map((account) => ({

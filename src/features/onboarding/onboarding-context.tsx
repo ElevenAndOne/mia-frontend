@@ -10,7 +10,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { apiFetch } from '../../utils/api'
+import { useMiaClient, isMiaSDKError, type BronzeFact as SDKBronzeFact } from '../../sdk'
 import { useSession } from '../../contexts/session-context'
 
 // Onboarding steps
@@ -101,8 +101,18 @@ interface OnboardingProviderProps {
   children: ReactNode
 }
 
+// Map SDK BronzeFact to local format (snake_case for backwards compatibility)
+const mapBronzeFact = (fact: SDKBronzeFact): BronzeFact => ({
+  platform: fact.platform,
+  headline: fact.headline,
+  detail: fact.detail,
+  metric_value: fact.metricValue,
+  metric_name: fact.metricName,
+})
+
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
   const { sessionId, selectedAccount, refreshWorkspaces } = useSession()
+  const mia = useMiaClient()
 
   const [state, setState] = useState<OnboardingState>({
     step: 0,
@@ -153,45 +163,33 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await apiFetch(`/api/onboarding/status?session_id=${sessionId}`, {
-        headers: { 'X-Session-ID': sessionId }
+      const data = await mia.onboarding.getStatus()
+      console.log('[ONBOARDING] Status loaded:', {
+        growTaskId: data.growTaskId,
+        step: data.step,
+        bronzeReady: data.bronzeReady
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[ONBOARDING] Status loaded:', {
-          growTaskId: data.grow_task_id,
-          step: data.step,
-          bronzeReady: data.bronze_ready
-        })
-        setState(prev => ({
-          ...prev,
-          step: data.step || 0,
-          completed: data.completed || false,
-          platformsConnected: data.platforms_connected || [],
-          platformCount: data.platform_count || 0,
-          fullAccess: data.full_access || false,
-          bronzeReady: data.bronze_ready || false,
-          growTaskId: data.grow_task_id || null,
-          isLoading: false,
-        }))
-        // Update deduplication tracking
-        lastLoadTimeRef.current = Date.now()
-        // Return the task ID directly so callers don't have to wait for state
-        return data.grow_task_id || null
-      } else {
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Failed to load onboarding status'
-        }))
-      }
+      setState(prev => ({
+        ...prev,
+        step: data.step || 0,
+        completed: data.completed || false,
+        platformsConnected: data.platformsConnected || [],
+        platformCount: data.platformCount || 0,
+        fullAccess: data.fullAccess || false,
+        bronzeReady: data.bronzeReady || false,
+        growTaskId: data.growTaskId || null,
+        isLoading: false,
+      }))
+      // Update deduplication tracking
+      lastLoadTimeRef.current = Date.now()
+      // Return the task ID directly so callers don't have to wait for state
+      return data.growTaskId || null
     } catch (err) {
       console.error('[ONBOARDING] Status load error:', err)
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: 'Failed to connect to server'
+        error: isMiaSDKError(err) ? err.message : 'Failed to connect to server'
       }))
     } finally {
       // Always clear the loading ref so future loads can proceed
@@ -199,7 +197,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
     return null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const advanceStep = useCallback(async () => {
     if (!sessionId) return
@@ -212,124 +210,65 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }))
 
     // Sync to server in background (fire-and-forget)
-    apiFetch(`/api/onboarding/advance?session_id=${sessionId}`, {
-      method: 'POST',
-      headers: { 'X-Session-ID': sessionId }
-    }).catch(err => {
+    mia.onboarding.advanceStep().catch(err => {
       console.error('[ONBOARDING] Advance step sync error:', err)
     })
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const updateStep = useCallback(async (step: number) => {
     if (!sessionId) return
 
     try {
-      const response = await apiFetch('/api/onboarding/update-step', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, step })
-      })
-
-      if (response.ok) {
-        setState(prev => ({ ...prev, step }))
-      }
+      await mia.onboarding.updateStep(step)
+      setState(prev => ({ ...prev, step }))
     } catch (err) {
       console.error('[ONBOARDING] Update step error:', err)
     }
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const fetchBronzeHighlight = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
     if (!sessionId) return null
 
     try {
-      const response = await apiFetch('/api/bronze/highlight', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, platform })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const fact: BronzeFact = {
-          platform: data.platform,
-          headline: data.headline,
-          detail: data.detail,
-          metric_value: data.metric_value,
-          metric_name: data.metric_name,
-        }
-        setState(prev => ({ ...prev, currentBronzeFact: fact, bronzeReady: true }))
-        return fact
-      }
+      const data = await mia.onboarding.getBronzeHighlight(platform)
+      const fact = mapBronzeFact(data)
+      setState(prev => ({ ...prev, currentBronzeFact: fact, bronzeReady: true }))
+      return fact
     } catch (err) {
       console.error('[ONBOARDING] Bronze highlight error:', err)
     }
     return null
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const fetchBronzeFollowup = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
     if (!sessionId) return null
 
     try {
-      const response = await apiFetch('/api/bronze/followup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, platform })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        return {
-          platform: data.platform,
-          headline: data.headline,
-          detail: data.detail,
-          metric_value: data.metric_value,
-          metric_name: data.metric_name,
-        }
-      }
+      const data = await mia.onboarding.getBronzeFollowup(platform)
+      return mapBronzeFact(data)
     } catch (err) {
       console.error('[ONBOARDING] Bronze followup error:', err)
     }
     return null
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const startGrowInsightsAsync = useCallback(async (): Promise<string | null> => {
     if (!sessionId) return null
 
     try {
-      const response = await apiFetch('/api/insights/grow/async', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const taskId = data.task_id
-        setState(prev => ({
-          ...prev,
-          growTaskId: taskId,
-          growInsightsReady: false,
-          growInsightsProgress: 0
-        }))
-        return taskId
-      }
+      const { taskId } = await mia.onboarding.startGrowInsightsAsync()
+      setState(prev => ({
+        ...prev,
+        growTaskId: taskId,
+        growInsightsReady: false,
+        growInsightsProgress: 0
+      }))
+      return taskId
     } catch (err) {
       console.error('[ONBOARDING] Start grow async error:', err)
     }
     return null
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const checkGrowInsightsStatus = useCallback(async (taskIdOverride?: string): Promise<boolean> => {
     const taskId = taskIdOverride || state.growTaskId
@@ -340,111 +279,81 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
 
     try {
-      const response = await apiFetch(`/api/insights/task/${taskId}`)
+      const data = await mia.onboarding.checkGrowInsightsStatus(taskId)
+      console.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
+      const isComplete = data.status === 'completed'
+      const progress = data.progress || 0
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
-        const isComplete = data.status === 'completed'
-        const progress = data.progress || 0
-
-        // Extract summary from result if completed
-        let summary: string | null = null
-        if (isComplete && data.result) {
-          summary = data.result.summary || null
-        }
-
-        setState(prev => ({
-          ...prev,
-          growInsightsReady: isComplete,
-          growInsightsProgress: progress,
-          growInsightsSummary: summary,
-        }))
-
-        return isComplete
+      // Extract summary from result if completed
+      let summary: string | null = null
+      if (isComplete && data.result) {
+        summary = data.result.summary || null
       }
+
+      setState(prev => ({
+        ...prev,
+        growInsightsReady: isComplete,
+        growInsightsProgress: progress,
+        growInsightsSummary: summary,
+      }))
+
+      return isComplete
     } catch (err) {
       console.error('[ONBOARDING] Check grow status error:', err)
     }
     return false
-  }, [state.growTaskId])
+  }, [state.growTaskId, mia])
 
   const completeOnboarding = useCallback(async () => {
     if (!sessionId) return
 
     try {
-      const response = await apiFetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          platforms_at_completion: state.platformsConnected
-        })
-      })
+      await mia.onboarding.complete(state.platformsConnected)
+      setState(prev => ({
+        ...prev,
+        completed: true,
+        step: ONBOARDING_STEPS.COMPLETED,
+      }))
 
-      if (response.ok) {
-        setState(prev => ({
-          ...prev,
-          completed: true,
-          step: ONBOARDING_STEPS.COMPLETED,
-        }))
-
-        // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
-        // This ensures main page icons show correctly after onboarding without requiring page refresh
-        console.log('[ONBOARDING] Refreshing workspace data after completion...')
-        await refreshWorkspaces()
-        console.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
-      }
+      // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
+      // This ensures main page icons show correctly after onboarding without requiring page refresh
+      console.log('[ONBOARDING] Refreshing workspace data after completion...')
+      await refreshWorkspaces()
+      console.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
     } catch (err) {
       console.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected, refreshWorkspaces])
+  }, [sessionId, state.platformsConnected, refreshWorkspaces, mia])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return
 
     try {
-      const response = await apiFetch(`/api/onboarding/skip?session_id=${sessionId}`, {
-        method: 'POST',
-        headers: { 'X-Session-ID': sessionId }
-      })
+      await mia.onboarding.skip()
+      setState(prev => ({
+        ...prev,
+        skipped: true,
+        step: 3, // Skipped second platform
+      }))
 
-      if (response.ok) {
-        setState(prev => ({
-          ...prev,
-          skipped: true,
-          step: 3, // Skipped second platform
-        }))
-
-        // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
-        console.log('[ONBOARDING] Refreshing workspace data after skip...')
-        await refreshWorkspaces()
-      }
+      // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
+      console.log('[ONBOARDING] Refreshing workspace data after skip...')
+      await refreshWorkspaces()
     } catch (err) {
       console.error('[ONBOARDING] Skip error:', err)
     }
-  }, [sessionId, refreshWorkspaces])
+  }, [sessionId, refreshWorkspaces, mia])
 
   const getAvailablePlatforms = useCallback(async (): Promise<{ id: string; name: string; connected: boolean }[]> => {
     if (!sessionId) return []
 
     try {
-      const response = await apiFetch(`/api/onboarding/available-platforms?session_id=${sessionId}`, {
-        headers: { 'X-Session-ID': sessionId }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        return data.all_platforms || []
-      }
+      return await mia.onboarding.getAvailablePlatforms()
     } catch (err) {
       console.error('[ONBOARDING] Available platforms error:', err)
     }
     return []
-  }, [sessionId])
+  }, [sessionId, mia])
 
   const reset = useCallback(() => {
     setState({

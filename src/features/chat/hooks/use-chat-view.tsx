@@ -4,7 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { Logo } from '../../../components/logo'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
-import { sendChatMessage } from '../services/chat-service'
+import { useMiaClient } from '../../../sdk'
 
 interface ChatMessageItem {
   id: string
@@ -25,6 +25,7 @@ const CHAT_PLATFORM_CONFIG = [
 export const useChatView = () => {
   const navigate = useNavigate()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
+  const mia = useMiaClient()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -112,21 +113,19 @@ export const useChatView = () => {
     setStreamingContent('')
 
     try {
-      const result = await sendChatMessage({
+      const result = await mia.chat.send({
         message,
-        session_id: sessionId,
-        user_id: user?.google_user_id || '',
-        google_ads_id: selectedAccount?.google_ads_id,
-        ga4_property_id: selectedAccount?.ga4_property_id,
-        date_range: dateRange,
-        selected_platforms: selectedPlatforms,
+        dateRange,
+        platforms: selectedPlatforms,
+        googleAdsId: selectedAccount?.google_ads_id,
+        ga4PropertyId: selectedAccount?.ga4_property_id,
       })
 
       const assistantMessage: ChatMessageItem = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: result.success && result.claude_response
-          ? result.claude_response
+        content: result.success && result.claudeResponse
+          ? result.claudeResponse
           : 'Sorry, I had trouble processing your question. Please try again.',
       }
 
@@ -142,7 +141,7 @@ export const useChatView = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms])
+  }, [mia, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms])
 
   const handleQuickAction = useCallback((actionId: string) => {
     const params = new URLSearchParams()

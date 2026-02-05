@@ -103,6 +103,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { MiaProvider } from './sdk'
 import { SessionProvider } from './contexts/session-context'
 import { ThemeProvider } from './contexts/theme-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
@@ -140,15 +141,21 @@ ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <SessionProvider>
-            <OnboardingProvider>
-              <OverlayProvider>
-                <App />
-              </OverlayProvider>
-            </OnboardingProvider>
-          </SessionProvider>
-        </ThemeProvider>
+        <MiaProvider
+          config={{
+            baseUrl: import.meta.env.VITE_API_BASE_URL,
+          }}
+        >
+          <ThemeProvider>
+            <SessionProvider>
+              <OnboardingProvider>
+                <OverlayProvider>
+                  <App />
+                </OverlayProvider>
+              </OnboardingProvider>
+            </SessionProvider>
+          </ThemeProvider>
+        </MiaProvider>
       </QueryClientProvider>
     </BrowserRouter>
   </Sentry.ErrorBoundary>,

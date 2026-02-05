@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { useMiaClient, type MetaAdAccount } from '../../../sdk'
 import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { MetaAccount } from '../types'
+
+// Map SDK MetaAdAccount to local MetaAccount format
+const mapMetaAccount = (acc: MetaAdAccount): MetaAccount => ({
+  id: acc.id,
+  name: acc.name,
+  currency: acc.currency,
+  status: String(acc.accountStatus),
+})
 
 interface MetaAccountSelectorProps {
   isOpen: boolean
@@ -29,7 +37,8 @@ const MetaAccountSelector = ({
   currentGoogleAccountName,
   currentAccountData,
 }: MetaAccountSelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const mia = useMiaClient()
+  const { selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [accounts, setAccounts] = useState<MetaAccount[]>([])
 
@@ -50,28 +59,15 @@ const MetaAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/meta/accounts/available', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const sdkAccounts = await mia.auth.meta.getAvailableAccounts()
+      const mappedAccounts = sdkAccounts.map(mapMetaAccount)
+      const sortedAccounts = mappedAccounts.sort((a, b) => a.name.localeCompare(b.name))
+      setAccounts(sortedAccounts)
 
-      const data = await response.json()
-
-      if (data.success && data.accounts) {
-        const sortedAccounts = data.accounts.sort((a: MetaAccount, b: MetaAccount) =>
-          a.name.localeCompare(b.name)
-        )
-        setAccounts(sortedAccounts)
-
-        if (accountToUse?.meta_ads_id) {
-          actions.setSelectedId(accountToUse.meta_ads_id)
-        } else if (sortedAccounts.length === 1) {
-          actions.setSelectedId(sortedAccounts[0].id)
-        }
-      } else {
-        actions.setError(data.error || 'Failed to fetch Meta accounts')
+      if (accountToUse?.meta_ads_id) {
+        actions.setSelectedId(accountToUse.meta_ads_id)
+      } else if (sortedAccounts.length === 1) {
+        actions.setSelectedId(sortedAccounts[0].id)
       }
     } catch {
       actions.setError('Failed to load Meta accounts. Please try again.')
@@ -82,24 +78,11 @@ const MetaAccountSelector = ({
 
   const handleLinkAccount = async () => {
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/meta/accounts/link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          meta_account_id: state.selectedId || '',
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to update Meta account')
+      if (!state.selectedId) {
+        throw new Error('Please select a Meta account')
       }
+      await mia.auth.meta.linkAccount(state.selectedId)
+      actions.handleSuccess()
     })
   }
 

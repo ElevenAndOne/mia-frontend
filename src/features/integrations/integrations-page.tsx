@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { useMiaClient } from '../../sdk'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
 import MetaAccountSelector from './selectors/meta-account-selector'
@@ -25,6 +26,7 @@ interface Integration {
 
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
+  const mia = useMiaClient()
   const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
 
   // Use React Query hook for integration status (cached, deduplicated)
@@ -217,25 +219,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     try {
       console.log('[Brevo] Submitting API key for account:', selectedAccount.name)
 
-      // Use the NEW per-account endpoint (Nov 16 fix)
-      const response = await apiFetch('/api/oauth/brevo/save-api-key', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          api_key: brevoApiKey.trim(),
-          session_id: sessionId
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to save API key')
-      }
-
-      const data = await response.json()
-      console.log('[Brevo] API key saved successfully:', data)
+      const result = await mia.platforms.brevo.connect(brevoApiKey.trim())
+      console.log('[Brevo] API key saved successfully:', result)
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
@@ -262,15 +247,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setBrevoError('')
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to disconnect Brevo')
-      }
-
+      await mia.platforms.brevo.disconnect()
       console.log('[Brevo] Disconnected successfully')
 
       // Close modal and refresh connections
@@ -313,14 +290,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     if (integrationId === 'facebook_organic') {
       // Check if Meta credentials exist
       try {
-        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
-        if (metaCredsResponse.ok) {
-          const metaCredsData = await metaCredsResponse.json()
-          if (metaCredsData.has_credentials) {
-            // Meta OAuth already connected - just show page selector
-            setShowFacebookPageSelector(true)
-            return
-          }
+        const metaCredsData = await mia.auth.meta.checkCredentials()
+        if (metaCredsData.hasCredentials) {
+          // Meta OAuth already connected - just show page selector
+          setShowFacebookPageSelector(true)
+          return
         }
       } catch (error) {
         console.error('[FB-ORGANIC] Error checking Meta credentials:', error)

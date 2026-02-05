@@ -1,14 +1,47 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  createWorkspaceInvite,
-  fetchWorkspaceInvites,
-  fetchWorkspaceMembers,
-  removeWorkspaceMember,
-  revokeWorkspaceInvite,
-  updateWorkspaceMemberRole,
-  type WorkspaceInvite,
-  type WorkspaceMember,
-} from '../services/workspace-settings-service'
+import { useMiaClient, type WorkspaceMember as SDKMember, type WorkspaceInvite as SDKInvite, type WorkspaceRole } from '../../../sdk'
+
+// Local types for backwards compatibility with snake_case
+export interface WorkspaceMember {
+  user_id: string
+  email: string | null
+  name: string | null
+  picture_url: string | null
+  role: string
+  status: string
+  joined_at: string | null
+}
+
+export interface WorkspaceInvite {
+  invite_id: string
+  email: string | null
+  role: string
+  status: string
+  expires_at: string
+  created_at: string | null
+  is_link_invite?: boolean
+}
+
+// Map SDK types to local snake_case format
+const mapMember = (m: SDKMember): WorkspaceMember => ({
+  user_id: m.userId,
+  email: m.email,
+  name: m.name || null,
+  picture_url: m.pictureUrl || null,
+  role: m.role,
+  status: m.status,
+  joined_at: m.joinedAt || null,
+})
+
+const mapInvite = (i: SDKInvite): WorkspaceInvite => ({
+  invite_id: i.inviteId,
+  email: i.email || null,
+  role: i.role,
+  status: i.status,
+  expires_at: i.expiresAt || '',
+  created_at: i.createdAt || null,
+  is_link_invite: i.isLinkInvite,
+})
 
 interface UseWorkspaceSettingsParams {
   sessionId: string | null
@@ -17,6 +50,7 @@ interface UseWorkspaceSettingsParams {
 }
 
 export const useWorkspaceSettings = ({ sessionId, workspaceId, canManage }: UseWorkspaceSettingsParams) => {
+  const mia = useMiaClient()
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [invites, setInvites] = useState<WorkspaceInvite[]>([])
   const [loading, setLoading] = useState(false)
@@ -30,19 +64,19 @@ export const useWorkspaceSettings = ({ sessionId, workspaceId, canManage }: UseW
       setError(null)
 
       const [membersData, invitesData] = await Promise.all([
-        fetchWorkspaceMembers(sessionId, workspaceId),
-        canManage ? fetchWorkspaceInvites(sessionId, workspaceId) : Promise.resolve([]),
+        mia.workspaces.getMembers(workspaceId),
+        canManage ? mia.workspaces.getInvites(workspaceId) : Promise.resolve([]),
       ])
 
-      setMembers(membersData)
-      setInvites(invitesData)
+      setMembers(membersData.map(mapMember))
+      setInvites(invitesData.map(mapInvite))
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load workspace data'
       setError(message)
     } finally {
       setLoading(false)
     }
-  }, [sessionId, workspaceId, canManage])
+  }, [sessionId, workspaceId, canManage, mia])
 
   useEffect(() => {
     if (!workspaceId) return
@@ -51,30 +85,31 @@ export const useWorkspaceSettings = ({ sessionId, workspaceId, canManage }: UseW
 
   const createInvite = useCallback(async (payload: { role: string; email?: string }) => {
     if (!sessionId || !workspaceId) return null
-    const invite = await createWorkspaceInvite(sessionId, workspaceId, payload)
-    setInvites((prev) => [invite, ...prev])
-    return invite
-  }, [sessionId, workspaceId])
+    const invite = await mia.workspaces.createInvite(workspaceId, payload.role as WorkspaceRole, payload.email)
+    const mappedInvite = mapInvite(invite)
+    setInvites((prev) => [mappedInvite, ...prev])
+    return mappedInvite
+  }, [sessionId, workspaceId, mia])
 
   const revokeInvite = useCallback(async (inviteId: string) => {
     if (!sessionId || !workspaceId) return
-    await revokeWorkspaceInvite(sessionId, workspaceId, inviteId)
+    await mia.workspaces.revokeInvite(workspaceId, inviteId)
     setInvites((prev) => prev.filter((invite) => invite.invite_id !== inviteId))
-  }, [sessionId, workspaceId])
+  }, [sessionId, workspaceId, mia])
 
   const removeMember = useCallback(async (userId: string) => {
     if (!sessionId || !workspaceId) return
-    await removeWorkspaceMember(sessionId, workspaceId, userId)
+    await mia.workspaces.removeMember(workspaceId, userId)
     setMembers((prev) => prev.filter((member) => member.user_id !== userId))
-  }, [sessionId, workspaceId])
+  }, [sessionId, workspaceId, mia])
 
   const updateMemberRole = useCallback(async (userId: string, role: string) => {
     if (!sessionId || !workspaceId) return
-    await updateWorkspaceMemberRole(sessionId, workspaceId, userId, role)
+    await mia.workspaces.updateMemberRole(workspaceId, userId, role as WorkspaceRole)
     setMembers((prev) => prev.map((member) =>
       member.user_id === userId ? { ...member, role } : member
     ))
-  }, [sessionId, workspaceId])
+  }, [sessionId, workspaceId, mia])
 
   return {
     members,

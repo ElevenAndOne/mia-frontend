@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSession } from '../contexts/session-context'
 import { formatDateRangeDisplay } from '../utils/date-range'
 import { getAccountIcon } from '../utils/account-icon'
-import { sendChatMessage } from '../features/chat/services/chat-service'
+import { useMiaClient } from '../sdk'
 import { usePlatformPreferences } from '../features/integrations/hooks/use-platform-preferences'
 import BrevoConnectionModal from './brevo-connection-modal'
 import DateRangeSelector from './date-range-selector'
@@ -21,6 +21,7 @@ interface MainViewProps {
 
 const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSettingsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick }: MainViewProps) => {
   const { selectedAccount, availableAccounts, selectAccount, sessionId, refreshAccounts, user, activeWorkspace, refreshWorkspaces } = useSession()
+  const mia = useMiaClient()
 
   // Debug logging with timestamp
   const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
@@ -152,10 +153,10 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
 
     // Add user message to chat
     setChatMessages(prev => [...prev, { role: 'user', content: message }])
-    
+
     // Set loading state and scroll to show loading indicator
     setIsChatLoading(true)
-    
+
     // Auto-scroll after user message is added
     setTimeout(() => {
       const chatContainer = document.querySelector('.chat-messages-container')
@@ -165,24 +166,21 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
     }, 100)
 
     try {
-      
-      const result = await sendChatMessage({
+      const result = await mia.chat.send({
         message,
-        session_id: sessionId,
-        user_id: user?.google_user_id || '',
-        google_ads_id: selectedAccount?.google_ads_id,
-        ga4_property_id: selectedAccount?.ga4_property_id,
-        date_range: dateRange,
+        dateRange,
+        googleAdsId: selectedAccount?.google_ads_id,
+        ga4PropertyId: selectedAccount?.ga4_property_id,
       })
 
       setIsChatLoading(false) // Remove loading state
 
-      if (result.success && result.claude_response) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: result.claude_response }])
+      if (result.success && result.claudeResponse) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: result.claudeResponse || '' }])
       } else {
         setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble processing your question. Please try again.' }])
       }
-      
+
       // Auto-scroll to show the top of Mia's response
       setTimeout(() => {
         const chatContainer = document.querySelector('.chat-messages-container')
@@ -190,13 +188,13 @@ const MainViewCopy = ({ onLogout: _onLogout, onIntegrationsClick, onWorkspaceSet
           chatContainer.scrollTop = chatContainer.scrollHeight - 100 // Show top of message
         }
       }, 100)
-      
+
     } catch (error) {
       console.error('[CHAT] Error:', error)
       setIsChatLoading(false)
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
     }
-  }, [sessionId, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, user?.google_user_id])
+  }, [mia, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange])
 
   return (
     <div className="w-full h-full relative bg-primary flex flex-col">

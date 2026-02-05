@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
-import { useSession } from '../../../contexts/session-context'
+import { useMiaClient, type HubSpotAccount as SDKHubSpotAccount } from '../../../sdk'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { HubSpotAccount } from '../types'
+
+// Map SDK HubSpotAccount to local format
+const mapHubSpotAccount = (acc: SDKHubSpotAccount): HubSpotAccount => ({
+  id: acc.id,
+  portal_id: acc.portalId,
+  account_name: acc.accountName,
+  is_primary: acc.isPrimary,
+})
 
 interface HubSpotAccountSelectorProps {
   isOpen: boolean
@@ -13,7 +20,7 @@ interface HubSpotAccountSelectorProps {
 }
 
 const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const mia = useMiaClient()
   const [accounts, setAccounts] = useState<HubSpotAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -33,26 +40,15 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/hubspot/accounts?session_id=${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const sdkAccounts = await mia.platforms.hubspot.getAccounts()
+      const mappedAccounts = sdkAccounts.map(mapHubSpotAccount)
+      setAccounts(mappedAccounts)
 
-      const data = await response.json()
-
-      if (data.success && data.accounts) {
-        setAccounts(data.accounts)
-
-        const primaryAccount = data.accounts.find((acc: HubSpotAccount) => acc.is_primary)
-        if (primaryAccount) {
-          actions.setSelectedId(primaryAccount.id)
-        } else if (data.accounts.length === 1) {
-          actions.setSelectedId(data.accounts[0].id)
-        }
-      } else {
-        actions.setError(data.error || 'Failed to fetch HubSpot accounts')
+      const primaryAccount = mappedAccounts.find((acc) => acc.is_primary)
+      if (primaryAccount) {
+        actions.setSelectedId(primaryAccount.id)
+      } else if (mappedAccounts.length === 1) {
+        actions.setSelectedId(mappedAccounts[0].id)
       }
     } catch {
       actions.setError('Failed to load HubSpot accounts. Please try again.')
@@ -62,29 +58,15 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   }
 
   const handleSwitchAccount = async () => {
-    if (!state.selectedId) {
+    const selectedId = state.selectedId
+    if (!selectedId) {
       actions.setError('Please select an account')
       return
     }
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch(
-        `/api/oauth/hubspot/select-account?hubspot_id=${state.selectedId}&session_id=${sessionId}`,
-        {
-          method: 'POST',
-          headers: {
-            'X-Session-ID': sessionId || 'default',
-          },
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to switch HubSpot account')
-      }
+      await mia.platforms.hubspot.selectAccount(selectedId)
+      actions.handleSuccess()
     })
   }
 
@@ -94,20 +76,8 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     }
 
     try {
-      const response = await apiFetch(
-        `/api/oauth/hubspot/disconnect?session_id=${sessionId}&hubspot_id=${hubspotId}`,
-        {
-          method: 'DELETE',
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchHubSpotAccounts()
-      } else {
-        actions.setError(data.message || 'Failed to remove HubSpot account')
-      }
+      await mia.platforms.hubspot.disconnect(hubspotId)
+      await fetchHubSpotAccounts()
     } catch {
       actions.setError('Failed to remove account. Please try again.')
     }

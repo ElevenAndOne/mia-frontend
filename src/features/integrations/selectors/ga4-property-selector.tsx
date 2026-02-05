@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { useMiaClient, type GA4Property as SDKGA4Property } from '../../../sdk'
 import { useSession } from '../../../contexts/session-context'
 import { Modal } from '../../overlay'
 
@@ -7,6 +7,12 @@ interface GA4Property {
   property_id: string
   display_name: string
 }
+
+// Map SDK GA4Property to local format
+const mapGA4Property = (p: SDKGA4Property): GA4Property => ({
+  property_id: p.propertyId,
+  display_name: p.displayName,
+})
 
 interface LinkedGA4Property {
   property_id: string
@@ -25,7 +31,8 @@ interface GA4PropertySelectorProps {
 }
 
 const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, ga4Properties, linkedProperties }: GA4PropertySelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const mia = useMiaClient()
+  const { selectedAccount } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
   const [primaryPropertyId, setPrimaryPropertyId] = useState<string | null>(null)
@@ -70,29 +77,14 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     setError(null)
 
     try {
-      // Pass refresh=true to bypass cache and fetch fresh from Google API
-      const url = forceRefresh
-        ? '/api/accounts/available?refresh=true'
-        : '/api/accounts/available'
-
-      const response = await apiFetch(url, {
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.ga4_properties) {
-        // Sort properties alphabetically by display name (A-Z)
-        const sortedProperties = data.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
-          a.display_name.localeCompare(b.display_name)
-        )
-        setProperties(sortedProperties)
-        // Don't auto-select - let user choose which properties to link
-      } else {
-        setError('Failed to fetch GA4 properties')
-      }
+      const { ga4Properties: sdkProperties } = await mia.accounts.list({ refresh: forceRefresh })
+      const mappedProperties = sdkProperties.map(mapGA4Property)
+      // Sort properties alphabetically by display name (A-Z)
+      const sortedProperties = mappedProperties.sort((a, b) =>
+        a.display_name.localeCompare(b.display_name)
+      )
+      setProperties(sortedProperties)
+      // Don't auto-select - let user choose which properties to link
     } catch (err) {
       console.error('Error fetching GA4 properties:', err)
       setError('Failed to load GA4 properties. Please try again.')
@@ -135,14 +127,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
         throw new Error('No account selected')
       }
 
-      const accountId = selectedAccount.id
-
-      if (selectedPropertyIds.length === 0) {
-        console.log('[GA4-PROPERTY-SELECTOR] Unlinking all GA4 properties from account', selectedAccount.name)
-      } else {
-        console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
-        console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
-      }
+      const accountId = String(selectedAccount.id)
 
       // Order properties with primary first (or empty string if unlinking)
       const orderedPropertyIds = selectedPropertyIds.length > 0
@@ -156,32 +141,11 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       const propertyIdsString = orderedPropertyIds.join(',')
 
       // Link GA4 properties (comma-separated, primary first) or unlink if empty
-      const response = await apiFetch('/api/accounts/link-platform', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default'
-        },
-        body: JSON.stringify({
-          account_id: accountId,
-          platform: 'ga4',
-          platform_id: propertyIdsString
-        })
-      })
+      await mia.accounts.linkPlatform(accountId, 'ga4', propertyIdsString)
 
-      if (!response.ok) {
-        throw new Error('Failed to link GA4 property')
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        setSuccess(true)
-        onSuccess?.()
-        handleClose()
-      } else {
-        setError(data.message || 'Failed to link GA4 property')
-      }
+      setSuccess(true)
+      onSuccess?.()
+      handleClose()
     } catch (err) {
       console.error('GA4 property linking error:', err)
       setError('Failed to link GA4 property. Please try again.')

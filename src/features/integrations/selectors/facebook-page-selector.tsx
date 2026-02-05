@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { useMiaClient, type FacebookPage as SDKFacebookPage } from '../../../sdk'
 import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { FacebookPage } from '../types'
+
+// Map SDK FacebookPage to local format
+const mapFacebookPage = (p: SDKFacebookPage): FacebookPage => ({
+  id: p.id,
+  name: p.name,
+  category: p.category,
+  fan_count: p.fanCount,
+  link: p.link || '',
+  access_token: p.accessToken || '',
+})
 
 interface FacebookPageSelectorProps {
   isOpen: boolean
@@ -21,7 +31,8 @@ const FacebookPageSelector = ({
   currentAccountName,
   currentAccountData,
 }: FacebookPageSelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const mia = useMiaClient()
+  const { selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
 
@@ -43,29 +54,13 @@ const FacebookPageSelector = ({
     actions.setError(null)
 
     try {
-      const url = forceRefresh
-        ? '/api/oauth/meta/organic/facebook-pages?refresh=true'
-        : '/api/oauth/meta/organic/facebook-pages'
+      const sdkPages = await mia.auth.meta.getFacebookPages(forceRefresh)
+      const mappedPages = sdkPages.map(mapFacebookPage)
+      const sortedPages = mappedPages.sort((a, b) => a.name.localeCompare(b.name))
+      setPages(sortedPages)
 
-      const response = await apiFetch(url, {
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.facebook_pages) {
-        const sortedPages = data.facebook_pages.sort((a: FacebookPage, b: FacebookPage) =>
-          a.name.localeCompare(b.name)
-        )
-        setPages(sortedPages)
-
-        if (accountToUse?.facebook_page_id) {
-          actions.setSelectedId(accountToUse.facebook_page_id)
-        }
-      } else {
-        actions.setError('Failed to fetch Facebook Pages')
+      if (accountToUse?.facebook_page_id) {
+        actions.setSelectedId(accountToUse.facebook_page_id)
       }
     } catch {
       actions.setError('Failed to load Facebook Pages. Please try again.')
@@ -83,31 +78,13 @@ const FacebookPageSelector = ({
     await actions.withSubmitting(async () => {
       const selectedPage = state.selectedId ? pages.find((p) => p.id === state.selectedId) : null
 
-      const response = await apiFetch('/api/oauth/meta/organic/link-page', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          page_id: state.selectedId || '',
-          page_name: selectedPage?.name || '',
-          page_access_token: selectedPage?.access_token || '',
-          account_id: accountToUse.id,
-        }),
+      await mia.auth.meta.linkFacebookPage(state.selectedId || '', {
+        pageName: selectedPage?.name,
+        pageAccessToken: selectedPage?.access_token,
+        accountId: accountToUse.id,
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to link Facebook Page')
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to link Facebook Page')
-      }
+      actions.handleSuccess()
     })
   }
 

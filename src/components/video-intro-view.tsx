@@ -24,7 +24,7 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   const [videoPlaying, setVideoPlaying] = useState(false)
   const [oauthStarted, setOAuthStarted] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const modalTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const modalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Auto-show login modal for returning users or authenticated users
   useEffect(() => {

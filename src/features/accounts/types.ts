@@ -13,6 +13,7 @@ export interface AccountMapping {
   brevo_api_key?: string
   brevo_account_name?: string
   hubspot_portal_id?: string
+  mailchimp_account_id?: string
   business_type: string
   color: string
   display_name: string

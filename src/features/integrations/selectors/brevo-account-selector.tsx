@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react'
-import { apiFetch } from '../../../utils/api'
-import { useSession } from '../../../contexts/session-context'
+import { useMiaClient, type BrevoAccount as SDKBrevoAccount } from '../../../sdk'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { BrevoAccount } from '../types'
+
+// Map SDK BrevoAccount to local format
+const mapBrevoAccount = (acc: SDKBrevoAccount): BrevoAccount => ({
+  id: acc.id,
+  account_name: acc.accountName,
+  is_primary: acc.isPrimary,
+  created_at: acc.createdAt,
+})
 
 interface BrevoAccountSelectorProps {
   isOpen: boolean
@@ -13,7 +20,7 @@ interface BrevoAccountSelectorProps {
 }
 
 const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const mia = useMiaClient()
   const [accounts, setAccounts] = useState<BrevoAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -33,26 +40,15 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/accounts?session_id=${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const sdkAccounts = await mia.platforms.brevo.getAccounts()
+      const mappedAccounts = sdkAccounts.map(mapBrevoAccount)
+      setAccounts(mappedAccounts)
 
-      const data = await response.json()
-
-      if (data.success && data.accounts) {
-        setAccounts(data.accounts)
-
-        const primaryAccount = data.accounts.find((acc: BrevoAccount) => acc.is_primary)
-        if (primaryAccount) {
-          actions.setSelectedId(primaryAccount.id)
-        } else if (data.accounts.length === 1) {
-          actions.setSelectedId(data.accounts[0].id)
-        }
-      } else {
-        actions.setError(data.error || 'Failed to fetch Brevo accounts')
+      const primaryAccount = mappedAccounts.find((acc) => acc.is_primary)
+      if (primaryAccount) {
+        actions.setSelectedId(primaryAccount.id)
+      } else if (mappedAccounts.length === 1) {
+        actions.setSelectedId(mappedAccounts[0].id)
       }
     } catch {
       actions.setError('Failed to load Brevo accounts. Please try again.')
@@ -62,31 +58,15 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
   }
 
   const handleSwitchAccount = async () => {
-    if (!state.selectedId) {
+    const selectedId = state.selectedId
+    if (!selectedId) {
       actions.setError('Please select an account')
       return
     }
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/brevo/select-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          brevo_id: state.selectedId,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        actions.handleSuccess()
-      } else {
-        throw new Error(data.message || 'Failed to switch Brevo account')
-      }
+      await mia.platforms.brevo.selectAccount(selectedId)
+      actions.handleSuccess()
     })
   }
 
@@ -96,20 +76,8 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     }
 
     try {
-      const response = await apiFetch(
-        `/api/oauth/brevo/disconnect?session_id=${sessionId}&brevo_id=${brevoId}`,
-        {
-          method: 'DELETE',
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        await fetchBrevoAccounts()
-      } else {
-        actions.setError(data.message || 'Failed to remove Brevo account')
-      }
+      await mia.platforms.brevo.disconnect(brevoId)
+      await fetchBrevoAccounts()
     } catch {
       actions.setError('Failed to remove account. Please try again.')
     }

@@ -1,6 +1,6 @@
 import { getWorkspaceRoleBadgeClass } from './role'
 import type { Workspace } from '../types'
-import type { WorkspaceInvite, WorkspaceMember } from '../services/workspace-settings-service'
+import type { WorkspaceInvite, WorkspaceMember } from '../hooks/use-workspace-settings'
 
 export type WorkspaceSettingsTab = 'members' | 'invites'
 

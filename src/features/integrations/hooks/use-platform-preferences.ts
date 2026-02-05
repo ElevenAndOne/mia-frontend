@@ -6,7 +6,7 @@
  * - Saves debounce to backend (1 second after last change)
  */
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { useMiaClient } from '../../../sdk'
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null
@@ -22,35 +22,13 @@ interface UsePlatformPreferencesResult {
   isSaving: boolean
 }
 
-async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
-  try {
-    const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
-    if (response.ok) {
-      const data = await response.json()
-      return data.selected_platforms || []
-    }
-  } catch (e) {
-    console.error('[PlatformPrefs] Fetch error:', e)
-  }
-  return []
-}
-
-async function savePlatformPreferences(sessionId: string, platforms: string[]): Promise<void> {
-  await apiFetch('/api/account/platform-preferences', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: sessionId,
-      selected_platforms: platforms
-    })
-  })
-}
-
 export function usePlatformPreferences({
   sessionId,
   selectedAccountId,
   connectedPlatforms
 }: UsePlatformPreferencesProps): UsePlatformPreferencesResult {
+  const mia = useMiaClient()
+
   // Simple local state for selected platforms
   const [selectedPlatforms, setSelectedPlatformsState] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -71,15 +49,21 @@ export function usePlatformPreferences({
       // This was causing a race condition where the "new platforms" effect
       // would return early and never detect newly connected platforms
 
-      const saved = await fetchPlatformPreferences(sessionId)
+      try {
+        const saved = await mia.accounts.getPlatformPreferences()
 
-      if (saved.length > 0) {
-        // FEB 2026 FIX: Don't filter here against connectedPlatforms (stale closure bug)
-        // The filtering is already done at return value (line 166) which always uses
-        // the current connectedPlatforms. Filtering here used stale values from closure.
-        setSelectedPlatformsState(saved)
-      } else {
-        // No saved prefs - default to all connected
+        if (saved.length > 0) {
+          // FEB 2026 FIX: Don't filter here against connectedPlatforms (stale closure bug)
+          // The filtering is already done at return value (line 166) which always uses
+          // the current connectedPlatforms. Filtering here used stale values from closure.
+          setSelectedPlatformsState(saved)
+        } else {
+          // No saved prefs - default to all connected
+          setSelectedPlatformsState(connectedPlatforms)
+        }
+      } catch (e) {
+        console.error('[PlatformPrefs] Fetch error:', e)
+        // Default to all connected on error
         setSelectedPlatformsState(connectedPlatforms)
       }
 
@@ -90,7 +74,7 @@ export function usePlatformPreferences({
 
     loadPreferences()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- connectedPlatforms is intentionally omitted to avoid re-fetching when it changes
-  }, [sessionId, selectedAccountId]) // Reload when session or account changes
+  }, [sessionId, selectedAccountId, mia]) // Reload when session or account changes
 
   // Detect newly connected platforms and auto-enable them
   useEffect(() => {
@@ -103,16 +87,18 @@ export function usePlatformPreferences({
       console.log('[PlatformPrefs] New platforms detected, enabling:', newPlatforms)
       setSelectedPlatformsState(prev => {
         const combined = [...new Set([...prev, ...newPlatforms])]
-        // Also save to backend
+        // Also save to backend (fire and forget)
         if (sessionId) {
-          savePlatformPreferences(sessionId, combined)
+          mia.accounts.savePlatformPreferences(combined).catch(e => {
+            console.error('[PlatformPrefs] Save error:', e)
+          })
         }
         return combined
       })
     }
 
     prevConnectedRef.current = [...connectedPlatforms]
-  }, [connectedPlatforms, sessionId])
+  }, [connectedPlatforms, sessionId, mia])
 
   // Debounced save to backend
   const saveToBackend = useCallback((platforms: string[]) => {
@@ -125,13 +111,13 @@ export function usePlatformPreferences({
     debounceTimerRef.current = setTimeout(async () => {
       setIsSaving(true)
       try {
-        await savePlatformPreferences(sessionId, platforms)
+        await mia.accounts.savePlatformPreferences(platforms)
       } catch (e) {
         console.error('[PlatformPrefs] Save error:', e)
       }
       setIsSaving(false)
     }, 1000)
-  }, [sessionId])
+  }, [sessionId, mia])
 
   // Cleanup timer on unmount
   useEffect(() => {

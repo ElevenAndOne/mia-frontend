@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { connectBrevoApiKey } from '../services/brevo-service'
+import { useMiaClient } from '../../../sdk'
 
 interface UseBrevoConnectionParams {
   onSuccess?: () => void
@@ -7,6 +7,7 @@ interface UseBrevoConnectionParams {
 }
 
 export const useBrevoConnection = ({ onSuccess, onClose }: UseBrevoConnectionParams) => {
+  const mia = useMiaClient()
   const [apiKey, setApiKey] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +33,7 @@ export const useBrevoConnection = ({ onSuccess, onClose }: UseBrevoConnectionPar
     setError(null)
 
     try {
-      await connectBrevoApiKey(apiKey.trim())
+      await mia.platforms.brevo.connect(apiKey.trim())
       setSuccess(true)
       clearTimeoutRef()
       timeoutRef.current = window.setTimeout(() => {
@@ -47,7 +48,7 @@ export const useBrevoConnection = ({ onSuccess, onClose }: UseBrevoConnectionPar
     } finally {
       setIsConnecting(false)
     }
-  }, [apiKey, clearTimeoutRef, onClose, onSuccess])
+  }, [apiKey, clearTimeoutRef, onClose, onSuccess, mia])
 
   const handleClose = useCallback(() => {
     if (isConnecting) return
