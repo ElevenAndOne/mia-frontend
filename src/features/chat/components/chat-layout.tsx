@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Icon } from '../../../components/icon'
-import { MobileNavigation } from '../../../components/mobile-navigation'
+import { MobileNavigation } from '../../shell/views/mobile-navigation'
 
 interface ChatLayoutProps {
   children: ReactNode

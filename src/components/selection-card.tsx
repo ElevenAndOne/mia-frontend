@@ -8,6 +8,7 @@ interface SelectionCardProps {
   onSelect: () => void
   disabled?: boolean
   className?: string
+  'aria-expanded'?: boolean
 }
 
 export const SelectionCard = ({
@@ -18,12 +19,14 @@ export const SelectionCard = ({
   onSelect,
   disabled = false,
   className = '',
+  'aria-expanded': ariaExpanded,
 }: SelectionCardProps) => {
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
+      aria-expanded={ariaExpanded}
       className={`w-full text-left transition-all ${className}`.trim()}
     >
       <div className="flex items-center justify-between gap-3">

@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 
 // Import types from feature modules
 import type { AccountMapping } from '../features/accounts/types'
 import type { UserProfile, MetaAuthState } from '../features/auth/types'
-import type { Workspace } from '../features/workspace/types'
+import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 // Import services
 import * as googleAuthService from '../features/auth/services/google-auth-service'
@@ -22,7 +22,7 @@ import {
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
 export type { UserProfile, MetaAuthState } from '../features/auth/types'
-export type { Workspace } from '../features/workspace/types'
+export type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 export interface SessionState extends MetaAuthState {
   isAuthenticated: boolean
@@ -48,11 +48,13 @@ export interface SessionActions {
   refreshAccounts: () => Promise<void>
   createWorkspace: (name: string) => Promise<Workspace | null>
   switchWorkspace: (tenantId: string) => Promise<boolean>
+  deleteWorkspace: (tenantId: string) => Promise<boolean>
   refreshWorkspaces: () => Promise<void>
   clearError: () => void
   generateSessionId: () => string
   checkExistingAuth: () => Promise<boolean>
   checkMetaAuth: () => Promise<boolean>
+  markOnboardingComplete: () => void
 }
 
 type SessionContextType = SessionState & SessionActions
@@ -105,6 +107,24 @@ interface SessionProviderProps {
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
   const [state, setState] = useState<SessionState>(getInitialState)
 
+  // Refs for OAuth timer cleanup on unmount
+  const oauthPollTimerRef = useRef<number | null>(null)
+  const oauthTimeoutRef = useRef<number | null>(null)
+
+  // Cleanup OAuth timers on unmount
+  useEffect(() => {
+    return () => {
+      if (oauthPollTimerRef.current) {
+        window.clearInterval(oauthPollTimerRef.current)
+        oauthPollTimerRef.current = null
+      }
+      if (oauthTimeoutRef.current) {
+        window.clearTimeout(oauthTimeoutRef.current)
+        oauthTimeoutRef.current = null
+      }
+    }
+  }, [])
+
   // Refresh accounts helper
   const refreshAccounts = useCallback(async (): Promise<void> => {
     if (!state.sessionId) return
@@ -133,9 +153,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       const workspaces = await workspaceService.fetchWorkspaces(state.sessionId)
       setState(prev => {
+        // If active workspace exists, try to find updated version; otherwise auto-select first workspace
         const updatedActiveWorkspace = prev.activeWorkspace
           ? workspaces.find(w => w.tenant_id === prev.activeWorkspace?.tenant_id) || prev.activeWorkspace
-          : null
+          : workspaces[0] || null
         return {
           ...prev,
           availableWorkspaces: workspaces,
@@ -173,6 +194,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           localStorage.removeItem('mia_oauth_return_url')
           if (oauthComplete === 'google') {
             await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+          } else if (oauthComplete === 'meta') {
+            // Complete Meta OAuth flow for mobile
+            await metaAuthService.completeMetaAuth(sessionId)
           }
         }
 
@@ -181,10 +205,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (storedSessionId) {
           try {
             const [sessionData, accounts, workspaces, currentWorkspace] = await Promise.all([
-              sessionService.validateSession(storedSessionId),
+              sessionService.validateSession(storedSessionId).catch(() => ({ valid: false, user: null })),
               accountService.fetchAccounts(storedSessionId).catch(() => []),
               workspaceService.fetchWorkspaces(storedSessionId).catch(() => []),
-              workspaceService.fetchCurrentWorkspace(storedSessionId).catch(() => ({ active_tenant: null }))
+              workspaceService.fetchCurrentWorkspace(storedSessionId).catch(() => ({ tenant: null, active_tenant: null }))
             ])
 
             const sessionUser = sessionData.user
@@ -195,17 +219,19 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }
 
               let activeWorkspace: Workspace | null = null
-              const activeTenant = currentWorkspace.active_tenant
-              if (activeTenant?.tenant_id) {
-                const foundWorkspace = workspaces.find(w => w.tenant_id === activeTenant.tenant_id)
+              // Handle both old (active_tenant) and new (tenant) response formats
+              const activeTenant = currentWorkspace.tenant || currentWorkspace.active_tenant
+              const tenantId = activeTenant?.id || activeTenant?.tenant_id
+              if (tenantId) {
+                const foundWorkspace = workspaces.find(w => w.tenant_id === tenantId)
                 activeWorkspace = foundWorkspace || {
-                  tenant_id: activeTenant.tenant_id,
-                  name: activeTenant.name || 'Workspace',
-                  slug: activeTenant.slug || '',
-                  role: (activeTenant.role || 'member') as Workspace['role'],
-                  onboarding_completed: activeTenant.onboarding_completed || false,
-                  connected_platforms: activeTenant.connected_platforms || [],
-                  member_count: activeTenant.member_count || 1
+                  tenant_id: tenantId,
+                  name: activeTenant?.name || 'Workspace',
+                  slug: activeTenant?.slug || '',
+                  role: (activeTenant?.role || 'member') as WorkspaceRole,
+                  onboarding_completed: activeTenant?.onboarding_completed || false,
+                  connected_platforms: activeTenant?.connected_platforms || [],
+                  member_count: activeTenant?.member_count || 1
                 }
               }
 
@@ -279,19 +305,33 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       // Desktop popup flow
       let authUserId: string | null = null
-      const popup = googleAuthService.openGoogleOAuthPopup(authData.auth_url, (userId) => {
+      const { popup, cleanup: cleanupMessageListener } = googleAuthService.openGoogleOAuthPopup(authData.auth_url, (userId) => {
         authUserId = userId
       })
 
       if (!popup) {
+        cleanupMessageListener()
         throw new Error('Popup blocked. Please allow popups for this site.')
       }
 
       return new Promise((resolve) => {
-        const pollTimer = setInterval(async () => {
+        // Helper to clear both timers and message listener
+        const clearTimers = () => {
+          if (oauthPollTimerRef.current) {
+            window.clearInterval(oauthPollTimerRef.current)
+            oauthPollTimerRef.current = null
+          }
+          if (oauthTimeoutRef.current) {
+            window.clearTimeout(oauthTimeoutRef.current)
+            oauthTimeoutRef.current = null
+          }
+          cleanupMessageListener()
+        }
+
+        oauthPollTimerRef.current = window.setInterval(async () => {
           try {
             if (popup.closed) {
-              clearInterval(pollTimer)
+              clearTimers()
               onPopupClosed?.()
 
               await googleAuthService.completeGoogleAuth(state.sessionId || '', authUserId)
@@ -299,6 +339,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
               if (statusData.authenticated) {
                 await refreshAccounts()
+                await refreshWorkspaces()
                 setState(prev => ({
                   ...prev,
                   isAuthenticated: true,
@@ -309,7 +350,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   user: {
                     name: statusData.user_info?.name || statusData.name || 'User',
                     email: statusData.user_info?.email || statusData.email || '',
-                    picture_url: statusData.user_info?.picture || statusData.picture || '',
+                    picture_url: statusData.user_info?.picture || statusData.picture_url || statusData.picture || '',
                     google_user_id: statusData.user_info?.id || statusData.user_id || ''
                   }
                 }))
@@ -320,15 +361,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }
             }
           } catch (error) {
-            clearInterval(pollTimer)
+            clearTimers()
             console.error('[SESSION] Auth polling error:', error)
             setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
             resolve(false)
           }
         }, 3000)
 
-        setTimeout(() => {
-          clearInterval(pollTimer)
+        oauthTimeoutRef.current = window.setTimeout(() => {
+          clearTimers()
           if (!popup.closed) popup.close()
           setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication timed out' }))
           resolve(false)
@@ -344,7 +385,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts])
+  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
@@ -353,7 +394,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '')
 
-      // Mobile redirect flow (same as Google)
+      // Mobile redirect flow (same pattern as Google)
       if (isMobile()) {
         localStorage.setItem('mia_oauth_pending', 'meta')
         localStorage.setItem('mia_oauth_return_url', window.location.href)
@@ -369,10 +410,22 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }
 
       return new Promise((resolve) => {
-        const pollTimer = setInterval(async () => {
+        // Helper to clear both timers
+        const clearTimers = () => {
+          if (oauthPollTimerRef.current) {
+            window.clearInterval(oauthPollTimerRef.current)
+            oauthPollTimerRef.current = null
+          }
+          if (oauthTimeoutRef.current) {
+            window.clearTimeout(oauthTimeoutRef.current)
+            oauthTimeoutRef.current = null
+          }
+        }
+
+        oauthPollTimerRef.current = window.setInterval(async () => {
           try {
             if (popup.closed) {
-              clearInterval(pollTimer)
+              clearTimers()
               onPopupClosed?.()
 
               const statusData = await metaAuthService.getMetaAuthStatus(state.sessionId || '')
@@ -404,6 +457,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 }))
 
                 await refreshAccounts()
+                await refreshWorkspaces()
                 resolve(true)
               } else {
                 setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
@@ -411,15 +465,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }
             }
           } catch (error) {
-            clearInterval(pollTimer)
+            clearTimers()
             console.error('[SESSION] Meta auth polling error:', error)
             setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
             resolve(false)
           }
         }, 3000)
 
-        setTimeout(() => {
-          clearInterval(pollTimer)
+        oauthTimeoutRef.current = window.setTimeout(() => {
+          clearTimers()
           if (!popup.closed) popup.close()
           setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication timed out' }))
           resolve(false)
@@ -435,7 +489,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts])
+  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
 
   // Logout
   const logout = useCallback(async (): Promise<void> => {
@@ -449,7 +503,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       storeSessionId(newSessionId)
 
       setState(prev => ({
-        ...INITIAL_STATE,
+        ...getInitialState(),
         hasSeenIntro: prev.hasSeenIntro,
         sessionId: newSessionId,
         isLoading: false
@@ -480,7 +534,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Select Account
   const selectAccountFn = useCallback(async (accountId: string, industry?: string): Promise<boolean> => {
-    if (!state.sessionId) {
+    // Capture sessionId at function start to avoid stale closure
+    const currentSessionId = state.sessionId
+    if (!currentSessionId) {
       setState(prev => ({ ...prev, error: 'No session ID available' }))
       return false
     }
@@ -488,7 +544,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await accountService.selectAccount(state.sessionId, accountId, industry)
+      const response = await accountService.selectAccount(currentSessionId, accountId, industry)
       const account = state.availableAccounts.find(acc => acc.id === accountId)
 
       // Handle auto-created workspace from backend
@@ -516,6 +572,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           availableWorkspaces: [...prev.availableWorkspaces, newWorkspace]
         } : {})
       }))
+
+      // Refresh workspaces to ensure all existing workspaces are loaded
+      const workspaces = await workspaceService.fetchWorkspaces(currentSessionId)
+      if (workspaces.length > 0) {
+        setState(prev => ({
+          ...prev,
+          availableWorkspaces: workspaces,
+          activeWorkspace: prev.activeWorkspace || workspaces[0]
+        }))
+      }
+
       return true
     } catch (error) {
       console.error('[SESSION] Account selection error:', error)
@@ -569,9 +636,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         ...prev,
         activeWorkspace: workspace || {
           tenant_id: tenantId,
-          name: data.name || 'Workspace',
+          name: data.tenant_name || data.name || 'Workspace',
           slug: data.slug || '',
-          role: (data.role || 'member') as Workspace['role'],
+          role: (data.role || 'member') as WorkspaceRole,
           onboarding_completed: data.onboarding_completed || false,
           connected_platforms: data.connected_platforms || [],
           member_count: 1
@@ -584,6 +651,36 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       return false
     }
   }, [state.sessionId, state.availableWorkspaces])
+
+  // Delete Workspace
+  const deleteWorkspaceFn = useCallback(async (tenantId: string): Promise<boolean> => {
+    if (!state.sessionId) return false
+
+    try {
+      await workspaceService.deleteWorkspace(state.sessionId, tenantId)
+
+      // Remove from available workspaces and clear active if it was deleted
+      setState(prev => {
+        const updatedWorkspaces = prev.availableWorkspaces.filter(w => w.tenant_id !== tenantId)
+        const wasActive = prev.activeWorkspace?.tenant_id === tenantId
+
+        return {
+          ...prev,
+          availableWorkspaces: updatedWorkspaces,
+          activeWorkspace: wasActive ? (updatedWorkspaces[0] || null) : prev.activeWorkspace
+        }
+      })
+
+      return true
+    } catch (error) {
+      console.error('[SESSION] Delete workspace error:', error)
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Failed to delete workspace'
+      }))
+      return false
+    }
+  }, [state.sessionId])
 
   // Check Existing Auth
   const checkExistingAuth = useCallback(async (): Promise<boolean> => {
@@ -607,7 +704,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             meta_ads_id: authData.selected_account.meta_ads_id,
             business_type: authData.selected_account.business_type || '',
             color: '',
-            display_name: authData.selected_account.name
+            display_name: authData.selected_account.name,
+            selected_mcc_id: authData.selected_account.selected_mcc_id
           }
         }
 
@@ -620,7 +718,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           user: {
             name: authData.user_info?.name || authData.name || 'User',
             email: authData.user_info?.email || authData.email || '',
-            picture_url: authData.user_info?.picture || authData.picture || '',
+            picture_url: authData.user_info?.picture || authData.picture_url || authData.picture || '',
             google_user_id: userId
           },
           selectedAccount
@@ -666,6 +764,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, error: null }))
   }, [])
 
+  // Mark onboarding as complete in user state (prevents redirect back to onboarding)
+  const markOnboardingComplete = useCallback((): void => {
+    setState(prev => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, onboarding_completed: true } : prev.user
+    }))
+  }, [])
+
   const contextValue: SessionContextType = {
     ...state,
     login,
@@ -676,11 +782,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     refreshAccounts,
     createWorkspace: createWorkspaceFn,
     switchWorkspace: switchWorkspaceFn,
+    deleteWorkspace: deleteWorkspaceFn,
     refreshWorkspaces,
     clearError,
     generateSessionId,
     checkExistingAuth,
-    checkMetaAuth
+    checkMetaAuth,
+    markOnboardingComplete
   }
 
   return (

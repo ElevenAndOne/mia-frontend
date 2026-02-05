@@ -102,7 +102,7 @@ interface OnboardingProviderProps {
 }
 
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
-  const { sessionId, selectedAccount, refreshWorkspaces } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace, refreshWorkspaces, markOnboardingComplete } = useSession()
 
   const [state, setState] = useState<OnboardingState>({
     step: 0,
@@ -153,7 +153,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await apiFetch(`/api/onboarding/status?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/onboarding/status', {
         headers: { 'X-Session-ID': sessionId }
       })
 
@@ -212,7 +212,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }))
 
     // Sync to server in background (fire-and-forget)
-    apiFetch(`/api/onboarding/advance?session_id=${sessionId}`, {
+    apiFetch('/api/onboarding/advance', {
       method: 'POST',
       headers: { 'X-Session-ID': sessionId }
     }).catch(err => {
@@ -392,6 +392,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           step: ONBOARDING_STEPS.COMPLETED,
         }))
 
+        // FEB 2026 FIX: Mark onboarding complete in session state to prevent redirect back
+        markOnboardingComplete()
+
+        // Persist to localStorage as fallback (backend may not return this flag on re-login)
+        if (activeWorkspace?.tenant_id) {
+          localStorage.setItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`, 'true')
+        }
+
         // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
         // This ensures main page icons show correctly after onboarding without requiring page refresh
         console.log('[ONBOARDING] Refreshing workspace data after completion...')
@@ -401,13 +409,13 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     } catch (err) {
       console.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected, refreshWorkspaces])
+  }, [sessionId, state.platformsConnected, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return
 
     try {
-      const response = await apiFetch(`/api/onboarding/skip?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/onboarding/skip', {
         method: 'POST',
         headers: { 'X-Session-ID': sessionId }
       })
@@ -419,6 +427,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           step: 3, // Skipped second platform
         }))
 
+        // FEB 2026 FIX: Mark onboarding complete in session state to prevent redirect back
+        markOnboardingComplete()
+
+        // Persist to localStorage as fallback (backend may not return this flag on re-login)
+        if (activeWorkspace?.tenant_id) {
+          localStorage.setItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`, 'true')
+        }
+
         // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
         console.log('[ONBOARDING] Refreshing workspace data after skip...')
         await refreshWorkspaces()
@@ -426,13 +442,13 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     } catch (err) {
       console.error('[ONBOARDING] Skip error:', err)
     }
-  }, [sessionId, refreshWorkspaces])
+  }, [sessionId, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
 
   const getAvailablePlatforms = useCallback(async (): Promise<{ id: string; name: string; connected: boolean }[]> => {
     if (!sessionId) return []
 
     try {
-      const response = await apiFetch(`/api/onboarding/available-platforms?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/onboarding/available-platforms', {
         headers: { 'X-Session-ID': sessionId }
       })
 

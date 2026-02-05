@@ -1,4 +1,5 @@
 import { SelectionCard } from '../../../components/selection-card'
+import { Spinner } from '../../../components/spinner'
 import type { AccountSelectionItem } from '../types'
 
 interface DirectAccountSelectionPanelProps {
@@ -52,7 +53,7 @@ export const DirectAccountSelectionPanel = ({
                 account.isSelecting ? (
                   <div className="flex items-center justify-center">
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                      <Spinner size="sm" />
                       <span className="paragraph-sm text-tertiary">Connecting...</span>
                     </div>
                   </div>

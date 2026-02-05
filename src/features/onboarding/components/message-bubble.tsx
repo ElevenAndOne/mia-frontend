@@ -51,6 +51,12 @@ export const MessageBubble = ({ message, onChoiceSelect, onAccountSelected }: Me
     )
   }
 
+  // Only render text bubble for 'mia' type messages
+  // Return null for special types with missing data (e.g., bronze-card without bronzeCard data)
+  if (message.type !== 'mia') {
+    return null
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-2">
       <div className="bg-tertiary text-primary px-4 py-2 rounded-2xl max-w-[85%] w-fit">

@@ -12,7 +12,7 @@ export type { AccountMapping } from '../features/accounts/types'
 export type { UserProfile, MetaAuthState } from '../features/auth/types'
 
 // Workspace types
-export type { Workspace } from '../features/workspace/types'
+export type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 // Session types (state and actions remain in context)
 export type { SessionState, SessionActions } from '../contexts/session-context'

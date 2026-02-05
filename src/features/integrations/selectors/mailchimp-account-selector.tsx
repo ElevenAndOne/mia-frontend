@@ -33,7 +33,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     actions.setError(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/mailchimp/accounts?session_id=${sessionId}`, {
+      const response = await apiFetch('/api/oauth/mailchimp/accounts', {
         method: 'GET',
         headers: {
           'X-Session-ID': sessionId || 'default',
@@ -69,7 +69,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
 
     await actions.withSubmitting(async () => {
       const response = await apiFetch(
-        `/api/oauth/mailchimp/set-primary?mailchimp_id=${state.selectedId}&session_id=${sessionId}`,
+        `/api/oauth/mailchimp/set-primary?mailchimp_id=${state.selectedId}`,
         {
           method: 'POST',
           headers: {
@@ -95,7 +95,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
 
     try {
       const response = await apiFetch(
-        `/api/oauth/mailchimp/disconnect?session_id=${sessionId}&mailchimp_id=${mailchimpId}`,
+        `/api/oauth/mailchimp/disconnect?mailchimp_id=${mailchimpId}`,
         {
           method: 'DELETE',
           headers: {

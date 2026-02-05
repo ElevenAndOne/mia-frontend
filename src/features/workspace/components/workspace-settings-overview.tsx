@@ -1,6 +1,6 @@
 import { Icon } from '../../../components/icon'
 import { TopBar } from '../../../components/top-bar'
-import CreateWorkspaceModal from '../../../components/create-workspace-modal'
+import CreateWorkspaceModal from '../views/create-workspace-modal'
 import { WorkspaceListItem } from './workspace-list-item'
 import type { WorkspaceOverviewItem } from '../utils/workspace-settings'
 
@@ -40,10 +40,10 @@ export const WorkspaceSettingsOverview = ({
               isActive={item.isActive}
               isSwitching={false}
               onSelect={onSelectWorkspace}
-              allowActiveSelect={true}
               variant="detailed"
               className="rounded-xl p-4 gap-3"
-              activeClassName="bg-secondary border border-secondary"
+              disableWhenActive={false}
+              activeClassName="bg-secondary border border-secondary hover:bg-tertiary"
               inactiveClassName="bg-secondary hover:bg-tertiary"
               showStatusIndicator={false}
               showRoleIcon={false}

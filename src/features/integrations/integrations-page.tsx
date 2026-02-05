@@ -1,7 +1,10 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSession } from '../../contexts/session-context'
-import { apiFetch } from '../../utils/api'
+import { useToast } from '../../contexts/toast-context'
+import { apiFetch, createSessionHeaders } from '../../utils/api'
+import { getTimeAgo } from '../../utils/date-display'
 import { useIntegrationStatus } from './hooks/use-integration-status'
+import { getIntegrationHighlight, clearIntegrationHighlight } from './utils/integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
 import FacebookPageSelector from './selectors/facebook-page-selector'
 import GA4PropertySelector from './selectors/ga4-property-selector'
@@ -9,8 +12,9 @@ import GoogleAccountSelector from './selectors/google-account-selector'
 import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
-import PlatformGearMenu from '../../components/platform-gear-menu'
+import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
+import { Spinner } from '../../components/spinner'
 
 interface Integration {
   id: string
@@ -26,6 +30,7 @@ interface Integration {
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
+  const { showToast } = useToast()
 
   // Use React Query hook for integration status (cached, deduplicated)
   // Jan 2025: Pass tenant_id to fetch workspace-level integration status
@@ -35,8 +40,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     ga4Properties,
     linkedGA4Properties,
     isLoading: loading,
+    error: integrationStatusError,
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
+
+  // Show error toast when integration status fetch fails
+  useEffect(() => {
+    if (integrationStatusError) {
+      showToast('error', 'Failed to load integration status. Some connections may not appear correctly.')
+    }
+  }, [integrationStatusError, showToast])
+
+  const [connectingId, setConnectingId] = useState<string | null>(null)
+  const oauthPollTimerRef = useRef<number | null>(null)
 
   // FEB 2026 FIX: Invalidate integration status cache when leaving this page
   // This ensures the main page (ChatView) fetches fresh data to show newly connected platforms
@@ -47,11 +63,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       invalidateIntegrationStatus()
       // Also refresh workspaces to update connected_platforms array
       refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+      if (oauthPollTimerRef.current) {
+        window.clearInterval(oauthPollTimerRef.current)
+        oauthPollTimerRef.current = null
+      }
     }
   }, [invalidateIntegrationStatus, refreshWorkspaces])
-
-  const [connectingId, setConnectingId] = useState<string | null>(null)
-  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null)
 
   // Consolidated modal state - reduces useState hooks from 10+ to 1
   const [openModal, setOpenModal] = useState<string | null>(null)
@@ -60,6 +77,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoApiKey, setBrevoApiKey] = useState('')
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
+
+  // Integration highlight state - read from sessionStorage on mount
+  const [highlightedIds, setHighlightedIds] = useState<string[]>([])
+  const highlightProcessedRef = useRef(false)
+
+  // Read integration highlight on mount (set by chat when navigating here)
+  useEffect(() => {
+    if (highlightProcessedRef.current) return
+    highlightProcessedRef.current = true
+
+    const highlights = getIntegrationHighlight()
+    if (highlights.length > 0) {
+      setHighlightedIds(highlights)
+      clearIntegrationHighlight()
+      // Auto-clear visual highlight after 3 seconds
+      setTimeout(() => setHighlightedIds([]), 3000)
+    }
+  }, [])
 
   // Modal helpers
   const showBrevoModal = openModal === 'brevo'
@@ -80,40 +115,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
 
-  // Helper function to calculate "time ago" from ISO timestamp - memoized
-  const getTimeAgo = useCallback((isoTimestamp: string | undefined): string => {
-    if (!isoTimestamp) return 'Just now'
-
-    try {
-      const utcTimestamp = isoTimestamp.endsWith('Z') ? isoTimestamp : isoTimestamp + 'Z'
-      const now = new Date()
-      const then = new Date(utcTimestamp)
-      const diffMs = now.getTime() - then.getTime()
-      const diffMins = Math.floor(diffMs / 60000)
-
-      if (diffMins < 1) return 'Just now'
-      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
-      const diffHours = Math.floor(diffMins / 60)
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-      const diffDays = Math.floor(diffHours / 24)
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-    } catch {
-      return 'Just now'
-    }
-  }, [])
-
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
     if (!platformStatus) return []
 
-    return [
+    const data =  [
       {
         id: 'google',
         name: 'Google Ads',
         description: 'Advertising campaigns',
         icon: '/icons/google-ads.svg',
         connected: platformStatus.google?.connected || false,
-        dataPoints: platformStatus.google?.connected ? 15000 : undefined,
         lastSync: platformStatus.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
         autoSync: platformStatus.google?.connected ? true : undefined
       },
@@ -123,7 +135,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Website and app analytics',
         icon: '/icons/google_analytics.svg',
         connected: platformStatus.ga4?.connected || false,
-        dataPoints: platformStatus.ga4?.connected ? 17587 : undefined,
         lastSync: platformStatus.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
         autoSync: platformStatus.ga4?.connected ? true : undefined
       },
@@ -133,7 +144,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Paid advertising campaigns',
         icon: '/icons/meta-color.svg',
         connected: platformStatus.meta?.connected || false,
-        dataPoints: platformStatus.meta?.connected ? 8500 : undefined,
         lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
         autoSync: platformStatus.meta?.connected ? true : undefined
       },
@@ -143,7 +153,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Page posts, engagement & reach',
         icon: '/icons/facebook-48.png',
         connected: platformStatus.facebook_organic?.connected || false,
-        dataPoints: platformStatus.facebook_organic?.connected ? 2500 : undefined,
         lastSync: platformStatus.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
         autoSync: platformStatus.facebook_organic?.connected ? true : undefined
       },
@@ -153,7 +162,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Email marketing and campaigns',
         icon: '/icons/brevo.jpeg',
         connected: platformStatus.brevo?.connected || false,
-        dataPoints: platformStatus.brevo?.connected ? 3800 : undefined,
         lastSync: platformStatus.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
         autoSync: platformStatus.brevo?.connected ? false : undefined
       },
@@ -163,7 +171,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'CRM and marketing automation',
         icon: '/icons/hubspot.svg',
         connected: platformStatus.hubspot?.connected || false,
-        dataPoints: platformStatus.hubspot?.connected ? 5200 : undefined,
         lastSync: platformStatus.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
         autoSync: platformStatus.hubspot?.connected ? true : undefined
       },
@@ -173,7 +180,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Email marketing and campaigns',
         icon: '/icons/radio buttons/mailchimp.png',
         connected: platformStatus.mailchimp?.connected || false,
-        dataPoints: platformStatus.mailchimp?.connected ? 4500 : undefined,
         lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
         autoSync: platformStatus.mailchimp?.connected ? true : undefined
       },
@@ -192,12 +198,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         connected: false
       },
     ]
-  }, [platformStatus, getTimeAgo])
 
-  // handleSelectIntegration - memoized with useCallback
-  const handleSelectIntegration = useCallback((integrationId: string) => {
-    setSelectedIntegration(prev => prev === integrationId ? null : integrationId)
-  }, [])
+    data.forEach(integration => {
+      console.log(integration)
+    })
+
+    return data;
+  }, [platformStatus, getTimeAgo])
 
   // Handle Brevo API Key Submission
   const handleBrevoSubmit = async () => {
@@ -262,8 +269,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setBrevoError('')
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?session_id=${sessionId}`, {
-        method: 'DELETE'
+      const response = await apiFetch('/api/oauth/brevo/disconnect', {
+        method: 'DELETE',
+        headers: createSessionHeaders(sessionId)
       })
 
       if (!response.ok) {
@@ -290,7 +298,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const handleConnect = async (integrationId: string) => {
     // Jan 2025: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
-      alert('Only workspace owners and admins can manage integrations')
+      showToast('warning', 'Only workspace owners and admins can manage integrations')
       return
     }
 
@@ -313,7 +321,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     if (integrationId === 'facebook_organic') {
       // Check if Meta credentials exist
       try {
-        const metaCredsResponse = await apiFetch(`/api/oauth/meta/credentials-status?session_id=${sessionId}`)
+        const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
+          headers: createSessionHeaders(sessionId)
+        })
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
@@ -400,15 +410,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
 
       if (!popup) {
-        alert('Popup blocked. Please allow popups for this site.')
+        showToast('error', 'Popup blocked. Please allow popups for this site.')
         setConnectingId(null)
         return
       }
 
       // Poll for popup close
-      const pollTimer = setInterval(async () => {
+      if (oauthPollTimerRef.current) {
+        window.clearInterval(oauthPollTimerRef.current)
+        oauthPollTimerRef.current = null
+      }
+
+      oauthPollTimerRef.current = window.setInterval(async () => {
         if (popup.closed) {
-          clearInterval(pollTimer)
+          if (oauthPollTimerRef.current) {
+            window.clearInterval(oauthPollTimerRef.current)
+            oauthPollTimerRef.current = null
+          }
           console.log(`${integrationId} popup closed, completing auth flow...`)
 
           // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials
@@ -463,13 +481,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           invalidateIntegrationStatus()
           refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
 
-          setSelectedIntegration(integrationId)
           setConnectingId(null)
         }
       }, 500)
     } catch (error) {
       console.error(`${integrationId} connection error:`, error)
-      alert(`Connection failed: ${error}`)
+      showToast('error', `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setConnectingId(null)
     }
   }
@@ -477,7 +494,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const connectedSources = integrations.filter(i => i.connected)
   const availableSources = integrations.filter(i => !i.connected)
 
-  const totalDataPoints = connectedSources.reduce((sum, s) => sum + (s.dataPoints || 0), 0)
   const autoSyncCount = connectedSources.filter(s => s.autoSync).length
 
   return (
@@ -496,7 +512,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Loading State */}
         {loading && integrations.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
+            <Spinner size="lg" />
           </div>
         )}
 
@@ -509,21 +525,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="bg-secondary rounded-lg p-3 text-center">
                 <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
                   <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-4 h-4" />
                 </div>
                 <p className="paragraph-xs text-quaternary">Connected</p>
                 <p className="label-sm text-primary">{connectedSources.length}</p>
-              </div>
-
-              <div className="bg-secondary rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-utility-info-200 rounded-lg mx-auto mb-1">
-                  <img src="/icons/datapoints.svg" alt="" className="w-4 h-4" />
-                </div>
-                <p className="paragraph-xs text-quaternary">Data Points</p>
-                <p className="label-sm text-primary">{totalDataPoints.toLocaleString()}</p>
               </div>
 
               <div className="bg-secondary rounded-lg p-3 text-center">
@@ -538,31 +546,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             {/* Connected Platforms List */}
             <div className="space-y-2">
               {connectedSources.map(integration => {
-                const isSelected = selectedIntegration === integration.id
 
                 return (
                   <div key={integration.id} className="w-full">
                     <div
-                      onClick={() => handleSelectIntegration(integration.id)}
-                      className={`w-full text-left transition-all ${
-                        isSelected
-                          ? 'bg-utility-info-100 border-2 border-brand'
-                          : 'bg-primary border-2 border-secondary'
-                      } rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${
-                        loading ? 'opacity-50 pointer-events-none' : ''
-                      }`}
+                      className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
+                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
                     >
-                        <div className="flex items-start gap-3 mb-2">
-                          <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                            <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
-                          </div>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center gap-2">
+                      <div className="flex items-center  gap-3">
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                          <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-2">
                             <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
-                            </div>
-                          <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
                           </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="paragraph-xs text-quaternary truncate flex items-center gap-1">
+                            <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
+                            {integration.lastSync && (
+                              <span> • Last synced: {integration.lastSync}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0">
                           {/* Platform Gear Menu - unified dropdown for all platforms */}
                           <PlatformGearMenu
                             platformId={integration.id}
@@ -588,35 +594,20 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             onAddAccount={
                               ['brevo', 'hubspot', 'mailchimp'].includes(integration.id)
                                 ? () => {
-                                    if (integration.id === 'brevo') setShowBrevoModal(true)
-                                    else if (integration.id === 'hubspot') handleConnect('hubspot')
-                                    else if (integration.id === 'mailchimp') handleConnect('mailchimp')
-                                  }
+                                  if (integration.id === 'brevo') setShowBrevoModal(true)
+                                  else if (integration.id === 'hubspot') handleConnect('hubspot')
+                                  else if (integration.id === 'mailchimp') handleConnect('mailchimp')
+                                }
                                 : undefined
                             }
                             onDisconnectSuccess={() => {
                               invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+                              refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
                               refreshAccounts()
                             }}
                           />
-                          {isSelected ? (
-                            <div className="w-5 h-5 rounded-full flex items-center justify-center bg-brand-solid">
-                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          ) : (
-                            <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-5 h-5" />
-                          )}
                         </div>
                       </div>
-                      {integration.dataPoints && (
-                        <div className="flex items-center justify-between paragraph-xs text-quaternary mt-2 pl-[52px]">
-                          <span>{integration.dataPoints.toLocaleString()} data points</span>
-                          <span>Last: {integration.lastSync}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )
@@ -633,7 +624,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
             <div className="space-y-2">
               {availableSources.map(integration => (
-                <div key={integration.id} className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                <div key={integration.id} className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0">
@@ -647,19 +638,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     <button
                       onClick={() => handleConnect(integration.id)}
                       disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                        integration.id === 'linkedin' || integration.id === 'tiktok'
-                          ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
-                          : connectingId === integration.id
+                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${integration.id === 'linkedin' || integration.id === 'tiktok'
+                        ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
+                        : connectingId === integration.id
                           ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
                           : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
-                      }`}
+                        }`}
                     >
                       {integration.id === 'linkedin' || integration.id === 'tiktok'
                         ? 'Soon'
                         : connectingId === integration.id
-                        ? 'Connecting...'
-                        : 'Connect'}
+                          ? 'Connecting...'
+                          : 'Connect'}
                     </button>
                   </div>
                 </div>
@@ -668,7 +658,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        
+
       </div>
 
       {/* Brevo API Key Modal */}

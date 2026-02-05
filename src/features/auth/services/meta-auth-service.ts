@@ -3,12 +3,26 @@
  */
 import { apiFetch } from '../../../utils/api'
 
+/**
+ * Meta OAuth auth URL response from /api/oauth/meta/auth-url
+ * Based on API documentation
+ */
 export interface MetaAuthUrlResponse {
   auth_url: string
+  /** State token for CSRF protection */
+  state?: string
 }
 
+/**
+ * Meta OAuth status response from /api/oauth/meta/status
+ * Based on API documentation
+ */
 export interface MetaAuthStatusResponse {
   authenticated: boolean
+  user_id?: string
+  name?: string
+  /** Whether user has Meta Ads access */
+  has_meta_ads?: boolean
   user_info?: {
     id: string
     name: string
@@ -17,6 +31,9 @@ export interface MetaAuthStatusResponse {
   }
 }
 
+/**
+ * Meta OAuth complete response from /api/oauth/meta/complete
+ */
 export interface MetaCompleteResponse {
   success: boolean
   user?: {

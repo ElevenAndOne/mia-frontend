@@ -4,6 +4,7 @@ interface UseWorkspaceSwitcherParams {
   activeWorkspaceId?: string
   switchWorkspace: (tenantId: string) => Promise<boolean>
   onSuccess?: () => void
+  refreshAfterSwitch?: () => Promise<void>
   reloadOnSuccess?: boolean
   onError?: (error: unknown) => void
 }
@@ -12,6 +13,7 @@ export const useWorkspaceSwitcher = ({
   activeWorkspaceId,
   switchWorkspace,
   onSuccess,
+  refreshAfterSwitch,
   reloadOnSuccess = true,
   onError,
 }: UseWorkspaceSwitcherParams) => {
@@ -28,10 +30,12 @@ export const useWorkspaceSwitcher = ({
       try {
         const success = await switchWorkspace(tenantId)
         if (success) {
-          onSuccess?.()
-          if (reloadOnSuccess) {
+          if (refreshAfterSwitch) {
+            await refreshAfterSwitch()
+          } else if (reloadOnSuccess) {
             window.location.reload()
           }
+          onSuccess?.()
         }
       } catch (error) {
         onError?.(error)
@@ -41,7 +45,7 @@ export const useWorkspaceSwitcher = ({
         setSwitchingId(null)
       }
     },
-    [activeWorkspaceId, switchWorkspace, onSuccess, reloadOnSuccess, onError]
+    [activeWorkspaceId, switchWorkspace, onSuccess, refreshAfterSwitch, reloadOnSuccess, onError]
   )
 
   return { isSwitching, switchingId, handleSwitch }

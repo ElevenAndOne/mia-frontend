@@ -2,6 +2,22 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import LoadingScreen from '../components/loading-screen'
 
+const RETURN_URL_KEY = 'mia_auth_return_url'
+
+// Save the current URL for post-auth redirect
+const saveReturnUrl = (pathname: string, search: string) => {
+  // Don't save login pages or root as return URLs
+  if (pathname === '/' || pathname.startsWith('/login')) return
+  sessionStorage.setItem(RETURN_URL_KEY, pathname + search)
+}
+
+// Export for use in auth success handlers
+export const consumeReturnUrl = (): string | null => {
+  const url = sessionStorage.getItem(RETURN_URL_KEY)
+  sessionStorage.removeItem(RETURN_URL_KEY)
+  return url
+}
+
 interface ProtectedRouteProps {
   children: React.ReactNode
   requireAccount?: boolean
@@ -39,10 +55,12 @@ export const ProtectedRoute = ({
   }
 
   if (requireMetaAuth && !isMetaAuthenticated) {
+    saveReturnUrl(location.pathname, location.search)
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
   if (!isAnyAuthenticated) {
+    saveReturnUrl(location.pathname, location.search)
     return <Navigate to="/" state={{ from: location }} replace />
   }
 

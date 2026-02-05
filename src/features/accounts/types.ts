@@ -1,5 +1,6 @@
 /**
  * Account types
+ * Based on API documentation for /api/accounts and /api/session/validate
  */
 
 export interface AccountMapping {
@@ -13,10 +14,14 @@ export interface AccountMapping {
   brevo_api_key?: string
   brevo_account_name?: string
   hubspot_portal_id?: string
+  /** Mailchimp account ID */
+  mailchimp_id?: string
   business_type: string
   color: string
   display_name: string
   google_ads_account_type?: string
+  /** Selected MCC (Manager Account) ID for Google Ads */
+  selected_mcc_id?: string
 }
 
 export interface AccountSelectionItem {

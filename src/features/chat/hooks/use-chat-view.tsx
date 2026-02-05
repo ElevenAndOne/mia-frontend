@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
-import { Logo } from '../../../components/logo'
+import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
+import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
 import { sendChatMessage } from '../services/chat-service'
 
@@ -12,18 +13,13 @@ interface ChatMessageItem {
   content: string
 }
 
-const CHAT_PLATFORM_CONFIG = [
-  { id: 'google_ads', name: 'Google Ads', icon: <Logo.google_ads />, statusKey: 'google' },
-  { id: 'ga4', name: 'Google Analytics', icon: <Logo.google_analytics />, statusKey: 'ga4' },
-  { id: 'meta_ads', name: 'Meta Ads', icon: <Logo.meta />, statusKey: 'meta' },
-  { id: 'facebook_organic', name: 'Facebook Organic', icon: <Logo.facebook />, statusKey: 'facebook_organic' },
-  { id: 'brevo', name: 'Brevo', icon: <Logo.brevo />, statusKey: 'brevo' },
-  { id: 'mailchimp', name: 'Mailchimp', icon: <Logo.mailchimp />, statusKey: 'mailchimp' },
-  { id: 'hubspot', name: 'HubSpot', icon: <Logo.hubspot />, statusKey: 'hubspot' },
-]
+interface LocationState {
+  newChat?: boolean
+}
 
 export const useChatView = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -31,7 +27,7 @@ export const useChatView = () => {
   const [dateRange, setDateRange] = useState('30_days')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { platformStatus } = useIntegrationStatus(
+  const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(
     sessionId,
     selectedAccount?.id,
     activeWorkspace?.tenant_id,
@@ -47,6 +43,11 @@ export const useChatView = () => {
       })
       .map((platform) => platform.id)
   }, [platformStatus])
+
+  const integrationPrompt = useIntegrationPrompt({
+    connectedPlatforms,
+    isLoading: integrationStatusLoading,
+  })
 
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({
     sessionId,
@@ -66,27 +67,6 @@ export const useChatView = () => {
   const hasSelectedPlatforms = selectedPlatforms.length > 0
   const hasMessages = messages.length > 0
 
-  // FEB 2026: Show guidance when platforms need additional configuration
-  // GA4 and Facebook Organic share auth with Google Ads and Meta Ads respectively,
-  // but require property/page selection in Integrations
-  const configurationGuidance = useMemo(() => {
-    const needsConfig: string[] = []
-
-    // Google Ads connected but GA4 property not selected
-    if (connectedPlatforms.includes('google_ads') && !selectedAccount?.ga4_property_id) {
-      needsConfig.push('Google Analytics property')
-    }
-
-    // Meta Ads connected but Facebook Page not selected
-    if (connectedPlatforms.includes('meta_ads') && !selectedAccount?.facebook_page_id) {
-      needsConfig.push('Facebook Page')
-    }
-
-    if (needsConfig.length === 0) return null
-
-    return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
-  }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
-
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
@@ -99,6 +79,17 @@ export const useChatView = () => {
     setMessages([])
     setStreamingContent('')
   }, [])
+
+  // Handle "New Chat" navigation state from menu/sidebar
+  useEffect(() => {
+    const state = location.state as LocationState | null
+    if (state?.newChat) {
+      setMessages([])
+      setStreamingContent('')
+      // Clear the navigation state so refresh doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, location.pathname, navigate])
 
   const handleSubmit = useCallback(async (message: string) => {
     const userMessage: ChatMessageItem = {
@@ -180,6 +171,6 @@ export const useChatView = () => {
     handleNewChat,
     handleSubmit,
     handleQuickAction,
-    configurationGuidance,
+    integrationPrompt,
   }
 }

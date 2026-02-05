@@ -6,7 +6,7 @@
  * - Saves debounce to backend (1 second after last change)
  */
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { apiFetch } from '../../../utils/api'
+import { apiFetch, createSessionHeaders } from '../../../utils/api'
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null
@@ -24,7 +24,9 @@ interface UsePlatformPreferencesResult {
 
 async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
   try {
-    const response = await apiFetch(`/api/account/platform-preferences?session_id=${sessionId}`)
+    const response = await apiFetch('/api/account/platform-preferences', {
+      headers: createSessionHeaders(sessionId)
+    })
     if (response.ok) {
       const data = await response.json()
       return data.selected_platforms || []
@@ -38,7 +40,7 @@ async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
 async function savePlatformPreferences(sessionId: string, platforms: string[]): Promise<void> {
   await apiFetch('/api/account/platform-preferences', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: createSessionHeaders(sessionId, true),
     body: JSON.stringify({
       session_id: sessionId,
       selected_platforms: platforms
@@ -60,6 +62,10 @@ export function usePlatformPreferences({
   const prevConnectedRef = useRef<string[]>([])
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasLoadedRef = useRef(false)
+  // FEB 2026 FIX: Use ref to always access current connectedPlatforms value
+  // This avoids stale closure issues in async callbacks
+  const connectedPlatformsRef = useRef(connectedPlatforms)
+  connectedPlatformsRef.current = connectedPlatforms
 
   // Load preferences on mount or when account changes
   useEffect(() => {
@@ -73,6 +79,11 @@ export function usePlatformPreferences({
 
       const saved = await fetchPlatformPreferences(sessionId)
 
+      // FEB 2026 FIX: Use ref to access current connectedPlatforms value
+      // This avoids stale closure issues since the async fetch may complete
+      // after connectedPlatforms has changed
+      const currentConnected = connectedPlatformsRef.current
+
       if (saved.length > 0) {
         // FEB 2026 FIX: Don't filter here against connectedPlatforms (stale closure bug)
         // The filtering is already done at return value (line 166) which always uses
@@ -80,16 +91,16 @@ export function usePlatformPreferences({
         setSelectedPlatformsState(saved)
       } else {
         // No saved prefs - default to all connected
-        setSelectedPlatformsState(connectedPlatforms)
+        setSelectedPlatformsState(currentConnected)
       }
 
-      prevConnectedRef.current = [...connectedPlatforms]
+      prevConnectedRef.current = [...currentConnected]
       hasLoadedRef.current = true
       setIsLoading(false)
     }
 
     loadPreferences()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- connectedPlatforms is intentionally omitted to avoid re-fetching when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- connectedPlatforms is accessed via ref to avoid stale closures
   }, [sessionId, selectedAccountId]) // Reload when session or account changes
 
   // Detect newly connected platforms and auto-enable them
@@ -114,8 +125,8 @@ export function usePlatformPreferences({
     prevConnectedRef.current = [...connectedPlatforms]
   }, [connectedPlatforms, sessionId])
 
-  // Debounced save to backend
-  const saveToBackend = useCallback((platforms: string[]) => {
+  // Debounced save to backend with rollback on failure
+  const saveToBackend = useCallback((platforms: string[], rollbackTo: string[]) => {
     if (!sessionId) return
 
     if (debounceTimerRef.current) {
@@ -127,7 +138,9 @@ export function usePlatformPreferences({
       try {
         await savePlatformPreferences(sessionId, platforms)
       } catch (e) {
-        console.error('[PlatformPrefs] Save error:', e)
+        console.error('[PlatformPrefs] Save error, rolling back:', e)
+        // Rollback to previous state on failure
+        setSelectedPlatformsState(rollbackTo)
       }
       setIsSaving(false)
     }, 1000)
@@ -143,9 +156,12 @@ export function usePlatformPreferences({
   }, [])
 
   // Set platforms (instant UI update + debounced save)
+  // FEB 2026 FIX: Use functional update to avoid stale closure
   const setSelectedPlatforms = useCallback((platforms: string[]) => {
-    setSelectedPlatformsState(platforms)
-    saveToBackend(platforms)
+    setSelectedPlatformsState(prev => {
+      saveToBackend(platforms, prev)
+      return platforms
+    })
   }, [saveToBackend])
 
   // Toggle a single platform
@@ -158,8 +174,8 @@ export function usePlatformPreferences({
       // Don't allow deselecting all platforms
       if (newPlatforms.length === 0) return current
 
-      // Save to backend (debounced)
-      saveToBackend(newPlatforms)
+      // Save to backend (debounced) with rollback capability
+      saveToBackend(newPlatforms, current)
 
       return newPlatforms
     })

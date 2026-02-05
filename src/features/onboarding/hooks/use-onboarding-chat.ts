@@ -64,6 +64,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     streamedText,
     isStreaming,
     isComplete: streamComplete,
+    error: streamingError,
     startStreaming,
     reset: resetStreaming
   } = useOnboardingStreaming()
@@ -358,6 +359,34 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     resetStreaming,
     streamComplete,
     streamedText
+  ])
+
+  // Handle streaming errors
+  useEffect(() => {
+    if (!streamingError || (!isStreamingInsight && !isStreamingCombined)) return
+
+    console.error('[Onboarding] Streaming error:', streamingError)
+
+    // Show error message in chat
+    addImmediateMessage({
+      type: 'mia',
+      content: "I'm having trouble loading your insights right now. You can try again or explore the insights pages directly."
+    })
+
+    setIsStreamingInsight(false)
+    setIsStreamingCombined(false)
+    resetStreaming()
+
+    // Show retry/fallback options
+    queueMessages(buildInsightFallbackChoices(platformsConnected))
+  }, [
+    streamingError,
+    isStreamingInsight,
+    isStreamingCombined,
+    addImmediateMessage,
+    resetStreaming,
+    queueMessages,
+    platformsConnected
   ])
 
   return {

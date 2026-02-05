@@ -18,7 +18,7 @@ export const NarrowPageContainer = ({
 
   return (
     <div
-      className={`w-full h-full bg-primary max-w-[393px] mx-auto ${scrollClass} ${centeredClass} ${className}`.trim()}
+      className={`w-full ${scrollClass} ${centeredClass} ${className}`.trim()}
     >
       {children}
     </div>

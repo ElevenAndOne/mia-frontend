@@ -14,8 +14,9 @@ This document provides a comprehensive reference for all API endpoints available
 6. [Platform Management](#6-platform-management)
 7. [Account Linking](#7-account-linking)
 8. [Chat & Communication](#8-chat--communication)
-9. [Internal APIs](#9-internal-apis)
-10. [Status & Utility](#10-status--utility)
+9. [Onboarding](#9-onboarding)
+10. [Internal APIs](#10-internal-apis)
+11. [Status & Utility](#11-status--utility)
 
 ---
 
@@ -29,7 +30,8 @@ Get Google OAuth authentication URL with optional workspace context.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `state` | string | query | No | Optional state parameter for OAuth flow |
+| `session_id` | string | query | No | Existing session ID |
+| `frontend_origin` | string | query | No | Frontend origin for callback |
 | `tenant_id` | string | query | No | Workspace context for credential storage |
 
 **Response:**
@@ -51,7 +53,7 @@ Get authentication status with session management.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -71,14 +73,11 @@ Get authentication status with session management.
 #### `POST /api/oauth/google/complete`
 Complete Google OAuth flow after user authorization.
 
-**Request Body:**
-```json
-{
-  "code": "authorization_code_from_google",
-  "session_id": "existing_session_id",
-  "tenant_id": "optional_workspace_id"
-}
-```
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | No | Existing session ID |
+| `user_id` | string | query | No | User ID |
 
 **Response:**
 ```json
@@ -103,13 +102,10 @@ Complete Google OAuth flow after user authorization.
 #### `POST /api/oauth/google/login`
 Log in with Google OAuth credentials.
 
-**Request Body:**
-```json
-{
-  "session_id": "optional_existing_session",
-  "tenant_id": "optional_workspace_id"
-}
-```
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | No | Existing session ID |
 
 **Response:**
 ```json
@@ -124,12 +120,10 @@ Log in with Google OAuth credentials.
 #### `POST /api/oauth/google/logout`
 Log out from Google OAuth and invalidate session.
 
-**Request Body:**
-```json
-{
-  "session_id": "current_session_id"
-}
-```
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Current session ID |
 
 **Response:**
 ```json
@@ -141,17 +135,91 @@ Log out from Google OAuth and invalidate session.
 
 ---
 
-### Meta/Facebook OAuth
-
-#### `GET /meta-oauth/auth-url`
-Get Meta OAuth authentication URL with workspace context.
+#### `GET /api/oauth/google/callback`
+Handle OAuth callback from Google with auto-close/redirect.
 
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `code` | string | query | Yes | Authorization code from Google |
+| `state` | string | query | No | State parameter |
+
+**Response:** HTML page that auto-closes or redirects
+
+---
+
+#### `POST /api/oauth/google/exchange-token`
+Exchange authorization code for access token.
+
+**Request Body:**
+```json
+{
+  "code": "authorization_code_from_google"
+}
+```
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
 | `tenant_id` | string | query | No | Workspace context |
-| `scopes` | string | query | No | Comma-separated OAuth scopes |
+
+**Response:**
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "user_info": {...}
+}
+```
+
+---
+
+#### `GET /api/oauth/google/user-info`
+Get current user info.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | No | User ID |
+
+**Response:**
+```json
+{
+  "user_id": "106540664695114193744",
+  "email": "user@example.com",
+  "name": "John Doe"
+}
+```
+
+---
+
+#### `GET /api/oauth/google/ad-accounts`
+Fetch user's Google Ads accounts - separates MCC accounts from regular accounts.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | Yes | User ID |
+
+**Response:**
+```json
+{
+  "mcc_accounts": [...],
+  "regular_accounts": [...]
+}
+```
+
+---
+
+### Meta/Facebook OAuth
+
+#### `GET /meta-oauth/auth-url`
+Get Meta OAuth authentication URL (MCP flow).
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `tenant_id` | string | query | No | Workspace context |
 
 **Response:**
 ```json
@@ -173,11 +241,14 @@ Exchange authorization code for access token.
 **Request Body:**
 ```json
 {
-  "code": "authorization_code_from_meta",
-  "session_id": "active_session_id",
-  "tenant_id": "optional_workspace_id"
+  "code": "authorization_code_from_meta"
 }
 ```
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `tenant_id` | string | query | No | Workspace context |
 
 **Response:**
 ```json
@@ -191,14 +262,156 @@ Exchange authorization code for access token.
 
 ---
 
-#### `GET /meta-oauth/accounts/available`
+#### `GET /meta-oauth/callback`
+Handle OAuth callback from Meta with auto-close/redirect.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `code` | string | query | Yes | Authorization code |
+| `state` | string | query | No | State parameter |
+
+---
+
+#### `GET /meta-oauth/user-info`
+Get current Meta user info.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | No | User ID |
+
+---
+
+#### `GET /meta-oauth/ad-accounts`
+Fetch user's Meta ad accounts.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | No | User ID |
+
+---
+
+#### `GET /meta-oauth/status`
+Get Meta authentication status.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | No | User ID |
+
+---
+
+#### `POST /meta-oauth/complete`
+Complete OAuth flow - frontend compatibility.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | No | User ID |
+
+---
+
+#### `POST /meta-oauth/logout`
+Logout user and revoke Meta tokens.
+
+---
+
+### Meta OAuth Enhanced (Session-Based)
+
+#### `GET /api/oauth/meta/auth-url`
+Get Meta OAuth authentication URL - Enhanced version with workspace context.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | query | No | Workspace context |
+| `frontend_origin` | string | query | No | Frontend origin for callback |
+
+**Response:**
+```json
+{
+  "auth_url": "https://www.facebook.com/v18.0/dialog/oauth?...",
+  "state": "encrypted_state_token"
+}
+```
+
+---
+
+#### `GET /api/oauth/meta/callback`
+Handle OAuth callback with redirect.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `code` | string | query | Yes | Authorization code |
+| `state` | string | query | No | State parameter |
+
+---
+
+#### `POST /api/oauth/meta/exchange-token`
+Exchange Meta authorization code for access token via MCP server.
+
+**Request Body:**
+```json
+{
+  "code": "authorization_code_from_meta",
+  "session_id": "active_session_id",
+  "tenant_id": "optional_workspace_id"
+}
+```
+
+---
+
+#### `GET /api/oauth/meta/status`
+Get Meta authentication status with session management.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+**Response:**
+```json
+{
+  "authenticated": true,
+  "user_id": "meta_user_id",
+  "name": "Facebook User Name",
+  "has_meta_ads": true
+}
+```
+
+---
+
+#### `GET /api/oauth/meta/user-info`
+Get Meta user info with session management.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
+#### `POST /api/oauth/meta/complete`
+Complete Meta OAuth flow with session management.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
+#### `GET /api/oauth/meta/accounts/available`
 Get available Meta ad accounts for linking.
 
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
-| `tenant_id` | string | query | No | Workspace context |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -218,13 +431,17 @@ Get available Meta ad accounts for linking.
 
 ---
 
-#### `POST /meta-oauth/accounts/link`
+#### `POST /api/oauth/meta/accounts/link`
 Link a Meta ad account to the current account mapping.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "meta_account_id": "act_123456789",
   "account_id": "local_account_id"
 }
@@ -240,14 +457,34 @@ Link a Meta ad account to the current account mapping.
 
 ---
 
-#### `GET /meta-oauth/organic/facebook-pages`
+#### `POST /api/oauth/meta/logout`
+Logout from Meta - clears MCP session and local database sessions.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
+#### `GET /api/oauth/meta/credentials-status`
+Check if Meta credentials actually exist in database.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+#### `GET /api/oauth/meta/organic/facebook-pages`
 Get Facebook pages for organic posting.
 
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
-| `tenant_id` | string | query | No | Workspace context |
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `refresh` | boolean | query | No | Force refresh from API |
 
 **Response:**
 ```json
@@ -265,23 +502,19 @@ Get Facebook pages for organic posting.
 
 ---
 
-#### `POST /meta-oauth/organic/link-page`
+#### `POST /api/oauth/meta/organic/link-page`
 Link a Facebook page for organic content insights.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "page_id": "facebook_page_id",
   "account_id": "local_account_id"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Facebook page linked for organic insights"
 }
 ```
 
@@ -328,7 +561,6 @@ Check Brevo connection status.
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
 | `session_id` | string | query | Yes | Active session ID |
-| `account_id` | string | query | No | Specific account to check |
 
 **Response:**
 ```json
@@ -344,6 +576,27 @@ Check Brevo connection status.
   ]
 }
 ```
+
+---
+
+#### `DELETE /api/oauth/brevo/disconnect`
+Disconnect Brevo integration from current account (soft delete).
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Active session ID |
+| `brevo_id` | integer | query | No | Specific Brevo account ID |
+
+---
+
+#### `GET /api/oauth/brevo/accounts`
+Get all Brevo accounts for current account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Active session ID |
 
 ---
 
@@ -369,15 +622,103 @@ Select a Brevo account as primary.
 
 ---
 
-### HubSpot OAuth
+### Brevo Session Management
 
-#### `POST /api/oauth/hubspot/link-portal`
-Link HubSpot portal (multi-account support).
+#### `POST /api/brevo/connect`
+Connect Brevo with API key.
 
 **Request Body:**
 ```json
 {
   "session_id": "active_session_id",
+  "api_key": "xkeysib-xxxxx..."
+}
+```
+
+---
+
+#### `POST /api/brevo/disconnect`
+Disconnect Brevo.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id"
+}
+```
+
+---
+
+#### `POST /api/brevo/status`
+Get Brevo connection status.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id"
+}
+```
+
+---
+
+### HubSpot OAuth
+
+#### `GET /api/oauth/hubspot/auth-url`
+Get HubSpot OAuth authentication URL.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Active session ID |
+| `tenant_id` | string | query | Yes | Workspace context |
+
+---
+
+#### `GET /api/oauth/hubspot/callback`
+Handle OAuth callback with redirect.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `code` | string | query | Yes | Authorization code |
+| `state` | string | query | Yes | State parameter |
+
+---
+
+#### `GET /api/oauth/hubspot/user-info`
+Check if user has HubSpot connected.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | Yes | User ID |
+
+---
+
+#### `POST /api/oauth/hubspot/disconnect`
+Disconnect HubSpot - requires session ownership verification.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | Yes | User ID |
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+### HubSpot OAuth Enhanced
+
+#### `POST /api/oauth/hubspot/link-portal`
+Link HubSpot portal (multi-account support).
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Active session ID |
+
+**Request Body:**
+```json
+{
   "access_token": "hubspot_oauth_token",
   "refresh_token": "hubspot_refresh_token",
   "portal_id": "45874928",
@@ -421,7 +762,84 @@ Get linked HubSpot accounts.
 
 ---
 
+#### `POST /api/oauth/hubspot/select-account`
+Select HubSpot account as primary.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `hubspot_id` | integer | query | Yes | HubSpot account ID |
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+#### `DELETE /api/oauth/hubspot/disconnect`
+Disconnect HubSpot integration.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+| `hubspot_id` | integer | query | No | Specific HubSpot account ID |
+
+---
+
+#### `GET /api/oauth/hubspot/status`
+Get HubSpot connection status.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
 ### Mailchimp OAuth
+
+#### `GET /api/oauth/mailchimp/auth-url`
+Get Mailchimp OAuth authentication URL.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `tenant_id` | string | query | Yes | Workspace context (required) |
+
+---
+
+#### `GET /api/oauth/mailchimp/callback`
+Handle OAuth callback with redirect.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `code` | string | query | Yes | Authorization code |
+| `state` | string | query | Yes | State parameter |
+
+---
+
+#### `GET /api/oauth/mailchimp/user-info`
+Check if user has Mailchimp connected.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | Yes | User ID |
+
+---
+
+#### `POST /api/oauth/mailchimp/disconnect`
+Disconnect Mailchimp account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | query | Yes | User ID |
+| `session_id` | string | query | Yes | Session ID |
+| `mailchimp_account_id` | string | query | No | Specific account ID |
+
+---
+
+### Mailchimp OAuth Enhanced
 
 #### `GET /api/oauth/mailchimp/status`
 Check Mailchimp connection status.
@@ -448,16 +866,24 @@ Check Mailchimp connection status.
 
 ---
 
+#### `GET /api/oauth/mailchimp/accounts`
+Get all Mailchimp accounts.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
 #### `POST /api/oauth/mailchimp/set-primary`
 Set primary Mailchimp account.
 
-**Request Body:**
-```json
-{
-  "session_id": "active_session_id",
-  "mailchimp_account_id": 1
-}
-```
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `mailchimp_id` | integer | query | Yes | Mailchimp account ID |
+| `session_id` | string | query | Yes | Session ID |
 
 **Response:**
 ```json
@@ -466,6 +892,28 @@ Set primary Mailchimp account.
   "message": "Primary Mailchimp account updated"
 }
 ```
+
+---
+
+#### `DELETE /api/oauth/mailchimp/disconnect`
+Disconnect Mailchimp integration.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+| `mailchimp_id` | integer | query | No | Specific account ID |
+
+---
+
+#### `DELETE /api/oauth/mailchimp/accounts/{mailchimp_id}`
+Delete specific Mailchimp account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `mailchimp_id` | integer | path | Yes | Mailchimp account ID |
+| `session_id` | string | query | Yes | Session ID |
 
 ---
 
@@ -633,11 +1081,15 @@ Get current account status for debugging.
 #### `POST /api/tenants`
 Create new workspace/tenant.
 
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
 **Request Body:**
 ```json
 {
-  "name": "My Agency Workspace",
-  "session_id": "active_session_id"
+  "name": "My Agency Workspace"
 }
 ```
 
@@ -667,7 +1119,7 @@ List all workspaces for authenticated user.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -689,10 +1141,14 @@ List all workspaces for authenticated user.
 #### `POST /api/tenants/switch`
 Switch to different workspace.
 
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "tenant_id": "target_tenant_id"
 }
 ```
@@ -714,7 +1170,7 @@ Get current active workspace.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -736,7 +1192,7 @@ Get workspace details.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 | `tenant_id` | string | path | Yes | Workspace ID |
 
 **Response:**
@@ -753,6 +1209,35 @@ Get workspace details.
 
 ---
 
+#### `PUT /api/tenants/{tenant_id}`
+Update workspace.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+
+**Request Body:**
+```json
+{
+  "name": "Updated Workspace Name"
+}
+```
+
+---
+
+#### `DELETE /api/tenants/{tenant_id}`
+Delete workspace.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+
+---
+
 ### Workspace Members
 
 #### `GET /api/tenants/{tenant_id}/members`
@@ -761,7 +1246,7 @@ List workspace members.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 | `tenant_id` | string | path | Yes | Workspace ID |
 
 **Response:**
@@ -791,13 +1276,31 @@ List workspace members.
 
 ---
 
+#### `DELETE /api/tenants/{tenant_id}/members/{user_id}`
+Remove member from workspace.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+| `user_id` | string | path | Yes | User ID to remove |
+
+---
+
 #### `PUT /api/tenants/{tenant_id}/members/{user_id}/role`
 Update member role.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+| `user_id` | string | path | Yes | User ID |
 
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "role": "admin"
 }
 ```
@@ -821,10 +1324,15 @@ Update member role.
 #### `POST /api/tenants/{tenant_id}/invites`
 Create workspace invite.
 
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "email": "newmember@example.com",
   "role": "member"
 }
@@ -850,15 +1358,47 @@ Create workspace invite.
 
 ---
 
+#### `GET /api/tenants/{tenant_id}/invites`
+List workspace invites.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+
+---
+
+#### `DELETE /api/tenants/{tenant_id}/invites/{invite_id}`
+Revoke workspace invite.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `tenant_id` | string | path | Yes | Workspace ID |
+| `invite_id` | string | path | Yes | Invite ID |
+
+---
+
+#### `GET /api/tenants/invites/{invite_id}/details`
+Get invite details (public - for invite acceptance page).
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `invite_id` | string | path | Yes | Invite ID |
+
+---
+
 #### `POST /api/tenants/invites/{invite_id}/accept`
 Accept workspace invite.
 
-**Request Body:**
-```json
-{
-  "session_id": "active_session_id"
-}
-```
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+| `invite_id` | string | path | Yes | Invite ID |
 
 **Response:**
 ```json
@@ -874,13 +1414,23 @@ Accept workspace invite.
 
 ---
 
+#### `GET /api/tenants/invites/pending`
+Get pending invites for current user.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
 #### `GET /api/tenants/{tenant_id}/integrations`
 Get workspace platform integrations.
 
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 | `tenant_id` | string | path | Yes | Workspace ID |
 
 **Response:**
@@ -1016,6 +1566,19 @@ Get account performance metrics for a date range.
 
 ---
 
+#### `GET /advertising/health`
+Check if Google Ads API integration is properly configured.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "api_version": "v21"
+}
+```
+
+---
+
 ### Meta Ads API
 
 #### `GET /meta-ads/accounts`
@@ -1137,6 +1700,32 @@ Get ad sets for a Meta ad account.
 
 ---
 
+#### `GET /meta-ads/accounts/{account_id}/ads`
+Get ads for a Meta ad account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `account_id` | string | path | Yes | Meta ad account ID |
+| `user_id` | string | query | Yes | User ID for credentials |
+| `tenant_id` | string | query | No | Workspace context |
+| `adset_id` | string | query | No | Filter by ad set ID |
+
+**Response:**
+```json
+[
+  {
+    "id": "45678901234",
+    "name": "Ad Creative 1",
+    "status": "ACTIVE",
+    "adset_id": "34567890123",
+    "creative": {...}
+  }
+]
+```
+
+---
+
 ### Google Analytics API
 
 #### `GET /analytics/properties`
@@ -1189,6 +1778,49 @@ Get GA4 metrics for a property.
 
 **Notes:**
 - Implements token refresh retry logic for expired tokens
+
+---
+
+#### `GET /analytics/properties/{property_id}/top-pages`
+Get top pages for a GA4 property.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `property_id` | string | path | Yes | GA4 property ID |
+| `user_id` | string | query | Yes | User ID for credentials |
+| `tenant_id` | string | query | No | Workspace context |
+| `start_date` | string | query | Yes | Start date |
+| `end_date` | string | query | Yes | End date |
+| `limit` | integer | query | No | Number of results (default: 10) |
+
+---
+
+#### `GET /analytics/properties/{property_id}/traffic-sources`
+Get traffic sources for a GA4 property.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `property_id` | string | path | Yes | GA4 property ID |
+| `user_id` | string | query | Yes | User ID for credentials |
+| `tenant_id` | string | query | No | Workspace context |
+| `start_date` | string | query | Yes | Start date |
+| `end_date` | string | query | Yes | End date |
+
+---
+
+#### `GET /analytics/properties/{property_id}/conversions`
+Get conversions for a GA4 property.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `property_id` | string | path | Yes | GA4 property ID |
+| `user_id` | string | query | Yes | User ID for credentials |
+| `tenant_id` | string | query | No | Workspace context |
+| `start_date` | string | query | Yes | Start date |
+| `end_date` | string | query | Yes | End date |
 
 ---
 
@@ -1251,7 +1883,7 @@ Generate Grow insights (growth opportunities) with AI analysis.
 - Supports platform toggling from UI
 - Date range options: `7_days`, `14_days`, `30_days`, `90_days`
 - Redis caching: Platform data cached 30min, Claude responses cached 2hrs
-- Rate limited: 20 requests/minute
+- Rate limited: 10 requests/minute
 
 ---
 
@@ -1270,6 +1902,85 @@ data: {"chunk": "", "done": true, "total_tokens": 450}
 **Notes:**
 - Preferred for better UX - shows response as it generates
 - Same caching and rate limiting as non-streaming endpoint
+
+---
+
+#### `POST /api/quick-insights/optimize`
+Generate Optimize insights (optimization recommendations).
+
+**Request Body:** Same as `/api/quick-insights/grow`
+
+**Response:** Same structure as grow insights
+
+---
+
+#### `POST /api/quick-insights/optimize/stream`
+Stream Optimize insights with SSE.
+
+**Request Body:** Same as `/api/quick-insights/grow`
+
+---
+
+#### `POST /api/quick-insights/protect`
+Generate Protect insights (risk identification).
+
+**Request Body:** Same as `/api/quick-insights/grow`
+
+**Response:** Same structure as grow insights
+
+---
+
+#### `POST /api/quick-insights/protect/stream`
+Stream Protect insights with SSE.
+
+**Request Body:** Same as `/api/quick-insights/grow`
+
+---
+
+#### `POST /api/quick-insights/summary`
+Generate Summary insights (executive overview).
+
+**Request Body:** Same as `/api/quick-insights/grow`
+
+**Response:** Same structure as grow insights
+
+---
+
+### Intelligence Snapshot
+
+#### `POST /api/snapshot/generate`
+Generate intelligence snapshot with all platform data.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id",
+  "date_range": "30_days",
+  "platforms": ["google_ads", "meta", "ga4"]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "snapshot": {
+    "generated_at": "2026-01-28T10:00:00Z",
+    "date_range": {...},
+    "platforms": {...},
+    "insights": "..."
+  }
+}
+```
+
+---
+
+#### `POST /api/snapshot/stream`
+Stream intelligence snapshot generation with SSE.
+
+**Request Body:** Same as `/api/snapshot/generate`
+
+**Response:** SSE stream
 
 ---
 
@@ -1342,6 +2053,16 @@ Follow up on bronze fact with AI analysis.
 
 ---
 
+#### `GET /api/bronze/prefetch-status`
+Get prefetch status for bronze data.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
 ### Async Insights
 
 #### `POST /api/insights/grow/async`
@@ -1365,6 +2086,20 @@ Start Grow insights generation in background.
   "message": "Task queued for processing"
 }
 ```
+
+---
+
+#### `POST /api/insights/optimize/async`
+Start Optimize insights generation in background.
+
+**Request Body:** Same as grow/async
+
+---
+
+#### `POST /api/insights/protect/async`
+Start Protect insights generation in background.
+
+**Request Body:** Same as grow/async
 
 ---
 
@@ -1401,67 +2136,13 @@ Poll for async task status.
 
 ---
 
-### Onboarding
-
-#### `GET /api/onboarding/status`
-Get current onboarding state.
+#### `DELETE /api/insights/task/{task_id}`
+Cancel a running task (best effort).
 
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
-
-**Response:**
-```json
-{
-  "current_step": "connect_platforms",
-  "completed_steps": ["create_account", "welcome"],
-  "pending_steps": ["connect_platforms", "select_account", "first_insight"],
-  "progress_percentage": 40,
-  "can_skip": true
-}
-```
-
----
-
-#### `POST /api/onboarding/update-step`
-Update onboarding step status.
-
-**Request Body:**
-```json
-{
-  "session_id": "active_session_id",
-  "step": "connect_platforms",
-  "status": "completed"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "next_step": "select_account"
-}
-```
-
----
-
-#### `POST /api/onboarding/grow-summary/stream`
-Stream grow summary during onboarding (SSE).
-
-**Request Body:**
-```json
-{
-  "session_id": "active_session_id",
-  "platforms": ["google_ads"]
-}
-```
-
-**Response:** SSE stream
-
-**Notes:**
-- Tailored for onboarding UX
-- Shows first insights after platform connection
+| `task_id` | string | path | Yes | Task ID |
 
 ---
 
@@ -1536,6 +2217,55 @@ Identify user drop-off points in conversion funnel.
 
 ---
 
+#### `POST /conversion-funnel-optimization`
+Generate funnel optimization recommendations.
+
+**Request Body (Form):**
+```json
+{
+  "user_id": "user_id",
+  "start_date": "2026-01-01",
+  "end_date": "2026-01-28"
+}
+```
+
+---
+
+#### `POST /traffic-quality-analysis`
+Analyze traffic quality across sources.
+
+**Request Body (Form):**
+```json
+{
+  "user_id": "user_id",
+  "start_date": "2026-01-01",
+  "end_date": "2026-01-28"
+}
+```
+
+---
+
+### Clean Website Analytics
+
+#### `POST /journey-analysis`
+Analyze user journey from ads to conversions (clean version).
+
+**Request Body (Form):**
+```json
+{
+  "request": "{\"user_id\": \"...\", \"start_date\": \"...\", \"end_date\": \"...\"}"
+}
+```
+
+---
+
+#### `POST /funnel-optimization`
+Generate funnel optimization recommendations (clean version).
+
+**Request Body (Form):** Same structure
+
+---
+
 ### Ad Insights
 
 #### `POST /ad-performance-analysis`
@@ -1576,6 +2306,27 @@ Comprehensive ad performance analysis.
 **Notes:**
 - Auto-detects date range if not provided
 - Identifies top 10% and bottom 10% performers
+
+---
+
+#### `POST /campaign-comparison`
+Compare performance across campaigns.
+
+**Request Body (Form):** Same structure as ad-performance-analysis
+
+---
+
+#### `POST /ad-recommendations`
+Generate actionable ad optimization recommendations.
+
+**Request Body (Form):** Same structure
+
+---
+
+#### `POST /performance-trends`
+Analyze performance trends over time.
+
+**Request Body (Form):** Same structure
 
 ---
 
@@ -1623,6 +2374,25 @@ Generate detailed optimization action plan.
 
 ---
 
+#### `POST /budget-reallocation-plan`
+Generate budget reallocation recommendations.
+
+**Request Body (Form):** Same structure as optimization-action-plan
+
+---
+
+#### `POST /debug-ad-data-availability`
+Debug endpoint to check ad data availability.
+
+**Request Body (Form):**
+```json
+{
+  "user_id": "user_id"
+}
+```
+
+---
+
 #### `POST /file-insights`
 Analyze uploaded CSV files for insights.
 
@@ -1661,6 +2431,68 @@ Analyze uploaded CSV files for insights.
 
 ---
 
+### Clean Ad Insights
+
+#### `POST /ad-performance`
+Comprehensive ad performance analysis (clean version).
+
+**Request Body (Form):**
+```json
+{
+  "request": "{\"user_id\": \"...\", ...}"
+}
+```
+
+---
+
+#### `POST /campaign-comparison`
+Compare performance across campaigns (clean version).
+
+---
+
+#### `POST /ad-recommendations`
+Generate ad optimization recommendations (clean version).
+
+---
+
+#### `POST /optimization-action-plan`
+Generate optimization action plan (clean version).
+
+---
+
+### Clean Insights
+
+#### `POST /clean-insights`
+Generate clean insights from uploaded files.
+
+**Request:** Multipart form data
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `ga4_file` | file | No | GA4 data file |
+
+---
+
+#### `GET /clean-insights/example`
+Get usage examples for the clean insights endpoint.
+
+---
+
+### Comprehensive Insights
+
+#### `POST /comprehensive-insights`
+Generate comprehensive cross-platform insights.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id",
+  "date_range": "30_days",
+  "platforms": ["google_ads", "meta", "ga4"]
+}
+```
+
+---
+
 ### EDA (Exploratory Data Analysis)
 
 #### `POST /eda`
@@ -1681,6 +2513,18 @@ Run exploratory data analysis on uploaded CSV.
 **Notes:**
 - Uses ydata-profiling for comprehensive EDA
 - Returns path to HTML report
+
+---
+
+#### `POST /ga4-data-availability`
+Check GA4 data availability.
+
+**Request Body (Form):**
+```json
+{
+  "user_id": "user_id"
+}
+```
 
 ---
 
@@ -1731,8 +2575,7 @@ Disconnect a platform from the account.
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
 | `platform` | string | path | Yes | Platform name: `google`, `meta`, `brevo`, `hubspot`, `mailchimp` |
-| `session_id` | string | query | Yes | Active session ID |
-| `account_id` | string | query | No | Specific account ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -1744,6 +2587,17 @@ Disconnect a platform from the account.
 
 ---
 
+#### `POST /api/platform/{platform}/refresh`
+Refresh platform connection/data.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `platform` | string | path | Yes | Platform name |
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
 #### `GET /api/platform/{platform}/status`
 Get platform connection status.
 
@@ -1751,7 +2605,7 @@ Get platform connection status.
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
 | `platform` | string | path | Yes | Platform name |
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -1773,7 +2627,7 @@ Get available accounts for linking.
 **Parameters:**
 | Name | Type | In | Required | Description |
 |------|------|-----|----------|-------------|
-| `session_id` | string | query | Yes | Active session ID |
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -1796,10 +2650,14 @@ Get available accounts for linking.
 #### `POST /api/accounts/select`
 Select account for use.
 
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id",
   "account_id": "account_uuid"
 }
 ```
@@ -1817,15 +2675,79 @@ Select account for use.
 
 ---
 
-#### `POST /api/ga4/refresh`
-Refresh GA4 properties for the account.
+#### `POST /api/accounts/link-platform`
+Manually link a platform to an account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Request Body:**
 ```json
 {
-  "session_id": "active_session_id"
+  "account_id": "account_uuid",
+  "platform": "meta",
+  "platform_account_id": "act_123456789"
 }
 ```
+
+---
+
+#### `POST /api/accounts/link-google`
+Link Google account to local account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+**Request Body:**
+```json
+{
+  "account_id": "account_uuid",
+  "google_ads_id": "7574136388",
+  "ga4_property_id": "458016659"
+}
+```
+
+---
+
+#### `POST /api/google/accounts/link`
+Link Google Ads account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+**Request Body:**
+```json
+{
+  "customer_id": "7574136388",
+  "account_id": "account_uuid"
+}
+```
+
+---
+
+#### `GET /api/google/accounts/discovered`
+Get discovered Google accounts from API.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
+
+---
+
+#### `POST /api/ga4/refresh`
+Refresh GA4 properties for the account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `X-Session-ID` | string | header | Yes | Active session ID |
 
 **Response:**
 ```json
@@ -1837,6 +2759,32 @@ Refresh GA4 properties for the account.
       "display_name": "My Website"
     }
   ]
+}
+```
+
+---
+
+#### `GET /api/account/platform-preferences`
+Get saved platform preferences for current account.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+#### `PUT /api/account/platform-preferences`
+Save platform preferences for current account.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id",
+  "preferences": {
+    "default_google_ads_id": "7574136388",
+    "default_ga4_property_id": "458016659"
+  }
 }
 ```
 
@@ -1877,7 +2825,132 @@ Send chat message with AI analysis (MCP integration).
 
 ---
 
-## 9. Internal APIs
+## 9. Onboarding
+
+#### `GET /api/onboarding/status`
+Get current onboarding state.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Active session ID |
+
+**Response:**
+```json
+{
+  "current_step": "connect_platforms",
+  "completed_steps": ["create_account", "welcome"],
+  "pending_steps": ["connect_platforms", "select_account", "first_insight"],
+  "progress_percentage": 40,
+  "can_skip": true
+}
+```
+
+---
+
+#### `POST /api/onboarding/update-step`
+Update onboarding step status.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id",
+  "step": "connect_platforms",
+  "status": "completed"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "next_step": "select_account"
+}
+```
+
+---
+
+#### `POST /api/onboarding/advance`
+Advance to next onboarding step.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+#### `POST /api/onboarding/complete`
+Mark onboarding as complete.
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id"
+}
+```
+
+---
+
+#### `POST /api/onboarding/skip`
+Skip onboarding process.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+---
+
+#### `GET /api/onboarding/available-platforms`
+Get available platforms for onboarding.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `session_id` | string | query | Yes | Session ID |
+
+**Response:**
+```json
+{
+  "platforms": [
+    {
+      "id": "google_ads",
+      "name": "Google Ads",
+      "connected": true,
+      "accounts": [...]
+    },
+    {
+      "id": "meta",
+      "name": "Meta Ads",
+      "connected": false
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /api/onboarding/grow-summary/stream`
+Stream grow summary during onboarding (SSE).
+
+**Request Body:**
+```json
+{
+  "session_id": "active_session_id",
+  "platforms": ["google_ads"]
+}
+```
+
+**Response:** SSE stream
+
+**Notes:**
+- Tailored for onboarding UX
+- Shows first insights after platform connection
+
+---
+
+## 10. Internal APIs
 
 > **Security:** All internal API endpoints require `X-API-Key` header authentication.
 > Set `INTERNAL_API_KEY` environment variable to enable access.
@@ -1923,6 +2996,24 @@ List all clients with connected platforms.
 
 ---
 
+#### `GET /api/internal/clients/ids`
+List all client user IDs.
+
+**Headers:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `X-API-Key` | Yes | Internal API key |
+
+**Response:**
+```json
+{
+  "success": true,
+  "user_ids": ["user_id_1", "user_id_2", ...]
+}
+```
+
+---
+
 #### `GET /api/internal/clients/{user_id}/credentials`
 Get credentials for a specific client.
 
@@ -1963,6 +3054,21 @@ Get credentials for a specific client.
 
 ---
 
+#### `GET /api/internal/clients/{user_id}/accounts`
+Get accounts for a specific client.
+
+**Headers:**
+| Name | Required | Description |
+|------|----------|-------------|
+| `X-API-Key` | Yes | Internal API key |
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `user_id` | string | path | Yes | User ID |
+
+---
+
 #### `GET /api/internal/health`
 Health check for internal API.
 
@@ -1988,7 +3094,7 @@ Health check for internal API.
 
 ---
 
-## 10. Status & Utility
+## 11. Status & Utility
 
 #### `GET /health`
 Basic health check endpoint.
@@ -2040,21 +3146,71 @@ Get which platforms user has connected.
 
 ---
 
+#### `GET /auth-test`
+Simple auth test page for debugging authentication flow.
+
+**Response:** HTML page
+
+---
+
+#### `GET /mia-chat-test`
+Mobile test chat HTML page.
+
+**Response:** HTML page
+
+---
+
+### Test Endpoints
+
+#### `POST /api/test/s3-upload`
+Test S3 upload functionality.
+
+**Request Body:**
+```json
+{
+  "client_id": "test_client",
+  "data": "test data"
+}
+```
+
+---
+
+#### `GET /api/test/s3-verify`
+Verify S3 upload.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `client_id` | string | query | Yes | Client ID |
+
+---
+
+#### `GET /api/test/dynamic/{account_id}`
+Test dynamic account selection.
+
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `account_id` | string | path | Yes | Account ID |
+
+---
+
 ## Endpoint Summary
 
 | Category | Endpoint Count |
 |----------|----------------|
-| OAuth/Authentication | ~30 |
+| OAuth/Authentication | ~60 |
 | Account & Session Management | ~5 |
-| Tenant/Workspace Management | ~15 |
-| Data APIs | ~15 |
-| Insights & Analysis | ~35 |
+| Tenant/Workspace Management | ~18 |
+| Data APIs | ~18 |
+| Insights & Analysis | ~40 |
 | Platform Management | ~3 |
 | Account Linking | ~10 |
 | Chat | 1 |
+| Onboarding | 7 |
 | Internal APIs | 5 |
-| Utilities/Status | ~5 |
-| **Total** | **~125+** |
+| Utilities/Status | ~8 |
+| **Total** | **~175+** |
 
 ---
 
@@ -2069,7 +3225,7 @@ Get which platforms user has connected.
   - **Silver:** Claude-generated analysis (3-5 seconds)
   - **Gold:** Comprehensive multi-platform insights
 - **Session-based authentication:** With tenant context support (Phase 2)
-- **Rate limiting:** Implemented with slowapi (20 req/min for chat/insights)
+- **Rate limiting:** Implemented with slowapi (10-20 req/min for insights/chat)
 - **Redis caching:** Platform data (30 min), Claude responses (2 hours)
 - **Internal API:** Key-based authentication for service-to-service communication
 
@@ -2077,10 +3233,10 @@ Get which platforms user has connected.
 
 ## Authentication Notes
 
-1. **Session-based:** Most endpoints require `session_id` parameter
+1. **Session-based:** Most endpoints require `session_id` parameter or `X-Session-ID` header
 2. **Tenant context (Phase 2):** Many endpoints accept `tenant_id` for workspace credential isolation
 3. **Internal API:** Uses `X-API-Key` header for service-to-service communication
-4. **OAuth flows:** Google, Meta, HubSpot use OAuth 2.0; Brevo uses API key
+4. **OAuth flows:** Google, Meta, HubSpot, Mailchimp use OAuth 2.0; Brevo uses API key
 
 ---
 
