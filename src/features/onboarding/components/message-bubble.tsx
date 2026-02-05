@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { ChatMessage } from '../onboarding-chat-types'
+import { AccountSelectorCard } from './account-selector-card'
 import { BronzeCard } from './bronze-card'
 import { ChoiceButtons } from './choice-buttons'
 import { ExplainerBox } from './explainer-box'
@@ -8,15 +9,24 @@ import { InsightCard } from './insight-card'
 interface MessageBubbleProps {
   message: ChatMessage
   onChoiceSelect?: (action: string) => void
+  onAccountSelected?: (accountId: string) => void
 }
 
-export const MessageBubble = ({ message, onChoiceSelect }: MessageBubbleProps) => {
+export const MessageBubble = ({ message, onChoiceSelect, onAccountSelected }: MessageBubbleProps) => {
   if (message.type === 'user') {
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
         <div className="bg-brand-solid text-primary-onbrand px-4 py-2 rounded-2xl max-w-[80%]">
           <p className="paragraph-sm">{message.content}</p>
         </div>
+      </motion.div>
+    )
+  }
+
+  if (message.type === 'account-selector') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <AccountSelectorCard onAccountSelected={onAccountSelected || (() => {})} />
       </motion.div>
     )
   }

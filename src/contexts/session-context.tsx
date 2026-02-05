@@ -352,6 +352,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     try {
       const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '')
+
+      // Mobile redirect flow (same as Google)
+      if (isMobile()) {
+        localStorage.setItem('mia_oauth_pending', 'meta')
+        localStorage.setItem('mia_oauth_return_url', window.location.href)
+        window.location.href = authData.auth_url
+        return true
+      }
+
+      // Desktop popup flow
       const popup = metaAuthService.openMetaOAuthPopup(authData.auth_url)
 
       if (!popup) {

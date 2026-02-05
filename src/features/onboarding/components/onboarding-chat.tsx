@@ -24,6 +24,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
     handleGoToIntegrations,
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
+    handleAccountSelected,
     selectedAccountName
   } = useOnboardingChat({ onComplete, onConnectPlatform })
 
@@ -42,6 +43,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
         isTyping={isTyping}
         isStreaming={isStreaming}
         onChoiceSelect={handleChoice}
+        onAccountSelected={handleAccountSelected}
         endRef={messagesEndRef}
       />
 

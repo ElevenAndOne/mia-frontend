@@ -9,10 +9,11 @@ interface ChatMessageListProps {
   isTyping: boolean
   isStreaming: boolean
   onChoiceSelect: (action: string) => void
+  onAccountSelected?: (accountId: string) => void
   endRef: RefObject<HTMLDivElement | null>
 }
 
-export const ChatMessageList = ({ messages, isTyping, isStreaming, onChoiceSelect, endRef}: ChatMessageListProps) => (
+export const ChatMessageList = ({ messages, isTyping, isStreaming, onChoiceSelect, onAccountSelected, endRef}: ChatMessageListProps) => (
   <div className="flex-1 h-full overflow-y-auto px-4 pb-6">
     <div className="flex flex-col gap-3 min-h-full max-w-3xl mx-auto w-full">
       {/* Spacer pushes messages to bottom when content is short */}
@@ -20,7 +21,7 @@ export const ChatMessageList = ({ messages, isTyping, isStreaming, onChoiceSelec
 
       <AnimatePresence>
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} onChoiceSelect={onChoiceSelect} />
+          <MessageBubble key={message.id} message={message} onChoiceSelect={onChoiceSelect} onAccountSelected={onAccountSelected} />
         ))}
       </AnimatePresence>
 

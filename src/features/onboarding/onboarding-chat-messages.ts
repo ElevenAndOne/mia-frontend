@@ -18,6 +18,24 @@ const CHOICE_LABELS: Record<string, string> = {
   continue_anyway: 'Continue anyway'
 }
 
+// Intro messages (shown before account selection)
+export const INTRO_MESSAGES: ChatMessageInput[] = [
+  { type: 'mia', content: "Hi I'm Mia, but you probably already know that." },
+  { type: 'mia', content: "We'll get to know each other much better!" }
+]
+
+// Account linking prompt (shown after intro)
+export const ACCOUNT_LINK_MESSAGES: ChatMessageInput[] = [
+  { type: 'mia', content: "First, let's connect an account to analyze." },
+  { type: 'account-selector' }
+]
+
+// Stats intro (shown after account selection)
+export const STATS_INTRO_MESSAGES: ChatMessageInput[] = [
+  { type: 'mia', content: "Let's start with some stats" }
+]
+
+// Legacy - kept for backwards compatibility
 export const WELCOME_MESSAGES: ChatMessageInput[] = [
   { type: 'mia', content: "Congrats! 🥳 You're connected" },
   { type: 'mia', content: "Hi I'm Mia, but you probably already know that." },

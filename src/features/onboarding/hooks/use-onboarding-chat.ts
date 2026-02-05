@@ -5,7 +5,9 @@ import type { BronzeFact } from '../onboarding-context'
 import { useOnboardingStreaming } from '../use-onboarding-streaming'
 import type { ExplainerType } from '../onboarding-chat-types'
 import {
-  WELCOME_MESSAGES,
+  INTRO_MESSAGES,
+  ACCOUNT_LINK_MESSAGES,
+  STATS_INTRO_MESSAGES,
   buildBronzeNoReachMessages,
   buildBronzeReachMessages,
   buildClickMessages,
@@ -42,11 +44,12 @@ interface OnboardingChatState {
   handleGoToIntegrations: () => void
   handleMetaAccountLinked: () => void
   handleGoogleAccountLinked: () => void
+  handleAccountSelected: (accountId: string) => void
   selectedAccountName?: string
 }
 
 export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardingChatArgs): OnboardingChatState => {
-  const { selectedAccount, sessionId, login, loginMeta, refreshAccounts } = useSession()
+  const { selectedAccount, availableAccounts, sessionId, login, loginMeta, refreshAccounts } = useSession()
   const {
     platformsConnected,
     fetchBronzeHighlight,
@@ -73,6 +76,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   const [isStreamingInsight, setIsStreamingInsight] = useState(false)
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
   const [initialBronzeFact, setInitialBronzeFact] = useState<BronzeFact | null>(null)
+  const [accountSelected, setAccountSelected] = useState(false)
 
   const hasInitialized = useRef(false)
 
@@ -201,6 +205,40 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     onConnectPlatform('integrations')
   }, [onConnectPlatform, skipOnboarding])
 
+  // Handle account selection from inline selector
+  const handleAccountSelected = useCallback(async (accountId: string) => {
+    setAccountSelected(true)
+
+    // Find the selected account name from available accounts
+    const account = availableAccounts.find(acc => acc.id === accountId)
+    const accountName = account?.name || 'Selected account'
+    addImmediateMessage({ type: 'user', content: accountName })
+
+    // Show confirmation and stats intro
+    queueMessages([
+      { type: 'mia', content: "Great choice! I'm connecting to your account now..." }
+    ])
+
+    // Small delay then continue to stats
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    queueMessages(STATS_INTRO_MESSAGES)
+
+    // Now fetch bronze data
+    const bronzeFact = await fetchBronzeHighlight()
+
+    if (bronzeFact) {
+      setInitialBronzeFact(bronzeFact)
+      const reachValue = bronzeFact.metric_value ?? 0
+
+      queueMessages(reachValue === 0 ? buildBronzeNoReachMessages(bronzeFact) : buildBronzeReachMessages(bronzeFact))
+    } else {
+      queueMessages(buildNoBronzeMessages())
+    }
+
+    await advanceStep()
+  }, [addImmediateMessage, advanceStep, availableAccounts, fetchBronzeHighlight, queueMessages])
+
   const handleChoice = useCallback(
     async (action: string) => {
       addImmediateMessage({ type: 'user', content: getChoiceLabel(action) })
@@ -257,28 +295,39 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
 
   const initializeChat = useCallback(async () => {
     await loadOnboardingStatus()
-    queueMessages(WELCOME_MESSAGES)
 
-    const bronzeFact = await fetchBronzeHighlight()
+    // If account already selected, go straight to stats flow
+    if (selectedAccount) {
+      setAccountSelected(true)
+      queueMessages(INTRO_MESSAGES)
+      queueMessages(STATS_INTRO_MESSAGES)
 
-    if (bronzeFact) {
-      setInitialBronzeFact(bronzeFact)
-      const reachValue = bronzeFact.metric_value ?? 0
+      const bronzeFact = await fetchBronzeHighlight()
 
-      queueMessages(reachValue === 0 ? buildBronzeNoReachMessages(bronzeFact) : buildBronzeReachMessages(bronzeFact))
+      if (bronzeFact) {
+        setInitialBronzeFact(bronzeFact)
+        const reachValue = bronzeFact.metric_value ?? 0
+
+        queueMessages(reachValue === 0 ? buildBronzeNoReachMessages(bronzeFact) : buildBronzeReachMessages(bronzeFact))
+      } else {
+        queueMessages(buildNoBronzeMessages())
+      }
+
+      await advanceStep()
     } else {
-      queueMessages(buildNoBronzeMessages())
+      // No account selected yet - show intro and account selector
+      queueMessages(INTRO_MESSAGES)
+      queueMessages(ACCOUNT_LINK_MESSAGES)
     }
-
-    await advanceStep()
-  }, [advanceStep, fetchBronzeHighlight, loadOnboardingStatus, queueMessages])
+  }, [advanceStep, fetchBronzeHighlight, loadOnboardingStatus, queueMessages, selectedAccount])
 
   useEffect(() => {
-    if (!hasInitialized.current && selectedAccount) {
+    // Start onboarding even without selected account (will show account selector)
+    if (!hasInitialized.current) {
       hasInitialized.current = true
       void initializeChat()
     }
-  }, [initializeChat, selectedAccount])
+  }, [initializeChat])
 
   useEffect(() => {
     if (!streamComplete || (!isStreamingInsight && !isStreamingCombined)) return
@@ -324,6 +373,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     handleGoToIntegrations,
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
+    handleAccountSelected,
     selectedAccountName: selectedAccount?.name
   }
 }

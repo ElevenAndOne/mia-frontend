@@ -7,6 +7,7 @@ export type MessageType =
   | 'explainer-box'
   | 'insight-card'
   | 'choice-buttons'
+  | 'account-selector'
 
 export type ChoiceVariant = 'primary' | 'secondary'
 

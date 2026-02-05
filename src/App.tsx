@@ -99,7 +99,8 @@ function App() {
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        navigate('/login')
+        // Account selection now happens in onboarding, not at /login
+        navigate('/onboarding')
         return
       }
     }
@@ -160,10 +161,20 @@ function App() {
   const handleAuthSuccess = () => {
     // Navigate FIRST, then clear loading platform
     // This prevents the video from flashing during the brief moment between clearing loading and navigation
-    if (selectedAccount) {
+
+    // New flow: Account selection happens in onboarding, not at /login
+    if (availableWorkspaces.length === 0 && !activeWorkspace) {
+      // No workspace - show create workspace modal (onSuccess navigates to /onboarding)
+      setShowCreateWorkspaceModal(true)
+    } else if (selectedAccount && user?.onboarding_completed) {
+      // Returning user with completed onboarding
       navigate('/home')
+    } else if (selectedAccount) {
+      // Has account selected but onboarding not done
+      navigate('/onboarding')
     } else {
-      navigate('/login')
+      // Has workspace but no account selected - go to onboarding (account selection in chat)
+      navigate('/onboarding')
     }
     // Clear loading platform after navigation is initiated
     setOauthLoadingPlatform(null)
@@ -256,8 +267,9 @@ function App() {
     return <LoadingScreen platform={loadingPlatform} />
   }
 
-  // Show loading for onboarding if session not ready (but not when connecting second platform)
-  if (location.pathname === '/onboarding' && (!isAnyAuthenticated || !selectedAccount) && !isConnectingSecondPlatform) {
+  // Show loading for onboarding if not authenticated yet (but not when connecting second platform)
+  // Note: selectedAccount is no longer required - account selection happens in onboarding chat
+  if (location.pathname === '/onboarding' && !isAnyAuthenticated && !isConnectingSecondPlatform) {
     const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
     return <LoadingScreen platform={loadingPlatform} />
   }
