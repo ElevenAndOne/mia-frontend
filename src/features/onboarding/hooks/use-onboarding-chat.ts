@@ -69,7 +69,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     reset: resetStreaming
   } = useOnboardingStreaming()
 
-  const { displayedMessages, isTyping, queueMessages, addImmediateMessage } = useMessageQueue()
+  const { displayedMessages, isTyping, queueMessages, addImmediateMessage, persistMessages, restoreMessages, clearPersistedMessages } = useMessageQueue()
 
   const [currentProgress, setCurrentProgress] = useState(1)
   const [showMetaSelector, setShowMetaSelector] = useState(false)
@@ -78,7 +78,6 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
   const [initialBronzeFact, setInitialBronzeFact] = useState<BronzeFact | null>(null)
   const [accountSelected, setAccountSelected] = useState(false)
-
   const hasInitialized = useRef(false)
 
   const showExplainerBoxes = useCallback(() => {
@@ -123,6 +122,8 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
 
   const handleConnectMeta = useCallback(async () => {
     try {
+      // Persist messages before OAuth redirect so we can restore them when returning
+      persistMessages()
       const success = await loginMeta()
       if (success) {
         setShowMetaSelector(true)
@@ -133,10 +134,12 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       console.error('Meta OAuth error:', error)
       queueMessages(buildConnectErrorMessages('meta'))
     }
-  }, [loginMeta, queueMessages])
+  }, [loginMeta, persistMessages, queueMessages])
 
   const handleConnectGoogle = useCallback(async () => {
     try {
+      // Persist messages before OAuth redirect so we can restore them when returning
+      persistMessages()
       const success = await login()
       if (success) {
         setShowGoogleSelector(true)
@@ -147,7 +150,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       console.error('Google OAuth error:', error)
       queueMessages(buildConnectErrorMessages('google'))
     }
-  }, [login, queueMessages])
+  }, [login, persistMessages, queueMessages])
 
   const handleMetaAccountLinked = useCallback(async () => {
     setShowMetaSelector(false)
@@ -192,14 +195,16 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
 
   const handleSkip = useCallback(async () => {
+    clearPersistedMessages() // Clean up stored messages
     await skipOnboarding()
     queueMessages(buildSkipMessages())
-  }, [queueMessages, skipOnboarding])
+  }, [clearPersistedMessages, queueMessages, skipOnboarding])
 
   const handleFinish = useCallback(async () => {
+    clearPersistedMessages() // Clean up stored messages
     await completeOnboarding()
     onComplete()
-  }, [completeOnboarding, onComplete])
+  }, [clearPersistedMessages, completeOnboarding, onComplete])
 
   const handleGoToIntegrations = useCallback(async () => {
     await skipOnboarding()
@@ -295,6 +300,22 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   )
 
   const initializeChat = useCallback(async () => {
+    // Check if returning from Meta OAuth - restore messages and show selector
+    const pendingMetaLink = localStorage.getItem('mia_pending_meta_link')
+    if (pendingMetaLink === 'true') {
+      console.log('[ONBOARDING] Returning from Meta OAuth - restoring messages, showing selector')
+      localStorage.removeItem('mia_pending_meta_link')
+
+      // Restore the messages from before OAuth redirect
+      restoreMessages()
+
+      setAccountSelected(true) // Account was already selected before OAuth
+      setShowMetaSelector(true)
+      await refreshAccounts()
+      await loadOnboardingStatus()
+      return // Don't show intro messages - we restored them
+    }
+
     await loadOnboardingStatus()
 
     // If account already selected, go straight to stats flow
@@ -320,7 +341,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       queueMessages(INTRO_MESSAGES)
       queueMessages(ACCOUNT_LINK_MESSAGES)
     }
-  }, [advanceStep, fetchBronzeHighlight, loadOnboardingStatus, queueMessages, selectedAccount])
+  }, [advanceStep, fetchBronzeHighlight, loadOnboardingStatus, queueMessages, refreshAccounts, restoreMessages, selectedAccount])
 
   useEffect(() => {
     // Start onboarding even without selected account (will show account selector)

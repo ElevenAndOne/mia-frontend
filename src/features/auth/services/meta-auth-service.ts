@@ -46,8 +46,18 @@ export interface MetaCompleteResponse {
 /**
  * Get Meta OAuth authorization URL
  */
-export const getMetaAuthUrl = async (sessionId: string): Promise<MetaAuthUrlResponse> => {
-  const response = await apiFetch('/api/oauth/meta/auth-url', {
+export const getMetaAuthUrl = async (sessionId: string, frontendOrigin?: string, tenantId?: string): Promise<MetaAuthUrlResponse> => {
+  const params = new URLSearchParams()
+  if (frontendOrigin) {
+    params.set('frontend_origin', frontendOrigin)
+  }
+  if (tenantId) {
+    params.set('tenant_id', tenantId)
+  }
+  const queryString = params.toString()
+  const url = `/api/oauth/meta/auth-url${queryString ? `?${queryString}` : ''}`
+
+  const response = await apiFetch(url, {
     headers: {
       'X-Session-ID': sessionId
     }

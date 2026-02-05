@@ -153,7 +153,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const response = await apiFetch('/api/onboarding/status', {
+      const response = await apiFetch(`/api/onboarding/status?session_id=${encodeURIComponent(sessionId)}`, {
         headers: { 'X-Session-ID': sessionId }
       })
 
@@ -212,7 +212,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }))
 
     // Sync to server in background (fire-and-forget)
-    apiFetch('/api/onboarding/advance', {
+    apiFetch(`/api/onboarding/advance?session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
       headers: { 'X-Session-ID': sessionId }
     }).catch(err => {

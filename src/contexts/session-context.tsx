@@ -174,9 +174,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({ ...prev, isLoading: true }))
 
       try {
-        // Check for mobile OAuth redirect
-        const urlParams = new URLSearchParams(window.location.search)
-        const oauthComplete = urlParams.get('oauth_complete')
+        // Check for mobile OAuth redirect - use localStorage flag, NOT query params
+        // Backend redirects to frontend_origin without query params
+        const oauthPending = localStorage.getItem('mia_oauth_pending')
+        const returnUrl = localStorage.getItem('mia_oauth_return_url')
 
         let sessionId = getStoredSessionId()
         if (!sessionId) {
@@ -185,16 +186,27 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
 
         // Handle mobile OAuth redirect - set connectingPlatform IMMEDIATELY to hide video
-        if (oauthComplete === 'google' || oauthComplete === 'meta') {
-          console.log(`[SESSION] Mobile OAuth redirect detected: ${oauthComplete}`)
-          setState(prev => ({ ...prev, connectingPlatform: oauthComplete as 'google' | 'meta' }))
-          const authUserId = urlParams.get('user_id')
-          window.history.replaceState({}, '', window.location.pathname)
+        if (oauthPending === 'google' || oauthPending === 'meta') {
+          console.log(`[SESSION] Mobile OAuth redirect detected: ${oauthPending}, return URL: ${returnUrl}`)
+          setState(prev => ({ ...prev, connectingPlatform: oauthPending as 'google' | 'meta' }))
+
+          // Clear the pending flags immediately
           localStorage.removeItem('mia_oauth_pending')
           localStorage.removeItem('mia_oauth_return_url')
-          if (oauthComplete === 'google') {
+
+          // Store return URL BEFORE any async calls so it's ready for auth-redirects
+          if (returnUrl) {
+            localStorage.setItem('mia_oauth_pending_return', returnUrl)
+          }
+
+          // Complete OAuth flow
+          const urlParams = new URLSearchParams(window.location.search)
+          const authUserId = urlParams.get('user_id')
+          window.history.replaceState({}, '', window.location.pathname)
+
+          if (oauthPending === 'google') {
             await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
-          } else if (oauthComplete === 'meta') {
+          } else if (oauthPending === 'meta') {
             // Complete Meta OAuth flow for mobile
             await metaAuthService.completeMetaAuth(sessionId)
           }
@@ -252,7 +264,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 availableAccounts: accounts,
                 availableWorkspaces: workspaces,
                 activeWorkspace,
-                isLoading: false
+                isLoading: false,
+                connectingPlatform: null
               }))
 
               if (sessionUser.user_id) {
@@ -300,7 +313,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         localStorage.setItem('mia_oauth_pending', 'google')
         localStorage.setItem('mia_oauth_return_url', window.location.href)
         window.location.href = authData.auth_url
-        return true
+        // Return promise that never resolves - page will redirect before this matters
+        // This prevents the caller from acting on a "success" before OAuth completes
+        return new Promise<boolean>(() => {})
       }
 
       // Desktop popup flow
@@ -334,8 +349,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               clearTimers()
               onPopupClosed?.()
 
-              await googleAuthService.completeGoogleAuth(state.sessionId || '', authUserId)
-              const statusData = await googleAuthService.getGoogleAuthStatus(state.sessionId || '')
+              // CRITICAL: Get sessionId from localStorage, NOT from closure (state.sessionId)
+              // The closure captures stale value if login was called before state was updated
+              const currentSessionId = getStoredSessionId() || state.sessionId || ''
+              if (!currentSessionId) {
+                console.error('[SESSION] No session ID available for OAuth complete')
+                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Session error - please refresh' }))
+                resolve(false)
+                return
+              }
+
+              await googleAuthService.completeGoogleAuth(currentSessionId, authUserId)
+              const statusData = await googleAuthService.getGoogleAuthStatus(currentSessionId)
 
               if (statusData.authenticated) {
                 await refreshAccounts()
@@ -392,14 +417,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
     try {
-      const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '')
+      // Pass frontend_origin for mobile redirect flow and tenant_id for workspace credentials
+      const frontendOrigin = isMobile() ? window.location.origin : undefined
+      const tenantId = state.activeWorkspace?.tenant_id
+      const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '', frontendOrigin, tenantId)
 
       // Mobile redirect flow (same pattern as Google)
       if (isMobile()) {
         localStorage.setItem('mia_oauth_pending', 'meta')
         localStorage.setItem('mia_oauth_return_url', window.location.href)
+        // If on onboarding page, flag that we need to show Meta selector on return
+        if (window.location.pathname === '/onboarding') {
+          localStorage.setItem('mia_pending_meta_link', 'true')
+        }
         window.location.href = authData.auth_url
-        return true
+        // Return promise that never resolves - page will redirect before this matters
+        // This prevents the caller from acting on a "success" before OAuth completes
+        return new Promise<boolean>(() => {})
       }
 
       // Desktop popup flow
@@ -428,10 +462,20 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               clearTimers()
               onPopupClosed?.()
 
-              const statusData = await metaAuthService.getMetaAuthStatus(state.sessionId || '')
+              // CRITICAL: Get sessionId from localStorage, NOT from closure (state.sessionId)
+              // The closure captures stale value if loginMeta was called before state was updated
+              const currentSessionId = getStoredSessionId() || state.sessionId || ''
+              if (!currentSessionId) {
+                console.error('[SESSION] No session ID available for Meta OAuth complete')
+                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Session error - please refresh' }))
+                resolve(false)
+                return
+              }
+
+              const statusData = await metaAuthService.getMetaAuthStatus(currentSessionId)
 
               if (statusData.authenticated) {
-                const completeData = await metaAuthService.completeMetaAuth(state.sessionId || '')
+                const completeData = await metaAuthService.completeMetaAuth(currentSessionId)
 
                 setState(prev => ({
                   ...prev,
@@ -489,7 +533,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
+  }, [state.sessionId, state.activeWorkspace?.tenant_id, refreshAccounts, refreshWorkspaces])
 
   // Logout
   const logout = useCallback(async (): Promise<void> => {

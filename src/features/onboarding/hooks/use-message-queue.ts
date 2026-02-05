@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatMessageInput } from '../onboarding-chat-types'
 
+const MESSAGES_STORAGE_KEY = 'mia_onboarding_messages'
+
 interface MessageQueueState {
   displayedMessages: ChatMessage[]
   isTyping: boolean
   queueMessages: (messages: ChatMessageInput[]) => void
   addImmediateMessage: (message: ChatMessageInput) => void
+  persistMessages: () => void
+  restoreMessages: () => boolean
+  clearPersistedMessages: () => void
 }
 
 export const useMessageQueue = (): MessageQueueState => {
@@ -23,6 +28,39 @@ export const useMessageQueue = (): MessageQueueState => {
 
   const addImmediateMessage = useCallback((message: ChatMessageInput) => {
     setDisplayedMessages((prev) => [...prev, { ...message, id: generateId() }])
+  }, [])
+
+  // Persist current messages to localStorage (call before OAuth redirect)
+  const persistMessages = useCallback(() => {
+    try {
+      // Filter out explainer boxes as they don't serialize well and will be re-shown if needed
+      const messagesToPersist = displayedMessages.filter(m => m.type !== 'explainer-box')
+      localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messagesToPersist))
+      console.log('[MESSAGE-QUEUE] Persisted', messagesToPersist.length, 'messages')
+    } catch (e) {
+      console.error('[MESSAGE-QUEUE] Failed to persist messages:', e)
+    }
+  }, [displayedMessages])
+
+  // Restore messages from localStorage (call when returning from OAuth)
+  const restoreMessages = useCallback((): boolean => {
+    try {
+      const stored = localStorage.getItem(MESSAGES_STORAGE_KEY)
+      if (stored) {
+        const messages = JSON.parse(stored) as ChatMessage[]
+        setDisplayedMessages(messages)
+        console.log('[MESSAGE-QUEUE] Restored', messages.length, 'messages')
+        return true
+      }
+    } catch (e) {
+      console.error('[MESSAGE-QUEUE] Failed to restore messages:', e)
+    }
+    return false
+  }, [])
+
+  // Clear persisted messages (call after onboarding completes)
+  const clearPersistedMessages = useCallback(() => {
+    localStorage.removeItem(MESSAGES_STORAGE_KEY)
   }, [])
 
   useEffect(() => {
@@ -54,6 +92,9 @@ export const useMessageQueue = (): MessageQueueState => {
     displayedMessages,
     isTyping,
     queueMessages,
-    addImmediateMessage
+    addImmediateMessage,
+    persistMessages,
+    restoreMessages,
+    clearPersistedMessages
   }
 }

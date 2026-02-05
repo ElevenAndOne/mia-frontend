@@ -35,6 +35,29 @@ export const useAuthRedirects = ({
 
     if (path.startsWith('/invite/')) return
 
+    // Handle OAuth return - navigate back to where user was before OAuth
+    // Check FIRST before any other logic, regardless of current auth state
+    const pendingReturn = localStorage.getItem('mia_oauth_pending_return')
+    if (pendingReturn) {
+      localStorage.removeItem('mia_oauth_pending_return')
+      // Parse the URL to get the pathname
+      let returnPath: string
+      try {
+        const url = new URL(pendingReturn)
+        returnPath = url.pathname
+      } catch {
+        returnPath = pendingReturn
+      }
+      // Only navigate if return path is NOT the landing page
+      // (OAuth from landing page should use normal routing logic after auth)
+      if (returnPath && returnPath !== '/') {
+        console.log('[AUTH-REDIRECT] OAuth complete, returning to:', returnPath)
+        navigate(returnPath)
+        return
+      }
+      // If return path is '/', fall through to normal routing logic
+    }
+
     if (isAnyAuthenticated) {
       const pendingInvite = localStorage.getItem('mia_pending_invite')
       if (pendingInvite) {
@@ -50,7 +73,13 @@ export const useAuthRedirects = ({
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        // Account selection now happens in onboarding chat, not at /login
+        // Check if user needs to create workspace first
+        if (!activeWorkspace && availableWorkspaces.length === 0) {
+          // Show workspace creation modal (handled by App component)
+          setShowCreateWorkspaceModal(true)
+          return
+        }
+        // Has workspace, account selection happens in onboarding chat
         navigate('/onboarding')
         return
       }

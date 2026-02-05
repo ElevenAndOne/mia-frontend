@@ -15,6 +15,8 @@ export const useAppController = () => {
     selectedAccount,
     isLoading,
     hasSeenIntro,
+    activeWorkspace,
+    availableWorkspaces,
     loginMeta,
     refreshAccounts,
     refreshWorkspaces,
@@ -43,8 +45,11 @@ export const useAppController = () => {
     if (selectedAccount) {
       // Navigate to saved destination or default to /home
       navigate(returnUrl || '/home')
+    } else if (!activeWorkspace && availableWorkspaces.length === 0) {
+      // No workspace - show create workspace modal first
+      setShowCreateWorkspaceModal(true)
     } else {
-      // Account selection now happens in onboarding chat, not at /login
+      // Has workspace, account selection happens in onboarding chat
       navigate('/onboarding')
     }
     setOauthLoadingPlatform(null)

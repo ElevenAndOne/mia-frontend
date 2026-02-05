@@ -133,7 +133,10 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
       createApiUrl(`/api/quick-insights/${insightType}/stream`),
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId  // CRITICAL: Send session ID in header for workspace context lookup
+        },
         body: JSON.stringify({
           session_id: sessionId,
           date_range: dateRange,

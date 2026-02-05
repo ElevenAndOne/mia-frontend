@@ -24,7 +24,7 @@ interface UsePlatformPreferencesResult {
 
 async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
   try {
-    const response = await apiFetch('/api/account/platform-preferences', {
+    const response = await apiFetch(`/api/account/platform-preferences?session_id=${encodeURIComponent(sessionId)}`, {
       headers: createSessionHeaders(sessionId)
     })
     if (response.ok) {

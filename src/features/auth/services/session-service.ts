@@ -47,7 +47,7 @@ export interface SessionValidationResponse {
  * Validate an existing session
  */
 export const validateSession = async (sessionId: string): Promise<SessionValidationResponse> => {
-  const response = await apiFetch('/api/session/validate', {
+  const response = await apiFetch(`/api/session/validate?session_id=${encodeURIComponent(sessionId)}`, {
     headers: createSessionHeaders(sessionId)
   })
 

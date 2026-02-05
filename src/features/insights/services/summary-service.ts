@@ -11,6 +11,7 @@ export const fetchSummaryInsights = async (sessionId: string, dateRange: string)
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,  // CRITICAL: Send session ID in header for workspace context lookup
     },
     body: JSON.stringify({
       session_id: sessionId,
