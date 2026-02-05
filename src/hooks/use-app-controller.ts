@@ -44,7 +44,8 @@ export const useAppController = () => {
       // Navigate to saved destination or default to /home
       navigate(returnUrl || '/home')
     } else {
-      navigate('/login')
+      // Account selection now happens in onboarding chat, not at /login
+      navigate('/onboarding')
     }
     setOauthLoadingPlatform(null)
   }
@@ -84,7 +85,8 @@ export const useAppController = () => {
       } else if (isAnyAuthenticated && selectedAccount) {
         navigate('/home')
       } else if (isAnyAuthenticated) {
-        navigate('/login')
+        // Account selection happens in onboarding chat
+        navigate('/onboarding')
       } else {
         navigate('/')
       }
@@ -129,10 +131,11 @@ export const useAppController = () => {
   } else if (
     location.pathname === '/onboarding' &&
     isLoading &&
-    (!isAnyAuthenticated || !selectedAccount) &&
+    !isAnyAuthenticated &&
     !isConnectingSecondPlatform
   ) {
-    // Only show loading screen if actually loading - otherwise let ProtectedRoute handle redirect
+    // Show loading screen only if not authenticated yet
+    // Note: selectedAccount is no longer required - account selection happens in onboarding chat
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   }

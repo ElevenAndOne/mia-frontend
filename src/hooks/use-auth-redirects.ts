@@ -50,7 +50,8 @@ export const useAuthRedirects = ({
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        navigate('/login')
+        // Account selection now happens in onboarding chat, not at /login
+        navigate('/onboarding')
         return
       }
     }
