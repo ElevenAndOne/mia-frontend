@@ -8,7 +8,7 @@ import type { StorageAdapter } from '../../internal/storage';
 import type { User } from '../../types/session';
 import type { MccAccount, GoogleAdsAccount } from '../../types/accounts';
 import { createSDKError, ErrorCodes } from '../../types/errors';
-import { isMobile } from '../../utils/session-id';
+import { isMobile, generateSessionId } from '../../utils/session-id';
 
 interface AuthUrlResponse {
   auth_url: string;
@@ -106,6 +106,11 @@ export class GoogleAuthService {
    */
   async connect(options: GoogleConnectOptions = {}): Promise<GoogleConnectResult> {
     const mobile = isMobile();
+
+    // Ensure session ID exists before OAuth flow
+    if (!this.storage.getSessionId()) {
+      this.storage.setSessionId(generateSessionId());
+    }
 
     // Get auth URL
     const frontendOrigin = encodeURIComponent(window.location.origin);

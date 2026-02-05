@@ -9,6 +9,7 @@ import type { User } from '../../types/session';
 import type { MetaAdAccount } from '../../types/accounts';
 import type { FacebookPage, RawFacebookPageResponse } from '../../types/platforms';
 import { createSDKError, ErrorCodes } from '../../types/errors';
+import { generateSessionId } from '../../utils/session-id';
 
 interface AuthUrlResponse {
   auth_url: string;
@@ -88,13 +89,20 @@ export class MetaAuthService {
    * ```
    */
   async connect(options: MetaConnectOptions = {}): Promise<MetaConnectResult> {
+    // Ensure session ID exists before OAuth flow
+    if (!this.storage.getSessionId()) {
+      this.storage.setSessionId(generateSessionId());
+    }
+
     // Get auth URL
     let url = '/api/oauth/meta/auth-url';
     if (options.tenantId) {
       url += `?tenant_id=${options.tenantId}`;
     }
 
-    const { auth_url } = await this.transport.request<AuthUrlResponse>(url);
+    const { auth_url } = await this.transport.request<AuthUrlResponse>(url, {
+      skipAuth: true,
+    });
 
     return this.handlePopupFlow(auth_url, options.onPopupClosed);
   }
