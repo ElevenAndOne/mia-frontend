@@ -4,6 +4,7 @@ import { useSession } from '../contexts/session-context'
 import { useAppChromeEffects } from './use-app-chrome-effects'
 import { useAuthRedirects } from './use-auth-redirects'
 import { useInsightsDatePicker } from './use-insights-date-picker'
+import { consumeReturnUrl } from '../routes/protected-route'
 
 export const useAppController = () => {
   const navigate = useNavigate()
@@ -38,8 +39,10 @@ export const useAppController = () => {
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
 
   const handleAuthSuccess = () => {
+    const returnUrl = consumeReturnUrl()
     if (selectedAccount) {
-      navigate('/home')
+      // Navigate to saved destination or default to /home
+      navigate(returnUrl || '/home')
     } else {
       navigate('/login')
     }
@@ -62,25 +65,32 @@ export const useAppController = () => {
         await refreshAccounts()
       }
     } else {
-      localStorage.setItem('pending_platform_connect', platformId)
       navigate('/integrations')
     }
   }
 
   const handleInviteAccepted = async (tenantId: string, skipAccountSelection?: boolean) => {
-    window.history.replaceState({}, '', '/')
     setJustAcceptedInvite(true)
-    await refreshWorkspaces()
-    await switchWorkspace(tenantId)
 
-    if (skipAccountSelection && isAnyAuthenticated) {
-      navigate('/home')
-    } else if (isAnyAuthenticated && selectedAccount) {
-      navigate('/home')
-    } else if (isAnyAuthenticated) {
-      navigate('/login')
-    } else {
-      navigate('/')
+    try {
+      await refreshWorkspaces()
+      await switchWorkspace(tenantId)
+
+      // Only clear URL after async operations succeed
+      window.history.replaceState({}, '', '/')
+
+      if (skipAccountSelection && isAnyAuthenticated) {
+        navigate('/home')
+      } else if (isAnyAuthenticated && selectedAccount) {
+        navigate('/home')
+      } else if (isAnyAuthenticated) {
+        navigate('/login')
+      } else {
+        navigate('/')
+      }
+    } catch (error) {
+      console.error('[APP] Invite acceptance failed:', error)
+      // Keep URL so user can retry
     }
   }
 
@@ -118,9 +128,11 @@ export const useAppController = () => {
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
   } else if (
     location.pathname === '/onboarding' &&
+    isLoading &&
     (!isAnyAuthenticated || !selectedAccount) &&
     !isConnectingSecondPlatform
   ) {
+    // Only show loading screen if actually loading - otherwise let ProtectedRoute handle redirect
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   }

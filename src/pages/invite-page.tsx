@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
+import { Spinner } from '../components/spinner'
 import { UserAvatar } from '../components/user-avatar'
 import { WorkspaceRoleIcon } from '../features/workspace/components/workspace-role-icon'
 import { getWorkspaceRoleDescription } from '../features/workspace/utils/role'
@@ -52,7 +53,9 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto mb-4"></div>
+          <div className="flex justify-center mb-4">
+            <Spinner size="lg" />
+          </div>
           <p className="paragraph-sm text-tertiary">Loading invite...</p>
         </div>
       </div>
@@ -177,7 +180,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           >
             {accepting ? (
               <span className="flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <Spinner size="sm" variant="light" />
                 Accepting...
               </span>
             ) : isAnyAuthenticated ? (

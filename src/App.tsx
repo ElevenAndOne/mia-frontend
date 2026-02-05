@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { AppRoutes } from './routes'
 import LoadingScreen from './components/loading-screen'
+import { ToastContainer } from './components/toast'
 import CreateWorkspaceModal from './features/workspace/views/create-workspace-modal'
 import { useAppController } from './hooks/use-app-controller'
 
@@ -50,6 +51,8 @@ function App() {
         onClose={createWorkspaceModal.onClose}
         onSuccess={createWorkspaceModal.onSuccess}
       />
+
+      <ToastContainer />
     </div>
   )
 }

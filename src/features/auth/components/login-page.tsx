@@ -7,7 +7,7 @@ import { Logo } from '../../../components/logo'
 interface LoginPageProps {
   onAuthSuccess?: () => void
   onMetaAuthSuccess?: () => void
-  onOAuthPopupClosed?: (platform: 'google' | 'meta') => void
+  onOAuthPopupClosed?: (platform: 'google' | 'meta' | null) => void
   onOAuthStart?: () => void
 }
 

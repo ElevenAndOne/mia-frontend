@@ -21,7 +21,8 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: IconButtonVariant
   size?: IconButtonSize
   children: ReactNode
-  'aria-label': string
+  'aria-label'?: string
+  ref?: React.Ref<HTMLButtonElement>
 }
 
 export function IconButton({

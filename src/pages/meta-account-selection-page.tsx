@@ -6,6 +6,7 @@ import { AccountSelectionHeader } from '../components/account-selection-header'
 import { NarrowPageContainer } from '../components/narrow-page-container'
 import { SelectionCard } from '../components/selection-card'
 import { MetaLogoBadge } from '../components/meta-logo-badge'
+import { Spinner } from '../components/spinner'
 import { useSession } from '../contexts/session-context'
 import { useMetaAccountSelection } from '../features/accounts/hooks/use-meta-account-selection'
 
@@ -66,9 +67,23 @@ const MetaAccountSelectionPage = ({ onAccountSelected }: MetaAccountSelectionPag
           <div className="text-center py-12">
             <div className="title-h1 mb-4">📊</div>
             <h3 className="subheading-bg text-primary mb-2">No Meta Ad Accounts Found</h3>
-            <p className="paragraph-sm text-tertiary">
+            <p className="paragraph-sm text-tertiary mb-6">
               Make sure you have access to at least one Meta Ads account.
             </p>
+            <div className="flex flex-col gap-3 max-w-xs mx-auto">
+              <button
+                onClick={handleBack}
+                className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-md hover:bg-brand-solid-hover transition-colors"
+              >
+                Try Different Account
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full px-4 py-3 border border-secondary text-secondary rounded-xl subheading-md hover:bg-secondary transition-colors"
+              >
+                Back to Login
+              </button>
+            </div>
           </div>
         ) : (
           <motion.div
@@ -101,7 +116,7 @@ const MetaAccountSelectionPage = ({ onAccountSelected }: MetaAccountSelectionPag
                     account.isSelecting ? (
                       <div className="flex items-center justify-center">
                         <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-utility-info-600"></div>
+                          <Spinner size="sm" />
                           <span className="paragraph-sm text-tertiary">Connecting...</span>
                         </div>
                       </div>

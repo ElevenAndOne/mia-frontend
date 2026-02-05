@@ -1,5 +1,5 @@
 import { getAccountIcon } from '../../../utils/account-icon'
-import { WorkspaceSwitcher } from '../../workspace/views/workspace-switcher'
+import WorkspaceSwitcher from '../../workspace/views/workspace-switcher'
 import type { AccountMapping } from '../../accounts/types'
 import type { Workspace } from '../../workspace/types'
 

@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
+import { ErrorBoundary } from '../components/error-boundary'
+import { Spinner } from '../components/spinner'
 
 import IntroPage from '../pages/intro-page'
 import InvitePage from '../pages/invite-page'
@@ -17,10 +19,11 @@ const InsightsSummaryPage = lazy(() => import('../pages/insights-summary-page'))
 const OnboardingPage = lazy(() => import('../pages/onboarding-page'))
 const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
+const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 
 const LazyLoadSpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-secondary">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
+    <Spinner size="md" />
   </div>
 )
 
@@ -102,7 +105,9 @@ export const AppRoutes = ({
           path="/home"
           element={
             <ProtectedRoute requireAccount>
-              <ChatPage />
+              <ErrorBoundary>
+                <ChatPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -112,7 +117,9 @@ export const AppRoutes = ({
           path="/dashboard"
           element={
             <ProtectedRoute requireAccount>
-              <DashboardPage />
+              <ErrorBoundary>
+                <DashboardPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -120,8 +127,10 @@ export const AppRoutes = ({
         <Route
           path="/integrations"
           element={
-            <ProtectedRoute>
-              <IntegrationsPage />
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <IntegrationsPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -139,7 +148,9 @@ export const AppRoutes = ({
           path="/settings/workspace"
           element={
             <ProtectedRoute requireAccount requireWorkspace>
-              <WorkspaceSettingsPage />
+              <ErrorBoundary>
+                <WorkspaceSettingsPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -149,7 +160,9 @@ export const AppRoutes = ({
           path="/insights/grow"
           element={
             <ProtectedRoute requireAccount>
-              <InsightsGrowPage />
+              <ErrorBoundary>
+                <InsightsGrowPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -158,7 +171,9 @@ export const AppRoutes = ({
           path="/insights/optimize"
           element={
             <ProtectedRoute requireAccount>
-              <InsightsOptimizePage />
+              <ErrorBoundary>
+                <InsightsOptimizePage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -167,7 +182,9 @@ export const AppRoutes = ({
           path="/insights/protect"
           element={
             <ProtectedRoute requireAccount>
-              <InsightsProtectPage />
+              <ErrorBoundary>
+                <InsightsProtectPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -176,10 +193,15 @@ export const AppRoutes = ({
           path="/insights/summary"
           element={
             <ProtectedRoute requireAccount>
-              <InsightsSummaryPage />
+              <ErrorBoundary>
+                <InsightsSummaryPage />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
+
+        {/* 404 Not Found - catch-all route */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   )

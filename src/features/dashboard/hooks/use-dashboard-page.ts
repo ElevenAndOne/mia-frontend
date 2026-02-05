@@ -78,13 +78,16 @@ export const useDashboardPage = () => {
     return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
   }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
 
+  // Track if initial fetch has happened to prevent re-fetching on every render
+  const hasFetchedRef = useRef(false)
+
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && !hasFetchedRef.current) {
+      hasFetchedRef.current = true
       refreshAccounts()
       refreshWorkspaces().catch(err => console.error('[MainView] Failed to refresh workspaces:', err))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [sessionId, refreshAccounts, refreshWorkspaces])
 
   const handleAccountSwitch = useCallback(async (accountId: string) => {
     if (isAccountSwitching) return
@@ -138,7 +141,7 @@ export const useDashboardPage = () => {
       setIsChatLoading(false)
 
       if (result.success && result.claude_response) {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: result.claude_response }])
+        setChatMessages(prev => [...prev, { role: 'assistant' as const, content: result.claude_response ?? '' }])
       } else {
         setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble processing your question. Please try again.' }])
       }

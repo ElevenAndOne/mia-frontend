@@ -1,10 +1,12 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
 import { TopBar } from '../components/top-bar'
+import { useToast } from '../contexts/toast-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const HelpPage = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const {
     onNewChat,
     onIntegrationsClick,
@@ -12,6 +14,10 @@ const HelpPage = () => {
     onLogout,
     onWorkspaceSettings,
   } = useAppShellActions()
+
+  const handleComingSoon = (feature: string) => {
+    showToast('info', `${feature} coming soon!`)
+  }
 
   return (
     <AppShell
@@ -32,8 +38,9 @@ const HelpPage = () => {
           </p>
 
           <div className="space-y-2">
-            <Link
-              to="/docs/integration-guide"
+            <button
+              type="button"
+              onClick={() => handleComingSoon('Integration Documentation')}
               className="block w-full bg-secondary border border-secondary rounded-xl p-3 text-left hover:bg-tertiary transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -47,10 +54,11 @@ const HelpPage = () => {
                   <p className="paragraph-xs text-quaternary">Step-by-step guides</p>
                 </div>
               </div>
-            </Link>
+            </button>
 
-            <Link
-              to="/docs/video-tutorial"
+            <button
+              type="button"
+              onClick={() => handleComingSoon('Video Tutorial')}
               className="block w-full bg-secondary border border-secondary rounded-xl p-3 text-left hover:bg-tertiary transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -65,10 +73,11 @@ const HelpPage = () => {
                   <p className="paragraph-xs text-quaternary">Watch how to connect</p>
                 </div>
               </div>
-            </Link>
+            </button>
 
             <button
               type="button"
+              onClick={() => handleComingSoon('Contact Support')}
               className="w-full bg-secondary border border-secondary rounded-xl p-3 text-left hover:bg-tertiary transition-colors"
             >
               <div className="flex items-center gap-3">

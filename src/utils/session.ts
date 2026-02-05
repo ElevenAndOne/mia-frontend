@@ -35,6 +35,10 @@ export const clearSessionStorage = (): void => {
   localStorage.removeItem('mia_session_id')
   localStorage.removeItem('mia_last_user_id')
   localStorage.removeItem('mia_app_state')
+  // Clear OAuth state flags (prevents stale state on re-login)
+  localStorage.removeItem('mia_oauth_pending')
+  localStorage.removeItem('mia_oauth_return_url')
+  localStorage.removeItem('pending_platform_connect')
 }
 
 /**

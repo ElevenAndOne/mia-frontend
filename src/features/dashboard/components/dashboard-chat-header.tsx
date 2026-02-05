@@ -4,7 +4,7 @@ interface DashboardChatHeaderProps {
   dateRangeLabel: string
   onBack: () => void
   onOpenDatePicker: () => void
-  datePickerButtonRef: RefObject<HTMLButtonElement>
+  datePickerButtonRef: RefObject<HTMLButtonElement | null>
 }
 
 export const DashboardChatHeader = ({

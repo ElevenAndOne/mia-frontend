@@ -1,5 +1,6 @@
-import { useSession } from '../../../contexts/session-context'
 import { useState } from 'react'
+import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 
 interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
@@ -10,6 +11,7 @@ interface FigmaLoginModalProps {
 
 const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed, onOAuthStart }: FigmaLoginModalProps) => {
   const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
+  const { showToast } = useToast()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
   const [isMetaLoading, setIsMetaLoading] = useState(false)
@@ -40,11 +42,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
 
       } catch (error) {
         console.error('💥 Error during OAuth:', error)
-        if (error instanceof Error) {
-          alert(`Authentication failed: ${error.message}`)
-        } else {
-          alert('Authentication failed. Please try again.')
-        }
+        showToast('error', error instanceof Error ? `Authentication failed: ${error.message}` : 'Authentication failed. Please try again.')
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
       }
@@ -73,11 +71,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
 
       } catch (error) {
         console.error('[META-LOGIN] Error during OAuth:', error)
-        if (error instanceof Error) {
-          alert(`Meta authentication failed: ${error.message}`)
-        } else {
-          alert('Meta authentication failed. Please try again.')
-        }
+        showToast('error', error instanceof Error ? `Meta authentication failed: ${error.message}` : 'Meta authentication failed. Please try again.')
         setIsMetaLoading(false)
         setMetaLoadingMessage('')
       }
@@ -128,16 +122,12 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
 
       } catch (error) {
         console.error('[LOGIN] Login failed:', error)
-        if (error instanceof Error) {
-          alert(`Login failed: ${error.message}`)
-        } else {
-          alert('Login failed. Please try again.')
-        }
+        showToast('error', error instanceof Error ? `Login failed: ${error.message}` : 'Login failed. Please try again.')
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
       }
     } else {
-      alert(`${method} login coming soon!`)
+      showToast('info', `${method} login coming soon!`)
     }
   }
 

@@ -26,7 +26,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
   const platformButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSubmit = () => {
-    if (message.trim() && !disabled) {
+    if (message.trim() && !disabled && hasSelectedPlatforms) {
       onSubmit(message.trim())
       setMessage('')
     }
@@ -59,6 +59,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
+            aria-label="Chat message"
             className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md"
           />
         </div>

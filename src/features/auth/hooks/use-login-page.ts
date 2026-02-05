@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 
 export type LoginMethod = 'google' | 'meta' | 'login'
 
 interface UseLoginPageOptions {
   onAuthSuccess?: () => void
   onMetaAuthSuccess?: () => void
-  onOAuthPopupClosed?: (platform: 'google' | 'meta') => void
+  onOAuthPopupClosed?: (platform: 'google' | 'meta' | null) => void
   onOAuthStart?: () => void
 }
 
@@ -26,6 +27,7 @@ export const useLoginPage = ({
   onOAuthStart,
 }: UseLoginPageOptions): UseLoginPageResult => {
   const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
+  const { showToast } = useToast()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
   const [isMetaLoading, setIsMetaLoading] = useState(false)
@@ -33,8 +35,8 @@ export const useLoginPage = ({
 
   const showAuthError = useCallback((fallback: string, error: unknown) => {
     const detail = error instanceof Error ? error.message : ''
-    alert(detail ? `${fallback}: ${detail}` : fallback)
-  }, [])
+    showToast('error', detail ? `${fallback}: ${detail}` : fallback)
+  }, [showToast])
 
   const handleLogin = useCallback(async (method: LoginMethod) => {
     if (method === 'google') {
@@ -51,6 +53,7 @@ export const useLoginPage = ({
         showAuthError('Authentication failed', error)
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
+        onOAuthPopupClosed?.(null) // Clear app-level loading screen
       }
       return
     }
@@ -73,6 +76,7 @@ export const useLoginPage = ({
         showAuthError('Meta authentication failed', error)
         setIsMetaLoading(false)
         setMetaLoadingMessage('')
+        onOAuthPopupClosed?.(null) // Clear app-level loading screen
       }
       return
     }
@@ -101,6 +105,7 @@ export const useLoginPage = ({
       showAuthError('Login failed', error)
       setIsGoogleLoading(false)
       setGoogleLoadingMessage('')
+      onOAuthPopupClosed?.(null) // Clear app-level loading screen
     }
   }, [
     checkExistingAuth,

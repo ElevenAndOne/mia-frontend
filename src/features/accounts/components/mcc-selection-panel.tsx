@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { SelectionCard } from '../../../components/selection-card'
+import { Spinner } from '../../../components/spinner'
 import type { AccountSelectionItem, MccSelectionItem } from '../types'
 
 interface MccSelectionPanelProps {
@@ -40,6 +41,7 @@ export const MccSelectionPanel = ({
           >
             <SelectionCard
               onSelect={() => (mccItem.isSelected ? onClearMcc() : onSelectMcc(mccItem.id))}
+              aria-expanded={mccItem.isSelected}
               className={`w-full p-4 rounded-xl border-2 text-left cursor-pointer ${mccItem.isSelected
                 ? 'border-brand bg-brand-primary'
                 : 'border-secondary hover:border-primary hover:bg-secondary'
@@ -94,7 +96,7 @@ export const MccSelectionPanel = ({
                       }
                       trailing={
                         account.isSelecting ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-utility-brand-600" />
+                          <Spinner size="sm" />
                         ) : (
                           <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -138,7 +140,7 @@ export const MccSelectionPanel = ({
                 }
                 trailing={
                   account.isSelecting ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-utility-brand-600" />
+                    <Spinner size="sm" />
                   ) : (
                     <svg className="w-5 h-5 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

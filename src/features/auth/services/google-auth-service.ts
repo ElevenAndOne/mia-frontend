@@ -114,28 +114,47 @@ export const logoutGoogle = async (sessionId: string): Promise<void> => {
   })
 }
 
+export interface GoogleOAuthPopupResult {
+  popup: Window | null
+  cleanup: () => void
+}
+
 /**
  * Open Google OAuth popup and handle the flow
+ * Returns popup reference and cleanup function to remove message listener
  */
 export const openGoogleOAuthPopup = (
   authUrl: string,
   onMessage: (userId: string | null) => void
-): Window | null => {
+): GoogleOAuthPopupResult => {
   const popup = window.open(
     authUrl,
     'google-oauth',
     'width=500,height=600,scrollbars=yes,resizable=yes'
   )
 
+  let messageHandler: ((event: MessageEvent) => void) | null = null
+
   if (popup) {
-    const messageHandler = (event: MessageEvent) => {
+    messageHandler = (event: MessageEvent) => {
       if (event.data?.type === 'oauth_complete' && event.data?.provider === 'google') {
         onMessage(event.data.user_id || null)
-        window.removeEventListener('message', messageHandler)
+        if (messageHandler) {
+          window.removeEventListener('message', messageHandler)
+          messageHandler = null
+        }
       }
     }
     window.addEventListener('message', messageHandler)
   }
 
-  return popup
+  return {
+    popup,
+    cleanup: () => {
+      if (messageHandler) {
+        window.removeEventListener('message', messageHandler)
+        messageHandler = null
+      }
+    }
+  }
 }

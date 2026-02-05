@@ -53,9 +53,11 @@ export const CreateInviteModal = ({
       <div className="p-6 space-y-4">
         {!createdInviteLink ? (
           <>
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label="Invite type">
               <button
+                type="button"
                 onClick={() => onInviteTypeChange(true)}
+                aria-pressed={isLinkInvite}
                 className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                   isLinkInvite
                     ? 'bg-brand-solid text-primary-onbrand'
@@ -65,7 +67,9 @@ export const CreateInviteModal = ({
                 Anyone with link
               </button>
               <button
+                type="button"
                 onClick={() => onInviteTypeChange(false)}
+                aria-pressed={!isLinkInvite}
                 className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                   !isLinkInvite
                     ? 'bg-brand-solid text-primary-onbrand'
@@ -77,22 +81,29 @@ export const CreateInviteModal = ({
             </div>
 
             {!isLinkInvite && (
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(event) => onInviteEmailChange(event.target.value)}
-                placeholder="colleague@company.com"
-                className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
-              />
+              <div>
+                <label htmlFor="invite-email" className="sr-only">Email address</label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(event) => onInviteEmailChange(event.target.value)}
+                  placeholder="colleague@company.com"
+                  className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
+                  aria-label="Email address for invite"
+                />
+              </div>
             )}
 
-            <div>
-              <label className="block subheading-md text-secondary mb-2">Role</label>
-              <div className="grid grid-cols-3 gap-2">
+            <fieldset>
+              <legend className="block subheading-md text-secondary mb-2">Role</legend>
+              <div className="grid grid-cols-3 gap-2" role="group">
                 {['admin', 'analyst', 'viewer'].map((role) => (
                   <button
                     key={role}
+                    type="button"
                     onClick={() => onInviteRoleChange(role)}
+                    aria-pressed={inviteRole === role}
                     className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${
                       inviteRole === role
                         ? 'bg-brand-solid text-primary-onbrand'
@@ -103,16 +114,18 @@ export const CreateInviteModal = ({
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             <div className="flex gap-2 pt-2">
               <button
+                type="button"
                 onClick={handleClose}
                 className="flex-1 py-2 px-4 border border-secondary rounded-lg subheading-md text-secondary hover:bg-secondary"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={onCreateInvite}
                 disabled={isCreateInviteDisabled}
                 className="flex-1 py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
@@ -133,9 +146,11 @@ export const CreateInviteModal = ({
                 type="text"
                 value={createdInviteLink}
                 readOnly
+                aria-label="Invite link"
                 className="flex-1 paragraph-sm text-tertiary bg-transparent outline-none"
               />
               <button
+                type="button"
                 onClick={() => onCopyInvite(createdInviteLink)}
                 className="px-3 py-1 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
               >
@@ -144,6 +159,7 @@ export const CreateInviteModal = ({
             </div>
 
             <button
+              type="button"
               onClick={handleClose}
               className="w-full py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
             >

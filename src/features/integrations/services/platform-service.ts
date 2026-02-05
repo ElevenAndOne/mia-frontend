@@ -9,9 +9,9 @@ export const disconnectPlatform = async (sessionId: string, platformId: string) 
   })
 
   if (!response.ok) {
-    const errorData = await response.json()
+    const errorData = await response.json().catch(() => ({ detail: 'Failed to disconnect' }))
     throw new Error(errorData.detail || 'Failed to disconnect')
   }
 
-  return response.json()
+  return response.json().catch(() => ({ success: true }))
 }

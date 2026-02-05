@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Modal } from '../../overlay'
 import { Alert } from '../../../components/alert'
+import { Spinner } from '../../../components/spinner'
 import { useBrevoConnection } from '../hooks/use-brevo-connection'
 import { IconButton } from '../../../components/icon-button'
 import { Icon } from '../../../components/icon'
@@ -100,7 +101,7 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
         >
           {isConnecting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <Spinner size="sm" variant="light" />
               <span>Connecting...</span>
             </>
           ) : (

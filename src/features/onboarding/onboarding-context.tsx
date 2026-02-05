@@ -102,7 +102,7 @@ interface OnboardingProviderProps {
 }
 
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
-  const { sessionId, selectedAccount, refreshWorkspaces } = useSession()
+  const { sessionId, selectedAccount, refreshWorkspaces, markOnboardingComplete } = useSession()
 
   const [state, setState] = useState<OnboardingState>({
     step: 0,
@@ -392,6 +392,9 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           step: ONBOARDING_STEPS.COMPLETED,
         }))
 
+        // FEB 2026 FIX: Mark onboarding complete in session state to prevent redirect back
+        markOnboardingComplete()
+
         // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
         // This ensures main page icons show correctly after onboarding without requiring page refresh
         console.log('[ONBOARDING] Refreshing workspace data after completion...')
@@ -401,7 +404,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     } catch (err) {
       console.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected, refreshWorkspaces])
+  }, [sessionId, state.platformsConnected, refreshWorkspaces, markOnboardingComplete])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return
@@ -419,6 +422,9 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
           step: 3, // Skipped second platform
         }))
 
+        // FEB 2026 FIX: Mark onboarding complete in session state to prevent redirect back
+        markOnboardingComplete()
+
         // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
         console.log('[ONBOARDING] Refreshing workspace data after skip...')
         await refreshWorkspaces()
@@ -426,7 +432,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     } catch (err) {
       console.error('[ONBOARDING] Skip error:', err)
     }
-  }, [sessionId, refreshWorkspaces])
+  }, [sessionId, refreshWorkspaces, markOnboardingComplete])
 
   const getAvailablePlatforms = useCallback(async (): Promise<{ id: string; name: string; connected: boolean }[]> => {
     if (!sessionId) return []

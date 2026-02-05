@@ -1,7 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { useToast } from '../../contexts/toast-context'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
+import { getIntegrationHighlight, clearIntegrationHighlight } from './utils/integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
 import FacebookPageSelector from './selectors/facebook-page-selector'
 import GA4PropertySelector from './selectors/ga4-property-selector'
@@ -11,6 +13,7 @@ import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
+import { Spinner } from '../../components/spinner'
 
 interface Integration {
   id: string
@@ -26,6 +29,7 @@ interface Integration {
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
+  const { showToast } = useToast()
 
   // Use React Query hook for integration status (cached, deduplicated)
   // Jan 2025: Pass tenant_id to fetch workspace-level integration status
@@ -35,8 +39,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     ga4Properties,
     linkedGA4Properties,
     isLoading: loading,
+    error: integrationStatusError,
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
+
+  // Show error toast when integration status fetch fails
+  useEffect(() => {
+    if (integrationStatusError) {
+      showToast('error', 'Failed to load integration status. Some connections may not appear correctly.')
+    }
+  }, [integrationStatusError, showToast])
 
   // FEB 2026 FIX: Invalidate integration status cache when leaving this page
   // This ensures the main page (ChatView) fetches fresh data to show newly connected platforms
@@ -59,6 +71,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoApiKey, setBrevoApiKey] = useState('')
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
+
+  // Integration highlight state - read from sessionStorage on mount
+  const [highlightedIds, setHighlightedIds] = useState<string[]>([])
+  const highlightProcessedRef = useRef(false)
+
+  // Read integration highlight on mount (set by chat when navigating here)
+  useEffect(() => {
+    if (highlightProcessedRef.current) return
+    highlightProcessedRef.current = true
+
+    const highlights = getIntegrationHighlight()
+    if (highlights.length > 0) {
+      setHighlightedIds(highlights)
+      clearIntegrationHighlight()
+      // Auto-clear visual highlight after 3 seconds
+      setTimeout(() => setHighlightedIds([]), 3000)
+    }
+  }, [])
 
   // Modal helpers
   const showBrevoModal = openModal === 'brevo'
@@ -283,7 +313,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const handleConnect = async (integrationId: string) => {
     // Jan 2025: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
-      alert('Only workspace owners and admins can manage integrations')
+      showToast('warning', 'Only workspace owners and admins can manage integrations')
       return
     }
 
@@ -393,7 +423,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
 
       if (!popup) {
-        alert('Popup blocked. Please allow popups for this site.')
+        showToast('error', 'Popup blocked. Please allow popups for this site.')
         setConnectingId(null)
         return
       }
@@ -461,7 +491,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }, 500)
     } catch (error) {
       console.error(`${integrationId} connection error:`, error)
-      alert(`Connection failed: ${error}`)
+      showToast('error', `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setConnectingId(null)
     }
   }
@@ -487,7 +517,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Loading State */}
         {loading && integrations.length === 0 && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
+            <Spinner size="lg" />
           </div>
         )}
 
@@ -525,10 +555,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 return (
                   <div key={integration.id} className="w-full">
                     <div
-                      className={`w-full text-left transition-all bg-primary border-2 border-secondary rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
-                        }`}
+                      className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
+                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-center  gap-3">
                         <div className="w-10 h-10 flex items-center justify-center shrink-0">
                           <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
                         </div>
@@ -599,7 +629,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
             <div className="space-y-2">
               {availableSources.map(integration => (
-                <div key={integration.id} className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                <div key={integration.id} className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0">

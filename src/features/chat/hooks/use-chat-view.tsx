@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
@@ -13,8 +13,13 @@ interface ChatMessageItem {
   content: string
 }
 
+interface LocationState {
+  newChat?: boolean
+}
+
 export const useChatView = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -74,6 +79,17 @@ export const useChatView = () => {
     setMessages([])
     setStreamingContent('')
   }, [])
+
+  // Handle "New Chat" navigation state from menu/sidebar
+  useEffect(() => {
+    const state = location.state as LocationState | null
+    if (state?.newChat) {
+      setMessages([])
+      setStreamingContent('')
+      // Clear the navigation state so refresh doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, location.pathname, navigate])
 
   const handleSubmit = useCallback(async (message: string) => {
     const userMessage: ChatMessageItem = {

@@ -17,11 +17,23 @@ const CreateWorkspaceModal = ({
   onSuccess,
   required = false,
 }: CreateWorkspaceModalProps) => {
-  const { createWorkspace } = useSession()
+  const { createWorkspace, logout } = useSession()
 
   const [workspaceName, setWorkspaceName] = useState(defaultName)
   const [isCreating, setIsCreating] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      window.location.href = '/'
+    } catch (err) {
+      console.error('[CREATE-WORKSPACE] Logout error:', err)
+      setIsLoggingOut(false)
+    }
+  }
 
   const handleCreate = async () => {
     if (!workspaceName.trim()) {
@@ -137,30 +149,47 @@ const CreateWorkspaceModal = ({
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 bg-secondary border-t border-tertiary flex justify-end gap-3">
-        {!required && (
-          <button
-            onClick={onClose}
-            disabled={isCreating}
-            className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-        )}
-        <button
-          onClick={handleCreate}
-          disabled={isCreating || !workspaceName.trim()}
-          className="px-4 py-2 subheading-md text-primary-onbrand bg-brand-solid hover:bg-brand-solid-hover disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
-        >
-          {isCreating ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              Creating...
-            </>
-          ) : (
-            'Create Workspace'
+      <div className="px-6 py-4 bg-secondary border-t border-tertiary flex justify-between items-center">
+        {/* Left side - logout option when required (always available as escape hatch) */}
+        <div>
+          {required && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isCreating || isLoggingOut}
+              className="px-3 py-2 paragraph-sm text-tertiary hover:text-secondary transition-colors"
+            >
+              {isLoggingOut ? 'Signing out...' : 'Use different account'}
+            </button>
           )}
-        </button>
+        </div>
+
+        {/* Right side - action buttons */}
+        <div className="flex gap-3">
+          {!required && (
+            <button
+              onClick={onClose}
+              disabled={isCreating}
+              className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleCreate}
+            disabled={isCreating || isLoggingOut || !workspaceName.trim()}
+            className="px-4 py-2 subheading-md text-primary-onbrand bg-brand-solid hover:bg-brand-solid-hover disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
+          >
+            {isCreating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Creating...
+              </>
+            ) : (
+              'Create Workspace'
+            )}
+          </button>
+        </div>
       </div>
     </Modal>
   )
