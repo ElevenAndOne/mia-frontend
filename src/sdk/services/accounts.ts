@@ -318,9 +318,13 @@ export class AccountsService {
    * ```
    */
   async getPlatformPreferences(): Promise<string[]> {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     const response = await this.transport.request<{
       selected_platforms: string[];
-    }>('/api/account/platform-preferences');
+    }>(`/api/account/platform-preferences?session_id=${encodeURIComponent(sessionId)}`);
     return response.selected_platforms || [];
   }
 
@@ -337,9 +341,13 @@ export class AccountsService {
    * ```
    */
   async savePlatformPreferences(platforms: string[]): Promise<void> {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     await this.transport.request('/api/account/platform-preferences', {
       method: 'PUT',
-      body: { selected_platforms: platforms },
+      body: { session_id: sessionId, selected_platforms: platforms },
     });
   }
 

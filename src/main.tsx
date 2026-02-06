@@ -109,7 +109,6 @@ import { SessionProvider } from './contexts/session-context'
 import { NavigationProvider } from './contexts/navigation-context'
 import { InsightsDatePickerProvider } from './contexts/insights-date-picker-context'
 import { ThemeProvider } from './contexts/theme-context'
-import { OnboardingProvider } from './features/onboarding/onboarding-context'
 import { OverlayProvider } from './features/overlay'
 import './index.css'
 
@@ -148,13 +147,11 @@ ReactDOM.createRoot(rootElement).render(
           <ThemeProvider>
             <SessionProvider>
               <NavigationProvider>
-                <OnboardingProvider>
-                  <OverlayProvider>
-                    <InsightsDatePickerProvider>
-                      <App />
-                    </InsightsDatePickerProvider>
-                  </OverlayProvider>
-                </OnboardingProvider>
+                <OverlayProvider>
+                  <InsightsDatePickerProvider>
+                    <App />
+                  </InsightsDatePickerProvider>
+                </OverlayProvider>
               </NavigationProvider>
             </SessionProvider>
           </ThemeProvider>

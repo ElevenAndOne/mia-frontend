@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { LazyLoadSpinner } from '@components/lazy-load-spinner'
+import { OnboardingProvider } from '@features/onboarding/onboarding-context'
 
 // Critical path components - load immediately
 import VideoIntroView from '@components/video-intro-view'
@@ -99,10 +100,12 @@ export const AppRoutes = ({
           path="/onboarding"
           element={
             <ProtectedRoute requireAccount>
-              <OnboardingChat
-                onComplete={onOnboardingComplete}
-                onConnectPlatform={onConnectPlatform}
-              />
+              <OnboardingProvider>
+                <OnboardingChat
+                  onComplete={onOnboardingComplete}
+                  onConnectPlatform={onConnectPlatform}
+                />
+              </OnboardingProvider>
             </ProtectedRoute>
           }
         />

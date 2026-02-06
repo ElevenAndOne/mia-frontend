@@ -77,6 +77,10 @@ export class OnboardingService {
    * ```
    */
   async getStatus(): Promise<OnboardingStatus> {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     const response = await this.transport.request<{
       step: number;
       completed: boolean;
@@ -87,7 +91,7 @@ export class OnboardingService {
       bronze_ready: boolean;
       grow_task_id?: string;
       grow_insights_ready?: boolean;
-    }>('/api/onboarding/status');
+    }>(`/api/onboarding/status?session_id=${encodeURIComponent(sessionId)}`);
 
     return {
       step: response.step as OnboardingStep,
@@ -106,7 +110,11 @@ export class OnboardingService {
    * Advance to next onboarding step
    */
   async advanceStep(): Promise<void> {
-    await this.transport.request('/api/onboarding/advance', {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
+    await this.transport.request(`/api/onboarding/advance?session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
     });
   }
@@ -115,9 +123,13 @@ export class OnboardingService {
    * Update to specific onboarding step
    */
   async updateStep(step: number): Promise<void> {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     await this.transport.request('/api/onboarding/update-step', {
       method: 'POST',
-      body: { step },
+      body: { session_id: sessionId, step },
     });
   }
 
@@ -137,7 +149,11 @@ export class OnboardingService {
    * Skip onboarding process
    */
   async skip(): Promise<void> {
-    await this.transport.request('/api/onboarding/skip', {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
+    await this.transport.request(`/api/onboarding/skip?session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
     });
   }
@@ -146,13 +162,17 @@ export class OnboardingService {
    * Get available platforms for onboarding
    */
   async getAvailablePlatforms(): Promise<AvailablePlatform[]> {
+    const sessionId = this.transport.getStorage().getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     const response = await this.transport.request<{
       all_platforms: Array<{
         id: string;
         name: string;
         connected: boolean;
       }>;
-    }>('/api/onboarding/available-platforms');
+    }>(`/api/onboarding/available-platforms?session_id=${encodeURIComponent(sessionId)}`);
 
     return (response.all_platforms || []).map((p) => ({
       id: p.id,
