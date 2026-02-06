@@ -300,106 +300,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     initializeSession()
   }, [])
 
-  // Google Login
-  const login = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
+  // Google Login (FEB 2026: Simplified to redirect flow only, popup flow removed)
+  const login = useCallback(async (_onPopupClosed?: () => void): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
       // Get OAuth URL - backend uses UA detection to determine popup vs redirect flow
       const authData = await googleAuthService.getGoogleAuthUrl()
 
-      // Mobile redirect flow
-      if (isMobile()) {
-        localStorage.setItem('mia_oauth_pending', 'google')
-        localStorage.setItem('mia_oauth_return_url', window.location.href)
-        window.location.href = authData.auth_url
-        // Return promise that never resolves - page will redirect before this matters
-        // This prevents the caller from acting on a "success" before OAuth completes
-        return new Promise<boolean>(() => {})
-      }
-
-      // Desktop popup flow
-      let authUserId: string | null = null
-      const { popup, cleanup: cleanupMessageListener } = googleAuthService.openGoogleOAuthPopup(authData.auth_url, (userId) => {
-        authUserId = userId
-      })
-
-      if (!popup) {
-        cleanupMessageListener()
-        throw new Error('Popup blocked. Please allow popups for this site.')
-      }
-
-      return new Promise((resolve) => {
-        // Helper to clear both timers and message listener
-        const clearTimers = () => {
-          if (oauthPollTimerRef.current) {
-            window.clearInterval(oauthPollTimerRef.current)
-            oauthPollTimerRef.current = null
-          }
-          if (oauthTimeoutRef.current) {
-            window.clearTimeout(oauthTimeoutRef.current)
-            oauthTimeoutRef.current = null
-          }
-          cleanupMessageListener()
-        }
-
-        oauthPollTimerRef.current = window.setInterval(async () => {
-          try {
-            if (popup.closed) {
-              clearTimers()
-              onPopupClosed?.()
-
-              // CRITICAL: Get sessionId from localStorage, NOT from closure (state.sessionId)
-              // The closure captures stale value if login was called before state was updated
-              const currentSessionId = getStoredSessionId() || state.sessionId || ''
-              if (!currentSessionId) {
-                console.error('[SESSION] No session ID available for OAuth complete')
-                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Session error - please refresh' }))
-                resolve(false)
-                return
-              }
-
-              await googleAuthService.completeGoogleAuth(currentSessionId, authUserId)
-              const statusData = await googleAuthService.getGoogleAuthStatus(currentSessionId)
-
-              if (statusData.authenticated) {
-                await refreshAccounts()
-                await refreshWorkspaces()
-                setState(prev => ({
-                  ...prev,
-                  isAuthenticated: true,
-                  isLoading: false,
-                  connectingPlatform: null,
-                  // Always set hasSeenIntro to true after successful OAuth
-                  hasSeenIntro: true,
-                  user: {
-                    name: statusData.user_info?.name || statusData.name || 'User',
-                    email: statusData.user_info?.email || statusData.email || '',
-                    picture_url: statusData.user_info?.picture || statusData.picture_url || statusData.picture || '',
-                    google_user_id: statusData.user_info?.id || statusData.user_id || ''
-                  }
-                }))
-                resolve(true)
-              } else {
-                setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
-                resolve(false)
-              }
-            }
-          } catch (error) {
-            clearTimers()
-            console.error('[SESSION] Auth polling error:', error)
-            setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
-            resolve(false)
-          }
-        }, 3000)
-
-        oauthTimeoutRef.current = window.setTimeout(() => {
-          clearTimers()
-          if (!popup.closed) popup.close()
-          setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication timed out' }))
-          resolve(false)
-        }, 300000)
-      })
+      // FEB 2026: Simplified to always use redirect flow (removed popup flow)
+      // Redirect flow is more reliable for both mobile and desktop
+      localStorage.setItem('mia_oauth_pending', 'google')
+      localStorage.setItem('mia_oauth_return_url', window.location.href)
+      window.location.href = authData.auth_url
+      // Return promise that never resolves - page will redirect before this matters
+      return new Promise<boolean>(() => {})
     } catch (error) {
       console.error('[SESSION] Login error:', error)
       setState(prev => ({
