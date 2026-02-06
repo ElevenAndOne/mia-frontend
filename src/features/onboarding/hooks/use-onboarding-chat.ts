@@ -77,7 +77,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   const [isStreamingInsight, setIsStreamingInsight] = useState(false)
   const [isStreamingCombined, setIsStreamingCombined] = useState(false)
   const [initialBronzeFact, setInitialBronzeFact] = useState<BronzeFact | null>(null)
-  const [accountSelected, setAccountSelected] = useState(false)
+  const [_accountSelected, setAccountSelected] = useState(false)
   const hasInitialized = useRef(false)
 
   const showExplainerBoxes = useCallback(() => {
