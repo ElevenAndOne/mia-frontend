@@ -8,7 +8,6 @@ interface NavigateHomeOptions {
 
 interface NavigateInsightOptions {
   platforms?: string[]
-  showDatePicker?: boolean
 }
 
 export interface NavigationContextType {
@@ -75,9 +74,7 @@ export const NavigationProvider = ({ children }: NavigationProviderProps) => {
     const queryString = params.toString()
     const path = `/insights/${type}${queryString ? `?${queryString}` : ''}`
 
-    navigate(path, {
-      state: options?.showDatePicker ? { showDatePicker: true } : undefined
-    })
+    navigate(path)
   }, [navigate])
 
   const navigateBack = useCallback(() => {

@@ -1,6 +1,26 @@
 /**
  * Session Service
- * mia.session - Session management domain
+ *
+ * Manages user sessions including creation, restoration, validation, and cleanup.
+ * This is the foundational service that other services depend on for authentication state.
+ *
+ * **Namespace:** `mia.session`
+ *
+ * **Key Concepts:**
+ * - Sessions are identified by a unique session ID stored in the configured storage backend
+ * - Session validation happens server-side; the SDK caches the result
+ * - The `restore()` method is the primary entry point and should be called on app initialization
+ *
+ * @example
+ * ```typescript
+ * // On app load
+ * const { success, session, isNewSession } = await mia.session.restore();
+ *
+ * if (session?.isAuthenticated) {
+ *   setUser(session.user);
+ *   setConnectedPlatforms(session.connectedPlatforms);
+ * }
+ * ```
  */
 
 import type { Transport } from '../internal/transport';
@@ -24,20 +44,24 @@ export class SessionService {
   }
 
   /**
-   * Restore session from storage or create new one.
-   * This is the primary entry point on app load.
+   * Restore session from storage or create a new one.
+   *
+   * This is the **primary entry point** that should be called when your app initializes.
+   * It checks for an existing session, validates it with the server, and returns
+   * complete session data including user info and connected platforms.
+   *
+   * @returns Promise resolving to `{ success, session, isNewSession }`
    *
    * @example
    * ```typescript
-   * try {
-   *   const { success, session, isNewSession } = await mia.session.restore();
-   *   if (session?.isAuthenticated) {
-   *     setUser(session.user);
-   *   }
-   * } catch (error) {
-   *   if (isMiaSDKError(error)) {
-   *     setAppError('Failed to restore session');
-   *   }
+   * const { success, session, isNewSession } = await mia.session.restore();
+   *
+   * if (session?.isAuthenticated) {
+   *   console.log('Welcome back,', session.user.name);
+   * }
+   *
+   * if (isNewSession) {
+   *   showOnboarding();
    * }
    * ```
    */
@@ -92,8 +116,21 @@ export class SessionService {
   }
 
   /**
-   * Validate current session.
-   * Returns null if session is invalid or doesn't exist.
+   * Validate the current session with the server.
+   *
+   * Unlike `restore()`, this method does not create a new session if validation fails.
+   * Use this for periodic session checks or when you need to verify the session is still valid.
+   *
+   * @returns Promise resolving to SessionData if valid, null otherwise
+   *
+   * @example
+   * ```typescript
+   * const session = await mia.session.validate();
+   * if (!session) {
+   *   // Session is invalid or expired
+   *   redirectToLogin();
+   * }
+   * ```
    */
   async validate(): Promise<SessionData | null> {
     const sessionId = this.storage.getSessionId();
@@ -110,21 +147,54 @@ export class SessionService {
   }
 
   /**
-   * Get current session ID from storage
+   * Get the current session ID from storage.
+   *
+   * @returns The session ID string or null if no session exists
+   *
+   * @example
+   * ```typescript
+   * const sessionId = mia.session.getSessionId();
+   * if (sessionId) {
+   *   console.log('Current session:', sessionId);
+   * }
+   * ```
    */
   getSessionId(): string | null {
     return this.storage.getSessionId();
   }
 
   /**
-   * Get current user ID from storage
+   * Get the current user ID from storage.
+   *
+   * The user ID is stored after successful authentication and persists across sessions.
+   *
+   * @returns The user ID string or null if no user is authenticated
+   *
+   * @example
+   * ```typescript
+   * const userId = mia.session.getUserId();
+   * if (userId) {
+   *   const { mccAccounts } = await mia.auth.google.getAdAccounts(userId);
+   * }
+   * ```
    */
   getUserId(): string | null {
     return this.storage.getUserId();
   }
 
   /**
-   * Create a new session (generates new ID and stores it)
+   * Create a new session with a fresh session ID.
+   *
+   * This generates a new UUID-based session ID and stores it. Use this when you need
+   * to explicitly start a fresh session without validation.
+   *
+   * @returns The newly generated session ID
+   *
+   * @example
+   * ```typescript
+   * const newSessionId = mia.session.createNew();
+   * console.log('New session created:', newSessionId);
+   * ```
    */
   createNew(): string {
     const sessionId = generateSessionId();
@@ -133,14 +203,40 @@ export class SessionService {
   }
 
   /**
-   * Clear session (logout)
+   * Clear the current session (logout).
+   *
+   * This removes all session data from storage including session ID and user ID.
+   * Call this when the user explicitly logs out.
+   *
+   * @example
+   * ```typescript
+   * async function handleLogout() {
+   *   await mia.auth.google.logout();  // Server-side logout
+   *   mia.session.clear();              // Client-side cleanup
+   *   redirectToLogin();
+   * }
+   * ```
    */
   clear(): void {
     this.storage.clearSession();
   }
 
   /**
-   * Select MCC (Manager Customer Center) for Google Ads
+   * Select an MCC (Manager Customer Center) account for Google Ads operations.
+   *
+   * When a user has access to multiple Google Ads accounts via an MCC,
+   * use this method to specify which MCC should be used for subsequent operations.
+   *
+   * @param mccId - The MCC customer ID (format: '123-456-7890')
+   *
+   * @example
+   * ```typescript
+   * // Get available MCCs
+   * const { mccAccounts } = await mia.auth.google.getAdAccounts(userId);
+   *
+   * // Select an MCC
+   * await mia.session.selectMcc(mccAccounts[0].customerId);
+   * ```
    */
   async selectMcc(mccId: string): Promise<void> {
     const sessionId = this.storage.getSessionId();
@@ -151,8 +247,18 @@ export class SessionService {
   }
 
   /**
-   * Sync accounts with backend.
-   * Validates DB entries against actual API data.
+   * Synchronize accounts with the backend.
+   *
+   * This validates database entries against actual platform API data to ensure
+   * consistency. Useful after connecting new platforms or when account data
+   * may be out of sync.
+   *
+   * @example
+   * ```typescript
+   * // After connecting a new platform
+   * await mia.auth.google.connect();
+   * await mia.session.syncAccounts();
+   * ```
    */
   async syncAccounts(): Promise<void> {
     const sessionId = this.storage.getSessionId();
@@ -162,7 +268,11 @@ export class SessionService {
   }
 
   /**
-   * Get account sync status for debugging
+   * Get account synchronization status (for debugging).
+   *
+   * Returns detailed information about the sync state of connected accounts.
+   *
+   * @returns Promise resolving to sync status details
    */
   async getSyncStatus(): Promise<unknown> {
     const sessionId = this.storage.getSessionId();

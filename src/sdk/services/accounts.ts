@@ -1,6 +1,26 @@
 /**
  * Accounts Service
- * mia.accounts - Account management domain
+ *
+ * Manages advertising accounts across all connected platforms. An "account" in MIA
+ * represents a unified view that can link multiple platform accounts (Google Ads,
+ * Meta Ads, GA4, etc.) together.
+ *
+ * **Namespace:** `mia.accounts`
+ *
+ * **Key Concepts:**
+ * - Accounts aggregate data from multiple advertising platforms
+ * - Each account can have linked Google Ads, Meta Ads, GA4, and other platform IDs
+ * - Selecting an account sets the context for insights and analytics
+ *
+ * @example
+ * ```typescript
+ * // List and select an account
+ * const { accounts } = await mia.accounts.list();
+ * await mia.accounts.select(accounts[0].id, 'ecommerce');
+ *
+ * // Link additional platforms
+ * await mia.accounts.linkPlatform(accountId, 'meta', 'act_123');
+ * ```
  */
 
 import type { Transport } from '../internal/transport';
@@ -24,18 +44,27 @@ export class AccountsService {
   }
 
   /**
-   * Get all available accounts for the current user
+   * List all available accounts for the current user.
+   *
+   * Returns accounts with their linked platforms and available GA4 properties.
+   * Use `{ refresh: true }` to force a fresh fetch from platform APIs.
+   *
+   * @param options - Optional configuration
+   * @param options.refresh - Force refresh from platform APIs (slower but ensures fresh data)
+   * @returns Promise resolving to accounts and GA4 properties
    *
    * @example
    * ```typescript
-   * try {
-   *   const { accounts, ga4Properties } = await mia.accounts.list();
-   *   setAccounts(accounts);
-   * } catch (error) {
-   *   if (isMiaSDKError(error)) {
-   *     setError('Failed to load accounts');
-   *   }
-   * }
+   * // Basic listing
+   * const { accounts, ga4Properties } = await mia.accounts.list();
+   *
+   * // Force refresh from APIs
+   * const { accounts: fresh } = await mia.accounts.list({ refresh: true });
+   *
+   * // Display accounts
+   * accounts.forEach(acc => {
+   *   console.log(acc.displayName, acc.googleAdsId, acc.metaAdsId);
+   * });
    * ```
    */
   async list(options?: { refresh?: boolean }): Promise<ListAccountsResult> {
@@ -56,7 +85,24 @@ export class AccountsService {
 
   /**
    * Select an account for the current session.
-   * Returns workspace info if one was auto-created.
+   *
+   * This sets the active account context for all subsequent operations including
+   * insights generation and analytics. If no workspace exists for this account,
+   * one may be auto-created.
+   *
+   * @param accountId - The account ID to select
+   * @param industry - Optional industry classification (e.g., 'ecommerce', 'saas')
+   * @returns Promise resolving to selection result with optional workspace info
+   *
+   * @example
+   * ```typescript
+   * const result = await mia.accounts.select(accountId, 'ecommerce');
+   *
+   * if (result.autoCreatedWorkspace) {
+   *   console.log('Workspace created:', result.autoCreatedWorkspace.name);
+   *   await mia.workspaces.switch(result.autoCreatedWorkspace.tenantId);
+   * }
+   * ```
    */
   async select(
     accountId: string,
@@ -85,7 +131,25 @@ export class AccountsService {
   }
 
   /**
-   * Link a platform to an account
+   * Link a platform account to a MIA account.
+   *
+   * Associates a platform-specific account (Meta, GA4, etc.) with the specified
+   * MIA account, enabling unified analytics across platforms.
+   *
+   * @param accountId - The MIA account ID to link to
+   * @param platform - The platform type ('meta' | 'ga4' | 'brevo' | 'hubspot' | 'mailchimp')
+   * @param platformId - The platform-specific account ID
+   *
+   * @example
+   * ```typescript
+   * // Link Meta Ads account
+   * const metaAccounts = await mia.auth.meta.getAvailableAccounts();
+   * await mia.accounts.linkPlatform(accountId, 'meta', metaAccounts[0].id);
+   *
+   * // Link GA4 property
+   * const { ga4Properties } = await mia.accounts.list();
+   * await mia.accounts.linkPlatform(accountId, 'ga4', ga4Properties[0].propertyId);
+   * ```
    */
   async linkPlatform(
     accountId: string,
@@ -103,7 +167,27 @@ export class AccountsService {
   }
 
   /**
-   * Link Google Ads account
+   * Link a Google Ads account to a MIA account.
+   *
+   * For accounts accessed via MCC (Manager Customer Center), provide the
+   * loginCustomerId to specify which MCC should be used for API access.
+   *
+   * @param targetAccountId - The MIA account ID to link to
+   * @param googleAdsCustomerId - The Google Ads customer ID (format: '123-456-7890')
+   * @param loginCustomerId - Optional MCC customer ID for manager account access
+   *
+   * @example
+   * ```typescript
+   * // Link direct account
+   * await mia.accounts.linkGoogleAds(accountId, '123-456-7890');
+   *
+   * // Link account via MCC
+   * await mia.accounts.linkGoogleAds(
+   *   accountId,
+   *   '123-456-7890',      // Target account
+   *   '098-765-4321'       // MCC login ID
+   * );
+   * ```
    */
   async linkGoogleAds(
     targetAccountId: string,
@@ -121,7 +205,24 @@ export class AccountsService {
   }
 
   /**
-   * Get MCC (Manager Customer Center) accounts
+   * Get Google Ads MCC (Manager Customer Center) and regular accounts.
+   *
+   * Returns all Google Ads accounts accessible by the user, separated into
+   * MCC (manager) accounts and regular (client) accounts.
+   *
+   * @param userId - The user ID to fetch accounts for
+   * @returns Promise resolving to MCC and regular accounts
+   *
+   * @example
+   * ```typescript
+   * const userId = mia.session.getUserId();
+   * const { mccAccounts, regularAccounts } = await mia.accounts.getMccAccounts(userId);
+   *
+   * // MCC accounts can manage multiple sub-accounts
+   * mccAccounts.forEach(mcc => {
+   *   console.log(mcc.descriptiveName, 'manages', mcc.accountCount, 'accounts');
+   * });
+   * ```
    */
   async getMccAccounts(userId: string): Promise<{
     mccAccounts: MccAccount[];
@@ -149,7 +250,12 @@ export class AccountsService {
   }
 
   /**
-   * Get discovered Google accounts
+   * Get automatically discovered Google Ads accounts.
+   *
+   * Returns accounts that have been discovered through the Google Ads API
+   * but may not yet be linked to a MIA account.
+   *
+   * @returns Promise resolving to array of discovered Google Ads accounts
    */
   async getDiscoveredGoogleAccounts(): Promise<GoogleAdsAccount[]> {
     const response = await this.transport.request<{
@@ -170,7 +276,18 @@ export class AccountsService {
   }
 
   /**
-   * Refresh GA4 properties
+   * Refresh the list of available GA4 properties.
+   *
+   * Forces a fresh fetch from the Google Analytics API to discover
+   * any new GA4 properties the user has access to.
+   *
+   * @returns Promise resolving to updated list of GA4 properties
+   *
+   * @example
+   * ```typescript
+   * const properties = await mia.accounts.refreshGA4Properties();
+   * console.log('Found', properties.length, 'GA4 properties');
+   * ```
    */
   async refreshGA4Properties(): Promise<GA4Property[]> {
     const response = await this.transport.request<{
@@ -187,7 +304,18 @@ export class AccountsService {
   }
 
   /**
-   * Get platform preferences
+   * Get the user's platform preferences.
+   *
+   * Returns the list of platforms the user has selected for their dashboard
+   * and insights views.
+   *
+   * @returns Promise resolving to array of platform IDs
+   *
+   * @example
+   * ```typescript
+   * const platforms = await mia.accounts.getPlatformPreferences();
+   * // ['google_ads', 'meta', 'ga4']
+   * ```
    */
   async getPlatformPreferences(): Promise<string[]> {
     const response = await this.transport.request<{
@@ -197,7 +325,16 @@ export class AccountsService {
   }
 
   /**
-   * Save platform preferences
+   * Save the user's platform preferences.
+   *
+   * Updates which platforms should be included in dashboards and insights.
+   *
+   * @param platforms - Array of platform IDs to include
+   *
+   * @example
+   * ```typescript
+   * await mia.accounts.savePlatformPreferences(['google_ads', 'meta', 'ga4']);
+   * ```
    */
   async savePlatformPreferences(platforms: string[]): Promise<void> {
     await this.transport.request('/api/account/platform-preferences', {

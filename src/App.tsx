@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSession } from './contexts/session-context'
 import { AppRoutes } from './routes'
@@ -6,9 +6,6 @@ import { AppRoutes } from './routes'
 // Critical path components
 import LoadingScreen from './components/loading-screen'
 import CreateWorkspaceModal from './components/create-workspace-modal'
-
-// Lazy load date picker modal
-const InsightsDatePickerModal = lazy(() => import('./components/insights-date-picker-modal'))
 
 function App() {
   const navigate = useNavigate()
@@ -37,11 +34,6 @@ function App() {
 
   // Track if user just accepted an invite
   const [justAcceptedInvite, setJustAcceptedInvite] = useState(false)
-
-  // Date picker modal state
-  const [showInsightsDatePicker, setShowInsightsDatePicker] = useState(false)
-  const [pendingInsightType, setPendingInsightType] = useState<'grow' | 'optimize' | 'protect' | null>(null)
-  const [pendingPlatforms, setPendingPlatforms] = useState<string[]>([])
 
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
@@ -138,25 +130,6 @@ function App() {
     navigate
   ])
 
-  // Handle date picker from location state
-  useEffect(() => {
-    const state = location.state as { showDatePicker?: boolean; platforms?: string[] } | null
-    if (state?.showDatePicker) {
-      const type = location.pathname.includes('grow') ? 'grow'
-        : location.pathname.includes('optimize') ? 'optimize'
-        : location.pathname.includes('protect') ? 'protect'
-        : null
-
-      if (type) {
-        setPendingInsightType(type)
-        setPendingPlatforms(state.platforms || [])
-        setShowInsightsDatePicker(true)
-        // Clear the state
-        navigate(location.pathname + location.search, { replace: true, state: null })
-      }
-    }
-  }, [location, navigate])
-
   const handleAuthSuccess = () => {
     // Navigate FIRST, then clear loading platform
     // This prevents the video from flashing during the brief moment between clearing loading and navigation
@@ -222,25 +195,6 @@ function App() {
     }
   }
 
-  const handleInsightsDateGenerate = (dateRange: string) => {
-    setShowInsightsDatePicker(false)
-
-    const params = new URLSearchParams()
-    if (pendingPlatforms.length) params.set('platforms', pendingPlatforms.join(','))
-    params.set('range', dateRange)
-
-    if (pendingInsightType === 'grow') {
-      navigate(`/insights/grow?${params.toString()}`)
-    } else if (pendingInsightType === 'optimize') {
-      navigate(`/insights/optimize?${params.toString()}`)
-    } else if (pendingInsightType === 'protect') {
-      navigate(`/insights/protect?${params.toString()}`)
-    }
-
-    setPendingInsightType(null)
-    setPendingPlatforms([])
-  }
-
   // Show OAuth loading screen
   if (oauthLoadingPlatform) {
     return <LoadingScreen platform={oauthLoadingPlatform} />
@@ -290,20 +244,6 @@ function App() {
           onAccountSelected={handleAccountSelected}
         />
       </div>
-
-      {/* Insights Date Picker Modal */}
-      <Suspense fallback={null}>
-        <InsightsDatePickerModal
-          isOpen={showInsightsDatePicker}
-          onClose={() => {
-            setShowInsightsDatePicker(false)
-            setPendingInsightType(null)
-            navigate('/home')
-          }}
-          onGenerate={handleInsightsDateGenerate}
-          insightType={pendingInsightType || 'grow'}
-        />
-      </Suspense>
 
       {/* Create Workspace Modal */}
       <CreateWorkspaceModal

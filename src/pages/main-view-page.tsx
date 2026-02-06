@@ -1,5 +1,6 @@
 import { lazy } from 'react'
 import { useNavigation } from '@contexts/navigation-context'
+import { useInsightsDatePicker } from '@contexts/insights-date-picker-context'
 
 const MainView = lazy(() => import('@components/main-view'))
 
@@ -10,6 +11,7 @@ export const MainViewPage = () => {
     navigateInsight,
     handleLogout
   } = useNavigation()
+  const { showDatePicker } = useInsightsDatePicker()
 
   return (
     <div className="w-full h-full">
@@ -21,13 +23,13 @@ export const MainViewPage = () => {
           navigateInsight('summary', { platforms })
         }}
         onGrowQuickClick={(platforms) => {
-          navigateInsight('grow', { platforms, showDatePicker: true })
+          showDatePicker('grow', platforms)
         }}
         onOptimizeQuickClick={(platforms) => {
-          navigateInsight('optimize', { platforms, showDatePicker: true })
+          showDatePicker('optimize', platforms)
         }}
         onProtectQuickClick={(platforms) => {
-          navigateInsight('protect', { platforms, showDatePicker: true })
+          showDatePicker('protect', platforms)
         }}
       />
     </div>

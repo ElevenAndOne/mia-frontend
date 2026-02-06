@@ -1,43 +1,115 @@
 /**
  * SDK Error Types
  *
- * All SDK methods throw MiaSDKError for failures.
- * Call sites catch and handle errors with contextually appropriate UI.
+ * All SDK methods throw `MiaSDKError` for failures. This provides a consistent
+ * error handling pattern across the entire SDK.
+ *
+ * **Error Handling Pattern:**
+ * ```typescript
+ * import { isMiaSDKError, ErrorCodes } from '@/sdk';
+ *
+ * try {
+ *   await mia.accounts.select(accountId);
+ * } catch (error) {
+ *   if (isMiaSDKError(error)) {
+ *     switch (error.code) {
+ *       case ErrorCodes.SESSION_EXPIRED:
+ *         redirectToLogin();
+ *         break;
+ *       case ErrorCodes.RATE_LIMITED:
+ *         showRetryMessage();
+ *         break;
+ *       default:
+ *         showError(error.message);
+ *     }
+ *   }
+ * }
+ * ```
  */
 
+/**
+ * All possible error codes thrown by the SDK.
+ *
+ * Use these constants for reliable error code comparisons.
+ *
+ * @example
+ * ```typescript
+ * if (error.code === ErrorCodes.SESSION_EXPIRED) {
+ *   redirectToLogin();
+ * }
+ * ```
+ */
 export const ErrorCodes = {
   // Session errors
+  /** No session ID exists in storage */
   NO_SESSION: 'NO_SESSION',
+  /** Session has expired (HTTP 401) */
   SESSION_EXPIRED: 'SESSION_EXPIRED',
 
   // HTTP errors
+  /** Bad request (HTTP 400) */
   BAD_REQUEST: 'BAD_REQUEST',
+  /** Forbidden - insufficient permissions (HTTP 403) */
   FORBIDDEN: 'FORBIDDEN',
+  /** Resource not found (HTTP 404) */
   NOT_FOUND: 'NOT_FOUND',
+  /** Validation error (HTTP 422) */
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  /** Rate limited - too many requests (HTTP 429) */
   RATE_LIMITED: 'RATE_LIMITED',
+  /** Server error (HTTP 5xx) */
   SERVER_ERROR: 'SERVER_ERROR',
 
   // Network errors
+  /** Network request failed */
   NETWORK_ERROR: 'NETWORK_ERROR',
+  /** Request timed out */
   TIMEOUT: 'TIMEOUT',
 
   // OAuth errors
+  /** Browser blocked the OAuth popup */
   OAUTH_POPUP_BLOCKED: 'OAUTH_POPUP_BLOCKED',
+  /** User cancelled OAuth flow */
   OAUTH_CANCELLED: 'OAUTH_CANCELLED',
+  /** OAuth flow failed */
   OAUTH_FAILED: 'OAUTH_FAILED',
 
   // General
+  /** Unknown/unexpected error */
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const;
 
+/**
+ * Union type of all error codes.
+ */
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 
+/**
+ * SDK error type thrown by all SDK methods.
+ *
+ * Extends the standard Error with additional context for debugging
+ * and error-specific handling.
+ *
+ * @example
+ * ```typescript
+ * if (isMiaSDKError(error)) {
+ *   console.log('Code:', error.code);        // 'SESSION_EXPIRED'
+ *   console.log('Message:', error.message);  // 'Session has expired'
+ *   console.log('Status:', error.status);    // 401
+ *   console.log('Endpoint:', error.endpoint); // '/api/accounts/list'
+ * }
+ * ```
+ */
 export interface MiaSDKError extends Error {
+  /** Always 'MiaSDKError' - use for instanceof-like checks */
   name: 'MiaSDKError';
+  /** Error code for programmatic handling */
   code: ErrorCode;
+  /** HTTP status code (if applicable) */
   status?: number;
+  /** API endpoint that failed */
   endpoint?: string;
+  /** Additional context (varies by error) */
   context?: Record<string, unknown>;
 }
 

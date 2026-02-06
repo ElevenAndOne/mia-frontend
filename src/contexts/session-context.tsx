@@ -129,8 +129,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const mappedAccounts = accounts.map(toAccountMapping)
       setState(prev => {
         const updatedSelectedAccount = prev.selectedAccount
-          ? mappedAccounts.find(acc => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
-          : null
+        ? mappedAccounts.find(acc => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
+        : null
         return { ...prev, availableAccounts: mappedAccounts, selectedAccount: updatedSelectedAccount }
       })
     } catch (error) {

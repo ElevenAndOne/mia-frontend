@@ -97,6 +97,7 @@ Sentry.init({
     return breadcrumb;
   },
 });
+
 // =============================================================================
 
 import ReactDOM from 'react-dom/client'
@@ -106,6 +107,7 @@ import App from './App'
 import { MiaProvider } from './sdk'
 import { SessionProvider } from './contexts/session-context'
 import { NavigationProvider } from './contexts/navigation-context'
+import { InsightsDatePickerProvider } from './contexts/insights-date-picker-context'
 import { ThemeProvider } from './contexts/theme-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
 import { OverlayProvider } from './features/overlay'
@@ -142,17 +144,15 @@ ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <MiaProvider
-          config={{
-            baseUrl: import.meta.env.VITE_API_BASE_URL,
-          }}
-        >
+        <MiaProvider config={{ baseUrl: import.meta.env.VITE_API_BASE_URL }}>
           <ThemeProvider>
             <SessionProvider>
               <NavigationProvider>
                 <OnboardingProvider>
                   <OverlayProvider>
-                    <App />
+                    <InsightsDatePickerProvider>
+                      <App />
+                    </InsightsDatePickerProvider>
                   </OverlayProvider>
                 </OnboardingProvider>
               </NavigationProvider>
