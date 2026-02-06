@@ -349,7 +349,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       // Get auth URL based on platform
       // Jan 2025: Include tenant_id for workspace-scoped credential storage
-      const frontendOrigin = encodeURIComponent(window.location.origin)
+      // CRITICAL FIX (Feb 2026): Do NOT pass frontend_origin for popup flow
+      // Passing frontend_origin causes backend to REDIRECT instead of CLOSE the popup
+      // This page uses popup flow - the popup should close and we handle /complete ourselves
       const tenantParam = activeWorkspace?.tenant_id ? `tenant_id=${activeWorkspace.tenant_id}` : ''
 
       // CRITICAL FIX (Jan 2026): Send X-Session-ID as header, not query param
@@ -360,7 +362,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
       if (integrationId === 'google') {
         const response = await apiFetch(
-          `/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}${tenantParam ? '&' + tenantParam : ''}`,
+          `/api/oauth/google/auth-url${tenantParam ? '?' + tenantParam : ''}`,
           { headers: authHeaders }
         )
         if (response.ok) {
@@ -369,9 +371,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
-        // CRITICAL FIX (Jan 2026): Pass frontend_origin for proper redirect after OAuth
+        // No frontend_origin - popup should close, not redirect
         const response = await apiFetch(
-          `/api/oauth/meta/auth-url?frontend_origin=${frontendOrigin}${tenantParam ? '&' + tenantParam : ''}`,
+          `/api/oauth/meta/auth-url${tenantParam ? '?' + tenantParam : ''}`,
           { headers: authHeaders }
         )
         if (response.ok) {
