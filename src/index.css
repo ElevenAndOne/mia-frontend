@@ -1,38 +1,74 @@
 @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Figtree:wght@300;400;500;600;700&display=swap');
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@import "./styles/color-primitives.css";
+@import "./styles/color-tokens.css";
+@import "./styles/color-utility.css";
+@import "./styles/spacing-primitive.css";
+@import "./styles/property-utilities.css";
+@import "./styles/tokens.css";
+@import "./styles/dark-theme.css";
+
+/* Tailwind v4 Theme Extensions */
+@theme {
+  /* Custom Animations */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-gradient: gradient 8s ease infinite;
+}
+
+/* Keyframes for custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1.3); }
+  50% { opacity: 0.8; transform: scale(1.6); }
+}
+
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
 
 /* iPhone 16 Pro Optimized CSS Variables */
 :root {
-  /* Exact Figma Colors - Adjusted */
-  --flow-blue: #0793F2;
-  --flow-purple: #9D81F2;
-  --flow-yellow: #FFD700; /* More golden yellow, less greenish */
-  --flow-white: #FFFFFF;
-  
   /* Context Colors */
-  --context-blue: #A7D3FF;
-  --context-orange: #FFC5B0;
-  --context-purple: #CCC2FF;
-  --context-mint: #A2FAE0;
-  
+  --context-blue: var(--color-utility-blue-200);
+  --context-orange: var(--color-utility-orange-200);
+  --context-purple: var(--color-utility-purple-200);
+  --context-mint: var(--color-utility-teal-200);
+
   /* Mia Circle Gradient */
-  --mia-inner: #FFFFFF;
-  --mia-outer: #C9F84A;
+  --mia-inner: var(--text-color-white);
+  --mia-outer: var(--color-utility-warning-400);
   
   /* iPhone 16 Pro Safe Areas */
   --safe-top: 59px;
   --safe-bottom: 34px;
   --screen-width: 393px;
   --screen-height: 852px;
+  --page-gutter: 16px;
+
+  /* Overlay Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-overlay-backdrop: 1200;
+  --z-overlay: 1300;
+  --z-popover: 1400;
+  --z-tooltip: 1500;
 }
 
 /* Reset & iPhone 16 Pro Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Note: Tailwind v4 includes Preflight reset, so we only add box-sizing */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 }
 
 html, body {
@@ -45,8 +81,9 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--text-color-primary);
   /* NO background - let components fill the space */
-  background: #ffffff;
+  background: var(--background-color-primary);
   /* Mobile touch optimizations */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -56,10 +93,8 @@ html, body {
   overscroll-behavior: contain;
 }
 
-#root {
-  width: 100%;
-  height: 100%;
-  position: relative;
+body.full-bleed #root {
+  padding-inline: 0;
 }
 
 /* Fixed iPhone 16 Pro Container - Without Status Bar */
@@ -73,7 +108,7 @@ html, body {
   
   /* Target styling from Figma */
   border-radius: 55px;
-  background: #FFF;
+  background: var(--background-color-primary);
   
   /* Center vertically on larger screens */
   top: 50%;
@@ -92,6 +127,7 @@ html, body {
   :root {
     --safe-top: 44px; /* Smaller notch */
     --safe-bottom: 34px;
+    --page-gutter: 12px;
   }
 }
 
@@ -100,6 +136,7 @@ html, body {
   :root {
     --safe-top: 59px;
     --safe-bottom: 34px;
+    --page-gutter: 16px;
   }
 }
 
@@ -108,6 +145,7 @@ html, body {
   :root {
     --safe-top: 59px;
     --safe-bottom: 34px;
+    --page-gutter: 16px;
   }
 }
 
@@ -117,6 +155,13 @@ html, body {
   :root {
     --safe-top: 24px; /* Status bar */
     --safe-bottom: 48px; /* Navigation bar */
+    --page-gutter: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 24px;
   }
 }
 
@@ -142,7 +187,7 @@ html, body {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  color: #333;
+  color: var(--text-color-primary);
 }
 
 /* Context Theme Classes */
