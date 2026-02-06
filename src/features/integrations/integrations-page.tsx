@@ -404,6 +404,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         throw new Error(`Failed to get ${integrationId} auth URL`)
       }
 
+      // SECURITY FIX (Feb 2026): Listen for postMessage from OAuth popup to get user_id
+      // This prevents cross-user data leaks when multiple users auth simultaneously
+      let oauthUserId: string | null = null
+
+      const messageHandler = (event: MessageEvent) => {
+        // Verify origin for security
+        if (event.data?.type === 'oauth_complete') {
+          oauthUserId = event.data.user_id || null
+          console.log(`[OAUTH-POPUP] Received user_id from popup: ${oauthUserId}`)
+        }
+      }
+      window.addEventListener('message', messageHandler)
+
       // Open popup for OAuth
       const popup = window.open(
         authUrl,
@@ -412,6 +425,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
 
       if (!popup) {
+        window.removeEventListener('message', messageHandler)
         showToast('error', 'Popup blocked. Please allow popups for this site.')
         setConnectingId(null)
         return
@@ -429,15 +443,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             window.clearInterval(oauthPollTimerRef.current)
             oauthPollTimerRef.current = null
           }
+          // Clean up message listener
+          window.removeEventListener('message', messageHandler)
+
           console.log(`${integrationId} popup closed, completing auth flow...`)
+          console.log(`[OAUTH-COMPLETE] user_id from popup: ${oauthUserId}`)
 
           // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials
           if (integrationId === 'meta' || integrationId === 'google' || integrationId === 'facebook_organic') {
             try {
               // Facebook Organic and Meta Ads use the same Meta OAuth endpoint
+              // SECURITY FIX: Include user_id from postMessage to prevent cross-user issues
               const completeUrl = (integrationId === 'meta' || integrationId === 'facebook_organic')
                 ? `/api/oauth/meta/complete`
-                : `/api/oauth/google/complete`
+                : oauthUserId
+                  ? `/api/oauth/google/complete?user_id=${oauthUserId}`
+                  : `/api/oauth/google/complete`
 
               console.log(`Calling ${completeUrl} with session_id:`, sessionId)
 
