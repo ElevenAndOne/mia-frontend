@@ -1,3 +1,10 @@
+// Base selector props for all account selector modals
+export interface BaseSelectorProps {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: () => void
+}
+
 // Platform status types
 export interface PlatformConnectionStatus {
   connected: boolean

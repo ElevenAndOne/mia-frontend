@@ -105,6 +105,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { MiaProvider } from './sdk'
 import { SessionProvider } from './contexts/session-context'
+import { NavigationProvider } from './contexts/navigation-context'
 import { ThemeProvider } from './contexts/theme-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
 import { OverlayProvider } from './features/overlay'
@@ -148,11 +149,13 @@ ReactDOM.createRoot(rootElement).render(
         >
           <ThemeProvider>
             <SessionProvider>
-              <OnboardingProvider>
-                <OverlayProvider>
-                  <App />
-                </OverlayProvider>
-              </OnboardingProvider>
+              <NavigationProvider>
+                <OnboardingProvider>
+                  <OverlayProvider>
+                    <App />
+                  </OverlayProvider>
+                </OnboardingProvider>
+              </NavigationProvider>
             </SessionProvider>
           </ThemeProvider>
         </MiaProvider>

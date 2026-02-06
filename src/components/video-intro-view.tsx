@@ -123,71 +123,73 @@ const VideoIntroView = ({ onAuthSuccess, onMetaAuthSuccess, hasSeenIntro = false
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-linear-to-br from-utility-purple-700 via-utility-purple-600 to-utility-blue-700">
-      {/* Fullscreen Video Background - hidden when OAuth starts, for returning users, or when authenticated */}
-      {!oauthStarted && !shouldHideVideo && (
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          muted
-          autoPlay
-          playsInline
-          preload="auto"
-          style={{ willChange: 'transform' }}
-        >
-          <source src="/videos/Mia_AppIntroVideo_compressed_fixed.mp4" type="video/mp4" />
-        </video>
-      )}
-
-      {/* Tap to Play overlay for iOS when video not playing */}
-      {!videoPlaying && !showLoginModal && !shouldHideVideo && (
-        <div
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer"
-          onClick={handleTapToPlay}
-        >
-          <div className="bg-primary/20 backdrop-blur-sm rounded-full p-6 mb-4">
-            <svg className="w-16 h-16 text-primary" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
-          <p className="text-primary text-lg font-medium">Tap to play</p>
-        </div>
-      )}
-
-      {/* Skip Button - Top Right */}
-      {!showLoginModal && (
-        <button
-          onClick={() => setShowLoginModal(true)}
-          className="absolute top-4 right-4 z-50 p-3 transition-all duration-200 hover:opacity-70"
-          aria-label="Skip video"
-        >
-          <svg
-            className="w-6 h-6 text-utility-purple-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
+    <div className="w-full h-full">
+      <div className="relative w-full h-full overflow-hidden bg-linear-to-br from-utility-purple-700 via-utility-purple-600 to-utility-blue-700">
+        {/* Fullscreen Video Background - hidden when OAuth starts, for returning users, or when authenticated */}
+        {!oauthStarted && !shouldHideVideo && (
+          <video
+            ref={videoRef}
+            className="absolute inset-0 w-full h-full object-cover"
+            muted
+            autoPlay
+            playsInline
+            preload="auto"
+            style={{ willChange: 'transform' }}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13 5l7 7-7 7M5 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-      )}
-
-      {/* Login Modal */}
-      <AnimatePresence>
-        {showLoginModal && (
-          <FigmaLoginModal
-            onAuthSuccess={onAuthSuccess}
-            onMetaAuthSuccess={onMetaAuthSuccess}
-            onOAuthPopupClosed={onOAuthPopupClosed}
-            onOAuthStart={() => setOAuthStarted(true)}
-          />
+            <source src="/videos/Mia_AppIntroVideo_compressed_fixed.mp4" type="video/mp4" />
+          </video>
         )}
-      </AnimatePresence>
+
+        {/* Tap to Play overlay for iOS when video not playing */}
+        {!videoPlaying && !showLoginModal && !shouldHideVideo && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center cursor-pointer"
+            onClick={handleTapToPlay}
+          >
+            <div className="bg-primary/20 backdrop-blur-sm rounded-full p-6 mb-4">
+              <svg className="w-16 h-16 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <p className="text-primary text-lg font-medium">Tap to play</p>
+          </div>
+        )}
+
+        {/* Skip Button - Top Right */}
+        {!showLoginModal && (
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="absolute top-4 right-4 z-50 p-3 transition-all duration-200 hover:opacity-70"
+            aria-label="Skip video"
+          >
+            <svg
+              className="w-6 h-6 text-utility-purple-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13 5l7 7-7 7M5 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        )}
+
+        {/* Login Modal */}
+        <AnimatePresence>
+          {showLoginModal && (
+            <FigmaLoginModal
+              onAuthSuccess={onAuthSuccess}
+              onMetaAuthSuccess={onMetaAuthSuccess}
+              onOAuthPopupClosed={onOAuthPopupClosed}
+              onOAuthStart={() => setOAuthStarted(true)}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

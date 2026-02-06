@@ -2,11 +2,7 @@ import { useState, useEffect } from 'react'
 import { useMiaClient, type GA4Property as SDKGA4Property } from '../../../sdk'
 import { useSession } from '../../../contexts/session-context'
 import { Modal } from '../../overlay'
-
-interface GA4Property {
-  property_id: string
-  display_name: string
-}
+import type { BaseSelectorProps, GA4Property, LinkedGA4Property } from '../types'
 
 // Map SDK GA4Property to local format
 const mapGA4Property = (p: SDKGA4Property): GA4Property => ({
@@ -14,17 +10,7 @@ const mapGA4Property = (p: SDKGA4Property): GA4Property => ({
   display_name: p.displayName,
 })
 
-interface LinkedGA4Property {
-  property_id: string
-  display_name: string
-  is_primary: boolean
-  sort_order: number
-}
-
-interface GA4PropertySelectorProps {
-  isOpen: boolean
-  onClose: () => void
-  onSuccess?: () => void
+interface GA4PropertySelectorProps extends BaseSelectorProps {
   currentAccountName?: string
   ga4Properties?: GA4Property[]  // Optional: pass pre-fetched properties
   linkedProperties?: LinkedGA4Property[]  // Already linked properties

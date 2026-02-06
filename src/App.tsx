@@ -99,19 +99,19 @@ function App() {
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        navigate('/login')
+        navigate('/accounts')
         return
       }
     }
 
-    // Redirect unauthenticated users to home (except public routes)
-    if (!isAnyAuthenticated && !path.startsWith('/invite/') && path !== '/') {
+    // Redirect unauthenticated users to home (except public routes and login)
+    if (!isAnyAuthenticated && !path.startsWith('/invite/') && path !== '/' && path !== '/login') {
       navigate('/')
       return
     }
 
-    // Handle account selection completion
-    if (path === '/login' && selectedAccount) {
+    // Handle account selection completion - redirect away from accounts page if already selected
+    if (path.startsWith('/accounts') && selectedAccount) {
       if (!activeWorkspace && availableWorkspaces.length === 0) {
         setShowCreateWorkspaceModal(true)
       } else if (justAcceptedInvite) {
@@ -163,7 +163,7 @@ function App() {
     if (selectedAccount) {
       navigate('/home')
     } else {
-      navigate('/login')
+      navigate('/accounts')
     }
     // Clear loading platform after navigation is initiated
     setOauthLoadingPlatform(null)
@@ -171,8 +171,22 @@ function App() {
 
   const handleMetaAuthSuccess = () => {
     // Navigate FIRST, then clear loading platform
-    navigate('/login/meta')
+    navigate('/accounts/meta')
     setOauthLoadingPlatform(null)
+  }
+
+  const handleAccountSelected = () => {
+    // Account selection complete - navigate based on workspace/onboarding state
+    if (!activeWorkspace && availableWorkspaces.length === 0) {
+      setShowCreateWorkspaceModal(true)
+    } else if (justAcceptedInvite) {
+      setJustAcceptedInvite(false)
+      navigate('/home')
+    } else if (user?.onboarding_completed) {
+      navigate('/home')
+    } else {
+      navigate('/onboarding')
+    }
   }
 
   const handleOnboardingComplete = () => {
@@ -202,7 +216,7 @@ function App() {
     } else if (isAnyAuthenticated && selectedAccount) {
       navigate('/home')
     } else if (isAnyAuthenticated) {
-      navigate('/login')
+      navigate('/accounts')
     } else {
       navigate('/')
     }
@@ -250,7 +264,7 @@ function App() {
   }
 
   // Show loading for protected routes (but not when connecting second platform)
-  if (isLoading && !isConnectingSecondPlatform && location.pathname !== '/' && !location.pathname.startsWith('/login') && location.pathname !== '/onboarding') {
+  if (isLoading && !isConnectingSecondPlatform && location.pathname !== '/' && !location.pathname.startsWith('/login') && !location.pathname.startsWith('/accounts') && location.pathname !== '/onboarding') {
     // Use connectingPlatform if set (explicit), otherwise infer from auth state
     const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
     return <LoadingScreen platform={loadingPlatform} />
@@ -273,6 +287,7 @@ function App() {
           onOnboardingComplete={handleOnboardingComplete}
           onConnectPlatform={handleConnectPlatform}
           onInviteAccepted={handleInviteAccepted}
+          onAccountSelected={handleAccountSelected}
         />
       </div>
 
