@@ -91,6 +91,12 @@ function App() {
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
+        // TODO: Handle returning users
+        console.log('[SESSION] Handle returning users')
+        console.log('hasSeenIntro', hasSeenIntro)
+        console.log('isAnyAuthenticated', isAnyAuthenticated)
+        console.log('selectedAccount', selectedAccount)
+
         navigate('/accounts')
         return
       }

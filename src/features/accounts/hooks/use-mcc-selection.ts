@@ -29,29 +29,38 @@ export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) =>
   const [mccAccounts, setMccAccounts] = useState<MccAccountLocal[]>([])
   const [selectedMcc, setSelectedMcc] = useState<string | null>(null)
   const [isFetchingMccs, setIsFetchingMccs] = useState(true)
-  const hasFetchedRef = useRef(false)
+  const fetchedForUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
+    console.log('[MCC-SELECTION] Effect triggered, userId:', userId)
+
     if (!userId) {
+      console.log('[MCC-SELECTION] No userId, skipping MCC fetch')
       setIsFetchingMccs(false)
       return
     }
 
-    if (hasFetchedRef.current) return
+    // Skip if we already fetched for this userId
+    if (fetchedForUserIdRef.current === userId) {
+      console.log('[MCC-SELECTION] Already fetched for this userId, skipping')
+      return
+    }
 
     const load = async () => {
       try {
+        console.log('[MCC-SELECTION] Fetching MCC accounts for userId:', userId)
         setIsFetchingMccs(true)
         const { mccAccounts: accounts } = await mia.accounts.getMccAccounts(userId)
+        console.log('[MCC-SELECTION] Fetched MCC accounts:', accounts.length)
         setMccAccounts(accounts.map(mapMccAccount))
       } catch (err) {
-        console.error('[ACCOUNT-SELECTION] Error fetching MCCs:', err)
+        console.error('[MCC-SELECTION] Error fetching MCCs:', err)
       } finally {
         setIsFetchingMccs(false)
       }
     }
 
-    hasFetchedRef.current = true
+    fetchedForUserIdRef.current = userId
     load()
   }, [userId, mia])
 

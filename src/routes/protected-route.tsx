@@ -47,7 +47,7 @@ export const ProtectedRoute = ({
   }
 
   if (requireAccount && !selectedAccount) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/accounts" state={{ from: location }} replace />
   }
 
   if (requireWorkspace && !activeWorkspace) {

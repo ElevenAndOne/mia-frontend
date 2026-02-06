@@ -25,6 +25,16 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
     sessionId,
   })
 
+  // Debug logging for account selection
+  console.log('[ACCOUNT-SELECTION] State:', {
+    availableAccounts: availableAccounts.length,
+    mccAccounts: mccAccounts.length,
+    isFetchingMccs,
+    isLoading,
+    userId: user?.google_user_id,
+    sessionId: sessionId?.slice(0, 8) + '...',
+  })
+
   useEffect(() => {
     if (mccAccounts.length === 1 && !selectedMcc) {
       selectMcc(mccAccounts[0].customer_id)
@@ -44,9 +54,18 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
 
   useEffect(() => {
     if (selectedMcc && availableAccounts.length === 0) {
+      console.log('[ACCOUNT-SELECTION] MCC selected but no accounts, refreshing...')
       refreshAccounts()
     }
   }, [selectedMcc, availableAccounts.length, refreshAccounts])
+
+  // For users without MCC accounts, try to refresh accounts if empty
+  useEffect(() => {
+    if (!isFetchingMccs && mccAccounts.length === 0 && availableAccounts.length === 0 && !isLoading) {
+      console.log('[ACCOUNT-SELECTION] No MCC accounts and no available accounts, refreshing...')
+      refreshAccounts()
+    }
+  }, [isFetchingMccs, mccAccounts.length, availableAccounts.length, isLoading, refreshAccounts])
 
   const handleAccountSelect = useCallback(async (accountId: string) => {
     if (selectingAccountId) return

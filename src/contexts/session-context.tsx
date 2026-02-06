@@ -129,8 +129,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const mappedAccounts = accounts.map(toAccountMapping)
       setState(prev => {
         const updatedSelectedAccount = prev.selectedAccount
-        ? mappedAccounts.find(acc => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
-        : null
+          ? mappedAccounts.find(acc => acc.id === prev.selectedAccount?.id) || prev.selectedAccount
+          : null
+
+        // If we have a selectedAccount that's not in the list, add it
+        if (updatedSelectedAccount && !mappedAccounts.find(acc => acc.id === updatedSelectedAccount.id)) {
+          console.log('[SESSION] Adding selectedAccount to accounts list:', updatedSelectedAccount.id)
+          mappedAccounts.push(updatedSelectedAccount)
+        }
+
         return { ...prev, availableAccounts: mappedAccounts, selectedAccount: updatedSelectedAccount }
       })
     } catch (error) {
@@ -180,19 +187,57 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         const { session } = await mia.session.restore()
 
         if (session) {
+          console.log('[SESSION] Valid session found, fetching accounts and workspaces...')
+          console.log('[SESSION] Session user:', session.user?.name, 'id:', session.user?.id)
+          console.log('[SESSION] Session selectedAccount from server:', session.selectedAccount)
+
           // Fetch accounts and workspaces in parallel
           const [accountsResult, workspaces, currentWorkspace] = await Promise.all([
-            mia.accounts.list().catch(() => ({ accounts: [], ga4Properties: [] })),
-            mia.workspaces.list().catch(() => []),
-            mia.workspaces.getCurrent().catch(() => null)
+            mia.accounts.list().catch((err) => {
+              console.error('[SESSION] Failed to fetch accounts:', err)
+              return { accounts: [], ga4Properties: [] }
+            }),
+            mia.workspaces.list().catch((err) => {
+              console.error('[SESSION] Failed to fetch workspaces:', err)
+              return []
+            }),
+            mia.workspaces.getCurrent().catch((err) => {
+              console.error('[SESSION] Failed to get current workspace:', err)
+              return null
+            })
           ])
+
+          console.log('[SESSION] Fetched accounts:', accountsResult.accounts.length)
+          console.log('[SESSION] Fetched workspaces:', workspaces.length)
 
           const mappedAccounts = accountsResult.accounts.map(toAccountMapping)
           const localWorkspaces = workspaces.map(toLocalWorkspace)
 
           let selectedAccount: AccountMapping | null = null
           if (session.selectedAccount) {
+            // First try to find in fetched accounts list (has more complete data)
             selectedAccount = mappedAccounts.find(acc => acc.id === session.selectedAccount?.id) || null
+
+            // If not found in accounts list, use the session's account data directly
+            // This handles the case where accounts.list() returns empty but session has valid account
+            if (!selectedAccount) {
+              console.log('[SESSION] Account not in list, using session data directly')
+              selectedAccount = {
+                id: session.selectedAccount.id,
+                name: session.selectedAccount.name,
+                display_name: session.selectedAccount.name,
+                google_ads_id: session.selectedAccount.googleAdsId || '',
+                ga4_property_id: session.selectedAccount.ga4PropertyId || '',
+                meta_ads_id: session.selectedAccount.metaAdsId || undefined,
+                business_type: '',
+                color: '',
+              }
+              // Also add this account to the available accounts list so it shows in UI
+              mappedAccounts.push(selectedAccount)
+            }
+            console.log('[SESSION] Using selectedAccount:', selectedAccount?.id, selectedAccount?.name)
+          } else {
+            console.log('[SESSION] No selectedAccount in session from server')
           }
 
           let activeWorkspace: Workspace | null = null
