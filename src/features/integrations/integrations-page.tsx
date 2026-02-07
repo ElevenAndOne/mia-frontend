@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
-import { useMiaClient } from '../../sdk'
+import { useMiaClient, type PlatformId } from '../../sdk'
 import { apiFetch } from '../../utils/api'
 import { useIntegrationStatus } from './hooks/use-integration-status'
 import MetaAccountSelector from './selectors/meta-account-selector'
@@ -299,23 +299,37 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
-    // Facebook Organic: Check if Meta OAuth is connected, if so show page selector
-    // Otherwise, start Meta OAuth flow (it will enable both Meta Ads and FB Organic credentials)
-    if (integrationId === 'facebook_organic') {
-      // Check if Meta credentials exist
+    // OAuth integrations: attempt silent reconnect first, then fall back to OAuth flow.
+    const oauthIntegrations: PlatformId[] = ['google', 'meta', 'facebook_organic', 'hubspot', 'mailchimp']
+    if (oauthIntegrations.includes(integrationId as PlatformId)) {
+      setConnectingId(integrationId)
       try {
-        const metaCredsData = await mia.auth.meta.checkCredentials()
-        if (metaCredsData.hasCredentials) {
-          // Meta OAuth already connected - just show page selector
-          setShowFacebookPageSelector(true)
+        const fastConnect = await mia.platforms.connect(integrationId as PlatformId)
+
+        if (fastConnect.success) {
+          invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          await refreshAccounts()
+          setConnectingId(null)
+          return
+        }
+
+        if (fastConnect.requiresSelection) {
+          if (integrationId === 'google') setShowGoogleAccountSelector(true)
+          else if (integrationId === 'meta') setShowMetaAccountSelector(true)
+          else if (integrationId === 'facebook_organic') setShowFacebookPageSelector(true)
+          else if (integrationId === 'hubspot') setShowHubSpotAccountSelector(true)
+          else if (integrationId === 'mailchimp') setShowMailchimpAccountSelector(true)
+
+          setConnectingId(null)
           return
         }
       } catch (error) {
-        console.error('[FB-ORGANIC] Error checking Meta credentials:', error)
+        console.error(`[INTEGRATIONS] Fast reconnect failed for ${integrationId}:`, error)
       }
-      // Meta OAuth not connected - fall through to start Meta OAuth flow
-      // After OAuth completes, user can select Facebook page via gear icon
-      console.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+
+      // Continue to normal OAuth flow when stored-credential connect is not possible.
+      setConnectingId(null)
     }
 
     if (integrationId === 'google') {
@@ -589,7 +603,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             }}
                             onReconnect={
                               // OAuth platforms can reconnect to refresh credentials / link to workspace
-                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(integration.id)
+                              ['google', 'meta', 'ga4', 'facebook_organic', 'hubspot', 'mailchimp'].includes(integration.id)
                                 ? () => handleConnect(integration.id)
                                 : undefined
                             }

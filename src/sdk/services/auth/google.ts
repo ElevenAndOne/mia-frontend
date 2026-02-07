@@ -33,6 +33,17 @@ interface AuthStatusResponse {
   };
 }
 
+interface SilentLoginResponse {
+  success: boolean;
+  requires_oauth?: boolean;
+  session_id?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
 interface CompleteResponse {
   success: boolean;
   session_id?: string;
@@ -70,6 +81,11 @@ export interface GoogleConnectOptions {
   onPopupClosed?: () => void;
   tenantId?: string;
   returnTo?: string;
+}
+
+export interface GoogleSilentLoginOptions {
+  lastUserId?: string;
+  allowRecentFallback?: boolean;
 }
 
 export class GoogleAuthService {
@@ -132,6 +148,38 @@ export class GoogleAuthService {
 
     window.location.href = auth_url;
     return new Promise(() => {});
+  }
+
+  /**
+   * Attempt silent login using stored credentials.
+   * Returns requiresOAuth=true when deterministic login is not possible.
+   */
+  async loginWithStoredCredentials(
+    options: GoogleSilentLoginOptions = {}
+  ): Promise<{ success: boolean; requiresOAuth: boolean }> {
+    const response = await this.transport.request<SilentLoginResponse>(
+      '/api/oauth/google/login',
+      {
+        method: 'POST',
+        skipAuth: true,
+        body: {
+          last_user_id: options.lastUserId,
+          allow_recent_fallback: options.allowRecentFallback ?? false,
+        },
+      }
+    );
+
+    if (response.success && response.session_id) {
+      this.storage.setSessionId(response.session_id);
+      if (response.user?.id) {
+        this.storage.setUserId(response.user.id);
+      }
+    }
+
+    return {
+      success: Boolean(response.success),
+      requiresOAuth: Boolean(response.requires_oauth),
+    };
   }
 
   /**

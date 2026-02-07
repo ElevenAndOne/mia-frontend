@@ -91,7 +91,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
                   />
                 ))}
 
-                {isLoading && (
+                {isLoading && !streamingContent && (
                   <div className="mb-6">
                     <div className="flex items-center gap-2 text-quaternary">
                       <div className="flex gap-1">

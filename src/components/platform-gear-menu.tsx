@@ -41,12 +41,10 @@ const PlatformGearMenu = ({
   // Platforms that support adding multiple accounts
   const supportsMultiAccount = ['brevo', 'hubspot', 'mailchimp'].includes(platformId)
 
-  // OAuth platforms that support reconnecting (to refresh credentials / link to workspace)
-  const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(platformId)
+  // OAuth platforms that support reconnecting (silent if credentials exist).
+  const supportsReconnect = ['google', 'meta', 'ga4', 'facebook_organic', 'hubspot', 'mailchimp'].includes(platformId)
 
-  // Google Ads disconnect is disabled - it's the main account switcher and removing
-  // credentials would break all linked accounts. Users can manage accounts instead.
-  const canDisconnect = platformId !== 'google'
+  const canDisconnect = true
 
   // Build dropdown items based on platform capabilities
   const menuItems: DropdownItem[] = useMemo(() => {
@@ -171,7 +169,7 @@ const PlatformGearMenu = ({
       >
         <h3 className="label-bg text-primary mb-2">Disconnect {platformName}?</h3>
         <p className="paragraph-sm text-tertiary mb-4">
-          This will remove your credentials. You'll need to re-authenticate to use {platformName} again.
+          This unlinks {platformName} from this workspace but keeps your OAuth authorization for quick reconnect.
         </p>
         <div className="flex gap-3">
           <button

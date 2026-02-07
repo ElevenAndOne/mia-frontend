@@ -113,31 +113,65 @@ export const useChatView = () => {
     setStreamingContent('')
 
     try {
-      const result = await mia.chat.send({
+      let streamedResponse = ''
+      for await (const chunk of mia.chat.stream({
         message,
         dateRange,
         platforms: selectedPlatforms,
         googleAdsId: selectedAccount?.google_ads_id,
         ga4PropertyId: selectedAccount?.ga4_property_id,
-      })
-
-      const assistantMessage: ChatMessageItem = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: result.success && result.claudeResponse
-          ? result.claudeResponse
-          : 'Sorry, I had trouble processing your question. Please try again.',
+      })) {
+        if (chunk.type === 'text' && chunk.text) {
+          streamedResponse += chunk.text
+          setStreamingContent(streamedResponse)
+        } else if (chunk.type === 'error') {
+          throw new Error(chunk.error || 'Streaming failed')
+        }
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (error) {
-      console.error('[CHAT] Error:', error)
-      const errorMessage: ChatMessageItem = {
+      const finalContent = streamedResponse.trim()
+      if (!finalContent) {
+        throw new Error('Empty streaming response')
+      }
+
+      setMessages((prev) => [...prev, {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: 'Connection error. Please check your connection and try again.',
+        content: finalContent,
+      }])
+      setStreamingContent('')
+    } catch (streamError) {
+      console.error('[CHAT] Streaming error, falling back to sync request:', streamError)
+
+      try {
+        const result = await mia.chat.send({
+          message,
+          dateRange,
+          platforms: selectedPlatforms,
+          googleAdsId: selectedAccount?.google_ads_id,
+          ga4PropertyId: selectedAccount?.ga4_property_id,
+        })
+
+        const assistantMessage: ChatMessageItem = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: result.success && result.claudeResponse
+            ? result.claudeResponse
+            : 'Sorry, I had trouble processing your question. Please try again.',
+        }
+
+        setMessages((prev) => [...prev, assistantMessage])
+      } catch (error) {
+        console.error('[CHAT] Fallback error:', error)
+        const errorMessage: ChatMessageItem = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Connection error. Please check your connection and try again.',
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      } finally {
+        setStreamingContent('')
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }

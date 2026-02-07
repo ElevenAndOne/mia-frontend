@@ -13,6 +13,14 @@ import { BrevoService } from './brevo';
 import { HubSpotService } from './hubspot';
 import { MailchimpService } from './mailchimp';
 
+export interface PlatformConnectResult {
+  success: boolean;
+  connectedVia?: 'stored_credentials';
+  requiresOauth?: boolean;
+  requiresSelection?: boolean;
+  message?: string;
+}
+
 export class PlatformsService {
   private transport: Transport;
   readonly brevo: BrevoService;
@@ -24,6 +32,29 @@ export class PlatformsService {
     this.brevo = new BrevoService(transport);
     this.hubspot = new HubSpotService(transport);
     this.mailchimp = new MailchimpService(transport);
+  }
+
+  /**
+   * Connect a platform using stored credentials when available.
+   */
+  async connect(platformId: PlatformId): Promise<PlatformConnectResult> {
+    const response = await this.transport.request<{
+      success: boolean;
+      connected_via?: 'stored_credentials';
+      requires_oauth?: boolean;
+      requires_selection?: boolean;
+      message?: string;
+    }>(`/api/platform/${platformId}/connect`, {
+      method: 'POST',
+    });
+
+    return {
+      success: response.success,
+      connectedVia: response.connected_via,
+      requiresOauth: response.requires_oauth,
+      requiresSelection: response.requires_selection,
+      message: response.message,
+    };
   }
 
   /**

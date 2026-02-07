@@ -25,6 +25,17 @@ interface AuthStatusResponse {
   };
 }
 
+interface SilentLoginResponse {
+  success: boolean;
+  requires_oauth?: boolean;
+  session_id?: string;
+  user?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+}
+
 interface CompleteResponse {
   success: boolean;
   user?: {
@@ -54,6 +65,11 @@ export interface MetaConnectOptions {
   tenantId?: string;
   onPopupClosed?: () => void;
   returnTo?: string;
+}
+
+export interface MetaSilentLoginOptions {
+  lastUserId?: string;
+  allowRecentFallback?: boolean;
 }
 
 export class MetaAuthService {
@@ -115,6 +131,37 @@ export class MetaAuthService {
 
     window.location.href = auth_url;
     return new Promise(() => {});
+  }
+
+  /**
+   * Attempt silent login using previously stored Meta credentials.
+   */
+  async loginWithStoredCredentials(
+    options: MetaSilentLoginOptions = {}
+  ): Promise<{ success: boolean; requiresOAuth: boolean }> {
+    const response = await this.transport.request<SilentLoginResponse>(
+      '/api/oauth/meta/login',
+      {
+        method: 'POST',
+        skipAuth: true,
+        body: {
+          last_user_id: options.lastUserId,
+          allow_recent_fallback: options.allowRecentFallback ?? false,
+        },
+      }
+    );
+
+    if (response.success && response.session_id) {
+      this.storage.setSessionId(response.session_id);
+      if (response.user?.id) {
+        this.storage.setUserId(response.user.id);
+      }
+    }
+
+    return {
+      success: Boolean(response.success),
+      requiresOAuth: Boolean(response.requires_oauth),
+    };
   }
 
   /**

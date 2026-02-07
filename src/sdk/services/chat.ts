@@ -5,6 +5,7 @@
 
 import type { Transport } from '../internal/transport';
 import type { StorageAdapter } from '../internal/storage';
+import { createSSEStream, type SSEChunk } from '../internal/sse';
 
 export interface ChatMessage {
   message: string;
@@ -78,6 +79,30 @@ export class ChatService {
       claudeResponse: response.claude_response || response.response,
       error: response.error,
     };
+  }
+
+  /**
+   * Stream chat response via SSE.
+   */
+  stream(message: ChatMessage): AsyncGenerator<SSEChunk> {
+    const userId = this.storage.getUserId();
+    return createSSEStream(
+      {
+        baseUrl: this.transport.getBaseUrl(),
+        storage: this.storage,
+        timeout: 120000,
+      },
+      '/api/chat/stream',
+      {
+        message: message.message,
+        user_id: userId || '',
+        date_range: message.dateRange || '30_days',
+        selected_platforms: message.platforms,
+        google_ads_id: message.googleAdsId,
+        ga4_property_id: message.ga4PropertyId,
+        meta_ads_id: message.metaAdsId,
+      }
+    );
   }
 
   /**

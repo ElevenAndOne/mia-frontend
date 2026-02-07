@@ -321,6 +321,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
+      const lastUserId = typeof window !== 'undefined'
+        ? localStorage.getItem('mia_last_user_id') || undefined
+        : undefined
+
+      const silentLogin = await mia.auth.google.loginWithStoredCredentials({
+        lastUserId,
+      })
+
+      if (silentLogin.success) {
+        const restored = await hydrateFromServer()
+        if (restored) {
+          return true
+        }
+      }
+
       await mia.auth.google.connect({
         onPopupClosed,
         returnTo: window.location.href
@@ -341,6 +356,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
     try {
+      const lastUserId = typeof window !== 'undefined'
+        ? localStorage.getItem('mia_last_user_id') || undefined
+        : undefined
+
+      const silentLogin = await mia.auth.meta.loginWithStoredCredentials({
+        lastUserId,
+      })
+
+      if (silentLogin.success) {
+        const restored = await hydrateFromServer()
+        if (restored) {
+          return true
+        }
+      }
+
       await mia.auth.meta.connect({
         onPopupClosed,
         returnTo: window.location.href
@@ -354,7 +384,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: errorMessage }))
       return false
     }
-  }, [mia])
+  }, [hydrateFromServer, mia])
 
   // Logout
   const logout = useCallback(async (): Promise<void> => {
