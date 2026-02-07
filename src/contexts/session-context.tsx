@@ -263,6 +263,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       availableAccounts: mappedAccounts,
       availableWorkspaces: localWorkspaces,
       activeWorkspace,
+      error: null,
       isLoading: false,
       connectingPlatform: null
     }))
@@ -282,7 +283,24 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       try {
         // Handle mobile OAuth redirect
         const urlParams = new URLSearchParams(window.location.search)
+        const oauthError = urlParams.get('oauth_error')
+        const oauthProvider = urlParams.get('oauth_provider')
         const oauthComplete = urlParams.get('oauth_complete')
+
+        if (oauthError) {
+          const providerLabel = oauthProvider === 'meta' ? 'Meta' : 'Google'
+          setState(prev => ({
+            ...prev,
+            error: `${providerLabel} login was not successful. Please try again.`,
+            isLoading: false,
+            connectingPlatform: null
+          }))
+          window.history.replaceState({}, '', window.location.pathname)
+          localStorage.removeItem('mia_oauth_pending')
+          localStorage.removeItem('mia_oauth_return_url')
+          await hydrateFromServer()
+          return
+        }
 
         if (oauthComplete === 'google' || oauthComplete === 'meta') {
           setState(prev => ({ ...prev, connectingPlatform: oauthComplete as 'google' | 'meta' }))

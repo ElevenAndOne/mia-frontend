@@ -32,7 +32,7 @@ export const useMessageQueue = (): MessageQueueState => {
     const nextMessage = messageQueue[0]
     setIsTyping(true)
 
-    const delay = nextMessage.type === 'explainer-box' ? 2500 : 2000
+    const delay = nextMessage.type === 'explainer-box' ? 2500 : nextMessage.type === 'input-prompt' ? 600 : 1600
     const timeoutId = window.setTimeout(() => {
       setDisplayedMessages((prev) => [...prev, { ...nextMessage, id: generateId() }])
       setMessageQueue((prev) => prev.slice(1))

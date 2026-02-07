@@ -1,28 +1,28 @@
-import { Icon } from '../../../components/icon'
 import { SegmentedCircularProgress } from './progress-dots'
 
 interface ChatHeaderProps {
   current: number
   total: number
-  onManageIntegrations: () => void
+  title: string
+  onSkip: () => void
 }
 
-export const ChatHeader = ({ current, total, onManageIntegrations }: ChatHeaderProps) => (
+export const ChatHeader = ({ current, total, title, onSkip }: ChatHeaderProps) => (
   <div className="sticky top-0 w-full p-3 gap-3 border-b border-secondary">
 
     <div className='w-full max-w-3xl mx-auto flex items-center justify-between'>
       <div className="flex items-center gap-3 bg-secondary px-3 py-2 rounded-xl w-full">
         <SegmentedCircularProgress current={current} total={total} size={32} />
-        <h1 className="label-sm">Onboarding</h1>
+        <h1 className="label-sm">{title}</h1>
       </div>
       <button
         type="button"
-        onClick={onManageIntegrations}
-        className="p-2 text-placeholder-subtle hover:text-tertiary hover:bg-tertiary rounded-full transition-colors"
-        title="Manage Integrations"
-        aria-label="Manage Integrations"
+        onClick={onSkip}
+        className="px-3 py-2 rounded-full subheading-md text-tertiary hover:text-secondary hover:bg-tertiary transition-colors"
+        title="Skip onboarding"
+        aria-label="Skip onboarding"
       >
-        <Icon.settings_01 size={20} />
+        Skip
       </button>
     </div>
   </div>

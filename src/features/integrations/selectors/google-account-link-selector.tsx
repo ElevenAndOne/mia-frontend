@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useGoogleAccountLinkSelector } from './hooks/use-google-account-link-selector'
@@ -17,13 +18,15 @@ function GoogleIcon() {
 }
 
 const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountLinkSelectorProps) => {
+  const [expandedManagerId, setExpandedManagerId] = useState<string | null>(null)
   const {
     isLoading,
     isSubmitting,
     error,
     success,
     selectedId,
-    accountItems,
+    standaloneItems,
+    managerItems,
     isEmpty,
     subtitle,
     setSelectedId,
@@ -54,7 +57,40 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
       accentColor="blue"
     >
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {accountItems.map((account) => (
+        {managerItems.map((manager) => {
+          const isExpanded = expandedManagerId === manager.id
+          return (
+            <div key={manager.id} className="space-y-2">
+              <SelectorItem
+                isSelected={isExpanded}
+                onSelect={() => setExpandedManagerId(isExpanded ? null : manager.id)}
+                title={manager.title}
+                subtitle={manager.subtitle}
+                badge="Manager"
+                badgeColor="blue"
+                accentColor="blue"
+                selectionStyle="radio"
+              />
+              {isExpanded ? (
+                <div className="pl-5 space-y-2">
+                  {manager.accounts.map((account) => (
+                    <SelectorItem
+                      key={account.id}
+                      isSelected={selectedId === account.id}
+                      onSelect={() => setSelectedId(account.id)}
+                      title={account.title}
+                      subtitle={account.subtitle}
+                      accentColor="blue"
+                      selectionStyle="radio"
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+
+        {standaloneItems.map((account) => (
           <SelectorItem
             key={account.id}
             isSelected={selectedId === account.id}
@@ -62,6 +98,7 @@ const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccount
             title={account.title}
             subtitle={account.subtitle}
             accentColor="blue"
+            selectionStyle="radio"
           />
         ))}
       </div>

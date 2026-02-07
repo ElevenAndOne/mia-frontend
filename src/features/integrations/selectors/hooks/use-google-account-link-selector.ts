@@ -19,7 +19,9 @@ export const useGoogleAccountLinkSelector = ({
 }: UseGoogleAccountLinkSelectorParams) => {
   const mia = useMiaClient()
   const { sessionId, selectedAccount, refreshAccounts, user } = useSession()
-  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([])
+  const [standaloneAccounts, setStandaloneAccounts] = useState<GoogleAccount[]>([])
+  const [managerGroups, setManagerGroups] = useState<Array<{ id: string; name: string; accounts: GoogleAccount[] }>>([])
+  const [allSelectableAccounts, setAllSelectableAccounts] = useState<GoogleAccount[]>([])
   const [state, actions] = useSelectorState<string>({ onClose })
   const { selectedId, isLoading, isSubmitting, error, success } = state
   const { setSelectedId, setIsLoading, setError, handleClose, resetState, withSubmitting } = actions
@@ -61,19 +63,42 @@ export const useGoogleAccountLinkSelector = ({
         return
       }
 
-      const { regularAccounts } = await mia.accounts.getMccAccounts(userId)
-      // Combine and map to GoogleAccount format
-      const accounts: GoogleAccount[] = [
-        ...regularAccounts.map((acc) => ({
-          customer_id: acc.customerId,
-          descriptive_name: acc.descriptiveName,
-          manager: acc.isManager,
-          login_customer_id: acc.loginCustomerId,
-        })),
-      ]
-      setGoogleAccounts(accounts)
-      if (accounts.length === 1) {
-        setSelectedId(accounts[0].customer_id)
+      const { mccAccounts, regularAccounts } = await mia.accounts.getMccAccounts(userId)
+      const mappedRegularAccounts: GoogleAccount[] = regularAccounts.map((acc) => ({
+        customer_id: acc.customerId,
+        descriptive_name: acc.descriptiveName,
+        manager: acc.isManager,
+        login_customer_id: acc.loginCustomerId,
+      }))
+
+      const groupedSubIds = new Set<string>()
+      const mappedManagers = mccAccounts.map((mcc) => {
+        const accounts = (mcc.subAccountIds || [])
+          .map((subId) => mappedRegularAccounts.find((account) => account.customer_id === subId))
+          .filter((account): account is GoogleAccount => Boolean(account))
+          .map((account) => ({
+            ...account,
+            login_customer_id: account.login_customer_id || mcc.customerId
+          }))
+
+        accounts.forEach((account) => groupedSubIds.add(account.customer_id))
+
+        return {
+          id: mcc.customerId,
+          name: mcc.descriptiveName,
+          accounts
+        }
+      }).filter((manager) => manager.accounts.length > 0)
+
+      const mappedStandalone = mappedRegularAccounts.filter((account) => !groupedSubIds.has(account.customer_id))
+      const selectable = [...mappedStandalone, ...mappedManagers.flatMap((manager) => manager.accounts)]
+
+      setStandaloneAccounts(mappedStandalone)
+      setManagerGroups(mappedManagers)
+      setAllSelectableAccounts(selectable)
+
+      if (selectable.length === 1) {
+        setSelectedId(selectable[0].customer_id)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load Google Ads accounts')
@@ -99,7 +124,7 @@ export const useGoogleAccountLinkSelector = ({
       return
     }
 
-    const selectedGoogle = googleAccounts.find((account) => account.customer_id === selectedId)
+    const selectedGoogle = allSelectableAccounts.find((account) => account.customer_id === selectedId)
 
     await withSubmitting(async () => {
       await mia.accounts.linkGoogleAds(
@@ -111,15 +136,28 @@ export const useGoogleAccountLinkSelector = ({
       onSuccess(selectedId)
       handleClose()
     })
-  }, [sessionId, selectedAccount, selectedId, googleAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting, mia])
+  }, [sessionId, selectedAccount, selectedId, allSelectableAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting, mia])
 
-  const accountItems = useMemo(() => {
-    return googleAccounts.map((account) => ({
+  const standaloneItems = useMemo(() => {
+    return standaloneAccounts.map((account) => ({
       id: account.customer_id,
       title: account.descriptive_name || `Account ${account.customer_id}`,
       subtitle: `ID: ${account.customer_id}${account.manager ? ' (Manager Account)' : ''}`,
     }))
-  }, [googleAccounts])
+  }, [standaloneAccounts])
+
+  const managerItems = useMemo(() => {
+    return managerGroups.map((manager) => ({
+      id: manager.id,
+      title: manager.name,
+      subtitle: `${manager.accounts.length} managed accounts`,
+      accounts: manager.accounts.map((account) => ({
+        id: account.customer_id,
+        title: account.descriptive_name || `Account ${account.customer_id}`,
+        subtitle: `ID: ${account.customer_id}`
+      }))
+    }))
+  }, [managerGroups])
 
   return {
     isLoading,
@@ -127,8 +165,9 @@ export const useGoogleAccountLinkSelector = ({
     error,
     success,
     selectedId,
-    accountItems,
-    isEmpty: googleAccounts.length === 0,
+    standaloneItems,
+    managerItems,
+    isEmpty: allSelectableAccounts.length === 0,
     subtitle: `Link to your ${selectedAccount?.name || 'account'}`,
     setSelectedId,
     handleLinkAccount,

@@ -26,7 +26,6 @@ interface AppRoutesProps {
   hasSeenIntro: boolean
   onOAuthPopupClosed: (platform: 'google' | 'meta' | null) => void
   onOnboardingComplete: () => void
-  onConnectPlatform: (platformId: string) => Promise<void>
   onInviteAccepted: (tenantId: string, skipAccountSelection?: boolean) => Promise<void>
   onAccountSelected: () => void
 }
@@ -37,7 +36,6 @@ export const AppRoutes = ({
   hasSeenIntro,
   onOAuthPopupClosed,
   onOnboardingComplete,
-  onConnectPlatform,
   onInviteAccepted,
   onAccountSelected
 }: AppRoutesProps) => {
@@ -99,11 +97,10 @@ export const AppRoutes = ({
         <Route
           path="/onboarding"
           element={
-            <ProtectedRoute requireAccount>
+            <ProtectedRoute>
               <OnboardingProvider>
                 <OnboardingChat
                   onComplete={onOnboardingComplete}
-                  onConnectPlatform={onConnectPlatform}
                 />
               </OnboardingProvider>
             </ProtectedRoute>

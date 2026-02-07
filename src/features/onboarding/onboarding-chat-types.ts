@@ -7,6 +7,7 @@ export type MessageType =
   | 'explainer-box'
   | 'insight-card'
   | 'choice-buttons'
+  | 'input-prompt'
 
 export type ChoiceVariant = 'primary' | 'secondary'
 
@@ -43,6 +44,11 @@ export interface ChatMessage {
   explainerType?: ExplainerType
   insightData?: InsightData
   choices?: ChoiceOption[]
+  inputPromptKey?: string
+  inputPromptLabel?: string
+  inputPromptPlaceholder?: string
+  inputPromptCta?: string
+  inputPromptLoadingCta?: string
 }
 
 export type ChatMessageInput = Omit<ChatMessage, 'id'>

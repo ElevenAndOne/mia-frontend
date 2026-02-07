@@ -334,7 +334,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       setState(prev => ({
         ...prev,
         skipped: true,
-        step: 3, // Skipped second platform
+        completed: true,
+        step: ONBOARDING_STEPS.COMPLETED,
       }))
 
       // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too

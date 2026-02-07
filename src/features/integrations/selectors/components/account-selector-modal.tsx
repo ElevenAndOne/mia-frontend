@@ -1,4 +1,4 @@
-import { Modal } from '../../../overlay'
+import { Modal, Sheet, useIsMobile } from '../../../overlay'
 import { Alert } from '../../../../components/alert'
 import { Spinner } from '../../../../components/spinner'
 import { CloseButton } from '../../../../components/close-button'
@@ -76,8 +76,11 @@ export function AccountSelectorModal({
   children,
   headerExtra,
 }: AccountSelectorModalProps) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" showCloseButton={false} panelClassName="p-6">
+  const isMobile = useIsMobile()
+  const containerClasses = isMobile ? 'px-4 pb-6' : 'p-6'
+
+  const content = (
+    <div className={containerClasses}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -152,6 +155,20 @@ export function AccountSelectorModal({
           </button>
         </div>
       )}
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <Sheet isOpen={isOpen} onClose={onClose} title={title} position="bottom" className="max-h-[90vh]">
+        {content}
+      </Sheet>
+    )
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="md" showCloseButton={false}>
+      {content}
     </Modal>
   )
 }
