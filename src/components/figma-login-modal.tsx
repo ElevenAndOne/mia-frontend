@@ -9,7 +9,7 @@ interface FigmaLoginModalProps {
 }
 
 const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed, onOAuthStart }: FigmaLoginModalProps) => {
-  const { login, loginMeta, checkExistingAuth, refreshAccounts } = useSession()
+  const { login, loginMeta } = useSession()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
   const [isMetaLoading, setIsMetaLoading] = useState(false)
@@ -82,35 +82,8 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         setMetaLoadingMessage('')
       }
     } else if (method === 'Login') {
-      // Login button - check for existing session first, then redirect to Google OAuth
-      // SECURITY FIX (Nov 30, 2025): Removed bypass-login endpoint call - always use proper OAuth
-
       try {
         setIsGoogleLoading(true)
-        setGoogleLoadingMessage('Checking session...')
-
-        // First, check if user is already authenticated via session validation
-        const authCheck = await checkExistingAuth()
-
-        if (authCheck) {
-          console.log('[LOGIN] User already authenticated, skipping to app')
-          setGoogleLoadingMessage('Session found! Redirecting...')
-
-          // Refresh accounts to ensure we have latest data
-          await refreshAccounts()
-
-          // Small delay for UX
-          setTimeout(() => {
-            if (onAuthSuccess) {
-              onAuthSuccess()
-            }
-            setIsGoogleLoading(false)
-          }, 200)
-          return
-        }
-
-        // No valid session found - redirect to Google OAuth (same as "Continue with Google")
-        console.log('[LOGIN] No valid session, redirecting to Google OAuth')
         setGoogleLoadingMessage('Redirecting to sign in...')
         onOAuthStart?.()  // Hide video immediately
 

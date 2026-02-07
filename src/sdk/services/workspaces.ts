@@ -284,7 +284,7 @@ export class WorkspacesService {
 
     return {
       inviteId: response.invite_id,
-      workspaceName: response.workspace_name,
+      workspaceName: response.workspace_name || response.tenant_name || 'Workspace',
       inviterName: response.inviter_name,
       role: response.role as WorkspaceRole,
       isValid: response.is_valid,
@@ -294,12 +294,26 @@ export class WorkspacesService {
   /**
    * Accept workspace invite
    */
-  async acceptInvite(inviteId: string): Promise<{ tenantId: string }> {
+  async acceptInvite(inviteId: string): Promise<{
+    tenantId: string;
+    role?: string;
+    skipAccountSelection: boolean;
+    requiresAccountSelection: boolean;
+    onboardingCompleted: boolean;
+    nextAction?: string;
+  }> {
     const response = await this.transport.request<RawAcceptInviteResponse>(
       `/api/tenants/invites/${inviteId}/accept`,
       { method: 'POST' }
     );
-    return { tenantId: response.tenant_id };
+    return {
+      tenantId: response.tenant_id,
+      role: response.role,
+      skipAccountSelection: response.skip_account_selection ?? false,
+      requiresAccountSelection: response.requires_account_selection ?? false,
+      onboardingCompleted: response.onboarding_completed ?? false,
+      nextAction: response.next_action,
+    };
   }
 
   /**

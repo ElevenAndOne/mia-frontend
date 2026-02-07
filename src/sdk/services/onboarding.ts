@@ -54,9 +54,11 @@ export interface GrowTaskStatus {
 
 export class OnboardingService {
   private transport: Transport;
+  private storage: StorageAdapter;
 
-  constructor(transport: Transport, _storage: StorageAdapter) {
+  constructor(transport: Transport, storage: StorageAdapter) {
     this.transport = transport;
+    this.storage = storage;
   }
 
   /**
@@ -77,7 +79,7 @@ export class OnboardingService {
    * ```
    */
   async getStatus(): Promise<OnboardingStatus> {
-    const sessionId = this.transport.getStorage().getSessionId();
+    const sessionId = this.storage.getSessionId();
     if (!sessionId) {
       throw new Error('No active session');
     }
@@ -110,7 +112,7 @@ export class OnboardingService {
    * Advance to next onboarding step
    */
   async advanceStep(): Promise<void> {
-    const sessionId = this.transport.getStorage().getSessionId();
+    const sessionId = this.storage.getSessionId();
     if (!sessionId) {
       throw new Error('No active session');
     }
@@ -123,7 +125,7 @@ export class OnboardingService {
    * Update to specific onboarding step
    */
   async updateStep(step: number): Promise<void> {
-    const sessionId = this.transport.getStorage().getSessionId();
+    const sessionId = this.storage.getSessionId();
     if (!sessionId) {
       throw new Error('No active session');
     }
@@ -137,11 +139,16 @@ export class OnboardingService {
    * Mark onboarding as complete
    */
   async complete(platformsAtCompletion?: string[]): Promise<void> {
+    const sessionId = this.storage.getSessionId();
+    if (!sessionId) {
+      throw new Error('No active session');
+    }
     await this.transport.request('/api/onboarding/complete', {
       method: 'POST',
-      body: platformsAtCompletion
-        ? { platforms_at_completion: platformsAtCompletion }
-        : {},
+      body: {
+        session_id: sessionId,
+        ...(platformsAtCompletion ? { platforms_at_completion: platformsAtCompletion } : {}),
+      },
     });
   }
 
@@ -149,7 +156,7 @@ export class OnboardingService {
    * Skip onboarding process
    */
   async skip(): Promise<void> {
-    const sessionId = this.transport.getStorage().getSessionId();
+    const sessionId = this.storage.getSessionId();
     if (!sessionId) {
       throw new Error('No active session');
     }
@@ -162,7 +169,7 @@ export class OnboardingService {
    * Get available platforms for onboarding
    */
   async getAvailablePlatforms(): Promise<AvailablePlatform[]> {
-    const sessionId = this.transport.getStorage().getSessionId();
+    const sessionId = this.storage.getSessionId();
     if (!sessionId) {
       throw new Error('No active session');
     }

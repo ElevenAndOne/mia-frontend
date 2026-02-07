@@ -85,6 +85,37 @@ export interface ConnectedPlatforms {
   mailchimp: boolean;
 }
 
+export type SessionNextAction =
+  | 'AUTH_REQUIRED'
+  | 'ACCEPT_INVITE'
+  | 'CREATE_WORKSPACE'
+  | 'SELECT_ACCOUNT'
+  | 'ONBOARDING'
+  | 'HOME';
+
+export interface SessionMembership {
+  tenantId: string;
+  name: string;
+  slug: string;
+  role: string;
+  onboardingCompleted: boolean;
+  connectedPlatforms: string[];
+}
+
+export interface SessionPendingInvite {
+  inviteId: string;
+  tenantId: string;
+  tenantName: string;
+  role: string;
+  invitedBy?: string;
+  expiresAt: string;
+}
+
+export interface SessionInviteContext {
+  pendingInvitesCount: number;
+  pendingInvites: SessionPendingInvite[];
+}
+
 /**
  * Complete session state.
  *
@@ -116,6 +147,16 @@ export interface SessionData {
   selectedAccount: AccountSummary | null;
   /** Session expiration timestamp (ISO 8601) */
   expiresAt: string | null;
+  /** Backend-determined next routing action */
+  nextAction: SessionNextAction;
+  /** Active tenant/workspace ID for this session */
+  activeTenantId: string | null;
+  /** Whether account selection is required before proceeding */
+  requiresAccountSelection: boolean;
+  /** Workspace memberships for this user */
+  memberships: SessionMembership[];
+  /** Pending invite context for deterministic invite routing */
+  inviteContext: SessionInviteContext | null;
 }
 
 /**
@@ -150,6 +191,7 @@ export interface ValidateSessionResult {
  */
 export interface RawSessionValidationResponse {
   valid: boolean;
+  message?: string;
   user?: {
     name: string;
     email: string;
@@ -180,4 +222,27 @@ export interface RawSessionValidationResponse {
     mailchimp?: boolean;
   };
   expires_at?: string;
+  next_action?: SessionNextAction;
+  active_tenant_id?: string | null;
+  requires_account_selection?: boolean;
+  memberships?: Array<{
+    tenant_id: string;
+    name: string;
+    slug: string;
+    role: string;
+    onboarding_completed: boolean;
+    connected_platforms?: string[];
+  }>;
+  invite_context?: {
+    pending_invites_count: number;
+    pending_invites: Array<{
+      invite_id: string;
+      tenant_id: string;
+      tenant_name: string;
+      role: string;
+      invited_by?: string;
+      expires_at: string;
+    }>;
+  } | null;
+  session_version?: string;
 }

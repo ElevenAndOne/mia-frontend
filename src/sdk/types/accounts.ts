@@ -129,6 +129,14 @@ export interface LinkedGA4Property extends GA4Property {
 export interface SelectAccountResult {
   /** Whether selection succeeded */
   success: boolean;
+  /** Whether a workspace was created during selection */
+  workspaceCreated: boolean;
+  /** Active tenant/workspace after selection */
+  activeTenant?: {
+    tenantId: string;
+    name: string;
+    slug?: string;
+  };
   /** Workspace info if one was auto-created */
   autoCreatedWorkspace?: {
     tenantId: string;
@@ -177,10 +185,17 @@ export interface RawAccountsListResponse {
 
 export interface RawSelectAccountResponse {
   success: boolean;
+  workspace_created?: boolean;
+  active_tenant?: {
+    tenant_id: string;
+    name: string;
+    slug?: string;
+  };
   workspace?: {
     tenant_id: string;
     name: string;
     auto_created?: boolean;
+    slug?: string;
   };
 }
 

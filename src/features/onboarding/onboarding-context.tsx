@@ -111,7 +111,7 @@ const mapBronzeFact = (fact: SDKBronzeFact): BronzeFact => ({
 })
 
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
-  const { sessionId, selectedAccount, refreshWorkspaces } = useSession()
+  const { sessionId, selectedAccount, refreshWorkspaces, checkExistingAuth } = useSession()
   const mia = useMiaClient()
 
   const [state, setState] = useState<OnboardingState>({
@@ -319,11 +319,12 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       // This ensures main page icons show correctly after onboarding without requiring page refresh
       console.log('[ONBOARDING] Refreshing workspace data after completion...')
       await refreshWorkspaces()
+      await checkExistingAuth()
       console.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
     } catch (err) {
       console.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected, refreshWorkspaces, mia])
+  }, [sessionId, state.platformsConnected, refreshWorkspaces, checkExistingAuth, mia])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return

@@ -13,15 +13,16 @@ function App() {
   const {
     isAuthenticated,
     isMetaAuthenticated,
+    nextAction,
+    requiresAccountSelection,
+    inviteContext,
     selectedAccount,
     isLoading,
     hasSeenIntro,
     activeWorkspace,
     availableWorkspaces,
-    user,
     loginMeta,
     refreshAccounts,
-    refreshWorkspaces,
     switchWorkspace,
     connectingPlatform
   } = useSession()
@@ -31,9 +32,6 @@ function App() {
 
   // Workspace creation modal
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false)
-
-  // Track if user just accepted an invite
-  const [justAcceptedInvite, setJustAcceptedInvite] = useState(false)
 
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
@@ -84,46 +82,53 @@ function App() {
       }
     }
 
-    // Handle returning users on home page
-    if (path === '/') {
-      if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
-        navigate('/home')
-        return
+    if (!isAnyAuthenticated || nextAction === 'AUTH_REQUIRED') {
+      if (!path.startsWith('/invite/') && path !== '/' && path !== '/login') {
+        navigate('/')
       }
-      if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
-        // TODO: Handle returning users
-        console.log('[SESSION] Handle returning users')
-        console.log('hasSeenIntro', hasSeenIntro)
-        console.log('isAnyAuthenticated', isAnyAuthenticated)
-        console.log('selectedAccount', selectedAccount)
-
-        navigate('/accounts')
-        return
-      }
-    }
-
-    // Redirect unauthenticated users to home (except public routes and login)
-    if (!isAnyAuthenticated && !path.startsWith('/invite/') && path !== '/' && path !== '/login') {
-      navigate('/')
       return
     }
 
-    // Handle account selection completion - redirect away from accounts page if already selected
-    if (path.startsWith('/accounts') && selectedAccount) {
-      if (!activeWorkspace && availableWorkspaces.length === 0) {
+    if (nextAction === 'CREATE_WORKSPACE') {
+      if (!activeWorkspace && availableWorkspaces.length === 0 && path.startsWith('/accounts')) {
         setShowCreateWorkspaceModal(true)
-      } else if (justAcceptedInvite) {
-        setJustAcceptedInvite(false)
-        navigate('/home')
-      } else if (user?.onboarding_completed) {
-        navigate('/home')
-      } else {
+      } else if (!path.startsWith('/accounts')) {
+        navigate('/accounts')
+      }
+      return
+    }
+
+    if (nextAction === 'ACCEPT_INVITE') {
+      const pendingInviteId = inviteContext?.pendingInvites[0]?.inviteId
+      if (pendingInviteId && !path.startsWith('/invite/')) {
+        navigate(`/invite/${pendingInviteId}`)
+      }
+      return
+    }
+
+    if (nextAction === 'SELECT_ACCOUNT' || requiresAccountSelection) {
+      if (!path.startsWith('/accounts')) {
+        navigate('/accounts')
+      }
+      return
+    }
+
+    if (nextAction === 'ONBOARDING') {
+      if (path !== '/onboarding') {
         navigate('/onboarding')
       }
+      return
+    }
+
+    if (nextAction === 'HOME' && (path === '/' || path.startsWith('/accounts') || path === '/onboarding')) {
+      navigate('/home')
     }
   }, [
     isAuthenticated,
     isMetaAuthenticated,
+    nextAction,
+    requiresAccountSelection,
+    inviteContext,
     selectedAccount,
     isLoading,
     location.pathname,
@@ -131,8 +136,6 @@ function App() {
     activeWorkspace,
     availableWorkspaces,
     isAnyAuthenticated,
-    justAcceptedInvite,
-    user?.onboarding_completed,
     navigate
   ])
 
@@ -155,16 +158,12 @@ function App() {
   }
 
   const handleAccountSelected = () => {
-    // Account selection complete - navigate based on workspace/onboarding state
-    if (!activeWorkspace && availableWorkspaces.length === 0) {
+    if (nextAction === 'CREATE_WORKSPACE' && !activeWorkspace && availableWorkspaces.length === 0) {
       setShowCreateWorkspaceModal(true)
-    } else if (justAcceptedInvite) {
-      setJustAcceptedInvite(false)
-      navigate('/home')
-    } else if (user?.onboarding_completed) {
-      navigate('/home')
-    } else {
+    } else if (nextAction === 'ONBOARDING') {
       navigate('/onboarding')
+    } else {
+      navigate('/home')
     }
   }
 
@@ -186,8 +185,6 @@ function App() {
 
   const handleInviteAccepted = async (tenantId: string, skipAccountSelection?: boolean) => {
     window.history.replaceState({}, '', '/')
-    setJustAcceptedInvite(true)
-    await refreshWorkspaces()
     await switchWorkspace(tenantId)
 
     if (skipAccountSelection && isAnyAuthenticated) {

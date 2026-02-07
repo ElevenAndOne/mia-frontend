@@ -15,6 +15,19 @@ export type { Workspace } from '../features/workspace/types'
 export interface SessionState extends MetaAuthState {
   isAuthenticated: boolean
   isLoading: boolean
+  nextAction: 'AUTH_REQUIRED' | 'ACCEPT_INVITE' | 'CREATE_WORKSPACE' | 'SELECT_ACCOUNT' | 'ONBOARDING' | 'HOME' | null
+  requiresAccountSelection: boolean
+  inviteContext: {
+    pendingInvitesCount: number
+    pendingInvites: Array<{
+      inviteId: string
+      tenantId: string
+      tenantName: string
+      role: string
+      invitedBy?: string
+      expiresAt: string
+    }>
+  } | null
   hasSeenIntro: boolean
   user: UserProfile | null
   sessionId: string | null
@@ -49,6 +62,9 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined)
 const INITIAL_STATE: SessionState = {
   isAuthenticated: false,
   isLoading: true,
+  nextAction: null,
+  requiresAccountSelection: false,
+  inviteContext: null,
   hasSeenIntro: false,
   user: null,
   sessionId: null,
@@ -161,6 +177,103 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
   }, [mia])
 
+  const hydrateFromServer = useCallback(async (): Promise<boolean> => {
+    const { session } = await mia.session.restore()
+
+    if (!session) {
+      setState(prev => ({
+        ...prev,
+        sessionId: mia.session.getSessionId(),
+        isAuthenticated: false,
+        isMetaAuthenticated: false,
+        nextAction: 'AUTH_REQUIRED',
+        requiresAccountSelection: false,
+        inviteContext: null,
+        selectedAccount: null,
+        activeWorkspace: null,
+        availableAccounts: [],
+        availableWorkspaces: [],
+        user: null,
+        isLoading: false,
+        connectingPlatform: null
+      }))
+      return false
+    }
+
+    const [accountsResult, workspaces, currentWorkspace] = await Promise.all([
+      mia.accounts.list().catch((err) => {
+        console.error('[SESSION] Failed to fetch accounts:', err)
+        return { accounts: [], ga4Properties: [] }
+      }),
+      mia.workspaces.list().catch((err) => {
+        console.error('[SESSION] Failed to fetch workspaces:', err)
+        return []
+      }),
+      mia.workspaces.getCurrent().catch((err) => {
+        console.error('[SESSION] Failed to get current workspace:', err)
+        return null
+      })
+    ])
+
+    const mappedAccounts = accountsResult.accounts.map(toAccountMapping)
+    const localWorkspaces = workspaces.map(toLocalWorkspace)
+
+    let selectedAccount: AccountMapping | null = null
+    if (session.selectedAccount) {
+      selectedAccount = mappedAccounts.find(acc => acc.id === session.selectedAccount?.id) || null
+      if (!selectedAccount) {
+        selectedAccount = {
+          id: session.selectedAccount.id,
+          name: session.selectedAccount.name,
+          display_name: session.selectedAccount.name,
+          google_ads_id: session.selectedAccount.googleAdsId || '',
+          ga4_property_id: session.selectedAccount.ga4PropertyId || '',
+          meta_ads_id: session.selectedAccount.metaAdsId || undefined,
+          business_type: '',
+          color: '',
+        }
+        mappedAccounts.push(selectedAccount)
+      }
+    }
+
+    let activeWorkspace: Workspace | null = null
+    if (currentWorkspace) {
+      activeWorkspace = localWorkspaces.find(w => w.tenant_id === currentWorkspace.tenantId) || toLocalWorkspace(currentWorkspace)
+    } else if (session.activeTenantId) {
+      activeWorkspace = localWorkspaces.find(w => w.tenant_id === session.activeTenantId) || null
+    }
+
+    setState(prev => ({
+      ...prev,
+      sessionId: mia.session.getSessionId(),
+      isAuthenticated: session.authenticatedPlatforms.google || false,
+      isMetaAuthenticated: session.authenticatedPlatforms.meta || false,
+      nextAction: session.nextAction || null,
+      requiresAccountSelection: session.requiresAccountSelection || false,
+      inviteContext: session.inviteContext || null,
+      hasSeenIntro: session.user?.hasSeenIntro || false,
+      user: session.user ? {
+        name: session.user.name,
+        email: session.user.email || '',
+        picture_url: session.user.pictureUrl || '',
+        google_user_id: session.user.id,
+        onboarding_completed: session.user.onboardingCompleted
+      } : null,
+      selectedAccount,
+      availableAccounts: mappedAccounts,
+      availableWorkspaces: localWorkspaces,
+      activeWorkspace,
+      isLoading: false,
+      connectingPlatform: null
+    }))
+
+    if (session.user?.id) {
+      localStorage.setItem('mia_last_user_id', session.user.id)
+    }
+
+    return !!(session.authenticatedPlatforms.google || session.authenticatedPlatforms.meta)
+  }, [mia])
+
   // Initialize session
   useEffect(() => {
     const initializeSession = async () => {
@@ -174,118 +287,26 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (oauthComplete === 'google' || oauthComplete === 'meta') {
           setState(prev => ({ ...prev, connectingPlatform: oauthComplete as 'google' | 'meta' }))
           const authUserId = urlParams.get('user_id')
-          window.history.replaceState({}, '', window.location.pathname)
-          localStorage.removeItem('mia_oauth_pending')
-          localStorage.removeItem('mia_oauth_return_url')
 
           if (oauthComplete === 'google') {
             await mia.auth.google.completeRedirect(authUserId ?? undefined)
-          }
-        }
-
-        // Restore session using SDK
-        const { session } = await mia.session.restore()
-
-        if (session) {
-          console.log('[SESSION] Valid session found, fetching accounts and workspaces...')
-          console.log('[SESSION] Session user:', session.user?.name, 'id:', session.user?.id)
-          console.log('[SESSION] Session selectedAccount from server:', session.selectedAccount)
-
-          // Fetch accounts and workspaces in parallel
-          const [accountsResult, workspaces, currentWorkspace] = await Promise.all([
-            mia.accounts.list().catch((err) => {
-              console.error('[SESSION] Failed to fetch accounts:', err)
-              return { accounts: [], ga4Properties: [] }
-            }),
-            mia.workspaces.list().catch((err) => {
-              console.error('[SESSION] Failed to fetch workspaces:', err)
-              return []
-            }),
-            mia.workspaces.getCurrent().catch((err) => {
-              console.error('[SESSION] Failed to get current workspace:', err)
-              return null
-            })
-          ])
-
-          console.log('[SESSION] Fetched accounts:', accountsResult.accounts.length)
-          console.log('[SESSION] Fetched workspaces:', workspaces.length)
-
-          const mappedAccounts = accountsResult.accounts.map(toAccountMapping)
-          const localWorkspaces = workspaces.map(toLocalWorkspace)
-
-          let selectedAccount: AccountMapping | null = null
-          if (session.selectedAccount) {
-            // First try to find in fetched accounts list (has more complete data)
-            selectedAccount = mappedAccounts.find(acc => acc.id === session.selectedAccount?.id) || null
-
-            // If not found in accounts list, use the session's account data directly
-            // This handles the case where accounts.list() returns empty but session has valid account
-            if (!selectedAccount) {
-              console.log('[SESSION] Account not in list, using session data directly')
-              selectedAccount = {
-                id: session.selectedAccount.id,
-                name: session.selectedAccount.name,
-                display_name: session.selectedAccount.name,
-                google_ads_id: session.selectedAccount.googleAdsId || '',
-                ga4_property_id: session.selectedAccount.ga4PropertyId || '',
-                meta_ads_id: session.selectedAccount.metaAdsId || undefined,
-                business_type: '',
-                color: '',
-              }
-              // Also add this account to the available accounts list so it shows in UI
-              mappedAccounts.push(selectedAccount)
-            }
-            console.log('[SESSION] Using selectedAccount:', selectedAccount?.id, selectedAccount?.name)
           } else {
-            console.log('[SESSION] No selectedAccount in session from server')
+            await mia.auth.meta.completeRedirect()
           }
 
-          let activeWorkspace: Workspace | null = null
-          if (currentWorkspace) {
-            const found = localWorkspaces.find(w => w.tenant_id === currentWorkspace.tenantId)
-            activeWorkspace = found || toLocalWorkspace(currentWorkspace)
-          }
-
-          setState(prev => ({
-            ...prev,
-            sessionId: mia.session.getSessionId(),
-            isAuthenticated: session.authenticatedPlatforms.google || false,
-            isMetaAuthenticated: session.authenticatedPlatforms.meta || false,
-            hasSeenIntro: session.user?.hasSeenIntro || false,
-            user: session.user ? {
-              name: session.user.name,
-              email: session.user.email || '',
-              picture_url: session.user.pictureUrl || '',
-              google_user_id: session.user.id,
-              onboarding_completed: session.user.onboardingCompleted
-            } : null,
-            selectedAccount,
-            availableAccounts: mappedAccounts,
-            availableWorkspaces: localWorkspaces,
-            activeWorkspace,
-            isLoading: false,
-            connectingPlatform: null
-          }))
-
-          if (session.user?.id) {
-            localStorage.setItem('mia_last_user_id', session.user.id)
-          }
-          return
+          window.history.replaceState({}, '', window.location.pathname)
+          localStorage.removeItem('mia_oauth_pending')
+          localStorage.removeItem('mia_oauth_return_url')
         }
 
-        // No valid session
-        setState(prev => ({
-          ...prev,
-          sessionId: mia.session.getSessionId(),
-          isLoading: false,
-          connectingPlatform: null
-        }))
+        await hydrateFromServer()
       } catch (error) {
         console.error('[SESSION] Initialization error:', error)
         setState(prev => ({
           ...prev,
           error: 'Failed to initialize session',
           sessionId: mia.session.getSessionId(),
+          nextAction: 'AUTH_REQUIRED',
           isLoading: false,
           connectingPlatform: null
         }))
@@ -293,86 +314,47 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
 
     initializeSession()
-  }, [mia])
+  }, [hydrateFromServer, mia])
 
   // Google Login
   const login = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
-      const result = await mia.auth.google.connect({ onPopupClosed })
-
-      if (result.success && result.user) {
-        await refreshAccounts()
-        setState(prev => ({
-          ...prev,
-          isAuthenticated: true,
-          isLoading: false,
-          connectingPlatform: null,
-          hasSeenIntro: true,
-          user: {
-            name: result.user?.name || 'User',
-            email: result.user?.email || '',
-            picture_url: result.user?.pictureUrl || '',
-            google_user_id: result.user?.id || ''
-          }
-        }))
-        return true
-      }
-
-      setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null }))
+      await mia.auth.google.connect({
+        onPopupClosed,
+        returnTo: window.location.href
+      })
       return false
     } catch (error) {
       console.error('[SESSION] Login error:', error)
       const errorMessage = isMiaSDKError(error)
-        ? (error.code === 'OAUTH_POPUP_BLOCKED' ? 'Popup blocked. Please allow popups for this site.' : 'Login failed')
+        ? 'Login failed'
         : 'Login failed'
       setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: errorMessage }))
       return false
     }
-  }, [mia, refreshAccounts])
+  }, [mia])
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
     try {
-      const result = await mia.auth.meta.connect({ onPopupClosed })
-
-      if (result.success) {
-        await refreshAccounts()
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          connectingPlatform: null,
-          isMetaAuthenticated: true,
-          hasSeenIntro: true,
-          user: !prev.isAuthenticated && result.user ? {
-            google_user_id: result.user.id || '',
-            name: result.user.name || 'Meta User',
-            email: result.user.email || '',
-            picture_url: ''
-          } : prev.user,
-          metaUser: result.user ? {
-            id: result.user.id || '',
-            name: result.user.name || 'Meta User',
-            email: result.user.email
-          } : null
-        }))
-        return true
-      }
-
-      setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null }))
+      await mia.auth.meta.connect({
+        onPopupClosed,
+        returnTo: window.location.href
+      })
       return false
     } catch (error) {
       console.error('[SESSION] Meta login error:', error)
       const errorMessage = isMiaSDKError(error)
-        ? (error.code === 'OAUTH_POPUP_BLOCKED' ? 'Popup blocked. Please allow popups for this site.' : 'Meta login failed')
+        ? 'Meta login failed'
         : 'Meta login failed'
       setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: errorMessage }))
       return false
     }
-  }, [mia, refreshAccounts])
+  }, [mia])
 
   // Logout
   const logout = useCallback(async (): Promise<void> => {
@@ -381,6 +363,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       await mia.auth.google.logout()
       mia.session.clear()
+      localStorage.removeItem('mia_oauth_pending')
+      localStorage.removeItem('mia_oauth_return_url')
+      localStorage.removeItem('mia_post_oauth_integration')
+      localStorage.removeItem('mia_pending_invite')
 
       setState(prev => ({
         ...INITIAL_STATE,
@@ -412,31 +398,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const result = await mia.accounts.select(accountId)
-      const account = state.availableAccounts.find(acc => acc.id === accountId)
-
-      let newWorkspace: Workspace | null = null
-      if (result.autoCreatedWorkspace) {
-        newWorkspace = {
-          tenant_id: result.autoCreatedWorkspace.tenantId,
-          name: result.autoCreatedWorkspace.name,
-          slug: result.autoCreatedWorkspace.name.toLowerCase().replace(/\s+/g, '-'),
-          role: 'owner',
-          onboarding_completed: false,
-          connected_platforms: [],
-          member_count: 1
-        }
-      }
-
-      setState(prev => ({
-        ...prev,
-        selectedAccount: account || null,
-        isLoading: false,
-        ...(newWorkspace ? {
-          activeWorkspace: newWorkspace,
-          availableWorkspaces: [...prev.availableWorkspaces, newWorkspace]
-        } : {})
-      }))
+      await mia.accounts.select(accountId)
+      await hydrateFromServer()
       return true
     } catch (error) {
       console.error('[SESSION] Account selection error:', error)
@@ -447,13 +410,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [mia, state.availableAccounts])
+  }, [hydrateFromServer, mia])
 
   // Create Workspace
   const createWorkspaceFn = useCallback(async (name: string): Promise<Workspace | null> => {
     try {
       const created = await mia.workspaces.create(name)
-      const workspace: Workspace = {
+      await hydrateFromServer()
+      return {
         tenant_id: created.tenantId,
         name: created.name,
         slug: created.slug,
@@ -462,98 +426,49 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         connected_platforms: [],
         member_count: 1
       }
-
-      setState(prev => ({
-        ...prev,
-        availableWorkspaces: [...prev.availableWorkspaces, workspace],
-        activeWorkspace: workspace
-      }))
-      return workspace
     } catch (error) {
       console.error('[SESSION] Create workspace error:', error)
       return null
     }
-  }, [mia])
+  }, [hydrateFromServer, mia])
 
   // Switch Workspace
   const switchWorkspaceFn = useCallback(async (tenantId: string): Promise<boolean> => {
     try {
-      const result = await mia.workspaces.switch(tenantId)
-      const workspace = state.availableWorkspaces.find(w => w.tenant_id === tenantId)
-
-      setState(prev => ({
-        ...prev,
-        activeWorkspace: workspace || {
-          tenant_id: tenantId,
-          name: result.name || 'Workspace',
-          slug: result.slug || '',
-          role: (result.role || 'viewer') as Workspace['role'],
-          onboarding_completed: result.onboardingCompleted || false,
-          connected_platforms: result.connectedPlatforms || [],
-          member_count: 1
-        }
-      }))
+      await mia.workspaces.switch(tenantId)
+      await hydrateFromServer()
       return true
     } catch (error) {
       console.error('[SESSION] Switch workspace error:', error)
       return false
     }
-  }, [mia, state.availableWorkspaces])
+  }, [hydrateFromServer, mia])
 
   // Check Existing Auth
   const checkExistingAuth = useCallback(async (): Promise<boolean> => {
     try {
-      const status = await mia.auth.google.getStatus()
-
-      if (status.authenticated) {
-        await refreshAccounts()
-
-        setState(prev => ({
-          ...prev,
-          isAuthenticated: true,
-          hasSeenIntro: status.user_info?.has_seen_intro || false,
-          user: {
-            name: status.user_info?.name || 'User',
-            email: status.user_info?.email || '',
-            picture_url: status.user_info?.picture || '',
-            google_user_id: status.user_info?.id || ''
-          }
-        }))
-
-        if (status.user_info?.id) {
-          localStorage.setItem('mia_last_user_id', status.user_info.id)
-        }
-        return true
-      }
+      return await hydrateFromServer()
     } catch (error) {
       console.error('[SESSION] Error checking existing auth:', error)
     }
     return false
-  }, [mia, refreshAccounts])
+  }, [hydrateFromServer])
 
   // Check Meta Auth
   const checkMetaAuth = useCallback(async (): Promise<boolean> => {
     try {
-      const status = await mia.auth.meta.getStatus()
-
-      if (status.authenticated) {
-        setState(prev => ({
-          ...prev,
-          isMetaAuthenticated: true,
-          hasSeenIntro: status.user_info?.has_seen_intro || false,
-          metaUser: {
-            id: status.user_info?.id || '',
-            name: status.user_info?.name || 'Meta User',
-            email: status.user_info?.email
-          }
-        }))
-        return true
+      const session = await mia.session.validate()
+      if (!session?.authenticatedPlatforms.meta) {
+        return false
       }
+
+      await hydrateFromServer()
+      return true
     } catch (error) {
       console.error('[SESSION] Error checking existing Meta auth:', error)
     }
     return false
-  }, [mia])
+  }, [hydrateFromServer, mia])
 
   const clearError = useCallback((): void => {
     setState(prev => ({ ...prev, error: null }))

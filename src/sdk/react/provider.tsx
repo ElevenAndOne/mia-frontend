@@ -44,15 +44,8 @@ export interface MiaProviderProps {
  * ```
  */
 export function MiaProvider({ config, children }: MiaProviderProps) {
-  // Create client once and memoize
-  const client = useMemo(() => createMiaClient(config), [
-    config.baseUrl,
-    config.timeout,
-    config.retries,
-    config.retryDelay,
-    // Note: onSessionExpired is intentionally not in deps to avoid recreating client
-    // when the callback reference changes
-  ]);
+  // Create client and memoize by config object identity.
+  const client = useMemo(() => createMiaClient(config), [config]);
 
   return (
     <MiaClientContext.Provider value={client}>
@@ -90,6 +83,7 @@ export function MiaProvider({ config, children }: MiaProviderProps) {
  * }
  * ```
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useMiaClient(): MiaClient {
   const client = useContext(MiaClientContext);
 

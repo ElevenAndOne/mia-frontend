@@ -95,7 +95,8 @@ export interface RawWorkspaceInviteResponse {
 
 export interface RawInviteDetailsResponse {
   invite_id: string;
-  workspace_name: string;
+  workspace_name?: string;
+  tenant_name?: string;
   inviter_name: string | null;
   role: string;
   is_valid: boolean;
@@ -103,6 +104,11 @@ export interface RawInviteDetailsResponse {
 
 export interface RawAcceptInviteResponse {
   tenant_id: string;
+  role?: string;
+  skip_account_selection?: boolean;
+  requires_account_selection?: boolean;
+  onboarding_completed?: boolean;
+  next_action?: string;
 }
 
 export interface RawSwitchWorkspaceResponse {

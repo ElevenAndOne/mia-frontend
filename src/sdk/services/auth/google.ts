@@ -7,8 +7,7 @@ import type { Transport } from '../../internal/transport';
 import type { StorageAdapter } from '../../internal/storage';
 import type { User } from '../../types/session';
 import type { MccAccount, GoogleAdsAccount } from '../../types/accounts';
-import { createSDKError, ErrorCodes } from '../../types/errors';
-import { isMobile, generateSessionId } from '../../utils/session-id';
+import { generateSessionId } from '../../utils/session-id';
 
 interface AuthUrlResponse {
   auth_url: string;
@@ -70,9 +69,8 @@ export interface GoogleConnectResult {
 export interface GoogleConnectOptions {
   onPopupClosed?: () => void;
   tenantId?: string;
+  returnTo?: string;
 }
-
-const POPUP_TIMEOUT_MS = 300000; // 5 minutes
 
 export class GoogleAuthService {
   private transport: Transport;
@@ -84,7 +82,7 @@ export class GoogleAuthService {
   }
 
   /**
-   * Full OAuth connection flow (handles popup on desktop, redirect on mobile)
+   * Full OAuth connection flow (redirect-based on desktop and mobile)
    *
    * @example
    * ```typescript
@@ -105,7 +103,9 @@ export class GoogleAuthService {
    * ```
    */
   async connect(options: GoogleConnectOptions = {}): Promise<GoogleConnectResult> {
-    const mobile = isMobile();
+    if (typeof window === 'undefined') {
+      throw new Error('Google OAuth requires a browser environment');
+    }
 
     // Ensure session ID exists before OAuth flow
     if (!this.storage.getSessionId()) {
@@ -114,7 +114,8 @@ export class GoogleAuthService {
 
     // Get auth URL
     const frontendOrigin = encodeURIComponent(window.location.origin);
-    let url = `/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}`;
+    const returnTo = encodeURIComponent(options.returnTo || window.location.href);
+    let url = `/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}&return_to=${returnTo}`;
     if (options.tenantId) {
       url += `&tenant_id=${options.tenantId}`;
     }
@@ -123,20 +124,14 @@ export class GoogleAuthService {
       skipAuth: true,
     });
 
-    if (mobile) {
-      // Store state for redirect flow
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('mia_oauth_pending', 'google');
-        localStorage.setItem('mia_oauth_return_url', window.location.href);
-      }
-      window.location.href = auth_url;
-
-      // Will never resolve - page redirects
-      return new Promise(() => {});
+    // Unified redirect flow for all devices.
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mia_oauth_pending', 'google');
+      localStorage.setItem('mia_oauth_return_url', options.returnTo || window.location.href);
     }
 
-    // Desktop popup flow
-    return this.handlePopupFlow(auth_url, options.onPopupClosed);
+    window.location.href = auth_url;
+    return new Promise(() => {});
   }
 
   /**
@@ -218,93 +213,4 @@ export class GoogleAuthService {
     }
   }
 
-  private async handlePopupFlow(
-    authUrl: string,
-    onPopupClosed?: () => void
-  ): Promise<GoogleConnectResult> {
-    const popup = window.open(
-      authUrl,
-      'google-oauth',
-      'width=500,height=600,scrollbars=yes,resizable=yes'
-    );
-
-    if (!popup) {
-      throw createSDKError(
-        ErrorCodes.OAUTH_POPUP_BLOCKED,
-        'Popup blocked. Please allow popups for this site.'
-      );
-    }
-
-    return new Promise((resolve, reject) => {
-      let userId: string | null = null;
-      let resolved = false;
-
-      // Listen for message from popup
-      const messageHandler = (event: MessageEvent) => {
-        if (
-          event.data?.type === 'oauth_complete' &&
-          event.data?.provider === 'google'
-        ) {
-          userId = event.data.user_id || null;
-          window.removeEventListener('message', messageHandler);
-        }
-      };
-      window.addEventListener('message', messageHandler);
-
-      // Poll for popup close
-      const pollTimer = setInterval(async () => {
-        if (popup.closed && !resolved) {
-          resolved = true;
-          clearInterval(pollTimer);
-          window.removeEventListener('message', messageHandler);
-          onPopupClosed?.();
-
-          try {
-            // Complete the auth flow
-            const url = userId
-              ? `/api/oauth/google/complete?user_id=${userId}`
-              : '/api/oauth/google/complete';
-
-            await this.transport.request(url, { method: 'POST' });
-
-            // Get final status
-            const status = await this.getStatus();
-
-            if (status.authenticated && status.user_info) {
-              this.storage.setUserId(status.user_info.id);
-              resolve({
-                success: true,
-                user: {
-                  id: status.user_info.id,
-                  name: status.user_info.name,
-                  email: status.user_info.email,
-                  pictureUrl: status.user_info.picture,
-                  hasSeenIntro: status.user_info.has_seen_intro || false,
-                  onboardingCompleted: false,
-                },
-                isNewUser: false,
-              });
-            } else {
-              resolve({ success: false, user: null, isNewUser: false });
-            }
-          } catch (error) {
-            reject(error);
-          }
-        }
-      }, 1000);
-
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          clearInterval(pollTimer);
-          window.removeEventListener('message', messageHandler);
-          if (!popup.closed) popup.close();
-          reject(
-            createSDKError(ErrorCodes.OAUTH_CANCELLED, 'Authentication timed out')
-          );
-        }
-      }, POPUP_TIMEOUT_MS);
-    });
-  }
 }

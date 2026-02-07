@@ -76,7 +76,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
       setAccepting(true)
       setError(null)
       const data = await mia.workspaces.acceptInvite(inviteId)
-      onAccepted(data.tenantId, false)
+      onAccepted(data.tenantId, data.skipAccountSelection)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to accept invite'
       setError(message)

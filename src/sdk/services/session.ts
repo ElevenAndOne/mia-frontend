@@ -78,7 +78,7 @@ export class SessionService {
 
     try {
       const data = await this.transport.request<RawSessionValidationResponse>(
-        `/api/session/validate?session_id=${sessionId}`,
+        `/api/session/bootstrap?session_id=${sessionId}`,
         { skipAuth: true }
       );
 
@@ -137,7 +137,7 @@ export class SessionService {
     if (!sessionId) return null;
 
     const data = await this.transport.request<RawSessionValidationResponse>(
-      `/api/session/validate?session_id=${sessionId}`,
+      `/api/session/bootstrap?session_id=${sessionId}`,
       { skipAuth: true }
     );
 
@@ -302,6 +302,11 @@ export class SessionService {
         },
         selectedAccount: null,
         expiresAt: null,
+        nextAction: 'AUTH_REQUIRED',
+        activeTenantId: null,
+        requiresAccountSelection: false,
+        memberships: [],
+        inviteContext: null,
       };
     }
 
@@ -327,6 +332,37 @@ export class SessionService {
         }
       : null;
 
+    const memberships = (data.memberships || []).map((membership) => ({
+      tenantId: membership.tenant_id,
+      name: membership.name,
+      slug: membership.slug,
+      role: membership.role,
+      onboardingCompleted: membership.onboarding_completed,
+      connectedPlatforms: membership.connected_platforms || [],
+    }));
+
+    const inviteContext = data.invite_context
+      ? {
+          pendingInvitesCount: data.invite_context.pending_invites_count,
+          pendingInvites: (data.invite_context.pending_invites || []).map((invite) => ({
+            inviteId: invite.invite_id,
+            tenantId: invite.tenant_id,
+            tenantName: invite.tenant_name,
+            role: invite.role,
+            invitedBy: invite.invited_by,
+            expiresAt: invite.expires_at,
+          })),
+        }
+      : null;
+
+    const inferredNextAction = !data.valid || !data.user
+      ? 'AUTH_REQUIRED'
+      : (!selectedAccount && (data.requires_account_selection ?? true))
+        ? 'SELECT_ACCOUNT'
+        : data.user.onboarding_completed
+          ? 'HOME'
+          : 'ONBOARDING';
+
     return {
       sessionId,
       user,
@@ -347,6 +383,11 @@ export class SessionService {
       },
       selectedAccount,
       expiresAt: data.expires_at || null,
+      nextAction: data.next_action || inferredNextAction,
+      activeTenantId: data.active_tenant_id || null,
+      requiresAccountSelection: data.requires_account_selection ?? false,
+      memberships,
+      inviteContext,
     };
   }
 }

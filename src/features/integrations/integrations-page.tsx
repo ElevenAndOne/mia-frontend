@@ -82,6 +82,20 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
 
+  // Resume the intended modal after OAuth redirect.
+  useEffect(() => {
+    const pendingIntegration = localStorage.getItem('mia_post_oauth_integration')
+    if (!pendingIntegration) return
+
+    localStorage.removeItem('mia_post_oauth_integration')
+    if (pendingIntegration === 'meta') {
+      setTimeout(() => setShowMetaAccountSelector(true), 250)
+    }
+    if (pendingIntegration === 'facebook_organic') {
+      setTimeout(() => setShowFacebookPageSelector(true), 250)
+    }
+  }, [])
+
   // Helper function to calculate "time ago" from ISO timestamp - memoized
   const getTimeAgo = useCallback((isoTimestamp: string | undefined): string => {
     if (!isoTimestamp) return 'Just now'
@@ -302,6 +316,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // Meta OAuth not connected - fall through to start Meta OAuth flow
       // After OAuth completes, user can select Facebook page via gear icon
       console.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+    }
+
+    if (integrationId === 'google') {
+      setConnectingId(integrationId)
+      localStorage.setItem('mia_post_oauth_integration', integrationId)
+      await mia.auth.google.connect({
+        tenantId: activeWorkspace?.tenant_id,
+        returnTo: window.location.href
+      })
+      return
+    }
+
+    if (integrationId === 'meta' || integrationId === 'facebook_organic') {
+      setConnectingId(integrationId)
+      localStorage.setItem('mia_post_oauth_integration', integrationId)
+      await mia.auth.meta.connect({
+        tenantId: activeWorkspace?.tenant_id,
+        returnTo: window.location.href
+      })
+      return
     }
 
     setConnectingId(integrationId)

@@ -8,7 +8,6 @@ import type { StorageAdapter } from '../../internal/storage';
 import type { User } from '../../types/session';
 import type { MetaAdAccount } from '../../types/accounts';
 import type { FacebookPage, RawFacebookPageResponse } from '../../types/platforms';
-import { createSDKError, ErrorCodes } from '../../types/errors';
 import { generateSessionId } from '../../utils/session-id';
 
 interface AuthUrlResponse {
@@ -54,9 +53,8 @@ export interface MetaConnectResult {
 export interface MetaConnectOptions {
   tenantId?: string;
   onPopupClosed?: () => void;
+  returnTo?: string;
 }
-
-const POPUP_TIMEOUT_MS = 300000; // 5 minutes
 
 export class MetaAuthService {
   private transport: Transport;
@@ -68,7 +66,7 @@ export class MetaAuthService {
   }
 
   /**
-   * Full OAuth connection flow (popup only - no mobile redirect for Meta)
+   * Full OAuth connection flow (redirect-based on desktop and mobile)
    *
    * @example
    * ```typescript
@@ -89,22 +87,43 @@ export class MetaAuthService {
    * ```
    */
   async connect(options: MetaConnectOptions = {}): Promise<MetaConnectResult> {
+    if (typeof window === 'undefined') {
+      throw new Error('Meta OAuth requires a browser environment');
+    }
+
     // Ensure session ID exists before OAuth flow
     if (!this.storage.getSessionId()) {
       this.storage.setSessionId(generateSessionId());
     }
 
     // Get auth URL
-    let url = '/api/oauth/meta/auth-url';
+    const frontendOrigin = encodeURIComponent(window.location.origin);
+    const returnTo = encodeURIComponent(options.returnTo || window.location.href);
+    let url = `/api/oauth/meta/auth-url?frontend_origin=${frontendOrigin}&return_to=${returnTo}`;
     if (options.tenantId) {
-      url += `?tenant_id=${options.tenantId}`;
+      url += `&tenant_id=${options.tenantId}`;
     }
 
     const { auth_url } = await this.transport.request<AuthUrlResponse>(url, {
       skipAuth: true,
     });
 
-    return this.handlePopupFlow(auth_url, options.onPopupClosed);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('mia_oauth_pending', 'meta');
+      localStorage.setItem('mia_oauth_return_url', options.returnTo || window.location.href);
+    }
+
+    window.location.href = auth_url;
+    return new Promise(() => {});
+  }
+
+  /**
+   * Complete OAuth flow after redirect callback.
+   */
+  async completeRedirect(): Promise<CompleteResponse> {
+    return this.transport.request<CompleteResponse>('/api/oauth/meta/complete', {
+      method: 'POST',
+    });
   }
 
   /**
@@ -222,72 +241,4 @@ export class MetaAuthService {
     }
   }
 
-  private async handlePopupFlow(
-    authUrl: string,
-    onPopupClosed?: () => void
-  ): Promise<MetaConnectResult> {
-    const popup = window.open(
-      authUrl,
-      'meta-oauth',
-      'width=500,height=600,scrollbars=yes,resizable=yes'
-    );
-
-    if (!popup) {
-      throw createSDKError(
-        ErrorCodes.OAUTH_POPUP_BLOCKED,
-        'Popup blocked. Please allow popups for this site.'
-      );
-    }
-
-    return new Promise((resolve, reject) => {
-      let resolved = false;
-
-      const pollTimer = setInterval(async () => {
-        if (popup.closed && !resolved) {
-          resolved = true;
-          clearInterval(pollTimer);
-          onPopupClosed?.();
-
-          try {
-            const status = await this.getStatus();
-
-            if (status.authenticated) {
-              // Complete the auth flow
-              const completeData = await this.transport.request<CompleteResponse>(
-                '/api/oauth/meta/complete',
-                { method: 'POST' }
-              );
-
-              resolve({
-                success: true,
-                user: completeData.user
-                  ? {
-                      id: completeData.user.id,
-                      name: completeData.user.name,
-                      email: completeData.user.email || '',
-                    }
-                  : null,
-              });
-            } else {
-              resolve({ success: false, user: null });
-            }
-          } catch (error) {
-            reject(error);
-          }
-        }
-      }, 1000);
-
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          clearInterval(pollTimer);
-          if (!popup.closed) popup.close();
-          reject(
-            createSDKError(ErrorCodes.OAUTH_CANCELLED, 'Authentication timed out')
-          );
-        }
-      }, POPUP_TIMEOUT_MS);
-    });
-  }
 }

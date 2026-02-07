@@ -19,6 +19,8 @@ export const ProtectedRoute = ({
   const {
     isAuthenticated,
     isMetaAuthenticated,
+    nextAction,
+    requiresAccountSelection,
     selectedAccount,
     activeWorkspace,
     isLoading,
@@ -46,7 +48,11 @@ export const ProtectedRoute = ({
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
-  if (requireAccount && !selectedAccount) {
+  if (nextAction === 'AUTH_REQUIRED') {
+    return <Navigate to="/" state={{ from: location }} replace />
+  }
+
+  if (requireAccount && !selectedAccount && (nextAction === 'SELECT_ACCOUNT' || requiresAccountSelection)) {
     return <Navigate to="/accounts" state={{ from: location }} replace />
   }
 

@@ -152,7 +152,9 @@ export function createSDKError(
   if (context?.status) error.status = context.status;
   if (context?.endpoint) error.endpoint = context.endpoint;
   if (context) {
-    const { status, endpoint, ...rest } = context;
+    const rest = { ...context };
+    delete rest.status;
+    delete rest.endpoint;
     if (Object.keys(rest).length > 0) {
       error.context = rest;
     }

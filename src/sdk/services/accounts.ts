@@ -121,7 +121,15 @@ export class AccountsService {
 
     return {
       success: response.success,
-      autoCreatedWorkspace: response.workspace
+      workspaceCreated: response.workspace_created || response.workspace?.auto_created || false,
+      activeTenant: response.active_tenant
+        ? {
+            tenantId: response.active_tenant.tenant_id,
+            name: response.active_tenant.name,
+            slug: response.active_tenant.slug,
+          }
+        : undefined,
+      autoCreatedWorkspace: response.workspace?.auto_created
         ? {
             tenantId: response.workspace.tenant_id,
             name: response.workspace.name,

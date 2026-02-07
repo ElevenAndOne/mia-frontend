@@ -40,9 +40,9 @@ export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextPr
     // FEB 2026: Improved regex to prevent hyperlink bleeding
     // - Link text [^[\]]+ cannot contain nested brackets (prevents [BEST] from being captured)
     // - URL [^)]+ cannot contain closing paren (more explicit boundary)
-    const parts = bulletText.split(/(\[[^\[\]]+\]\((?:https?:\/\/[^)]+|DEEPLINK:[^)]+)\)|https?:\/\/[^\s]+)/)
+    const parts = bulletText.split(/(\[[^[\]]+\]\((?:https?:\/\/[^)]+|DEEPLINK:[^)]+)\)|https?:\/\/\S+)/)
     return parts.map((part, index) => {
-      const linkMatch = part.match(/\[([^\[\]]+)\]\(((?:https?:\/\/|DEEPLINK:)[^)]+)\)/)
+      const linkMatch = part.match(/\[([^[\]]+)\]\(((?:https?:\/\/|DEEPLINK:)[^)]+)\)/)
       if (linkMatch) {
         const [, linkText, linkUrl] = linkMatch
         const actualUrl = convertDeepLink(linkUrl)
