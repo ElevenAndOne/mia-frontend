@@ -365,7 +365,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: errorMessage }))
       return false
     }
-  }, [mia])
+  }, [hydrateFromServer, mia])
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {

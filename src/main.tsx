@@ -110,6 +110,7 @@ import { NavigationProvider } from './contexts/navigation-context'
 import { InsightsDatePickerProvider } from './contexts/insights-date-picker-context'
 import { ThemeProvider } from './contexts/theme-context'
 import { OverlayProvider } from './features/overlay'
+import { API_BASE_URL } from './utils/api'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization
@@ -143,7 +144,7 @@ ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <MiaProvider config={{ baseUrl: import.meta.env.VITE_API_BASE_URL }}>
+        <MiaProvider config={{ baseUrl: API_BASE_URL }}>
           <ThemeProvider>
             <SessionProvider>
               <NavigationProvider>

@@ -99,7 +99,8 @@ export class Transport {
       },
       timeout,
       retries,
-      path
+      path,
+      !skipAuth
     );
   }
 
@@ -122,7 +123,8 @@ export class Transport {
     init: RequestInit,
     timeout: number,
     retriesLeft: number,
-    endpoint: string
+    endpoint: string,
+    handleSessionExpired: boolean
   ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -140,7 +142,7 @@ export class Transport {
         const error = await this.parseErrorResponse(response, endpoint);
 
         // Check for session expiration (401)
-        if (response.status === 401) {
+        if (response.status === 401 && handleSessionExpired) {
           this.onSessionExpired?.();
           this.storage.clearSession();
           throw error;
@@ -154,7 +156,8 @@ export class Transport {
             init,
             timeout,
             retriesLeft - 1,
-            endpoint
+            endpoint,
+            handleSessionExpired
           );
         }
 
@@ -202,7 +205,8 @@ export class Transport {
           init,
           timeout,
           retriesLeft - 1,
-          endpoint
+          endpoint,
+          handleSessionExpired
         );
       }
 
