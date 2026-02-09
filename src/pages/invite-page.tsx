@@ -14,7 +14,7 @@ interface InvitePageProps {
 const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const navigate = useNavigate()
   const { inviteId } = useParams<{ inviteId: string }>()
-  const { isAuthenticated, isMetaAuthenticated, sessionId, user } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, sessionId, user, login } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   const handleBack = () => {
@@ -36,8 +36,19 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     sessionId,
     isAuthenticated: isAnyAuthenticated,
     onAccepted,
-    onSignIn: handleBack,
+    onSignIn: () => login(),
   })
+
+  // Clean up mia_pending_invite when we're on the invite page
+  // (prevents stale redirect after invite is accepted)
+  useEffect(() => {
+    if (inviteId) {
+      const pendingInvite = localStorage.getItem('mia_pending_invite')
+      if (pendingInvite === inviteId) {
+        localStorage.removeItem('mia_pending_invite')
+      }
+    }
+  }, [inviteId])
 
   useEffect(() => {
     if (!inviteId) {
