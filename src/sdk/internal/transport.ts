@@ -141,8 +141,8 @@ export class Transport {
 
         // Check for session expiration (401)
         if (response.status === 401) {
-          this.storage.clearSession();
           this.onSessionExpired?.();
+          this.storage.clearSession();
           throw error;
         }
 

@@ -4,7 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { Logo } from '../../../components/logo'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
-import { useMiaClient } from '../../../sdk'
+import { useMiaClient, isMiaSDKError, ErrorCodes } from '../../../sdk'
 
 interface ChatMessageItem {
   id: string
@@ -163,10 +163,33 @@ export const useChatView = () => {
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
         console.error('[CHAT] Fallback error:', error)
+        let errorContent = 'Connection error. Please check your connection and try again.'
+        if (isMiaSDKError(error)) {
+          switch (error.code) {
+            case ErrorCodes.SESSION_EXPIRED:
+            case ErrorCodes.NO_SESSION:
+              errorContent = 'Your session has expired. Please refresh the page to continue.'
+              break
+            case ErrorCodes.RATE_LIMITED:
+              errorContent = 'Too many requests. Please wait a moment and try again.'
+              break
+            case ErrorCodes.SERVER_ERROR:
+              errorContent = 'The server encountered an error. Please try again in a few moments.'
+              break
+            case ErrorCodes.TIMEOUT:
+              errorContent = 'The request timed out. Please try again.'
+              break
+            case ErrorCodes.FORBIDDEN:
+              errorContent = 'You don\'t have permission to perform this action.'
+              break
+            default:
+              errorContent = error.message || errorContent
+          }
+        }
         const errorMessage: ChatMessageItem = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: 'Connection error. Please check your connection and try again.',
+          content: errorContent,
         }
         setMessages((prev) => [...prev, errorMessage])
       } finally {

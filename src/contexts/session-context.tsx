@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useMiaClient, isMiaSDKError } from '../sdk'
 import type { Account, Workspace as SDKWorkspace } from '../sdk'
 
@@ -137,6 +137,7 @@ interface SessionProviderProps {
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
   const mia = useMiaClient()
   const [state, setState] = useState<SessionState>(getInitialState)
+  const selectAccountVersionRef = useRef(0)
 
   // Refresh accounts
   const refreshAccounts = useCallback(async (): Promise<void> => {
@@ -222,17 +223,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (session.selectedAccount) {
       selectedAccount = mappedAccounts.find(acc => acc.id === session.selectedAccount?.id) || null
       if (!selectedAccount) {
-        selectedAccount = {
-          id: session.selectedAccount.id,
-          name: session.selectedAccount.name,
-          display_name: session.selectedAccount.name,
-          google_ads_id: session.selectedAccount.googleAdsId || '',
-          ga4_property_id: session.selectedAccount.ga4PropertyId || '',
-          meta_ads_id: session.selectedAccount.metaAdsId || undefined,
-          business_type: '',
-          color: '',
-        }
-        mappedAccounts.push(selectedAccount)
+        // Server reports a selected account that's not in the accounts list.
+        // Don't create a phantom local-only entry with empty fields — log and clear instead.
+        console.warn('[SESSION] Selected account not in accounts list, clearing stale selection:', session.selectedAccount.id)
       }
     }
 
@@ -306,15 +299,20 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           setState(prev => ({ ...prev, connectingPlatform: oauthComplete as 'google' | 'meta' }))
           const authUserId = urlParams.get('user_id')
 
-          if (oauthComplete === 'google') {
-            await mia.auth.google.completeRedirect(authUserId ?? undefined)
-          } else {
-            await mia.auth.meta.completeRedirect()
-          }
-
+          // Clean URL params BEFORE completeRedirect to prevent retry loops if it throws
           window.history.replaceState({}, '', window.location.pathname)
           localStorage.removeItem('mia_oauth_pending')
           localStorage.removeItem('mia_oauth_return_url')
+
+          try {
+            if (oauthComplete === 'google') {
+              await mia.auth.google.completeRedirect(authUserId ?? undefined)
+            } else {
+              await mia.auth.meta.completeRedirect()
+            }
+          } catch (oauthError) {
+            console.error('[SESSION] OAuth complete error:', oauthError)
+          }
         }
 
         await hydrateFromServer()
@@ -441,15 +439,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
   }, [mia])
 
-  // Select Account
+  // Select Account (with race condition guard — only the latest click takes effect)
   const selectAccountFn = useCallback(async (accountId: string): Promise<boolean> => {
+    const version = ++selectAccountVersionRef.current
     setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
       await mia.accounts.select(accountId)
+      // If a newer selection was started while we waited, discard this result
+      if (version !== selectAccountVersionRef.current) return false
       await hydrateFromServer()
+      if (version !== selectAccountVersionRef.current) return false
       return true
     } catch (error) {
+      // Only update error state if this is still the latest selection
+      if (version !== selectAccountVersionRef.current) return false
       console.error('[SESSION] Account selection error:', error)
       setState(prev => ({
         ...prev,

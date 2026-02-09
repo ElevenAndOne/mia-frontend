@@ -217,6 +217,7 @@ export interface RawSessionValidationResponse {
     google?: boolean;
     meta?: boolean;
     ga4?: boolean;
+    facebook_organic?: boolean;
     brevo?: boolean;
     hubspot?: boolean;
     mailchimp?: boolean;

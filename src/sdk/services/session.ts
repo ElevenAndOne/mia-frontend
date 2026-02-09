@@ -376,7 +376,7 @@ export class SessionService {
         google: data.platforms?.google || false,
         ga4: data.platforms?.ga4 || false,
         meta: data.platforms?.meta || false,
-        facebookOrganic: false,
+        facebookOrganic: data.platforms?.facebook_organic || false,
         brevo: data.platforms?.brevo || false,
         hubspot: data.platforms?.hubspot || false,
         mailchimp: data.platforms?.mailchimp || false,
