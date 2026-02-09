@@ -200,16 +200,28 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           }
 
           // Complete OAuth flow
+          // IMPORTANT: Extract user_id BEFORE cleaning URL, but clean AFTER /complete succeeds
           const urlParams = new URLSearchParams(window.location.search)
           const authUserId = urlParams.get('user_id')
-          window.history.replaceState({}, '', window.location.pathname)
 
           if (oauthPending === 'google') {
-            await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+            if (!authUserId) {
+              console.error('[SESSION] No user_id in OAuth redirect URL - cannot complete auth')
+              setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed - missing user ID' }))
+              window.history.replaceState({}, '', window.location.pathname)
+              return
+            }
+            const success = await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+            if (!success) {
+              console.error('[SESSION] OAuth /complete failed')
+              setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
+            }
           } else if (oauthPending === 'meta') {
-            // Complete Meta OAuth flow for mobile
             await metaAuthService.completeMetaAuth(sessionId)
           }
+
+          // Clean URL only AFTER OAuth completion succeeds
+          window.history.replaceState({}, '', window.location.pathname)
         }
 
         // Validate existing session
