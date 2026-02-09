@@ -195,8 +195,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           localStorage.removeItem('mia_oauth_return_url')
 
           // Store return URL BEFORE any async calls so it's ready for auth-redirects
+          // But ONLY if we're not already on the right page (backend now redirects to full URL)
+          const currentPath = window.location.pathname
           if (returnUrl) {
-            localStorage.setItem('mia_oauth_pending_return', returnUrl)
+            try {
+              const returnPath = new URL(returnUrl).pathname
+              if (returnPath === currentPath) {
+                console.log('[SESSION] Already on return page:', currentPath, '- skipping mia_oauth_pending_return')
+              } else {
+                console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
+                localStorage.setItem('mia_oauth_pending_return', returnUrl)
+              }
+            } catch {
+              console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
+              localStorage.setItem('mia_oauth_pending_return', returnUrl)
+            }
+          } else {
+            console.log('[SESSION] No return URL found - mia_oauth_return_url was not set')
           }
 
           // Complete OAuth flow
@@ -314,16 +329,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Google Login (FEB 2026: Simplified to redirect flow only, popup flow removed)
   const login = useCallback(async (_onPopupClosed?: () => void): Promise<boolean> => {
+    // Capture return URL IMMEDIATELY before any state changes or async operations
+    // This prevents race conditions where React navigation changes the URL before we read it
+    const returnUrl = window.location.origin + window.location.pathname
+    console.log('[SESSION] login() - captured return URL:', returnUrl)
+
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
     try {
-      // Get OAuth URL - backend uses UA detection to determine popup vs redirect flow
-      const authData = await googleAuthService.getGoogleAuthUrl()
+      // Pass return URL to backend so it redirects back to the right page after OAuth
+      const authData = await googleAuthService.getGoogleAuthUrl(returnUrl)
 
       // FEB 2026: Simplified to always use redirect flow (removed popup flow)
       // Redirect flow is more reliable for both mobile and desktop
       localStorage.setItem('mia_oauth_pending', 'google')
-      localStorage.setItem('mia_oauth_return_url', window.location.href)
+      localStorage.setItem('mia_oauth_return_url', returnUrl)
       window.location.href = authData.auth_url
       // Return promise that never resolves - page will redirect before this matters
       return new Promise<boolean>(() => {})
@@ -344,15 +364,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
     try {
-      // Pass frontend_origin for mobile redirect flow and tenant_id for workspace credentials
-      const frontendOrigin = isMobile() ? window.location.origin : undefined
+      // Pass full URL (with path) for mobile redirect flow so user returns to the right page
+      const frontendOrigin = isMobile() ? (window.location.origin + window.location.pathname) : undefined
       const tenantId = state.activeWorkspace?.tenant_id
       const authData = await metaAuthService.getMetaAuthUrl(state.sessionId || '', frontendOrigin, tenantId)
 
       // Mobile redirect flow (same pattern as Google)
       if (isMobile()) {
         localStorage.setItem('mia_oauth_pending', 'meta')
-        localStorage.setItem('mia_oauth_return_url', window.location.href)
+        localStorage.setItem('mia_oauth_return_url', window.location.origin + window.location.pathname)
         // If on onboarding page, flag that we need to show Meta selector on return
         if (window.location.pathname === '/onboarding') {
           localStorage.setItem('mia_pending_meta_link', 'true')

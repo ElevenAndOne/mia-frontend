@@ -84,17 +84,19 @@ export const useAppController = () => {
       await refreshWorkspaces()
       await switchWorkspace(tenantId)
 
-      // Only clear URL after async operations succeed
-      window.history.replaceState({}, '', '/')
-
       if (skipAccountSelection && isAnyAuthenticated) {
-        navigate('/home')
+        // Backend already set up the invited user's account mapping and session.
+        // Force full page reload so initializeSession picks up the complete state
+        // (active workspace + selected account from tenant's primary account).
+        window.location.href = '/home'
       } else if (isAnyAuthenticated && selectedAccount) {
+        window.history.replaceState({}, '', '/')
         navigate('/home')
       } else if (isAnyAuthenticated) {
-        // Account selection happens in onboarding chat
+        window.history.replaceState({}, '', '/')
         navigate('/onboarding')
       } else {
+        window.history.replaceState({}, '', '/')
         navigate('/')
       }
     } catch (error) {

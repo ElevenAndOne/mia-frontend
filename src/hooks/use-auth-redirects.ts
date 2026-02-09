@@ -35,6 +35,8 @@ export const useAuthRedirects = ({
 
     if (path.startsWith('/invite/')) return
 
+    console.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem('mia_pending_invite'))
+
     // Handle OAuth return - navigate back to where user was before OAuth
     // Check FIRST before any other logic, regardless of current auth state
     const pendingReturn = localStorage.getItem('mia_oauth_pending_return')
@@ -55,12 +57,16 @@ export const useAuthRedirects = ({
         navigate(returnPath)
         return
       }
-      // If return path is '/', fall through to normal routing logic
     }
 
+    // Check for pending invite ONLY when authenticated
+    // (must be inside isAnyAuthenticated to prevent redirect loop:
+    //  handleSignIn sets mia_pending_invite then navigates to / via handleBack,
+    //  if we redirect back to /invite immediately, user can never reach the login page)
     if (isAnyAuthenticated) {
       const pendingInvite = localStorage.getItem('mia_pending_invite')
       if (pendingInvite) {
+        console.log('[AUTH-REDIRECT] Found pending invite:', pendingInvite)
         localStorage.removeItem('mia_pending_invite')
         navigate(`/invite/${pendingInvite}`)
         return
@@ -68,6 +74,7 @@ export const useAuthRedirects = ({
     }
 
     if (path === '/') {
+      console.log('[AUTH-REDIRECT] On landing page - hasSeenIntro:', hasSeenIntro, 'isAuth:', isAnyAuthenticated, 'selectedAccount:', !!selectedAccount, 'activeWorkspace:', !!activeWorkspace, 'workspaces:', availableWorkspaces.length)
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
         navigate('/home')
         return
@@ -75,6 +82,7 @@ export const useAuthRedirects = ({
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
         // Check if user needs to create workspace first
         if (!activeWorkspace && availableWorkspaces.length === 0) {
+          console.log('[AUTH-REDIRECT] No workspace found - showing create workspace modal')
           // Show workspace creation modal (handled by App component)
           setShowCreateWorkspaceModal(true)
           return

@@ -59,8 +59,10 @@ export interface GoogleCompleteResponse {
  * Note: Flow type (popup vs redirect) is determined by the backend using User-Agent detection.
  * Mobile devices -> redirect flow, Desktop browsers -> popup flow.
  */
-export const getGoogleAuthUrl = async (): Promise<GoogleAuthUrlResponse> => {
-  const frontendOrigin = encodeURIComponent(window.location.origin)
+export const getGoogleAuthUrl = async (returnUrl?: string): Promise<GoogleAuthUrlResponse> => {
+  // Pass full URL (with path) so backend redirects back to the exact page after OAuth
+  // This ensures invite pages, onboarding, etc. get the user back to the right place
+  const frontendOrigin = encodeURIComponent(returnUrl || (window.location.origin + window.location.pathname))
   const response = await apiFetch(`/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}`)
 
   if (!response.ok) {

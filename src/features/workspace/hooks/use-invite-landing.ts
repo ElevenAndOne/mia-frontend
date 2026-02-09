@@ -78,6 +78,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   }
 
   const handleSignIn = () => {
+    console.log('[INVITE-LANDING] handleSignIn - storing pending invite:', inviteId)
     localStorage.setItem('mia_pending_invite', inviteId)
     onSignIn?.()
   }
