@@ -80,33 +80,33 @@ export const useAppController = () => {
     // Clean up pending invite to prevent redirect loop
     localStorage.removeItem('mia_pending_invite')
 
+    // NOTE: Do NOT call switchWorkspace() here. The accept_invite backend endpoint
+    // already set active_tenant_id, tenant_role, and selected_account_id in a single
+    // db transaction. Calling switchWorkspace would redundantly call set_active_tenant()
+    // through session_service's potentially stale global _db, which could silently fail
+    // and corrupt the session state.
+
+    // Best-effort refresh workspaces, but navigate regardless
     try {
-      // Refresh workspace list so the new workspace appears in the UI
       await refreshWorkspaces()
-
-      // NOTE: Do NOT call switchWorkspace() here. The accept_invite backend endpoint
-      // already set active_tenant_id, tenant_role, and selected_account_id in a single
-      // db transaction. Calling switchWorkspace would redundantly call set_active_tenant()
-      // through session_service's potentially stale global _db, which could silently fail
-      // and corrupt the session state.
-
-      if (skipAccountSelection && isAnyAuthenticated) {
-        // Backend already set up the workspace context + account on the session.
-        // Full page reload so initializeSession picks up the complete state.
-        window.location.href = '/home'
-      } else if (isAnyAuthenticated && selectedAccount) {
-        window.history.replaceState({}, '', '/')
-        navigate('/home')
-      } else if (isAnyAuthenticated) {
-        window.history.replaceState({}, '', '/')
-        navigate('/onboarding')
-      } else {
-        window.history.replaceState({}, '', '/')
-        navigate('/')
-      }
     } catch (error) {
-      console.error('[APP] Invite acceptance failed:', error)
-      // Keep URL so user can retry
+      console.error('[APP] refreshWorkspaces failed (non-blocking):', error)
+    }
+
+    // Always navigate after invite acceptance - don't let refreshWorkspaces failure block this
+    if (skipAccountSelection && isAnyAuthenticated) {
+      // Backend already set up the workspace context + account on the session.
+      // Full page reload so initializeSession picks up the complete state.
+      window.location.href = '/home'
+    } else if (isAnyAuthenticated && selectedAccount) {
+      window.history.replaceState({}, '', '/')
+      navigate('/home')
+    } else if (isAnyAuthenticated) {
+      window.history.replaceState({}, '', '/')
+      navigate('/onboarding')
+    } else {
+      window.history.replaceState({}, '', '/')
+      navigate('/')
     }
   }
 
