@@ -81,13 +81,18 @@ export const useAppController = () => {
     localStorage.removeItem('mia_pending_invite')
 
     try {
+      // Refresh workspace list so the new workspace appears in the UI
       await refreshWorkspaces()
-      await switchWorkspace(tenantId)
+
+      // NOTE: Do NOT call switchWorkspace() here. The accept_invite backend endpoint
+      // already set active_tenant_id, tenant_role, and selected_account_id in a single
+      // db transaction. Calling switchWorkspace would redundantly call set_active_tenant()
+      // through session_service's potentially stale global _db, which could silently fail
+      // and corrupt the session state.
 
       if (skipAccountSelection && isAnyAuthenticated) {
-        // Backend already set up the invited user's account mapping and session.
-        // Force full page reload so initializeSession picks up the complete state
-        // (active workspace + selected account from tenant's primary account).
+        // Backend already set up the workspace context + account on the session.
+        // Full page reload so initializeSession picks up the complete state.
         window.location.href = '/home'
       } else if (isAnyAuthenticated && selectedAccount) {
         window.history.replaceState({}, '', '/')

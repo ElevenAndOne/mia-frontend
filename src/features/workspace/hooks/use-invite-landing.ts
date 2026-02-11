@@ -26,6 +26,14 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   const [accepting, setAccepting] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
+  // Auto-dismiss login prompt when auth succeeds (e.g., after OAuth redirect completes)
+  // This prevents the login prompt from staying visible after session initialization finishes
+  useEffect(() => {
+    if (isAuthenticated && showLoginPrompt) {
+      setShowLoginPrompt(false)
+    }
+  }, [isAuthenticated, showLoginPrompt])
+
   useEffect(() => {
     const loadInvite = async () => {
       try {

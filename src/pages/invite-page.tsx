@@ -14,10 +14,10 @@ interface InvitePageProps {
 const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const navigate = useNavigate()
   const { inviteId } = useParams<{ inviteId: string }>()
-  const { isAuthenticated, isMetaAuthenticated, sessionId, user, login } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, isLoading: sessionLoading, sessionId, user, login } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  console.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'path:', window.location.pathname)
+  console.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'sessionLoading:', sessionLoading, 'isAnyAuth:', isAnyAuthenticated, 'path:', window.location.pathname)
 
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
@@ -94,7 +94,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     )
   }
 
-  if (showLoginPrompt) {
+  if (showLoginPrompt && !isAnyAuthenticated && !sessionLoading) {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -185,13 +185,18 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
         <div className="space-y-3">
           <button
             onClick={handleAccept}
-            disabled={accepting}
+            disabled={accepting || sessionLoading}
             className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {accepting ? (
               <span className="flex items-center justify-center gap-2">
                 <Spinner size="sm" variant="light" />
                 Accepting...
+              </span>
+            ) : sessionLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Spinner size="sm" variant="light" />
+                Verifying session...
               </span>
             ) : isAnyAuthenticated ? (
               'Accept Invite'
