@@ -38,6 +38,7 @@ interface WorkspaceSettingsDetailProps {
   onOpenDeleteModal: () => void
   onCloseDeleteModal: () => void
   onDeleteWorkspace: () => Promise<boolean>
+  onLeaveWorkspace?: () => Promise<boolean>  // NEW (Feb 2026): Leave workspace for non-owners
 }
 
 export const WorkspaceSettingsDetail = ({
@@ -71,6 +72,7 @@ export const WorkspaceSettingsDetail = ({
   onOpenDeleteModal,
   onCloseDeleteModal,
   onDeleteWorkspace,
+  onLeaveWorkspace,
 }: WorkspaceSettingsDetailProps) => {
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -111,6 +113,7 @@ export const WorkspaceSettingsDetail = ({
           />
         )}
 
+        {/* Danger Zone - Owner Only */}
         {isOwner && (
           <div className="mt-8 pt-6 border-t border-tertiary">
             <h3 className="subheading-md text-error mb-2">Danger Zone</h3>
@@ -122,6 +125,22 @@ export const WorkspaceSettingsDetail = ({
               className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
             >
               Delete Workspace
+            </button>
+          </div>
+        )}
+
+        {/* Leave Workspace - Non-Owners Only (Feb 2026) */}
+        {!isOwner && onLeaveWorkspace && (
+          <div className="mt-8 pt-6 border-t border-tertiary">
+            <h3 className="subheading-md text-error mb-2">Leave Workspace</h3>
+            <p className="paragraph-sm text-tertiary mb-4">
+              Remove yourself from this workspace. You'll lose access to all workspace data.
+            </p>
+            <button
+              onClick={onLeaveWorkspace}
+              className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
+            >
+              Leave Workspace
             </button>
           </div>
         )}

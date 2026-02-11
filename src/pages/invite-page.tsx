@@ -17,6 +17,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const { isAuthenticated, isMetaAuthenticated, sessionId, user, login } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
+  console.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'path:', window.location.pathname)
+
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
     navigate('/')
@@ -50,11 +52,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     }
   }, [inviteId])
 
-  useEffect(() => {
-    if (!inviteId) {
-      navigate('/')
-    }
-  }, [inviteId, navigate])
+  // Don't auto-navigate away - let React Router handle invalid routes
+  // The early return below is sufficient to prevent rendering with missing inviteId
 
   if (!inviteId) {
     return null

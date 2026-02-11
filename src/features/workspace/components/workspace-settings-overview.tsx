@@ -76,6 +76,8 @@ export const WorkspaceSettingsOverview = ({
           ))}
         </div>
 
+        {/* HIDDEN (Feb 2026): Create Workspace button removed - focusing on single workspace per user
+            Workspace creation happens during onboarding flow only
         <button
           onClick={onOpenCreateModal}
           className="w-full mt-4 py-3 px-4 border-2 border-dashed border-primary rounded-xl subheading-md text-tertiary flex items-center justify-center gap-2 hover:border-secondary hover:text-secondary transition-colors"
@@ -83,6 +85,7 @@ export const WorkspaceSettingsOverview = ({
           <Icon.plus size={20} />
           Create New Workspace
         </button>
+        */}
       </div>
 
       <CreateWorkspaceModal

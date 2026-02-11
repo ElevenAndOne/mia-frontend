@@ -24,8 +24,12 @@ function handleAuthError(): void {
   console.warn('[API] Session expired or unauthorized - redirecting to login')
   clearSessionStorage()
 
-  // Only redirect if not already on login page
-  if (!window.location.pathname.startsWith('/login') && window.location.pathname !== '/') {
+  // Only redirect if not already on login/landing page or public invite page
+  if (
+    !window.location.pathname.startsWith('/login') &&
+    !window.location.pathname.startsWith('/invite/') &&
+    window.location.pathname !== '/'
+  ) {
     window.location.href = '/'
   }
 

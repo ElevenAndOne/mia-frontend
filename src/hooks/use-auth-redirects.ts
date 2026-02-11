@@ -29,11 +29,17 @@ export const useAuthRedirects = ({
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   useEffect(() => {
+    console.log('[AUTH-REDIRECT] Effect triggered - isLoading:', isLoading, 'path:', location.pathname)
+
     if (isLoading) return
 
     const path = location.pathname
+    console.log('[AUTH-REDIRECT] Passed loading check - path:', path)
 
-    if (path.startsWith('/invite/')) return
+    if (path.startsWith('/invite/')) {
+      console.log('[AUTH-REDIRECT] On invite page - exiting early')
+      return
+    }
 
     console.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem('mia_pending_invite'))
 

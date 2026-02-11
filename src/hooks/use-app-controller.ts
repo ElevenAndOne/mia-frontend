@@ -119,13 +119,18 @@ export const useAppController = () => {
   let loadingPlatform: 'google' | 'meta' | null = null
   let showLoadingScreen = false
 
+  console.log('[APP-CONTROLLER] Checking loading screen - path:', location.pathname, 'isLoading:', isLoading)
+
   if (oauthLoadingPlatform) {
+    console.log('[APP-CONTROLLER] OAuth loading platform:', oauthLoadingPlatform)
     showLoadingScreen = true
     loadingPlatform = oauthLoadingPlatform
   } else if (location.pathname === '/' && connectingPlatform) {
+    console.log('[APP-CONTROLLER] Root + connecting platform')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform
   } else if (location.pathname === '/' && isAnyAuthenticated && isLoading) {
+    console.log('[APP-CONTROLLER] Root + auth + loading')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   } else if (
@@ -133,8 +138,10 @@ export const useAppController = () => {
     !isConnectingSecondPlatform &&
     location.pathname !== '/' &&
     !location.pathname.startsWith('/login') &&
+    !location.pathname.startsWith('/invite/') &&
     location.pathname !== '/onboarding'
   ) {
+    console.log('[APP-CONTROLLER] Generic loading screen for protected route')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
   } else if (
@@ -143,11 +150,14 @@ export const useAppController = () => {
     !isAnyAuthenticated &&
     !isConnectingSecondPlatform
   ) {
+    console.log('[APP-CONTROLLER] Onboarding loading screen')
     // Show loading screen only if not authenticated yet
     // Note: selectedAccount is no longer required - account selection happens in onboarding chat
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   }
+
+  console.log('[APP-CONTROLLER] Final decision - showLoadingScreen:', showLoadingScreen)
 
   return {
     hasSeenIntro,

@@ -178,6 +178,34 @@ export const useWorkspaceSettingsPage = () => {
     return success
   }, [selectedWorkspaceId, deleteWorkspace])
 
+  const handleLeaveWorkspace = useCallback(async (): Promise<boolean> => {
+    if (!selectedWorkspaceId || !sessionId) return false
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/tenants/${selectedWorkspaceId}/leave`, {
+        method: 'POST',
+        headers: {
+          'X-Session-ID': sessionId,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // Refresh workspaces to remove the one we left
+        await refreshWorkspaces()
+        setSelectedWorkspaceId(null)
+        return true
+      }
+
+      const data = await response.json()
+      setError(data.detail || 'Failed to leave workspace')
+      return false
+    } catch (err) {
+      setError('Network error while leaving workspace')
+      return false
+    }
+  }, [selectedWorkspaceId, sessionId, refreshWorkspaces, setError])
+
   const isCreateInviteDisabled = creatingInvite || (!isLinkInvite && !inviteEmail.trim())
 
   return {
@@ -219,5 +247,6 @@ export const useWorkspaceSettingsPage = () => {
     openDeleteModal,
     closeDeleteModal,
     handleDeleteWorkspace,
+    handleLeaveWorkspace,  // NEW (Feb 2026): Leave workspace for non-owners
   }
 }

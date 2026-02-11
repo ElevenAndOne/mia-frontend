@@ -52,6 +52,7 @@ const WorkspaceSettingsPage = () => {
     openDeleteModal,
     closeDeleteModal,
     handleDeleteWorkspace,
+    handleLeaveWorkspace,
   } = useWorkspaceSettingsPage()
 
   const handleBack = () => navigate('/home')
@@ -110,6 +111,7 @@ const WorkspaceSettingsPage = () => {
           onOpenDeleteModal={openDeleteModal}
           onCloseDeleteModal={closeDeleteModal}
           onDeleteWorkspace={handleDeleteWorkspace}
+          onLeaveWorkspace={handleLeaveWorkspace}
         />
       )}
     </AppShell>
