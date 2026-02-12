@@ -531,7 +531,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       />
 
       {/* Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
         {/* Loading State */}
         {loading && integrations.length === 0 && (
           <div className="flex items-center justify-center py-12">

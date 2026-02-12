@@ -26,14 +26,14 @@ export const WorkspaceSettingsOverview = ({
   // Suppress unused var warning - button is commented out but prop kept for future use
   void _onOpenCreateModal
   return (
-    <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
+    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar
         title="Workspaces"
         onBack={onBack}
         className="border-b border-tertiary"
       />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
         <div className="space-y-3">
           {items.map((item) => (
             <WorkspaceListItem

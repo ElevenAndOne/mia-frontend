@@ -6,7 +6,7 @@ interface LoginPageDesktopProps {
 
 export const LoginPageDesktop = ({ actionButtons }: LoginPageDesktopProps) => {
   return (
-    <div className="hidden lg:flex min-h-screen-dvh h-full items-stretch justify-center gap-10 px-8 py-10">
+    <div className="hidden lg:flex min-h-dvh h-full items-stretch justify-center gap-10 px-8 py-10">
       <div className="flex-1 flex flex-col">
         <div className="flex items-center gap-3 text-primary">
           <img src="/icons/mia-logo.png" alt="Mia" className="h-12 w-12" />

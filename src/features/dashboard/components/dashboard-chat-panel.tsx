@@ -24,7 +24,7 @@ export const DashboardChatPanel = ({ messages, isLoading, onSubmitMessage }: Das
 
   return (
     <div className="w-full h-full flex flex-col" style={{ maxWidth: '393px' }}>
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 chat-messages-container">
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 py-4 space-y-4 chat-messages-container">
         {messages.map((message, index) => (
           <div key={message.id ?? `${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] p-3 rounded-2xl ${

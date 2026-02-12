@@ -6,7 +6,7 @@ interface LoginPageMobileProps {
 
 export const LoginPageMobile = ({ actionButtons }: LoginPageMobileProps) => {
   return (
-    <div className="relative flex min-h-screen-dvh h-full flex-col lg:hidden">
+    <div className="relative flex min-h-dvh h-full flex-col lg:hidden">
       <div className="absolute inset-0">
         <video className="w-full h-full object-cover" autoPlay muted loop>
           <source src="/videos/mia-intro-video-compressed.mp4" type="video/mp4" />

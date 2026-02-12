@@ -27,7 +27,7 @@ export const AppShell = ({
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
       />
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 min-h-0">
         {children}
       </main>
     </div>

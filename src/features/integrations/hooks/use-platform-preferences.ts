@@ -1,12 +1,7 @@
-/**
- * Custom hook for managing platform preferences
- * - All connected platforms default to ON (first time)
- * - Newly connected platforms auto-enable
- * - Toggles are instant (local state)
- * - Saves debounce to backend (1 second after last change)
- */
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
+
+const KNOWN_CONNECTED_KEY = 'mia_known_connected_platforms'
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null
@@ -53,45 +48,51 @@ export function usePlatformPreferences({
   selectedAccountId,
   connectedPlatforms
 }: UsePlatformPreferencesProps): UsePlatformPreferencesResult {
-  // Simple local state for selected platforms
   const [selectedPlatforms, setSelectedPlatformsState] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Track previous connected platforms to detect new ones
   const prevConnectedRef = useRef<string[]>([])
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasLoadedRef = useRef(false)
-  // FEB 2026 FIX: Use ref to always access current connectedPlatforms value
-  // This avoids stale closure issues in async callbacks
   const connectedPlatformsRef = useRef(connectedPlatforms)
   connectedPlatformsRef.current = connectedPlatforms
 
-  // Load preferences on mount or when account changes
   useEffect(() => {
     if (!sessionId) return
 
     const loadPreferences = async () => {
       setIsLoading(true)
-      // FEB 2026 FIX: Don't reset hasLoadedRef to false during reload
-      // This was causing a race condition where the "new platforms" effect
-      // would return early and never detect newly connected platforms
-
       const saved = await fetchPlatformPreferences(sessionId)
 
-      // FEB 2026 FIX: Use ref to access current connectedPlatforms value
-      // This avoids stale closure issues since the async fetch may complete
-      // after connectedPlatforms has changed
+      // Use ref to access current value (avoids stale closure in async callback)
       const currentConnected = connectedPlatformsRef.current
 
+      // Read last known connected platforms from sessionStorage
+      // to detect platforms connected while user was on another page
+      let lastKnown: string[] = []
+      try {
+        const raw = sessionStorage.getItem(KNOWN_CONNECTED_KEY)
+        if (raw) lastKnown = JSON.parse(raw)
+      } catch { /* sessionStorage unavailable */ }
+
       if (saved.length > 0) {
-        // FEB 2026 FIX: Don't filter here against connectedPlatforms (stale closure bug)
-        // The filtering is already done at return value (line 166) which always uses
-        // the current connectedPlatforms. Filtering here used stale values from closure.
-        setSelectedPlatformsState(saved)
+        const newlyConnected = currentConnected.filter(p => !lastKnown.includes(p))
+        if (newlyConnected.length > 0) {
+          console.log('[PlatformPrefs] Auto-enabling newly connected platforms:', newlyConnected)
+          const combined = [...new Set([...saved, ...newlyConnected])]
+          setSelectedPlatformsState(combined)
+          savePlatformPreferences(sessionId, combined)
+        } else {
+          setSelectedPlatformsState(saved)
+        }
       } else {
         // No saved prefs - default to all connected
         setSelectedPlatformsState(currentConnected)
+      }
+
+      // Persist known connected for cross-page detection
+      if (currentConnected.length > 0) {
+        try { sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(currentConnected)) } catch {}
       }
 
       prevConnectedRef.current = [...currentConnected]
@@ -103,7 +104,6 @@ export function usePlatformPreferences({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- connectedPlatforms is accessed via ref to avoid stale closures
   }, [sessionId, selectedAccountId]) // Reload when session or account changes
 
-  // Detect newly connected platforms and auto-enable them
   useEffect(() => {
     if (!hasLoadedRef.current || connectedPlatforms.length === 0) return
 
@@ -125,7 +125,13 @@ export function usePlatformPreferences({
     prevConnectedRef.current = [...connectedPlatforms]
   }, [connectedPlatforms, sessionId])
 
-  // Debounced save to backend with rollback on failure
+  // Keep sessionStorage in sync for cross-page new-platform detection
+  useEffect(() => {
+    if (connectedPlatforms.length > 0) {
+      try { sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(connectedPlatforms)) } catch {}
+    }
+  }, [connectedPlatforms])
+
   const saveToBackend = useCallback((platforms: string[], rollbackTo: string[]) => {
     if (!sessionId) return
 
@@ -146,7 +152,6 @@ export function usePlatformPreferences({
     }, 1000)
   }, [sessionId])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -155,8 +160,6 @@ export function usePlatformPreferences({
     }
   }, [])
 
-  // Set platforms (instant UI update + debounced save)
-  // FEB 2026 FIX: Use functional update to avoid stale closure
   const setSelectedPlatforms = useCallback((platforms: string[]) => {
     setSelectedPlatformsState(prev => {
       saveToBackend(platforms, prev)
@@ -164,7 +167,6 @@ export function usePlatformPreferences({
     })
   }, [saveToBackend])
 
-  // Toggle a single platform
   const togglePlatform = useCallback((platformId: string) => {
     setSelectedPlatformsState(current => {
       const newPlatforms = current.includes(platformId)
@@ -181,10 +183,7 @@ export function usePlatformPreferences({
     })
   }, [saveToBackend])
 
-  // Filter selected to only connected (in case platform was disconnected)
   const filteredSelected = selectedPlatforms.filter(p => connectedPlatforms.includes(p))
-
-  // If all selected got disconnected, default to all connected
   const effectivePlatforms = filteredSelected.length > 0 ? filteredSelected : connectedPlatforms
 
   return {
