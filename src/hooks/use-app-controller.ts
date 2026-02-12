@@ -20,7 +20,6 @@ export const useAppController = () => {
     loginMeta,
     refreshAccounts,
     refreshWorkspaces,
-    switchWorkspace,
     connectingPlatform,
   } = useSession()
 
@@ -75,7 +74,7 @@ export const useAppController = () => {
     }
   }
 
-  const handleInviteAccepted = async (tenantId: string, skipAccountSelection?: boolean) => {
+  const handleInviteAccepted = async (_tenantId: string, skipAccountSelection?: boolean) => {
     setJustAcceptedInvite(true)
     // Clean up pending invite to prevent redirect loop
     localStorage.removeItem('mia_pending_invite')

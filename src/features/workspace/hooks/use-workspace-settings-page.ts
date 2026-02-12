@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { apiFetch } from '../../../utils/api'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import {
   buildWorkspaceInviteRows,
@@ -182,7 +183,7 @@ export const useWorkspaceSettingsPage = () => {
     if (!selectedWorkspaceId || !sessionId) return false
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/tenants/${selectedWorkspaceId}/leave`, {
+      const response = await apiFetch(`/api/tenants/${selectedWorkspaceId}/leave`, {
         method: 'POST',
         headers: {
           'X-Session-ID': sessionId,

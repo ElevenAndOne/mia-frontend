@@ -19,10 +19,12 @@ export const WorkspaceSettingsOverview = ({
   onSelectWorkspace,
   onBack,
   showCreateModal,
-  onOpenCreateModal,
+  onOpenCreateModal: _onOpenCreateModal,
   onCloseCreateModal,
   onWorkspaceCreated,
 }: WorkspaceSettingsOverviewProps) => {
+  // Suppress unused var warning - button is commented out but prop kept for future use
+  void _onOpenCreateModal
   return (
     <div className="w-full h-screen-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar
