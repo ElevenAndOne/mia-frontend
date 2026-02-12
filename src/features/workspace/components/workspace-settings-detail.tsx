@@ -82,7 +82,7 @@ export const WorkspaceSettingsDetail = ({
         className="border-b border-tertiary"
       />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
         {error && (
           <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
             <p className="paragraph-sm text-error">{error}</p>

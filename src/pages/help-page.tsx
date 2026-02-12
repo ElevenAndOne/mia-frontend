@@ -30,7 +30,7 @@ const HelpPage = () => {
       <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
         <TopBar title="Help" onBack={() => navigate('/home')} className="border-b border-tertiary" />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
         <div className="max-w-3xl mx-auto w-full">
           <h2 className="label-md text-primary mb-1">Need help?</h2>
           <p className="paragraph-xs text-quaternary mb-3">

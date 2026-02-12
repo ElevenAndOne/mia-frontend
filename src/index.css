@@ -284,3 +284,9 @@ body.full-bleed #root {
     min-height: -webkit-fill-available;
   }
 }
+
+/* Enable momentum scrolling on iOS Safari for all overflow-y-auto containers */
+[class*="overflow-y-auto"],
+[class*="overflow-auto"] {
+  -webkit-overflow-scrolling: touch;
+}
