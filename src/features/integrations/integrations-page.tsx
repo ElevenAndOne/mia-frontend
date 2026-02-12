@@ -598,6 +598,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             platformName={integration.name}
                             isConnected={integration.connected}
                             sessionId={sessionId}
+                            userRole={activeWorkspace?.role}
                             onManage={() => {
                               // Open the appropriate selector modal
                               if (integration.id === 'google') setShowGoogleAccountSelector(true)

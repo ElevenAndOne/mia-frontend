@@ -14,6 +14,7 @@ interface PlatformGearMenuProps {
   onAddAccount?: () => void
   onReconnect?: () => void
   onDisconnectSuccess: () => void
+  userRole?: string
 }
 
 const PlatformGearMenu = ({
@@ -25,6 +26,7 @@ const PlatformGearMenu = ({
   onAddAccount,
   onReconnect,
   onDisconnectSuccess,
+  userRole,
 }: PlatformGearMenuProps) => {
   const { showToast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
@@ -130,7 +132,9 @@ const PlatformGearMenu = ({
     await handleDisconnect()
   }
 
-  if (!isConnected) return null
+  // Only owners and admins can manage integrations
+  const canManage = !userRole || ['owner', 'admin'].includes(userRole)
+  if (!isConnected || !canManage) return null
 
   return (
     <div className="relative">

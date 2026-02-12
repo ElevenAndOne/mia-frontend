@@ -5,7 +5,7 @@ import { buildBronzeCardData } from './bronze-card-utils'
 const CHOICE_LABELS: Record<string, string> = {
   show_clicks: 'Yes, show me!',
   skip_clicks: 'Later',
-  show_explainers: 'Yes!',
+  show_explainers: 'Show me',
   skip: 'Skip',
   grow: 'Grow',
   optimize: 'Optimise',
@@ -325,7 +325,7 @@ export const buildStreamCompleteMessages = (wasCombined: boolean, platformsConne
   return [
     {
       type: 'mia',
-      content: "Great! You're getting the hang of it. Now let's link your second account for even deeper insights."
+      content: "Now, connecting a second platform unlocks cross-platform insights — want to add one?"
     },
     {
       type: 'choice-buttons',

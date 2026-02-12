@@ -41,7 +41,7 @@ const mergePlatformStatus = (
       : tenantStatus.google,
     ga4: accountData.ga4_property_id
       ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.ga4,
+      : { connected: tenantStatus.ga4?.connected ?? false, linked: false, last_synced: tenantStatus.ga4?.last_synced },
     meta: accountData.meta_ads_id
       ? { connected: true, linked: true, last_synced: now }
       : tenantStatus.meta,
