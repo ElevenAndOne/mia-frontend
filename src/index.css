@@ -93,6 +93,10 @@ html, body {
   overscroll-behavior: contain;
 }
 
+#root {
+  height: 100%;
+}
+
 body.full-bleed #root {
   padding-inline: 0;
 }
@@ -273,16 +277,6 @@ body.full-bleed #root {
 .h-lvh {
   height: 100vh;
   height: 100lvh;
-}
-
-/* iOS Safari specific fix */
-@supports (-webkit-touch-callout: none) {
-  .h-dvh, html, body, #root {
-    height: -webkit-fill-available;
-  }
-  .min-h-dvh {
-    min-height: -webkit-fill-available;
-  }
 }
 
 /* Enable momentum scrolling on iOS Safari for all overflow-y-auto containers */
