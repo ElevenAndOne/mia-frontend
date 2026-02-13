@@ -92,7 +92,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setHighlightedIds(highlights)
       clearIntegrationHighlight()
       // Auto-clear visual highlight after 3 seconds
-      setTimeout(() => setHighlightedIds([]), 3000)
+      setTimeout(() => setHighlightedIds([]), 5000)
     }
   }, [])
 
