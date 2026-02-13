@@ -514,6 +514,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
+  // Only owners and admins can connect new integrations (viewers get read-only access)
+  const canManageIntegrations = !activeWorkspace?.role || ['owner', 'admin'].includes(activeWorkspace.role)
+
   const connectedSources = integrations.filter(i => i.connected)
   const availableSources = integrations.filter(i => !i.connected)
 
@@ -640,8 +643,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        {/* Available Integrations Section */}
-        {!loading && availableSources.length > 0 && (
+        {/* Available Integrations Section - hidden for viewer/analyst roles */}
+        {!loading && availableSources.length > 0 && canManageIntegrations && (
           <div className="mb-6 max-w-3xl mx-auto w-full">
             <h2 className="label-md text-primary mb-1">Available Integrations</h2>
             <p className="paragraph-xs text-quaternary mb-4">Connect your data sources to unlock powerful new insights</p>

@@ -62,18 +62,22 @@ export function usePlatformPreferences({
 
     const loadPreferences = async () => {
       setIsLoading(true)
-      const saved = await fetchPlatformPreferences(sessionId)
 
-      // Use ref to access current value (avoids stale closure in async callback)
-      const currentConnected = connectedPlatformsRef.current
-
-      // Read last known connected platforms from sessionStorage
-      // to detect platforms connected while user was on another page
+      // CRITICAL: Read lastKnown BEFORE the async fetch to avoid race condition.
+      // The sessionStorage sync effect (3rd useEffect) fires synchronously during
+      // the same render, updating sessionStorage with current connectedPlatforms.
+      // If we read AFTER the await, lastKnown would match currentConnected and
+      // newlyConnected would always be empty.
       let lastKnown: string[] = []
       try {
         const raw = sessionStorage.getItem(KNOWN_CONNECTED_KEY)
         if (raw) lastKnown = JSON.parse(raw)
       } catch { /* sessionStorage unavailable */ }
+
+      const saved = await fetchPlatformPreferences(sessionId)
+
+      // Use ref to access current value (avoids stale closure in async callback)
+      const currentConnected = connectedPlatformsRef.current
 
       if (saved.length > 0) {
         const newlyConnected = currentConnected.filter(p => !lastKnown.includes(p))
