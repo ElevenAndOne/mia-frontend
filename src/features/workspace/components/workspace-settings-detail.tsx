@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+// import { Icon } from '../../../components/icon'  // BETA: unused while invite hidden
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { CreateInviteModal } from './create-invite-modal'
@@ -42,7 +42,7 @@ interface WorkspaceSettingsDetailProps {
 }
 
 export const WorkspaceSettingsDetail = ({
-  canManage,
+  canManage: _canManage,  // BETA: unused while invite hidden
   isOwner,
   workspace,
   error,
@@ -57,7 +57,7 @@ export const WorkspaceSettingsDetail = ({
   creatingInvite,
   copySuccess,
   isCreateInviteDisabled,
-  onOpenCreateInviteModal,
+  onOpenCreateInviteModal: _onOpenCreateInviteModal,  // BETA: unused while invite hidden
   onCloseCreateInviteModal,
   onInviteTypeChange,
   onInviteEmailChange,
