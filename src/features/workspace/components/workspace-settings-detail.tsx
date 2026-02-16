@@ -89,7 +89,8 @@ export const WorkspaceSettingsDetail = ({
           </div>
         )}
 
-        {canManage && (
+        {/* BETA: Invite system hidden until multi-tenant data isolation is fully tested */}
+        {/* {canManage && (
           <button
             onClick={onOpenCreateInviteModal}
             className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
@@ -97,7 +98,7 @@ export const WorkspaceSettingsDetail = ({
             <Icon.plus size={20} />
             Invite Member
           </button>
-        )}
+        )} */}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
