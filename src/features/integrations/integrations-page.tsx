@@ -92,7 +92,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setHighlightedIds(highlights)
       clearIntegrationHighlight()
       // Auto-clear visual highlight after 3 seconds
-      setTimeout(() => setHighlightedIds([]), 3000)
+      setTimeout(() => setHighlightedIds([]), 5000)
     }
   }, [])
 
@@ -664,15 +664,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || integration.id === 'linkedin' || integration.id === 'tiktok'}
-                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${integration.id === 'linkedin' || integration.id === 'tiktok'
+                      disabled={connectingId !== null || ['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)}
+                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
+                        ['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)
                         ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
                         : connectingId === integration.id
                           ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
                           : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
                         }`}
                     >
-                      {integration.id === 'linkedin' || integration.id === 'tiktok'
+                      {['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)
                         ? 'Soon'
                         : connectingId === integration.id
                           ? 'Connecting...'

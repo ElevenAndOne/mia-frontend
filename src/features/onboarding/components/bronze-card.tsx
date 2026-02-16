@@ -29,7 +29,11 @@ const VARIANT_STYLES = {
 export const BronzeCard = ({ platform, headline, metricValue, metricLabel, secondaryMetric, variant = 'primary' }: BronzeCardProps) => {
   const styles = VARIANT_STYLES[variant]
   const platformConfig = PLATFORM_STYLES[platform] || PLATFORM_STYLES.google_ads
-  const formattedValue = typeof metricValue === 'number' ? metricValue.toLocaleString() : metricValue
+  const formattedValue = typeof metricValue === 'number'
+    ? Number.isInteger(metricValue)
+      ? metricValue.toLocaleString()
+      : metricValue.toLocaleString(undefined, { maximumFractionDigits: 2 })
+    : metricValue
 
   return (
     <motion.div
@@ -46,9 +50,9 @@ export const BronzeCard = ({ platform, headline, metricValue, metricLabel, secon
         </div>
 
         <div className="flex-1">
-          <p className="paragraph-sm text-tertiary">{headline}</p>
+          {headline && <p className="paragraph-sm text-tertiary">{headline}</p>}
           <p className="title-h4 text-primary mt-1">{formattedValue}</p>
-          <p className="paragraph-sm text-tertiary">{metricLabel}</p>
+          {metricLabel && <p className="paragraph-sm text-tertiary">{metricLabel}</p>}
 
           {secondaryMetric && (
             <div

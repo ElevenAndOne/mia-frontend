@@ -245,14 +245,21 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     if (!sessionId) return null
 
     try {
+      // Timeout after 10s to prevent hang if backend is unresponsive
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+
       const response = await apiFetch('/api/bronze/highlight', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Session-ID': sessionId
         },
-        body: JSON.stringify({ session_id: sessionId, platform })
+        body: JSON.stringify({ session_id: sessionId, platform }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeout)
 
       if (response.ok) {
         const data = await response.json()

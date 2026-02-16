@@ -37,6 +37,14 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
 
   const [promptDismissed, setPromptDismissed] = useState(false)
 
+  // Throttle: only show the integration prompt every 5th chat page visit
+  const [shouldShowPromptThisVisit] = useState(() => {
+    const key = 'mia_integration_prompt_visit_count'
+    const count = parseInt(localStorage.getItem(key) || '0', 10) + 1
+    localStorage.setItem(key, String(count))
+    return count % 5 === 1 // Show on 1st, 6th, 11th visit...
+  })
+
   // Reset dismissal when missing platforms change
   const missingKey = integrationPrompt?.missingPlatformIds.join('|') ?? ''
   useEffect(() => {
@@ -44,7 +52,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     setPromptDismissed(false)
   }, [missingKey, integrationPrompt])
 
-  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed
+  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed && shouldShowPromptThisVisit
 
   const handleIntegrationPromptAction = () => {
     if (integrationPrompt) {

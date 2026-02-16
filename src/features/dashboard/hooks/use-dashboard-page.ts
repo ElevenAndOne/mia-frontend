@@ -62,7 +62,17 @@ export const useDashboardPage = () => {
     connectedPlatforms,
   })
 
+  // Throttle: only show configuration guidance every 5th dashboard visit
+  const [shouldShowGuidance] = useState(() => {
+    const key = 'mia_config_guidance_visit_count'
+    const count = parseInt(localStorage.getItem(key) || '0', 10) + 1
+    localStorage.setItem(key, String(count))
+    return count % 5 === 1 // Show on 1st, 6th, 11th visit...
+  })
+
   const configurationGuidance = useMemo(() => {
+    if (!shouldShowGuidance) return null
+
     const needsConfig: string[] = []
 
     if (connectedPlatforms.includes('google_ads') && !selectedAccount?.ga4_property_id) {
@@ -76,7 +86,7 @@ export const useDashboardPage = () => {
     if (needsConfig.length === 0) return null
 
     return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
-  }, [connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
+  }, [shouldShowGuidance, connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
 
   // Track if initial fetch has happened to prevent re-fetching on every render
   const hasFetchedRef = useRef(false)

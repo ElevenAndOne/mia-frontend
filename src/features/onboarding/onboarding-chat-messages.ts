@@ -2,6 +2,9 @@ import type { BronzeFact } from './onboarding-context'
 import type { ChatMessageInput, ExplainerType } from './onboarding-chat-types'
 import { buildBronzeCardData } from './bronze-card-utils'
 
+// BETA: Set to false to re-enable Meta connect in onboarding once Access Verification is approved
+const META_CONNECT_ENABLED = false
+
 const CHOICE_LABELS: Record<string, string> = {
   show_clicks: 'Yes, show me!',
   skip_clicks: 'Later',
@@ -51,6 +54,12 @@ export const getConnectPrompt = (platformsConnected: string[]) => {
     platformsConnected.includes('meta_ads') ||
     platformsConnected.includes('facebook')
   const hasGoogleConnected = platformsConnected.includes('google_ads')
+
+  // If Meta is disabled, only offer Google (or null if already connected)
+  if (!META_CONNECT_ENABLED) {
+    if (!hasGoogleConnected) return { action: 'connect_google', label: 'Connect Google Ads' }
+    return null // Both connected or only Google available
+  }
 
   return {
     action: hasMetaConnected && !hasGoogleConnected ? 'connect_google' : 'connect_meta',
@@ -245,13 +254,20 @@ export const buildInsightLoadingMessages = (type: ExplainerType): ChatMessageInp
 }
 
 export const buildInsightFallbackChoices = (platformsConnected: string[]): ChatMessageInput[] => {
-  const { action, label } = getConnectPrompt(platformsConnected)
+  const connectPrompt = getConnectPrompt(platformsConnected)
+
+  // If no platform to connect (e.g. Meta disabled and Google already connected), just offer skip
+  if (!connectPrompt) {
+    return [
+      { type: 'choice-buttons', choices: [{ label: 'Skip for now', action: 'skip_connect', variant: 'secondary' }] }
+    ]
+  }
 
   return [
     {
       type: 'choice-buttons',
       choices: [
-        { label, action, variant: 'primary' },
+        { label: connectPrompt.label, action: connectPrompt.action, variant: 'primary' },
         { label: 'Skip for now', action: 'skip_connect', variant: 'secondary' }
       ]
     }
@@ -320,7 +336,15 @@ export const buildStreamCompleteMessages = (wasCombined: boolean, platformsConne
     ]
   }
 
-  const { action, label } = getConnectPrompt(platformsConnected)
+  const connectPrompt = getConnectPrompt(platformsConnected)
+
+  // If no second platform available (e.g. Meta disabled), go straight to finish
+  if (!connectPrompt) {
+    return [
+      { type: 'mia', content: "You're all set up! Let's explore your insights." },
+      { type: 'choice-buttons', choices: [{ label: "Let's go!", action: 'finish', variant: 'primary' }] }
+    ]
+  }
 
   return [
     {
@@ -330,7 +354,7 @@ export const buildStreamCompleteMessages = (wasCombined: boolean, platformsConne
     {
       type: 'choice-buttons',
       choices: [
-        { label, action, variant: 'primary' },
+        { label: connectPrompt.label, action: connectPrompt.action, variant: 'primary' },
         { label: 'Skip for now', action: 'skip_connect', variant: 'secondary' }
       ]
     }
