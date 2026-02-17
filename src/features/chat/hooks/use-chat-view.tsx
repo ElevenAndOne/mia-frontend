@@ -47,6 +47,7 @@ export const useChatView = () => {
   const integrationPrompt = useIntegrationPrompt({
     connectedPlatforms,
     isLoading: integrationStatusLoading,
+    workspaceRole: activeWorkspace?.role,
   })
 
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({

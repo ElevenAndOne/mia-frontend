@@ -34,6 +34,31 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
     }
   }, [isAuthenticated, showLoginPrompt])
 
+  // Auto-accept after OAuth redirect: if user signed in specifically to accept this invite,
+  // skip the manual "Accept Invite" step and accept immediately.
+  useEffect(() => {
+    const autoAccept = localStorage.getItem('mia_auto_accept_invite')
+    if (autoAccept !== inviteId) return
+    if (!isAuthenticated || !sessionId || accepting) return
+    if (!inviteDetails || !inviteDetails.is_valid) return
+
+    console.log('[INVITE-LANDING] Auto-accepting invite after OAuth:', inviteId)
+    localStorage.removeItem('mia_auto_accept_invite')
+
+    setAccepting(true)
+    setError(null)
+    acceptInvite(inviteId, sessionId)
+      .then((data) => {
+        onAccepted(data.tenant_id, data.skip_account_selection || false)
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : 'Failed to accept invite'
+        setError(message)
+        setAccepting(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inviteId, isAuthenticated, sessionId, inviteDetails])
+
   useEffect(() => {
     const loadInvite = async () => {
       try {
@@ -88,6 +113,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   const handleSignIn = () => {
     console.log('[INVITE-LANDING] handleSignIn - storing pending invite:', inviteId)
     localStorage.setItem('mia_pending_invite', inviteId)
+    localStorage.setItem('mia_auto_accept_invite', inviteId)
     onSignIn?.()
   }
 

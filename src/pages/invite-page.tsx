@@ -52,6 +52,16 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     }
   }, [inviteId])
 
+  // Clean up auto-accept flag on unmount (in case user navigates away without accepting)
+  useEffect(() => {
+    return () => {
+      const autoAccept = localStorage.getItem('mia_auto_accept_invite')
+      if (autoAccept === inviteId) {
+        localStorage.removeItem('mia_auto_accept_invite')
+      }
+    }
+  }, [inviteId])
+
   // Don't auto-navigate away - let React Router handle invalid routes
   // The early return below is sufficient to prevent rendering with missing inviteId
 

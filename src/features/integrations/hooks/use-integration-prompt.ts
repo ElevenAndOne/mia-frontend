@@ -11,6 +11,7 @@ interface IntegrationPromptState {
 interface IntegrationPromptOptions {
   connectedPlatforms: string[]
   isLoading?: boolean
+  workspaceRole?: string  // Only show for owner/admin (viewers can't manage integrations)
 }
 
 const formatList = (items: string[]): string => {
@@ -22,9 +23,13 @@ const formatList = (items: string[]): string => {
 export const useIntegrationPrompt = ({
   connectedPlatforms,
   isLoading = false,
+  workspaceRole,
 }: IntegrationPromptOptions): IntegrationPromptState | null => {
   return useMemo(() => {
     if (isLoading) return null
+
+    // Don't prompt viewers/analysts — they can't manage integrations
+    if (workspaceRole && !['owner', 'admin'].includes(workspaceRole)) return null
 
     const missingPlatformIds: string[] = []
     const missingLabels: string[] = []
@@ -53,5 +58,5 @@ export const useIntegrationPrompt = ({
       missingPlatformIds,
       primaryActionLabel: 'Go to Integrations',
     }
-  }, [connectedPlatforms, isLoading])
+  }, [connectedPlatforms, isLoading, workspaceRole])
 }
