@@ -514,8 +514,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
-  // Only owners and admins can connect new integrations (viewers get read-only access)
-  const canManageIntegrations = !activeWorkspace?.role || ['owner', 'admin'].includes(activeWorkspace.role)
+  // Only owners and admins can manage integrations in a workspace.
+  // No workspace (personal context) → allow. Workspace with unknown role → deny (fail-closed).
+  const canManageIntegrations = !activeWorkspace || ['owner', 'admin'].includes(activeWorkspace.role)
 
   const connectedSources = integrations.filter(i => i.connected)
   const availableSources = integrations.filter(i => !i.connected)

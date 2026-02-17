@@ -132,7 +132,7 @@ const PlatformGearMenu = ({
     await handleDisconnect()
   }
 
-  // Only owners and admins can manage integrations
+  // Only owners and admins can manage integrations in a workspace (fail-closed)
   const canManage = !userRole || ['owner', 'admin'].includes(userRole)
   if (!isConnected || !canManage) return null
 
