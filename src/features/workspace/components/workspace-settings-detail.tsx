@@ -1,4 +1,4 @@
-// import { Icon } from '../../../components/icon'  // BETA: unused while invite hidden
+import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { CreateInviteModal } from './create-invite-modal'
@@ -42,7 +42,7 @@ interface WorkspaceSettingsDetailProps {
 }
 
 export const WorkspaceSettingsDetail = ({
-  canManage: _canManage,  // BETA: unused while invite hidden
+  canManage,
   isOwner,
   workspace,
   error,
@@ -57,7 +57,7 @@ export const WorkspaceSettingsDetail = ({
   creatingInvite,
   copySuccess,
   isCreateInviteDisabled,
-  onOpenCreateInviteModal: _onOpenCreateInviteModal,  // BETA: unused while invite hidden
+  onOpenCreateInviteModal,
   onCloseCreateInviteModal,
   onInviteTypeChange,
   onInviteEmailChange,
@@ -89,8 +89,7 @@ export const WorkspaceSettingsDetail = ({
           </div>
         )}
 
-        {/* BETA: Invite system hidden until multi-tenant data isolation is fully tested */}
-        {/* {canManage && (
+        {canManage && (
           <button
             onClick={onOpenCreateInviteModal}
             className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
@@ -98,7 +97,7 @@ export const WorkspaceSettingsDetail = ({
             <Icon.plus size={20} />
             Invite Member
           </button>
-        )} */}
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">

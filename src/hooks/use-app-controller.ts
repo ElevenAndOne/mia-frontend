@@ -19,7 +19,6 @@ export const useAppController = () => {
     availableWorkspaces,
     loginMeta,
     refreshAccounts,
-    refreshWorkspaces,
     connectingPlatform,
   } = useSession()
 
@@ -74,39 +73,21 @@ export const useAppController = () => {
     }
   }
 
-  const handleInviteAccepted = async (_tenantId: string, skipAccountSelection?: boolean) => {
+  const handleInviteAccepted = async (_tenantId: string, _skipAccountSelection?: boolean) => {
     setJustAcceptedInvite(true)
-    // Clean up pending invite to prevent redirect loop
     localStorage.removeItem('mia_pending_invite')
 
-    // NOTE: Do NOT call switchWorkspace() here. The accept_invite backend endpoint
-    // already set active_tenant_id, tenant_role, and selected_account_id in a single
-    // db transaction. Calling switchWorkspace would redundantly call set_active_tenant()
-    // through session_service's potentially stale global _db, which could silently fail
-    // and corrupt the session state.
-
-    // Best-effort refresh workspaces, but navigate regardless
-    try {
-      await refreshWorkspaces()
-    } catch (error) {
-      console.error('[APP] refreshWorkspaces failed (non-blocking):', error)
-    }
-
-    // Always navigate after invite acceptance - don't let refreshWorkspaces failure block this
-    if (skipAccountSelection && isAnyAuthenticated) {
-      // Backend already set up the workspace context + account on the session.
-      // Full page reload so initializeSession picks up the complete state.
-      window.location.href = '/home'
-    } else if (isAnyAuthenticated && selectedAccount) {
-      window.history.replaceState({}, '', '/')
-      navigate('/home')
-    } else if (isAnyAuthenticated) {
-      window.history.replaceState({}, '', '/')
-      navigate('/onboarding')
-    } else {
-      window.history.replaceState({}, '', '/')
-      navigate('/')
-    }
+    // FEB 17 FIX: Always do a full page reload after invite acceptance.
+    // The accept_invite backend endpoint already set active_tenant_id, tenant_role,
+    // and selected_account_id in a single db transaction. A full page reload triggers
+    // initializeSession which queries the backend for the complete new workspace state.
+    //
+    // Previously, when skipAccountSelection was false and the user already had a
+    // selectedAccount (from their own workspace), this used navigate('/home') which
+    // is SPA navigation — React state stayed stale with the old workspace's accounts
+    // and data. This caused existing users to still see their own data after accepting
+    // an invite to another workspace.
+    window.location.href = isAnyAuthenticated ? '/home' : '/'
   }
 
   const handleCreateWorkspaceClose = () => {

@@ -616,32 +616,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [state.sessionId])
 
   // Switch Workspace
+  // FEB 17 FIX: Call backend to switch active_tenant_id, then full page reload.
+  // This lets initializeSession pick up the complete new workspace state (accounts,
+  // credentials, selected account) in a single clean pass — no stale React state,
+  // no burst of parallel API calls that exhaust the DB connection pool.
   const switchWorkspaceFn = useCallback(async (tenantId: string): Promise<boolean> => {
     if (!state.sessionId) return false
 
     try {
-      const data = await workspaceService.switchWorkspace(state.sessionId, tenantId)
-      const workspace = state.availableWorkspaces.find(w => w.tenant_id === tenantId)
-
-      setState(prev => ({
-        ...prev,
-        activeWorkspace: workspace || {
-          tenant_id: tenantId,
-          name: data.tenant_name || data.name || 'Workspace',
-          slug: data.slug || '',
-          role: (data.role || 'member') as WorkspaceRole,
-          onboarding_completed: data.onboarding_completed || false,
-          connected_platforms: data.connected_platforms || [],
-          member_count: 1
-        }
-      }))
-
+      await workspaceService.switchWorkspace(state.sessionId, tenantId)
+      // Full page reload — initializeSession will query backend for new workspace context
+      window.location.href = '/home'
       return true
     } catch (error) {
       console.error('[SESSION] Switch workspace error:', error)
       return false
     }
-  }, [state.sessionId, state.availableWorkspaces])
+  }, [state.sessionId])
 
   // Delete Workspace
   const deleteWorkspaceFn = useCallback(async (tenantId: string): Promise<boolean> => {
