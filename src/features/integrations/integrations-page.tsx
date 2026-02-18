@@ -665,16 +665,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || ['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)}
+                      disabled={connectingId !== null || ['linkedin', 'tiktok'].includes(integration.id)}
                       className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                        ['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)
+                        ['linkedin', 'tiktok'].includes(integration.id)
                         ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
                         : connectingId === integration.id
                           ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
                           : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
                         }`}
                     >
-                      {['linkedin', 'tiktok', 'meta', 'facebook_organic'].includes(integration.id)
+                      {['linkedin', 'tiktok'].includes(integration.id)
                         ? 'Soon'
                         : connectingId === integration.id
                           ? 'Connecting...'

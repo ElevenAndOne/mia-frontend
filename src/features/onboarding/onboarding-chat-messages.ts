@@ -2,8 +2,8 @@ import type { BronzeFact } from './onboarding-context'
 import type { ChatMessageInput, ExplainerType } from './onboarding-chat-types'
 import { buildBronzeCardData } from './bronze-card-utils'
 
-// BETA: Set to false to re-enable Meta connect in onboarding once Access Verification is approved
-const META_CONNECT_ENABLED = false
+// Meta Access Verification approved - Meta connect enabled
+const META_CONNECT_ENABLED = true
 
 const CHOICE_LABELS: Record<string, string> = {
   show_clicks: 'Yes, show me!',
