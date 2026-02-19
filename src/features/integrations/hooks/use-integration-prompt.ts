@@ -41,9 +41,9 @@ export const useIntegrationPrompt = ({
 
     if (!connectedPlatforms.includes('google_ads')) addMissing('google_ads', 'Google Ads')
     if (!connectedPlatforms.includes('ga4')) addMissing('ga4', 'GA4')
-    // Meta Ads and Facebook Organic hidden while awaiting Meta platform review
+    // Meta Ads connected during onboarding, not a "finish setup" item
     // if (!connectedPlatforms.includes('meta_ads')) addMissing('meta_ads', 'Meta Ads')
-    // if (!connectedPlatforms.includes('facebook_organic')) addMissing('facebook_organic', 'Facebook Organic')
+    if (!connectedPlatforms.includes('facebook_organic')) addMissing('facebook_organic', 'Facebook Page')
 
     if (missingLabels.length === 0) return null
 
