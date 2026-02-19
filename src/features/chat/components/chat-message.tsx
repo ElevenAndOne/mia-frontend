@@ -1,4 +1,5 @@
 import { Icon } from '../../../components/icon'
+import { MarkdownText } from '../../../components/markdown-text'
 import { useClipboard } from '../../../hooks/use-clipboard'
 
 interface ChatMessageProps {
@@ -25,7 +26,7 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
         <div className="text-primary leading-relaxed whitespace-pre-wrap font-mono paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary">
-          {content}
+          <MarkdownText text={content} className="whitespace-pre-wrap" />
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />
           )}

@@ -23,6 +23,7 @@ export const useWorkspaceSettingsPage = () => {
   const [isLinkInvite, setIsLinkInvite] = useState(true)
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null)
+  const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null)
   const { copied: copySuccess, copy } = useClipboard()
 
   const selectedWorkspace = useMemo(() => {
@@ -106,6 +107,7 @@ export const useWorkspaceSettingsPage = () => {
       const invite = await createInvite(payload)
       if (!invite) return
       setCreatedInviteLink(`${window.location.origin}/invite/${invite.invite_id}`)
+      setCreatedInviteEmail(invite.email_sent ? (payload.email ?? null) : null)
       setInviteEmail('')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create invite'
@@ -161,6 +163,7 @@ export const useWorkspaceSettingsPage = () => {
 
   const completeInviteFlow = useCallback(() => {
     setCreatedInviteLink(null)
+    setCreatedInviteEmail(null)
     setShowCreateInviteModal(false)
     setInviteEmail('')
     setInviteRole('viewer')
@@ -229,6 +232,7 @@ export const useWorkspaceSettingsPage = () => {
     isLinkInvite,
     creatingInvite,
     createdInviteLink,
+    createdInviteEmail,
     copySuccess,
     isCreateInviteDisabled,
     handleSelectWorkspace,

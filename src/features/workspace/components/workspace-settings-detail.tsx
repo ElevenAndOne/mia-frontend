@@ -17,6 +17,7 @@ interface WorkspaceSettingsDetailProps {
   onBack: () => void
   showCreateInviteModal: boolean
   createdInviteLink: string | null
+  createdInviteEmail: string | null
   inviteRole: string
   inviteEmail: string
   isLinkInvite: boolean
@@ -51,6 +52,7 @@ export const WorkspaceSettingsDetail = ({
   onBack,
   showCreateInviteModal,
   createdInviteLink,
+  createdInviteEmail,
   inviteRole,
   inviteEmail,
   isLinkInvite,
@@ -154,6 +156,7 @@ export const WorkspaceSettingsDetail = ({
         isLinkInvite={isLinkInvite}
         creatingInvite={creatingInvite}
         createdInviteLink={createdInviteLink}
+        createdInviteEmail={createdInviteEmail}
         copySuccess={copySuccess}
         isCreateInviteDisabled={isCreateInviteDisabled}
         onInviteTypeChange={onInviteTypeChange}

@@ -9,6 +9,7 @@ interface CreateInviteModalProps {
   isLinkInvite: boolean
   creatingInvite: boolean
   createdInviteLink: string | null
+  createdInviteEmail: string | null
   copySuccess: boolean
   isCreateInviteDisabled: boolean
   onInviteTypeChange: (isLinkInvite: boolean) => void
@@ -27,6 +28,7 @@ export const CreateInviteModal = ({
   isLinkInvite,
   creatingInvite,
   createdInviteLink,
+  createdInviteEmail,
   copySuccess,
   isCreateInviteDisabled,
   onInviteTypeChange,
@@ -138,7 +140,11 @@ export const CreateInviteModal = ({
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-success">
               <Icon.check_circle size={20} />
-              <span className="subheading-md">Invite link created successfully!</span>
+              <span className="subheading-md">
+                {createdInviteEmail
+                  ? `Invite sent to ${createdInviteEmail}!`
+                  : 'Invite link created successfully!'}
+              </span>
             </div>
 
             <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">

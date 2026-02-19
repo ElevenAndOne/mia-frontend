@@ -33,6 +33,7 @@ const WorkspaceSettingsPage = () => {
     isLinkInvite,
     creatingInvite,
     createdInviteLink,
+    createdInviteEmail,
     copySuccess,
     isCreateInviteDisabled,
     handleSelectWorkspace,
@@ -90,6 +91,7 @@ const WorkspaceSettingsPage = () => {
           onBack={handleBackToOverview}
           showCreateInviteModal={showCreateInviteModal}
           createdInviteLink={createdInviteLink}
+          createdInviteEmail={createdInviteEmail}
           inviteRole={inviteRole}
           inviteEmail={inviteEmail}
           isLinkInvite={isLinkInvite}
