@@ -5,6 +5,7 @@ import { useAppChromeEffects } from './use-app-chrome-effects'
 import { useAuthRedirects } from './use-auth-redirects'
 import { useInsightsDatePicker } from './use-insights-date-picker'
 import { consumeReturnUrl } from '../routes/protected-route'
+import { StorageKey } from '../constants/storage-keys'
 
 export const useAppController = () => {
   const navigate = useNavigate()
@@ -75,7 +76,7 @@ export const useAppController = () => {
 
   const handleInviteAccepted = async (_tenantId: string, _skipAccountSelection?: boolean) => {
     setJustAcceptedInvite(true)
-    localStorage.removeItem('mia_pending_invite')
+    localStorage.removeItem(StorageKey.PENDING_INVITE)
 
     // FEB 17 FIX: Always do a full page reload after invite acceptance.
     // The accept_invite backend endpoint already set active_tenant_id, tenant_role,

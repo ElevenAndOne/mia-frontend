@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
+import { StorageKey } from '../../../constants/storage-keys'
 
-const KNOWN_CONNECTED_KEY = 'mia_known_connected_platforms'
+const KNOWN_CONNECTED_KEY = StorageKey.KNOWN_CONNECTED_PLATFORMS
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null

@@ -11,6 +11,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { apiFetch } from '../../utils/api'
+import { StorageKey } from '../../constants/storage-keys'
 import { useSession } from '../../contexts/session-context'
 
 // Onboarding steps
@@ -404,7 +405,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
         // Persist to localStorage as fallback (backend may not return this flag on re-login)
         if (activeWorkspace?.tenant_id) {
-          localStorage.setItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`, 'true')
+          localStorage.setItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`, 'true')
         }
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
@@ -439,7 +440,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
         // Persist to localStorage as fallback (backend may not return this flag on re-login)
         if (activeWorkspace?.tenant_id) {
-          localStorage.setItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`, 'true')
+          localStorage.setItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`, 'true')
         }
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too

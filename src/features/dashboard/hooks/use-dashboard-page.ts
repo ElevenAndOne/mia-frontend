@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { StorageKey } from '../../../constants/storage-keys'
 import { formatDateRangeDisplay } from '../../../utils/date-range'
 import { sendChatMessage } from '../../chat/services/chat-service'
 import { PLATFORM_CONFIG } from '../../integrations/config/platforms'
@@ -64,9 +65,8 @@ export const useDashboardPage = () => {
 
   // Throttle: only show configuration guidance every 5th dashboard visit
   const [shouldShowGuidance] = useState(() => {
-    const key = 'mia_config_guidance_visit_count'
-    const count = parseInt(localStorage.getItem(key) || '0', 10) + 1
-    localStorage.setItem(key, String(count))
+    const count = parseInt(localStorage.getItem(StorageKey.CONFIG_GUIDANCE_VISIT_COUNT) || '0', 10) + 1
+    localStorage.setItem(StorageKey.CONFIG_GUIDANCE_VISIT_COUNT, String(count))
     return count % 5 === 1 // Show on 1st, 6th, 11th visit...
   })
 

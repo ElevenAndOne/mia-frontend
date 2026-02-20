@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { StorageKey } from '../../../constants/storage-keys'
 import type { ChatMessage, ChatMessageInput } from '../onboarding-chat-types'
 
-const MESSAGES_STORAGE_KEY = 'mia_onboarding_messages'
+const MESSAGES_STORAGE_KEY = StorageKey.ONBOARDING_MESSAGES
 
 interface MessageQueueState {
   displayedMessages: ChatMessage[]

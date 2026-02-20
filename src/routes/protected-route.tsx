@@ -1,8 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import LoadingScreen from '../components/loading-screen'
+import { StorageKey } from '../constants/storage-keys'
 
-const RETURN_URL_KEY = 'mia_auth_return_url'
+const RETURN_URL_KEY = StorageKey.AUTH_RETURN_URL
 
 // Save the current URL for post-auth redirect
 const saveReturnUrl = (pathname: string, search: string) => {

@@ -1,6 +1,7 @@
 /**
  * Session utility functions
  */
+import { StorageKey } from '../constants/storage-keys'
 
 /**
  * Generate a unique session ID
@@ -20,10 +21,10 @@ export const isMobile = (): boolean => {
  * Get or create session ID from localStorage
  */
 export const getOrCreateSessionId = (): string => {
-  let sessionId = localStorage.getItem('mia_session_id')
+  let sessionId = localStorage.getItem(StorageKey.SESSION_ID)
   if (!sessionId) {
     sessionId = generateSessionId()
-    localStorage.setItem('mia_session_id', sessionId)
+    localStorage.setItem(StorageKey.SESSION_ID, sessionId)
   }
   return sessionId
 }
@@ -32,12 +33,12 @@ export const getOrCreateSessionId = (): string => {
  * Clear session data from localStorage
  */
 export const clearSessionStorage = (): void => {
-  localStorage.removeItem('mia_session_id')
-  localStorage.removeItem('mia_last_user_id')
-  localStorage.removeItem('mia_app_state')
+  localStorage.removeItem(StorageKey.SESSION_ID)
+  localStorage.removeItem(StorageKey.LAST_USER_ID)
+  localStorage.removeItem(StorageKey.APP_STATE)
   // Clear OAuth state flags (prevents stale state on re-login)
-  localStorage.removeItem('mia_oauth_pending')
-  localStorage.removeItem('mia_oauth_return_url')
+  localStorage.removeItem(StorageKey.OAUTH_PENDING)
+  localStorage.removeItem(StorageKey.OAUTH_RETURN_URL)
   localStorage.removeItem('pending_platform_connect')
 }
 
@@ -45,12 +46,12 @@ export const clearSessionStorage = (): void => {
  * Store session ID in localStorage
  */
 export const storeSessionId = (sessionId: string): void => {
-  localStorage.setItem('mia_session_id', sessionId)
+  localStorage.setItem(StorageKey.SESSION_ID, sessionId)
 }
 
 /**
  * Get stored session ID from localStorage
  */
 export const getStoredSessionId = (): string | null => {
-  return localStorage.getItem('mia_session_id')
+  return localStorage.getItem(StorageKey.SESSION_ID)
 }

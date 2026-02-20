@@ -5,6 +5,7 @@ import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
 import QuickActions from '../components/quick-actions'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
+import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 import { useChatView } from '../hooks/use-chat-view.tsx'
 
@@ -39,9 +40,8 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
 
   // Throttle: only show the integration prompt every 5th chat page visit
   const [shouldShowPromptThisVisit] = useState(() => {
-    const key = 'mia_integration_prompt_visit_count'
-    const count = parseInt(localStorage.getItem(key) || '0', 10) + 1
-    localStorage.setItem(key, String(count))
+    const count = parseInt(localStorage.getItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT) || '0', 10) + 1
+    localStorage.setItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT, String(count))
     return count % 5 === 1 // Show on 1st, 6th, 11th visit...
   })
 

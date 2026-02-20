@@ -18,6 +18,7 @@ import {
   storeSessionId,
   getStoredSessionId
 } from '../utils/session'
+import { StorageKey } from '../constants/storage-keys'
 
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
@@ -176,8 +177,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       try {
         // Check for mobile OAuth redirect - use localStorage flag, NOT query params
         // Backend redirects to frontend_origin without query params
-        const oauthPending = localStorage.getItem('mia_oauth_pending')
-        const returnUrl = localStorage.getItem('mia_oauth_return_url')
+        const oauthPending = localStorage.getItem(StorageKey.OAUTH_PENDING)
+        const returnUrl = localStorage.getItem(StorageKey.OAUTH_RETURN_URL)
 
         let sessionId = getStoredSessionId()
         if (!sessionId) {
@@ -191,8 +192,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           setState(prev => ({ ...prev, connectingPlatform: oauthPending as 'google' | 'meta' }))
 
           // Clear the pending flags immediately
-          localStorage.removeItem('mia_oauth_pending')
-          localStorage.removeItem('mia_oauth_return_url')
+          localStorage.removeItem(StorageKey.OAUTH_PENDING)
+          localStorage.removeItem(StorageKey.OAUTH_RETURN_URL)
 
           // Store return URL BEFORE any async calls so it's ready for auth-redirects
           // But ONLY if we're not already on the right page (backend now redirects to full URL)
@@ -204,11 +205,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 console.log('[SESSION] Already on return page:', currentPath, '- skipping mia_oauth_pending_return')
               } else {
                 console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
-                localStorage.setItem('mia_oauth_pending_return', returnUrl)
+                localStorage.setItem(StorageKey.OAUTH_PENDING_RETURN, returnUrl)
               }
             } catch {
               console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
-              localStorage.setItem('mia_oauth_pending_return', returnUrl)
+              localStorage.setItem(StorageKey.OAUTH_PENDING_RETURN, returnUrl)
             }
           } else {
             console.log('[SESSION] No return URL found - mia_oauth_return_url was not set')
@@ -296,7 +297,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               }))
 
               if (sessionUser.user_id) {
-                localStorage.setItem('mia_last_user_id', sessionUser.user_id)
+                localStorage.setItem(StorageKey.LAST_USER_ID, sessionUser.user_id)
               }
               return
             }
@@ -304,7 +305,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             console.log('[SESSION] Session validation failed, creating new session')
           }
 
-          localStorage.removeItem('mia_session_id')
+          localStorage.removeItem(StorageKey.SESSION_ID)
         }
 
         // Create new session
@@ -342,8 +343,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       // FEB 2026: Simplified to always use redirect flow (removed popup flow)
       // Redirect flow is more reliable for both mobile and desktop
-      localStorage.setItem('mia_oauth_pending', 'google')
-      localStorage.setItem('mia_oauth_return_url', returnUrl)
+      localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
+      localStorage.setItem(StorageKey.OAUTH_RETURN_URL, returnUrl)
       window.location.href = authData.auth_url
       // Return promise that never resolves - page will redirect before this matters
       return new Promise<boolean>(() => {})
@@ -371,11 +372,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       // Mobile redirect flow (same pattern as Google)
       if (isMobile()) {
-        localStorage.setItem('mia_oauth_pending', 'meta')
-        localStorage.setItem('mia_oauth_return_url', window.location.origin + window.location.pathname)
+        localStorage.setItem(StorageKey.OAUTH_PENDING, 'meta')
+        localStorage.setItem(StorageKey.OAUTH_RETURN_URL, window.location.origin + window.location.pathname)
         // If on onboarding page, flag that we need to show Meta selector on return
         if (window.location.pathname === '/onboarding') {
-          localStorage.setItem('mia_pending_meta_link', 'true')
+          localStorage.setItem(StorageKey.PENDING_META_LINK, 'true')
         }
         window.location.href = authData.auth_url
         // Return promise that never resolves - page will redirect before this matters
@@ -707,7 +708,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }))
 
         if (userId) {
-          localStorage.setItem('mia_last_user_id', userId)
+          localStorage.setItem(StorageKey.LAST_USER_ID, userId)
         }
 
         return true

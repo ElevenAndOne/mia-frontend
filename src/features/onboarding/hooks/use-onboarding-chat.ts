@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { StorageKey } from '../../../constants/storage-keys'
 import { useSession } from '../../../contexts/session-context'
 import { useOnboarding } from '../onboarding-context'
 import type { BronzeFact } from '../onboarding-context'
@@ -301,10 +302,10 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
 
   const initializeChat = useCallback(async () => {
     // Check if returning from Meta OAuth - restore messages and show selector
-    const pendingMetaLink = localStorage.getItem('mia_pending_meta_link')
+    const pendingMetaLink = localStorage.getItem(StorageKey.PENDING_META_LINK)
     if (pendingMetaLink === 'true') {
       console.log('[ONBOARDING] Returning from Meta OAuth - restoring messages, showing selector')
-      localStorage.removeItem('mia_pending_meta_link')
+      localStorage.removeItem(StorageKey.PENDING_META_LINK)
 
       // Restore the messages from before OAuth redirect
       restoreMessages()

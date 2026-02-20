@@ -5,11 +5,8 @@
 
 import { clearSessionStorage } from './session'
 
-// Get API base URL from environment variable with smart defaults
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== 'undefined' && window.location.hostname.includes('ondigitalocean.app')
-    ? 'https://dolphin-app-b869e.ondigitalocean.app'
-    : 'http://localhost:8000')
+// Get API base URL from environment variable with localhost fallback
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 // Track if we're already handling an auth error to prevent redirect loops
 let isHandlingAuthError = false

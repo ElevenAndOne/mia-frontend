@@ -1,4 +1,6 @@
-const INTEGRATION_HIGHLIGHT_KEY = 'mia_integration_highlight'
+import { StorageKey } from '../../../constants/storage-keys'
+
+const INTEGRATION_HIGHLIGHT_KEY = StorageKey.INTEGRATION_HIGHLIGHT
 
 type IntegrationHighlightId = 'google' | 'ga4' | 'meta' | 'facebook_organic'
 

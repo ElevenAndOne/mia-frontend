@@ -6,6 +6,7 @@ import { UserAvatar } from '../components/user-avatar'
 import { WorkspaceRoleIcon } from '../features/workspace/components/workspace-role-icon'
 import { getWorkspaceRoleDescription } from '../features/workspace/utils/role'
 import { useInviteLanding } from '../features/workspace/hooks/use-invite-landing'
+import { StorageKey } from '../constants/storage-keys'
 
 interface InvitePageProps {
   onAccepted: (tenantId: string, skipAccountSelection?: boolean) => void
@@ -45,9 +46,9 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   // (prevents stale redirect after invite is accepted)
   useEffect(() => {
     if (inviteId) {
-      const pendingInvite = localStorage.getItem('mia_pending_invite')
+      const pendingInvite = localStorage.getItem(StorageKey.PENDING_INVITE)
       if (pendingInvite === inviteId) {
-        localStorage.removeItem('mia_pending_invite')
+        localStorage.removeItem(StorageKey.PENDING_INVITE)
       }
     }
   }, [inviteId])
@@ -55,9 +56,9 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   // Clean up auto-accept flag on unmount (in case user navigates away without accepting)
   useEffect(() => {
     return () => {
-      const autoAccept = localStorage.getItem('mia_auto_accept_invite')
+      const autoAccept = localStorage.getItem(StorageKey.AUTO_ACCEPT_INVITE)
       if (autoAccept === inviteId) {
-        localStorage.removeItem('mia_auto_accept_invite')
+        localStorage.removeItem(StorageKey.AUTO_ACCEPT_INVITE)
       }
     }
   }, [inviteId])

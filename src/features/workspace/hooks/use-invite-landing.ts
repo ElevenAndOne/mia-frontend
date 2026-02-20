@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { acceptInvite, fetchInviteDetails } from '../services/invite-service'
+import { StorageKey } from '../../../constants/storage-keys'
 
 export interface InviteDetails {
   invite_id: string
@@ -37,13 +38,13 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   // Auto-accept after OAuth redirect: if user signed in specifically to accept this invite,
   // skip the manual "Accept Invite" step and accept immediately.
   useEffect(() => {
-    const autoAccept = localStorage.getItem('mia_auto_accept_invite')
+    const autoAccept = localStorage.getItem(StorageKey.AUTO_ACCEPT_INVITE)
     if (autoAccept !== inviteId) return
     if (!isAuthenticated || !sessionId || accepting) return
     if (!inviteDetails || !inviteDetails.is_valid) return
 
     console.log('[INVITE-LANDING] Auto-accepting invite after OAuth:', inviteId)
-    localStorage.removeItem('mia_auto_accept_invite')
+    localStorage.removeItem(StorageKey.AUTO_ACCEPT_INVITE)
 
     setAccepting(true)
     setError(null)
@@ -112,8 +113,8 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
 
   const handleSignIn = () => {
     console.log('[INVITE-LANDING] handleSignIn - storing pending invite:', inviteId)
-    localStorage.setItem('mia_pending_invite', inviteId)
-    localStorage.setItem('mia_auto_accept_invite', inviteId)
+    localStorage.setItem(StorageKey.PENDING_INVITE, inviteId)
+    localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId)
     onSignIn?.()
   }
 

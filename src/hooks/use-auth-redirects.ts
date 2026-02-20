@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
+import { StorageKey } from '../constants/storage-keys'
 
 interface UseAuthRedirectsParams {
   justAcceptedInvite: boolean
@@ -41,13 +42,13 @@ export const useAuthRedirects = ({
       return
     }
 
-    console.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem('mia_pending_invite'))
+    console.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem(StorageKey.PENDING_INVITE))
 
     // Handle OAuth return - navigate back to where user was before OAuth
     // Check FIRST before any other logic, regardless of current auth state
-    const pendingReturn = localStorage.getItem('mia_oauth_pending_return')
+    const pendingReturn = localStorage.getItem(StorageKey.OAUTH_PENDING_RETURN)
     if (pendingReturn) {
-      localStorage.removeItem('mia_oauth_pending_return')
+      localStorage.removeItem(StorageKey.OAUTH_PENDING_RETURN)
       // Parse the URL to get the pathname
       let returnPath: string
       try {
@@ -70,10 +71,10 @@ export const useAuthRedirects = ({
     //  handleSignIn sets mia_pending_invite then navigates to / via handleBack,
     //  if we redirect back to /invite immediately, user can never reach the login page)
     if (isAnyAuthenticated) {
-      const pendingInvite = localStorage.getItem('mia_pending_invite')
+      const pendingInvite = localStorage.getItem(StorageKey.PENDING_INVITE)
       if (pendingInvite) {
         console.log('[AUTH-REDIRECT] Found pending invite:', pendingInvite)
-        localStorage.removeItem('mia_pending_invite')
+        localStorage.removeItem(StorageKey.PENDING_INVITE)
         navigate(`/invite/${pendingInvite}`)
         return
       }
@@ -113,7 +114,7 @@ export const useAuthRedirects = ({
       } else {
         // Check localStorage as fallback (backend may not return onboarding_completed flag)
         const localStorageOnboardingComplete = activeWorkspace?.tenant_id
-          ? localStorage.getItem(`mia_onboarding_completed_${activeWorkspace.tenant_id}`) === 'true'
+          ? localStorage.getItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`) === 'true'
           : false
 
         if (user?.onboarding_completed || activeWorkspace?.onboarding_completed || localStorageOnboardingComplete) {

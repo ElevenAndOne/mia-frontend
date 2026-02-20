@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { StorageKey } from '../constants/storage-keys'
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
@@ -10,7 +11,7 @@ interface ThemeContextValue {
   toggleTheme: () => void
 }
 
-const THEME_STORAGE_KEY = 'mia_theme'
+const THEME_STORAGE_KEY = StorageKey.THEME
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
