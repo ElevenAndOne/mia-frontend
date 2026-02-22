@@ -38,6 +38,7 @@ export const MobileNavigationUserView = ({
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
+            data-track-id="mobile-user-nav-back"
             className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
             aria-label="Back to menu"
           >
@@ -47,6 +48,7 @@ export const MobileNavigationUserView = ({
         </div>
         <button
           onClick={onClose}
+          data-track-id="mobile-user-nav-close"
           className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Close menu"
         >
@@ -68,6 +70,7 @@ export const MobileNavigationUserView = ({
         {onWorkspaceSettings && (
           <button
             onClick={onWorkspaceSettings}
+            data-track-id="mobile-user-nav-workspace-settings"
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.settings_01 size={20} className="text-tertiary" />
@@ -78,6 +81,7 @@ export const MobileNavigationUserView = ({
         {onIntegrationsClick && (
           <button
             onClick={onIntegrationsClick}
+            data-track-id="mobile-user-nav-integrations"
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.globe_01 size={20} className="text-tertiary" />
@@ -88,6 +92,7 @@ export const MobileNavigationUserView = ({
         {onHelpClick && (
           <button
             onClick={onHelpClick}
+            data-track-id="mobile-user-nav-help"
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.help_circle size={20} className="text-tertiary" />
@@ -105,6 +110,7 @@ export const MobileNavigationUserView = ({
       <div className="p-4 border-t border-tertiary">
         <button
           onClick={onLogout}
+          data-track-id="mobile-user-nav-sign-out"
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
         >
           <Icon.log_out_01 size={20} />

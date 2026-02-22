@@ -92,6 +92,7 @@ export const WorkspaceSettingsDetail = ({
         {canManage && (
           <button
             onClick={onOpenCreateInviteModal}
+            data-track-id="workspace-settings-invite-member"
             className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
           >
             <Icon.plus size={20} />
@@ -122,6 +123,7 @@ export const WorkspaceSettingsDetail = ({
             </p>
             <button
               onClick={onOpenDeleteModal}
+              data-track-id="workspace-settings-delete-workspace"
               className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
             >
               Delete Workspace
@@ -138,6 +140,7 @@ export const WorkspaceSettingsDetail = ({
             </p>
             <button
               onClick={onLeaveWorkspace}
+              data-track-id="workspace-settings-leave-workspace"
               className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
             >
               Leave Workspace

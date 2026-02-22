@@ -60,6 +60,7 @@ export const SidebarUserMenu = ({
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
+        data-track-id="sidebar-user-menu-toggle"
         className="focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:ring-offset-2 rounded-full"
         aria-haspopup="true"
         aria-expanded={isOpen}
@@ -103,6 +104,7 @@ export const SidebarUserMenu = ({
           {onWorkspaceSettings && (
             <button
               onClick={handleWorkspaceSettings}
+              data-track-id="sidebar-user-menu-workspace-settings"
               className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
               role="menuitem"
             >
@@ -117,6 +119,7 @@ export const SidebarUserMenu = ({
           {onIntegrationsClick && (
             <button
               onClick={handleIntegrations}
+              data-track-id="sidebar-user-menu-integrations"
               className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
               role="menuitem"
             >
@@ -128,6 +131,7 @@ export const SidebarUserMenu = ({
           {onHelpClick && (
             <button
               onClick={handleHelp}
+              data-track-id="sidebar-user-menu-help"
               className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
               role="menuitem"
             >
@@ -149,6 +153,7 @@ export const SidebarUserMenu = ({
 
           <button
             onClick={handleLogout}
+            data-track-id="sidebar-user-menu-sign-out"
             className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
             role="menuitem"
           >

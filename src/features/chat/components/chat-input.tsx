@@ -72,6 +72,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
               ref={calendarButtonRef}
               type="button"
               onClick={() => setShowDatePicker(!showDatePicker)}
+              data-track-id="chat-date-range-toggle"
               className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors"
               title="Select date range"
             >
@@ -92,6 +93,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
                 ref={platformButtonRef}
                 type="button"
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
+                data-track-id="chat-platform-selector-toggle"
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
                   hasSelectedPlatforms
                     ? 'bg-brand-solid text-primary-onbrand'
@@ -118,6 +120,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
           <button
             type="button"
             onClick={handleSubmit}
+            data-track-id="chat-send-message"
             disabled={!canSubmit}
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
               canSubmit

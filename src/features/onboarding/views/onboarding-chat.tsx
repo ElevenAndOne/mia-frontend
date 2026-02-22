@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useOnboardingChat } from '../hooks/use-onboarding-chat'
+import { useOnboardingTracking } from '../hooks/use-onboarding-tracking'
 import MetaAccountSelector from '../../integrations/selectors/meta-account-selector'
 import GoogleAccountLinkSelector from '../../integrations/selectors/google-account-link-selector'
 import { ChatHeader } from '../components/chat-header'
@@ -29,6 +30,12 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
   } = useOnboardingChat({ onComplete, onConnectPlatform })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useOnboardingTracking({
+    currentProgress,
+    showMetaSelector,
+    showGoogleSelector,
+  })
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

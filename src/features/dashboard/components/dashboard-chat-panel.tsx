@@ -69,6 +69,7 @@ export const DashboardChatPanel = ({ messages, isLoading, onSubmitMessage }: Das
           <button
             type="button"
             onClick={handleSubmit}
+            data-track-id="dashboard-chat-send-message"
             className="px-5 py-3.5 bg-brand-solid text-primary-onbrand rounded-full hover:bg-brand-solid-hover transition-colors subheading-md"
             disabled={isLoading}
           >

@@ -67,6 +67,7 @@ const WorkspaceSwitcher = ({ onClose, onCreateWorkspace, onSettings }: Workspace
       {activeWorkspace && (activeWorkspace.role === 'owner' || activeWorkspace.role === 'admin') && onSettings && (
         <button
           onClick={onSettings}
+          data-track-id="workspace-switcher-settings"
           className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
         >
           <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center">
@@ -82,6 +83,7 @@ const WorkspaceSwitcher = ({ onClose, onCreateWorkspace, onSettings }: Workspace
       {/* Create New Workspace Button */}
       <button
         onClick={onCreateWorkspace}
+        data-track-id="workspace-switcher-create-workspace"
         className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
       >
         <div className="w-8 h-8 rounded-lg border-2 border-dashed border-primary flex items-center justify-center">

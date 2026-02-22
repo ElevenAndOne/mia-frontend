@@ -28,6 +28,7 @@ export const AppSidebar = ({
       <nav className="flex flex-col items-center gap-4">
         <button
           onClick={onNewChat}
+          data-track-id="sidebar-new-chat"
           className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           title="New chat"
         >

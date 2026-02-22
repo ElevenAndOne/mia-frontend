@@ -46,6 +46,7 @@ export const DashboardHomePanel = ({
         {configurationGuidance && (
           <button
             onClick={onIntegrationsClick}
+            data-track-id="dashboard-home-open-integrations-guidance"
             className="flex items-center gap-2 px-4 py-2 bg-utility-info-100 border border-utility-info-300 rounded-full text-utility-info-700 paragraph-xs hover:bg-utility-info-200 transition-colors"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -64,6 +65,7 @@ export const DashboardHomePanel = ({
               <button
                 key={platform.id}
                 onClick={() => isConnected && onTogglePlatform(platform.id)}
+                data-track-id={`dashboard-home-toggle-platform-${platform.id}`}
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 group relative"
                 style={{
                   opacity: isConnected ? (isSelected ? 1 : 0.4) : 0.3,
@@ -94,6 +96,7 @@ export const DashboardHomePanel = ({
               event.preventDefault()
               setTimeout(() => onGrowQuickClick(selectedPlatforms), 150)
             }}
+            data-track-id="dashboard-home-quick-action-grow"
             className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
           >
             Grow
@@ -104,6 +107,7 @@ export const DashboardHomePanel = ({
               event.preventDefault()
               setTimeout(() => onOptimizeQuickClick(selectedPlatforms), 150)
             }}
+            data-track-id="dashboard-home-quick-action-optimise"
             className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
           >
             Optimise
@@ -114,6 +118,7 @@ export const DashboardHomePanel = ({
               event.preventDefault()
               setTimeout(() => onProtectQuickClick(selectedPlatforms), 150)
             }}
+            data-track-id="dashboard-home-quick-action-protect"
             className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 transition-all duration-200 active:scale-95 touch-manipulation"
           >
             Protect
@@ -126,6 +131,7 @@ export const DashboardHomePanel = ({
               event.preventDefault()
               onShowMore()
             }}
+            data-track-id="dashboard-home-show-more"
             className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-6 py-3 opacity-50 transition-all duration-200 active:scale-95 touch-manipulation"
           >
             More
@@ -145,6 +151,7 @@ export const DashboardHomePanel = ({
                 event.preventDefault()
                 setTimeout(() => onShowChat(), 150)
               }}
+              data-track-id="dashboard-home-chat-with-mia"
               className="inline-flex items-center justify-center rounded-full bg-secondary text-primary paragraph-sm px-5 py-3 whitespace-nowrap transition-all duration-200 active:scale-95 touch-manipulation"
             >
               Chat with Mia

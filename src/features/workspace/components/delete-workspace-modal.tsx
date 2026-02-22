@@ -93,6 +93,7 @@ export const DeleteWorkspaceModal = ({
       <div className="px-6 py-4 bg-secondary border-t border-tertiary flex justify-end gap-3">
         <button
           onClick={handleClose}
+          data-track-id="workspace-delete-cancel"
           disabled={isDeleting}
           className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
         >
@@ -100,6 +101,7 @@ export const DeleteWorkspaceModal = ({
         </button>
         <button
           onClick={handleDelete}
+          data-track-id="workspace-delete-confirm"
           disabled={isDeleting || !isConfirmValid}
           className="px-4 py-2 subheading-md text-white bg-error hover:bg-error/90 disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
         >

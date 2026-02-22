@@ -47,6 +47,7 @@ export const DashboardMenuHeader = ({
       <div className="relative">
         <button
           onClick={onToggleMenu}
+          data-track-id="dashboard-menu-toggle"
           className="w-6 h-6 flex items-center justify-center"
         >
           <img src="/icons/menu.svg" alt="Menu" className="w-6 h-6" />
@@ -56,6 +57,7 @@ export const DashboardMenuHeader = ({
           <div className="absolute top-8 left-0 bg-primary rounded-lg shadow-lg border border-secondary min-w-64 z-30">
             <button
               onClick={onOpenAccountSelector}
+              data-track-id="dashboard-menu-open-account-selector"
               className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
@@ -79,6 +81,7 @@ export const DashboardMenuHeader = ({
 
             <button
               onClick={onOpenWorkspaceSwitcher}
+              data-track-id="dashboard-menu-open-workspace-switcher"
               className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
@@ -99,6 +102,7 @@ export const DashboardMenuHeader = ({
 
             <button
               onClick={onIntegrationsClick}
+              data-track-id="dashboard-menu-open-integrations"
               className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
             >
               <div className="relative">
@@ -113,6 +117,7 @@ export const DashboardMenuHeader = ({
 
             <button
               onClick={onLogout}
+              data-track-id="dashboard-menu-sign-out"
               className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-secondary">
@@ -135,6 +140,7 @@ export const DashboardMenuHeader = ({
           <div className="absolute top-8 left-0 bg-primary rounded-lg shadow-lg border border-secondary min-w-64 z-30">
             <button
               onClick={onBackToMenu}
+              data-track-id="dashboard-menu-back"
               className="w-full px-4 py-3 text-left hover:bg-secondary flex items-center gap-3 border-b border-tertiary"
             >
               <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,6 +154,7 @@ export const DashboardMenuHeader = ({
                 <button
                   key={account.id}
                   onClick={() => onSelectAccount(account.id)}
+                  data-track-id={`dashboard-menu-select-account-${account.id}`}
                   disabled={isAccountSwitching || account.id === selectedAccount?.id}
                   className={`w-full px-3 py-2 text-left rounded-lg flex items-center gap-3 paragraph-sm transition-colors ${
                     account.id === selectedAccount?.id
