@@ -156,6 +156,7 @@ const CreateWorkspaceModal = ({
             <button
               type="button"
               onClick={handleLogout}
+              data-track-id="workspace-create-use-different-account"
               disabled={isCreating || isLoggingOut}
               className="px-3 py-2 paragraph-sm text-tertiary hover:text-secondary transition-colors"
             >
@@ -169,6 +170,7 @@ const CreateWorkspaceModal = ({
           {!required && (
             <button
               onClick={onClose}
+              data-track-id="workspace-create-cancel"
               disabled={isCreating}
               className="px-4 py-2 subheading-md text-secondary hover:bg-tertiary rounded-lg transition-colors"
             >
@@ -177,6 +179,7 @@ const CreateWorkspaceModal = ({
           )}
           <button
             onClick={handleCreate}
+            data-track-id="workspace-create-submit"
             disabled={isCreating || isLoggingOut || !workspaceName.trim()}
             className="px-4 py-2 subheading-md text-primary-onbrand bg-brand-solid hover:bg-brand-solid-hover disabled:bg-disabled disabled:text-disable disabled:cursor-not-allowed rounded-lg transition-colors flex items-center gap-2"
           >

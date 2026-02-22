@@ -48,6 +48,7 @@ const renderAuthButtons = (layout: 'mobile' | 'desktop', buttons: AuthButtonConf
         key={button.id}
         type="button"
         onClick={button.onClick}
+        data-track-id={`auth-continue-${button.id}`}
         disabled={isBusy}
         className={`${buttonBase} ${getVariantClass(button.variant, layout)} ${isBusy ? 'opacity-60 cursor-not-allowed' : ''}`.trim()}
       >

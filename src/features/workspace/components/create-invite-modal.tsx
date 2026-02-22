@@ -57,6 +57,7 @@ export const CreateInviteModal = ({
               <button
                 type="button"
                 onClick={() => onInviteTypeChange(true)}
+                data-track-id="workspace-invite-type-link"
                 aria-pressed={isLinkInvite}
                 className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                   isLinkInvite
@@ -69,6 +70,7 @@ export const CreateInviteModal = ({
               <button
                 type="button"
                 onClick={() => onInviteTypeChange(false)}
+                data-track-id="workspace-invite-type-email"
                 aria-pressed={!isLinkInvite}
                 className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
                   !isLinkInvite
@@ -103,6 +105,7 @@ export const CreateInviteModal = ({
                     key={role}
                     type="button"
                     onClick={() => onInviteRoleChange(role)}
+                    data-track-id={`workspace-invite-role-${role}`}
                     aria-pressed={inviteRole === role}
                     className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${
                       inviteRole === role
@@ -120,6 +123,7 @@ export const CreateInviteModal = ({
               <button
                 type="button"
                 onClick={handleClose}
+                data-track-id="workspace-invite-cancel"
                 className="flex-1 py-2 px-4 border border-secondary rounded-lg subheading-md text-secondary hover:bg-secondary"
               >
                 Cancel
@@ -127,6 +131,7 @@ export const CreateInviteModal = ({
               <button
                 type="button"
                 onClick={onCreateInvite}
+                data-track-id="workspace-invite-submit"
                 disabled={isCreateInviteDisabled}
                 className="flex-1 py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -152,6 +157,7 @@ export const CreateInviteModal = ({
               <button
                 type="button"
                 onClick={() => onCopyInvite(createdInviteLink)}
+                data-track-id="workspace-invite-copy-link"
                 className="px-3 py-1 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
               >
                 {copySuccess ? 'Copied!' : 'Copy'}
@@ -161,6 +167,7 @@ export const CreateInviteModal = ({
             <button
               type="button"
               onClick={handleClose}
+              data-track-id="workspace-invite-done"
               className="w-full py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
             >
               Done

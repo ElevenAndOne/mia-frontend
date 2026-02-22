@@ -665,6 +665,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
+                      data-track-id={`integrations-connect-${integration.id}`}
                       disabled={connectingId !== null || ['linkedin', 'tiktok'].includes(integration.id)}
                       className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
                         ['linkedin', 'tiktok'].includes(integration.id)
@@ -792,6 +793,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   setBrevoApiKey('')
                   setBrevoError('')
                 }}
+                data-track-id="integrations-brevo-modal-close"
                 disabled={brevoSubmitting}
                 className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
               >
@@ -800,6 +802,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               {currentAccountData?.brevo_api_key ? (
                 <button
                   onClick={handleBrevoUnlink}
+                  data-track-id="integrations-brevo-unlink"
                   disabled={brevoSubmitting}
                   className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -808,6 +811,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               ) : (
                 <button
                   onClick={handleBrevoSubmit}
+                  data-track-id="integrations-brevo-connect"
                   disabled={brevoSubmitting || !brevoApiKey.trim()}
                   className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >

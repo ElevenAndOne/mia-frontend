@@ -4,10 +4,13 @@ import LoadingScreen from './components/loading-screen'
 import { ToastContainer } from './components/toast'
 import CreateWorkspaceModal from './features/workspace/views/create-workspace-modal'
 import { useAppController } from './hooks/use-app-controller'
+import { useAnalytics } from './hooks/use-analytics'
 
 const InsightsDatePickerModal = lazy(() => import('./features/insights/views/insights-date-picker-modal'))
 
 function App() {
+  useAnalytics()
+
   const {
     hasSeenIntro,
     showLoadingScreen,

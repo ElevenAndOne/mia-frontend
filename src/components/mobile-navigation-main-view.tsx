@@ -40,6 +40,7 @@ export const MobileNavigationMainView = ({
         <h2 className="label-md text-primary">MIA</h2>
         <button
           onClick={onClose}
+          data-track-id="mobile-nav-close"
           className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Close menu"
         >
@@ -50,6 +51,7 @@ export const MobileNavigationMainView = ({
       <div className="p-4 space-y-2">
         <button
           onClick={onNewChat}
+          data-track-id="mobile-nav-new-chat"
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
         >
           <Icon.pencil_line size={20} className="text-tertiary" />
@@ -58,6 +60,7 @@ export const MobileNavigationMainView = ({
 
         <button
           onClick={onIntegrationsClick}
+          data-track-id="mobile-nav-integrations"
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
         >
           <Icon.globe_01 size={20} className="text-tertiary" />
@@ -67,6 +70,7 @@ export const MobileNavigationMainView = ({
         {onHelpClick && (
           <button
             onClick={onHelpClick}
+            data-track-id="mobile-nav-help"
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.help_circle size={20} className="text-tertiary" />
@@ -105,6 +109,7 @@ export const MobileNavigationMainView = ({
       <div className="p-4 border-t border-tertiary">
         <button
           onClick={onOpenUser}
+          data-track-id="mobile-nav-open-user-menu"
           className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
         >
           <UserAvatar name={userName || 'User'} imageUrl={userImageUrl} size="md" />

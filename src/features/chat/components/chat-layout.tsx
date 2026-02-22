@@ -34,6 +34,7 @@ export const ChatLayout = ({
         <div className="flex items-center">
           <button
             onClick={onNewChat}
+            data-track-id="mobile-header-new-chat"
             className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
             title="New chat"
           >
@@ -44,6 +45,7 @@ export const ChatLayout = ({
         {/* Right side - Menu button */}
         <button
           onClick={() => setIsMobileNavOpen(true)}
+          data-track-id="mobile-header-open-menu"
           className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Open menu"
         >

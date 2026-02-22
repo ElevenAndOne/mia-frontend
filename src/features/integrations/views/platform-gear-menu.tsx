@@ -145,6 +145,7 @@ const PlatformGearMenu = ({
           e.stopPropagation()
           setIsOpen(!isOpen)
         }}
+        data-track-id={`integrations-gear-menu-${platformId}`}
         className="w-5 h-5 text-primary hover:opacity-70 transition-opacity"
         aria-label={`${platformName} options`}
         title={`${platformName} options`}
@@ -176,6 +177,7 @@ const PlatformGearMenu = ({
         <div className="flex gap-3">
           <button
             onClick={() => setShowConfirmDisconnect(false)}
+            data-track-id={`integrations-disconnect-cancel-${platformId}`}
             disabled={isDisconnecting}
             className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
           >
@@ -183,6 +185,7 @@ const PlatformGearMenu = ({
           </button>
           <button
             onClick={handleDisconnectConfirm}
+            data-track-id={`integrations-disconnect-confirm-${platformId}`}
             disabled={isDisconnecting}
             className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
           >
