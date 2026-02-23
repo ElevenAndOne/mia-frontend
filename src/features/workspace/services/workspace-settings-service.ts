@@ -18,6 +18,7 @@ export interface WorkspaceInvite {
   expires_at: string
   created_at: string | null
   is_link_invite?: boolean
+  email_sent?: boolean
 }
 
 export const fetchWorkspaceMembers = async (sessionId: string, workspaceId: string): Promise<WorkspaceMember[]> => {
