@@ -88,11 +88,11 @@ export const AppRoutes = ({
           }
         />
 
-        {/* Protected Routes - require authentication and account */}
+        {/* Onboarding - requires auth only (account selection happens during onboarding) */}
         <Route
           path="/onboarding"
           element={
-            <ProtectedRoute requireAccount>
+            <ProtectedRoute>
               <OnboardingPage
                 onComplete={onOnboardingComplete}
                 onConnectPlatform={onConnectPlatform}
