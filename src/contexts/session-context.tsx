@@ -558,22 +558,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         ...prev,
         selectedAccount: account || null,
         isLoading: false,
-        // Set workspace if auto-created
+        // Only update workspace when backend confirms it was just auto-created.
+        // For normal account switches workspace_info is null, so we leave the
+        // existing activeWorkspace untouched (preserves onboarding_completed,
+        // connected_platforms etc. and avoids tripping the auth-redirect logic).
         ...(newWorkspace ? {
           activeWorkspace: newWorkspace,
           availableWorkspaces: [...prev.availableWorkspaces, newWorkspace]
         } : {})
       }))
 
-      // Refresh workspaces to ensure all existing workspaces are loaded
-      const workspaces = await workspaceService.fetchWorkspaces(currentSessionId)
-      if (workspaces.length > 0) {
-        setState(prev => ({
-          ...prev,
-          availableWorkspaces: workspaces,
-          activeWorkspace: prev.activeWorkspace || workspaces[0]
-        }))
-      }
+      // onSuccess in integrations-page already calls refreshWorkspaces() + refreshAccounts()
+      // after the modal closes — no need to duplicate that fetch here.
 
       return true
     } catch (error) {
