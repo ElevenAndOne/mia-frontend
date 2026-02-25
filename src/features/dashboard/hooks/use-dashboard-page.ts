@@ -25,10 +25,6 @@ export const useDashboardPage = () => {
     refreshWorkspaces,
     logout,
   } = useSession()
-  const renderTimestamp = new Date().toISOString().split('T')[1].substring(0, 12)
-  console.log(`[${renderTimestamp}] [DashboardPage] activeWorkspace:`, activeWorkspace?.tenant_id, activeWorkspace?.name)
-  console.log(`[${renderTimestamp}] [DashboardPage] connected_platforms:`, activeWorkspace?.connected_platforms)
-
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState<DashboardChatMessage[]>([])
   const [showBurgerMenu, setShowBurgerMenu] = useState(false)
@@ -46,14 +42,9 @@ export const useDashboardPage = () => {
   const platformConfig = PLATFORM_CONFIG
 
   const connectedPlatforms = useMemo(() => {
-    const timestamp = new Date().toISOString().split('T')[1].substring(0, 12)
-    console.log(`[${timestamp}] [DashboardPage] Computing connectedPlatforms...`)
-    console.log(`[${timestamp}] [DashboardPage] activeWorkspace?.connected_platforms:`, activeWorkspace?.connected_platforms)
     if (activeWorkspace?.connected_platforms) {
-      console.log(`[${timestamp}] [DashboardPage] Returning:`, activeWorkspace.connected_platforms)
       return activeWorkspace.connected_platforms
     }
-    console.log(`[${timestamp}] [DashboardPage] No platforms, returning empty array`)
     return []
   }, [activeWorkspace])
 

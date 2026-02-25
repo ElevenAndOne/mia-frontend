@@ -19,6 +19,7 @@ import {
   getStoredSessionId
 } from '../utils/session'
 import { StorageKey } from '../constants/storage-keys'
+import { logger } from '../utils/logger'
 
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
@@ -70,7 +71,7 @@ const getInitialState = (): SessionState => {
     const urlParams = new URLSearchParams(window.location.search)
     const oauthComplete = urlParams.get('oauth_complete')
     if (oauthComplete === 'google' || oauthComplete === 'meta') {
-      console.log(`[SESSION] OAuth redirect detected in initial state: ${oauthComplete}`)
+      logger.log(`[SESSION] OAuth redirect detected in initial state: ${oauthComplete}`)
       connectingPlatform = oauthComplete
     }
   }
@@ -143,7 +144,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
       })
     } catch (error) {
-      console.error('[SESSION] Failed to refresh accounts:', error)
+      logger.error('[SESSION] Failed to refresh accounts:', error)
     }
   }, [state.sessionId])
 
@@ -165,7 +166,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
       })
     } catch (error) {
-      console.error('[SESSION] Failed to refresh workspaces:', error)
+      logger.error('[SESSION] Failed to refresh workspaces:', error)
     }
   }, [state.sessionId])
 
@@ -188,7 +189,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         // Handle mobile OAuth redirect - set connectingPlatform IMMEDIATELY to hide video
         if (oauthPending === 'google' || oauthPending === 'meta') {
-          console.log(`[SESSION] Mobile OAuth redirect detected: ${oauthPending}, return URL: ${returnUrl}`)
+          logger.log(`[SESSION] Mobile OAuth redirect detected: ${oauthPending}, return URL: ${returnUrl}`)
           setState(prev => ({ ...prev, connectingPlatform: oauthPending as 'google' | 'meta' }))
 
           // Clear the pending flags immediately
@@ -202,17 +203,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             try {
               const returnPath = new URL(returnUrl).pathname
               if (returnPath === currentPath) {
-                console.log('[SESSION] Already on return page:', currentPath, '- skipping mia_oauth_pending_return')
+                logger.log('[SESSION] Already on return page:', currentPath, '- skipping mia_oauth_pending_return')
               } else {
-                console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
+                logger.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
                 localStorage.setItem(StorageKey.OAUTH_PENDING_RETURN, returnUrl)
               }
             } catch {
-              console.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
+              logger.log('[SESSION] Setting mia_oauth_pending_return to:', returnUrl)
               localStorage.setItem(StorageKey.OAUTH_PENDING_RETURN, returnUrl)
             }
           } else {
-            console.log('[SESSION] No return URL found - mia_oauth_return_url was not set')
+            logger.log('[SESSION] No return URL found - mia_oauth_return_url was not set')
           }
 
           // Complete OAuth flow
@@ -222,14 +223,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
           if (oauthPending === 'google') {
             if (!authUserId) {
-              console.error('[SESSION] No user_id in OAuth redirect URL - cannot complete auth')
+              logger.error('[SESSION] No user_id in OAuth redirect URL - cannot complete auth')
               setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed - missing user ID' }))
               window.history.replaceState({}, '', window.location.pathname)
               return
             }
             const success = await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
             if (!success) {
-              console.error('[SESSION] OAuth /complete failed')
+              logger.error('[SESSION] OAuth /complete failed')
               setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Authentication failed' }))
             }
           } else if (oauthPending === 'meta') {
@@ -302,7 +303,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               return
             }
           } catch {
-            console.log('[SESSION] Session validation failed, creating new session')
+            logger.log('[SESSION] Session validation failed, creating new session')
           }
 
           localStorage.removeItem(StorageKey.SESSION_ID)
@@ -313,7 +314,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         storeSessionId(newSessionId)
         setState(prev => ({ ...prev, sessionId: newSessionId, isLoading: false }))
       } catch (error) {
-        console.error('[SESSION] Initialization error:', error)
+        logger.error('[SESSION] Initialization error:', error)
         const errorSessionId = generateSessionId()
         storeSessionId(errorSessionId)
         setState(prev => ({
@@ -333,7 +334,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     // Capture return URL IMMEDIATELY before any state changes or async operations
     // This prevents race conditions where React navigation changes the URL before we read it
     const returnUrl = window.location.origin + window.location.pathname
-    console.log('[SESSION] login() - captured return URL:', returnUrl)
+    logger.log('[SESSION] login() - captured return URL:', returnUrl)
 
     setState(prev => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'google' }))
 
@@ -349,7 +350,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       // Return promise that never resolves - page will redirect before this matters
       return new Promise<boolean>(() => {})
     } catch (error) {
-      console.error('[SESSION] Login error:', error)
+      logger.error('[SESSION] Login error:', error)
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -414,7 +415,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               // The closure captures stale value if loginMeta was called before state was updated
               const currentSessionId = getStoredSessionId() || state.sessionId || ''
               if (!currentSessionId) {
-                console.error('[SESSION] No session ID available for Meta OAuth complete')
+                logger.error('[SESSION] No session ID available for Meta OAuth complete')
                 setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Session error - please refresh' }))
                 resolve(false)
                 return
@@ -458,7 +459,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             }
           } catch (error) {
             clearTimers()
-            console.error('[SESSION] Meta auth polling error:', error)
+            logger.error('[SESSION] Meta auth polling error:', error)
             setState(prev => ({ ...prev, isLoading: false, connectingPlatform: null, error: 'Meta authentication failed' }))
             resolve(false)
           }
@@ -472,7 +473,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }, 300000)
       })
     } catch (error) {
-      console.error('[SESSION] Meta login error:', error)
+      logger.error('[SESSION] Meta login error:', error)
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -501,7 +502,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         isLoading: false
       }))
     } catch (error) {
-      console.error('[SESSION] Logout error:', error)
+      logger.error('[SESSION] Logout error:', error)
       setState(prev => ({ ...prev, isLoading: false, error: 'Logout failed' }))
     }
   }, [state.sessionId])
@@ -519,7 +520,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         metaUser: null
       }))
     } catch (error) {
-      console.error('[SESSION] Meta logout error:', error)
+      logger.error('[SESSION] Meta logout error:', error)
       setState(prev => ({ ...prev, isLoading: false, error: 'Meta logout failed' }))
     }
   }, [state.sessionId])
@@ -542,7 +543,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       // Handle auto-created workspace from backend
       let newWorkspace: Workspace | null = null
       if (response.workspace) {
-        console.log('[SESSION] Workspace auto-created:', response.workspace)
+        logger.log('[SESSION] Workspace auto-created:', response.workspace)
         newWorkspace = {
           tenant_id: response.workspace.tenant_id,
           name: response.workspace.name,
@@ -573,7 +574,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       return true
     } catch (error) {
-      console.error('[SESSION] Account selection error:', error)
+      logger.error('[SESSION] Account selection error:', error)
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -607,7 +608,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       return workspace
     } catch (error) {
-      console.error('[SESSION] Create workspace error:', error)
+      logger.error('[SESSION] Create workspace error:', error)
       return null
     }
   }, [state.sessionId])
@@ -626,7 +627,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       window.location.href = '/home'
       return true
     } catch (error) {
-      console.error('[SESSION] Switch workspace error:', error)
+      logger.error('[SESSION] Switch workspace error:', error)
       return false
     }
   }, [state.sessionId])
@@ -652,7 +653,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
       return true
     } catch (error) {
-      console.error('[SESSION] Delete workspace error:', error)
+      logger.error('[SESSION] Delete workspace error:', error)
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to delete workspace'
@@ -710,7 +711,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         return true
       }
     } catch (error) {
-      console.error('[SESSION] Error checking existing auth:', error)
+      logger.error('[SESSION] Error checking existing auth:', error)
     }
     return false
   }, [state.sessionId, refreshAccounts])
@@ -734,7 +735,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         return true
       }
     } catch (error) {
-      console.error('[SESSION] Error checking existing Meta auth:', error)
+      logger.error('[SESSION] Error checking existing Meta auth:', error)
     }
     return false
   }, [state.sessionId])

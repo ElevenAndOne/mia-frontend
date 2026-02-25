@@ -13,6 +13,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, typ
 import { apiFetch } from '../../utils/api'
 import { StorageKey } from '../../constants/storage-keys'
 import { useSession } from '../../contexts/session-context'
+import { logger } from '../../utils/logger'
 
 // Onboarding steps
 export const ONBOARDING_STEPS = {
@@ -141,11 +142,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     const now = Date.now()
     if (!forceRefresh) {
       if (isLoadingRef.current) {
-        console.log('[ONBOARDING] Skipping duplicate load (already in progress)')
+        logger.log('[ONBOARDING] Skipping duplicate load (already in progress)')
         return state.growTaskId
       }
       if (now - lastLoadTimeRef.current < 2000) {
-        console.log('[ONBOARDING] Skipping duplicate load (loaded recently)')
+        logger.log('[ONBOARDING] Skipping duplicate load (loaded recently)')
         return state.growTaskId
       }
     }
@@ -160,7 +161,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
       if (response.ok) {
         const data = await response.json()
-        console.log('[ONBOARDING] Status loaded:', {
+        logger.log('[ONBOARDING] Status loaded:', {
           growTaskId: data.grow_task_id,
           step: data.step,
           bronzeReady: data.bronze_ready
@@ -188,7 +189,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         }))
       }
     } catch (err) {
-      console.error('[ONBOARDING] Status load error:', err)
+      logger.error('[ONBOARDING] Status load error:', err)
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -217,7 +218,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       method: 'POST',
       headers: { 'X-Session-ID': sessionId }
     }).catch(err => {
-      console.error('[ONBOARDING] Advance step sync error:', err)
+      logger.error('[ONBOARDING] Advance step sync error:', err)
     })
   }, [sessionId])
 
@@ -238,7 +239,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         setState(prev => ({ ...prev, step }))
       }
     } catch (err) {
-      console.error('[ONBOARDING] Update step error:', err)
+      logger.error('[ONBOARDING] Update step error:', err)
     }
   }, [sessionId])
 
@@ -275,7 +276,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         return fact
       }
     } catch (err) {
-      console.error('[ONBOARDING] Bronze highlight error:', err)
+      logger.error('[ONBOARDING] Bronze highlight error:', err)
     }
     return null
   }, [sessionId])
@@ -304,7 +305,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         }
       }
     } catch (err) {
-      console.error('[ONBOARDING] Bronze followup error:', err)
+      logger.error('[ONBOARDING] Bronze followup error:', err)
     }
     return null
   }, [sessionId])
@@ -334,16 +335,16 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         return taskId
       }
     } catch (err) {
-      console.error('[ONBOARDING] Start grow async error:', err)
+      logger.error('[ONBOARDING] Start grow async error:', err)
     }
     return null
   }, [sessionId])
 
   const checkGrowInsightsStatus = useCallback(async (taskIdOverride?: string): Promise<boolean> => {
     const taskId = taskIdOverride || state.growTaskId
-    console.log('[ONBOARDING] checkGrowInsightsStatus called, taskId:', taskId)
+    logger.log('[ONBOARDING] checkGrowInsightsStatus called, taskId:', taskId)
     if (!taskId) {
-      console.log('[ONBOARDING] No growTaskId available, returning false')
+      logger.log('[ONBOARDING] No growTaskId available, returning false')
       return false
     }
 
@@ -352,7 +353,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
       if (response.ok) {
         const data = await response.json()
-        console.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
+        logger.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
         const isComplete = data.status === 'completed'
         const progress = data.progress || 0
 
@@ -372,7 +373,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         return isComplete
       }
     } catch (err) {
-      console.error('[ONBOARDING] Check grow status error:', err)
+      logger.error('[ONBOARDING] Check grow status error:', err)
     }
     return false
   }, [state.growTaskId])
@@ -410,12 +411,12 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
         // This ensures main page icons show correctly after onboarding without requiring page refresh
-        console.log('[ONBOARDING] Refreshing workspace data after completion...')
+        logger.log('[ONBOARDING] Refreshing workspace data after completion...')
         await refreshWorkspaces()
-        console.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
+        logger.log('[ONBOARDING] Workspace data refreshed - main page icons should update')
       }
     } catch (err) {
-      console.error('[ONBOARDING] Complete error:', err)
+      logger.error('[ONBOARDING] Complete error:', err)
     }
   }, [sessionId, state.platformsConnected, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
 
@@ -444,11 +445,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         }
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
-        console.log('[ONBOARDING] Refreshing workspace data after skip...')
+        logger.log('[ONBOARDING] Refreshing workspace data after skip...')
         await refreshWorkspaces()
       }
     } catch (err) {
-      console.error('[ONBOARDING] Skip error:', err)
+      logger.error('[ONBOARDING] Skip error:', err)
     }
   }, [sessionId, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
 
@@ -465,7 +466,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         return data.all_platforms || []
       }
     } catch (err) {
-      console.error('[ONBOARDING] Available platforms error:', err)
+      logger.error('[ONBOARDING] Available platforms error:', err)
     }
     return []
   }, [sessionId])

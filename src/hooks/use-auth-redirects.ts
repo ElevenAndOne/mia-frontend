@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import { StorageKey } from '../constants/storage-keys'
+import { logger } from '../utils/logger'
 
 interface UseAuthRedirectsParams {
   justAcceptedInvite: boolean
@@ -30,19 +31,19 @@ export const useAuthRedirects = ({
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   useEffect(() => {
-    console.log('[AUTH-REDIRECT] Effect triggered - isLoading:', isLoading, 'path:', location.pathname)
+    logger.log('[AUTH-REDIRECT] Effect triggered - isLoading:', isLoading, 'path:', location.pathname)
 
     if (isLoading) return
 
     const path = location.pathname
-    console.log('[AUTH-REDIRECT] Passed loading check - path:', path)
+    logger.log('[AUTH-REDIRECT] Passed loading check - path:', path)
 
     if (path.startsWith('/invite/')) {
-      console.log('[AUTH-REDIRECT] On invite page - exiting early')
+      logger.log('[AUTH-REDIRECT] On invite page - exiting early')
       return
     }
 
-    console.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem(StorageKey.PENDING_INVITE))
+    logger.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem(StorageKey.PENDING_INVITE))
 
     // Handle OAuth return - navigate back to where user was before OAuth
     // Check FIRST before any other logic, regardless of current auth state
@@ -60,7 +61,7 @@ export const useAuthRedirects = ({
       // Only navigate if return path is NOT the landing page
       // (OAuth from landing page should use normal routing logic after auth)
       if (returnPath && returnPath !== '/') {
-        console.log('[AUTH-REDIRECT] OAuth complete, returning to:', returnPath)
+        logger.log('[AUTH-REDIRECT] OAuth complete, returning to:', returnPath)
         navigate(returnPath)
         return
       }
@@ -73,7 +74,7 @@ export const useAuthRedirects = ({
     if (isAnyAuthenticated) {
       const pendingInvite = localStorage.getItem(StorageKey.PENDING_INVITE)
       if (pendingInvite) {
-        console.log('[AUTH-REDIRECT] Found pending invite:', pendingInvite)
+        logger.log('[AUTH-REDIRECT] Found pending invite:', pendingInvite)
         localStorage.removeItem(StorageKey.PENDING_INVITE)
         navigate(`/invite/${pendingInvite}`)
         return
@@ -81,7 +82,7 @@ export const useAuthRedirects = ({
     }
 
     if (path === '/') {
-      console.log('[AUTH-REDIRECT] On landing page - hasSeenIntro:', hasSeenIntro, 'isAuth:', isAnyAuthenticated, 'selectedAccount:', !!selectedAccount, 'activeWorkspace:', !!activeWorkspace, 'workspaces:', availableWorkspaces.length)
+      logger.log('[AUTH-REDIRECT] On landing page - hasSeenIntro:', hasSeenIntro, 'isAuth:', isAnyAuthenticated, 'selectedAccount:', !!selectedAccount, 'activeWorkspace:', !!activeWorkspace, 'workspaces:', availableWorkspaces.length)
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
         navigate('/home')
         return
@@ -89,7 +90,7 @@ export const useAuthRedirects = ({
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
         // Check if user needs to create workspace first
         if (!activeWorkspace && availableWorkspaces.length === 0) {
-          console.log('[AUTH-REDIRECT] No workspace found - showing create workspace modal')
+          logger.log('[AUTH-REDIRECT] No workspace found - showing create workspace modal')
           // Show workspace creation modal (handled by App component)
           setShowCreateWorkspaceModal(true)
           return

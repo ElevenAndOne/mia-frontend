@@ -20,6 +20,7 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       // Disable overly strict rules for Phase 1 mocked data fetching
       // These can be re-enabled when using proper data fetching libraries
       'react-hooks/set-state-in-effect': 'off',

@@ -1,3 +1,5 @@
+import { EXTERNAL_URLS } from '../constants/external-urls'
+
 export type MarkdownToken =
   | { type: 'text'; value: string }
   | { type: 'link'; text: string; url: string }
@@ -25,7 +27,7 @@ const convertDeepLink = (linkUrl: string, metaAdsId?: string): string => {
   if (linkUrl.startsWith('DEEPLINK:')) {
     const campaignId = linkUrl.replace('DEEPLINK:', '').trim()
     if (/^\d{13,}$/.test(campaignId) && metaAdsId) {
-      return `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAdsId}&selected_campaign_ids=${campaignId}`
+      return `${EXTERNAL_URLS.META_ADS_MANAGER_BASE}?act=${metaAdsId}&selected_campaign_ids=${campaignId}`
     }
     return ''
   }

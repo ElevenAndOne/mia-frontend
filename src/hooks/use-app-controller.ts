@@ -6,6 +6,7 @@ import { useAuthRedirects } from './use-auth-redirects'
 import { useInsightsDatePicker } from './use-insights-date-picker'
 import { consumeReturnUrl } from '../routes/protected-route'
 import { StorageKey } from '../constants/storage-keys'
+import { logger } from '../utils/logger'
 
 export const useAppController = () => {
   const navigate = useNavigate()
@@ -92,11 +93,11 @@ export const useAppController = () => {
   }
 
   const handleCreateWorkspaceClose = () => {
-    console.log('[APP] Create workspace modal close attempted - workspace required')
+    logger.log('[APP] Create workspace modal close attempted - workspace required')
   }
 
   const handleCreateWorkspaceSuccess = (tenantId: string) => {
-    console.log('[APP] Workspace created:', tenantId)
+    logger.log('[APP] Workspace created:', tenantId)
     setShowCreateWorkspaceModal(false)
     navigate('/onboarding')
   }
@@ -105,18 +106,18 @@ export const useAppController = () => {
   let loadingPlatform: 'google' | 'meta' | null = null
   let showLoadingScreen = false
 
-  console.log('[APP-CONTROLLER] Checking loading screen - path:', location.pathname, 'isLoading:', isLoading)
+  logger.log('[APP-CONTROLLER] Checking loading screen - path:', location.pathname, 'isLoading:', isLoading)
 
   if (oauthLoadingPlatform) {
-    console.log('[APP-CONTROLLER] OAuth loading platform:', oauthLoadingPlatform)
+    logger.log('[APP-CONTROLLER] OAuth loading platform:', oauthLoadingPlatform)
     showLoadingScreen = true
     loadingPlatform = oauthLoadingPlatform
   } else if (location.pathname === '/' && connectingPlatform) {
-    console.log('[APP-CONTROLLER] Root + connecting platform')
+    logger.log('[APP-CONTROLLER] Root + connecting platform')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform
   } else if (location.pathname === '/' && isAnyAuthenticated && isLoading) {
-    console.log('[APP-CONTROLLER] Root + auth + loading')
+    logger.log('[APP-CONTROLLER] Root + auth + loading')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   } else if (
@@ -127,7 +128,7 @@ export const useAppController = () => {
     !location.pathname.startsWith('/invite/') &&
     location.pathname !== '/onboarding'
   ) {
-    console.log('[APP-CONTROLLER] Generic loading screen for protected route')
+    logger.log('[APP-CONTROLLER] Generic loading screen for protected route')
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
   } else if (
@@ -136,14 +137,14 @@ export const useAppController = () => {
     !isAnyAuthenticated &&
     !isConnectingSecondPlatform
   ) {
-    console.log('[APP-CONTROLLER] Onboarding loading screen')
+    logger.log('[APP-CONTROLLER] Onboarding loading screen')
     // Show loading screen only if not authenticated yet
     // Note: selectedAccount is no longer required - account selection happens in onboarding chat
     showLoadingScreen = true
     loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : 'google')
   }
 
-  console.log('[APP-CONTROLLER] Final decision - showLoadingScreen:', showLoadingScreen)
+  logger.log('[APP-CONTROLLER] Final decision - showLoadingScreen:', showLoadingScreen)
 
   return {
     hasSeenIntro,

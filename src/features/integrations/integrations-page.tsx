@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { EXTERNAL_URLS } from '../../constants/external-urls'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
 import { apiFetch, createSessionHeaders } from '../../utils/api'
@@ -15,6 +16,7 @@ import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
+import { logger } from '../../utils/logger'
 
 interface Integration {
   id: string
@@ -59,10 +61,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   // Without this, the 2-minute React Query staleTime causes cached (stale) data to be used
   useEffect(() => {
     return () => {
-      console.log('[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page')
+      logger.log('[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page')
       invalidateIntegrationStatus()
       // Also refresh workspaces to update connected_platforms array
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
       if (oauthPollTimerRef.current) {
         window.clearInterval(oauthPollTimerRef.current)
         oauthPollTimerRef.current = null
@@ -199,10 +201,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       },
     ]
 
-    data.forEach(integration => {
-      console.log(integration)
-    })
-
     return data;
   }, [platformStatus, getTimeAgo])
 
@@ -222,7 +220,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setBrevoError('')
 
     try {
-      console.log('[Brevo] Submitting API key for account:', selectedAccount.name)
+      logger.log('[Brevo] Submitting API key for account:', selectedAccount.name)
 
       // Use the NEW per-account endpoint (Nov 16 fix)
       const response = await apiFetch('/api/oauth/brevo/save-api-key', {
@@ -242,17 +240,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       const data = await response.json()
-      console.log('[Brevo] API key saved successfully:', data)
+      logger.log('[Brevo] API key saved successfully:', data)
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
       setBrevoApiKey('')
       invalidateIntegrationStatus()
       // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err))
+      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err))
 
     } catch (error) {
-      console.error('[Brevo] API key submission error:', error)
+      logger.error('[Brevo] API key submission error:', error)
       setBrevoError(error instanceof Error ? error.message : 'Failed to save API key')
     } finally {
       setBrevoSubmitting(false)
@@ -279,16 +277,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         throw new Error(errorData.detail || 'Failed to disconnect Brevo')
       }
 
-      console.log('[Brevo] Disconnected successfully')
+      logger.log('[Brevo] Disconnected successfully')
 
       // Close modal and refresh connections
       setShowBrevoModal(false)
       invalidateIntegrationStatus()
       // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err))
+      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err))
 
     } catch (error) {
-      console.error('[Brevo] Unlink error:', error)
+      logger.error('[Brevo] Unlink error:', error)
       setBrevoError(error instanceof Error ? error.message : 'Failed to disconnect Brevo')
     } finally {
       setBrevoSubmitting(false)
@@ -333,17 +331,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           }
         }
       } catch (error) {
-        console.error('[FB-ORGANIC] Error checking Meta credentials:', error)
+        logger.error('[FB-ORGANIC] Error checking Meta credentials:', error)
       }
       // Meta OAuth not connected - fall through to start Meta OAuth flow
       // After OAuth completes, user can select Facebook page via gear icon
-      console.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+      logger.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
     }
 
     setConnectingId(integrationId)
 
     try {
-      console.log(`Connecting to ${integrationId} with sessionId:`, sessionId)
+      logger.log(`Connecting to ${integrationId} with sessionId:`, sessionId)
 
       let authUrl: string | null = null
 
@@ -412,7 +410,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         // Verify origin for security
         if (event.data?.type === 'oauth_complete') {
           oauthUserId = event.data.user_id || null
-          console.log(`[OAUTH-POPUP] Received user_id from popup: ${oauthUserId}`)
+          logger.log(`[OAUTH-POPUP] Received user_id from popup: ${oauthUserId}`)
         }
       }
       window.addEventListener('message', messageHandler)
@@ -446,8 +444,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // Clean up message listener
           window.removeEventListener('message', messageHandler)
 
-          console.log(`${integrationId} popup closed, completing auth flow...`)
-          console.log(`[OAUTH-COMPLETE] user_id from popup: ${oauthUserId}`)
+          logger.log(`${integrationId} popup closed, completing auth flow...`)
+          logger.log(`[OAUTH-COMPLETE] user_id from popup: ${oauthUserId}`)
 
           // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials
           if (integrationId === 'meta' || integrationId === 'google' || integrationId === 'facebook_organic') {
@@ -460,7 +458,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   ? `/api/oauth/google/complete?user_id=${oauthUserId}`
                   : `/api/oauth/google/complete`
 
-              console.log(`Calling ${completeUrl} with session_id:`, sessionId)
+              logger.log(`Calling ${completeUrl} with session_id:`, sessionId)
 
               const completeResponse = await apiFetch(completeUrl, {
                 method: 'POST',
@@ -473,42 +471,42 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
               if (!completeResponse.ok) {
                 const errorText = await completeResponse.text()
-                console.error(`${integrationId} /complete failed:`, errorText)
+                logger.error(`${integrationId} /complete failed:`, errorText)
               } else {
                 const completeData = await completeResponse.json()
-                console.log(`${integrationId} /complete succeeded:`, completeData)
+                logger.log(`${integrationId} /complete succeeded:`, completeData)
 
                 // For Meta Ads, show the account selector after OAuth completes
                 // User must select which Meta ad account to link to this Google Ads account
                 if (integrationId === 'meta' && completeData.success) {
-                  console.log('[META-OAUTH] Meta OAuth complete - showing Meta account selector')
+                  logger.log('[META-OAUTH] Meta OAuth complete - showing Meta account selector')
                   // Show Meta account selector after a brief delay for cache invalidation
                   setTimeout(() => setShowMetaAccountSelector(true), 500)
                 }
 
                 // For Facebook Organic, show the Facebook page selector after OAuth completes
                 if (integrationId === 'facebook_organic' && completeData.success) {
-                  console.log('[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector')
+                  logger.log('[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector')
                   // Show Facebook page selector after a brief delay for cache invalidation
                   setTimeout(() => setShowFacebookPageSelector(true), 500)
                 }
               }
             } catch (error) {
-              console.error(`${integrationId} /complete error:`, error)
+              logger.error(`${integrationId} /complete error:`, error)
             }
           }
 
           // Refresh integration status AND workspace list
           // CRITICAL FIX (Jan 2026): Refresh workspaces to update connected_platforms for main page icons
-          console.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
+          logger.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
 
           setConnectingId(null)
         }
       }, 500)
     } catch (error) {
-      console.error(`${integrationId} connection error:`, error)
+      logger.error(`${integrationId} connection error:`, error)
       showToast('error', `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setConnectingId(null)
     }
@@ -630,7 +628,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             }
                             onDisconnectSuccess={() => {
                               invalidateIntegrationStatus()
-                              refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+                              refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
                               refreshAccounts()
                             }}
                           />
@@ -721,7 +719,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <li>Copy the key and paste it below</li>
                 </ol>
                 <a
-                  href="https://app.brevo.com/settings/keys/api"
+                  href={EXTERNAL_URLS.BREVO_API_KEYS}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-3 subheading-sm text-utility-info-600 hover:text-utility-info-700"
@@ -824,10 +822,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showGoogleAccountSelector}
         onClose={() => setShowGoogleAccountSelector(false)}
         onSuccess={async () => {
-          console.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
+          logger.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
           setShowGoogleAccountSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -837,10 +835,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showMetaAccountSelector}
         onClose={() => setShowMetaAccountSelector(false)}
         onSuccess={async () => {
-          console.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
+          logger.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
           setShowMetaAccountSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentGoogleAccountName={selectedAccount?.name}
@@ -852,10 +850,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showBrevoAccountSelector}
         onClose={() => setShowBrevoAccountSelector(false)}
         onSuccess={async () => {
-          console.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
+          logger.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
           setShowBrevoAccountSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -865,10 +863,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showHubSpotAccountSelector}
         onClose={() => setShowHubSpotAccountSelector(false)}
         onSuccess={async () => {
-          console.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
+          logger.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
           setShowHubSpotAccountSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -878,10 +876,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showMailchimpAccountSelector}
         onClose={() => setShowMailchimpAccountSelector(false)}
         onSuccess={async () => {
-          console.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
+          logger.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
           setShowMailchimpAccountSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
       />
@@ -891,10 +889,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showFacebookPageSelector}
         onClose={() => setShowFacebookPageSelector(false)}
         onSuccess={async () => {
-          console.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
+          logger.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
           setShowFacebookPageSelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
@@ -906,10 +904,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         isOpen={showGA4PropertySelector}
         onClose={() => setShowGA4PropertySelector(false)}
         onSuccess={async () => {
-          console.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
+          logger.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
           setShowGA4PropertySelector(false)
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => console.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
         currentAccountName={selectedAccount?.name}
