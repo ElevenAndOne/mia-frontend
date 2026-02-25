@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { ErrorBoundary } from '../components/error-boundary'
 import { Spinner } from '../components/spinner'
@@ -10,7 +10,6 @@ import AccountSelectionPage from '../pages/account-selection-page'
 import MetaAccountSelectionPage from '../pages/meta-account-selection-page'
 
 const ChatPage = lazy(() => import('../pages/chat-page'))
-const DashboardPage = lazy(() => import('../pages/dashboard-page'))
 const IntegrationsPage = lazy(() => import('../pages/integrations-page'))
 const InsightsGrowPage = lazy(() => import('../pages/insights-grow-page'))
 const InsightsOptimizePage = lazy(() => import('../pages/insights-optimize-page'))
@@ -112,17 +111,8 @@ export const AppRoutes = ({
           }
         />
 
-        {/* Legacy main view - accessible at /dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute requireAccount>
-              <ErrorBoundary>
-                <DashboardPage />
-              </ErrorBoundary>
-            </ProtectedRoute>
-          }
-        />
+        {/* Legacy /dashboard route — redirects to /home */}
+        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
 
         <Route
           path="/integrations"

@@ -11,7 +11,7 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
   owner: 'bg-utility-warning-100 text-utility-warning-700',
   admin: 'bg-utility-info-100 text-utility-info-700',
   analyst: 'bg-utility-success-100 text-utility-success-700',
-  viewer: 'bg-utility-warning-100 text-utility-warning-700',
+  viewer: 'bg-secondary text-secondary',
 }
 
 export const getWorkspaceRoleDescription = (role: string): string => {

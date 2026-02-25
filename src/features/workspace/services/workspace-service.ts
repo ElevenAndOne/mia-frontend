@@ -25,23 +25,16 @@ interface RawWorkspace {
 
 /**
  * Response from GET /api/tenants
- * Handles both old (tenants) and new (workspaces) response keys
  */
 export interface WorkspacesResponse {
-  /** New API format */
-  workspaces?: RawWorkspace[]
-  /** Legacy format */
   tenants?: RawWorkspace[]
 }
 
 /**
  * Response from GET /api/tenants/current
- * Handles both old (active_tenant) and new (tenant) response keys
  */
 export interface CurrentWorkspaceResponse {
-  /** New API format */
   tenant?: {
-    id?: string
     tenant_id?: string
     name?: string
     slug?: string
@@ -50,9 +43,8 @@ export interface CurrentWorkspaceResponse {
     connected_platforms?: string[]
     member_count?: number
   } | null
-  /** Legacy format */
+  /** Legacy field name — backend may still return this */
   active_tenant?: {
-    id?: string
     tenant_id?: string
     name?: string
     slug?: string
@@ -67,18 +59,11 @@ export interface CurrentWorkspaceResponse {
  * Response from POST /api/tenants (create workspace)
  */
 export interface CreateWorkspaceResponse {
-  success?: boolean
-  tenant?: {
-    id: string
-    name: string
-    slug: string
-    created_at?: string
-    owner_id?: string
-  }
-  /** Legacy format fields */
   tenant_id?: string
   name?: string
   slug?: string
+  role?: string
+  onboarding_completed?: boolean
 }
 
 /**
@@ -111,10 +96,9 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
   }
 
   const data: WorkspacesResponse = await response.json()
-  // Handle both response formats
-  const rawWorkspaces = data.workspaces || data.tenants || []
+  const rawWorkspaces = data.tenants || []
   return rawWorkspaces.map((t): Workspace => ({
-    tenant_id: t.id || t.tenant_id || '',
+    tenant_id: t.tenant_id || '',
     name: t.name,
     slug: t.slug,
     role: (t.role || 'member') as WorkspaceRole,
@@ -166,11 +150,10 @@ export const createWorkspace = async (
   }
 
   const data: CreateWorkspaceResponse = await response.json()
-  // Normalize response to consistent format
   return {
-    tenant_id: data.tenant?.id || data.tenant_id || '',
-    name: data.tenant?.name || data.name || name,
-    slug: data.tenant?.slug || data.slug || ''
+    tenant_id: data.tenant_id || '',
+    name: data.name || name,
+    slug: data.slug || ''
   }
 }
 
