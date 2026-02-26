@@ -13,6 +13,7 @@ export interface PlatformStatus {
   brevo: PlatformConnectionStatus
   hubspot: PlatformConnectionStatus
   mailchimp: PlatformConnectionStatus
+  linkedin_ads: PlatformConnectionStatus
 }
 
 // GA4 Property types (consolidated from use-integration-status.ts and ga4-property-selector.tsx)
@@ -83,5 +84,7 @@ export interface AccountData {
   hubspot_portal_id?: string
   mailchimp_account_id?: string
   facebook_page_id?: string
+  linkedin_ads_account_id?: string
+  linkedin_organization_id?: string
   linked_ga4_properties?: GA4Property[]
 }

@@ -13,6 +13,7 @@ import GoogleAccountSelector from './selectors/google-account-selector'
 import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
+import LinkedInAccountSelector from './selectors/linkedin-account-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -107,6 +108,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showMailchimpAccountSelector = openModal === 'mailchimp'
   const showFacebookPageSelector = openModal === 'facebook'
   const showGA4PropertySelector = openModal === 'ga4'
+  const showLinkedInAccountSelector = openModal === 'linkedin_ads'
 
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
@@ -116,6 +118,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowMailchimpAccountSelector = (show: boolean) => setOpenModal(show ? 'mailchimp' : null)
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
+  const setShowLinkedInAccountSelector = (show: boolean) => setOpenModal(show ? 'linkedin_ads' : null)
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
@@ -186,11 +189,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         autoSync: platformStatus.mailchimp?.connected ? true : undefined
       },
       {
-        id: 'linkedin',
+        id: 'linkedin_ads',
         name: 'LinkedIn Ads',
         description: 'B2B advertising and lead generation',
         icon: '/icons/linkedin.svg',
-        connected: false
+        connected: platformStatus.linkedin_ads?.connected || false,
+        lastSync: platformStatus.linkedin_ads?.connected ? getTimeAgo(platformStatus.linkedin_ads.last_synced) : undefined,
+        autoSync: platformStatus.linkedin_ads?.connected ? true : undefined
       },
       {
         id: 'tiktok',
@@ -396,6 +401,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           authUrl = data.auth_url
         }
+      } else if (integrationId === 'linkedin_ads') {
+        const response = await apiFetch(
+          `/api/oauth/linkedin/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          authUrl = data.auth_url
+        }
       }
 
       if (!authUrl) {
@@ -494,6 +508,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             } catch (error) {
               logger.error(`${integrationId} /complete error:`, error)
             }
+          }
+
+          // For LinkedIn, show account selector after OAuth completes
+          if (integrationId === 'linkedin_ads') {
+            logger.log('[LINKEDIN-OAUTH] OAuth complete - showing account selector')
+            setTimeout(() => setShowLinkedInAccountSelector(true), 500)
           }
 
           // Refresh integration status AND workspace list
@@ -610,10 +630,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               else if (integration.id === 'brevo') setShowBrevoAccountSelector(true)
                               else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
                               else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
+                              else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
                             }}
                             onReconnect={
                               // OAuth platforms can reconnect to refresh credentials / link to workspace
-                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(integration.id)
+                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads'].includes(integration.id)
                                 ? () => handleConnect(integration.id)
                                 : undefined
                             }
@@ -663,16 +684,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <button
                       onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || ['linkedin', 'tiktok'].includes(integration.id)}
+                      disabled={connectingId !== null || ['tiktok'].includes(integration.id)}
                       className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                        ['linkedin', 'tiktok'].includes(integration.id)
+                        ['tiktok'].includes(integration.id)
                         ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
                         : connectingId === integration.id
                           ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
                           : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
                         }`}
                     >
-                      {['linkedin', 'tiktok'].includes(integration.id)
+                      {['tiktok'].includes(integration.id)
                         ? 'Soon'
                         : connectingId === integration.id
                           ? 'Connecting...'
@@ -913,6 +934,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         currentAccountName={selectedAccount?.name}
         ga4Properties={ga4Properties}
         linkedProperties={linkedGA4Properties}
+      />
+
+      {/* LinkedIn Account Selector Modal */}
+      <LinkedInAccountSelector
+        isOpen={showLinkedInAccountSelector}
+        onClose={() => setShowLinkedInAccountSelector(false)}
+        onSuccess={async () => {
+          logger.log('[LINKEDIN-ACCOUNT-SELECTOR] Account linked successfully')
+          setShowLinkedInAccountSelector(false)
+          invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          await refreshAccounts()
+        }}
       />
     </div>
   )

@@ -8,4 +8,5 @@ export const CHAT_PLATFORM_CONFIG = [
   { id: 'brevo', name: 'Brevo', icon: <Logo.brevo />, statusKey: 'brevo' },
   { id: 'mailchimp', name: 'Mailchimp', icon: <Logo.mailchimp />, statusKey: 'mailchimp' },
   { id: 'hubspot', name: 'HubSpot', icon: <Logo.hubspot />, statusKey: 'hubspot' },
+  { id: 'linkedin_ads', name: 'LinkedIn Ads', icon: <Logo.linkedin />, statusKey: 'linkedin_ads' },
 ]

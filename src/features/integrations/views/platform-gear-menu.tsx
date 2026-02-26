@@ -48,7 +48,7 @@ const PlatformGearMenu = ({
   const supportsMultiAccount = ['brevo', 'hubspot', 'mailchimp'].includes(platformId)
 
   // OAuth platforms that support reconnecting (to refresh credentials / link to workspace)
-  const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp'].includes(platformId)
+  const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads'].includes(platformId)
 
   // All platforms can be disconnected, including Google Ads
   // This allows users to clear invalid connections (e.g., when google_ads_id is set but no valid account exists)

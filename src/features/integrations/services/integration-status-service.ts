@@ -22,6 +22,7 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
     brevo: { connected: Boolean(flags.brevo), linked: Boolean(flags.brevo), last_synced: now },
     hubspot: { connected: Boolean(flags.hubspot), linked: Boolean(flags.hubspot), last_synced: now },
     mailchimp: { connected: Boolean(flags.mailchimp), linked: Boolean(flags.mailchimp), last_synced: now },
+    linkedin_ads: { connected: Boolean(flags.linkedin_ads), linked: Boolean(flags.linkedin_ads), last_synced: now },
   }
 }
 
@@ -57,6 +58,9 @@ const mergePlatformStatus = (
     mailchimp: accountData.mailchimp_account_id
       ? { connected: true, linked: true, last_synced: now }
       : tenantStatus.mailchimp,
+    linkedin_ads: accountData.linkedin_ads_account_id
+      ? { connected: true, linked: true, last_synced: now }
+      : tenantStatus.linkedin_ads,
   }
 }
 
@@ -81,6 +85,7 @@ export const fetchTenantIntegrationStatus = async (
     brevo: data.platform_status?.brevo,
     hubspot: data.platform_status?.hubspot,
     mailchimp: data.platform_status?.mailchimp,
+    linkedin_ads: data.platform_status?.linkedin_ads,
   }
 
   return {
@@ -131,6 +136,7 @@ export const fetchAccountIntegrationStatus = async (
     brevo: Boolean(currentAccountData?.brevo_api_key),
     hubspot: Boolean(currentAccountData?.hubspot_portal_id),
     mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
+    linkedin_ads: Boolean(currentAccountData?.linkedin_ads_account_id),
   })
 
   return { platformStatus, currentAccountData, ga4Properties, linkedGA4Properties }

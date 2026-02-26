@@ -15,4 +15,5 @@ export const PLATFORM_CONFIG: PlatformConfigItem[] = [
   { id: 'brevo', name: 'Brevo', icon: '/icons/radio buttons/Brevo.png', accountKey: 'brevo_api_key' },
   { id: 'mailchimp', name: 'Mailchimp', icon: '/icons/radio buttons/mailchimp.png', accountKey: 'mailchimp_account_id' },
   { id: 'hubspot', name: 'HubSpot', icon: '/icons/radio buttons/Hubspot.png', accountKey: 'hubspot_portal_id' },
+  { id: 'linkedin_ads', name: 'LinkedIn Ads', icon: '/icons/radio buttons/LinkedIn.png', accountKey: 'linkedin_ads_account_id' },
 ]
