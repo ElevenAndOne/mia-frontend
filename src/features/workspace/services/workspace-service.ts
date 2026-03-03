@@ -35,6 +35,9 @@ export interface WorkspacesResponse {
  */
 export interface CurrentWorkspaceResponse {
   tenant?: {
+    /** New format uses 'id' */
+    id?: string
+    /** Old format uses 'tenant_id' */
     tenant_id?: string
     name?: string
     slug?: string
@@ -45,6 +48,9 @@ export interface CurrentWorkspaceResponse {
   } | null
   /** Legacy field name — backend may still return this */
   active_tenant?: {
+    /** New format uses 'id' */
+    id?: string
+    /** Old format uses 'tenant_id' */
     tenant_id?: string
     name?: string
     slug?: string
