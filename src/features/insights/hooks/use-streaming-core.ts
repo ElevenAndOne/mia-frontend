@@ -37,12 +37,17 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const textRef = useRef<string>('')
+  const rafRef = useRef<number | null>(null)
+  const pendingFlushRef = useRef(false)
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
+      }
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
       }
     }
   }, [])
@@ -140,19 +145,36 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
             try {
               const parsed = JSON.parse(message.slice(6))
               if (parsed.text) {
-                // Append text immediately as it streams
+                // Accumulate text in ref, batch UI updates to animation frames
+                // This prevents per-token re-renders (and re-parses) which cause jitter
                 textRef.current += parsed.text
-                setState(prev => ({
-                  ...prev,
-                  text: textRef.current
-                }))
+                if (!pendingFlushRef.current) {
+                  pendingFlushRef.current = true
+                  rafRef.current = requestAnimationFrame(() => {
+                    pendingFlushRef.current = false
+                    setState(prev => ({
+                      ...prev,
+                      text: textRef.current
+                    }))
+                  })
+                }
               } else if (parsed.done) {
+                // Flush any pending text before signaling completion
+                if (rafRef.current) {
+                  cancelAnimationFrame(rafRef.current)
+                  pendingFlushRef.current = false
+                }
                 setState(prev => ({
                   ...prev,
+                  text: textRef.current,
                   isStreaming: false,
                   isComplete: true
                 }))
               } else if (parsed.error) {
+                if (rafRef.current) {
+                  cancelAnimationFrame(rafRef.current)
+                  pendingFlushRef.current = false
+                }
                 setState(prev => ({
                   ...prev,
                   isStreaming: false,
