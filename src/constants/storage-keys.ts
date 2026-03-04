@@ -25,6 +25,9 @@ export const StorageKey = {
   ONBOARDING_COMPLETED_PREFIX: 'mia_onboarding_completed_',
   ONBOARDING_MESSAGES: 'mia_onboarding_messages',
 
+  // Date range
+  DATE_RANGE: 'mia_date_range',
+
   // UI state
   INTEGRATION_PROMPT_VISIT_COUNT: 'mia_integration_prompt_visit_count',
   CONFIG_GUIDANCE_VISIT_COUNT: 'mia_config_guidance_visit_count',

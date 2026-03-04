@@ -6,6 +6,7 @@ import { useIntegrationStatus } from '../../integrations/hooks/use-integration-s
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
 import { sendChatMessage } from '../services/chat-service'
+import { StorageKey } from '../../../constants/storage-keys'
 
 interface ChatMessageItem {
   id: string
@@ -24,7 +25,14 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const [dateRange, setDateRange] = useState('30_days')
+  const [dateRange, setDateRange] = useState(() =>
+    localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
+  )
+
+  // Persist date range to localStorage
+  useEffect(() => {
+    localStorage.setItem(StorageKey.DATE_RANGE, dateRange)
+  }, [dateRange])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(

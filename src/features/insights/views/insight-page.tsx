@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { MarkdownText } from '../../../components/markdown-text'
@@ -8,6 +8,7 @@ import DateRangeSelector from '../../../components/date-range-selector'
 import { INSIGHT_CONFIGS, type InsightType } from '../config/insight-definitions'
 import { useStreamingInsightsParsed } from '../hooks/use-streaming-insights-parsed'
 import type { ParsedInsight } from '../hooks/use-streaming-insights-parsed'
+import { StorageKey } from '../../../constants/storage-keys'
 
 interface InsightPageProps {
   insightType: InsightType
@@ -20,6 +21,12 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
   const config = INSIGHT_CONFIGS[insightType]
   const { sessionId, selectedAccount } = useSession()
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
+
+  // Persist date range changes to localStorage
+  const handleDateRangeChange = useCallback((range: string) => {
+    setSelectedDateRange(range)
+    localStorage.setItem(StorageKey.DATE_RANGE, range)
+  }, [])
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
   const datePickerButtonRef = useRef<HTMLButtonElement>(null)
   const {
@@ -133,7 +140,7 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
         isOpen={isDateSelectorOpen}
         onClose={() => setIsDateSelectorOpen(false)}
         selectedRange={selectedDateRange}
-        onApply={setSelectedDateRange}
+        onApply={handleDateRangeChange}
         anchorRef={datePickerButtonRef}
       />
 
