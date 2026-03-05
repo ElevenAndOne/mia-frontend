@@ -2,7 +2,7 @@
  * Hook for streaming insights with real-time parsing into structured cards
  * Uses the same smooth typing effect, but parses the displayed text into structured cards
  */
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStreamingCore } from './use-streaming-core'
 import { createApiUrl } from '../../../utils/api'
 
@@ -115,7 +115,31 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     reset
   } = useStreamingCore()
 
-  const parsed = useMemo(() => parseInsights(state.text), [state.text])
+  // Keep stable references for completed insights to prevent re-renders
+  const prevInsightsRef = useRef<ParsedInsight[]>([])
+
+  const parsed = useMemo(() => {
+    const result = parseInsights(state.text)
+
+    // Stabilize object references: reuse previous objects if content unchanged.
+    // This means React.memo'd children skip re-rendering for completed cards.
+    const stableInsights = result.insights.map((insight, i) => {
+      const prev = prevInsightsRef.current[i]
+      if (
+        prev &&
+        prev.title === insight.title &&
+        prev.insight === insight.insight &&
+        prev.interpretation === insight.interpretation &&
+        prev.action === insight.action
+      ) {
+        return prev // same reference — no re-render
+      }
+      return insight // changed — will re-render
+    })
+
+    prevInsightsRef.current = stableInsights
+    return { ...result, insights: stableInsights }
+  }, [state.text])
 
   useEffect(() => {
     if (state.isComplete && parsed.insights.length > 0) {

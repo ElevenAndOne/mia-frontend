@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { parseMarkdownText } from '../utils/markdown'
 
 interface MarkdownTextProps {
@@ -7,9 +8,10 @@ interface MarkdownTextProps {
 }
 
 /**
- * Renders text with markdown links and Meta campaign deep links
+ * Renders text with markdown bold, links, and Meta campaign deep links.
+ * Memoized to skip re-rendering when text hasn't changed (critical for streaming perf).
  */
-export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextProps) {
+export const MarkdownText = memo(function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextProps) {
   const tokens = parseMarkdownText(text, metaAdsId)
   return (
     <span className={className}>
@@ -27,8 +29,11 @@ export function MarkdownText({ text, className = '', metaAdsId }: MarkdownTextPr
             </a>
           )
         }
+        if (token.type === 'bold') {
+          return <strong key={index} className="font-semibold">{token.value}</strong>
+        }
         return <span key={index}>{token.value}</span>
       })}
     </span>
   )
-}
+})
