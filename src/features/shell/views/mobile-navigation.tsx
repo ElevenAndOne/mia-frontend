@@ -113,8 +113,6 @@ export const MobileNavigation = ({
           onThemeChange={handleThemeChange}
           onBack={() => setCurrentView('main')}
           onClose={onClose}
-          onIntegrationsClick={onIntegrationsClick ? handleIntegrations : undefined}
-          onHelpClick={onHelpClick ? handleHelp : undefined}
           onWorkspaceSettings={onWorkspaceSettings ? handleWorkspaceSettings : undefined}
           onLogout={handleLogout}
         />

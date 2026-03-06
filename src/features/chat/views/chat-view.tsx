@@ -68,6 +68,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
 
   return (
     <ChatLayout
+      hasMessages={hasMessages}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onNewChat={handleNewChat}

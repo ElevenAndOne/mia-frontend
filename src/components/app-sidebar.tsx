@@ -38,8 +38,6 @@ export const AppSidebar = ({
       {/* Bottom section - User Menu */}
       <div className="mt-auto">
         <SidebarUserMenu
-          onIntegrationsClick={onIntegrationsClick}
-          onHelpClick={onHelpClick}
           onWorkspaceSettings={onWorkspaceSettings}
           onLogout={onLogout}
         />

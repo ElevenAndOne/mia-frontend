@@ -12,8 +12,6 @@ interface MobileNavigationUserViewProps {
   onThemeChange: (value: 'system' | 'light' | 'dark') => void
   onBack: () => void
   onClose: () => void
-  onIntegrationsClick?: () => void
-  onHelpClick?: () => void
   onWorkspaceSettings?: () => void
   onLogout?: () => void
 }
@@ -27,8 +25,6 @@ export const MobileNavigationUserView = ({
   onThemeChange,
   onBack,
   onClose,
-  onIntegrationsClick,
-  onHelpClick,
   onWorkspaceSettings,
   onLogout,
 }: MobileNavigationUserViewProps) => {
@@ -75,25 +71,6 @@ export const MobileNavigationUserView = ({
           </button>
         )}
 
-        {onIntegrationsClick && (
-          <button
-            onClick={onIntegrationsClick}
-            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-          >
-            <Icon.globe_01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Integrations</span>
-          </button>
-        )}
-
-        {onHelpClick && (
-          <button
-            onClick={onHelpClick}
-            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-          >
-            <Icon.help_circle size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Help</span>
-          </button>
-        )}
       </div>
 
       <div className="px-4">

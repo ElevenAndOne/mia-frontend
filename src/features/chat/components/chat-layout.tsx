@@ -1,9 +1,12 @@
 import { useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Icon } from '../../../components/icon'
+import { BackButton } from '../../../components/back-button'
 import { MobileNavigation } from '../../shell/views/mobile-navigation'
 
 interface ChatLayoutProps {
   children: ReactNode
+  hasMessages?: boolean
   onIntegrationsClick?: () => void
   onHelpClick?: () => void
   onNewChat?: () => void
@@ -11,15 +14,17 @@ interface ChatLayoutProps {
   onWorkspaceSettings?: () => void
 }
 
-export const ChatLayout = ({ 
-  children, 
-  onIntegrationsClick, 
+export const ChatLayout = ({
+  children,
+  hasMessages,
+  onIntegrationsClick,
   onHelpClick,
   onNewChat,
   onLogout,
   onWorkspaceSettings
 }: ChatLayoutProps) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <div className="flex h-full w-full bg-primary">
@@ -30,15 +35,13 @@ export const ChatLayout = ({
 
       {/* Mobile Header - Only on small screens */}
       <div className="fixed top-0 left-0 right-0 md:hidden z-20 bg-primary border-b border-tertiary px-4 py-1 flex items-center justify-between">
-        {/* Left side - Contextual title or empty */}
+        {/* Left side - Back button (only when chat has messages) or empty space */}
         <div className="flex items-center">
-          <button
-            onClick={onNewChat}
-            className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
-            title="New chat"
-          >
-            <Icon.pencil_line size={20} />
-          </button>
+          {hasMessages ? (
+            <BackButton onClick={() => navigate('/home')} label="Back" variant="dark" />
+          ) : (
+            <div className="w-9 h-9" />
+          )}
         </div>
 
         {/* Right side - Menu button */}

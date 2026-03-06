@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 interface UserAvatarProps {
   name?: string | null
   imageUrl?: string | null
@@ -21,15 +23,17 @@ export const UserAvatar = ({
   className = '',
   fallbackClassName = 'bg-utility-warning-400 text-utility-warning-700',
 }: UserAvatarProps) => {
+  const [imgFailed, setImgFailed] = useState(false)
   const sizeClasses = SIZE_CLASSES[size]
   const initial = name?.charAt(0)?.toUpperCase() || 'U'
 
-  if (imageUrl) {
+  if (imageUrl && !imgFailed) {
     return (
       <img
         src={imageUrl}
         alt={name || 'User'}
         className={`${sizeClasses} rounded-full object-cover ${className}`.trim()}
+        onError={() => setImgFailed(true)}
       />
     )
   }
