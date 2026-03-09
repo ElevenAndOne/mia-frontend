@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface UserAvatarProps {
   name?: string | null
@@ -24,6 +24,7 @@ export const UserAvatar = ({
   fallbackClassName = 'bg-utility-warning-400 text-utility-warning-700',
 }: UserAvatarProps) => {
   const [imgFailed, setImgFailed] = useState(false)
+  useEffect(() => { setImgFailed(false) }, [imageUrl])
   const sizeClasses = SIZE_CLASSES[size]
   const initial = name?.charAt(0)?.toUpperCase() || 'U'
 

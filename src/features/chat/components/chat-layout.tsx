@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Icon } from '../../../components/icon'
 import { BackButton } from '../../../components/back-button'
 import { MobileNavigation } from '../../shell/views/mobile-navigation'
@@ -24,7 +23,6 @@ export const ChatLayout = ({
   onWorkspaceSettings
 }: ChatLayoutProps) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const navigate = useNavigate()
 
   return (
     <div className="flex h-full w-full bg-primary">
@@ -38,7 +36,7 @@ export const ChatLayout = ({
         {/* Left side - Back button (only when chat has messages) or empty space */}
         <div className="flex items-center">
           {hasMessages ? (
-            <BackButton onClick={() => navigate('/home')} label="Back" variant="dark" />
+            <BackButton onClick={() => onNewChat?.()} label="Back" variant="dark" />
           ) : (
             <div className="w-9 h-9" />
           )}
