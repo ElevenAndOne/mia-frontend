@@ -4,16 +4,12 @@ import { SidebarUserMenu } from '../features/shell/views/sidebar-user-menu'
 
 interface AppSidebarProps {
   onNewChat?: () => void
-  onIntegrationsClick?: () => void
-  onHelpClick?: () => void
   onLogout: () => void
   onWorkspaceSettings?: () => void
 }
 
 export const AppSidebar = ({
   onNewChat,
-  onIntegrationsClick,
-  onHelpClick,
   onLogout,
   onWorkspaceSettings
 }: AppSidebarProps) => {

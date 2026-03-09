@@ -13,8 +13,6 @@ interface AppShellProps {
 export const AppShell = ({
   children,
   onNewChat,
-  onIntegrationsClick,
-  onHelpClick,
   onLogout,
   onWorkspaceSettings
 }: AppShellProps) => {
@@ -22,8 +20,6 @@ export const AppShell = ({
     <div className="flex h-full w-full bg-primary">
       <AppSidebar
         onNewChat={onNewChat}
-        onIntegrationsClick={onIntegrationsClick}
-        onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
       />
