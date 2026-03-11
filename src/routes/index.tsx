@@ -15,6 +15,7 @@ const InsightsGrowPage = lazy(() => import('../pages/insights-grow-page'))
 const InsightsOptimizePage = lazy(() => import('../pages/insights-optimize-page'))
 const InsightsProtectPage = lazy(() => import('../pages/insights-protect-page'))
 const InsightsSummaryPage = lazy(() => import('../pages/insights-summary-page'))
+const InsightsPredictPage = lazy(() => import('../pages/insights-predict-page'))
 const OnboardingPage = lazy(() => import('../pages/onboarding-page'))
 const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
@@ -185,6 +186,17 @@ export const AppRoutes = ({
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
                 <InsightsSummaryPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/insights/predict"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <InsightsPredictPage />
               </ErrorBoundary>
             </ProtectedRoute>
           }

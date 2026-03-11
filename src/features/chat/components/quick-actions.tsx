@@ -36,33 +36,60 @@ const actions: QuickAction[] = [
 
 export const QuickActions = ({ onAction, disabled = false }: QuickActionsProps) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mx-auto px-4">
-      {actions.map((action) => (
-        <button
-          key={action.id}
-          onClick={() => onAction(action.id)}
-          disabled={disabled}
-          className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all ${disabled
-              ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-              : 'bg-primary border-secondary hover:border-primary hover:shadow-sm active:scale-[0.98]'
-            }`}
-        >
-          <div className="flex items-center gap-2">
-            <div className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
-              {action.icon}
-            </div>
+    <div className="flex flex-col gap-3 w-full max-w-3xl mx-auto px-4">
+      {/* Grow / Optimize / Protect grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            onClick={() => onAction(action.id)}
+            disabled={disabled}
+            className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all ${disabled
+                ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
+                : 'bg-primary border-secondary hover:border-primary hover:shadow-sm active:scale-[0.98]'
+              }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+                {action.icon}
+              </div>
 
-            <div className={`subheading-md ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
-              {action.label}
+              <div className={`subheading-md ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+                {action.label}
+              </div>
             </div>
-          </div>
-          <div className="min-w-0">
-            <div className={`paragraph-xs mt-0.5 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
-              {action.description}
+            <div className="min-w-0">
+              <div className={`paragraph-xs mt-0.5 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+                {action.description}
+              </div>
             </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Predict — full-width, amber/gold accent */}
+      <button
+        onClick={() => onAction('predict')}
+        disabled={disabled}
+        className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all w-full ${disabled
+            ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
+            : 'bg-primary border-utility-warning-300 hover:border-utility-warning-400 hover:shadow-sm active:scale-[0.98]'
+          }`}
+      >
+        <div className="flex items-center gap-2">
+          <div className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-utility-warning-600'}`}>
+            <Icon.bar_chart_square_02 size={20} />
           </div>
-        </button>
-      ))}
+          <div className={`subheading-md ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+            Predict
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className={`paragraph-xs mt-0.5 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+            ML-powered predictions from your historical data.
+          </div>
+        </div>
+      </button>
     </div>
   )
 }

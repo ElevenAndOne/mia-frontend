@@ -161,6 +161,9 @@ export const useChatView = () => {
       case 'protect':
         navigate(`/insights/protect?${params.toString()}`)
         break
+      case 'predict':
+        navigate('/insights/predict')
+        break
     }
   }, [navigate, selectedPlatforms, dateRange])
 
