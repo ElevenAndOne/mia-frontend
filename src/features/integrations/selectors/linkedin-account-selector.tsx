@@ -37,6 +37,7 @@ const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess }: LinkedInAccount
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchLinkedInAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
