@@ -249,7 +249,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     try {
       // Timeout after 10s to prevent hang if backend is unresponsive
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10000)
+      const timeout = setTimeout(() => controller.abort(), 30000)
 
       const response = await apiFetch('/api/bronze/highlight', {
         method: 'POST',
