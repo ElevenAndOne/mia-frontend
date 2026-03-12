@@ -51,6 +51,16 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
 
         {!isLoading && !error && data && (
           <div className="space-y-6 max-w-3xl mx-auto w-full">
+            {data.status === 'triggered' && (
+              <div className="bg-secondary border border-utility-warning-300 rounded-lg p-6 flex items-center gap-4">
+                <Spinner size="md" variant="primary" />
+                <div>
+                  <p className="paragraph-md text-secondary">Analysis started — we're crunching your data now.</p>
+                  <p className="paragraph-xs text-tertiary mt-1">This usually takes a few minutes. We'll email you when it's ready.</p>
+                </div>
+              </div>
+            )}
+
             {data.status === 'no_data' && (
               <div className="bg-secondary border border-secondary rounded-lg p-6">
                 <p className="paragraph-md text-secondary">

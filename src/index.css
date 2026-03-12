@@ -15,6 +15,7 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-gradient: gradient 8s ease infinite;
+  --animate-pulse-gold: pulse-gold 2s ease-in-out infinite;
 }
 
 /* Keyframes for custom animations */
@@ -31,6 +32,11 @@
 @keyframes gradient {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 175, 55, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.45); }
 }
 
 /* iPhone 16 Pro Optimized CSS Variables */

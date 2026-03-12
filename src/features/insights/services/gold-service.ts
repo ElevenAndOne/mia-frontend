@@ -2,7 +2,7 @@ import { apiFetch } from '../../../utils/api'
 
 export interface GoldInsightsResponse {
   success: boolean
-  status: 'no_data' | 'running' | 'completed' | 'failed'
+  status: 'no_data' | 'triggered' | 'running' | 'completed' | 'failed'
   summary: string | null
   created_at: string | null
   job_status: string | null

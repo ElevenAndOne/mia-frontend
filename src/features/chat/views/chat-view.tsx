@@ -8,6 +8,8 @@ import { IntegrationPromptModal } from '../../../components/integration-prompt-m
 import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 import { useChatView } from '../hooks/use-chat-view.tsx'
+import { useGoldInsights } from '../../insights/hooks/use-gold-insights'
+import { useSession } from '../../../contexts/session-context'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
@@ -17,6 +19,10 @@ interface ChatViewProps {
 }
 
 export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
+  const { sessionId } = useSession()
+  const { data: goldData } = useGoldInsights(sessionId)
+  const predictReady = goldData?.status === 'completed'
+
   const {
     userName,
     messages,
@@ -82,6 +88,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
               <QuickActions
                 onAction={handleQuickAction}
                 disabled={isLoading || !hasSelectedPlatforms}
+                predictReady={predictReady}
               />
             </ChatEmptyState>
 
