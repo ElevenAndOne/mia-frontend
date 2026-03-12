@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import { StorageKey } from '../constants/storage-keys'
+import { consumeReturnUrl } from '../routes/protected-route'
 import { logger } from '../utils/logger'
 
 interface UseAuthRedirectsParams {
@@ -84,7 +85,8 @@ export const useAuthRedirects = ({
     if (path === '/') {
       logger.log('[AUTH-REDIRECT] On landing page - hasSeenIntro:', hasSeenIntro, 'isAuth:', isAnyAuthenticated, 'selectedAccount:', !!selectedAccount, 'activeWorkspace:', !!activeWorkspace, 'workspaces:', availableWorkspaces.length)
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
-        navigate('/home')
+        const returnUrl = consumeReturnUrl()
+        navigate(returnUrl || '/home')
         return
       }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {

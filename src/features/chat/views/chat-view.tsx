@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ChatLayout from '../components/chat-layout'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
@@ -10,6 +10,7 @@ import { setIntegrationHighlight } from '../../integrations/utils/integration-hi
 import { useChatView } from '../hooks/use-chat-view.tsx'
 import { useGoldInsights } from '../../insights/hooks/use-gold-insights'
 import { useSession } from '../../../contexts/session-context'
+import { trackEvent } from '../../../utils/tracking'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
@@ -48,6 +49,15 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     handleQuickAction,
     integrationPrompt,
   } = useChatView()
+
+  // Track page visit once
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (!tracked.current && sessionId) {
+      tracked.current = true
+      trackEvent(sessionId, 'page_visit', 'home')
+    }
+  }, [sessionId])
 
   const [promptDismissed, setPromptDismissed] = useState(false)
 

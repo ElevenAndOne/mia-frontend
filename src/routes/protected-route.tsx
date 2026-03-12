@@ -6,16 +6,17 @@ import { StorageKey } from '../constants/storage-keys'
 const RETURN_URL_KEY = StorageKey.AUTH_RETURN_URL
 
 // Save the current URL for post-auth redirect
+// Uses localStorage (not sessionStorage) so it survives OAuth redirects on mobile
 const saveReturnUrl = (pathname: string, search: string) => {
   // Don't save login pages or root as return URLs
   if (pathname === '/' || pathname.startsWith('/login')) return
-  sessionStorage.setItem(RETURN_URL_KEY, pathname + search)
+  localStorage.setItem(RETURN_URL_KEY, pathname + search)
 }
 
 // Export for use in auth success handlers
 export const consumeReturnUrl = (): string | null => {
-  const url = sessionStorage.getItem(RETURN_URL_KEY)
-  sessionStorage.removeItem(RETURN_URL_KEY)
+  const url = localStorage.getItem(RETURN_URL_KEY)
+  localStorage.removeItem(RETURN_URL_KEY)
   return url
 }
 

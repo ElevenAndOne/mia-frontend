@@ -9,6 +9,7 @@ import { INSIGHT_CONFIGS, type InsightType } from '../config/insight-definitions
 import { useStreamingInsightsParsed } from '../hooks/use-streaming-insights-parsed'
 import type { ParsedInsight } from '../hooks/use-streaming-insights-parsed'
 import { StorageKey } from '../../../constants/storage-keys'
+import { trackEvent } from '../../../utils/tracking'
 
 interface InsightPageProps {
   insightType: InsightType
@@ -21,6 +22,15 @@ function InsightPage({ insightType, onBack, initialDateRange = '30_days', platfo
   const config = INSIGHT_CONFIGS[insightType]
   const { sessionId, selectedAccount } = useSession()
   const [selectedDateRange, setSelectedDateRange] = useState<string>(initialDateRange)
+
+  // Track page visit
+  const insightTracked = useRef(false)
+  useEffect(() => {
+    if (!insightTracked.current && sessionId) {
+      insightTracked.current = true
+      trackEvent(sessionId, 'page_visit', `insight_${insightType}`)
+    }
+  }, [sessionId, insightType])
 
   // Persist date range changes to localStorage
   const handleDateRangeChange = useCallback((range: string) => {

@@ -4,6 +4,7 @@ import { TopBar } from '../../../components/top-bar'
 import { Spinner } from '../../../components/spinner'
 import { useGoldInsights } from '../hooks/use-gold-insights'
 import { StorageKey } from '../../../constants/storage-keys'
+import { trackEvent } from '../../../utils/tracking'
 
 interface PredictInsightsProps {
   onBack?: () => void
@@ -23,12 +24,22 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { sessionId } = useSession()
   const { data, isLoading, error, refresh } = useGoldInsights(sessionId)
 
-  // Mark report as "seen" so homepage stops pulsing gold
+  // Track page visit + mark report as "seen" so homepage stops pulsing gold
+  useEffect(() => {
+    if (sessionId) {
+      trackEvent(sessionId, 'page_visit', 'predict')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (data?.status === 'completed' && data.created_at) {
       localStorage.setItem(`${StorageKey.PREDICT_SEEN_PREFIX}${data.created_at}`, 'true')
+      if (sessionId) {
+        trackEvent(sessionId, 'predict_view', 'predict', { status: data.status })
+      }
     }
-  }, [data?.status, data?.created_at])
+  }, [data?.status, data?.created_at, sessionId])
 
   return (
     <div className="w-full h-full relative flex flex-col bg-primary">
