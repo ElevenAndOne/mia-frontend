@@ -8,11 +8,15 @@ import { UserAvatar } from '../../../components/user-avatar'
 
 interface SidebarUserMenuProps {
   onWorkspaceSettings?: () => void
+  onIntegrationsClick?: () => void
+  onHelpClick?: () => void
   onLogout: () => void
 }
 
 export const SidebarUserMenu = ({
   onWorkspaceSettings,
+  onIntegrationsClick,
+  onHelpClick,
   onLogout
 }: SidebarUserMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -97,6 +101,28 @@ export const SidebarUserMenu = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <span>Workspace Settings</span>
+            </button>
+          )}
+
+          {onIntegrationsClick && (
+            <button
+              onClick={() => { setIsOpen(false); onIntegrationsClick() }}
+              className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+              role="menuitem"
+            >
+              <Icon.globe_01 size={18} className="text-tertiary" />
+              <span>Integrations</span>
+            </button>
+          )}
+
+          {onHelpClick && (
+            <button
+              onClick={() => { setIsOpen(false); onHelpClick() }}
+              className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+              role="menuitem"
+            >
+              <Icon.help_circle size={18} className="text-tertiary" />
+              <span>Help</span>
             </button>
           )}
 

@@ -6,12 +6,16 @@ interface AppSidebarProps {
   onNewChat?: () => void
   onLogout: () => void
   onWorkspaceSettings?: () => void
+  onIntegrationsClick?: () => void
+  onHelpClick?: () => void
 }
 
 export const AppSidebar = ({
   onNewChat,
   onLogout,
-  onWorkspaceSettings
+  onWorkspaceSettings,
+  onIntegrationsClick,
+  onHelpClick
 }: AppSidebarProps) => {
   return (
     <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-tertiary bg-primary">
@@ -35,6 +39,8 @@ export const AppSidebar = ({
       <div className="mt-auto">
         <SidebarUserMenu
           onWorkspaceSettings={onWorkspaceSettings}
+          onIntegrationsClick={onIntegrationsClick}
+          onHelpClick={onHelpClick}
           onLogout={onLogout}
         />
       </div>
