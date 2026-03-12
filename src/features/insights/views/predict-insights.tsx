@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { Spinner } from '../../../components/spinner'
 import { useGoldInsights } from '../hooks/use-gold-insights'
+import { StorageKey } from '../../../constants/storage-keys'
 
 interface PredictInsightsProps {
   onBack?: () => void
@@ -20,6 +22,13 @@ const formatDaysAgo = (isoString: string): string => {
 const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { sessionId } = useSession()
   const { data, isLoading, error, refresh } = useGoldInsights(sessionId)
+
+  // Mark report as "seen" so homepage stops pulsing gold
+  useEffect(() => {
+    if (data?.status === 'completed' && data.created_at) {
+      localStorage.setItem(`${StorageKey.PREDICT_SEEN_PREFIX}${data.created_at}`, 'true')
+    }
+  }, [data?.status, data?.created_at])
 
   return (
     <div className="w-full h-full relative flex flex-col bg-primary">

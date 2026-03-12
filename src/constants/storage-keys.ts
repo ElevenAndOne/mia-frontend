@@ -33,4 +33,7 @@ export const StorageKey = {
   CONFIG_GUIDANCE_VISIT_COUNT: 'mia_config_guidance_visit_count',
   INTEGRATION_HIGHLIGHT: 'mia_integration_highlight',
   KNOWN_CONNECTED_PLATFORMS: 'mia_known_connected_platforms',
+
+  // Predict/Gold insights
+  PREDICT_SEEN_PREFIX: 'mia_predict_seen_',
 } as const

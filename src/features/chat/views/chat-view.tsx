@@ -21,7 +21,14 @@ interface ChatViewProps {
 export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
   const { sessionId } = useSession()
   const { data: goldData } = useGoldInsights(sessionId)
+
+  // Only show "Ready" pulse if completed AND user hasn't viewed the report yet
+  const predictSeenKey = goldData?.created_at
+    ? `${StorageKey.PREDICT_SEEN_PREFIX}${goldData.created_at}`
+    : null
   const predictReady = goldData?.status === 'completed'
+    && !!predictSeenKey
+    && localStorage.getItem(predictSeenKey) !== 'true'
 
   const {
     userName,
