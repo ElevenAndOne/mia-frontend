@@ -25,6 +25,7 @@ interface Integration {
   description: string
   icon: string
   connected: boolean
+  linked: boolean  // MAR 2026: true when account-level ID is mapped, false when only tenant-level creds exist
   dataPoints?: number
   lastSync?: string
   autoSync?: boolean
@@ -131,6 +132,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Advertising campaigns',
         icon: '/icons/google-ads.svg',
         connected: platformStatus.google?.connected || false,
+        linked: platformStatus.google?.linked ?? platformStatus.google?.connected ?? false,
         lastSync: platformStatus.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
         autoSync: platformStatus.google?.connected ? true : undefined
       },
@@ -140,6 +142,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Website and app analytics',
         icon: '/icons/google_analytics.svg',
         connected: platformStatus.ga4?.connected || false,
+        linked: platformStatus.ga4?.linked ?? platformStatus.ga4?.connected ?? false,
         lastSync: platformStatus.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
         autoSync: platformStatus.ga4?.connected ? true : undefined
       },
@@ -149,6 +152,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Paid advertising campaigns',
         icon: '/icons/meta-color.svg',
         connected: platformStatus.meta?.connected || false,
+        linked: platformStatus.meta?.linked ?? platformStatus.meta?.connected ?? false,
         lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
         autoSync: platformStatus.meta?.connected ? true : undefined
       },
@@ -158,6 +162,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Page posts, engagement & reach',
         icon: '/icons/facebook-48.png',
         connected: platformStatus.facebook_organic?.connected || false,
+        linked: platformStatus.facebook_organic?.linked ?? platformStatus.facebook_organic?.connected ?? false,
         lastSync: platformStatus.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
         autoSync: platformStatus.facebook_organic?.connected ? true : undefined
       },
@@ -167,6 +172,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Email marketing and campaigns',
         icon: '/icons/brevo.jpeg',
         connected: platformStatus.brevo?.connected || false,
+        linked: platformStatus.brevo?.linked ?? platformStatus.brevo?.connected ?? false,
         lastSync: platformStatus.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
         autoSync: platformStatus.brevo?.connected ? false : undefined
       },
@@ -176,6 +182,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'CRM and marketing automation',
         icon: '/icons/hubspot.svg',
         connected: platformStatus.hubspot?.connected || false,
+        linked: platformStatus.hubspot?.linked ?? platformStatus.hubspot?.connected ?? false,
         lastSync: platformStatus.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
         autoSync: platformStatus.hubspot?.connected ? true : undefined
       },
@@ -185,6 +192,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Email marketing and campaigns',
         icon: '/icons/radio buttons/mailchimp.png',
         connected: platformStatus.mailchimp?.connected || false,
+        linked: platformStatus.mailchimp?.linked ?? platformStatus.mailchimp?.connected ?? false,
         lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
         autoSync: platformStatus.mailchimp?.connected ? true : undefined
       },
@@ -194,6 +202,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'B2B advertising and lead generation',
         icon: '/icons/linkedin.svg',
         connected: platformStatus.linkedin_ads?.connected || false,
+        linked: platformStatus.linkedin_ads?.linked ?? platformStatus.linkedin_ads?.connected ?? false,
         lastSync: platformStatus.linkedin_ads?.connected ? getTimeAgo(platformStatus.linkedin_ads.last_synced) : undefined,
         autoSync: platformStatus.linkedin_ads?.connected ? true : undefined
       },
@@ -202,7 +211,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         name: 'TikTok Ads',
         description: 'Short-form video advertising',
         icon: '/icons/tiktok.svg',
-        connected: false
+        connected: false,
+        linked: false,
       },
     ]
 
@@ -592,11 +602,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-2">
               {connectedSources.map(integration => {
 
+                const notLinked = integration.connected && !integration.linked
+                const handleCardClick = notLinked ? () => {
+                  if (integration.id === 'google') setShowGoogleAccountSelector(true)
+                  else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
+                  else if (integration.id === 'meta') setShowMetaAccountSelector(true)
+                  else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
+                  else if (integration.id === 'brevo') setShowBrevoAccountSelector(true)
+                  else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
+                  else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
+                  else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
+                } : undefined
+
                 return (
                   <div key={integration.id} className="w-full">
                     <div
                       className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
-                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
+                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : notLinked ? 'border-utility-warning-300' : 'border-secondary'}`}
+                      onClick={handleCardClick}
                     >
                       <div className="flex items-center  gap-3">
                         <div className="w-10 h-10 flex items-center justify-center shrink-0">
@@ -605,11 +628,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <div className="flex items-center gap-2">
                             <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
+                            {integration.connected && !integration.linked && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-utility-warning-100 text-utility-warning-700 whitespace-nowrap">
+                                Not linked
+                              </span>
+                            )}
                           </div>
                           <div className="paragraph-xs text-quaternary truncate flex items-center gap-1">
-                            <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
-                            {integration.lastSync && (
-                              <span> • Last synced: {integration.lastSync}</span>
+                            {integration.connected && !integration.linked ? (
+                              <p className="paragraph-xs text-utility-warning-600 truncate">
+                                Select a {integration.name} account for {selectedAccount?.name || 'this client'}
+                              </p>
+                            ) : (
+                              <>
+                                <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
+                                {integration.lastSync && (
+                                  <span> • Last synced: {integration.lastSync}</span>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>

@@ -94,18 +94,17 @@ export const useDashboardPage = () => {
     if (isAccountSwitching) return
 
     setIsAccountSwitching(true)
-    setShowBurgerMenu(false)
-    setShowAccountSelector(false)
+    // Keep menu open with spinner until switch succeeds — don't close early
 
     try {
       const success = await selectAccount(accountId)
 
       if (success) {
         setChatMessages([])
-        setTimeout(() => {
-          setIsAccountSwitching(false)
-          navigate('/integrations')
-        }, 500)
+        setShowBurgerMenu(false)
+        setShowAccountSelector(false)
+        setIsAccountSwitching(false)
+        navigate('/integrations')
       } else {
         console.error('❌ [MAIN] Failed to switch account')
         setIsAccountSwitching(false)

@@ -56,7 +56,10 @@ export function usePlatformPreferences({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasLoadedRef = useRef(false)
   const connectedPlatformsRef = useRef(connectedPlatforms)
+  const pendingSaveRef = useRef<string[] | null>(null)
+  const sessionIdRef = useRef(sessionId)
   connectedPlatformsRef.current = connectedPlatforms
+  sessionIdRef.current = sessionId
 
   useEffect(() => {
     if (!sessionId) return
@@ -113,6 +116,15 @@ export function usePlatformPreferences({
     if (!hasLoadedRef.current || connectedPlatforms.length === 0) return
 
     const prevConnected = prevConnectedRef.current
+
+    // MAR 2026 FIX: If prevConnected is empty, it means connectedPlatforms loaded
+    // AFTER preferences were fetched. Don't treat every platform as "newly connected"
+    // — just update the ref so future real connections are detected correctly.
+    if (prevConnected.length === 0) {
+      prevConnectedRef.current = [...connectedPlatforms]
+      return
+    }
+
     const newPlatforms = connectedPlatforms.filter(p => !prevConnected.includes(p))
 
     if (newPlatforms.length > 0) {
@@ -144,7 +156,11 @@ export function usePlatformPreferences({
       clearTimeout(debounceTimerRef.current)
     }
 
+    // Track pending save so it can be flushed on unmount
+    pendingSaveRef.current = platforms
+
     debounceTimerRef.current = setTimeout(async () => {
+      pendingSaveRef.current = null
       setIsSaving(true)
       try {
         await savePlatformPreferences(sessionId, platforms)
@@ -157,10 +173,16 @@ export function usePlatformPreferences({
     }, 1000)
   }, [sessionId])
 
+  // MAR 2026 FIX: Flush pending save on unmount instead of cancelling it.
+  // Previously, toggling a platform then navigating within 1s lost the save.
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
+      }
+      if (pendingSaveRef.current && sessionIdRef.current) {
+        savePlatformPreferences(sessionIdRef.current, pendingSaveRef.current)
+        pendingSaveRef.current = null
       }
     }
   }, [])

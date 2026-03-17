@@ -27,8 +27,9 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
 }
 
 // Merges account-level credential status with tenant-level platform status.
-// If a platform has credentials at the account level, it should show as connected
-// even if the tenant integration table hasn't been updated yet.
+// MAR 2026 FIX: Distinguish "connected" (OAuth done at tenant level) from "linked"
+// (specific account ID mapped to THIS client). A platform can be connected at the
+// workspace level but not yet linked to the currently selected client/account.
 const mergePlatformStatus = (
   tenantStatus: PlatformStatus,
   accountData: AccountData | null
@@ -36,31 +37,27 @@ const mergePlatformStatus = (
   if (!accountData) return tenantStatus
 
   const now = new Date().toISOString()
+
+  // Helper: if account has the platform ID, it's fully connected+linked.
+  // If not, preserve tenant-level "connected" but set linked=false so the UI
+  // prompts the user to select/link the platform for this specific client.
+  const merge = (
+    accountField: string | null | undefined,
+    tenantEntry: PlatformStatus[keyof PlatformStatus] | undefined,
+  ) =>
+    accountField
+      ? { connected: true, linked: true, last_synced: now }
+      : { connected: tenantEntry?.connected ?? false, linked: false, last_synced: tenantEntry?.last_synced }
+
   return {
-    google: accountData.google_ads_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.google,
-    ga4: accountData.ga4_property_id
-      ? { connected: true, linked: true, last_synced: now }
-      : { connected: tenantStatus.ga4?.connected ?? false, linked: false, last_synced: tenantStatus.ga4?.last_synced },
-    meta: accountData.meta_ads_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.meta,
-    facebook_organic: accountData.facebook_page_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.facebook_organic,
-    brevo: accountData.brevo_api_key
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.brevo,
-    hubspot: accountData.hubspot_portal_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.hubspot,
-    mailchimp: accountData.mailchimp_account_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.mailchimp,
-    linkedin_ads: accountData.linkedin_ads_account_id
-      ? { connected: true, linked: true, last_synced: now }
-      : tenantStatus.linkedin_ads,
+    google: merge(accountData.google_ads_id, tenantStatus.google),
+    ga4: merge(accountData.ga4_property_id, tenantStatus.ga4),
+    meta: merge(accountData.meta_ads_id, tenantStatus.meta),
+    facebook_organic: merge(accountData.facebook_page_id, tenantStatus.facebook_organic),
+    brevo: merge(accountData.brevo_api_key, tenantStatus.brevo),
+    hubspot: merge(accountData.hubspot_portal_id, tenantStatus.hubspot),
+    mailchimp: merge(accountData.mailchimp_account_id, tenantStatus.mailchimp),
+    linkedin_ads: merge(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
   }
 }
 

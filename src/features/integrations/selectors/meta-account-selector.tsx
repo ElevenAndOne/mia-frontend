@@ -90,6 +90,7 @@ const MetaAccountSelector = ({
         },
         body: JSON.stringify({
           meta_account_id: state.selectedId || '',
+          google_account_id: selectedAccount?.id,  // MAR 2026: Explicitly send account to link to
         }),
       })
 
