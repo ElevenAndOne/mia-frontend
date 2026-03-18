@@ -534,7 +534,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       return false
     }
 
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    // MAR 2026 FIX: Do NOT set isLoading here — it causes ProtectedRoute to render
+    // <LoadingScreen>, which unmounts the IntegrationsPage (and any open selector modal)
+    // while the API call is in flight. When isLoading goes false, everything remounts
+    // and stale setTimeout callbacks from the old mount fire refreshAccounts() at the
+    // wrong time, creating a race condition that reverts the account selection.
+    // The selector modal's own isSubmitting state handles the loading UX.
+    setState(prev => ({ ...prev, error: null }))
 
     try {
       const response = await accountService.selectAccount(currentSessionId, accountId, industry)
@@ -558,7 +564,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setState(prev => ({
         ...prev,
         selectedAccount: account || null,
-        isLoading: false,
         // Only update workspace when backend confirms it was just auto-created.
         // For normal account switches workspace_info is null, so we leave the
         // existing activeWorkspace untouched (preserves onboarding_completed,
@@ -577,7 +582,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       logger.error('[SESSION] Account selection error:', error)
       setState(prev => ({
         ...prev,
-        isLoading: false,
         error: error instanceof Error ? error.message : 'Account selection failed'
       }))
       return false
