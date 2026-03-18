@@ -22,9 +22,10 @@ interface LinkedInAccountSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
+  currentAccountData?: { linkedin_ads_account_id?: string; linkedin_organization_id?: string } | null
 }
 
-const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess }: LinkedInAccountSelectorProps) => {
+const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess, currentAccountData }: LinkedInAccountSelectorProps) => {
   const { sessionId } = useSession()
   const [adAccounts, setAdAccounts] = useState<LinkedInAdAccount[]>([])
   const [organizations, setOrganizations] = useState<LinkedInOrganization[]>([])
@@ -61,10 +62,15 @@ const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess }: LinkedInAccount
         setAdAccounts(data.ad_accounts || [])
         setOrganizations(data.organizations || [])
 
-        if (data.ad_accounts?.length === 1) {
+        // Pre-select previously linked ad account and org
+        if (currentAccountData?.linkedin_ads_account_id) {
+          actions.setSelectedId(currentAccountData.linkedin_ads_account_id)
+        } else if (data.ad_accounts?.length === 1) {
           actions.setSelectedId(data.ad_accounts[0].id)
         }
-        if (data.organizations?.length === 1) {
+        if (currentAccountData?.linkedin_organization_id) {
+          setSelectedOrgId(currentAccountData.linkedin_organization_id)
+        } else if (data.organizations?.length === 1) {
           setSelectedOrgId(data.organizations[0].id)
         }
       } else {

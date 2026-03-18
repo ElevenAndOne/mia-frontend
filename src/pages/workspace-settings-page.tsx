@@ -49,6 +49,11 @@ const WorkspaceSettingsPage = () => {
     setInviteRole,
     setInviteEmail,
     setIsLinkInvite,
+    showRenameModal,
+    openRenameModal,
+    closeRenameModal,
+    handleRenameWorkspace,
+    renaming,
     showDeleteModal,
     openDeleteModal,
     closeDeleteModal,
@@ -109,6 +114,11 @@ const WorkspaceSettingsPage = () => {
           onRevokeInvite={handleRevokeInvite}
           onUpdateRole={handleUpdateRole}
           onRemoveMember={handleRemoveMember}
+          showRenameModal={showRenameModal}
+          onOpenRenameModal={openRenameModal}
+          onCloseRenameModal={closeRenameModal}
+          onRenameWorkspace={handleRenameWorkspace}
+          renaming={renaming}
           showDeleteModal={showDeleteModal}
           onOpenDeleteModal={openDeleteModal}
           onCloseDeleteModal={closeDeleteModal}

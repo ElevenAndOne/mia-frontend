@@ -23,6 +23,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchBrevoAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -33,6 +33,7 @@ const FacebookPageSelector = ({
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchFacebookPages()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

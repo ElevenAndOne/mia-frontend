@@ -23,6 +23,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchMailchimpAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

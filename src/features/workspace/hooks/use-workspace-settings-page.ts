@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { apiFetch } from '../../../utils/api'
 import { useClipboard } from '../../../hooks/use-clipboard'
+import { renameWorkspace } from '../services/workspace-service'
 import {
   buildWorkspaceInviteRows,
   buildWorkspaceMemberRows,
@@ -170,6 +171,29 @@ export const useWorkspaceSettingsPage = () => {
     setIsLinkInvite(true)
   }, [])
 
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [renaming, setRenaming] = useState(false)
+  const openRenameModal = useCallback(() => setShowRenameModal(true), [])
+  const closeRenameModal = useCallback(() => setShowRenameModal(false), [])
+
+  const handleRenameWorkspace = useCallback(async (newName: string): Promise<boolean> => {
+    if (!selectedWorkspaceId || !sessionId || !newName.trim()) return false
+    try {
+      setRenaming(true)
+      setError(null)
+      await renameWorkspace(sessionId, selectedWorkspaceId, newName.trim())
+      await refreshWorkspaces()
+      setShowRenameModal(false)
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to rename workspace'
+      setError(message)
+      return false
+    } finally {
+      setRenaming(false)
+    }
+  }, [selectedWorkspaceId, sessionId, refreshWorkspaces, setError])
+
   const openDeleteModal = useCallback(() => setShowDeleteModal(true), [])
   const closeDeleteModal = useCallback(() => setShowDeleteModal(false), [])
 
@@ -248,10 +272,15 @@ export const useWorkspaceSettingsPage = () => {
     setInviteRole,
     setInviteEmail,
     setIsLinkInvite,
+    showRenameModal,
+    openRenameModal,
+    closeRenameModal,
+    handleRenameWorkspace,
+    renaming,
     showDeleteModal,
     openDeleteModal,
     closeDeleteModal,
     handleDeleteWorkspace,
-    handleLeaveWorkspace,  // NEW (Feb 2026): Leave workspace for non-owners
+    handleLeaveWorkspace,
   }
 }

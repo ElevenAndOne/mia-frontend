@@ -40,6 +40,7 @@ const MetaAccountSelector = ({
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchMetaAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

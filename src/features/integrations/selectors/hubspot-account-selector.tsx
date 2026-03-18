@@ -23,6 +23,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
 
   useEffect(() => {
     if (isOpen) {
+      actions.resetState()
       fetchHubSpotAccounts()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

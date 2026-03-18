@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
@@ -13,6 +13,7 @@ interface GoogleAccountSelectorProps {
 const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSelectorProps) => {
   const { availableAccounts, selectedAccount, selectAccount } = useSession()
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null)
+  const hasInitializedRef = useRef(false)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -26,11 +27,18 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [availableAccounts])
 
-  // Pre-select current account when modal opens
+  // Pre-select current account only when modal first opens — not on every render.
+  // The actions object is a new reference each render, so we use a ref to guard
+  // against re-running and overwriting the user's click selection.
   useEffect(() => {
-    if (isOpen && selectedAccount) {
+    if (isOpen && selectedAccount && !hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      actions.resetState()
       setLocalSelectedId(selectedAccount.id)
       actions.setIsLoading(false)
+    }
+    if (!isOpen) {
+      hasInitializedRef.current = false
     }
   }, [isOpen, selectedAccount, actions])
 

@@ -37,6 +37,10 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
   // Use pre-fetched properties if available, otherwise fetch
   useEffect(() => {
     if (isOpen) {
+      setSuccess(false)
+      setError(null)
+      setSelectedPropertyIds([])
+      setPrimaryPropertyId(null)
       if (ga4Properties && ga4Properties.length > 0) {
         // Sort pre-fetched properties alphabetically by display name (A-Z)
         const sortedProperties = [...ga4Properties].sort((a, b) =>

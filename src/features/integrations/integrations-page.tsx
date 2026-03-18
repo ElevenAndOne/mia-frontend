@@ -608,7 +608,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
                   else if (integration.id === 'meta') setShowMetaAccountSelector(true)
                   else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
-                  else if (integration.id === 'brevo') setShowBrevoAccountSelector(true)
+                  else if (integration.id === 'brevo') { setShowBrevoModal(true); setBrevoError(''); setBrevoApiKey('') }
                   else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
                   else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
                   else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
@@ -658,12 +658,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             sessionId={sessionId}
                             userRole={activeWorkspace?.role}
                             onManage={() => {
-                              // Open the appropriate selector modal
+                              // Open the appropriate selector/connect modal
                               if (integration.id === 'google') setShowGoogleAccountSelector(true)
                               else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
                               else if (integration.id === 'meta') setShowMetaAccountSelector(true)
                               else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
-                              else if (integration.id === 'brevo') setShowBrevoAccountSelector(true)
+                              else if (integration.id === 'brevo') {
+                                // If linked, show account selector; if not linked, show connect modal
+                                if (integration.linked) setShowBrevoAccountSelector(true)
+                                else { setShowBrevoModal(true); setBrevoError(''); setBrevoApiKey('') }
+                              }
                               else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
                               else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
                               else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
@@ -983,6 +987,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
+        currentAccountData={currentAccountData}
       />
     </div>
   )

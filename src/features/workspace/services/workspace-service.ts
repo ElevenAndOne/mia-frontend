@@ -187,6 +187,31 @@ export const switchWorkspace = async (
 }
 
 /**
+ * Rename a workspace (owner only)
+ */
+export const renameWorkspace = async (
+  sessionId: string,
+  tenantId: string,
+  name: string
+): Promise<{ success: boolean; name: string; slug: string }> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify({ name }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.detail || `Rename workspace failed: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+/**
  * Delete a workspace (owner only)
  */
 export const deleteWorkspace = async (

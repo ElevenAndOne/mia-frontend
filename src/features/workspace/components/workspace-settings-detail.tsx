@@ -3,6 +3,7 @@ import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
+import { RenameWorkspaceModal } from './rename-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
@@ -35,11 +36,16 @@ interface WorkspaceSettingsDetailProps {
   onRevokeInvite: (inviteId: string) => void
   onUpdateRole: (userId: string, role: string) => void
   onRemoveMember: (userId: string) => void
+  showRenameModal: boolean
+  onOpenRenameModal: () => void
+  onCloseRenameModal: () => void
+  onRenameWorkspace: (newName: string) => Promise<boolean>
+  renaming: boolean
   showDeleteModal: boolean
   onOpenDeleteModal: () => void
   onCloseDeleteModal: () => void
   onDeleteWorkspace: () => Promise<boolean>
-  onLeaveWorkspace?: () => Promise<boolean>  // NEW (Feb 2026): Leave workspace for non-owners
+  onLeaveWorkspace?: () => Promise<boolean>
 }
 
 export const WorkspaceSettingsDetail = ({
@@ -70,6 +76,11 @@ export const WorkspaceSettingsDetail = ({
   onRevokeInvite,
   onUpdateRole,
   onRemoveMember,
+  showRenameModal,
+  onOpenRenameModal,
+  onCloseRenameModal,
+  onRenameWorkspace,
+  renaming,
   showDeleteModal,
   onOpenDeleteModal,
   onCloseDeleteModal,
@@ -113,6 +124,25 @@ export const WorkspaceSettingsDetail = ({
             onCopyInvite={onCopyInvite}
             onRevokeInvite={onRevokeInvite}
           />
+        )}
+
+        {/* Workspace Settings - Owner Only */}
+        {isOwner && (
+          <div className="mt-8 pt-6 border-t border-tertiary">
+            <h3 className="subheading-md text-primary mb-2">Workspace</h3>
+            <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+              <div>
+                <p className="subheading-md text-primary">{workspace.name}</p>
+                <p className="paragraph-sm text-quaternary">Workspace name</p>
+              </div>
+              <button
+                onClick={onOpenRenameModal}
+                className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+              >
+                Rename
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Danger Zone - Owner Only */}
@@ -165,6 +195,14 @@ export const WorkspaceSettingsDetail = ({
         onCreateInvite={onCreateInvite}
         onCopyInvite={onCopyInvite}
         onComplete={onCompleteInviteFlow}
+      />
+
+      <RenameWorkspaceModal
+        isOpen={showRenameModal}
+        onClose={onCloseRenameModal}
+        currentName={workspace.name}
+        onConfirm={onRenameWorkspace}
+        renaming={renaming}
       />
 
       <DeleteWorkspaceModal
