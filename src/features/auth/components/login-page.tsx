@@ -72,8 +72,6 @@ export const LoginPage = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed
     isBusy,
     isGoogleLoading,
     googleLoadingMessage,
-    isMetaLoading,
-    metaLoadingMessage,
     handleLogin,
   } = useLoginPage({
     onAuthSuccess,
