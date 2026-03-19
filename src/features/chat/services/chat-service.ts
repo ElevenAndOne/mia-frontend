@@ -23,13 +23,22 @@ export interface ChatResponse {
 }
 
 export const sendChatMessage = async (payload: ChatRequestPayload) => {
-  const response = await apiFetch('/api/chat', {
+  // Chat v2: Anthropic native tool_use — Claude decides which tools to call
+  const v2Payload = {
+    message: payload.message,
+    session_id: payload.session_id,
+    date_range: payload.date_range,
+    selected_platforms: payload.selected_platforms,
+    conversation_history: payload.conversation_history,
+  }
+
+  const response = await apiFetch('/api/chat/v2', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Session-ID': payload.session_id || 'default',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(v2Payload),
   })
 
   if (!response.ok) {
