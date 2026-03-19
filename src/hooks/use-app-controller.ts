@@ -70,6 +70,9 @@ export const useAppController = () => {
       if (success) {
         await refreshAccounts()
       }
+    } else if (platformId === 'integrations') {
+      // Cog wheel skip from onboarding - go to home page
+      navigate('/home')
     } else {
       navigate('/integrations')
     }
