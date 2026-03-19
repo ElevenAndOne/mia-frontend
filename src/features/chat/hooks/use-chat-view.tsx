@@ -112,6 +112,12 @@ export const useChatView = () => {
     setStreamingContent('')
 
     try {
+      // Build conversation history from existing messages (last 10 for context)
+      const history = messages.slice(-10).map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+
       const result = await sendChatMessage({
         message,
         session_id: sessionId,
@@ -120,6 +126,7 @@ export const useChatView = () => {
         ga4_property_id: selectedAccount?.ga4_property_id,
         date_range: dateRange,
         selected_platforms: selectedPlatforms,
+        conversation_history: history.length > 0 ? history : undefined,
       })
 
       const assistantMessage: ChatMessageItem = {
@@ -142,7 +149,7 @@ export const useChatView = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms])
+  }, [messages, sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms])
 
   const handleQuickAction = useCallback((actionId: string) => {
     const params = new URLSearchParams()

@@ -1,5 +1,10 @@
 import { apiFetch } from '../../../utils/api'
 
+interface ChatHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 interface ChatRequestPayload {
   message: string
   session_id: string | null
@@ -8,6 +13,7 @@ interface ChatRequestPayload {
   ga4_property_id?: string
   date_range: string
   selected_platforms?: string[]
+  conversation_history?: ChatHistoryMessage[]
 }
 
 export interface ChatResponse {
