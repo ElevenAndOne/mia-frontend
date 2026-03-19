@@ -208,8 +208,9 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   }, [clearPersistedMessages, completeOnboarding, onComplete])
 
   const handleGoToIntegrations = useCallback(async () => {
-    await skipOnboarding()
+    // Navigate immediately for instant feedback, skip onboarding in background
     onConnectPlatform('integrations')
+    skipOnboarding().catch(() => {})
   }, [onConnectPlatform, skipOnboarding])
 
   // Handle account selection from inline selector
