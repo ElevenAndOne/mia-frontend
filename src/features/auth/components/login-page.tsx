@@ -96,17 +96,19 @@ export const LoginPage = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed
       loadingMessage: googleLoadingMessage,
       onClick: makeHandler('google'),
     },
-    {
-      id: 'meta',
-      label: 'Continue with Meta',
-      variant: 'ghost',
-      iconSrc: '/icons/meta-color.svg',
-      icon: <Logo.meta />,
-      iconAlt: 'Meta',
-      loading: isMetaLoading,
-      loadingMessage: metaLoadingMessage,
-      onClick: makeHandler('meta'),
-    },
+    // Meta-first login disabled until properly tested (Mar 2026)
+    // Meta OAuth still works for connecting Meta Ads from the integrations page
+    // {
+    //   id: 'meta',
+    //   label: 'Continue with Meta',
+    //   variant: 'ghost',
+    //   iconSrc: '/icons/meta-color.svg',
+    //   icon: <Logo.meta />,
+    //   iconAlt: 'Meta',
+    //   loading: isMetaLoading,
+    //   loadingMessage: metaLoadingMessage,
+    //   onClick: makeHandler('meta'),
+    // },
   ]
 
   return (
