@@ -315,7 +315,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
-    // GA4 uses property selector modal
+    // GA4 uses property selector modal — workspace already has Google OAuth
     if (integrationId === 'ga4') {
       setShowGA4PropertySelector(true)
       return
@@ -329,10 +329,43 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
-    // Facebook Organic: Check if Meta OAuth is connected, if so show page selector
-    // Otherwise, start Meta OAuth flow (it will enable both Meta Ads and FB Organic credentials)
+    // MAR 2026: If workspace already has OAuth credentials for this platform,
+    // skip the OAuth popup and go straight to the account/page selector.
+    // This handles switching clients — they've already authed, just need to pick the sub-account.
+    if (activeWorkspace?.tenant_id) {
+      try {
+        const tenantResponse = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/integrations`, {
+          headers: { 'X-Session-ID': sessionId || '' },
+        })
+        if (tenantResponse.ok) {
+          const tenantData = await tenantResponse.json()
+          const ps = tenantData.platform_status || {}
+
+          // Meta Ads: workspace has Meta creds → show ad account selector
+          // (Meta selector shows ALL available ad accounts from the Business Manager)
+          if (integrationId === 'meta' && ps.meta_ads) {
+            setShowMetaAccountSelector(true)
+            return
+          }
+          // Facebook Organic: workspace has Meta creds → show page selector
+          // (Page selector shows ALL pages the user manages)
+          if (integrationId === 'facebook_organic' && (ps.meta_ads || ps.facebook_organic)) {
+            setShowFacebookPageSelector(true)
+            return
+          }
+          // HubSpot, Mailchimp, LinkedIn: always go through OAuth flow
+          // Their selectors are account-scoped (only show portals/accounts linked
+          // to the current client), so opening the selector on a new client
+          // would show an empty list. OAuth flow re-runs and links to this client.
+        }
+      } catch (error) {
+        logger.error(`[INTEGRATIONS] Error checking tenant creds for ${integrationId}:`, error)
+        // Fall through to OAuth flow
+      }
+    }
+
+    // Facebook Organic fallback: Check if Meta OAuth is connected via credentials-status
     if (integrationId === 'facebook_organic') {
-      // Check if Meta credentials exist
       try {
         const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
           headers: createSessionHeaders(sessionId)
@@ -340,7 +373,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
-            // Meta OAuth already connected - just show page selector
             setShowFacebookPageSelector(true)
             return
           }
@@ -348,8 +380,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       } catch (error) {
         logger.error('[FB-ORGANIC] Error checking Meta credentials:', error)
       }
-      // Meta OAuth not connected - fall through to start Meta OAuth flow
-      // After OAuth completes, user can select Facebook page via gear icon
       logger.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
     }
 
@@ -602,23 +632,13 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="space-y-2">
               {connectedSources.map(integration => {
 
-                const notLinked = integration.connected && !integration.linked
-                const handleCardClick = notLinked ? () => {
-                  if (integration.id === 'google') setShowGoogleAccountSelector(true)
-                  else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
-                  else if (integration.id === 'meta') setShowMetaAccountSelector(true)
-                  else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
-                  else if (integration.id === 'brevo') { setShowBrevoModal(true); setBrevoError(''); setBrevoApiKey('') }
-                  else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
-                  else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
-                  else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
-                } : undefined
+                const handleCardClick = undefined
 
                 return (
                   <div key={integration.id} className="w-full">
                     <div
                       className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
-                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : notLinked ? 'border-utility-warning-300' : 'border-secondary'}`}
+                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
                       onClick={handleCardClick}
                     >
                       <div className="flex items-center  gap-3">
@@ -628,24 +648,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                         <div className="flex-1 min-w-0 overflow-hidden">
                           <div className="flex items-center gap-2">
                             <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
-                            {integration.connected && !integration.linked && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-utility-warning-100 text-utility-warning-700 whitespace-nowrap">
-                                Not linked
-                              </span>
-                            )}
                           </div>
                           <div className="paragraph-xs text-quaternary truncate flex items-center gap-1">
-                            {integration.connected && !integration.linked ? (
-                              <p className="paragraph-xs text-utility-warning-600 truncate">
-                                Select a {integration.name} account for {selectedAccount?.name || 'this client'}
-                              </p>
-                            ) : (
-                              <>
-                                <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
-                                {integration.lastSync && (
-                                  <span> • Last synced: {integration.lastSync}</span>
-                                )}
-                              </>
+                            <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
+                            {integration.lastSync && (
+                              <span> • Last synced: {integration.lastSync}</span>
                             )}
                           </div>
                         </div>

@@ -27,9 +27,10 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
 }
 
 // Merges account-level credential status with tenant-level platform status.
-// MAR 2026 FIX: Distinguish "connected" (OAuth done at tenant level) from "linked"
-// (specific account ID mapped to THIS client). A platform can be connected at the
-// workspace level but not yet linked to the currently selected client/account.
+// MAR 2026 FIX: Only show a platform as "connected" when it is actually linked
+// to the currently selected client/account. Workspace-level OAuth credentials
+// are just plumbing — the user should see "Connect" (not "Not linked") for
+// platforms that haven't been mapped to this specific client yet.
 const mergePlatformStatus = (
   tenantStatus: PlatformStatus,
   accountData: AccountData | null
@@ -38,26 +39,25 @@ const mergePlatformStatus = (
 
   const now = new Date().toISOString()
 
-  // Helper: if account has the platform ID, it's fully connected+linked.
-  // If not, preserve tenant-level "connected" but set linked=false so the UI
-  // prompts the user to select/link the platform for this specific client.
+  // If the account has the platform ID mapped, it's connected+linked.
+  // If not, show as not connected (user sees "Connect" button) regardless
+  // of whether workspace-level OAuth credentials exist.
   const merge = (
     accountField: string | null | undefined,
-    tenantEntry: PlatformStatus[keyof PlatformStatus] | undefined,
   ) =>
     accountField
       ? { connected: true, linked: true, last_synced: now }
-      : { connected: tenantEntry?.connected ?? false, linked: false, last_synced: tenantEntry?.last_synced }
+      : { connected: false, linked: false }
 
   return {
-    google: merge(accountData.google_ads_id, tenantStatus.google),
-    ga4: merge(accountData.ga4_property_id, tenantStatus.ga4),
-    meta: merge(accountData.meta_ads_id, tenantStatus.meta),
-    facebook_organic: merge(accountData.facebook_page_id, tenantStatus.facebook_organic),
-    brevo: merge(accountData.brevo_api_key, tenantStatus.brevo),
-    hubspot: merge(accountData.hubspot_portal_id, tenantStatus.hubspot),
-    mailchimp: merge(accountData.mailchimp_account_id, tenantStatus.mailchimp),
-    linkedin_ads: merge(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
+    google: merge(accountData.google_ads_id),
+    ga4: merge(accountData.ga4_property_id),
+    meta: merge(accountData.meta_ads_id),
+    facebook_organic: merge(accountData.facebook_page_id),
+    brevo: merge(accountData.brevo_api_key),
+    hubspot: merge(accountData.hubspot_portal_id),
+    mailchimp: merge(accountData.mailchimp_account_id),
+    linkedin_ads: merge(accountData.linkedin_ads_account_id),
   }
 }
 
