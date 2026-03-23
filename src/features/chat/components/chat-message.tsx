@@ -1,14 +1,21 @@
 import { Icon } from '../../../components/icon'
 import { MarkdownText } from '../../../components/markdown-text'
 import { useClipboard } from '../../../hooks/use-clipboard'
+import ActionConfirmCard from './action-confirm-card'
+import type { PendingAction } from '../services/chat-service'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
   content: string
   isStreaming?: boolean
+  pendingAction?: PendingAction
+  actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
+  actionResult?: Record<string, unknown>
+  onConfirmAction?: () => void
+  onCancelAction?: () => void
 }
 
-export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageProps) => {
+export const ChatMessage = ({ role, content, isStreaming = false, pendingAction, actionStatus, actionResult, onConfirmAction, onCancelAction }: ChatMessageProps) => {
   const { copied, copy } = useClipboard()
 
   if (role === 'user') {
@@ -31,6 +38,17 @@ export const ChatMessage = ({ role, content, isStreaming = false }: ChatMessageP
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />
           )}
         </div>
+
+        {/* Action confirmation card */}
+        {pendingAction && actionStatus && onConfirmAction && onCancelAction && (
+          <ActionConfirmCard
+            action={pendingAction}
+            status={actionStatus}
+            result={actionResult}
+            onConfirm={onConfirmAction}
+            onCancel={onCancelAction}
+          />
+        )}
       </div>
 
       {/* Action buttons */}

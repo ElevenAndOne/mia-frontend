@@ -16,10 +16,47 @@ interface ChatRequestPayload {
   conversation_history?: ChatHistoryMessage[]
 }
 
+export interface PendingAction {
+  action_type: string
+  platform: string
+  summary: string
+  params: Record<string, unknown>
+}
+
 export interface ChatResponse {
   success: boolean
   claude_response?: string
+  pending_action?: PendingAction
   error?: string
+}
+
+export const confirmAction = async (
+  sessionId: string,
+  action: PendingAction,
+): Promise<{ success: boolean; workflow_id?: string; error?: string }> => {
+  const response = await apiFetch('/api/actions/confirm', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify({
+      action_type: action.action_type,
+      platform: action.platform,
+      params: action.params,
+    }),
+  })
+  return response.json()
+}
+
+export const pollActionStatus = async (
+  sessionId: string,
+  workflowId: string,
+): Promise<{ status: string; result?: Record<string, unknown> }> => {
+  const response = await apiFetch(`/api/actions/status/${workflowId}`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  return response.json()
 }
 
 export const sendChatMessage = async (payload: ChatRequestPayload) => {

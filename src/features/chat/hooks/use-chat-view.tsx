@@ -5,13 +5,17 @@ import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
-import { sendChatMessage } from '../services/chat-service'
+import { sendChatMessage, confirmAction, pollActionStatus } from '../services/chat-service'
+import type { PendingAction } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
 
-interface ChatMessageItem {
+export interface ChatMessageItem {
   id: string
   role: 'user' | 'assistant'
   content: string
+  pendingAction?: PendingAction
+  actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
+  actionResult?: Record<string, unknown>
 }
 
 interface LocationState {
@@ -135,6 +139,8 @@ export const useChatView = () => {
         content: result.success && result.claude_response
           ? result.claude_response
           : 'Sorry, I had trouble processing your question. Please try again.',
+        pendingAction: result.pending_action || undefined,
+        actionStatus: result.pending_action ? 'pending' : undefined,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -174,6 +180,68 @@ export const useChatView = () => {
     }
   }, [navigate, selectedPlatforms, dateRange])
 
+  const handleConfirmAction = useCallback(async (messageId: string) => {
+    const message = messages.find(m => m.id === messageId)
+    if (!message?.pendingAction || !sessionId) return
+
+    // Update status to confirmed
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, actionStatus: 'confirmed' as const } : m
+    ))
+
+    try {
+      const result = await confirmAction(sessionId, message.pendingAction)
+
+      if (result.success && result.workflow_id) {
+        // Update to running
+        setMessages(prev => prev.map(m =>
+          m.id === messageId ? { ...m, actionStatus: 'running' as const } : m
+        ))
+
+        // Poll for completion
+        const pollInterval = setInterval(async () => {
+          try {
+            const status = await pollActionStatus(sessionId, result.workflow_id!)
+            if (status.status === 'completed') {
+              clearInterval(pollInterval)
+              setMessages(prev => prev.map(m =>
+                m.id === messageId ? { ...m, actionStatus: 'completed' as const, actionResult: status.result || undefined } : m
+              ))
+            } else if (status.status === 'failed') {
+              clearInterval(pollInterval)
+              setMessages(prev => prev.map(m =>
+                m.id === messageId ? { ...m, actionStatus: 'failed' as const, actionResult: status.result || undefined } : m
+              ))
+            }
+          } catch {
+            clearInterval(pollInterval)
+            setMessages(prev => prev.map(m =>
+              m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
+            ))
+          }
+        }, 2000) // Poll every 2 seconds
+
+        // Safety timeout — stop polling after 5 minutes
+        setTimeout(() => clearInterval(pollInterval), 300000)
+      } else {
+        setMessages(prev => prev.map(m =>
+          m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
+        ))
+      }
+    } catch (error) {
+      console.error('[CHAT] Action confirm error:', error)
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
+      ))
+    }
+  }, [messages, sessionId])
+
+  const handleCancelAction = useCallback((messageId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, pendingAction: undefined, actionStatus: undefined } : m
+    ))
+  }, [])
+
   return {
     userName: user?.name?.split(' ')[0],
     messages,
@@ -190,6 +258,8 @@ export const useChatView = () => {
     handleNewChat,
     handleSubmit,
     handleQuickAction,
+    handleConfirmAction,
+    handleCancelAction,
     integrationPrompt,
   }
 }

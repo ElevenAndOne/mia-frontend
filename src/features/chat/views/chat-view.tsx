@@ -47,6 +47,8 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     handleNewChat,
     handleSubmit,
     handleQuickAction,
+    handleConfirmAction,
+    handleCancelAction,
     integrationPrompt,
   } = useChatView()
 
@@ -129,6 +131,11 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
                     key={message.id}
                     role={message.role}
                     content={message.content}
+                    pendingAction={message.pendingAction}
+                    actionStatus={message.actionStatus}
+                    actionResult={message.actionResult}
+                    onConfirmAction={message.pendingAction ? () => handleConfirmAction(message.id) : undefined}
+                    onCancelAction={message.pendingAction ? () => handleCancelAction(message.id) : undefined}
                   />
                 ))}
 
