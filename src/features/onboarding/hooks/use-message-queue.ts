@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StorageKey } from '../../../constants/storage-keys'
+import { logger } from '../../../utils/logger'
 import type { ChatMessage, ChatMessageInput } from '../onboarding-chat-types'
 
 const MESSAGES_STORAGE_KEY = StorageKey.ONBOARDING_MESSAGES
@@ -37,9 +38,9 @@ export const useMessageQueue = (): MessageQueueState => {
       // Filter out explainer boxes as they don't serialize well and will be re-shown if needed
       const messagesToPersist = displayedMessages.filter(m => m.type !== 'explainer-box')
       localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messagesToPersist))
-      console.log('[MESSAGE-QUEUE] Persisted', messagesToPersist.length, 'messages')
+      logger.log('[MESSAGE-QUEUE] Persisted', messagesToPersist.length, 'messages')
     } catch (e) {
-      console.error('[MESSAGE-QUEUE] Failed to persist messages:', e)
+      logger.error('[MESSAGE-QUEUE] Failed to persist messages:', e)
     }
   }, [displayedMessages])
 
@@ -50,11 +51,11 @@ export const useMessageQueue = (): MessageQueueState => {
       if (stored) {
         const messages = JSON.parse(stored) as ChatMessage[]
         setDisplayedMessages(messages)
-        console.log('[MESSAGE-QUEUE] Restored', messages.length, 'messages')
+        logger.log('[MESSAGE-QUEUE] Restored', messages.length, 'messages')
         return true
       }
     } catch (e) {
-      console.error('[MESSAGE-QUEUE] Failed to restore messages:', e)
+      logger.error('[MESSAGE-QUEUE] Failed to restore messages:', e)
     }
     return false
   }, [])
@@ -71,7 +72,7 @@ export const useMessageQueue = (): MessageQueueState => {
     const nextMessage = messageQueue[0]
     setIsTyping(true)
 
-    const delay = nextMessage.type === 'explainer-box' ? 2500 : 2000
+    const delay = nextMessage.type === 'explainer-box' ? 1500 : 800
     const timeoutId = window.setTimeout(() => {
       setDisplayedMessages((prev) => [...prev, { ...nextMessage, id: generateId() }])
       setMessageQueue((prev) => prev.slice(1))

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 import { DashboardChatHeader } from '../features/dashboard/components/dashboard-chat-header'
 import { DashboardChatPanel } from '../features/dashboard/components/dashboard-chat-panel'
 import { DashboardHomePanel } from '../features/dashboard/components/dashboard-home-panel'
@@ -148,7 +149,7 @@ const DashboardPage = () => {
         isOpen={showBrevoModal}
         onClose={() => setShowBrevoModal(false)}
         onSuccess={() => {
-          console.log('Brevo connected successfully')
+          logger.log('Brevo connected successfully')
         }}
       />
 
@@ -164,7 +165,7 @@ const DashboardPage = () => {
         isOpen={showCreateWorkspaceModal}
         onClose={() => setShowCreateWorkspaceModal(false)}
         onSuccess={(tenantId) => {
-          console.log('[MAIN-VIEW] Workspace created:', tenantId)
+          logger.log('[MAIN-VIEW] Workspace created:', tenantId)
           window.location.reload()
         }}
       />

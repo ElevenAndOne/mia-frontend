@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { logger } from '../../../utils/logger'
 
 interface UseWorkspaceSwitcherParams {
   activeWorkspaceId?: string
@@ -39,7 +40,7 @@ export const useWorkspaceSwitcher = ({
         }
       } catch (error) {
         onError?.(error)
-        console.error('[WORKSPACE-SWITCHER] Switch error:', error)
+        logger.error('[WORKSPACE-SWITCHER] Switch error:', error)
       } finally {
         setIsSwitching(false)
         setSwitchingId(null)

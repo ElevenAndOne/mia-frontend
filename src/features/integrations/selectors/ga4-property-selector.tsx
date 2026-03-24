@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
+import { logger } from '../../../utils/logger'
 import { useSession } from '../../../contexts/session-context'
 import { Modal } from '../../overlay'
 
@@ -98,7 +99,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
         setError('Failed to fetch GA4 properties')
       }
     } catch (err) {
-      console.error('Error fetching GA4 properties:', err)
+      logger.error('Error fetching GA4 properties:', err)
       setError('Failed to load GA4 properties. Please try again.')
     } finally {
       setIsLoading(false)
@@ -142,10 +143,10 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
       const accountId = selectedAccount.id
 
       if (selectedPropertyIds.length === 0) {
-        console.log('[GA4-PROPERTY-SELECTOR] Unlinking all GA4 properties from account', selectedAccount.name)
+        logger.log('[GA4-PROPERTY-SELECTOR] Unlinking all GA4 properties from account', selectedAccount.name)
       } else {
-        console.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
-        console.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
+        logger.log('[GA4-PROPERTY-SELECTOR] Linking', selectedPropertyIds.length, 'properties to account', selectedAccount.name)
+        logger.log('[GA4-PROPERTY-SELECTOR] Primary property:', primaryPropertyId)
       }
 
       // Order properties with primary first (or empty string if unlinking)
@@ -187,7 +188,7 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
         setError(data.message || 'Failed to link GA4 property')
       }
     } catch (err) {
-      console.error('GA4 property linking error:', err)
+      logger.error('GA4 property linking error:', err)
       setError('Failed to link GA4 property. Please try again.')
     } finally {
       setIsLinking(false)

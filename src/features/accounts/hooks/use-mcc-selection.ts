@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchMccAccounts, selectMccAccount, type MccAccount } from '../services/mcc-service'
+import { logger } from '../../../utils/logger'
 
 interface UseMccSelectionParams {
   userId?: string | null
@@ -26,7 +27,7 @@ export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) =>
         const accounts = await fetchMccAccounts(userId)
         setMccAccounts(accounts)
       } catch (err) {
-        console.error('[ACCOUNT-SELECTION] Error fetching MCCs:', err)
+        logger.error('[ACCOUNT-SELECTION] Error fetching MCCs:', err)
       } finally {
         setIsFetchingMccs(false)
       }
@@ -44,7 +45,7 @@ export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) =>
     try {
       await selectMccAccount(sessionId, mccId)
     } catch (err) {
-      console.error('[ACCOUNT-SELECTION] Failed to store MCC selection', err)
+      logger.error('[ACCOUNT-SELECTION] Failed to store MCC selection', err)
     }
   }
 

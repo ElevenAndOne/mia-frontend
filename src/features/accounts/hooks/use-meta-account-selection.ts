@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import type { MetaAccountSelectionItem } from '../types'
 
 interface UseMetaAccountSelectionParams {
@@ -43,7 +44,7 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
       setFetchError(null)
       await refreshAccounts()
     } catch (err) {
-      console.error('[META-ACCOUNT-SELECTION] Error fetching accounts:', err)
+      logger.error('[META-ACCOUNT-SELECTION] Error fetching accounts:', err)
       setFetchError('Failed to load accounts. Please try again.')
       setIsFetchingAccounts(false)
     }
@@ -75,7 +76,7 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
         throw new Error('Failed to select account')
       }
     } catch (err) {
-      console.error('[META-ACCOUNT-SELECTION] Error selecting account:', err)
+      logger.error('[META-ACCOUNT-SELECTION] Error selecting account:', err)
       setFetchError(err instanceof Error ? err.message : 'Failed to select account')
     } finally {
       setSelectingAccountId(null)

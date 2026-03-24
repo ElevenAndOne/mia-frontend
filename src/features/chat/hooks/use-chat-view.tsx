@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
@@ -117,10 +118,17 @@ export const useChatView = () => {
 
     try {
       // Build conversation history from existing messages (last 10 for context)
-      const history = messages.slice(-10).map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
+      // Include completed action results so Claude knows what was created
+      const history = messages.slice(-10).map(m => {
+        let content = m.content
+        if (m.actionStatus === 'completed' && m.actionResult) {
+          const resultMsg = (m.actionResult as Record<string, unknown>).message as string | undefined
+          if (resultMsg) {
+            content += `\n\n[Action completed: ${resultMsg}]`
+          }
+        }
+        return { role: m.role as 'user' | 'assistant', content }
+      })
 
       const result = await sendChatMessage({
         message,
@@ -145,7 +153,7 @@ export const useChatView = () => {
 
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error('[CHAT] Error:', error)
+      logger.error('[CHAT] Error:', error)
       const errorMessage: ChatMessageItem = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -229,7 +237,7 @@ export const useChatView = () => {
         ))
       }
     } catch (error) {
-      console.error('[CHAT] Action confirm error:', error)
+      logger.error('[CHAT] Action confirm error:', error)
       setMessages(prev => prev.map(m =>
         m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
       ))

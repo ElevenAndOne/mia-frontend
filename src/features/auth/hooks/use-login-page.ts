@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
+import { logger } from '../../../utils/logger'
 
 export type LoginMethod = 'google' | 'meta' | 'login'
 
@@ -49,7 +50,7 @@ export const useLoginPage = ({
         setGoogleLoadingMessage('Authentication successful!')
         onAuthSuccess?.()
       } catch (error) {
-        console.error('OAuth error:', error)
+        logger.error('OAuth error:', error)
         showAuthError('Authentication failed', error)
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
@@ -72,7 +73,7 @@ export const useLoginPage = ({
           onAuthSuccess?.()
         }
       } catch (error) {
-        console.error('[META-LOGIN] Error during OAuth:', error)
+        logger.error('[META-LOGIN] Error during OAuth:', error)
         showAuthError('Meta authentication failed', error)
         setIsMetaLoading(false)
         setMetaLoadingMessage('')
@@ -101,7 +102,7 @@ export const useLoginPage = ({
       setGoogleLoadingMessage('Authentication successful!')
       onAuthSuccess?.()
     } catch (error) {
-      console.error('[LOGIN] Login failed:', error)
+      logger.error('[LOGIN] Login failed:', error)
       showAuthError('Login failed', error)
       setIsGoogleLoading(false)
       setGoogleLoadingMessage('')

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import { StorageKey } from '../../../constants/storage-keys'
 import { formatDateRangeDisplay } from '../../../utils/date-range'
 import { sendChatMessage } from '../../chat/services/chat-service'
@@ -86,7 +87,7 @@ export const useDashboardPage = () => {
     if (sessionId && !hasFetchedRef.current) {
       hasFetchedRef.current = true
       refreshAccounts()
-      refreshWorkspaces().catch(err => console.error('[MainView] Failed to refresh workspaces:', err))
+      refreshWorkspaces().catch(err => logger.error('[MainView] Failed to refresh workspaces:', err))
     }
   }, [sessionId, refreshAccounts, refreshWorkspaces])
 
@@ -106,11 +107,11 @@ export const useDashboardPage = () => {
         setIsAccountSwitching(false)
         navigate('/integrations')
       } else {
-        console.error('❌ [MAIN] Failed to switch account')
+        logger.error('❌ [MAIN] Failed to switch account')
         setIsAccountSwitching(false)
       }
     } catch (error) {
-      console.error('❌ [MAIN] Account switch error:', error)
+      logger.error('❌ [MAIN] Account switch error:', error)
       setIsAccountSwitching(false)
     }
   }, [isAccountSwitching, navigate, selectAccount])
@@ -153,7 +154,7 @@ export const useDashboardPage = () => {
         }
       }, 100)
     } catch (error) {
-      console.error('[CHAT] Error:', error)
+      logger.error('[CHAT] Error:', error)
       setIsChatLoading(false)
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
     }

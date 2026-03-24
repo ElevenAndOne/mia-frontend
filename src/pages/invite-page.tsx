@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { logger } from '../utils/logger'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import { Spinner } from '../components/spinner'
@@ -18,7 +19,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const { isAuthenticated, isMetaAuthenticated, isLoading: sessionLoading, sessionId, user, login } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  console.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'sessionLoading:', sessionLoading, 'isAnyAuth:', isAnyAuthenticated, 'path:', window.location.pathname)
+  logger.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'sessionLoading:', sessionLoading, 'isAnyAuth:', isAnyAuthenticated, 'path:', window.location.pathname)
 
   const handleBack = () => {
     window.history.replaceState({}, '', '/')

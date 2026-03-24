@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStreamingCore } from './use-streaming-core'
 import { createApiUrl } from '../../../utils/api'
+import { logger } from '../../../utils/logger'
 
 export interface ParsedInsight {
   title: string
@@ -143,7 +144,7 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
 
   useEffect(() => {
     if (state.isComplete && parsed.insights.length > 0) {
-      console.log('Insights fully streamed:', parsed.insights)
+      logger.log('Insights fully streamed:', parsed.insights)
     }
   }, [state.isComplete, parsed.insights])
 

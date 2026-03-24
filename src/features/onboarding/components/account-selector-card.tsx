@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import { Icon } from '../../../components/icon'
 
 interface AccountSelectorCardProps {
@@ -40,7 +41,7 @@ export const AccountSelectorCard = ({ onAccountSelected }: AccountSelectorCardPr
         onAccountSelected(accountId)
       }
     } catch (error) {
-      console.error('Failed to select account:', error)
+      logger.error('Failed to select account:', error)
     } finally {
       setIsSelecting(false)
     }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
+import { logger } from '../../../utils/logger'
 
 interface FigmaLoginModalProps {
   onAuthSuccess?: () => void
@@ -34,14 +35,14 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
           if (onAuthSuccess) {
             onAuthSuccess()
           } else {
-            console.warn('⚠️ No onAuthSuccess callback provided')
+            logger.warn('⚠️ No onAuthSuccess callback provided')
           }
         } else {
           throw new Error('Authentication failed')
         }
 
       } catch (error) {
-        console.error('💥 Error during OAuth:', error)
+        logger.error('💥 Error during OAuth:', error)
         showToast('error', error instanceof Error ? `Authentication failed: ${error.message}` : 'Authentication failed. Please try again.')
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
@@ -70,7 +71,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         }
 
       } catch (error) {
-        console.error('[META-LOGIN] Error during OAuth:', error)
+        logger.error('[META-LOGIN] Error during OAuth:', error)
         showToast('error', error instanceof Error ? `Meta authentication failed: ${error.message}` : 'Meta authentication failed. Please try again.')
         setIsMetaLoading(false)
         setMetaLoadingMessage('')
@@ -87,7 +88,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         const authCheck = await checkExistingAuth()
 
         if (authCheck) {
-          console.log('[LOGIN] User already authenticated, skipping to app')
+          logger.log('[LOGIN] User already authenticated, skipping to app')
           setGoogleLoadingMessage('Session found! Redirecting...')
 
           // Refresh accounts to ensure we have latest data
@@ -104,7 +105,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         }
 
         // No valid session found - redirect to Google OAuth (same as "Continue with Google")
-        console.log('[LOGIN] No valid session, redirecting to Google OAuth')
+        logger.log('[LOGIN] No valid session, redirecting to Google OAuth')
         setGoogleLoadingMessage('Redirecting to sign in...')
         onOAuthStart?.()  // Hide video immediately
 
@@ -121,7 +122,7 @@ const FigmaLoginModal = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed,
         }
 
       } catch (error) {
-        console.error('[LOGIN] Login failed:', error)
+        logger.error('[LOGIN] Login failed:', error)
         showToast('error', error instanceof Error ? `Login failed: ${error.message}` : 'Login failed. Please try again.')
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')

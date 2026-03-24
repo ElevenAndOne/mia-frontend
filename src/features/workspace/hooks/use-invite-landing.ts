@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { acceptInvite, fetchInviteDetails } from '../services/invite-service'
+import { logger } from '../../../utils/logger'
 import { StorageKey } from '../../../constants/storage-keys'
 
 export interface InviteDetails {
@@ -43,7 +44,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
     if (!isAuthenticated || !sessionId || accepting) return
     if (!inviteDetails || !inviteDetails.is_valid) return
 
-    console.log('[INVITE-LANDING] Auto-accepting invite after OAuth:', inviteId)
+    logger.log('[INVITE-LANDING] Auto-accepting invite after OAuth:', inviteId)
     localStorage.removeItem(StorageKey.AUTO_ACCEPT_INVITE)
 
     setAccepting(true)
@@ -112,7 +113,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   }
 
   const handleSignIn = () => {
-    console.log('[INVITE-LANDING] handleSignIn - storing pending invite:', inviteId)
+    logger.log('[INVITE-LANDING] handleSignIn - storing pending invite:', inviteId)
     localStorage.setItem(StorageKey.PENDING_INVITE, inviteId)
     localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId)
     onSignIn?.()

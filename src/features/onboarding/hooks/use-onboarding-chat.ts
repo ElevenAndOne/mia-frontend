@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StorageKey } from '../../../constants/storage-keys'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import { useOnboarding } from '../onboarding-context'
 import type { BronzeFact } from '../onboarding-context'
 import { useOnboardingStreaming } from '../use-onboarding-streaming'
@@ -132,7 +133,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
         queueMessages(buildConnectRetryMessages('meta'))
       }
     } catch (error) {
-      console.error('Meta OAuth error:', error)
+      logger.error('Meta OAuth error:', error)
       queueMessages(buildConnectErrorMessages('meta'))
     }
   }, [loginMeta, persistMessages, queueMessages])
@@ -148,7 +149,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
         queueMessages(buildConnectRetryMessages('google'))
       }
     } catch (error) {
-      console.error('Google OAuth error:', error)
+      logger.error('Google OAuth error:', error)
       queueMessages(buildConnectErrorMessages('google'))
     }
   }, [login, persistMessages, queueMessages])
@@ -160,7 +161,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     setCurrentProgress(4)
 
     queueMessages(buildPlatformLinkedMessages('Meta'))
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 400))
 
     if (sessionId) {
       setIsStreamingInsight(false)
@@ -181,7 +182,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     setCurrentProgress(4)
 
     queueMessages(buildPlatformLinkedMessages('Google Ads'))
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 400))
 
     if (sessionId) {
       setIsStreamingInsight(false)
@@ -305,7 +306,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     // Check if returning from Meta OAuth - restore messages and show selector
     const pendingMetaLink = localStorage.getItem(StorageKey.PENDING_META_LINK)
     if (pendingMetaLink === 'true') {
-      console.log('[ONBOARDING] Returning from Meta OAuth - restoring messages, showing selector')
+      logger.log('[ONBOARDING] Returning from Meta OAuth - restoring messages, showing selector')
       localStorage.removeItem(StorageKey.PENDING_META_LINK)
 
       // Restore the messages from before OAuth redirect
@@ -388,7 +389,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   useEffect(() => {
     if (!streamingError || (!isStreamingInsight && !isStreamingCombined)) return
 
-    console.error('[Onboarding] Streaming error:', streamingError)
+    logger.error('[Onboarding] Streaming error:', streamingError)
 
     // Show error message in chat
     addImmediateMessage({

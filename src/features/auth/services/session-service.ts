@@ -2,6 +2,7 @@
  * Session validation API service
  */
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
+import { logger } from '../../../utils/logger'
 
 /**
  * Session validation response from /api/session/validate
@@ -79,7 +80,7 @@ export const handleMobileOAuthRedirect = async (
 
     return response.ok
   } catch (error) {
-    console.error('[SESSION] Mobile OAuth complete error:', error)
+    logger.error('[SESSION] Mobile OAuth complete error:', error)
     return false
   }
 }

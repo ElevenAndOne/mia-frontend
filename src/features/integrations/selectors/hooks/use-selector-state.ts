@@ -27,7 +27,7 @@ interface SelectorActions<TId> {
 export function useSelectorState<TId extends string | number = string>({
   onSuccess,
   onClose,
-  successDelay = 1000,
+  successDelay = 400,
 }: UseSelectorStateOptions): [SelectorState<TId>, SelectorActions<TId>] {
   const [selectedId, setSelectedId] = useState<TId | null>(null)
   const [isLoading, setIsLoading] = useState(true)

@@ -1,6 +1,7 @@
 /**
  * Retry utility with exponential backoff
  */
+import { logger } from './logger'
 
 interface RetryOptions {
   maxAttempts?: number
@@ -50,7 +51,7 @@ export async function withRetry<T>(
         maxDelay
       )
 
-      console.log(`[Retry] Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`)
+      logger.log(`[Retry] Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`)
       await new Promise(resolve => setTimeout(resolve, delay))
     }
   }

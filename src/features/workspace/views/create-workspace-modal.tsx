@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { logger } from '../../../utils/logger'
 import { Modal } from '../../overlay'
 
 interface CreateWorkspaceModalProps {
@@ -30,7 +31,7 @@ const CreateWorkspaceModal = ({
       await logout()
       window.location.href = '/'
     } catch (err) {
-      console.error('[CREATE-WORKSPACE] Logout error:', err)
+      logger.error('[CREATE-WORKSPACE] Logout error:', err)
       setIsLoggingOut(false)
     }
   }
@@ -47,14 +48,14 @@ const CreateWorkspaceModal = ({
     try {
       const workspace = await createWorkspace(workspaceName.trim())
       if (workspace) {
-        console.log('[CREATE-WORKSPACE] Created:', workspace.tenant_id)
+        logger.log('[CREATE-WORKSPACE] Created:', workspace.tenant_id)
         onSuccess?.(workspace.tenant_id)
         onClose()
       } else {
         setError('Failed to create workspace. Please try again.')
       }
     } catch (error) {
-      console.error('[CREATE-WORKSPACE] Error:', error)
+      logger.error('[CREATE-WORKSPACE] Error:', error)
       setError('An error occurred. Please try again.')
     } finally {
       setIsCreating(false)

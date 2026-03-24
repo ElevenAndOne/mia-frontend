@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { getAccountIcon } from '../../../utils/account-icon'
+import { logger } from '../../../utils/logger'
 import { useMccSelection } from './use-mcc-selection'
 import type { AccountMapping, AccountSelectionItem, MccSelectionItem } from '../types'
 
@@ -57,7 +58,7 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
       const success = await selectAccount(accountId)
       if (success) onAccountSelected()
     } catch (err) {
-      console.error('[ACCOUNT-SELECTION] Error selecting account:', err)
+      logger.error('[ACCOUNT-SELECTION] Error selecting account:', err)
     } finally {
       setSelectingAccountId(null)
     }

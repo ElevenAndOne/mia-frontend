@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
+import { logger } from '../../../utils/logger'
 import { StorageKey } from '../../../constants/storage-keys'
 
 const KNOWN_CONNECTED_KEY = StorageKey.KNOWN_CONNECTED_PLATFORMS
@@ -28,7 +29,7 @@ async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
       return data.selected_platforms || []
     }
   } catch (e) {
-    console.error('[PlatformPrefs] Fetch error:', e)
+    logger.error('[PlatformPrefs] Fetch error:', e)
   }
   return []
 }
@@ -86,7 +87,7 @@ export function usePlatformPreferences({
       if (saved.length > 0) {
         const newlyConnected = currentConnected.filter(p => !lastKnown.includes(p))
         if (newlyConnected.length > 0) {
-          console.log('[PlatformPrefs] Auto-enabling newly connected platforms:', newlyConnected)
+          logger.log('[PlatformPrefs] Auto-enabling newly connected platforms:', newlyConnected)
           const combined = [...new Set([...saved, ...newlyConnected])]
           setSelectedPlatformsState(combined)
           savePlatformPreferences(sessionId, combined)
@@ -128,7 +129,7 @@ export function usePlatformPreferences({
     const newPlatforms = connectedPlatforms.filter(p => !prevConnected.includes(p))
 
     if (newPlatforms.length > 0) {
-      console.log('[PlatformPrefs] New platforms detected, enabling:', newPlatforms)
+      logger.log('[PlatformPrefs] New platforms detected, enabling:', newPlatforms)
       setSelectedPlatformsState(prev => {
         const combined = [...new Set([...prev, ...newPlatforms])]
         // Also save to backend
@@ -165,7 +166,7 @@ export function usePlatformPreferences({
       try {
         await savePlatformPreferences(sessionId, platforms)
       } catch (e) {
-        console.error('[PlatformPrefs] Save error, rolling back:', e)
+        logger.error('[PlatformPrefs] Save error, rolling back:', e)
         // Rollback to previous state on failure
         setSelectedPlatformsState(rollbackTo)
       }
