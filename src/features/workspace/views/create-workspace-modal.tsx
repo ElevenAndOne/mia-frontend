@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { logger } from '../../../utils/logger'
 import { Modal } from '../../overlay'
@@ -24,6 +24,14 @@ const CreateWorkspaceModal = ({
   const [isCreating, setIsCreating] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setWorkspaceName('')
+      setError(null)
+    }
+  }, [isOpen])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

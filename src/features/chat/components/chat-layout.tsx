@@ -1,8 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useRef, type ReactNode } from 'react'
 import { Icon } from '../../../components/icon'
 import { BackButton } from '../../../components/back-button'
 import { MobileNavigation } from '../../shell/views/mobile-navigation'
 import { useSession } from '../../../contexts/session-context'
+import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
+import { WorkspaceListItem } from '../../workspace/components/workspace-list-item'
+import { Popover } from '../../overlay'
 
 interface ChatLayoutProps {
   children: ReactNode
@@ -26,7 +29,20 @@ export const ChatLayout = ({
   onNewWorkspace,
 }: ChatLayoutProps) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const { activeWorkspace } = useSession()
+  const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false)
+  const workspaceBtnRef = useRef<HTMLButtonElement>(null)
+  const { activeWorkspace, availableWorkspaces, switchWorkspace, refreshWorkspaces, refreshAccounts } = useSession()
+
+  const { isSwitching, switchingId, handleSwitch } = useWorkspaceSwitcher({
+    activeWorkspaceId: activeWorkspace?.tenant_id,
+    switchWorkspace,
+    onSuccess: () => setIsWorkspaceSwitcherOpen(false),
+    refreshAfterSwitch: async () => {
+      await refreshAccounts()
+      await refreshWorkspaces()
+    },
+    reloadOnSuccess: false,
+  })
 
   return (
     <div className="flex h-full w-full bg-primary">
@@ -37,14 +53,46 @@ export const ChatLayout = ({
 
       {/* Mobile Header - Only on small screens */}
       <div className="fixed top-0 left-0 right-0 md:hidden z-20 bg-primary border-b border-tertiary px-4 py-1 flex items-center justify-between">
-        {/* Left side - Workspace name or Back button */}
+        {/* Left side - Workspace name (tappable for quick switch) or Back button */}
         <div className="flex items-center">
           {hasMessages ? (
             <BackButton onClick={() => onNewChat?.()} label="Back" variant="dark" />
           ) : (
-            <span className="paragraph-sm text-secondary font-medium truncate max-w-[200px]">
-              {activeWorkspace?.name || 'MIA'}
-            </span>
+            <>
+              <button
+                ref={workspaceBtnRef}
+                onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-tertiary transition-colors"
+              >
+                <span className="paragraph-sm text-secondary font-medium truncate max-w-[200px]">
+                  {activeWorkspace?.name || 'MIA'}
+                </span>
+                <Icon.chevron_down size={14} className="text-quaternary shrink-0" />
+              </button>
+              <Popover
+                isOpen={isWorkspaceSwitcherOpen}
+                onClose={() => setIsWorkspaceSwitcherOpen(false)}
+                anchorRef={workspaceBtnRef}
+                placement="bottom-start"
+                className="w-64"
+              >
+                <div className="py-2 max-h-64 overflow-y-auto">
+                  {availableWorkspaces.map((ws) => (
+                    <WorkspaceListItem
+                      key={ws.tenant_id}
+                      workspace={ws}
+                      isActive={ws.tenant_id === activeWorkspace?.tenant_id}
+                      isSwitching={switchingId === ws.tenant_id}
+                      onSelect={(id) => { handleSwitch(id); setIsWorkspaceSwitcherOpen(false) }}
+                      variant="compact"
+                      disabled={isSwitching}
+                      activeClassName="bg-utility-brand-100 border border-utility-brand-300"
+                      inactiveClassName="hover:bg-secondary"
+                    />
+                  ))}
+                </div>
+              </Popover>
+            </>
           )}
         </div>
 

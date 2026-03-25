@@ -1,5 +1,4 @@
 import { Icon } from './icon'
-import { UserAvatar } from './user-avatar'
 import type { SegmentedControlOption } from './segmented-control'
 import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
@@ -28,15 +27,13 @@ export const MobileNavigationMainView = ({
   onWorkspaceSettings,
   onLogout,
   activeWorkspace,
-  userName,
-  userEmail,
-  userImageUrl,
   theme,
   themeOptions,
   onThemeChange,
 }: MobileNavigationMainViewProps) => {
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="px-4 py-4 border-b border-tertiary flex items-center justify-between">
         <h2 className="label-md text-primary">MIA</h2>
         <button
@@ -48,6 +45,7 @@ export const MobileNavigationMainView = ({
         </button>
       </div>
 
+      {/* Primary Actions */}
       <div className="p-4 space-y-2">
         {onNewWorkspace && (
           <button
@@ -76,7 +74,33 @@ export const MobileNavigationMainView = ({
             <span className="paragraph-sm">Workspace Settings</span>
           </button>
         )}
+      </div>
 
+      <div className="border-t border-tertiary mx-4" />
+
+      {/* Active Workspace Indicator */}
+      {activeWorkspace && (
+        <div className="p-4">
+          <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
+          <div className="px-3 py-2.5 rounded-lg bg-utility-brand-100 border border-utility-brand-300">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-brand-500 to-utility-purple-600 flex items-center justify-center text-white label-sm shrink-0">
+                {activeWorkspace.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="paragraph-sm text-primary font-medium truncate">{activeWorkspace.name}</p>
+                <p className="paragraph-xs text-quaternary">{activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0} platforms</p>
+              </div>
+              <Icon.check size={18} className="text-utility-brand-500 shrink-0" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="border-t border-tertiary mx-4" />
+
+      {/* Secondary Actions */}
+      <div className="p-4 space-y-2">
         <div className="px-0 py-1">
           <SegmentedControl options={themeOptions} value={theme} onChange={onThemeChange} fullWidth />
         </div>
@@ -98,39 +122,6 @@ export const MobileNavigationMainView = ({
           <Icon.log_out_01 size={20} />
           <span className="paragraph-sm">Sign Out</span>
         </button>
-      </div>
-
-      <div className="border-t border-tertiary mx-4" />
-
-      {/* Active Workspace Indicator */}
-      {activeWorkspace && (
-        <div className="p-4">
-          <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
-          <div className="px-3 py-2.5 rounded-lg bg-utility-info-100 border border-utility-info-300">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-info-500 to-utility-purple-600 flex items-center justify-center text-white label-sm shrink-0">
-                {activeWorkspace.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="paragraph-sm text-primary font-medium truncate">{activeWorkspace.name}</p>
-                <p className="paragraph-xs text-quaternary">{activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0} platforms</p>
-              </div>
-              <Icon.check size={18} className="text-utility-info-500 shrink-0" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1" />
-
-      <div className="p-4 border-t border-tertiary">
-        <div className="flex items-center gap-3 p-2">
-          <UserAvatar name={userName || 'User'} imageUrl={userImageUrl} size="md" />
-          <div className="flex-1 min-w-0 text-left">
-            <p className="paragraph-sm text-primary truncate">{userName || 'User'}</p>
-            <p className="paragraph-xs text-quaternary truncate">{userEmail || ''}</p>
-          </div>
-        </div>
       </div>
     </div>
   )
