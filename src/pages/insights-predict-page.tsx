@@ -22,7 +22,7 @@ const InsightsPredictPage = () => {
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <div className="w-full h-full">
-        <PredictInsights onBack={() => navigate('/home')} />
+        <PredictInsights onBack={() => navigate(-1)} />
       </div>
     </AppShell>
   )

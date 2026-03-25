@@ -61,7 +61,7 @@ const WorkspaceSettingsPage = () => {
     handleLeaveWorkspace,
   } = useWorkspaceSettingsPage()
 
-  const handleBack = () => navigate('/home')
+  const handleBack = () => navigate(-1)
 
   return (
     <AppShell

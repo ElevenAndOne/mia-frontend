@@ -22,7 +22,7 @@ const InsightsSummaryPage = () => {
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <div className="w-full h-full">
-        <SummaryInsights onBack={() => navigate('/home')} />
+        <SummaryInsights onBack={() => navigate(-1)} />
       </div>
     </AppShell>
   )

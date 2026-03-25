@@ -73,7 +73,7 @@ export const ChatLayout = ({
                 isOpen={isWorkspaceSwitcherOpen}
                 onClose={() => setIsWorkspaceSwitcherOpen(false)}
                 anchorRef={workspaceBtnRef}
-                placement="bottom-start"
+                placement="bottom"
                 className="w-64"
               >
                 <div className="py-2 max-h-64 overflow-y-auto">

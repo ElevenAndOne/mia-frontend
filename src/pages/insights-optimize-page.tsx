@@ -26,7 +26,7 @@ const InsightsOptimizePage = () => {
       <div className="w-full h-full">
         <InsightPage
           insightType="optimize"
-          onBack={() => navigate('/home')}
+          onBack={() => navigate(-1)}
           initialDateRange={dateRange}
           platforms={platforms}
         />

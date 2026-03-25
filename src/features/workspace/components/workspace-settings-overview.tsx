@@ -54,59 +54,58 @@ export const WorkspaceSettingsOverview = ({
             return (
               <div
                 key={item.workspace.tenant_id}
-                className={`rounded-xl p-4 flex items-center gap-3 transition-colors ${
+                className={`rounded-xl p-4 transition-colors ${
                   isActive
                     ? 'bg-utility-brand-50 border-2 border-utility-brand-400'
-                    : 'bg-secondary hover:bg-tertiary border border-transparent'
+                    : 'bg-secondary border border-transparent hover:bg-tertiary'
                 }`}
               >
-                {/* Avatar */}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isActive ? 'bg-utility-brand-500' : 'bg-brand-solid'
-                }`}>
-                  <span className="label-bg text-primary-onbrand">
-                    {item.workspace.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Info — tapping goes to workspace detail/settings */}
-                <button
-                  onClick={() => onSelectWorkspace(item.workspace.tenant_id)}
-                  className="flex-1 min-w-0 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="label-md text-primary truncate">{item.workspace.name}</span>
-                    {isActive && (
-                      <span className="px-2 py-0.5 rounded-full label-xs bg-utility-brand-500 text-white shrink-0">Active</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 paragraph-xs text-quaternary mt-0.5">
-                    <span className={`px-1.5 py-0.5 rounded ${item.roleBadgeClass}`}>
-                      {item.workspace.role}
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    isActive ? 'bg-utility-brand-500' : 'bg-brand-solid'
+                  }`}>
+                    <span className="label-bg text-primary-onbrand">
+                      {item.workspace.name.charAt(0).toUpperCase()}
                     </span>
-                    <span>·</span>
-                    <span>{item.memberLabel}</span>
                   </div>
-                </button>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isActive && (
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="label-md text-primary truncate">{item.workspace.name}</span>
+                      {isActive && (
+                        <span className="px-2 py-0.5 rounded-full label-xs bg-utility-brand-500 text-white shrink-0">Active</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 paragraph-xs text-quaternary mt-0.5">
+                      <span className={`px-1.5 py-0.5 rounded ${item.roleBadgeClass}`}>
+                        {item.workspace.role}
+                      </span>
+                      <span>·</span>
+                      <span>{item.memberLabel}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions — row layout */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!isActive && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleSwitch(item.workspace.tenant_id) }}
+                        disabled={isSwitching}
+                        className="px-2.5 py-1 rounded-md label-xs bg-utility-brand-500 text-white hover:bg-utility-brand-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                      >
+                        {isThisSwitching ? '...' : 'Set Active'}
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleSwitch(item.workspace.tenant_id)}
-                      disabled={isSwitching}
-                      className="px-3 py-1.5 rounded-lg label-xs bg-utility-brand-500 text-white hover:bg-utility-brand-600 disabled:opacity-50 transition-colors"
+                      onClick={() => onSelectWorkspace(item.workspace.tenant_id)}
+                      className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
+                      aria-label="Workspace settings"
                     >
-                      {isThisSwitching ? 'Switching...' : 'Set Active'}
+                      <Icon.chevron_right size={18} />
                     </button>
-                  )}
-                  <button
-                    onClick={() => onSelectWorkspace(item.workspace.tenant_id)}
-                    className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
-                    aria-label="Workspace settings"
-                  >
-                    <Icon.chevron_right size={20} />
-                  </button>
+                  </div>
                 </div>
               </div>
             )

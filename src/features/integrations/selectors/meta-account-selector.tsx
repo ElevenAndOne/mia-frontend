@@ -66,7 +66,9 @@ const MetaAccountSelector = ({
         )
         setAccounts(sortedAccounts)
 
-        if (accountToUse?.meta_ads_id) {
+        // Only pre-select if this workspace actually has meta connected
+        // (prevents stale meta_ads_id from previous workspace leaking through)
+        if (accountToUse?.meta_ads_id && sortedAccounts.some((a: MetaAccount) => a.id === accountToUse.meta_ads_id)) {
           actions.setSelectedId(accountToUse.meta_ads_id)
         } else if (sortedAccounts.length === 1) {
           actions.setSelectedId(sortedAccounts[0].id)

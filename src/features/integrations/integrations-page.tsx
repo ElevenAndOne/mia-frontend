@@ -404,8 +404,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       if (integrationId === 'google') {
+        // Pass frontend_origin so OAuth callback redirects back to where the user is browsing from
+        const originParam = `frontend_origin=${encodeURIComponent(window.location.origin)}`
+        const googleParams = [tenantParam, originParam].filter(Boolean).join('&')
         const response = await apiFetch(
-          `/api/oauth/google/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          `/api/oauth/google/auth-url?${googleParams}`,
           { headers: authHeaders }
         )
         if (response.ok) {

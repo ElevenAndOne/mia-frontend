@@ -26,7 +26,7 @@ const InsightsGrowPage = () => {
       <div className="w-full h-full">
         <InsightPage
           insightType="grow"
-          onBack={() => navigate('/home')}
+          onBack={() => navigate(-1)}
           initialDateRange={dateRange}
           platforms={platforms}
         />

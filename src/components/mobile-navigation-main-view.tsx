@@ -74,15 +74,25 @@ export const MobileNavigationMainView = ({
             <span className="paragraph-sm">Workspace Settings</span>
           </button>
         )}
+
+        {onHelpClick && (
+          <button
+            onClick={onHelpClick}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.help_circle size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Help</span>
+          </button>
+        )}
       </div>
 
       <div className="border-t border-tertiary mx-4" />
 
-      {/* Active Workspace Indicator */}
+      {/* Active Workspace */}
       {activeWorkspace && (
         <div className="p-4">
           <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
-          <div className="px-3 py-2.5 rounded-lg bg-utility-brand-100 border border-utility-brand-300">
+          <div className="px-3 py-2.5 rounded-lg bg-utility-brand-50 border border-utility-brand-300">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-brand-500 to-utility-purple-600 flex items-center justify-center text-white label-sm shrink-0">
                 {activeWorkspace.name.charAt(0).toUpperCase()}
@@ -99,22 +109,16 @@ export const MobileNavigationMainView = ({
 
       <div className="border-t border-tertiary mx-4" />
 
-      {/* Secondary Actions */}
-      <div className="p-4 space-y-2">
-        <div className="px-0 py-1">
-          <SegmentedControl options={themeOptions} value={theme} onChange={onThemeChange} fullWidth />
-        </div>
+      {/* Theme */}
+      <div className="px-4 py-3">
+        <SegmentedControl options={themeOptions} value={theme} onChange={onThemeChange} fullWidth />
+      </div>
 
-        {onHelpClick && (
-          <button
-            onClick={onHelpClick}
-            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-          >
-            <Icon.help_circle size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Help</span>
-          </button>
-        )}
+      {/* Spacer */}
+      <div className="flex-1" />
 
+      {/* Sign Out - bottom with padding */}
+      <div className="p-4 pt-2 border-t border-tertiary">
         <button
           onClick={onLogout}
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
