@@ -4,6 +4,7 @@ import { AppSidebar } from './app-sidebar'
 interface AppShellProps {
   children: ReactNode
   onNewChat?: () => void
+  onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
   onHelpClick?: () => void
   onLogout: () => void
@@ -12,7 +13,7 @@ interface AppShellProps {
 
 export const AppShell = ({
   children,
-  onNewChat,
+  onNewWorkspace,
   onIntegrationsClick,
   onHelpClick,
   onLogout,
@@ -21,7 +22,7 @@ export const AppShell = ({
   return (
     <div className="flex h-full w-full bg-primary">
       <AppSidebar
-        onNewChat={onNewChat}
+        onNewWorkspace={onNewWorkspace}
         onIntegrationsClick={onIntegrationsClick}
         onHelpClick={onHelpClick}
         onLogout={onLogout}

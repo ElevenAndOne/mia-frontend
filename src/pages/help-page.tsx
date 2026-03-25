@@ -8,7 +8,7 @@ const HelpPage = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const {
-    onNewChat,
+    onNewWorkspace,
     onIntegrationsClick,
     onHelpClick,
     onLogout,
@@ -21,7 +21,7 @@ const HelpPage = () => {
 
   return (
     <AppShell
-      onNewChat={onNewChat}
+      onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}

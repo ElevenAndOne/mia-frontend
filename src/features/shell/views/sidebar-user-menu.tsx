@@ -10,6 +10,7 @@ interface SidebarUserMenuProps {
   onWorkspaceSettings?: () => void
   onIntegrationsClick?: () => void
   onHelpClick?: () => void
+  onNewWorkspace?: () => void
   onLogout: () => void
 }
 
@@ -17,12 +18,13 @@ export const SidebarUserMenu = ({
   onWorkspaceSettings,
   onIntegrationsClick,
   onHelpClick,
+  onNewWorkspace,
   onLogout
 }: SidebarUserMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
-  const { user } = useSession()
+  const { user, activeWorkspace } = useSession()
   const { theme, setTheme } = useTheme()
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
@@ -34,11 +36,6 @@ export const SidebarUserMenu = ({
   const handleLogout = () => {
     setIsOpen(false)
     onLogout()
-  }
-
-  const handleWorkspaceSettings = () => {
-    setIsOpen(false)
-    onWorkspaceSettings?.()
   }
 
   const handleThemeChange = (value: typeof theme) => {
@@ -90,17 +87,14 @@ export const SidebarUserMenu = ({
 
         {/* Menu Items */}
         <div className="py-2" role="menu">
-          {onWorkspaceSettings && (
+          {onNewWorkspace && (
             <button
-              onClick={handleWorkspaceSettings}
+              onClick={() => { setIsOpen(false); onNewWorkspace() }}
               className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
               role="menuitem"
             >
-              <svg className="w-[18px] h-[18px] text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span>Workspace Settings</span>
+              <Icon.plus size={18} className="text-tertiary" />
+              <span>New Workspace</span>
             </button>
           )}
 
@@ -115,14 +109,17 @@ export const SidebarUserMenu = ({
             </button>
           )}
 
-          {onHelpClick && (
+          {onWorkspaceSettings && (
             <button
-              onClick={() => { setIsOpen(false); onHelpClick() }}
+              onClick={() => { setIsOpen(false); onWorkspaceSettings() }}
               className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
               role="menuitem"
             >
-              <Icon.help_circle size={18} className="text-tertiary" />
-              <span>Help</span>
+              <svg className="w-[18px] h-[18px] text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>Workspace Settings</span>
             </button>
           )}
 
@@ -134,6 +131,17 @@ export const SidebarUserMenu = ({
               fullWidth
             />
           </div>
+
+          {onHelpClick && (
+            <button
+              onClick={() => { setIsOpen(false); onHelpClick() }}
+              className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+              role="menuitem"
+            >
+              <Icon.help_circle size={18} className="text-tertiary" />
+              <span>Help</span>
+            </button>
+          )}
 
           <div className="border-t border-tertiary my-1" />
 
@@ -147,12 +155,13 @@ export const SidebarUserMenu = ({
           </button>
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-2 border-t border-tertiary">
-          <p className="paragraph-xs text-quaternary">
-            v1.0.0
-          </p>
-        </div>
+        {/* Active Workspace Indicator */}
+        {activeWorkspace && (
+          <div className="px-4 py-3 border-t border-tertiary">
+            <p className="paragraph-xs text-quaternary mb-1">Active Workspace</p>
+            <p className="paragraph-sm text-primary truncate">{activeWorkspace.name}</p>
+          </div>
+        )}
       </Popover>
     </>
   )

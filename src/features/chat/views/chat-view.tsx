@@ -17,9 +17,10 @@ interface ChatViewProps {
   onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
+  onNewWorkspace?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings }: ChatViewProps) => {
+export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings, onNewWorkspace }: ChatViewProps) => {
   const { sessionId } = useSession()
   const { data: goldData } = useGoldInsights(sessionId)
 
@@ -99,6 +100,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
       onNewChat={handleNewChat}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
+      onNewWorkspace={onNewWorkspace}
     >
       <div className="flex-1 flex flex-col h-full min-h-0 pt-14 md:pt-0">
         {!hasMessages ? (
@@ -126,7 +128,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
           <>
             <div className="flex-1 overflow-y-auto min-h-0">
               <div className="max-w-3xl mx-auto px-4 py-6">
-                {messages.map((message) => (
+                {messages.filter(m => !m.hidden).map((message) => (
                   <ChatMessage
                     key={message.id}
                     role={message.role}

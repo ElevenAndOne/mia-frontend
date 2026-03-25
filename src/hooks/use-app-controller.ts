@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import { useAppChromeEffects } from './use-app-chrome-effects'
@@ -46,7 +46,8 @@ export const useAppController = () => {
       // Navigate to saved destination or default to /home
       navigate(returnUrl || '/home')
     } else if (!activeWorkspace && availableWorkspaces.length === 0) {
-      // No workspace - show create workspace modal first
+      // No workspace - show create workspace modal first (required during onboarding)
+      setWorkspaceModalRequired(true)
       setShowCreateWorkspaceModal(true)
     } else {
       // Has workspace, account selection happens in onboarding chat
@@ -95,15 +96,40 @@ export const useAppController = () => {
     window.location.href = isAnyAuthenticated ? '/home' : '/'
   }
 
+  // Track whether workspace creation is required (onboarding) or optional (from menu)
+  const [workspaceModalRequired, setWorkspaceModalRequired] = useState(true)
+
   const handleCreateWorkspaceClose = () => {
-    logger.log('[APP] Create workspace modal close attempted - workspace required')
+    if (workspaceModalRequired) {
+      logger.log('[APP] Create workspace modal close attempted - workspace required')
+    } else {
+      logger.log('[APP] Create workspace modal closed by user')
+      setShowCreateWorkspaceModal(false)
+    }
   }
 
   const handleCreateWorkspaceSuccess = (tenantId: string) => {
     logger.log('[APP] Workspace created:', tenantId)
     setShowCreateWorkspaceModal(false)
-    navigate('/onboarding')
+    if (workspaceModalRequired) {
+      navigate('/onboarding')
+    } else {
+      // New workspace from menu — go straight to integrations to connect platforms
+      navigate('/integrations')
+    }
   }
+
+  const handleNewWorkspace = () => {
+    setWorkspaceModalRequired(false)
+    setShowCreateWorkspaceModal(true)
+  }
+
+  // Listen for "New Workspace" events from menu buttons across the app
+  useEffect(() => {
+    const handler = () => handleNewWorkspace()
+    window.addEventListener('mia:new-workspace', handler)
+    return () => window.removeEventListener('mia:new-workspace', handler)
+  }, [])
 
   const isConnectingSecondPlatform = Boolean(connectingPlatform && isAnyAuthenticated && selectedAccount)
   let loadingPlatform: 'google' | 'meta' | null = null
@@ -164,9 +190,10 @@ export const useAppController = () => {
     insightsDatePicker,
     createWorkspaceModal: {
       isOpen: showCreateWorkspaceModal,
-      required: true,
+      required: workspaceModalRequired,
       onClose: handleCreateWorkspaceClose,
       onSuccess: handleCreateWorkspaceSuccess,
     },
+    onNewWorkspace: handleNewWorkspace,
   }
 }

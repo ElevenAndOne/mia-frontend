@@ -4,7 +4,7 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const ChatPage = () => {
   const {
-    onNewChat,
+    onNewWorkspace,
     onIntegrationsClick,
     onHelpClick,
     onLogout,
@@ -13,7 +13,7 @@ const ChatPage = () => {
 
   return (
     <AppShell
-      onNewChat={onNewChat}
+      onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
@@ -25,6 +25,7 @@ const ChatPage = () => {
           onHelpClick={onHelpClick}
           onLogout={onLogout}
           onWorkspaceSettings={onWorkspaceSettings}
+          onNewWorkspace={onNewWorkspace}
         />
       </div>
     </AppShell>

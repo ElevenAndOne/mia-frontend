@@ -6,7 +6,7 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 const InsightsPredictPage = () => {
   const navigate = useNavigate()
   const {
-    onNewChat,
+    onNewWorkspace,
     onIntegrationsClick,
     onHelpClick,
     onLogout,
@@ -15,7 +15,7 @@ const InsightsPredictPage = () => {
 
   return (
     <AppShell
-      onNewChat={onNewChat}
+      onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}

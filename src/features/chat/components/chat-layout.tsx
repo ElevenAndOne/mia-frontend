@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Icon } from '../../../components/icon'
 import { BackButton } from '../../../components/back-button'
 import { MobileNavigation } from '../../shell/views/mobile-navigation'
+import { useSession } from '../../../contexts/session-context'
 
 interface ChatLayoutProps {
   children: ReactNode
@@ -11,6 +12,7 @@ interface ChatLayoutProps {
   onNewChat?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
+  onNewWorkspace?: () => void
 }
 
 export const ChatLayout = ({
@@ -20,9 +22,11 @@ export const ChatLayout = ({
   onHelpClick,
   onNewChat,
   onLogout,
-  onWorkspaceSettings
+  onWorkspaceSettings,
+  onNewWorkspace,
 }: ChatLayoutProps) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+  const { activeWorkspace } = useSession()
 
   return (
     <div className="flex h-full w-full bg-primary">
@@ -33,12 +37,14 @@ export const ChatLayout = ({
 
       {/* Mobile Header - Only on small screens */}
       <div className="fixed top-0 left-0 right-0 md:hidden z-20 bg-primary border-b border-tertiary px-4 py-1 flex items-center justify-between">
-        {/* Left side - Back button (only when chat has messages) or empty space */}
+        {/* Left side - Workspace name or Back button */}
         <div className="flex items-center">
           {hasMessages ? (
             <BackButton onClick={() => onNewChat?.()} label="Back" variant="dark" />
           ) : (
-            <div className="w-9 h-9" />
+            <span className="paragraph-sm text-secondary font-medium truncate max-w-[200px]">
+              {activeWorkspace?.name || 'MIA'}
+            </span>
           )}
         </div>
 
@@ -56,7 +62,7 @@ export const ChatLayout = ({
       <MobileNavigation
         isOpen={isMobileNavOpen}
         onClose={() => setIsMobileNavOpen(false)}
-        onNewChat={onNewChat}
+        onNewWorkspace={onNewWorkspace}
         onIntegrationsClick={onIntegrationsClick}
         onHelpClick={onHelpClick}
         onLogout={onLogout}

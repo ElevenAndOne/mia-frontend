@@ -7,7 +7,7 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 const IntegrationsPage = () => {
   const navigate = useNavigate()
   const {
-    onNewChat,
+    onNewWorkspace,
     onIntegrationsClick,
     onHelpClick,
     onLogout,
@@ -16,7 +16,7 @@ const IntegrationsPage = () => {
 
   return (
     <AppShell
-      onNewChat={onNewChat}
+      onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}

@@ -8,7 +8,7 @@ const InsightsProtectPage = () => {
   const navigate = useNavigate()
   const { platforms, dateRange } = useInsightRouteParams()
   const {
-    onNewChat,
+    onNewWorkspace,
     onIntegrationsClick,
     onHelpClick,
     onLogout,
@@ -17,7 +17,7 @@ const InsightsProtectPage = () => {
 
   return (
     <AppShell
-      onNewChat={onNewChat}
+      onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}

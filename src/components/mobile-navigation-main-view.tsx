@@ -1,38 +1,39 @@
 import { Icon } from './icon'
 import { UserAvatar } from './user-avatar'
-import { WorkspaceListItem } from '../features/workspace/components/workspace-list-item'
+import type { SegmentedControlOption } from './segmented-control'
+import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
 
 interface MobileNavigationMainViewProps {
   onClose: () => void
-  onNewChat?: () => void
+  onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
   onHelpClick?: () => void
-  onOpenUser: () => void
-  availableWorkspaces: Workspace[]
-  activeWorkspaceId?: string
-  isSwitching: boolean
-  switchingId: string | null
-  onSelectWorkspace: (tenantId: string) => void
+  onWorkspaceSettings?: () => void
+  onLogout?: () => void
+  activeWorkspace?: Workspace | null
   userName?: string
   userEmail?: string
   userImageUrl?: string | null
+  theme: 'system' | 'light' | 'dark'
+  themeOptions: Array<SegmentedControlOption<'system' | 'light' | 'dark'>>
+  onThemeChange: (value: 'system' | 'light' | 'dark') => void
 }
 
 export const MobileNavigationMainView = ({
   onClose,
-  onNewChat,
+  onNewWorkspace,
   onIntegrationsClick,
   onHelpClick,
-  onOpenUser,
-  availableWorkspaces,
-  activeWorkspaceId,
-  isSwitching,
-  switchingId,
-  onSelectWorkspace,
+  onWorkspaceSettings,
+  onLogout,
+  activeWorkspace,
   userName,
   userEmail,
   userImageUrl,
+  theme,
+  themeOptions,
+  onThemeChange,
 }: MobileNavigationMainViewProps) => {
   return (
     <div className="flex flex-col h-full">
@@ -48,13 +49,15 @@ export const MobileNavigationMainView = ({
       </div>
 
       <div className="p-4 space-y-2">
-        <button
-          onClick={onNewChat}
-          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-        >
-          <Icon.pencil_line size={20} className="text-tertiary" />
-          <span className="paragraph-sm">New Chat</span>
-        </button>
+        {onNewWorkspace && (
+          <button
+            onClick={() => { onClose(); onNewWorkspace() }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.plus size={20} className="text-tertiary" />
+            <span className="paragraph-sm">New Workspace</span>
+          </button>
+        )}
 
         <button
           onClick={onIntegrationsClick}
@@ -63,6 +66,20 @@ export const MobileNavigationMainView = ({
           <Icon.globe_01 size={20} className="text-tertiary" />
           <span className="paragraph-sm">Integrations</span>
         </button>
+
+        {onWorkspaceSettings && (
+          <button
+            onClick={onWorkspaceSettings}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.settings_01 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Workspace Settings</span>
+          </button>
+        )}
+
+        <div className="px-0 py-1">
+          <SegmentedControl options={themeOptions} value={theme} onChange={onThemeChange} fullWidth />
+        </div>
 
         {onHelpClick && (
           <button
@@ -73,47 +90,47 @@ export const MobileNavigationMainView = ({
             <span className="paragraph-sm">Help</span>
           </button>
         )}
+
+        <button
+          onClick={onLogout}
+          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
+        >
+          <Icon.log_out_01 size={20} />
+          <span className="paragraph-sm">Sign Out</span>
+        </button>
       </div>
 
       <div className="border-t border-tertiary mx-4" />
 
-      <div className="p-4">
-        <h3 className="label-xs text-quaternary mb-3 px-3">Workspace</h3>
-        <div className="space-y-1">
-          {availableWorkspaces.length === 0 ? (
-            <div className="px-3 py-2 text-quaternary paragraph-sm">No workspaces yet</div>
-          ) : (
-            availableWorkspaces.map((workspace) => (
-              <WorkspaceListItem
-                key={workspace.tenant_id}
-                workspace={workspace}
-                isActive={workspace.tenant_id === activeWorkspaceId}
-                isSwitching={switchingId === workspace.tenant_id}
-                onSelect={onSelectWorkspace}
-                variant="compact"
-                disabled={isSwitching}
-                activeClassName="bg-utility-info-100 border border-utility-info-300"
-                inactiveClassName="hover:bg-secondary"
-              />
-            ))
-          )}
+      {/* Active Workspace Indicator */}
+      {activeWorkspace && (
+        <div className="p-4">
+          <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
+          <div className="px-3 py-2.5 rounded-lg bg-utility-info-100 border border-utility-info-300">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-info-500 to-utility-purple-600 flex items-center justify-center text-white label-sm shrink-0">
+                {activeWorkspace.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="paragraph-sm text-primary font-medium truncate">{activeWorkspace.name}</p>
+                <p className="paragraph-xs text-quaternary">{activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0} platforms</p>
+              </div>
+              <Icon.check size={18} className="text-utility-info-500 shrink-0" />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex-1" />
 
       <div className="p-4 border-t border-tertiary">
-        <button
-          onClick={onOpenUser}
-          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
-        >
+        <div className="flex items-center gap-3 p-2">
           <UserAvatar name={userName || 'User'} imageUrl={userImageUrl} size="md" />
           <div className="flex-1 min-w-0 text-left">
             <p className="paragraph-sm text-primary truncate">{userName || 'User'}</p>
             <p className="paragraph-xs text-quaternary truncate">{userEmail || ''}</p>
           </div>
-          <Icon.chevron_right size={18} className="text-tertiary shrink-0" />
-        </button>
+        </div>
       </div>
     </div>
   )

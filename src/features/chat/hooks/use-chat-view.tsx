@@ -14,6 +14,7 @@ export interface ChatMessageItem {
   id: string
   role: 'user' | 'assistant'
   content: string
+  hidden?: boolean
   pendingAction?: PendingAction
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
@@ -105,11 +106,12 @@ export const useChatView = () => {
     }
   }, [location.state, location.pathname, navigate])
 
-  const handleSubmit = useCallback(async (message: string) => {
+  const handleSubmit = useCallback(async (message: string, options?: { hidden?: boolean }) => {
     const userMessage: ChatMessageItem = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: message,
+      hidden: options?.hidden,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -188,6 +190,10 @@ export const useChatView = () => {
     }
   }, [navigate, selectedPlatforms, dateRange])
 
+  // Ref to allow action completion to trigger a follow-up chat message
+  const handleSubmitRef = useRef(handleSubmit)
+  useEffect(() => { handleSubmitRef.current = handleSubmit }, [handleSubmit])
+
   const handleConfirmAction = useCallback(async (messageId: string) => {
     const message = messages.find(m => m.id === messageId)
     if (!message?.pendingAction || !sessionId) return
@@ -212,9 +218,17 @@ export const useChatView = () => {
             const status = await pollActionStatus(sessionId, result.workflow_id!)
             if (status.status === 'completed') {
               clearInterval(pollInterval)
+              const resultMsg = status.result?.message || 'Action completed'
               setMessages(prev => prev.map(m =>
                 m.id === messageId ? { ...m, actionStatus: 'completed' as const, actionResult: status.result || undefined } : m
               ))
+              // Auto-continue the chain: send a hidden follow-up so Claude proposes the next step
+              setTimeout(() => {
+                handleSubmitRef.current(
+                  `[Action completed: ${resultMsg}] Please continue with any remaining steps.`,
+                  { hidden: true },
+                )
+              }, 500)
             } else if (status.status === 'failed') {
               clearInterval(pollInterval)
               setMessages(prev => prev.map(m =>

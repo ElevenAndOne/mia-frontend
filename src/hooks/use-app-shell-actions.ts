@@ -16,5 +16,6 @@ export const useAppShellActions = () => {
     onHelpClick: () => navigate('/help'),
     onLogout: handleLogout,
     onWorkspaceSettings: () => navigate('/settings/workspace'),
+    onNewWorkspace: () => window.dispatchEvent(new CustomEvent('mia:new-workspace')),
   }
 }
