@@ -56,14 +56,14 @@ export const WorkspaceSettingsOverview = ({
                 key={item.workspace.tenant_id}
                 className={`rounded-xl p-4 transition-colors ${
                   isActive
-                    ? 'bg-utility-brand-50 border-2 border-utility-brand-400'
+                    ? 'bg-success-primary border-2 border-utility-success-400'
                     : 'bg-secondary border border-transparent hover:bg-tertiary'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar */}
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    isActive ? 'bg-utility-brand-500' : 'bg-brand-solid'
+                    isActive ? 'bg-utility-success-500' : 'bg-brand-solid'
                   }`}>
                     <span className="label-bg text-primary-onbrand">
                       {item.workspace.name.charAt(0).toUpperCase()}
@@ -75,7 +75,7 @@ export const WorkspaceSettingsOverview = ({
                     <div className="flex items-center gap-2">
                       <span className="label-md text-primary truncate">{item.workspace.name}</span>
                       {isActive && (
-                        <span className="px-2 py-0.5 rounded-full label-xs bg-utility-brand-500 text-white shrink-0">Active</span>
+                        <span className="px-2 py-0.5 rounded-full label-xs bg-utility-success-500 text-white shrink-0">Active</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 paragraph-xs text-quaternary mt-0.5">
@@ -93,7 +93,7 @@ export const WorkspaceSettingsOverview = ({
                       <button
                         onClick={(e) => { e.stopPropagation(); handleSwitch(item.workspace.tenant_id) }}
                         disabled={isSwitching}
-                        className="px-2.5 py-1 rounded-md label-xs bg-utility-brand-500 text-white hover:bg-utility-brand-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        className="px-2.5 py-1 rounded-md label-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >
                         {isThisSwitching ? '...' : 'Set Active'}
                       </button>

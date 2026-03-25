@@ -92,16 +92,16 @@ export const MobileNavigationMainView = ({
       {activeWorkspace && (
         <div className="p-4">
           <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
-          <div className="px-3 py-2.5 rounded-lg bg-utility-brand-50 border border-utility-brand-300">
+          <div className="px-3 py-2.5 rounded-lg bg-success-primary border border-utility-success-300">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-brand-500 to-utility-purple-600 flex items-center justify-center text-white label-sm shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-success-500 to-utility-success-600 flex items-center justify-center text-white label-sm shrink-0">
                 {activeWorkspace.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="paragraph-sm text-primary font-medium truncate">{activeWorkspace.name}</p>
                 <p className="paragraph-xs text-quaternary">{activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0} platforms</p>
               </div>
-              <Icon.check size={18} className="text-utility-brand-500 shrink-0" />
+              <Icon.check size={18} className="text-success shrink-0" />
             </div>
           </div>
         </div>

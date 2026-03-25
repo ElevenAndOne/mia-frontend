@@ -86,7 +86,7 @@ export const ChatLayout = ({
                       onSelect={(id) => { handleSwitch(id); setIsWorkspaceSwitcherOpen(false) }}
                       variant="compact"
                       disabled={isSwitching}
-                      activeClassName="bg-utility-brand-100 border border-utility-brand-300"
+                      activeClassName="bg-success-primary border border-utility-success-300"
                       inactiveClassName="hover:bg-secondary"
                     />
                   ))}
