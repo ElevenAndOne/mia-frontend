@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { EXTERNAL_URLS } from '../../constants/external-urls'
+import { StorageKey } from '../../constants/storage-keys'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
 import { apiFetch, createSessionHeaders } from '../../utils/api'
@@ -404,11 +405,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       if (integrationId === 'google') {
-        // Pass frontend_origin so OAuth callback redirects back to where the user is browsing from
-        const originParam = `frontend_origin=${encodeURIComponent(window.location.origin)}`
-        const googleParams = [tenantParam, originParam].filter(Boolean).join('&')
+        // CRITICAL: Do NOT pass frontend_origin for popup flow
+        // Popup flow: backend redirects to FRONTEND_URL, popup app detects oauth_complete
+        // and sends postMessage back to the opener, then popup closes
         const response = await apiFetch(
-          `/api/oauth/google/auth-url?${googleParams}`,
+          `/api/oauth/google/auth-url${tenantParam ? '?' + tenantParam : ''}`,
           { headers: authHeaders }
         )
         if (response.ok) {
@@ -471,6 +472,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }
       }
       window.addEventListener('message', messageHandler)
+
+      // Set OAUTH_PENDING so the popup app knows to complete the auth flow
+      // The popup shares localStorage (same origin) and will pick this up during initialization
+      if (integrationId === 'google') {
+        localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
+      }
 
       // Open popup for OAuth
       const popup = window.open(
