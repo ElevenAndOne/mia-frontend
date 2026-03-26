@@ -508,6 +508,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // Clean up message listener
           window.removeEventListener('message', messageHandler)
 
+          // Always clear OAUTH_PENDING when popup closes — prevents main app from
+          // trying to complete auth on next page load if popup failed
+          localStorage.removeItem(StorageKey.OAUTH_PENDING)
+
           logger.log(`${integrationId} popup closed, completing auth flow...`)
           logger.log(`[OAUTH-COMPLETE] user_id from popup: ${oauthUserId}`)
 
