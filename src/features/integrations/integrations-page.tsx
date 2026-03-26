@@ -405,11 +405,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       if (integrationId === 'google') {
-        // CRITICAL: Do NOT pass frontend_origin for popup flow
-        // Popup flow: backend redirects to FRONTEND_URL, popup app detects oauth_complete
-        // and sends postMessage back to the opener, then popup closes
+        // Pass frontend_origin so OAuth callback redirects popup back to THIS browser's origin
+        // (matches the login flow in google-auth-service.ts which also passes frontend_origin)
+        const frontendOrigin = encodeURIComponent(window.location.origin)
+        const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`].filter(Boolean).join('&')
         const response = await apiFetch(
-          `/api/oauth/google/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          `/api/oauth/google/auth-url?${googleParams}`,
           { headers: authHeaders }
         )
         if (response.ok) {
