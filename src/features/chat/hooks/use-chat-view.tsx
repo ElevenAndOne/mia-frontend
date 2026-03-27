@@ -53,7 +53,7 @@ export const useChatView = () => {
     return CHAT_PLATFORM_CONFIG
       .filter((platform) => {
         const status = platformStatus[platform.statusKey as keyof typeof platformStatus]
-        return status?.connected && status?.linked
+        return status?.connected
       })
       .map((platform) => platform.id)
   }, [platformStatus])

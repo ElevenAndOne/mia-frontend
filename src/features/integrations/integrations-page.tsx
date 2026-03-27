@@ -15,6 +15,7 @@ import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import LinkedInAccountSelector from './selectors/linkedin-account-selector'
+import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -101,6 +102,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }, [])
 
+  // Detect Google OAuth redirect completion — auto-open account selector
+  const googleRedirectProcessedRef = useRef(false)
+  useEffect(() => {
+    if (googleRedirectProcessedRef.current) return
+    googleRedirectProcessedRef.current = true
+
+    // Check if we just returned from Google OAuth redirect flow
+    // Uses localStorage flag because URL params get cleaned by session context before this runs
+    const googlePending = localStorage.getItem('mia_google_ads_connect_pending')
+    if (googlePending) {
+      localStorage.removeItem('mia_google_ads_connect_pending')
+      // Show Google account selector after a brief delay for state to settle
+      setTimeout(() => setOpenModal('google'), 1000)
+    }
+  }, [])
+
   // Modal helpers
   const showBrevoModal = openModal === 'brevo'
   const showGoogleAccountSelector = openModal === 'google'
@@ -111,6 +128,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showFacebookPageSelector = openModal === 'facebook'
   const showGA4PropertySelector = openModal === 'ga4'
   const showLinkedInAccountSelector = openModal === 'linkedin_ads'
+  const showAirtableBaseSelector = openModal === 'airtable'
 
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
@@ -121,6 +139,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
   const setShowLinkedInAccountSelector = (show: boolean) => setOpenModal(show ? 'linkedin_ads' : null)
+  const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
@@ -206,6 +225,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         linked: platformStatus.linkedin_ads?.linked ?? platformStatus.linkedin_ads?.connected ?? false,
         lastSync: platformStatus.linkedin_ads?.connected ? getTimeAgo(platformStatus.linkedin_ads.last_synced) : undefined,
         autoSync: platformStatus.linkedin_ads?.connected ? true : undefined
+      },
+      {
+        id: 'airtable',
+        name: 'Airtable',
+        description: 'Content calendar & UTM tracking',
+        icon: '/icons/Airtable.png',
+        connected: platformStatus.airtable?.connected || false,
+        linked: platformStatus.airtable?.linked ?? platformStatus.airtable?.connected ?? false,
+        lastSync: platformStatus.airtable?.connected ? getTimeAgo(platformStatus.airtable.last_synced) : undefined,
+        autoSync: platformStatus.airtable?.connected ? true : undefined
       },
       {
         id: 'tiktok',
@@ -405,9 +434,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
 
       if (integrationId === 'google') {
-        // Pass frontend_origin so OAuth callback redirects popup back to THIS browser's origin
-        // (matches the login flow in google-auth-service.ts which also passes frontend_origin)
-        const frontendOrigin = encodeURIComponent(window.location.origin)
+        // Google OAuth uses REDIRECT flow (same as initial login), not popup.
+        // Popup flow fails because the popup loads the full app.
+        // Redirect flow: set OAUTH_PENDING, redirect entire page to Google,
+        // callback redirects back to integrations page, app detects OAUTH_PENDING and completes.
+        const returnUrl = window.location.origin + '/integrations'
+        const frontendOrigin = encodeURIComponent(returnUrl)
         const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`].filter(Boolean).join('&')
         const response = await apiFetch(
           `/api/oauth/google/auth-url?${googleParams}`,
@@ -415,8 +447,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         )
         if (response.ok) {
           const data = await response.json()
-          authUrl = data.auth_url
+          // Use redirect flow — same pattern as session-context.tsx login()
+          localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
+          localStorage.setItem(StorageKey.OAUTH_RETURN_URL, returnUrl)
+          localStorage.setItem('mia_google_ads_connect_pending', 'true')
+          window.location.href = data.auth_url
+          return // Page will redirect, no need for popup logic
         }
+        throw new Error('Failed to get Google auth URL')
       } else if (integrationId === 'meta' || integrationId === 'facebook_organic') {
         // Both Meta Ads and Facebook Organic use the same Meta OAuth flow
         // No frontend_origin - popup should close, not redirect
@@ -455,6 +493,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           authUrl = data.auth_url
         }
+      } else if (integrationId === 'airtable') {
+        const response = await apiFetch(
+          `/api/oauth/airtable/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          authUrl = data.auth_url
+        }
       }
 
       if (!authUrl) {
@@ -474,13 +521,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
       window.addEventListener('message', messageHandler)
 
-      // Set OAUTH_PENDING so the popup app knows to complete the auth flow
-      // The popup shares localStorage (same origin) and will pick this up during initialization
-      if (integrationId === 'google') {
-        localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
-      }
-
-      // Open popup for OAuth
+      // Open popup for OAuth (Meta, HubSpot, LinkedIn, Mailchimp — NOT Google)
       const popup = window.open(
         authUrl,
         `${integrationId}-oauth`,
@@ -569,6 +610,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           if (integrationId === 'linkedin_ads') {
             logger.log('[LINKEDIN-OAUTH] OAuth complete - showing account selector')
             setTimeout(() => setShowLinkedInAccountSelector(true), 500)
+          }
+
+          // For Airtable, show base selector after OAuth completes
+          if (integrationId === 'airtable') {
+            logger.log('[AIRTABLE-OAUTH] OAuth complete - showing base selector')
+            setTimeout(() => setShowAirtableBaseSelector(true), 500)
           }
 
           // Refresh integration status AND workspace list
@@ -693,10 +740,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
                               else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
                               else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
+                              else if (integration.id === 'airtable') setShowAirtableBaseSelector(true)
                             }}
                             onReconnect={
                               // OAuth platforms can reconnect to refresh credentials / link to workspace
-                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads'].includes(integration.id)
+                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads', 'airtable'].includes(integration.id)
                                 ? () => handleConnect(integration.id)
                                 : undefined
                             }
@@ -1010,6 +1058,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           await refreshAccounts()
         }}
         currentAccountData={currentAccountData}
+      />
+      <AirtableBaseSelector
+        isOpen={showAirtableBaseSelector}
+        onClose={() => setShowAirtableBaseSelector(false)}
+        onSuccess={async () => {
+          logger.log('[AIRTABLE-BASE-SELECTOR] Base selected successfully')
+          setShowAirtableBaseSelector(false)
+          invalidateIntegrationStatus()
+          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          await refreshAccounts()
+        }}
       />
     </div>
   )

@@ -14,6 +14,7 @@ export interface PlatformStatus {
   hubspot: PlatformConnectionStatus
   mailchimp: PlatformConnectionStatus
   linkedin_ads: PlatformConnectionStatus
+  airtable: PlatformConnectionStatus
 }
 
 // GA4 Property types (consolidated from use-integration-status.ts and ga4-property-selector.tsx)
@@ -86,5 +87,6 @@ export interface AccountData {
   facebook_page_id?: string
   linkedin_ads_account_id?: string
   linkedin_organization_id?: string
+  airtable_base_id?: string
   linked_ga4_properties?: GA4Property[]
 }

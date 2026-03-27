@@ -9,4 +9,5 @@ export const CHAT_PLATFORM_CONFIG = [
   { id: 'mailchimp', name: 'Mailchimp', icon: <Logo.mailchimp />, statusKey: 'mailchimp' },
   { id: 'hubspot', name: 'HubSpot', icon: <Logo.hubspot />, statusKey: 'hubspot' },
   { id: 'linkedin_ads', name: 'LinkedIn Ads', icon: <Logo.linkedin />, statusKey: 'linkedin_ads' },
+  { id: 'airtable', name: 'Airtable', icon: <img src="/icons/radio buttons/Airtable-radio.png" alt="Airtable" className="w-5 h-5" />, statusKey: 'airtable' },
 ]

@@ -23,6 +23,7 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
     hubspot: { connected: Boolean(flags.hubspot), linked: Boolean(flags.hubspot), last_synced: now },
     mailchimp: { connected: Boolean(flags.mailchimp), linked: Boolean(flags.mailchimp), last_synced: now },
     linkedin_ads: { connected: Boolean(flags.linkedin_ads), linked: Boolean(flags.linkedin_ads), last_synced: now },
+    airtable: { connected: Boolean(flags.airtable), linked: Boolean(flags.airtable), last_synced: now },
   }
 }
 
@@ -39,25 +40,38 @@ const mergePlatformStatus = (
 
   const now = new Date().toISOString()
 
-  // If the account has the platform ID mapped, it's connected+linked.
-  // If not, show as not connected (user sees "Connect" button) regardless
-  // of whether workspace-level OAuth credentials exist.
-  const merge = (
-    accountField: string | null | undefined,
-  ) =>
+  // A platform shows as "connected" based on what makes sense for each platform:
+  // - Platforms with account selectors (Google Ads, GA4, Meta, FB): ONLY when the specific
+  //   account/property/page is selected (account field is set on TenantAccountMapping)
+  // - Platforms with just OAuth/API key (Brevo, HubSpot, Mailchimp, LinkedIn, Airtable):
+  //   Connected when tenant_integrations says connected OR account field is set
+  const accountOnly = (accountField: string | null | undefined) =>
     accountField
       ? { connected: true, linked: true, last_synced: now }
       : { connected: false, linked: false }
 
+  const tenantOrAccount = (
+    accountField: string | null | undefined,
+    tenantEntry: { connected: boolean } | undefined,
+  ) => {
+    const isConnected = Boolean(accountField) || Boolean(tenantEntry?.connected)
+    return isConnected
+      ? { connected: true, linked: Boolean(accountField), last_synced: now }
+      : { connected: false, linked: false }
+  }
+
   return {
-    google: merge(accountData.google_ads_id),
-    ga4: merge(accountData.ga4_property_id),
-    meta: merge(accountData.meta_ads_id),
-    facebook_organic: merge(accountData.facebook_page_id),
-    brevo: merge(accountData.brevo_api_key),
-    hubspot: merge(accountData.hubspot_portal_id),
-    mailchimp: merge(accountData.mailchimp_account_id),
-    linkedin_ads: merge(accountData.linkedin_ads_account_id),
+    // Account-selector platforms: require specific ID to be set
+    google: tenantOrAccount(accountData.google_ads_id, tenantStatus.google),
+    ga4: accountOnly(accountData.ga4_property_id),
+    meta: accountOnly(accountData.meta_ads_id),
+    facebook_organic: accountOnly(accountData.facebook_page_id),
+    // OAuth/API-key platforms: connected when tenant says so
+    brevo: tenantOrAccount(accountData.brevo_api_key, tenantStatus.brevo),
+    hubspot: tenantOrAccount(accountData.hubspot_portal_id, tenantStatus.hubspot),
+    mailchimp: tenantOrAccount(accountData.mailchimp_account_id, tenantStatus.mailchimp),
+    linkedin_ads: tenantOrAccount(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
+    airtable: tenantOrAccount(accountData.airtable_base_id, tenantStatus.airtable),
   }
 }
 
@@ -83,6 +97,7 @@ export const fetchTenantIntegrationStatus = async (
     hubspot: data.platform_status?.hubspot,
     mailchimp: data.platform_status?.mailchimp,
     linkedin_ads: data.platform_status?.linkedin_ads,
+    airtable: data.platform_status?.airtable,
   }
 
   return {
@@ -134,6 +149,7 @@ export const fetchAccountIntegrationStatus = async (
     hubspot: Boolean(currentAccountData?.hubspot_portal_id),
     mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
     linkedin_ads: Boolean(currentAccountData?.linkedin_ads_account_id),
+    airtable: Boolean(currentAccountData?.airtable_base_id),
   })
 
   return { platformStatus, currentAccountData, ga4Properties, linkedGA4Properties }

@@ -23,7 +23,7 @@ const IntegrationsPage = () => {
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
-        <IntegrationsView onBack={() => navigate(-1)} />
+        <IntegrationsView onBack={() => navigate('/home')} />
       </AnimatedPageWrapper>
     </AppShell>
   )
