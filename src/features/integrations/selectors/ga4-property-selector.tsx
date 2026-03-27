@@ -75,28 +75,42 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     setError(null)
 
     try {
-      // Pass refresh=true to bypass cache and fetch fresh from Google API
+      // Try /api/accounts/available first (has cached properties)
       const url = forceRefresh
         ? '/api/accounts/available?refresh=true'
         : '/api/accounts/available'
 
       const response = await apiFetch(url, {
-        headers: {
-          'X-Session-ID': sessionId || 'default'
-        }
+        headers: { 'X-Session-ID': sessionId || 'default' }
       })
-
       const data = await response.json()
 
-      if (data.success && data.ga4_properties) {
-        // Sort properties alphabetically by display name (A-Z)
+      if (data.success && data.ga4_properties && data.ga4_properties.length > 0) {
         const sortedProperties = data.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
           a.display_name.localeCompare(b.display_name)
         )
         setProperties(sortedProperties)
-        // Don't auto-select - let user choose which properties to link
+      } else if (data.ga4_background_fetch_started || forceRefresh) {
+        // Background fetch started — wait for it to complete then retry
+        // GA4 property fetch takes ~12-15 seconds, so wait 15s then check once
+        logger.log('[GA4-PROPERTY-SELECTOR] Properties not cached yet, waiting for background fetch...')
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 8000))
+          const retryResponse = await apiFetch('/api/accounts/available', {
+            headers: { 'X-Session-ID': sessionId || 'default' }
+          })
+          const retryData = await retryResponse.json()
+          if (retryData.success && retryData.ga4_properties && retryData.ga4_properties.length > 0) {
+            const sortedProperties = retryData.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
+              a.display_name.localeCompare(b.display_name)
+            )
+            setProperties(sortedProperties)
+            return  // Exit early — found properties
+          }
+        }
+        setError('GA4 properties are still loading. Close this modal and try again in a few seconds.')
       } else {
-        setError('Failed to fetch GA4 properties')
+        setError('No GA4 properties found. Make sure you have access to at least one GA4 property.')
       }
     } catch (err) {
       logger.error('Error fetching GA4 properties:', err)

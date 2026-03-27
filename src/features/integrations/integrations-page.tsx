@@ -109,12 +109,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     googleRedirectProcessedRef.current = true
 
     // Check if we just returned from Google OAuth redirect flow
-    // Uses localStorage flag because URL params get cleaned by session context before this runs
-    const googlePending = localStorage.getItem('mia_google_ads_connect_pending')
-    if (googlePending) {
+    // Uses localStorage flags because URL params get cleaned by session context before this runs
+    const googleAdsPending = localStorage.getItem('mia_google_ads_connect_pending')
+    const ga4Pending = localStorage.getItem('mia_ga4_connect_pending')
+    if (googleAdsPending) {
       localStorage.removeItem('mia_google_ads_connect_pending')
-      // Show Google account selector after a brief delay for state to settle
       setTimeout(() => setOpenModal('google'), 1000)
+    } else if (ga4Pending) {
+      localStorage.removeItem('mia_ga4_connect_pending')
+      // After Google OAuth for GA4, open GA4 property selector (not Google Ads)
+      setTimeout(() => setOpenModal('ga4'), 1000)
     }
   }, [])
 
@@ -345,9 +349,48 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       return
     }
 
-    // GA4 uses property selector modal — workspace already has Google OAuth
+    // GA4: Check if workspace already has Google OAuth credentials
+    // If yes → open property selector directly. If no → run Google OAuth first.
     if (integrationId === 'ga4') {
-      setShowGA4PropertySelector(true)
+      if (activeWorkspace?.tenant_id) {
+        try {
+          const tenantResponse = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/integrations`, {
+            headers: { 'X-Session-ID': sessionId || '' },
+          })
+          if (tenantResponse.ok) {
+            const tenantData = await tenantResponse.json()
+            const ps = tenantData.platform_status || {}
+            if (ps.google_ads || ps.ga4) {
+              // Google OAuth exists → open GA4 property selector directly
+              setShowGA4PropertySelector(true)
+              return
+            }
+          }
+        } catch { /* fall through to OAuth */ }
+      }
+      // No Google OAuth for this workspace → run Google OAuth redirect
+      // After redirect, auto-open GA4 property selector (not Google Ads selector)
+      setConnectingId('ga4')
+      const tenantParam = activeWorkspace?.tenant_id ? `tenant_id=${activeWorkspace.tenant_id}` : ''
+      const returnUrl = window.location.origin + '/integrations'
+      const frontendOrigin = encodeURIComponent(returnUrl)
+      const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`].filter(Boolean).join('&')
+      try {
+        const response = await apiFetch(`/api/oauth/google/auth-url?${googleParams}`, {
+          headers: { 'X-Session-ID': sessionId || '' }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
+          localStorage.setItem(StorageKey.OAUTH_RETURN_URL, returnUrl)
+          localStorage.setItem('mia_ga4_connect_pending', 'true')
+          window.location.href = data.auth_url
+          return
+        }
+      } catch (err) {
+        logger.error('[GA4-CONNECT] Failed to get auth URL:', err)
+      }
+      setConnectingId(null)
       return
     }
 
