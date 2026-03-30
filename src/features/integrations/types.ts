@@ -64,6 +64,8 @@ export interface FacebookPage {
   fan_count: number
   link: string
   category: string
+  instagram_account_id?: string
+  instagram_username?: string
 }
 
 export interface GoogleAccount {

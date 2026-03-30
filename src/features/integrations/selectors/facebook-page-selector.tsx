@@ -24,6 +24,8 @@ const FacebookPageSelector = ({
   const { sessionId, selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
+  const [instagramAccounts, setInstagramAccounts] = useState<Array<{ id: string; username: string; page_id: string }>>([])
+
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -61,6 +63,7 @@ const FacebookPageSelector = ({
           a.name.localeCompare(b.name)
         )
         setPages(sortedPages)
+        setInstagramAccounts(data.instagram_accounts || [])
 
         if (accountToUse?.facebook_page_id) {
           actions.setSelectedId(accountToUse.facebook_page_id)
@@ -83,6 +86,7 @@ const FacebookPageSelector = ({
 
     await actions.withSubmitting(async () => {
       const selectedPage = state.selectedId ? pages.find((p) => p.id === state.selectedId) : null
+      const linkedInstagram = instagramAccounts.find((ig) => ig.page_id === state.selectedId)
 
       const response = await apiFetch('/api/oauth/meta/organic/link-page', {
         method: 'POST',
@@ -95,6 +99,8 @@ const FacebookPageSelector = ({
           page_name: selectedPage?.name || '',
           page_access_token: selectedPage?.access_token || '',
           account_id: accountToUse.id,
+          instagram_account_id: linkedInstagram?.id || null,
+          instagram_username: linkedInstagram?.username || null,
         }),
       })
 
@@ -152,22 +158,30 @@ const FacebookPageSelector = ({
       }
     >
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {pages.map((page) => (
-          <SelectorItem
-            key={page.id}
-            isSelected={state.selectedId === page.id}
-            onSelect={() =>
-              actions.setSelectedId(state.selectedId === page.id ? null : page.id)
-            }
-            title={page.name}
-            subtitle={
-              page.fan_count > 0
-                ? `${page.category} • ${formatFollowers(page.fan_count)} followers`
-                : page.category
-            }
-            accentColor="blue"
-          />
-        ))}
+        {pages.map((page) => {
+          const linkedIg = instagramAccounts.find((ig) => ig.page_id === page.id)
+          return (
+            <SelectorItem
+              key={page.id}
+              isSelected={state.selectedId === page.id}
+              onSelect={() =>
+                actions.setSelectedId(state.selectedId === page.id ? null : page.id)
+              }
+              title={page.name}
+              subtitle={
+                [
+                  page.fan_count > 0
+                    ? `${page.category} • ${formatFollowers(page.fan_count)} followers`
+                    : page.category,
+                  linkedIg ? `Instagram: @${linkedIg.username}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' • ')
+              }
+              accentColor="blue"
+            />
+          )
+        })}
       </div>
 
       <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mt-4">
