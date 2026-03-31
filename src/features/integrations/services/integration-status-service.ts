@@ -127,8 +127,12 @@ export const fetchAccountIntegrationStatus = async (
     }
 
     if (accountsData.accounts?.length) {
+      // Try to find by selectedAccountId, but fall back to accounts[0] if not found.
+      // In the workspace redesign each workspace has exactly one account ({tenant_id}_default).
+      // If selectedAccount is stale (pointing to a previous workspace), find() returns undefined
+      // and we still want the current workspace's account rather than null.
       const account = selectedAccountId
-        ? accountsData.accounts.find((acc: AccountData) => acc.id === selectedAccountId)
+        ? (accountsData.accounts.find((acc: AccountData) => acc.id === selectedAccountId) ?? accountsData.accounts[0])
         : accountsData.accounts[0]
 
       if (account) {

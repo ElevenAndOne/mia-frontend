@@ -10,7 +10,7 @@ interface IntegrationStatusResult {
   isLoading: boolean
   isRefetching: boolean
   error: Error | null
-  refetch: () => void
+  refetch: () => Promise<unknown>
   invalidate: () => void
 }
 
@@ -49,7 +49,7 @@ export function useIntegrationStatus(
     isLoading,
     isRefetching: isFetching && !isLoading,
     error: error as Error | null,
-    refetch: () => { refetch() },
+    refetch: () => refetch(),
     invalidate
   }
 }

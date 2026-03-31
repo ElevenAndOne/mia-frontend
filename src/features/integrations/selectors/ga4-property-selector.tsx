@@ -75,7 +75,6 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
     setError(null)
 
     try {
-      // Try /api/accounts/available first (has cached properties)
       const url = forceRefresh
         ? '/api/accounts/available?refresh=true'
         : '/api/accounts/available'
@@ -90,28 +89,28 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
           a.display_name.localeCompare(b.display_name)
         )
         setProperties(sortedProperties)
-      } else if (data.ga4_background_fetch_started || forceRefresh) {
-        // Background fetch started — wait for it to complete then retry
-        // GA4 property fetch takes ~12-15 seconds, so wait 15s then check once
-        logger.log('[GA4-PROPERTY-SELECTOR] Properties not cached yet, waiting for background fetch...')
-        for (let i = 0; i < 3; i++) {
-          await new Promise(resolve => setTimeout(resolve, 8000))
-          const retryResponse = await apiFetch('/api/accounts/available', {
-            headers: { 'X-Session-ID': sessionId || 'default' }
-          })
-          const retryData = await retryResponse.json()
-          if (retryData.success && retryData.ga4_properties && retryData.ga4_properties.length > 0) {
-            const sortedProperties = retryData.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
-              a.display_name.localeCompare(b.display_name)
-            )
-            setProperties(sortedProperties)
-            return  // Exit early — found properties
-          }
-        }
-        setError('GA4 properties are still loading. Close this modal and try again in a few seconds.')
-      } else {
-        setError('No GA4 properties found. Make sure you have access to at least one GA4 property.')
+        return
       }
+
+      // Properties not ready yet — background fetch may still be running (takes ~18-20s).
+      // Poll every 6 seconds up to 5 times (30s total) before giving up.
+      logger.log('[GA4-PROPERTY-SELECTOR] Properties not cached yet, polling for background fetch...')
+      for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 6000))
+        const retryResponse = await apiFetch('/api/accounts/available', {
+          headers: { 'X-Session-ID': sessionId || 'default' }
+        })
+        const retryData = await retryResponse.json()
+        if (retryData.success && retryData.ga4_properties && retryData.ga4_properties.length > 0) {
+          const sortedProperties = retryData.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
+            a.display_name.localeCompare(b.display_name)
+          )
+          setProperties(sortedProperties)
+          return
+        }
+      }
+
+      setError('No GA4 properties found. Make sure you have access to at least one GA4 property.')
     } catch (err) {
       logger.error('Error fetching GA4 properties:', err)
       setError('Failed to load GA4 properties. Please try again.')
@@ -250,7 +249,8 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
               {isLoading && (
                 <div className="py-8 text-center">
                   <div className="inline-block w-8 h-8 border-4 border-utility-brand-200 border-t-utility-brand-600 rounded-full animate-spin"></div>
-                  <p className="mt-4 paragraph-sm text-tertiary">Loading your GA4 properties...</p>
+                  <p className="mt-4 paragraph-sm text-tertiary">Fetching your GA4 properties...</p>
+                  <p className="mt-1 paragraph-xs text-quaternary">This can take up to 20 seconds on first connect</p>
                 </div>
               )}
 

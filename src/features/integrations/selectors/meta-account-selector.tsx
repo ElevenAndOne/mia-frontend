@@ -66,12 +66,10 @@ const MetaAccountSelector = ({
         )
         setAccounts(sortedAccounts)
 
-        // Only pre-select if this workspace actually has meta connected
-        // (prevents stale meta_ads_id from previous workspace leaking through)
-        if (accountToUse?.meta_ads_id && sortedAccounts.some((a: MetaAccount) => a.id === accountToUse.meta_ads_id)) {
-          actions.setSelectedId(accountToUse.meta_ads_id)
-        } else if (sortedAccounts.length === 1) {
-          actions.setSelectedId(sortedAccounts[0].id)
+        // Pre-select only from workspace-scoped currentAccountData — never from selectedAccount
+        // (selectedAccount can be stale from a previous workspace and must not drive pre-selection)
+        if (currentAccountData?.meta_ads_id && sortedAccounts.some((a: MetaAccount) => a.id === currentAccountData.meta_ads_id)) {
+          actions.setSelectedId(currentAccountData.meta_ads_id)
         }
       } else {
         actions.setError(data.error || 'Failed to fetch Meta accounts')

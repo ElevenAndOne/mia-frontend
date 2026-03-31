@@ -47,6 +47,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     linkedGA4Properties,
     isLoading: loading,
     error: integrationStatusError,
+    refetch: refetchIntegrationStatus,
     invalidate: invalidateIntegrationStatus
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
@@ -98,7 +99,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setHighlightedIds(highlights)
       clearIntegrationHighlight()
       // Auto-clear visual highlight after 3 seconds
-      setTimeout(() => setHighlightedIds([]), 5000)
+      const t = setTimeout(() => setHighlightedIds([]), 5000)
+      return () => clearTimeout(t)
     }
   }, [])
 
@@ -112,14 +114,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     // Uses localStorage flags because URL params get cleaned by session context before this runs
     const googleAdsPending = localStorage.getItem('mia_google_ads_connect_pending')
     const ga4Pending = localStorage.getItem('mia_ga4_connect_pending')
+    let t: ReturnType<typeof setTimeout> | undefined
     if (googleAdsPending) {
       localStorage.removeItem('mia_google_ads_connect_pending')
-      setTimeout(() => setOpenModal('google'), 1000)
+      t = setTimeout(() => setOpenModal('google'), 1000)
     } else if (ga4Pending) {
       localStorage.removeItem('mia_ga4_connect_pending')
       // After Google OAuth for GA4, open GA4 property selector (not Google Ads)
-      setTimeout(() => setOpenModal('ga4'), 1000)
+      t = setTimeout(() => setOpenModal('ga4'), 1000)
     }
+    return () => clearTimeout(t)
   }, [])
 
   // Modal helpers
@@ -632,9 +636,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 // For Meta Ads, show the account selector after OAuth completes
                 // User must select which Meta ad account to link to this Google Ads account
                 if (integrationId === 'meta' && completeData.success) {
-                  logger.log('[META-OAUTH] Meta OAuth complete - showing Meta account selector')
-                  // Show Meta account selector after a brief delay for cache invalidation
-                  setTimeout(() => setShowMetaAccountSelector(true), 500)
+                  logger.log('[META-OAUTH] Meta OAuth complete - refetching integration status then showing Meta account selector')
+                  // Await the refetch so currentAccountData is guaranteed fresh before
+                  // the selector opens and runs its pre-selection logic.
+                  // This prevents stale meta_ads_id from a previous workspace being pre-selected.
+                  await refetchIntegrationStatus()
+                  setShowMetaAccountSelector(true)
                 }
 
                 // For Facebook Organic, show the Facebook page selector after OAuth completes
@@ -803,7 +810,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                             onDisconnectSuccess={() => {
                               invalidateIntegrationStatus()
                               refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-                              refreshAccounts()
+                              refreshAccounts().catch(err => logger.error('[INTEGRATIONS] Failed to refresh accounts:', err))
                             }}
                           />
                         </div>
@@ -1015,7 +1022,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
-        currentGoogleAccountName={selectedAccount?.name}
+        currentGoogleAccountName={activeWorkspace?.name}
         currentAccountData={currentAccountData}
       />
 
@@ -1069,7 +1076,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
-        currentAccountName={selectedAccount?.name}
+        currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
         currentAccountData={currentAccountData}
       />
 
@@ -1084,7 +1091,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
           await refreshAccounts()
         }}
-        currentAccountName={selectedAccount?.name}
+        currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
         ga4Properties={ga4Properties}
         linkedProperties={linkedGA4Properties}
       />
