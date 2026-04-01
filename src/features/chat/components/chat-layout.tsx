@@ -11,6 +11,7 @@ interface ChatLayoutProps {
   children: ReactNode
   hasMessages?: boolean
   onIntegrationsClick?: () => void
+  onCampaignsClick?: () => void
   onHelpClick?: () => void
   onNewChat?: () => void
   onLogout?: () => void
@@ -22,6 +23,7 @@ export const ChatLayout = ({
   children,
   hasMessages,
   onIntegrationsClick,
+  onCampaignsClick,
   onHelpClick,
   onNewChat,
   onLogout,
@@ -121,6 +123,7 @@ export const ChatLayout = ({
         onClose={() => setIsMobileNavOpen(false)}
         onNewWorkspace={onNewWorkspace}
         onIntegrationsClick={onIntegrationsClick}
+        onCampaignsClick={onCampaignsClick}
         onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}

@@ -197,15 +197,20 @@ export function usePlatformPreferences({
 
   const togglePlatform = useCallback((platformId: string) => {
     setSelectedPlatformsState(current => {
-      const newPlatforms = current.includes(platformId)
-        ? current.filter(p => p !== platformId)
-        : [...current, platformId]
+      // If internal state is still empty (load in-flight), base the toggle off
+      // what the UI is actually showing (all connected platforms) to avoid
+      // the bug where toggling one platform appears to deselect all others.
+      const base = current.length > 0 ? current : connectedPlatformsRef.current
+
+      const newPlatforms = base.includes(platformId)
+        ? base.filter(p => p !== platformId)
+        : [...base, platformId]
 
       // Don't allow deselecting all platforms
       if (newPlatforms.length === 0) return current
 
       // Save to backend (debounced) with rollback capability
-      saveToBackend(newPlatforms, current)
+      saveToBackend(newPlatforms, base)
 
       return newPlatforms
     })

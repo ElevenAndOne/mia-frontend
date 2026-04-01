@@ -14,13 +14,14 @@ import { trackEvent } from '../../../utils/tracking'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
+  onCampaignsClick?: () => void
   onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
   onNewWorkspace?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings, onNewWorkspace }: ChatViewProps) => {
+export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, onLogout, onWorkspaceSettings, onNewWorkspace }: ChatViewProps) => {
   const { sessionId } = useSession()
   const { data: goldData } = useGoldInsights(sessionId)
 
@@ -96,6 +97,7 @@ export const ChatView = ({ onIntegrationsClick, onHelpClick, onLogout, onWorkspa
     <ChatLayout
       hasMessages={hasMessages}
       onIntegrationsClick={onIntegrationsClick}
+      onCampaignsClick={onCampaignsClick}
       onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
       onLogout={onLogout}

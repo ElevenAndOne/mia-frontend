@@ -13,6 +13,7 @@ export const useAppShellActions = () => {
   return {
     onNewChat: () => navigate('/home', { state: { newChat: true } }),
     onIntegrationsClick: () => navigate('/integrations'),
+    onCampaignsClick: () => navigate('/campaigns'),
     onHelpClick: () => navigate('/help'),
     onLogout: handleLogout,
     onWorkspaceSettings: () => navigate('/settings/workspace'),

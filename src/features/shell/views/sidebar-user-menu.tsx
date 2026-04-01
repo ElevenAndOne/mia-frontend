@@ -9,6 +9,7 @@ import { UserAvatar } from '../../../components/user-avatar'
 interface SidebarUserMenuProps {
   onWorkspaceSettings?: () => void
   onIntegrationsClick?: () => void
+  onCampaignsClick?: () => void
   onHelpClick?: () => void
   onNewWorkspace?: () => void
   onLogout: () => void
@@ -17,6 +18,7 @@ interface SidebarUserMenuProps {
 export const SidebarUserMenu = ({
   onWorkspaceSettings,
   onIntegrationsClick,
+  onCampaignsClick,
   onHelpClick,
   onNewWorkspace,
   onLogout
@@ -106,6 +108,17 @@ export const SidebarUserMenu = ({
             >
               <Icon.globe_01 size={18} className="text-tertiary" />
               <span>Integrations</span>
+            </button>
+          )}
+
+          {onCampaignsClick && (
+            <button
+              onClick={() => { setIsOpen(false); onCampaignsClick() }}
+              className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+              role="menuitem"
+            >
+              <Icon.target_01 size={18} className="text-tertiary" />
+              <span>Campaigns</span>
             </button>
           )}
 

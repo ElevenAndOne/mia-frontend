@@ -10,6 +10,7 @@ interface MobileNavigationProps {
   onClose: () => void
   onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
+  onCampaignsClick?: () => void
   onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
@@ -20,6 +21,7 @@ export const MobileNavigation = ({
   onClose,
   onNewWorkspace,
   onIntegrationsClick,
+  onCampaignsClick,
   onHelpClick,
   onLogout,
   onWorkspaceSettings
@@ -35,6 +37,11 @@ export const MobileNavigation = ({
 
   const handleIntegrations = () => {
     onIntegrationsClick?.()
+    onClose()
+  }
+
+  const handleCampaigns = () => {
+    onCampaignsClick?.()
     onClose()
   }
 
@@ -69,6 +76,7 @@ export const MobileNavigation = ({
         onClose={onClose}
         onNewWorkspace={onNewWorkspace}
         onIntegrationsClick={handleIntegrations}
+        onCampaignsClick={onCampaignsClick ? handleCampaigns : undefined}
         onHelpClick={onHelpClick ? handleHelp : undefined}
         onWorkspaceSettings={onWorkspaceSettings ? handleWorkspaceSettings : undefined}
         onLogout={handleLogout}
