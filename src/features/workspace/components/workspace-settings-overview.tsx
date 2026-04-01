@@ -56,15 +56,13 @@ export const WorkspaceSettingsOverview = ({
                 key={item.workspace.tenant_id}
                 className={`rounded-xl p-4 transition-colors ${
                   isActive
-                    ? 'bg-success-primary border-2 border-utility-success-400'
+                    ? 'bg-secondary border-2 border-utility-success-400 hover:bg-tertiary'
                     : 'bg-secondary border border-transparent hover:bg-tertiary'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    isActive ? 'bg-utility-success-500' : 'bg-brand-solid'
-                  }`}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-brand-solid">
                     <span className="label-bg text-primary-onbrand">
                       {item.workspace.name.charAt(0).toUpperCase()}
                     </span>
@@ -93,7 +91,7 @@ export const WorkspaceSettingsOverview = ({
                       <button
                         onClick={(e) => { e.stopPropagation(); handleSwitch(item.workspace.tenant_id) }}
                         disabled={isSwitching}
-                        className="px-2.5 py-1 rounded-md label-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        className="px-2 py-0.5 rounded label-xs text-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >
                         {isThisSwitching ? '...' : 'Set Active'}
                       </button>

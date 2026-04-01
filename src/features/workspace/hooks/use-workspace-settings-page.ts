@@ -202,9 +202,13 @@ export const useWorkspaceSettingsPage = () => {
     const success = await deleteWorkspace(selectedWorkspaceId)
     if (success) {
       setSelectedWorkspaceId(null)
+      const remaining = availableWorkspaces.filter(w => w.tenant_id !== selectedWorkspaceId)
+      if (remaining.length === 0) {
+        setShowCreateModal(true)
+      }
     }
     return success
-  }, [selectedWorkspaceId, deleteWorkspace])
+  }, [selectedWorkspaceId, deleteWorkspace, availableWorkspaces])
 
   const handleLeaveWorkspace = useCallback(async (): Promise<boolean> => {
     if (!selectedWorkspaceId || !sessionId) return false

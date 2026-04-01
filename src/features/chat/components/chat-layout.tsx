@@ -75,6 +75,7 @@ export const ChatLayout = ({
                 anchorRef={workspaceBtnRef}
                 placement="bottom"
                 className="w-64"
+                mobileAdaptation="none"
               >
                 <div className="py-2 max-h-64 overflow-y-auto">
                   {availableWorkspaces.map((ws) => (
