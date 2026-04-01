@@ -92,11 +92,7 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
                 ref={platformButtonRef}
                 type="button"
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                  hasSelectedPlatforms
-                    ? 'bg-brand-solid text-primary-onbrand'
-                    : 'bg-quaternary text-tertiary hover:bg-tertiary'
-                }`}
+                className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors"
                 title="Select platforms"
               >
                 <Icon.tool_01 size={18} />

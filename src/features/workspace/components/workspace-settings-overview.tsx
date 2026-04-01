@@ -70,12 +70,7 @@ export const WorkspaceSettingsOverview = ({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="label-md text-primary truncate">{item.workspace.name}</span>
-                      {isActive && (
-                        <span className="px-2 py-0.5 rounded-full label-xs bg-utility-success-500 text-white shrink-0">Active</span>
-                      )}
-                    </div>
+                    <span className="label-md text-primary truncate block">{item.workspace.name}</span>
                     <div className="flex items-center gap-1.5 paragraph-xs text-quaternary mt-0.5">
                       <span className={`px-1.5 py-0.5 rounded ${item.roleBadgeClass}`}>
                         {item.workspace.role}
@@ -85,13 +80,15 @@ export const WorkspaceSettingsOverview = ({
                     </div>
                   </div>
 
-                  {/* Actions — row layout */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!isActive && (
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isActive ? (
+                      <span className="px-2 py-0.5 rounded-full label-xs bg-utility-success-500 text-white">Active</span>
+                    ) : (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleSwitch(item.workspace.tenant_id) }}
                         disabled={isSwitching}
-                        className="px-2 py-0.5 rounded label-xs text-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        className="px-2 py-0.5 rounded-full label-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >
                         {isThisSwitching ? '...' : 'Set Active'}
                       </button>
@@ -101,7 +98,7 @@ export const WorkspaceSettingsOverview = ({
                       className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
                       aria-label="Workspace settings"
                     >
-                      <Icon.chevron_right size={18} />
+                      <Icon.settings_01 size={16} />
                     </button>
                   </div>
                 </div>

@@ -87,8 +87,16 @@ export const ChatLayout = ({
                       onSelect={(id) => { handleSwitch(id); setIsWorkspaceSwitcherOpen(false) }}
                       variant="compact"
                       disabled={isSwitching}
-                      activeClassName="bg-success-primary border border-utility-success-300"
+                      activeClassName="bg-secondary border-2 border-utility-success-400"
                       inactiveClassName="hover:bg-secondary"
+                      showRoleIcon={false}
+                      trailing={
+                        ws.tenant_id === activeWorkspace?.tenant_id
+                          ? <Icon.check size={18} className="text-white shrink-0" />
+                          : switchingId === ws.tenant_id
+                            ? <div className="w-4 h-4 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
+                            : null
+                      }
                     />
                   ))}
                 </div>
