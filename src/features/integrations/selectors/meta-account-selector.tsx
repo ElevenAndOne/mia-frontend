@@ -29,7 +29,7 @@ const MetaAccountSelector = ({
   currentGoogleAccountName,
   currentAccountData,
 }: MetaAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, selectedAccount } = useSession()
   const [accounts, setAccounts] = useState<MetaAccount[]>([])
 
   const [state, actions] = useSelectorState<string>({
