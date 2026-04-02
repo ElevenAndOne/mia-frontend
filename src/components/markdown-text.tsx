@@ -23,7 +23,7 @@ export const MarkdownText = memo(function MarkdownText({ text, className = '', m
               href={token.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-utility-info-600 hover:text-utility-info-700 underline font-medium"
+              className="text-utility-info-600 hover:text-utility-info-700 underline font-medium break-all"
             >
               {token.text}
             </a>
