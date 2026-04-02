@@ -910,6 +910,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                 </a>
+                <p className="mt-3 paragraph-xs text-utility-info-700">
+                  <strong>Important:</strong> If your Brevo account has IP blocking enabled, you must deactivate it before connecting.{' '}
+                  <a
+                    href="https://app.brevo.com/security/authorised_ips"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Deactivate IP blocking →
+                  </a>
+                </p>
               </div>
             )}
 
@@ -928,7 +939,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   disabled={brevoSubmitting}
                 />
                 {brevoError && (
-                  <p className="mt-2 paragraph-xs text-error">{brevoError}</p>
+                  <p className="mt-2 paragraph-xs text-error">
+                    {brevoError.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+                      part.match(/^https?:\/\//) ? (
+                        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline">
+                          {part}
+                        </a>
+                      ) : part
+                    )}
+                  </p>
                 )}
               </div>
             )}
