@@ -342,6 +342,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             >
               Upload Campaign Brief →
             </a>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary transition-colors"
+            >
+              Refresh
+            </button>
           </div>
         )}
 
