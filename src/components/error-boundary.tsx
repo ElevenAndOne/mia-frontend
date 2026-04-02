@@ -26,6 +26,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     console.error('[ErrorBoundary] Caught error:', error, errorInfo)
     Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
     this.props.onError?.(error, errorInfo)
+
+    // Stale Vite chunk after a new Vercel deploy — force a hard reload to fetch fresh bundles
+    if (error.message?.includes('error loading dynamically imported module') || error.message?.includes('Failed to fetch dynamically imported module')) {
+      window.location.reload()
+    }
   }
 
   handleRetry = (): void => {

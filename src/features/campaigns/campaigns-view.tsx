@@ -331,9 +331,17 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               </svg>
             </div>
             <p className="label-md text-primary mb-1">No active campaign</p>
-            <p className="paragraph-sm text-tertiary">
-              Upload a campaign brief at miacreate.ai to get started.
+            <p className="paragraph-sm text-tertiary mb-4">
+              Upload a campaign brief to get started.
             </p>
+            <a
+              href="https://intent.miacreate.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors"
+            >
+              Upload Campaign Brief →
+            </a>
           </div>
         )}
 
