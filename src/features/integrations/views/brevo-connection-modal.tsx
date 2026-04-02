@@ -55,7 +55,17 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
       {/* Error Message */}
       {error && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
-          <Alert variant="error">{error}</Alert>
+          <Alert variant="error">
+            {error.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+              part.match(/^https?:\/\//) ? (
+                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline">
+                  {part}
+                </a>
+              ) : (
+                part
+              )
+            )}
+          </Alert>
         </motion.div>
       )}
 

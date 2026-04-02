@@ -13,7 +13,7 @@ export const connectBrevoApiKey = async (apiKey: string) => {
 
   if (!response.ok) {
     const data = await response.json()
-    throw new Error(data.message || 'Failed to connect Brevo account')
+    throw new Error(data.detail || data.message || 'Failed to connect Brevo account')
   }
 
   return response.json()
