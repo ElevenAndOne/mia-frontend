@@ -16,7 +16,7 @@ interface InvitePageProps {
 const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const navigate = useNavigate()
   const { inviteId } = useParams<{ inviteId: string }>()
-  const { isAuthenticated, isMetaAuthenticated, isLoading: sessionLoading, sessionId, user, login } = useSession()
+  const { isAuthenticated, isMetaAuthenticated, isLoading: sessionLoading, sessionId, user, login, logout } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   logger.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'sessionLoading:', sessionLoading, 'isAnyAuth:', isAnyAuthenticated, 'path:', window.location.pathname)
@@ -32,6 +32,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     error,
     accepting,
     showLoginPrompt,
+    emailMismatch,
     dismissLoginPrompt,
     handleSignIn,
     handleAccept,
@@ -42,6 +43,14 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     onAccepted,
     onSignIn: () => login(),
   })
+
+  const handleSwitchAccount = async () => {
+    if (!inviteId) return
+    localStorage.setItem(StorageKey.PENDING_INVITE, inviteId)
+    localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId)
+    await logout()
+    login()
+  }
 
   // Clean up mia_pending_invite when we're on the invite page
   // (prevents stale redirect after invite is accepted)
@@ -183,6 +192,11 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
                 <p className="paragraph-sm text-quaternary">{user.email}</p>
               </div>
             </div>
+            {!inviteDetails?.is_link_invite && (
+              <p className="paragraph-xs text-quaternary mt-3 pt-3 border-t border-secondary">
+                This invite was sent to a specific email address — make sure you're signed in with the correct account.
+              </p>
+            )}
           </div>
         )}
 
@@ -190,6 +204,14 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
         {error && (
           <div className="bg-error-primary border border-error-subtle rounded-xl p-4 mb-6">
             <p className="paragraph-sm text-error">{error}</p>
+            {emailMismatch && (
+              <button
+                onClick={handleSwitchAccount}
+                className="mt-3 w-full px-4 py-2 bg-primary border border-secondary text-secondary rounded-lg paragraph-sm hover:bg-secondary transition-colors"
+              >
+                Sign in as {emailMismatch}
+              </button>
+            )}
           </div>
         )}
 

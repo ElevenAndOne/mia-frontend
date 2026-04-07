@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { acceptInvite, fetchInviteDetails } from '../services/invite-service'
+import { acceptInvite, fetchInviteDetails, InviteEmailMismatchError } from '../services/invite-service'
 import { logger } from '../../../utils/logger'
 import { StorageKey } from '../../../constants/storage-keys'
 
@@ -27,6 +27,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
   const [error, setError] = useState<string | null>(null)
   const [accepting, setAccepting] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [emailMismatch, setEmailMismatch] = useState<string | null>(null)
 
   // Auto-dismiss login prompt when auth succeeds (e.g., after OAuth redirect completes)
   // This prevents the login prompt from staying visible after session initialization finishes
@@ -102,11 +103,17 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
     try {
       setAccepting(true)
       setError(null)
+      setEmailMismatch(null)
       const data = await acceptInvite(inviteId, sessionId)
       onAccepted(data.tenant_id, data.skip_account_selection || false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to accept invite'
-      setError(message)
+      if (err instanceof InviteEmailMismatchError) {
+        setEmailMismatch(err.expectedEmail)
+        setError(err.message)
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to accept invite'
+        setError(message)
+      }
     } finally {
       setAccepting(false)
     }
@@ -129,6 +136,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
     error,
     accepting,
     showLoginPrompt,
+    emailMismatch,
     dismissLoginPrompt,
     handleSignIn,
     handleAccept,
