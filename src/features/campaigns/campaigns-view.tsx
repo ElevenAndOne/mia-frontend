@@ -75,10 +75,6 @@ const PLATFORM_LABELS: Record<string, string> = {
   brevo: 'Brevo',
   mailchimp: 'Mailchimp',
   airtable: 'Airtable',
-  brevo: 'Brevo',
-  linkedin_ads: 'LinkedIn',
-  mailchimp: 'Mailchimp',
-  ga4: 'GA4',
 }
 
 function formatDate(dateStr: string | null): string {
