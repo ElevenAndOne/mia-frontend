@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import ChatLayout from '../components/chat-layout'
+import { BackButton } from '../../../components/back-button'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
@@ -128,6 +129,11 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
           </>
         ) : (
           <>
+            {/* Desktop back button — sits above messages, no overlap with sidebar */}
+            <div className="hidden md:flex items-center px-4 pt-3 pb-1 shrink-0">
+              <BackButton onClick={handleNewChat} label="Back" variant="dark" />
+            </div>
+
             <div className="flex-1 overflow-y-auto min-h-0">
               <div className="max-w-3xl mx-auto px-4 py-6">
                 {messages.filter(m => !m.hidden).map((message) => (

@@ -66,8 +66,9 @@ export const parseCustomDateRange = (value: string): DateRangeSpan | null => {
 export const getPresetDateRange = (value: DateRangePresetValue, now: Date = new Date()): DateRangeSpan => {
   const preset = PRESET_DEFINITIONS[value]
   const end = new Date(now)
-  const start = new Date(now)
-  start.setDate(now.getDate() - (preset.days - 1))
+  end.setDate(now.getDate() - 1) // yesterday — matches backend which excludes today (incomplete data)
+  const start = new Date(end)
+  start.setDate(end.getDate() - (preset.days - 1))
   return { start, end }
 }
 
