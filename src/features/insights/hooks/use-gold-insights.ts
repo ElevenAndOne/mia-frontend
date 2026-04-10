@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchGoldInsights, type GoldInsightsResponse } from '../services/gold-service'
+import { fetchGoldInsights, triggerGoldRefresh, type GoldInsightsResponse } from '../services/gold-service'
 
 export const useGoldInsights = (sessionId: string | null) => {
   const [data, setData] = useState<GoldInsightsResponse | null>(null)
@@ -58,5 +58,21 @@ export const useGoldInsights = (sessionId: string | null) => {
     }
   }, [data?.status, refresh])
 
-  return { data, isLoading, error, refresh }
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const triggerRefresh = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      setIsRefreshing(true)
+      setError(null)
+      const result = await triggerGoldRefresh(sessionId)
+      setData(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to trigger refresh')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [sessionId])
+
+  return { data, isLoading, error, refresh, triggerRefresh, isRefreshing }
 }

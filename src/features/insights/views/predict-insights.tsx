@@ -22,7 +22,7 @@ const formatDaysAgo = (isoString: string): string => {
 
 const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { sessionId } = useSession()
-  const { data, isLoading, error, refresh } = useGoldInsights(sessionId)
+  const { data, isLoading, error, refresh, triggerRefresh, isRefreshing } = useGoldInsights(sessionId)
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
   useEffect(() => {
@@ -107,11 +107,20 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                 <p className="paragraph-md text-secondary leading-relaxed whitespace-pre-wrap">
                   {data.summary}
                 </p>
-                {data.created_at && (
-                  <p className="paragraph-xs text-tertiary mt-4">
-                    Last analysed: {formatDaysAgo(data.created_at)}
-                  </p>
-                )}
+                <div className="flex items-center justify-between mt-4">
+                  {data.created_at && (
+                    <p className="paragraph-xs text-tertiary">
+                      Last analysed: {formatDaysAgo(data.created_at)}
+                    </p>
+                  )}
+                  <button
+                    onClick={triggerRefresh}
+                    disabled={isRefreshing}
+                    className="paragraph-xs text-tertiary underline hover:text-secondary disabled:opacity-50"
+                  >
+                    {isRefreshing ? 'Requesting...' : 'Re-analyse'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -123,6 +132,13 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                 {data.failure_reason && (
                   <p className="paragraph-xs text-tertiary mt-2">{data.failure_reason}</p>
                 )}
+                <button
+                  onClick={triggerRefresh}
+                  disabled={isRefreshing}
+                  className="mt-3 paragraph-xs text-tertiary underline hover:text-secondary disabled:opacity-50"
+                >
+                  {isRefreshing ? 'Requesting...' : 'Retry now'}
+                </button>
               </div>
             )}
           </div>

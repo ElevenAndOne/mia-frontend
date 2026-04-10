@@ -25,3 +25,20 @@ export const fetchGoldInsights = async (sessionId: string): Promise<GoldInsights
 
   return response.json()
 }
+
+export const triggerGoldRefresh = async (sessionId: string): Promise<GoldInsightsResponse> => {
+  const response = await apiFetch('/api/gold-insights/refresh', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify({ session_id: sessionId }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+
+  return response.json()
+}
