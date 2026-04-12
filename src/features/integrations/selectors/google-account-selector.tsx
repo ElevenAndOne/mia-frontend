@@ -58,7 +58,14 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         logger.log(`[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`)
         setAccounts(nonMccAccounts)
 
-        if (nonMccAccounts.length === 1) {
+        // Pre-select the currently saved account, or auto-select if only one option
+        const savedId = user?.google_ads_id
+        if (savedId) {
+          const match = nonMccAccounts.find(a => a.customer_id === savedId)
+          if (match) {
+            setLocalSelectedId(`google_${match.customer_id}`)
+          }
+        } else if (nonMccAccounts.length === 1) {
           setLocalSelectedId(`google_${nonMccAccounts[0].customer_id}`)
         }
       })
