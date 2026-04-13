@@ -7,6 +7,7 @@ import { Popover } from '../../overlay'
 import { WorkspaceListItem } from '../../workspace/components/workspace-list-item'
 import { useSession } from '../../../contexts/session-context'
 import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
+import { formatDateRangeDisplay } from '../../../utils/date-range'
 import type { Platform } from '../types'
 
 interface ChatInputProps {
@@ -90,10 +91,11 @@ export const ChatInput = ({ onSubmit, disabled = false, placeholder = 'Start cha
               ref={calendarButtonRef}
               type="button"
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors"
+              className="h-10 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary hover:bg-tertiary transition-colors"
               title="Select date range"
             >
               <Icon.calendar size={18} />
+              <span className="paragraph-xs text-tertiary">{formatDateRangeDisplay(dateRange, 'short')}</span>
             </button>
 
             <DateRangePopover
