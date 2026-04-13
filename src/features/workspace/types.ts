@@ -16,4 +16,6 @@ export interface Workspace {
   member_count: number
   /** Whether this workspace is currently active */
   is_active?: boolean
+  /** Workspace-scoped Google Ads customer ID for picker pre-selection */
+  google_ads_customer_id?: string | null
 }

@@ -20,7 +20,7 @@ interface AdAccount {
 }
 
 const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSelectorProps) => {
-  const { user, sessionId, refreshAccounts } = useSession()
+  const { user, sessionId, refreshAccounts, refreshWorkspaces, activeWorkspace } = useSession()
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<AdAccount[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -58,8 +58,8 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         logger.log(`[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`)
         setAccounts(nonMccAccounts)
 
-        // Pre-select the currently saved account, or auto-select if only one option
-        const savedId = user?.google_ads_id
+        // Pre-select the currently saved account — prefer workspace-scoped ID over session-level
+        const savedId = activeWorkspace?.google_ads_customer_id || user?.google_ads_id
         if (savedId) {
           const match = nonMccAccounts.find(a => a.customer_id === savedId)
           if (match) {
@@ -102,8 +102,8 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         throw new Error(errorData.detail || 'Failed to link Google Ads account')
       }
 
-      // Refresh accounts to pick up the updated TenantAccountMapping
-      await refreshAccounts()
+      // Refresh workspaces so activeWorkspace.google_ads_customer_id updates for picker pre-selection
+      await refreshWorkspaces()
       actions.handleSuccess()
     })
   }
