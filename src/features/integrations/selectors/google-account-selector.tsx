@@ -58,8 +58,11 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         logger.log(`[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`)
         setAccounts(nonMccAccounts)
 
-        // Pre-select the currently saved account from the workspace TAM
+        // Pre-select the currently saved account.
+        // Priority: workspace TAM field (from backend) → localStorage fallback → auto-select if only one
+        const lsKey = activeWorkspace?.tenant_id ? `gads_${activeWorkspace.tenant_id}` : null
         const savedId = activeWorkspace?.google_ads_customer_id
+          || (lsKey ? localStorage.getItem(lsKey) : null)
         if (savedId) {
           const match = nonMccAccounts.find(a => a.customer_id === savedId)
           if (match) {
@@ -102,7 +105,11 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         throw new Error(errorData.detail || 'Failed to link Google Ads account')
       }
 
-      // Refresh workspaces so activeWorkspace.google_ads_customer_id updates for picker pre-selection
+      // Persist to localStorage so picker pre-selects correctly on next open
+      if (activeWorkspace?.tenant_id) {
+        localStorage.setItem(`gads_${activeWorkspace.tenant_id}`, customerId)
+      }
+      // Refresh workspaces so activeWorkspace.google_ads_customer_id also updates (once backend deployed)
       await refreshWorkspaces()
       actions.handleSuccess()
     })
