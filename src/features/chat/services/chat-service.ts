@@ -20,6 +20,7 @@ interface ChatRequestPayload {
 export interface RecentConversation {
   conversation_id: string
   title: string
+  is_pinned: boolean
   last_at: string | null
   message_count: number
 }
@@ -68,7 +69,6 @@ export const pollActionStatus = async (
 }
 
 export const sendChatMessage = async (payload: ChatRequestPayload) => {
-  // Chat v2: Anthropic native tool_use — Claude decides which tools to call
   const v2Payload = {
     message: payload.message,
     session_id: payload.session_id,
@@ -118,6 +118,35 @@ export const deleteConversation = async (sessionId: string, conversationId: stri
     return data.success === true
   } catch {
     return false
+  }
+}
+
+export const renameConversation = async (sessionId: string, conversationId: string, title: string): Promise<boolean> => {
+  try {
+    const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}/title`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+      body: JSON.stringify({ title }),
+    })
+    if (!response.ok) return false
+    const data = await response.json()
+    return data.success === true
+  } catch {
+    return false
+  }
+}
+
+export const pinConversation = async (sessionId: string, conversationId: string): Promise<boolean | null> => {
+  try {
+    const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}/pin`, {
+      method: 'PATCH',
+      headers: { 'X-Session-ID': sessionId },
+    })
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.is_pinned as boolean
+  } catch {
+    return null
   }
 }
 
