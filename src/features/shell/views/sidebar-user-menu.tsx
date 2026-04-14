@@ -366,7 +366,7 @@ export const SidebarUserMenu = ({
                                   <Icon.dots_vertical size={13} />
                                 </button>
                                 {isMenuOpen && (
-                                  <div className="absolute right-0 top-7 z-50 w-32 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
+                                  <div className="absolute right-0 bottom-7 z-50 w-32 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
                                     <button onClick={(e) => handlePin(e, conv)} className="w-full px-3 py-2 text-left paragraph-xs flex items-center gap-2 text-secondary hover:bg-secondary transition-colors">
                                       <Icon.pin_01 size={13} className="text-quaternary" />
                                       <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>

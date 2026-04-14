@@ -258,7 +258,7 @@ export const MobileNavigationChatsView = ({
                             <Icon.dots_vertical size={15} />
                           </button>
                           {isMenuOpen && (
-                            <div className="absolute right-0 top-8 z-50 w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
+                            <div className="absolute right-0 bottom-8 z-50 w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
                               <button
                                 onClick={(e) => handlePin(e, conv)}
                                 className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
