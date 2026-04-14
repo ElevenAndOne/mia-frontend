@@ -98,6 +98,7 @@ export const MobileNavigation = ({
           onClose={onClose}
           recentConversations={recentConversations}
           onLoadConversation={handleLoadConversation}
+          onConversationsChange={setRecentConversations}
         />
       )}
     </Sheet>

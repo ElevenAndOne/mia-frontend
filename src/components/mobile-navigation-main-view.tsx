@@ -103,6 +103,8 @@ export const MobileNavigationMainView = ({
         )}
       </div>
 
+      <div className="border-t border-tertiary mx-4" />
+
       {onRecentChatsClick && (
         <button
           onClick={onRecentChatsClick}

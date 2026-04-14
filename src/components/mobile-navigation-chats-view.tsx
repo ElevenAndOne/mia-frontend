@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { Icon } from './icon'
+import { useSession } from '../features/shell/../../contexts/session-context'
+import { deleteConversation } from '../features/chat/services/chat-service'
 import type { RecentConversation } from '../features/chat/services/chat-service'
 
 function formatRelativeDate(isoDate: string | null): string {
@@ -18,6 +21,7 @@ interface MobileNavigationChatsViewProps {
   onClose: () => void
   recentConversations: RecentConversation[]
   onLoadConversation: (conversationId: string) => void
+  onConversationsChange: (conversations: RecentConversation[]) => void
 }
 
 export const MobileNavigationChatsView = ({
@@ -25,7 +29,29 @@ export const MobileNavigationChatsView = ({
   onClose,
   recentConversations,
   onLoadConversation,
+  onConversationsChange,
 }: MobileNavigationChatsViewProps) => {
+  const { sessionId } = useSession()
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleDeleteClick = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    setConfirmingId(prev => prev === convId ? null : convId)
+  }
+
+  const handleConfirmDelete = async (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    if (!sessionId) return
+    setDeletingId(convId)
+    const ok = await deleteConversation(sessionId, convId)
+    if (ok) {
+      onConversationsChange(recentConversations.filter(c => c.conversation_id !== convId))
+    }
+    setDeletingId(null)
+    setConfirmingId(null)
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -59,22 +85,55 @@ export const MobileNavigationChatsView = ({
           </div>
         ) : (
           <div className="space-y-0.5">
-            {recentConversations.map((conv) => (
-              <button
-                key={conv.conversation_id}
-                onClick={() => onLoadConversation(conv.conversation_id)}
-                className="w-full px-3 py-3 rounded-lg flex items-start gap-3 text-left hover:bg-secondary transition-colors group"
-              >
-                <Icon.message_chat_square size={18} className="text-quaternary shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="paragraph-sm text-secondary truncate group-hover:text-primary transition-colors">
-                    {conv.title || 'Chat'}
-                  </p>
-                  <p className="paragraph-xs text-quaternary mt-0.5">{formatRelativeDate(conv.last_at)}</p>
+            {recentConversations.map((conv) => {
+              const isConfirming = confirmingId === conv.conversation_id
+              const isDeleting = deletingId === conv.conversation_id
+
+              return (
+                <div key={conv.conversation_id} className="relative">
+                  <button
+                    onClick={() => onLoadConversation(conv.conversation_id)}
+                    className="w-full px-3 py-3 rounded-lg flex items-start gap-3 text-left hover:bg-secondary transition-colors group"
+                  >
+                    <Icon.message_chat_square size={18} className="text-quaternary shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0 pr-8">
+                      <p className="paragraph-sm text-secondary truncate group-hover:text-primary transition-colors">
+                        {conv.title || 'Chat'}
+                      </p>
+                      <p className="paragraph-xs text-quaternary mt-0.5">{formatRelativeDate(conv.last_at)}</p>
+                    </div>
+                  </button>
+
+                  {/* Delete / confirm buttons */}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {isConfirming ? (
+                      <>
+                        <button
+                          onClick={(e) => handleConfirmDelete(e, conv.conversation_id)}
+                          disabled={isDeleting}
+                          className="px-2 py-1 rounded-md bg-error-primary text-error paragraph-xs hover:opacity-80 transition-opacity disabled:opacity-40"
+                        >
+                          {isDeleting ? '...' : 'Delete'}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmingId(null) }}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary transition-colors"
+                        >
+                          <Icon.x_close size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={(e) => handleDeleteClick(e, conv.conversation_id)}
+                        className="w-7 h-7 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all"
+                      >
+                        <Icon.trash_01 size={15} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <Icon.chevron_right size={16} className="text-quaternary shrink-0 mt-1" />
-              </button>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

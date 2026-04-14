@@ -107,6 +107,20 @@ export const fetchRecentConversations = async (sessionId: string): Promise<Recen
   }
 }
 
+export const deleteConversation = async (sessionId: string, conversationId: string): Promise<boolean> => {
+  try {
+    const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {
+      method: 'DELETE',
+      headers: { 'X-Session-ID': sessionId },
+    })
+    if (!response.ok) return false
+    const data = await response.json()
+    return data.success === true
+  } catch {
+    return false
+  }
+}
+
 export const fetchConversationMessages = async (
   sessionId: string,
   conversationId: string,

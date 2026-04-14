@@ -22,6 +22,7 @@ export interface ChatMessageItem {
 
 interface LocationState {
   newChat?: boolean
+  loadConversationId?: string
 }
 
 export const useChatView = () => {
@@ -97,18 +98,6 @@ export const useChatView = () => {
     setConversationId(null)
   }, [])
 
-  // Handle "New Chat" navigation state from menu/sidebar
-  useEffect(() => {
-    const state = location.state as LocationState | null
-    if (state?.newChat) {
-      setMessages([])
-      setStreamingContent('')
-      setConversationId(null)
-      // Clear the navigation state so refresh doesn't re-trigger
-      navigate(location.pathname, { replace: true, state: {} })
-    }
-  }, [location.state, location.pathname, navigate])
-
   const loadConversation = useCallback(async (convId: string) => {
     if (!sessionId) return
     setIsLoading(true)
@@ -123,6 +112,21 @@ export const useChatView = () => {
     }
     setIsLoading(false)
   }, [sessionId])
+
+  // Handle "New Chat" / load-conversation navigation state from menu/sidebar
+  useEffect(() => {
+    const state = location.state as LocationState | null
+    if (state?.newChat) {
+      setMessages([])
+      setStreamingContent('')
+      setConversationId(null)
+      navigate(location.pathname, { replace: true, state: {} })
+    } else if (state?.loadConversationId) {
+      const convId = state.loadConversationId
+      navigate(location.pathname, { replace: true, state: {} })
+      loadConversation(convId)
+    }
+  }, [location.state, location.pathname, navigate, loadConversation])
 
   const handleSubmit = useCallback(async (message: string, options?: { hidden?: boolean }) => {
     // Generate a conversation ID on the first message of a new chat session
@@ -146,7 +150,7 @@ export const useChatView = () => {
     try {
       // Build conversation history from existing messages (last 20 for context)
       // Include completed action results so Claude knows what was created
-      const history = messages.slice(-20).map(m => {
+      const history = messages.slice(-40).map(m => {
         let content = m.content
         if (m.actionStatus === 'completed' && m.actionResult) {
           const resultMsg = (m.actionResult as Record<string, unknown>).message as string | undefined
