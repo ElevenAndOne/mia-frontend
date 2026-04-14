@@ -5,8 +5,11 @@ import { Sheet } from '../../overlay'
 import { Icon } from '../../../components/icon'
 import type { SegmentedControlOption } from '../../../components/segmented-control'
 import { MobileNavigationMainView } from '../../../components/mobile-navigation-main-view'
+import { MobileNavigationChatsView } from '../../../components/mobile-navigation-chats-view'
 import { fetchRecentConversations } from '../../chat/services/chat-service'
 import type { RecentConversation } from '../../chat/services/chat-service'
+
+type NavView = 'main' | 'chats'
 
 interface MobileNavigationProps {
   isOpen: boolean
@@ -33,11 +36,13 @@ export const MobileNavigation = ({
 }: MobileNavigationProps) => {
   const { user, activeWorkspace, sessionId } = useSession()
   const { theme, setTheme } = useTheme()
+  const [view, setView] = useState<NavView>('main')
   const [recentConversations, setRecentConversations] = useState<RecentConversation[]>([])
 
-  // Fetch recent conversations when menu opens
+  // Fetch recent conversations when menu opens; reset to main view
   useEffect(() => {
     if (isOpen && sessionId) {
+      setView('main')
       fetchRecentConversations(sessionId).then(setRecentConversations)
     }
   }, [isOpen, sessionId])
@@ -48,33 +53,16 @@ export const MobileNavigation = ({
     { value: 'dark', label: 'Dark', icon: <Icon.moon_01 size={16} /> },
   ]
 
-  const handleIntegrations = () => {
-    onIntegrationsClick?.()
-    onClose()
-  }
+  const handleIntegrations = () => { onIntegrationsClick?.(); onClose() }
+  const handleCampaigns = () => { onCampaignsClick?.(); onClose() }
+  const handleHelp = () => { onHelpClick?.(); onClose() }
+  const handleWorkspaceSettings = () => { onWorkspaceSettings?.(); onClose() }
+  const handleLogout = () => { onLogout?.(); onClose() }
+  const handleThemeChange = (value: typeof theme) => setTheme(value)
 
-  const handleCampaigns = () => {
-    onCampaignsClick?.()
+  const handleLoadConversation = (id: string) => {
+    onLoadConversation?.(id)
     onClose()
-  }
-
-  const handleHelp = () => {
-    onHelpClick?.()
-    onClose()
-  }
-
-  const handleWorkspaceSettings = () => {
-    onWorkspaceSettings?.()
-    onClose()
-  }
-
-  const handleLogout = () => {
-    onLogout?.()
-    onClose()
-  }
-
-  const handleThemeChange = (value: typeof theme) => {
-    setTheme(value)
   }
 
   return (
@@ -85,24 +73,33 @@ export const MobileNavigation = ({
       showHandle={false}
       className="w-[85vw] max-w-[320px]"
     >
-      <MobileNavigationMainView
-        onClose={onClose}
-        onNewWorkspace={onNewWorkspace}
-        onIntegrationsClick={handleIntegrations}
-        onCampaignsClick={onCampaignsClick ? handleCampaigns : undefined}
-        onHelpClick={onHelpClick ? handleHelp : undefined}
-        onWorkspaceSettings={onWorkspaceSettings ? handleWorkspaceSettings : undefined}
-        onLogout={handleLogout}
-        activeWorkspace={activeWorkspace}
-        userName={user?.name || 'User'}
-        userEmail={user?.email || ''}
-        userImageUrl={user?.picture_url}
-        theme={theme}
-        themeOptions={themeOptions}
-        onThemeChange={handleThemeChange}
-        recentConversations={recentConversations}
-        onLoadConversation={onLoadConversation}
-      />
+      {view === 'main' ? (
+        <MobileNavigationMainView
+          onClose={onClose}
+          onNewWorkspace={onNewWorkspace}
+          onIntegrationsClick={handleIntegrations}
+          onCampaignsClick={onCampaignsClick ? handleCampaigns : undefined}
+          onHelpClick={onHelpClick ? handleHelp : undefined}
+          onWorkspaceSettings={onWorkspaceSettings ? handleWorkspaceSettings : undefined}
+          onLogout={handleLogout}
+          activeWorkspace={activeWorkspace}
+          userName={user?.name || 'User'}
+          userEmail={user?.email || ''}
+          userImageUrl={user?.picture_url}
+          theme={theme}
+          themeOptions={themeOptions}
+          onThemeChange={handleThemeChange}
+          recentConversations={recentConversations}
+          onRecentChatsClick={onLoadConversation ? () => setView('chats') : undefined}
+        />
+      ) : (
+        <MobileNavigationChatsView
+          onBack={() => setView('main')}
+          onClose={onClose}
+          recentConversations={recentConversations}
+          onLoadConversation={handleLoadConversation}
+        />
+      )}
     </Sheet>
   )
 }

@@ -4,18 +4,6 @@ import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
 import type { RecentConversation } from '../features/chat/services/chat-service'
 
-function formatRelativeDate(isoDate: string | null): string {
-  if (!isoDate) return ''
-  const date = new Date(isoDate)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return `${diffDays} days ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
 interface MobileNavigationMainViewProps {
   onClose: () => void
   onNewWorkspace?: () => void
@@ -32,7 +20,7 @@ interface MobileNavigationMainViewProps {
   themeOptions: Array<SegmentedControlOption<'system' | 'light' | 'dark'>>
   onThemeChange: (value: 'system' | 'light' | 'dark') => void
   recentConversations?: RecentConversation[]
-  onLoadConversation?: (conversationId: string) => void
+  onRecentChatsClick?: () => void
 }
 
 export const MobileNavigationMainView = ({
@@ -48,7 +36,7 @@ export const MobileNavigationMainView = ({
   themeOptions,
   onThemeChange,
   recentConversations = [],
-  onLoadConversation,
+  onRecentChatsClick,
 }: MobileNavigationMainViewProps) => {
   return (
     <div className="flex flex-col h-full">
@@ -115,31 +103,19 @@ export const MobileNavigationMainView = ({
         )}
       </div>
 
-      {/* Recent Chats */}
-      {recentConversations.length > 0 && onLoadConversation && (
-        <>
-          <div className="border-t border-tertiary mx-4" />
-          <div className="px-4 pt-3 pb-1">
-            <h3 className="label-xs text-quaternary mb-2 px-3">Recent Chats</h3>
-            <div className="space-y-0.5 max-h-52 overflow-y-auto">
-              {recentConversations.map((conv) => (
-                <button
-                  key={conv.conversation_id}
-                  onClick={() => onLoadConversation(conv.conversation_id)}
-                  className="w-full px-3 py-2 rounded-lg flex items-start gap-2.5 text-left hover:bg-secondary transition-colors group"
-                >
-                  <Icon.message_chat_square size={16} className="text-quaternary shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="paragraph-xs text-secondary truncate group-hover:text-primary transition-colors">
-                      {conv.title || 'Chat'}
-                    </p>
-                    <p className="paragraph-xs text-quaternary">{formatRelativeDate(conv.last_at)}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
+      {onRecentChatsClick && (
+        <button
+          onClick={onRecentChatsClick}
+          className="w-full px-3 py-2.5 mx-4 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          style={{ width: 'calc(100% - 2rem)' }}
+        >
+          <Icon.message_chat_square size={20} className="text-tertiary" />
+          <span className="paragraph-sm flex-1 text-left">Recent Chats</span>
+          {recentConversations.length > 0 && (
+            <span className="paragraph-xs text-quaternary">{recentConversations.length}</span>
+          )}
+          <Icon.chevron_right size={16} className="text-quaternary" />
+        </button>
       )}
 
       <div className="border-t border-tertiary mx-4" />
