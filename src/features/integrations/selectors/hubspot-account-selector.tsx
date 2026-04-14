@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { ConfirmDialog } from '../../../components/confirm-dialog'
 import type { HubSpotAccount } from '../types'
 
 interface HubSpotAccountSelectorProps {
@@ -89,14 +90,20 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     })
   }
 
-  const handleRemoveAccount = async (hubspotId: number, accountName: string) => {
-    if (!confirm(`Remove ${accountName} from this account?`)) {
-      return
-    }
+  const [pendingRemove, setPendingRemove] = useState<{ id: number; name: string } | null>(null)
+
+  const handleRemoveAccount = (hubspotId: number, accountName: string) => {
+    setPendingRemove({ id: hubspotId, name: accountName })
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!pendingRemove) return
+    const { id } = pendingRemove
+    setPendingRemove(null)
 
     try {
       const response = await apiFetch(
-        `/api/oauth/hubspot/disconnect?hubspot_id=${hubspotId}`,
+        `/api/oauth/hubspot/disconnect?hubspot_id=${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -118,6 +125,7 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
   }
 
   return (
+    <>
     <AccountSelectorModal
       isOpen={isOpen}
       onClose={actions.handleClose}
@@ -161,6 +169,14 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
         ))}
       </div>
     </AccountSelectorModal>
+    <ConfirmDialog
+      isOpen={pendingRemove !== null}
+      message={`Remove ${pendingRemove?.name ?? ''} from this account?`}
+      confirmLabel="Remove"
+      onConfirm={handleConfirmRemove}
+      onCancel={() => setPendingRemove(null)}
+    />
+    </>
   )
 }
 

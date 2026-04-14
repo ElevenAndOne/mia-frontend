@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { ConfirmDialog } from '../../../components/confirm-dialog'
 import type { MailchimpAccount } from '../types'
 
 interface MailchimpAccountSelectorProps {
@@ -89,14 +90,20 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
     })
   }
 
-  const handleRemoveAccount = async (mailchimpId: number, accountName: string) => {
-    if (!confirm(`Remove ${accountName} from this account?`)) {
-      return
-    }
+  const [pendingRemove, setPendingRemove] = useState<{ id: number; name: string } | null>(null)
+
+  const handleRemoveAccount = (mailchimpId: number, accountName: string) => {
+    setPendingRemove({ id: mailchimpId, name: accountName })
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!pendingRemove) return
+    const { id } = pendingRemove
+    setPendingRemove(null)
 
     try {
       const response = await apiFetch(
-        `/api/oauth/mailchimp/disconnect?mailchimp_id=${mailchimpId}`,
+        `/api/oauth/mailchimp/disconnect?mailchimp_id=${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -119,6 +126,7 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
   }
 
   return (
+    <>
     <AccountSelectorModal
       isOpen={isOpen}
       onClose={actions.handleClose}
@@ -160,6 +168,14 @@ const MailchimpAccountSelector = ({ isOpen, onClose, onSuccess }: MailchimpAccou
         ))}
       </div>
     </AccountSelectorModal>
+    <ConfirmDialog
+      isOpen={pendingRemove !== null}
+      message={`Remove ${pendingRemove?.name ?? ''} from this account?`}
+      confirmLabel="Remove"
+      onConfirm={handleConfirmRemove}
+      onCancel={() => setPendingRemove(null)}
+    />
+    </>
   )
 }
 

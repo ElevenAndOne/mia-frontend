@@ -19,6 +19,7 @@ import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
+import { ConfirmDialog } from '../../components/confirm-dialog'
 import { logger } from '../../utils/logger'
 
 interface Integration {
@@ -84,6 +85,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoApiKey, setBrevoApiKey] = useState('')
   const [brevoSubmitting, setBrevoSubmitting] = useState(false)
   const [brevoError, setBrevoError] = useState('')
+  const [showBrevoUnlinkConfirm, setShowBrevoUnlinkConfirm] = useState(false)
 
   // Integration highlight state - read from sessionStorage on mount
   const [highlightedIds, setHighlightedIds] = useState<string[]>([])
@@ -112,14 +114,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
     // Check if we just returned from Google OAuth redirect flow
     // Uses localStorage flags because URL params get cleaned by session context before this runs
-    const googleAdsPending = localStorage.getItem('mia_google_ads_connect_pending')
-    const ga4Pending = localStorage.getItem('mia_ga4_connect_pending')
+    const googleAdsPending = localStorage.getItem(StorageKey.GOOGLE_ADS_CONNECT_PENDING)
+    const ga4Pending = localStorage.getItem(StorageKey.GA4_CONNECT_PENDING)
     let t: ReturnType<typeof setTimeout> | undefined
     if (googleAdsPending) {
-      localStorage.removeItem('mia_google_ads_connect_pending')
+      localStorage.removeItem(StorageKey.GOOGLE_ADS_CONNECT_PENDING)
       t = setTimeout(() => setOpenModal('google'), 1000)
     } else if (ga4Pending) {
-      localStorage.removeItem('mia_ga4_connect_pending')
+      localStorage.removeItem(StorageKey.GA4_CONNECT_PENDING)
       // After Google OAuth for GA4, open GA4 property selector (not Google Ads)
       t = setTimeout(() => setOpenModal('ga4'), 1000)
     }
@@ -312,10 +314,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
   // Handle Brevo Unlink
   const handleBrevoUnlink = async () => {
-    if (!confirm(`Disconnect Brevo from ${selectedAccount?.name || 'this account'}?`)) {
-      return
-    }
-
     setBrevoSubmitting(true)
     setBrevoError('')
 
@@ -387,7 +385,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
           localStorage.setItem(StorageKey.OAUTH_RETURN_URL, returnUrl)
-          localStorage.setItem('mia_ga4_connect_pending', 'true')
+          localStorage.setItem(StorageKey.GA4_CONNECT_PENDING, 'true')
           window.location.href = data.auth_url
           return
         }
@@ -497,7 +495,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // Use redirect flow — same pattern as session-context.tsx login()
           localStorage.setItem(StorageKey.OAUTH_PENDING, 'google')
           localStorage.setItem(StorageKey.OAUTH_RETURN_URL, returnUrl)
-          localStorage.setItem('mia_google_ads_connect_pending', 'true')
+          localStorage.setItem(StorageKey.GOOGLE_ADS_CONNECT_PENDING, 'true')
           window.location.href = data.auth_url
           return // Page will redirect, no need for popup logic
         }
@@ -694,6 +692,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const autoSyncCount = connectedSources.filter(s => s.autoSync).length
 
   return (
+    <>
     <div
       className="w-full h-dvh bg-primary flex flex-col overflow-hidden"
     >
@@ -997,7 +996,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               </button>
               {currentAccountData?.brevo_api_key ? (
                 <button
-                  onClick={handleBrevoUnlink}
+                  onClick={() => setShowBrevoUnlinkConfirm(true)}
                   disabled={brevoSubmitting}
                   className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1140,6 +1139,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         }}
       />
     </div>
+    <ConfirmDialog
+      isOpen={showBrevoUnlinkConfirm}
+      message={`Disconnect Brevo from ${selectedAccount?.name || 'this account'}?`}
+      confirmLabel="Disconnect"
+      onConfirm={() => { setShowBrevoUnlinkConfirm(false); handleBrevoUnlink() }}
+      onCancel={() => setShowBrevoUnlinkConfirm(false)}
+    />
+    </>
   )
 }
 

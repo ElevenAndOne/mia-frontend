@@ -94,9 +94,11 @@ const GA4PropertySelector = ({ isOpen, onClose, onSuccess, currentAccountName, g
 
       // Properties not ready yet — background fetch may still be running (takes ~18-20s).
       // Poll every 6 seconds up to 5 times (30s total) before giving up.
+      const GA4_POLL_INTERVAL_MS = 6000
+      const GA4_MAX_POLLS = 5
       logger.log('[GA4-PROPERTY-SELECTOR] Properties not cached yet, polling for background fetch...')
-      for (let i = 0; i < 5; i++) {
-        await new Promise(resolve => setTimeout(resolve, 6000))
+      for (let i = 0; i < GA4_MAX_POLLS; i++) {
+        await new Promise(resolve => setTimeout(resolve, GA4_POLL_INTERVAL_MS))
         const retryResponse = await apiFetch('/api/accounts/available', {
           headers: { 'X-Session-ID': sessionId || 'default' }
         })

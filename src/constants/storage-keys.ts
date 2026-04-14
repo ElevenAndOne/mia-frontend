@@ -36,4 +36,8 @@ export const StorageKey = {
 
   // Predict/Gold insights
   PREDICT_SEEN_PREFIX: 'mia_predict_seen_',
+
+  // Google OAuth connect-pending flags (set before OAuth redirect, consumed on return)
+  GOOGLE_ADS_CONNECT_PENDING: 'mia_google_ads_connect_pending',
+  GA4_CONNECT_PENDING: 'mia_ga4_connect_pending',
 } as const

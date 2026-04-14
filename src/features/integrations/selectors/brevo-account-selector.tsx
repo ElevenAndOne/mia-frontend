@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { ConfirmDialog } from '../../../components/confirm-dialog'
 import type { BrevoAccount } from '../types'
 
 interface BrevoAccountSelectorProps {
@@ -91,14 +92,20 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     })
   }
 
-  const handleRemoveAccount = async (brevoId: number, accountName: string) => {
-    if (!confirm(`Remove ${accountName} from this account?`)) {
-      return
-    }
+  const [pendingRemove, setPendingRemove] = useState<{ id: number; name: string } | null>(null)
+
+  const handleRemoveAccount = (brevoId: number, accountName: string) => {
+    setPendingRemove({ id: brevoId, name: accountName })
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!pendingRemove) return
+    const { id } = pendingRemove
+    setPendingRemove(null)
 
     try {
       const response = await apiFetch(
-        `/api/oauth/brevo/disconnect?brevo_id=${brevoId}`,
+        `/api/oauth/brevo/disconnect?brevo_id=${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -120,6 +127,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
   }
 
   return (
+    <>
     <AccountSelectorModal
       isOpen={isOpen}
       onClose={actions.handleClose}
@@ -163,6 +171,14 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
         ))}
       </div>
     </AccountSelectorModal>
+    <ConfirmDialog
+      isOpen={pendingRemove !== null}
+      message={`Remove ${pendingRemove?.name ?? ''} from this account?`}
+      confirmLabel="Remove"
+      onConfirm={handleConfirmRemove}
+      onCancel={() => setPendingRemove(null)}
+    />
+  </>
   )
 }
 
