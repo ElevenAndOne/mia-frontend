@@ -6,7 +6,7 @@ import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
-import { sendChatMessage, confirmAction, pollActionStatus } from '../services/chat-service'
+import { sendChatMessage, confirmAction, pollActionStatus, fetchConversationMessages } from '../services/chat-service'
 import type { PendingAction } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
 
@@ -31,6 +31,7 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState(() =>
     localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
   )
@@ -93,6 +94,7 @@ export const useChatView = () => {
   const handleNewChat = useCallback(() => {
     setMessages([])
     setStreamingContent('')
+    setConversationId(null)
   }, [])
 
   // Handle "New Chat" navigation state from menu/sidebar
@@ -101,12 +103,35 @@ export const useChatView = () => {
     if (state?.newChat) {
       setMessages([])
       setStreamingContent('')
+      setConversationId(null)
       // Clear the navigation state so refresh doesn't re-trigger
       navigate(location.pathname, { replace: true, state: {} })
     }
   }, [location.state, location.pathname, navigate])
 
+  const loadConversation = useCallback(async (convId: string) => {
+    if (!sessionId) return
+    setIsLoading(true)
+    const msgs = await fetchConversationMessages(sessionId, convId)
+    if (msgs.length > 0) {
+      setMessages(msgs.map((m, i) => ({
+        id: `${m.role}-loaded-${i}`,
+        role: m.role,
+        content: m.content,
+      })))
+      setConversationId(convId)
+    }
+    setIsLoading(false)
+  }, [sessionId])
+
   const handleSubmit = useCallback(async (message: string, options?: { hidden?: boolean }) => {
+    // Generate a conversation ID on the first message of a new chat session
+    const activeConvId = conversationId ?? (() => {
+      const newId = crypto.randomUUID()
+      setConversationId(newId)
+      return newId
+    })()
+
     const userMessage: ChatMessageItem = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -119,9 +144,9 @@ export const useChatView = () => {
     setStreamingContent('')
 
     try {
-      // Build conversation history from existing messages (last 10 for context)
+      // Build conversation history from existing messages (last 20 for context)
       // Include completed action results so Claude knows what was created
-      const history = messages.slice(-10).map(m => {
+      const history = messages.slice(-20).map(m => {
         let content = m.content
         if (m.actionStatus === 'completed' && m.actionResult) {
           const resultMsg = (m.actionResult as Record<string, unknown>).message as string | undefined
@@ -141,6 +166,7 @@ export const useChatView = () => {
         date_range: dateRange,
         selected_platforms: selectedPlatforms,
         conversation_history: history.length > 0 ? history : undefined,
+        conversation_id: activeConvId,
       })
 
       const assistantMessage: ChatMessageItem = {
@@ -165,7 +191,7 @@ export const useChatView = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms])
+  }, [messages, sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms, conversationId])
 
   const handleQuickAction = useCallback((actionId: string) => {
     const params = new URLSearchParams()
@@ -283,5 +309,6 @@ export const useChatView = () => {
     handleConfirmAction,
     handleCancelAction,
     integrationPrompt,
+    loadConversation,
   }
 }

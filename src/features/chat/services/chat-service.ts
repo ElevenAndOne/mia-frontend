@@ -14,6 +14,14 @@ interface ChatRequestPayload {
   date_range: string
   selected_platforms?: string[]
   conversation_history?: ChatHistoryMessage[]
+  conversation_id?: string
+}
+
+export interface RecentConversation {
+  conversation_id: string
+  title: string
+  last_at: string | null
+  message_count: number
 }
 
 export interface PendingAction {
@@ -67,6 +75,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload) => {
     date_range: payload.date_range,
     selected_platforms: payload.selected_platforms,
     conversation_history: payload.conversation_history,
+    conversation_id: payload.conversation_id,
   }
 
   const response = await apiFetch('/api/chat/v2', {
@@ -83,4 +92,33 @@ export const sendChatMessage = async (payload: ChatRequestPayload) => {
   }
 
   return response.json() as Promise<ChatResponse>
+}
+
+export const fetchRecentConversations = async (sessionId: string): Promise<RecentConversation[]> => {
+  try {
+    const response = await apiFetch('/api/chat/v2/conversations', {
+      headers: { 'X-Session-ID': sessionId },
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.conversations || []
+  } catch {
+    return []
+  }
+}
+
+export const fetchConversationMessages = async (
+  sessionId: string,
+  conversationId: string,
+): Promise<ChatHistoryMessage[]> => {
+  try {
+    const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {
+      headers: { 'X-Session-ID': sessionId },
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return data.messages || []
+  } catch {
+    return []
+  }
 }

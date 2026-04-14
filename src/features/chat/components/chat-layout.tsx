@@ -17,6 +17,7 @@ interface ChatLayoutProps {
   onLogout?: () => void
   onWorkspaceSettings?: () => void
   onNewWorkspace?: () => void
+  onLoadConversation?: (conversationId: string) => void
 }
 
 export const ChatLayout = ({
@@ -29,6 +30,7 @@ export const ChatLayout = ({
   onLogout,
   onWorkspaceSettings,
   onNewWorkspace,
+  onLoadConversation,
 }: ChatLayoutProps) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false)
@@ -127,6 +129,7 @@ export const ChatLayout = ({
         onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
+        onLoadConversation={onLoadConversation ? (id) => { onLoadConversation(id); setIsMobileNavOpen(false) } : undefined}
       />
     </div>
   )

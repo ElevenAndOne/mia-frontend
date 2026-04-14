@@ -53,6 +53,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
     handleConfirmAction,
     handleCancelAction,
     integrationPrompt,
+    loadConversation,
   } = useChatView()
 
   // Track page visit once
@@ -104,6 +105,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
       onNewWorkspace={onNewWorkspace}
+      onLoadConversation={loadConversation}
     >
       <div className="flex-1 flex flex-col h-full min-h-0 pt-14 md:pt-0">
         {!hasMessages ? (

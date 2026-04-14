@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useTheme } from '../../../contexts/theme-context'
 import { Sheet } from '../../overlay'
 import { Icon } from '../../../components/icon'
 import type { SegmentedControlOption } from '../../../components/segmented-control'
 import { MobileNavigationMainView } from '../../../components/mobile-navigation-main-view'
+import { fetchRecentConversations } from '../../chat/services/chat-service'
+import type { RecentConversation } from '../../chat/services/chat-service'
 
 interface MobileNavigationProps {
   isOpen: boolean
@@ -14,6 +17,7 @@ interface MobileNavigationProps {
   onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
+  onLoadConversation?: (conversationId: string) => void
 }
 
 export const MobileNavigation = ({
@@ -24,10 +28,19 @@ export const MobileNavigation = ({
   onCampaignsClick,
   onHelpClick,
   onLogout,
-  onWorkspaceSettings
+  onWorkspaceSettings,
+  onLoadConversation,
 }: MobileNavigationProps) => {
-  const { user, activeWorkspace } = useSession()
+  const { user, activeWorkspace, sessionId } = useSession()
   const { theme, setTheme } = useTheme()
+  const [recentConversations, setRecentConversations] = useState<RecentConversation[]>([])
+
+  // Fetch recent conversations when menu opens
+  useEffect(() => {
+    if (isOpen && sessionId) {
+      fetchRecentConversations(sessionId).then(setRecentConversations)
+    }
+  }, [isOpen, sessionId])
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
     { value: 'system', label: 'Auto', icon: <Icon.monitor_01 size={16} /> },
@@ -87,6 +100,8 @@ export const MobileNavigation = ({
         theme={theme}
         themeOptions={themeOptions}
         onThemeChange={handleThemeChange}
+        recentConversations={recentConversations}
+        onLoadConversation={onLoadConversation}
       />
     </Sheet>
   )
