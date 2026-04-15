@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { useTheme } from '../../../contexts/theme-context'
@@ -50,6 +51,7 @@ export const SidebarUserMenu = ({
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -61,13 +63,7 @@ export const SidebarUserMenu = ({
 
   useEffect(() => {
     if (isOpen && sessionId) {
-      setView('main')
       fetchRecentConversations(sessionId).then(setRecentConversations)
-      setConfirmingId(null)
-      setMenuOpenId(null)
-      setRenamingId(null)
-      setShowSearch(false)
-      setSearchQuery('')
     }
   }, [isOpen, sessionId])
 
@@ -92,13 +88,22 @@ export const SidebarUserMenu = ({
     if (!menuOpenId) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Element
-      if (!target.closest('[data-chat-menu]')) setMenuOpenId(null)
+      if (!target.closest('[data-chat-menu]')) { setMenuOpenId(null); setMenuPos(null) }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpenId])
 
-  const handleClose = () => setIsOpen(false)
+  const handleClose = () => {
+    setIsOpen(false)
+    setView('main')
+    setMenuOpenId(null)
+    setMenuPos(null)
+    setConfirmingId(null)
+    setRenamingId(null)
+    setShowSearch(false)
+    setSearchQuery('')
+  }
 
   const handleDeleteClick = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation()
@@ -118,7 +123,15 @@ export const SidebarUserMenu = ({
 
   const handleMenuToggle = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation()
-    setMenuOpenId(prev => prev === convId ? null : convId)
+    if (menuOpenId === convId) {
+      setMenuOpenId(null)
+      setMenuPos(null)
+    } else {
+      const btn = e.currentTarget as HTMLElement
+      const rect = btn.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom, right: window.innerWidth - rect.right })
+      setMenuOpenId(convId)
+    }
   }
 
   const handlePin = async (e: React.MouseEvent, conv: RecentConversation) => {
@@ -321,9 +334,9 @@ export const SidebarUserMenu = ({
                           }}
                           className="w-full px-3 py-2.5 rounded-lg flex items-start gap-2 text-left hover:bg-secondary transition-colors"
                         >
-                          <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                            {conv.is_pinned && <Icon.pin_01 size={11} className="text-quaternary" />}
+                          <div className="relative shrink-0 mt-0.5">
                             <Icon.message_chat_square size={15} className="text-quaternary" />
+                            {conv.is_pinned && <Icon.pin_01 size={9} className="absolute -top-1.5 -right-1.5 text-error" />}
                           </div>
                           <div className="flex-1 min-w-0 pr-16">
                             {isRenaming ? (
@@ -365,8 +378,13 @@ export const SidebarUserMenu = ({
                                 <button onClick={(e) => handleMenuToggle(e, conv.conversation_id)} className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all">
                                   <Icon.dots_vertical size={13} />
                                 </button>
-                                {isMenuOpen && (
-                                  <div className="absolute right-0 bottom-7 z-50 w-32 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
+                                {isMenuOpen && menuPos && createPortal(
+                                  <div
+                                    style={{ position: 'fixed', top: menuPos.top + 4, right: menuPos.right }}
+                                    className="z-[9999] w-32 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden"
+                                    data-chat-menu
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
                                     <button onClick={(e) => handlePin(e, conv)} className="w-full px-3 py-2 text-left paragraph-xs flex items-center gap-2 text-secondary hover:bg-secondary transition-colors">
                                       <Icon.pin_01 size={13} className="text-quaternary" />
                                       <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>
@@ -375,7 +393,8 @@ export const SidebarUserMenu = ({
                                       <Icon.edit_01 size={13} className="text-quaternary" />
                                       <span>Rename</span>
                                     </button>
-                                  </div>
+                                  </div>,
+                                  document.body
                                 )}
                               </div>
                             </>

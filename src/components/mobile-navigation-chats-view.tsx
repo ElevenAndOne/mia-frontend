@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from './icon'
 import { useSession } from '../features/shell/../../contexts/session-context'
 import { deleteConversation, renameConversation, pinConversation } from '../features/chat/services/chat-service'
@@ -35,6 +36,7 @@ export const MobileNavigationChatsView = ({
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -63,7 +65,7 @@ export const MobileNavigationChatsView = ({
     if (!menuOpenId) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Element
-      if (!target.closest('[data-chat-menu]')) setMenuOpenId(null)
+      if (!target.closest('[data-chat-menu]')) { setMenuOpenId(null); setMenuPos(null) }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -87,7 +89,15 @@ export const MobileNavigationChatsView = ({
 
   const handleMenuToggle = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation()
-    setMenuOpenId(prev => prev === convId ? null : convId)
+    if (menuOpenId === convId) {
+      setMenuOpenId(null)
+      setMenuPos(null)
+    } else {
+      const btn = e.currentTarget as HTMLElement
+      const rect = btn.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom, right: window.innerWidth - rect.right })
+      setMenuOpenId(convId)
+    }
   }
 
   const handlePin = async (e: React.MouseEvent, conv: RecentConversation) => {
@@ -197,9 +207,9 @@ export const MobileNavigationChatsView = ({
                     onClick={() => !isRenaming && onLoadConversation(conv.conversation_id)}
                     className="w-full px-3 py-3 rounded-lg flex items-start gap-3 text-left hover:bg-secondary transition-colors group"
                   >
-                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                      {conv.is_pinned && <Icon.pin_01 size={12} className="text-quaternary" />}
+                    <div className="relative shrink-0 mt-0.5">
                       <Icon.message_chat_square size={18} className="text-quaternary" />
+                      {conv.is_pinned && <Icon.pin_01 size={10} className="absolute -top-1.5 -right-1.5 text-error" />}
                     </div>
                     <div className="flex-1 min-w-0 pr-16">
                       {isRenaming ? (
@@ -257,8 +267,12 @@ export const MobileNavigationChatsView = ({
                           >
                             <Icon.dots_vertical size={15} />
                           </button>
-                          {isMenuOpen && (
-                            <div className="absolute right-0 bottom-8 z-50 w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden" data-chat-menu>
+                          {isMenuOpen && menuPos && createPortal(
+                            <div
+                              style={{ position: 'fixed', top: menuPos.top + 4, right: menuPos.right }}
+                              className="z-[9999] w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden"
+                              data-chat-menu
+                            >
                               <button
                                 onClick={(e) => handlePin(e, conv)}
                                 className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
@@ -273,7 +287,8 @@ export const MobileNavigationChatsView = ({
                                 <Icon.edit_01 size={15} className="text-quaternary" />
                                 <span>Rename</span>
                               </button>
-                            </div>
+                            </div>,
+                            document.body
                           )}
                         </div>
                       </>
