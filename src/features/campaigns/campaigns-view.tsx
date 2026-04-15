@@ -88,32 +88,16 @@ function formatBudget(amount: number | null, currency: string | null): string {
   return `${symbol}${amount.toLocaleString()}`
 }
 
-function getCurrentPhaseIndex(campaign: CampaignDetail): number {
+/** Returns index of best default phase to show — prefers explicit date match, else first. */
+function getDefaultPhaseIndex(campaign: CampaignDetail): number {
   const today = new Date()
   const phases = [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order)
-
-  // Try explicit phase dates first
   for (let i = 0; i < phases.length; i++) {
-    if (phases[i].start_date && phases[i].end_date) {
-      const start = new Date(phases[i].start_date!)
-      const end = new Date(phases[i].end_date!)
-      if (today >= start && today <= end) return i
+    const { start_date, end_date } = phases[i]
+    if (start_date && end_date) {
+      if (today >= new Date(start_date) && today <= new Date(end_date)) return i
     }
   }
-
-  // Fall back to dividing campaign duration evenly
-  if (campaign.start_date && campaign.end_date) {
-    const start = new Date(campaign.start_date)
-    const end = new Date(campaign.end_date)
-    const total = end.getTime() - start.getTime()
-    const elapsed = today.getTime() - start.getTime()
-
-    if (elapsed < 0) return 0
-    if (elapsed > total) return phases.length - 1
-
-    return Math.min(Math.floor((elapsed / total) * phases.length), phases.length - 1)
-  }
-
   return 0
 }
 
@@ -134,50 +118,33 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function PhaseTimeline({ phases, currentIndex }: { phases: Phase[]; currentIndex: number }) {
-  const sorted = [...phases].sort((a, b) => a.sort_order - b.sort_order)
-
+function PhaseTabs({
+  phases,
+  selectedId,
+  onSelect,
+}: {
+  phases: Phase[]
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
   return (
-    <div className="flex items-start gap-0 w-full overflow-x-auto pb-1">
-      {sorted.map((phase, i) => {
-        const isPast = i < currentIndex
-        const isCurrent = i === currentIndex
-        const isLast = i === sorted.length - 1
-
+    <div className="flex rounded-xl border border-tertiary overflow-hidden">
+      {phases.map((phase) => {
+        const isSelected = phase.phase_id === selectedId
         return (
-          <div key={phase.phase_id} className="flex items-center flex-1 min-w-0">
-            {/* Step */}
-            <div className="flex flex-col items-center shrink-0">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors ${
-                isCurrent
-                  ? 'bg-utility-brand-600 border-utility-brand-600'
-                  : isPast
-                    ? 'bg-utility-success-500 border-utility-success-500'
-                    : 'bg-primary border-tertiary'
-              }`}>
-                {isPast ? (
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <span className={`label-xs ${isCurrent ? 'text-white' : 'text-quaternary'}`}>{i + 1}</span>
-                )}
-              </div>
-              <span className={`mt-1.5 label-xs text-center max-w-[72px] leading-tight ${
-                isCurrent ? 'text-primary font-semibold' : 'text-quaternary'
-              }`}>
-                {phase.phase_name}
-              </span>
-              {isCurrent && (
-                <span className="mt-0.5 label-xs text-utility-brand-600 font-medium">← now</span>
-              )}
-            </div>
-
-            {/* Connector */}
-            {!isLast && (
-              <div className={`flex-1 h-0.5 mx-1 mb-5 ${i < currentIndex ? 'bg-utility-success-400' : 'bg-tertiary'}`} />
-            )}
-          </div>
+          <button
+            key={phase.phase_id}
+            onClick={() => onSelect(phase.phase_id)}
+            className={`flex-1 py-2.5 px-1 text-center transition-colors border-b-2 ${
+              isSelected
+                ? 'border-utility-brand-500 bg-secondary'
+                : 'border-transparent hover:bg-secondary'
+            }`}
+          >
+            <span className={`paragraph-xs font-medium ${isSelected ? 'text-primary' : 'text-tertiary'}`}>
+              {phase.phase_name}
+            </span>
+          </button>
         )
       })}
     </div>
@@ -264,6 +231,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
 
   const tenantId = activeWorkspace?.tenant_id
 
@@ -294,6 +262,9 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         if (!detailRes.ok) throw new Error('Failed to load campaign detail')
         const detail: CampaignDetail = await detailRes.json()
         setCampaign(detail)
+        const sorted = [...detail.phases].sort((a, b) => a.sort_order - b.sort_order)
+        const defaultIdx = getDefaultPhaseIndex(detail)
+        setSelectedPhaseId(sorted[defaultIdx]?.phase_id ?? null)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
       } finally {
@@ -304,9 +275,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     load()
   }, [tenantId, sessionId])
 
-  const currentPhaseIndex = campaign ? getCurrentPhaseIndex(campaign) : 0
   const sortedPhases = campaign ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order) : []
-  const currentPhase = sortedPhases[currentPhaseIndex] ?? null
+  const selectedPhase = sortedPhases.find(p => p.phase_id === selectedPhaseId) ?? sortedPhases[0] ?? null
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -409,19 +379,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               </div>
             )}
 
-            {/* Phase timeline */}
-            {sortedPhases.length > 0 && (
-              <div>
-                <p className="label-xs text-quaternary uppercase tracking-wide mb-3">Campaign Phases</p>
-                <PhaseTimeline phases={sortedPhases} currentIndex={currentPhaseIndex} />
-              </div>
-            )}
-
-            {/* Current phase detail */}
-            {currentPhase && (
-              <div>
-                <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Current Phase</p>
-                <PhaseDetail phase={currentPhase} />
+            {/* Phase tabs + detail */}
+            {sortedPhases.length > 0 && selectedPhaseId && (
+              <div className="space-y-3">
+                <p className="label-xs text-quaternary uppercase tracking-wide">Campaign Phases</p>
+                <PhaseTabs
+                  phases={sortedPhases}
+                  selectedId={selectedPhaseId}
+                  onSelect={setSelectedPhaseId}
+                />
+                {selectedPhase && <PhaseDetail phase={selectedPhase} />}
               </div>
             )}
           </>

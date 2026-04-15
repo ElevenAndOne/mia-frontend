@@ -18,19 +18,19 @@ const actions: QuickAction[] = [
   {
     id: 'grow',
     label: 'Grow',
-    description: 'Discover opportunities to expand your reach and revenue.',
+    description: 'Discover growth opportunities.',
     icon: <Icon.trend_up_01 size={20} />
   },
   {
     id: 'optimize',
     label: 'Optimize',
-    description: 'Fine-tune campaigns for better performance and efficiency.',
+    description: 'Improve campaign performance.',
     icon: <Icon.sliders_01 size={20} />
   },
   {
     id: 'protect',
     label: 'Protect',
-    description: 'Identify risks and safeguard your marketing investments.',
+    description: 'Safeguard your investments.',
     icon: <Icon.shield_tick size={20} />
   }
 ]

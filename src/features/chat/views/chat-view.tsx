@@ -5,6 +5,7 @@ import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
 import QuickActions from '../components/quick-actions'
+import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
@@ -111,11 +112,14 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
         {!hasMessages ? (
           <>
             <ChatEmptyState userName={userName}>
-              <QuickActions
-                onAction={handleQuickAction}
-                disabled={isLoading || !hasSelectedPlatforms}
-                predictReady={predictReady}
-              />
+              <div className="w-full flex flex-col gap-2 pb-4">
+                <QuickActions
+                  onAction={handleQuickAction}
+                  disabled={isLoading || !hasSelectedPlatforms}
+                  predictReady={predictReady}
+                />
+                <RaceCampaignTracker disabled={isLoading} />
+              </div>
             </ChatEmptyState>
 
             <ChatInput
