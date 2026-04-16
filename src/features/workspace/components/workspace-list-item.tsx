@@ -3,6 +3,29 @@ import { Icon } from '../../../components/icon'
 import type { Workspace } from '../types'
 import { WorkspaceRoleIcon } from './workspace-role-icon'
 
+// Deterministic avatar color — each workspace gets a unique color via FNV-1a hash
+const AVATAR_PALETTES = [
+  'bg-[#3B5BDB] text-white',  // indigo
+  'bg-[#0CA678] text-white',  // teal
+  'bg-[#E67700] text-white',  // amber
+  'bg-[#9C36B5] text-white',  // violet
+  'bg-[#C92A2A] text-white',  // red
+  'bg-[#1971C2] text-white',  // blue
+  'bg-[#5C7CFA] text-white',  // periwinkle
+  'bg-[#2F9E44] text-white',  // green
+  'bg-[#C2255C] text-white',  // rose
+  'bg-[#0E9594] text-white',  // cyan
+]
+
+function getAvatarPalette(name: string): string {
+  let hash = 2166136261
+  for (let i = 0; i < name.length; i++) {
+    hash ^= name.charCodeAt(i)
+    hash = (hash * 16777619) >>> 0
+  }
+  return AVATAR_PALETTES[hash % AVATAR_PALETTES.length]
+}
+
 interface WorkspaceListItemProps {
   workspace: Workspace
   isActive: boolean
@@ -75,7 +98,14 @@ export const WorkspaceListItem = ({
       <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
     ) : null
   ) : null)
-  const avatarGradientClasses = useGradientAvatar ? 'bg-linear-to-br from-utility-info-500 to-utility-purple-600' : ''
+  const avatarPalette = useGradientAvatar ? getAvatarPalette(workspace.name) : ''
+  // Two-letter initials: first letter of first two words, or first two chars
+  const initials = workspace.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join('') || workspace.name.slice(0, 2).toUpperCase()
 
   return (
     <button
@@ -89,9 +119,9 @@ export const WorkspaceListItem = ({
       } ${className}`.trim()}
     >
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center text-white label-sm shrink-0 ${avatarGradientClasses} ${avatarClassName} ${avatarTextClassName}`.trim()}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 ${avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
       >
-        {workspace.name.charAt(0).toUpperCase()}
+        {initials}
       </div>
 
       <div className="flex-1 min-w-0">

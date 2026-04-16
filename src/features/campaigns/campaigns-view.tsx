@@ -4,6 +4,35 @@ import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 
+// ── Campaign detail cache (module-level + sessionStorage, 23h TTL) ─────────
+const CACHE_TTL_MS = 23 * 60 * 60 * 1000
+const SS_KEY_PREFIX = 'campaigns_detail_'
+interface CachedDetail { data: CampaignDetail; ts: number }
+const detailCache = new Map<string, CachedDetail>()
+
+function getCachedDetail(tenantId: string): CampaignDetail | undefined {
+  const key = SS_KEY_PREFIX + tenantId
+  const mem = detailCache.get(tenantId)
+  if (mem && Date.now() - mem.ts < CACHE_TTL_MS) return mem.data
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (raw) {
+      const entry: CachedDetail = JSON.parse(raw)
+      if (Date.now() - entry.ts < CACHE_TTL_MS) {
+        detailCache.set(tenantId, entry)
+        return entry.data
+      }
+    }
+  } catch { /* ignore */ }
+  return undefined
+}
+
+function setCachedDetail(tenantId: string, data: CampaignDetail) {
+  const entry: CachedDetail = { data, ts: Date.now() }
+  detailCache.set(tenantId, entry)
+  try { sessionStorage.setItem(SS_KEY_PREFIX + tenantId, JSON.stringify(entry)) } catch { /* ignore */ }
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface KPI {
@@ -228,15 +257,24 @@ interface CampaignsViewProps {
 
 export function CampaignsView({ onBack }: CampaignsViewProps) {
   const { sessionId, activeWorkspace } = useSession()
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
-
   const tenantId = activeWorkspace?.tenant_id
+
+  // Initialise from cache so there's zero spinner flash on re-navigation
+  const cachedOnMount = tenantId ? getCachedDetail(tenantId) : undefined
+  const [campaign, setCampaign] = useState<CampaignDetail | null>(cachedOnMount ?? null)
+  const [loading, setLoading] = useState(cachedOnMount === undefined)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(() => {
+    if (!cachedOnMount) return null
+    const sorted = [...cachedOnMount.phases].sort((a, b) => a.sort_order - b.sort_order)
+    return sorted[getDefaultPhaseIndex(cachedOnMount)]?.phase_id ?? null
+  })
 
   useEffect(() => {
     if (!tenantId || !sessionId) return
+
+    // Already have fresh cache — skip fetch
+    if (getCachedDetail(tenantId)) return
 
     const load = async () => {
       setLoading(true)
@@ -261,6 +299,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         })
         if (!detailRes.ok) throw new Error('Failed to load campaign detail')
         const detail: CampaignDetail = await detailRes.json()
+        setCachedDetail(tenantId, detail)
         setCampaign(detail)
         const sorted = [...detail.phases].sort((a, b) => a.sort_order - b.sort_order)
         const defaultIdx = getDefaultPhaseIndex(detail)

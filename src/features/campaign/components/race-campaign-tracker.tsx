@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { fetchCampaignTracker, fetchPhaseActuals, getCachedTracker, getCachedActuals } from '../services/campaign-tracker-service'
 import type { CampaignTracker, CampaignPhase, KPIActual } from '../services/campaign-tracker-service'
@@ -48,7 +48,7 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
   const [loading, setLoading] = useState(cachedOnMount === undefined) // false if cache hit
   const [selectedPhase, setSelectedPhase] = useState<string | null>(() => {
     if (!cachedOnMount) return null
-    return cachedOnMount.current_phase || cachedOnMount.phases.find(p => p.status === 'active')?.phase_name || cachedOnMount.phases[0]?.phase_name ?? null
+    return (cachedOnMount.current_phase || cachedOnMount.phases.find(p => p.status === 'active')?.phase_name || cachedOnMount.phases[0]?.phase_name) ?? null
   })
   // Pre-populate actualsMap from cache for all phases we already have
   const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(() => {
@@ -61,9 +61,11 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
     return map
   })
 
+  // Ref keeps loadActuals from going stale without adding actualsMap as a dep
+  const actualsMapRef = useRef(actualsMap)
+  useEffect(() => { actualsMapRef.current = actualsMap }, [actualsMap])
+
   // Fetch campaign tracker data on mount.
-  // fetchCampaignTracker returns cached data instantly if < 5 min old,
-  // so there's no skeleton flash on re-navigation.
   useEffect(() => {
     if (!sessionId || !tenantId) return
     let cancelled = false
@@ -73,16 +75,36 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
       if (data) {
         const defaultPhase = data.current_phase || data.phases.find(p => p.status === 'active')?.phase_name || data.phases[0]?.phase_name
         setSelectedPhase(prev => prev ?? defaultPhase ?? null)
+        // Pre-populate actualsMap from JS/sessionStorage cache for all phases
+        const cached: Record<string, KPIActual[]> = {}
+        for (const phase of data.phases) {
+          const hit = getCachedActuals(tenantId, data.campaign_id, phase.phase_name)
+          if (hit !== undefined && hit !== null) cached[phase.phase_name] = hit
+        }
+        if (Object.keys(cached).length > 0) {
+          setActualsMap(prev => ({ ...cached, ...prev }))
+        }
       }
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [sessionId, tenantId])
 
-  // Fetch actuals when a phase is selected (if not already fetched)
+  // Fetch actuals when a phase is selected (if not already fetched).
+  // Uses ref for actualsMap so we always read current state without recreating the callback.
   const loadActuals = useCallback(async (phaseName: string) => {
     if (!sessionId || !tenantId || !campaign) return
-    if (actualsMap[phaseName]) return // already fetched or loading
+
+    // Always check module-level + sessionStorage cache first — avoids API call if data exists
+    const jsCache = getCachedActuals(tenantId, campaign.campaign_id, phaseName)
+    if (jsCache !== undefined && jsCache !== null) {
+      if (!actualsMapRef.current[phaseName]) {
+        setActualsMap(prev => ({ ...prev, [phaseName]: jsCache }))
+      }
+      return
+    }
+
+    if (actualsMapRef.current[phaseName]) return // already in React state (loading/error/data)
 
     setActualsMap(prev => ({ ...prev, [phaseName]: 'loading' }))
     const actuals = await fetchPhaseActuals(sessionId, tenantId, campaign.campaign_id, phaseName)
@@ -90,11 +112,11 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
       ...prev,
       [phaseName]: actuals ?? 'error',
     }))
-  }, [sessionId, tenantId, campaign, actualsMap])
+  }, [sessionId, tenantId, campaign]) // actualsMap removed — use ref instead
 
   useEffect(() => {
     if (selectedPhase) loadActuals(selectedPhase)
-  }, [selectedPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedPhase, loadActuals])
 
   if (disabled) return null
 
@@ -117,7 +139,7 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
               </div>
             ))}
           </div>
-          <div className="px-3 py-2.5 space-y-2.5 min-h-[80px]">
+          <div className="px-3 py-2.5 space-y-2.5 min-h-[116px]">
             {[0, 1, 2].map((i) => (
               <div key={i} className="space-y-1">
                 <div className="flex justify-between">
@@ -179,8 +201,8 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
           })}
         </div>
 
-        {/* KPI rows */}
-        <div className="px-3 py-2.5 space-y-2.5 min-h-[80px]">
+        {/* KPI rows — fixed min-height matches 3 KPIs so box size is consistent */}
+        <div className="px-3 py-2.5 space-y-2.5 min-h-[116px]">
           {actualsLoading && (
             <div className="flex items-center justify-center py-4">
               <div className="flex gap-1">

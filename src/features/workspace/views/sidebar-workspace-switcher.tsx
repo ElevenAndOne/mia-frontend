@@ -5,6 +5,25 @@ import { useRovingFocus } from '../../../hooks/use-roving-focus'
 import { useWorkspaceSwitcher } from '../hooks/use-workspace-switcher'
 import { WorkspaceListItem } from '../components/workspace-list-item'
 
+const AVATAR_PALETTES_BG = [
+  'bg-[#3B5BDB]', 'bg-[#0CA678]', 'bg-[#E67700]', 'bg-[#9C36B5]',
+  'bg-[#C92A2A]', 'bg-[#1971C2]', 'bg-[#5C7CFA]', 'bg-[#2F9E44]',
+  'bg-[#C2255C]', 'bg-[#0E9594]',
+]
+function getAvatarBg(name: string): string {
+  let hash = 2166136261
+  for (let i = 0; i < name.length; i++) {
+    hash ^= name.charCodeAt(i)
+    hash = (hash * 16777619) >>> 0
+  }
+  return AVATAR_PALETTES_BG[hash % AVATAR_PALETTES_BG.length]
+}
+function getInitials(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
 export const SidebarWorkspaceSwitcher = () => {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -27,12 +46,12 @@ export const SidebarWorkspaceSwitcher = () => {
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-lg bg-linear-to-br from-utility-info-500 to-utility-purple-600 flex items-center justify-center label-sm text-white hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:ring-offset-2"
+        className={`w-10 h-10 rounded-lg flex items-center justify-center label-xs font-semibold text-white hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/30 ${activeWorkspace?.name ? getAvatarBg(activeWorkspace.name) : 'bg-[#3B5BDB]'}`}
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label={`Switch workspace. Current: ${activeWorkspace?.name || 'None'}`}
       >
-        {activeWorkspace?.name?.charAt(0).toUpperCase() || 'W'}
+        {activeWorkspace?.name ? getInitials(activeWorkspace.name) : 'W'}
       </button>
 
       <Popover
