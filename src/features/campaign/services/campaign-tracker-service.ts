@@ -1,5 +1,19 @@
 import { apiFetch } from '../../../utils/api'
 
+// ---------------------------------------------------------------------------
+// Module-level in-memory cache (survives React re-mounts / navigation)
+// TTL: 5 minutes — stale data still shows instantly, fresh fetch runs in bg
+// ---------------------------------------------------------------------------
+const CACHE_TTL_MS = 5 * 60 * 1000
+
+interface CacheEntry<T> {
+  data: T
+  ts: number
+}
+
+const trackerCache = new Map<string, CacheEntry<CampaignTracker | null>>()
+const actualsCache = new Map<string, CacheEntry<KPIActual[] | null>>()
+
 export interface CampaignKPI {
   kpi_name: string
   target_value: string | null
@@ -39,15 +53,22 @@ export const fetchCampaignTracker = async (
   sessionId: string,
   tenantId: string,
 ): Promise<CampaignTracker | null> => {
+  const key = `${tenantId}`
+  const cached = trackerCache.get(key)
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return cached.data
+  }
   try {
     const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/tracker`, {
       headers: { 'X-Session-ID': sessionId },
     })
-    if (!res.ok) return null
+    if (!res.ok) return cached?.data ?? null
     const data = await res.json()
-    return data.campaign ?? null
+    const result = data.campaign ?? null
+    trackerCache.set(key, { data: result, ts: Date.now() })
+    return result
   } catch {
-    return null
+    return cached?.data ?? null
   }
 }
 
@@ -57,15 +78,43 @@ export const fetchPhaseActuals = async (
   campaignId: string,
   phaseName: string,
 ): Promise<KPIActual[] | null> => {
+  const key = `${tenantId}:${campaignId}:${phaseName}`
+  const cached = actualsCache.get(key)
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return cached.data
+  }
   try {
     const res = await apiFetch(
       `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`,
       { headers: { 'X-Session-ID': sessionId } },
     )
-    if (!res.ok) return null
+    if (!res.ok) return cached?.data ?? null
     const data = await res.json()
-    return data.kpis ?? null
+    const result = data.kpis ?? null
+    actualsCache.set(key, { data: result, ts: Date.now() })
+    return result
   } catch {
-    return null
+    return cached?.data ?? null
   }
+}
+
+/** Synchronous cache peek — returns cached tracker if available (not expired), else null */
+export const getCachedTracker = (tenantId: string): CampaignTracker | null | undefined => {
+  const cached = trackerCache.get(tenantId)
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
+  return undefined // undefined = not in cache (different from null = no campaign)
+}
+
+/** Synchronous cache peek for actuals */
+export const getCachedActuals = (tenantId: string, campaignId: string, phaseName: string): KPIActual[] | null | undefined => {
+  const key = `${tenantId}:${campaignId}:${phaseName}`
+  const cached = actualsCache.get(key)
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
+  return undefined
+}
+
+/** Clear the in-memory cache — call after workspace switch or manual refresh */
+export const clearTrackerCache = () => {
+  trackerCache.clear()
+  actualsCache.clear()
 }

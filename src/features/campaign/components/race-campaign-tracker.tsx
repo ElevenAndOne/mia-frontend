@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { fetchCampaignTracker, fetchPhaseActuals } from '../services/campaign-tracker-service'
+import { fetchCampaignTracker, fetchPhaseActuals, getCachedTracker, getCachedActuals } from '../services/campaign-tracker-service'
 import type { CampaignTracker, CampaignPhase, KPIActual } from '../services/campaign-tracker-service'
 
 interface RaceCampaignTrackerProps {
@@ -42,23 +42,41 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
-  const [campaign, setCampaign] = useState<CampaignTracker | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedPhase, setSelectedPhase] = useState<string | null>(null)
-  const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>({})
+  // Initialize from synchronous cache so there's zero skeleton flash on re-navigation
+  const cachedOnMount = tenantId ? getCachedTracker(tenantId) : undefined
+  const [campaign, setCampaign] = useState<CampaignTracker | null>(cachedOnMount ?? null)
+  const [loading, setLoading] = useState(cachedOnMount === undefined) // false if cache hit
+  const [selectedPhase, setSelectedPhase] = useState<string | null>(() => {
+    if (!cachedOnMount) return null
+    return cachedOnMount.current_phase || cachedOnMount.phases.find(p => p.status === 'active')?.phase_name || cachedOnMount.phases[0]?.phase_name ?? null
+  })
+  // Pre-populate actualsMap from cache for all phases we already have
+  const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(() => {
+    if (!cachedOnMount || !tenantId) return {}
+    const map: Record<string, KPIActual[] | 'loading' | 'error'> = {}
+    for (const phase of cachedOnMount.phases) {
+      const cached = getCachedActuals(tenantId, cachedOnMount.campaign_id, phase.phase_name)
+      if (cached !== undefined && cached !== null) map[phase.phase_name] = cached
+    }
+    return map
+  })
 
-  // Fetch campaign tracker data on mount
+  // Fetch campaign tracker data on mount.
+  // fetchCampaignTracker returns cached data instantly if < 5 min old,
+  // so there's no skeleton flash on re-navigation.
   useEffect(() => {
     if (!sessionId || !tenantId) return
-    setLoading(true)
+    let cancelled = false
     fetchCampaignTracker(sessionId, tenantId).then((data) => {
+      if (cancelled) return
       setCampaign(data)
       if (data) {
         const defaultPhase = data.current_phase || data.phases.find(p => p.status === 'active')?.phase_name || data.phases[0]?.phase_name
-        setSelectedPhase(defaultPhase ?? null)
+        setSelectedPhase(prev => prev ?? defaultPhase ?? null)
       }
       setLoading(false)
     })
+    return () => { cancelled = true }
   }, [sessionId, tenantId])
 
   // Fetch actuals when a phase is selected (if not already fetched)
