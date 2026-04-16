@@ -41,9 +41,6 @@ function ssSet<T>(key: string, entry: CacheEntry<T>): void {
   }
 }
 
-function ssDelete(key: string): void {
-  try { sessionStorage.removeItem(key) } catch { /* ignore */ }
-}
 
 function ssClear(prefix: string): void {
   try {
