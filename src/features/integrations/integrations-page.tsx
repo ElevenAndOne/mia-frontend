@@ -407,25 +407,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     // MAR 2026: If workspace already has OAuth credentials for this platform,
     // skip the OAuth popup and go straight to the account/page selector.
     // This handles switching clients — they've already authed, just need to pick the sub-account.
-    if (activeWorkspace?.tenant_id) {
-      try {
-        const tenantResponse = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/integrations`, {
-          headers: { 'X-Session-ID': sessionId || '' },
-        })
-        if (tenantResponse.ok) {
-          const tenantData = await tenantResponse.json()
-          const ps = tenantData.platform_status || {}
-
-          // HubSpot, Mailchimp, LinkedIn: always go through OAuth flow
-          // Their selectors are account-scoped (only show portals/accounts linked
-          // to the current client), so opening the selector on a new client
-          // would show an empty list. OAuth flow re-runs and links to this client.
-        }
-      } catch (error) {
-        logger.error(`[INTEGRATIONS] Error checking tenant creds for ${integrationId}:`, error)
-        // Fall through to OAuth flow
-      }
-    }
 
     // Meta Ads / Facebook Organic: check actual credential existence (not tenant_integrations,
     // which can be stale). Only show selector if token is actually present in the DB.
