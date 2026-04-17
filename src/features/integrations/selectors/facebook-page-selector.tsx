@@ -58,6 +58,16 @@ const FacebookPageSelector = ({
 
       const data = await response.json()
 
+      if (!response.ok) {
+        const detail = data.detail || ''
+        if (detail.startsWith('meta_token_expired')) {
+          actions.setError('Your Meta connection has expired. Please disconnect and reconnect Meta in Integrations.')
+        } else {
+          actions.setError('Failed to fetch Facebook Pages')
+        }
+        return
+      }
+
       if (data.success && data.facebook_pages) {
         const sortedPages = data.facebook_pages.sort((a: FacebookPage, b: FacebookPage) =>
           a.name.localeCompare(b.name)

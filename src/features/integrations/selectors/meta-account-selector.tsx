@@ -59,6 +59,16 @@ const MetaAccountSelector = ({
 
       const data = await response.json()
 
+      if (!response.ok) {
+        const detail = data.detail || ''
+        if (detail.startsWith('meta_token_expired')) {
+          actions.setError('Your Meta connection has expired. Please disconnect and reconnect Meta in Integrations.')
+        } else {
+          actions.setError('Failed to fetch Meta accounts')
+        }
+        return
+      }
+
       if (data.success && data.accounts) {
         const sortedAccounts = data.accounts.sort((a: MetaAccount, b: MetaAccount) =>
           a.name.localeCompare(b.name)
