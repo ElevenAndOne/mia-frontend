@@ -416,17 +416,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const tenantData = await tenantResponse.json()
           const ps = tenantData.platform_status || {}
 
-          // Meta Ads: workspace has Meta creds → show ad account selector
-          // (Meta selector shows ALL available ad accounts from the Business Manager)
-          if (integrationId === 'meta' && ps.meta_ads) {
-            setShowMetaAccountSelector(true)
-            return
-          }
-          // Facebook Organic: requires Meta credentials — only skip OAuth if Meta is connected
-          if (integrationId === 'facebook_organic' && ps.meta_ads) {
-            setShowFacebookPageSelector(true)
-            return
-          }
           // HubSpot, Mailchimp, LinkedIn: always go through OAuth flow
           // Their selectors are account-scoped (only show portals/accounts linked
           // to the current client), so opening the selector on a new client
@@ -438,8 +427,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       }
     }
 
-    // Facebook Organic fallback: Check if Meta OAuth is connected via credentials-status
-    if (integrationId === 'facebook_organic') {
+    // Meta Ads / Facebook Organic: check actual credential existence (not tenant_integrations,
+    // which can be stale). Only show selector if token is actually present in the DB.
+    if (integrationId === 'meta' || integrationId === 'facebook_organic') {
       try {
         const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
           headers: createSessionHeaders(sessionId)
@@ -447,14 +437,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
-            setShowFacebookPageSelector(true)
+            if (integrationId === 'meta') {
+              setShowMetaAccountSelector(true)
+            } else {
+              setShowFacebookPageSelector(true)
+            }
             return
           }
         }
       } catch (error) {
-        logger.error('[FB-ORGANIC] Error checking Meta credentials:', error)
+        logger.error('[META] Error checking Meta credentials:', error)
       }
-      logger.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+      logger.log(`[META] No Meta credentials found, starting OAuth flow for ${integrationId}`)
     }
 
     setConnectingId(integrationId)
