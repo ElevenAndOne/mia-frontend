@@ -422,9 +422,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             setShowMetaAccountSelector(true)
             return
           }
-          // Facebook Organic: workspace has Meta creds → show page selector
-          // (Page selector shows ALL pages the user manages)
-          if (integrationId === 'facebook_organic' && (ps.meta_ads || ps.facebook_organic)) {
+          // Facebook Organic: requires Meta credentials — only skip OAuth if Meta is connected
+          if (integrationId === 'facebook_organic' && ps.meta_ads) {
             setShowFacebookPageSelector(true)
             return
           }
