@@ -56,6 +56,7 @@ export const confirmAction = async (
       params: action.params,
     }),
   })
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   return response.json()
 }
 
@@ -66,6 +67,7 @@ export const pollActionStatus = async (
   const response = await apiFetch(`/api/actions/status/${workflowId}`, {
     headers: { 'X-Session-ID': sessionId },
   })
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   return response.json()
 }
 
