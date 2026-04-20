@@ -42,6 +42,20 @@ export const useChatView = () => {
     localStorage.setItem(StorageKey.DATE_RANGE, dateRange)
   }, [dateRange])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const actionPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const actionPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isMountedRef = useRef(true)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      abortControllerRef.current?.abort()
+      if (actionPollIntervalRef.current) clearInterval(actionPollIntervalRef.current)
+      if (actionPollTimeoutRef.current) clearTimeout(actionPollTimeoutRef.current)
+    }
+  }, [])
 
   const { platformStatus, isLoading: integrationStatusLoading } = useIntegrationStatus(
     sessionId,
@@ -147,6 +161,9 @@ export const useChatView = () => {
     setIsLoading(true)
     setStreamingContent('')
 
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
     try {
       // Build conversation history from existing messages (last 20 for context)
       // Include completed action results so Claude knows what was created
@@ -171,7 +188,7 @@ export const useChatView = () => {
         selected_platforms: selectedPlatforms,
         conversation_history: history.length > 0 ? history : undefined,
         conversation_id: activeConvId,
-      })
+      }, abortController.signal)
 
       const assistantMessage: ChatMessageItem = {
         id: `assistant-${Date.now()}`,
@@ -185,14 +202,20 @@ export const useChatView = () => {
 
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      logger.error('[CHAT] Error:', error)
-      const errorMessage: ChatMessageItem = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: 'Connection error. Please check your connection and try again.',
+      if (error instanceof Error && error.name === 'AbortError') {
+        // User cancelled — remove the unsent user message, stay silent
+        setMessages((prev) => prev.filter(m => m.id !== userMessage.id))
+      } else {
+        logger.error('[CHAT] Error:', error)
+        const errorMessage: ChatMessageItem = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Connection error. Please check your connection and try again.',
+        }
+        setMessages((prev) => [...prev, errorMessage])
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
+      abortControllerRef.current = null
       setIsLoading(false)
     }
   }, [messages, sessionId, user?.google_user_id, selectedAccount?.google_ads_id, selectedAccount?.ga4_property_id, dateRange, selectedPlatforms, conversationId])
@@ -243,30 +266,45 @@ export const useChatView = () => {
         ))
 
         // Poll for completion
-        const pollInterval = setInterval(async () => {
+        const stopPolling = () => {
+          if (actionPollIntervalRef.current) {
+            clearInterval(actionPollIntervalRef.current)
+            actionPollIntervalRef.current = null
+          }
+          if (actionPollTimeoutRef.current) {
+            clearTimeout(actionPollTimeoutRef.current)
+            actionPollTimeoutRef.current = null
+          }
+        }
+
+        actionPollIntervalRef.current = setInterval(async () => {
           try {
             const status = await pollActionStatus(sessionId, result.workflow_id!)
             if (status.status === 'completed') {
-              clearInterval(pollInterval)
+              stopPolling()
               const resultMsg = status.result?.message || 'Action completed'
               setMessages(prev => prev.map(m =>
                 m.id === messageId ? { ...m, actionStatus: 'completed' as const, actionResult: status.result || undefined } : m
               ))
-              // Auto-continue the chain: send a hidden follow-up so Claude proposes the next step
-              setTimeout(() => {
-                handleSubmitRef.current(
-                  `[Action completed: ${resultMsg}] Please continue with any remaining steps.`,
-                  { hidden: true },
-                )
-              }, 500)
+              // Auto-continue the chain: only fire when Claude flagged more steps pending
+              if (message.pendingAction?.continue_chain) {
+                setTimeout(() => {
+                  if (isMountedRef.current) {
+                    handleSubmitRef.current(
+                      `[Action completed: ${resultMsg}] Please continue with the next step.`,
+                      { hidden: true },
+                    )
+                  }
+                }, 500)
+              }
             } else if (status.status === 'failed') {
-              clearInterval(pollInterval)
+              stopPolling()
               setMessages(prev => prev.map(m =>
                 m.id === messageId ? { ...m, actionStatus: 'failed' as const, actionResult: status.result || undefined } : m
               ))
             }
           } catch {
-            clearInterval(pollInterval)
+            stopPolling()
             setMessages(prev => prev.map(m =>
               m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
             ))
@@ -274,7 +312,7 @@ export const useChatView = () => {
         }, 2000) // Poll every 2 seconds
 
         // Safety timeout — stop polling after 5 minutes
-        setTimeout(() => clearInterval(pollInterval), 300000)
+        actionPollTimeoutRef.current = setTimeout(stopPolling, 300000)
       } else {
         setMessages(prev => prev.map(m =>
           m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m
@@ -292,6 +330,17 @@ export const useChatView = () => {
     setMessages(prev => prev.map(m =>
       m.id === messageId ? { ...m, pendingAction: undefined, actionStatus: undefined } : m
     ))
+  }, [])
+
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort()
+  }, [])
+
+  const handleBack = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setMessages([])
+    setStreamingContent('')
+    setConversationId(null)
   }, [])
 
   return {
@@ -312,6 +361,8 @@ export const useChatView = () => {
     handleQuickAction,
     handleConfirmAction,
     handleCancelAction,
+    handleCancel,
+    handleBack,
     integrationPrompt,
     loadConversation,
   }

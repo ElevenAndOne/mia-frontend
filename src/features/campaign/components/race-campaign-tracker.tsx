@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { fetchCampaignTracker, fetchPhaseActuals, getCachedTracker, getCachedActuals } from '../services/campaign-tracker-service'
+import { fetchCampaignTracker, fetchPhaseActuals, getCachedTracker, getCachedActuals, refreshCampaignActuals } from '../services/campaign-tracker-service'
 import type { CampaignTracker, CampaignPhase, KPIActual } from '../services/campaign-tracker-service'
 
 interface RaceCampaignTrackerProps {
@@ -61,6 +61,26 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
     return map
   })
 
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = useCallback(async () => {
+    if (!sessionId || !tenantId || !campaign || refreshing) return
+    setRefreshing(true)
+    setActualsMap({})
+    try {
+      await refreshCampaignActuals(sessionId, tenantId, campaign.campaign_id)
+    } catch {
+      // best-effort — local cache already cleared, phases will re-fetch on tab click
+    }
+    // Re-fetch current phase immediately
+    if (selectedPhase) {
+      setActualsMap(prev => ({ ...prev, [selectedPhase]: 'loading' }))
+      const actuals = await fetchPhaseActuals(sessionId, tenantId, campaign.campaign_id, selectedPhase)
+      setActualsMap(prev => ({ ...prev, [selectedPhase]: actuals ?? 'error' }))
+    }
+    setRefreshing(false)
+  }, [sessionId, tenantId, campaign, selectedPhase, refreshing])
+
   // Ref keeps loadActuals from going stale without adding actualsMap as a dep
   const actualsMapRef = useRef(actualsMap)
   useEffect(() => { actualsMapRef.current = actualsMap }, [actualsMap])
@@ -120,7 +140,11 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
 
   if (disabled) return null
 
-  // Skeleton — shown while loading or campaign not yet available
+  // No campaign for this workspace — render nothing so the greeting/quick-actions
+  // stay vertically centered without a ghost skeleton taking up space below.
+  if (!loading && !campaign) return null
+
+  // Skeleton — shown while the API call is in flight
   if (loading || !campaign) {
     return (
       <div className="w-full max-w-3xl mx-auto">
@@ -170,10 +194,27 @@ export function RaceCampaignTracker({ disabled = false }: RaceCampaignTrackerPro
             <p className="paragraph-xs text-quaternary leading-none mb-0.5">Campaign</p>
             <p className="subheading-xs text-primary truncate">{campaign.campaign_name}</p>
           </div>
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-utility-success-50 border border-utility-success-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-utility-success-500 animate-pulse" />
-            <span className="paragraph-xs text-utility-success-700">Live</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Refresh actuals"
+              className="text-quaternary hover:text-secondary transition-colors disabled:opacity-40"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
+              >
+                <path fillRule="evenodd" d="M13.836 2.477a.75.75 0 0 1 .75.75v3.182a.75.75 0 0 1-.75.75h-3.182a.75.75 0 0 1 0-1.5h1.37l-.84-.841a4.5 4.5 0 0 0-7.08 1.01.75.75 0 0 1-1.3-.75 6 6 0 0 1 9.44-1.344l.842.841V3.227a.75.75 0 0 1 .75-.75Zm-.911 7.5A.75.75 0 0 1 13.199 11a6 6 0 0 1-9.44 1.344l-.842-.841v1.371a.75.75 0 0 1-1.5 0V9.682a.75.75 0 0 1 .75-.75h3.182a.75.75 0 0 1 0 1.5H4.071l.84.841a4.5 4.5 0 0 0 7.08-1.009.75.75 0 0 1 1.934.713Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-utility-success-50 border border-utility-success-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-utility-success-500 animate-pulse" />
+              <span className="paragraph-xs text-utility-success-700">Live</span>
+            </span>
+          </div>
         </div>
 
         {/* Phase tabs */}

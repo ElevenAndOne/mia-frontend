@@ -30,6 +30,7 @@ export interface PendingAction {
   platform: string
   summary: string
   params: Record<string, unknown>
+  continue_chain?: boolean
 }
 
 export interface ChatResponse {
@@ -68,7 +69,7 @@ export const pollActionStatus = async (
   return response.json()
 }
 
-export const sendChatMessage = async (payload: ChatRequestPayload) => {
+export const sendChatMessage = async (payload: ChatRequestPayload, signal?: AbortSignal) => {
   const v2Payload = {
     message: payload.message,
     session_id: payload.session_id,
@@ -80,6 +81,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload) => {
 
   const response = await apiFetch('/api/chat/v2', {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       'X-Session-ID': payload.session_id || 'default',

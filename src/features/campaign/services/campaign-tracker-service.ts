@@ -231,3 +231,19 @@ export const clearTrackerCache = () => {
   ssClear(SS_TRACKER_PREFIX)
   ssClear(SS_ACTUALS_PREFIX)
 }
+
+/** Trigger a server-side cache clear + re-warm for all phases, then clear local cache */
+export const refreshCampaignActuals = async (
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+): Promise<void> => {
+  // Clear local JS + sessionStorage caches so stale data isn't shown
+  actualsCache.clear()
+  ssClear(SS_ACTUALS_PREFIX)
+  // Ask the server to clear the DB cache and re-warm
+  await apiFetch(
+    `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh`,
+    { method: 'POST', headers: { 'X-Session-ID': sessionId } },
+  )
+}

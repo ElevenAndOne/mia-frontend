@@ -359,7 +359,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }))
       return false
     }
-  }, [state.sessionId, refreshAccounts, refreshWorkspaces])
+  }, [])
 
   // Meta Login
   const loginMeta = useCallback(async (onPopupClosed?: () => void): Promise<boolean> => {

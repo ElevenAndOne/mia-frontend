@@ -53,6 +53,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
     handleQuickAction,
     handleConfirmAction,
     handleCancelAction,
+    handleCancel,
+    handleBack,
     integrationPrompt,
     loadConversation,
   } = useChatView()
@@ -103,6 +105,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
       onCampaignsClick={onCampaignsClick}
       onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
+      onBack={handleBack}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
       onNewWorkspace={onNewWorkspace}
@@ -124,6 +127,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
 
             <ChatInput
               onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isLoading={isLoading}
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
@@ -137,7 +142,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
           <>
             {/* Desktop back button — sits above messages, no overlap with sidebar */}
             <div className="hidden md:flex items-center px-4 pt-3 pb-1 shrink-0">
-              <BackButton onClick={handleNewChat} label="Back" variant="dark" />
+              <BackButton onClick={handleBack} label="Back" variant="dark" />
             </div>
 
             <div className="flex-1 overflow-y-auto min-h-0">
@@ -182,6 +187,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
 
             <ChatInput
               onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isLoading={isLoading}
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}

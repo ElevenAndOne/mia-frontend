@@ -14,6 +14,7 @@ interface ChatLayoutProps {
   onCampaignsClick?: () => void
   onHelpClick?: () => void
   onNewChat?: () => void
+  onBack?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
   onNewWorkspace?: () => void
@@ -27,6 +28,7 @@ export const ChatLayout = ({
   onCampaignsClick,
   onHelpClick,
   onNewChat,
+  onBack,
   onLogout,
   onWorkspaceSettings,
   onNewWorkspace,
@@ -60,7 +62,7 @@ export const ChatLayout = ({
         {/* Left side - Workspace name (tappable for quick switch) or Back button */}
         <div className="flex items-center">
           {hasMessages ? (
-            <BackButton onClick={() => onNewChat?.()} label="Back" variant="dark" />
+            <BackButton onClick={() => (onBack ?? onNewChat)?.()} label="Back" variant="dark" />
           ) : (
             <>
               <button

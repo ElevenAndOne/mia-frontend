@@ -601,6 +601,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               if (!completeResponse.ok) {
                 const errorText = await completeResponse.text()
                 logger.error(`${integrationId} /complete failed:`, errorText)
+                showToast('error', `Connection failed. Please try again.`)
               } else {
                 const completeData = await completeResponse.json()
                 logger.log(`${integrationId} /complete succeeded:`, completeData)
