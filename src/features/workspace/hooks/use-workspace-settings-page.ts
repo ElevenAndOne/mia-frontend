@@ -14,7 +14,7 @@ import {
 import { useWorkspaceSettings } from './use-workspace-settings'
 
 export const useWorkspaceSettingsPage = () => {
-  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces, deleteWorkspace } = useSession()
+  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces, deleteWorkspace, switchWorkspace } = useSession()
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCreateInviteModal, setShowCreateInviteModal] = useState(false)
@@ -199,16 +199,20 @@ export const useWorkspaceSettingsPage = () => {
 
   const handleDeleteWorkspace = useCallback(async (): Promise<boolean> => {
     if (!selectedWorkspaceId) return false
+    const wasActive = activeWorkspace?.tenant_id === selectedWorkspaceId
     const success = await deleteWorkspace(selectedWorkspaceId)
     if (success) {
       setSelectedWorkspaceId(null)
       const remaining = availableWorkspaces.filter(w => w.tenant_id !== selectedWorkspaceId)
       if (remaining.length === 0) {
         setShowCreateModal(true)
+      } else if (wasActive) {
+        // Auto-switch to the next available workspace instead of leaving user in a broken state
+        await switchWorkspace(remaining[0].tenant_id)
       }
     }
     return success
-  }, [selectedWorkspaceId, deleteWorkspace, availableWorkspaces])
+  }, [selectedWorkspaceId, activeWorkspace, deleteWorkspace, availableWorkspaces, switchWorkspace])
 
   const handleLeaveWorkspace = useCallback(async (): Promise<boolean> => {
     if (!selectedWorkspaceId || !sessionId) return false
