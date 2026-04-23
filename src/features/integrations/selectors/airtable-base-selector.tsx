@@ -69,7 +69,7 @@ const AirtableBaseSelector = ({ isOpen, onClose, onSuccess }: AirtableBaseSelect
       return
     }
 
-    const selectedBase = bases.find(b => b.id === state.selectedId)
+    const selectedBase = bases.find((b) => b.id === state.selectedId)
 
     await actions.withSubmitting(async () => {
       const response = await apiFetch('/api/oauth/airtable/select-base', {
@@ -100,9 +100,7 @@ const AirtableBaseSelector = ({ isOpen, onClose, onSuccess }: AirtableBaseSelect
       onClose={actions.handleClose}
       title="Airtable Bases"
       subtitle="Select which Airtable base to use for content calendar data"
-      icon={
-        <img src="/icons/Airtable.png" alt="Airtable" className="w-6 h-6" />
-      }
+      icon={<img src="/icons/Airtable.png" alt="Airtable" className="w-6 h-6" />}
       iconBgColor="bg-utility-info-200"
       isLoading={state.isLoading}
       loadingMessage="Loading Airtable bases..."

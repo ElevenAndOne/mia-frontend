@@ -12,7 +12,13 @@ interface DateRangeSelectorProps {
   anchorRef: RefObject<HTMLElement | null>
 }
 
-const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef }: DateRangeSelectorProps) => {
+const DateRangeSelector = ({
+  isOpen,
+  onClose,
+  selectedRange,
+  onApply,
+  anchorRef,
+}: DateRangeSelectorProps) => {
   const {
     selectedRange: tempSelection,
     showCustomPicker,
@@ -49,7 +55,9 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef 
             }`}
           >
             {option.label}
-            {tempSelection === option.value && <span className="float-right text-utility-purple-600">✓</span>}
+            {tempSelection === option.value && (
+              <span className="float-right text-utility-purple-600">✓</span>
+            )}
           </button>
         ))}
 
@@ -62,7 +70,8 @@ const DateRangeSelector = ({ isOpen, onClose, selectedRange, onApply, anchorRef 
             </div>
             {dateRange?.from && dateRange?.to && (
               <div className="mt-3 paragraph-xs text-tertiary bg-utility-purple-100 p-2 rounded">
-                <strong>Selected:</strong> {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
+                <strong>Selected:</strong>{' '}
+                {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
               </div>
             )}
           </div>

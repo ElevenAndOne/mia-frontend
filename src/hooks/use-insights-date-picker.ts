@@ -12,10 +12,13 @@ export const useInsightsDatePicker = () => {
   useEffect(() => {
     const state = location.state as { showDatePicker?: boolean; platforms?: string[] } | null
     if (state?.showDatePicker) {
-      const type = location.pathname.includes('grow') ? 'grow'
-        : location.pathname.includes('optimize') ? 'optimize'
-        : location.pathname.includes('protect') ? 'protect'
-        : null
+      const type = location.pathname.includes('grow')
+        ? 'grow'
+        : location.pathname.includes('optimize')
+          ? 'optimize'
+          : location.pathname.includes('protect')
+            ? 'protect'
+            : null
 
       if (type) {
         setPendingInsightType(type)

@@ -45,7 +45,7 @@ export interface WorkspacePersonRow {
 
 export const buildWorkspaceOverviewItems = (
   workspaces: Workspace[],
-  activeWorkspaceId?: string | null,
+  activeWorkspaceId?: string | null
 ): WorkspaceOverviewItem[] => {
   return workspaces.map((workspace) => ({
     workspace,
@@ -58,7 +58,7 @@ export const buildWorkspaceOverviewItems = (
 
 export const buildWorkspaceMemberRows = (
   members: WorkspaceMember[],
-  options: { currentUserId?: string; canManage: boolean; isOwner: boolean },
+  options: { currentUserId?: string; canManage: boolean; isOwner: boolean }
 ): WorkspaceMemberRow[] => {
   return members.map((member) => {
     const name = member.name || member.email || 'Unknown'
@@ -81,7 +81,7 @@ export const buildWorkspaceMemberRows = (
 
 export const buildWorkspaceInviteRows = (
   invites: WorkspaceInvite[],
-  inviteBaseUrl: string,
+  inviteBaseUrl: string
 ): WorkspaceInviteRow[] => {
   return invites
     .filter((invite) => invite.status === 'pending')
@@ -95,7 +95,7 @@ export const buildWorkspaceInviteRows = (
 
 export const buildUnifiedPersonRows = (
   memberRows: WorkspaceMemberRow[],
-  inviteRows: WorkspaceInviteRow[],
+  inviteRows: WorkspaceInviteRow[]
 ): WorkspacePersonRow[] => {
   const members: WorkspacePersonRow[] = memberRows.map((member) => ({
     id: member.id,

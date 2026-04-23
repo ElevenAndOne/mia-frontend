@@ -89,11 +89,7 @@ export const WorkspaceSettingsDetail = ({
 }: WorkspaceSettingsDetailProps) => {
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
-      <TopBar
-        title="Workspace Settings"
-        onBack={onBack}
-        className="border-b border-tertiary"
-      />
+      <TopBar title="Workspace Settings" onBack={onBack} className="border-b border-tertiary" />
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
         {error && (

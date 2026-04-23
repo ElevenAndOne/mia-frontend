@@ -62,7 +62,9 @@ export interface GoogleCompleteResponse {
 export const getGoogleAuthUrl = async (returnUrl?: string): Promise<GoogleAuthUrlResponse> => {
   // Pass full URL (with path) so backend redirects back to the exact page after OAuth
   // This ensures invite pages, onboarding, etc. get the user back to the right place
-  const frontendOrigin = encodeURIComponent(returnUrl || (window.location.origin + window.location.pathname))
+  const frontendOrigin = encodeURIComponent(
+    returnUrl || window.location.origin + window.location.pathname
+  )
   const response = await apiFetch(`/api/oauth/google/auth-url?frontend_origin=${frontendOrigin}`)
 
   if (!response.ok) {
@@ -86,8 +88,8 @@ export const completeGoogleAuth = async (
   const response = await apiFetch(completeUrl, {
     method: 'POST',
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -100,13 +102,11 @@ export const completeGoogleAuth = async (
 /**
  * Check Google OAuth authentication status
  */
-export const getGoogleAuthStatus = async (
-  sessionId: string
-): Promise<GoogleAuthStatusResponse> => {
+export const getGoogleAuthStatus = async (sessionId: string): Promise<GoogleAuthStatusResponse> => {
   const response = await apiFetch('/api/oauth/google/status', {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -123,8 +123,8 @@ export const logoutGoogle = async (sessionId: string): Promise<void> => {
   await apiFetch('/api/oauth/google/logout', {
     method: 'POST',
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 }
 
@@ -172,6 +172,6 @@ export const openGoogleOAuthPopup = (
         window.removeEventListener('message', messageHandler)
         messageHandler = null
       }
-    }
+    },
   }
 }

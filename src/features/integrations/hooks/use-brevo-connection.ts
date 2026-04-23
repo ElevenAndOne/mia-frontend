@@ -42,7 +42,10 @@ export const useBrevoConnection = ({ onSuccess, onClose }: UseBrevoConnectionPar
         setSuccess(false)
       }, 1500)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect to Brevo. Please check your API key.'
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Failed to connect to Brevo. Please check your API key.'
       setError(message)
     } finally {
       setIsConnecting(false)

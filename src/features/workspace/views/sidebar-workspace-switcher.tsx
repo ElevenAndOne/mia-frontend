@@ -6,9 +6,16 @@ import { useWorkspaceSwitcher } from '../hooks/use-workspace-switcher'
 import { WorkspaceListItem } from '../components/workspace-list-item'
 
 const AVATAR_PALETTES_BG = [
-  'bg-[#3B5BDB]', 'bg-[#0CA678]', 'bg-[#E67700]', 'bg-[#9C36B5]',
-  'bg-[#C92A2A]', 'bg-[#1971C2]', 'bg-[#5C7CFA]', 'bg-[#2F9E44]',
-  'bg-[#C2255C]', 'bg-[#0E9594]',
+  'bg-[#3B5BDB]',
+  'bg-[#0CA678]',
+  'bg-[#E67700]',
+  'bg-[#9C36B5]',
+  'bg-[#C92A2A]',
+  'bg-[#1971C2]',
+  'bg-[#5C7CFA]',
+  'bg-[#2F9E44]',
+  'bg-[#C2255C]',
+  'bg-[#0E9594]',
 ]
 function getAvatarBg(name: string): string {
   let hash = 2166136261
@@ -28,7 +35,13 @@ export const SidebarWorkspaceSwitcher = () => {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
-  const { activeWorkspace, availableWorkspaces, switchWorkspace, refreshWorkspaces, refreshAccounts } = useSession()
+  const {
+    activeWorkspace,
+    availableWorkspaces,
+    switchWorkspace,
+    refreshWorkspaces,
+    refreshAccounts,
+  } = useSession()
   const { switchingId, handleSwitch } = useWorkspaceSwitcher({
     activeWorkspaceId: activeWorkspace?.tenant_id,
     switchWorkspace,
@@ -61,7 +74,6 @@ export const SidebarWorkspaceSwitcher = () => {
         placement="right-start"
         className="w-72"
       >
-
         {/* Workspace List */}
         <div className="flex flex-col gap-1 px-2 py-2 max-h-64 overflow-y-auto" role="menu">
           {availableWorkspaces.length === 0 ? (
@@ -82,7 +94,6 @@ export const SidebarWorkspaceSwitcher = () => {
             ))
           )}
         </div>
-
       </Popover>
     </>
   )

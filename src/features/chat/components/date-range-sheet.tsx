@@ -1,7 +1,13 @@
 import { useState, type RefObject } from 'react'
 import { Popover } from '../../overlay'
 import { Radio } from '../../../components/radio'
-import { CHAT_DATE_RANGE_OPTIONS, formatRangeSpan, parseDateRangeValue, buildCustomDateRangeValue, isCustomDateRange } from '../../../utils/date-range'
+import {
+  CHAT_DATE_RANGE_OPTIONS,
+  formatRangeSpan,
+  parseDateRangeValue,
+  buildCustomDateRangeValue,
+  isCustomDateRange,
+} from '../../../utils/date-range'
 
 interface DateRangePopoverProps {
   isOpen: boolean
@@ -11,7 +17,13 @@ interface DateRangePopoverProps {
   onSelect: (range: string) => void
 }
 
-export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, onSelect }: DateRangePopoverProps) => {
+export const DateRangePopover = ({
+  isOpen,
+  onClose,
+  anchorRef,
+  selectedRange,
+  onSelect,
+}: DateRangePopoverProps) => {
   const [showCustom, setShowCustom] = useState(false)
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -45,7 +57,14 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
   const isCustomActive = isCustomDateRange(selectedRange)
 
   return (
-    <Popover isOpen={isOpen} onClose={onClose} anchorRef={anchorRef} placement="top-start" className="min-w-[240px]" mobileAdaptation="none">
+    <Popover
+      isOpen={isOpen}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement="top-start"
+      className="min-w-[240px]"
+      mobileAdaptation="none"
+    >
       <div className="flex flex-col p-1 gap-0.5">
         {!showCustom ? (
           <>
@@ -86,7 +105,7 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
                 type="date"
                 value={customStart}
                 max={customEnd || undefined}
-                onChange={e => setCustomStart(e.target.value)}
+                onChange={(e) => setCustomStart(e.target.value)}
                 className="w-full bg-secondary text-primary paragraph-sm rounded-lg px-3 py-2 outline-none border border-transparent focus:border-brand-primary"
               />
             </div>
@@ -96,7 +115,7 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
                 type="date"
                 value={customEnd}
                 min={customStart || undefined}
-                onChange={e => setCustomEnd(e.target.value)}
+                onChange={(e) => setCustomEnd(e.target.value)}
                 className="w-full bg-secondary text-primary paragraph-sm rounded-lg px-3 py-2 outline-none border border-transparent focus:border-brand-primary"
               />
             </div>
@@ -122,15 +141,24 @@ export const DateRangePopover = ({ isOpen, onClose, anchorRef, selectedRange, on
   )
 }
 
-function DateRangeItem({ option, active, onClick }: { option: { label: string; value: string }, active: boolean, onClick: () => void }) {
+function DateRangeItem({
+  option,
+  active,
+  onClick,
+}: {
+  option: { label: string; value: string }
+  active: boolean
+  onClick: () => void
+}) {
   const parsed = parseDateRangeValue(option.value)
   const rangeLabel = parsed ? formatRangeSpan(parsed.start, parsed.end) : ''
 
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${active ? 'bg-tertiary' : 'hover:bg-secondary'
-        }`}
+      className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
+        active ? 'bg-tertiary' : 'hover:bg-secondary'
+      }`}
     >
       <div className="text-left">
         <div className="subheading-md text-primary">{option.label}</div>
@@ -140,7 +168,6 @@ function DateRangeItem({ option, active, onClick }: { option: { label: string; v
     </button>
   )
 }
-
 
 // Keep backward compatible export name
 export const DateRangeSheet = DateRangePopover

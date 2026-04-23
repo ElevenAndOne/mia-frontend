@@ -70,7 +70,6 @@ export const MobileNavigationUserView = ({
             <span className="paragraph-sm">Workspace Settings</span>
           </button>
         )}
-
       </div>
 
       <div className="px-4">

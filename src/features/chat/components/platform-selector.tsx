@@ -13,7 +13,14 @@ interface PlatformSelectorProps {
   anchorRef?: RefObject<HTMLElement | null>
 }
 
-export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms, onToggle, anchorRef }: PlatformSelectorProps) => {
+export const PlatformSelector = ({
+  isOpen,
+  onClose,
+  platforms,
+  selectedPlatforms,
+  onToggle,
+  anchorRef,
+}: PlatformSelectorProps) => {
   const popupRef = useRef<HTMLDivElement>(null)
 
   // Build refs array - include anchor if provided to prevent close when clicking trigger
@@ -39,7 +46,15 @@ export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms
               const isSelected = selectedPlatforms.includes(platform.id)
               const isDisabled = !platform.connected
 
-              return <PlatformItem key={platform.id} platform={platform} isSelected={isSelected} isDisabled={isDisabled} onToggle={onToggle} />
+              return (
+                <PlatformItem
+                  key={platform.id}
+                  platform={platform}
+                  isSelected={isSelected}
+                  isDisabled={isDisabled}
+                  onToggle={onToggle}
+                />
+              )
             })}
           </div>
         </motion.div>
@@ -49,10 +64,10 @@ export const PlatformSelector = ({ isOpen, onClose, platforms, selectedPlatforms
 }
 
 type PlatformItem = {
-  isSelected: boolean;
-  isDisabled: boolean;
-  platform: Platform;
-  onToggle: (id: string) => void;
+  isSelected: boolean
+  isDisabled: boolean
+  platform: Platform
+  onToggle: (id: string) => void
 }
 
 function PlatformItem({ platform, isSelected, isDisabled, onToggle }: PlatformItem) {
@@ -66,7 +81,9 @@ function PlatformItem({ platform, isSelected, isDisabled, onToggle }: PlatformIt
         <div className="w-6 h-6 flex items-center justify-center shrink-0 rounded-md overflow-clip">
           {platform.icon}
         </div>
-        <span className={`w-full subheading-md text-left ${isDisabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+        <span
+          className={`w-full subheading-md text-left ${isDisabled ? 'text-placeholder-subtle' : 'text-primary'}`}
+        >
           {platform.name}
         </span>
       </div>
@@ -84,9 +101,13 @@ type ToggleProps = {
 
 function Toggle({ isSelected, isDisabled }: ToggleProps) {
   return (
-    <div className='w-8.5 h-6 p-1'>
-      <div className={`rounded-full relative transition-colors w-full h-full ${isSelected && !isDisabled ? 'bg-brand-solid' : 'bg-quaternary'}`} >
-        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-primary shadow transition-transform ${isSelected && !isDisabled ? 'translate-x-3' : 'translate-x-0.5'}`} />
+    <div className="w-8.5 h-6 p-1">
+      <div
+        className={`rounded-full relative transition-colors w-full h-full ${isSelected && !isDisabled ? 'bg-brand-solid' : 'bg-quaternary'}`}
+      >
+        <div
+          className={`absolute top-0.5 w-3 h-3 rounded-full bg-primary shadow transition-transform ${isSelected && !isDisabled ? 'translate-x-3' : 'translate-x-0.5'}`}
+        />
       </div>
     </div>
   )

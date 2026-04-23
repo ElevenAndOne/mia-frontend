@@ -23,8 +23,8 @@ export interface SelectAccountResponse {
 export const fetchAccounts = async (sessionId: string): Promise<AccountMapping[]> => {
   const response = await apiFetch('/api/accounts/available', {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -45,7 +45,7 @@ export const selectAccount = async (
 ): Promise<SelectAccountResponse> => {
   const requestBody: { account_id: string; session_id: string; industry?: string } = {
     account_id: accountId,
-    session_id: sessionId
+    session_id: sessionId,
   }
 
   if (industry) {
@@ -56,9 +56,9 @@ export const selectAccount = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Session-ID': sessionId
+      'X-Session-ID': sessionId,
     },
-    body: JSON.stringify(requestBody)
+    body: JSON.stringify(requestBody),
   })
 
   if (!response.ok) {

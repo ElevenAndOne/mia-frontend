@@ -36,7 +36,7 @@ export const useMessageQueue = (): MessageQueueState => {
   const persistMessages = useCallback(() => {
     try {
       // Filter out explainer boxes as they don't serialize well and will be re-shown if needed
-      const messagesToPersist = displayedMessages.filter(m => m.type !== 'explainer-box')
+      const messagesToPersist = displayedMessages.filter((m) => m.type !== 'explainer-box')
       localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(messagesToPersist))
       logger.log('[MESSAGE-QUEUE] Persisted', messagesToPersist.length, 'messages')
     } catch (e) {
@@ -97,6 +97,6 @@ export const useMessageQueue = (): MessageQueueState => {
     addImmediateMessage,
     persistMessages,
     restoreMessages,
-    clearPersistedMessages
+    clearPersistedMessages,
   }
 }

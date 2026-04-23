@@ -21,8 +21,11 @@ export default defineConfig([
     },
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      // Disable overly strict rules for Phase 1 mocked data fetching
-      // These can be re-enabled when using proper data fetching libraries
+      // _-prefixed params/vars are intentionally unused (TypeScript convention)
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'react-hooks/set-state-in-effect': 'off',
     },
   },

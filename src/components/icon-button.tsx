@@ -25,13 +25,10 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   'aria-label'?: string
 }
 
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton({
-  variant = 'ghost',
-  size = 'md',
-  className = '',
-  children,
-  ...props
-}, ref) {
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  { variant = 'ghost', size = 'md', className = '', children, ...props },
+  ref
+) {
   const classes = [
     SIZE_CLASSES[size],
     'rounded-full flex items-center justify-center transition-colors',

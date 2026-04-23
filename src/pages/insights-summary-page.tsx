@@ -5,13 +5,8 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const InsightsSummaryPage = () => {
   const navigate = useNavigate()
-  const {
-    onNewWorkspace,
-    onIntegrationsClick,
-    onHelpClick,
-    onLogout,
-    onWorkspaceSettings,
-  } = useAppShellActions()
+  const { onNewWorkspace, onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings } =
+    useAppShellActions()
 
   return (
     <AppShell

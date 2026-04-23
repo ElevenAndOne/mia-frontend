@@ -91,9 +91,13 @@ export const AnimatedPageWrapper = forwardRef<AnimatedPageWrapperRef, AnimatedPa
       setKey(Date.now().toString())
     }, [])
 
-    useImperativeHandle(ref, () => ({
-      playAnimation,
-    }), [playAnimation])
+    useImperativeHandle(
+      ref,
+      () => ({
+        playAnimation,
+      }),
+      [playAnimation]
+    )
 
     const animation = customAnimation || ANIMATION_PRESETS[preset]
     const variants: Variants = {

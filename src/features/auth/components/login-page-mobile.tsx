@@ -19,9 +19,7 @@ export const LoginPageMobile = ({ actionButtons }: LoginPageMobileProps) => {
         </div>
         <div className="flex-1"></div>
         <div className="px-6 pb-8">
-          <div className="max-w-sm">
-            {actionButtons}
-          </div>
+          <div className="max-w-sm">{actionButtons}</div>
         </div>
       </div>
     </div>

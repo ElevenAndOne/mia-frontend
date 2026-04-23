@@ -65,10 +65,7 @@ export const AppRoutes = ({
           }
         />
 
-        <Route
-          path="/invite/:inviteId"
-          element={<InvitePage onAccepted={onInviteAccepted} />}
-        />
+        <Route path="/invite/:inviteId" element={<InvitePage onAccepted={onInviteAccepted} />} />
 
         {/* Auth Routes - require authentication */}
         <Route

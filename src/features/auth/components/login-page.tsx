@@ -25,7 +25,8 @@ interface AuthButtonConfig {
   onClick: () => void
 }
 
-const buttonBase = 'w-full rounded-2xl px-4 py-3 flex items-center justify-center gap-3 transition-colors subheading-bg'
+const buttonBase =
+  'w-full rounded-2xl px-4 py-3 flex items-center justify-center gap-3 transition-colors subheading-bg'
 
 const getVariantClass = (variant: AuthButtonVariant, layout: 'mobile' | 'desktop') => {
   if (variant === 'solid') {
@@ -41,7 +42,11 @@ const getVariantClass = (variant: AuthButtonVariant, layout: 'mobile' | 'desktop
     : 'bg-primary text-primary border border-secondary hover:bg-secondary'
 }
 
-const renderAuthButtons = (layout: 'mobile' | 'desktop', buttons: AuthButtonConfig[], isBusy: boolean,): ReactNode => (
+const renderAuthButtons = (
+  layout: 'mobile' | 'desktop',
+  buttons: AuthButtonConfig[],
+  isBusy: boolean
+): ReactNode => (
   <div className="space-y-3">
     {buttons.map((button) => (
       <button
@@ -67,13 +72,13 @@ const renderAuthButtons = (layout: 'mobile' | 'desktop', buttons: AuthButtonConf
   </div>
 )
 
-export const LoginPage = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed, onOAuthStart }: LoginPageProps) => {
-  const {
-    isBusy,
-    isGoogleLoading,
-    googleLoadingMessage,
-    handleLogin,
-  } = useLoginPage({
+export const LoginPage = ({
+  onAuthSuccess,
+  onMetaAuthSuccess,
+  onOAuthPopupClosed,
+  onOAuthStart,
+}: LoginPageProps) => {
+  const { isBusy, isGoogleLoading, googleLoadingMessage, handleLogin } = useLoginPage({
     onAuthSuccess,
     onMetaAuthSuccess,
     onOAuthPopupClosed,
@@ -103,18 +108,15 @@ export const LoginPage = ({ onAuthSuccess, onMetaAuthSuccess, onOAuthPopupClosed
       iconAlt: 'Meta',
       loading: false,
       loadingMessage: '',
-      onClick: () => alert('Meta sign-in coming soon! You can connect Meta Ads after signing in with Google.'),
+      onClick: () =>
+        alert('Meta sign-in coming soon! You can connect Meta Ads after signing in with Google.'),
     },
   ]
 
   return (
     <div className="relative w-full h-full">
-      <LoginPageMobile
-        actionButtons={renderAuthButtons('mobile', authButtons, isBusy)}
-      />
-      <LoginPageDesktop
-        actionButtons={renderAuthButtons('desktop', authButtons, isBusy)}
-      />
+      <LoginPageMobile actionButtons={renderAuthButtons('mobile', authButtons, isBusy)} />
+      <LoginPageDesktop actionButtons={renderAuthButtons('desktop', authButtons, isBusy)} />
     </div>
   )
 }

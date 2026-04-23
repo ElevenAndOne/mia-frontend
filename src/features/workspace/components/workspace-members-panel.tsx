@@ -30,10 +30,7 @@ export const WorkspaceMembersPanel = ({
   return (
     <div className="space-y-3">
       {people.map((person) => (
-        <div
-          key={person.id}
-          className="bg-secondary rounded-xl p-4 flex items-center gap-3"
-        >
+        <div key={person.id} className="bg-secondary rounded-xl p-4 flex items-center gap-3">
           {person.type === 'member' ? (
             <UserAvatar
               name={person.name}

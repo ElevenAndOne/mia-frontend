@@ -9,7 +9,14 @@
  * - Skip/complete actions
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import { apiFetch } from '../../utils/api'
 import { StorageKey } from '../../constants/storage-keys'
 import { useSession } from '../../contexts/session-context'
@@ -42,7 +49,7 @@ export interface OnboardingState {
   // Platforms
   platformsConnected: string[]
   platformCount: number
-  fullAccess: boolean  // true when 2+ platforms connected
+  fullAccess: boolean // true when 2+ platforms connected
 
   // Bronze data
   bronzeReady: boolean
@@ -52,7 +59,7 @@ export interface OnboardingState {
   growTaskId: string | null
   growInsightsReady: boolean
   growInsightsProgress: number
-  growInsightsSummary: string | null  // The actual summary result
+  growInsightsSummary: string | null // The actual summary result
 
   // UI state
   isLoading: boolean
@@ -104,7 +111,8 @@ interface OnboardingProviderProps {
 }
 
 export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children }) => {
-  const { sessionId, selectedAccount, activeWorkspace, refreshWorkspaces, markOnboardingComplete } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace, refreshWorkspaces, markOnboardingComplete } =
+    useSession()
 
   const [state, setState] = useState<OnboardingState>({
     step: 0,
@@ -135,79 +143,84 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, selectedAccount?.id])
 
-  const loadOnboardingStatus = useCallback(async (forceRefresh = false): Promise<string | null> => {
-    if (!sessionId) return null
+  const loadOnboardingStatus = useCallback(
+    async (forceRefresh = false): Promise<string | null> => {
+      if (!sessionId) return null
 
-    // OPTIMIZATION: Skip if already loading or loaded recently (within 2 seconds)
-    const now = Date.now()
-    if (!forceRefresh) {
-      if (isLoadingRef.current) {
-        logger.log('[ONBOARDING] Skipping duplicate load (already in progress)')
-        return state.growTaskId
+      // OPTIMIZATION: Skip if already loading or loaded recently (within 2 seconds)
+      const now = Date.now()
+      if (!forceRefresh) {
+        if (isLoadingRef.current) {
+          logger.log('[ONBOARDING] Skipping duplicate load (already in progress)')
+          return state.growTaskId
+        }
+        if (now - lastLoadTimeRef.current < 2000) {
+          logger.log('[ONBOARDING] Skipping duplicate load (loaded recently)')
+          return state.growTaskId
+        }
       }
-      if (now - lastLoadTimeRef.current < 2000) {
-        logger.log('[ONBOARDING] Skipping duplicate load (loaded recently)')
-        return state.growTaskId
-      }
-    }
 
-    isLoadingRef.current = true
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+      isLoadingRef.current = true
+      setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
-    try {
-      const response = await apiFetch(`/api/onboarding/status?session_id=${encodeURIComponent(sessionId)}`, {
-        headers: { 'X-Session-ID': sessionId }
-      })
+      try {
+        const response = await apiFetch(
+          `/api/onboarding/status?session_id=${encodeURIComponent(sessionId)}`,
+          {
+            headers: { 'X-Session-ID': sessionId },
+          }
+        )
 
-      if (response.ok) {
-        const data = await response.json()
-        logger.log('[ONBOARDING] Status loaded:', {
-          growTaskId: data.grow_task_id,
-          step: data.step,
-          bronzeReady: data.bronze_ready
-        })
-        setState(prev => ({
+        if (response.ok) {
+          const data = await response.json()
+          logger.log('[ONBOARDING] Status loaded:', {
+            growTaskId: data.grow_task_id,
+            step: data.step,
+            bronzeReady: data.bronze_ready,
+          })
+          setState((prev) => ({
+            ...prev,
+            step: data.step || 0,
+            completed: data.completed || false,
+            platformsConnected: data.platforms_connected || [],
+            platformCount: data.platform_count || 0,
+            fullAccess: data.full_access || false,
+            bronzeReady: data.bronze_ready || false,
+            growTaskId: data.grow_task_id || null,
+            isLoading: false,
+          }))
+          // Update deduplication tracking
+          lastLoadTimeRef.current = Date.now()
+          // Return the task ID directly so callers don't have to wait for state
+          return data.grow_task_id || null
+        } else {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'Failed to load onboarding status',
+          }))
+        }
+      } catch (err) {
+        logger.error('[ONBOARDING] Status load error:', err)
+        setState((prev) => ({
           ...prev,
-          step: data.step || 0,
-          completed: data.completed || false,
-          platformsConnected: data.platforms_connected || [],
-          platformCount: data.platform_count || 0,
-          fullAccess: data.full_access || false,
-          bronzeReady: data.bronze_ready || false,
-          growTaskId: data.grow_task_id || null,
           isLoading: false,
+          error: 'Failed to connect to server',
         }))
-        // Update deduplication tracking
-        lastLoadTimeRef.current = Date.now()
-        // Return the task ID directly so callers don't have to wait for state
-        return data.grow_task_id || null
-      } else {
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Failed to load onboarding status'
-        }))
+      } finally {
+        // Always clear the loading ref so future loads can proceed
+        isLoadingRef.current = false
       }
-    } catch (err) {
-      logger.error('[ONBOARDING] Status load error:', err)
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: 'Failed to connect to server'
-      }))
-    } finally {
-      // Always clear the loading ref so future loads can proceed
-      isLoadingRef.current = false
-    }
-    return null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId])
+      return null
+    },
+    [sessionId]
+  )
 
   const advanceStep = useCallback(async () => {
     if (!sessionId) return
 
     // OPTIMIZATION: Update local state immediately (optimistic update)
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       step: Math.min(prev.step + 1, 5),
       completed: prev.step + 1 >= 5,
@@ -216,99 +229,108 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     // Sync to server in background (fire-and-forget)
     apiFetch(`/api/onboarding/advance?session_id=${encodeURIComponent(sessionId)}`, {
       method: 'POST',
-      headers: { 'X-Session-ID': sessionId }
-    }).catch(err => {
+      headers: { 'X-Session-ID': sessionId },
+    }).catch((err) => {
       logger.error('[ONBOARDING] Advance step sync error:', err)
     })
   }, [sessionId])
 
-  const updateStep = useCallback(async (step: number) => {
-    if (!sessionId) return
+  const updateStep = useCallback(
+    async (step: number) => {
+      if (!sessionId) return
 
-    try {
-      const response = await apiFetch('/api/onboarding/update-step', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, step })
-      })
+      try {
+        const response = await apiFetch('/api/onboarding/update-step', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId,
+          },
+          body: JSON.stringify({ session_id: sessionId, step }),
+        })
 
-      if (response.ok) {
-        setState(prev => ({ ...prev, step }))
-      }
-    } catch (err) {
-      logger.error('[ONBOARDING] Update step error:', err)
-    }
-  }, [sessionId])
-
-  const fetchBronzeHighlight = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
-    if (!sessionId) return null
-
-    try {
-      // Timeout after 10s to prevent hang if backend is unresponsive
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 30000)
-
-      const response = await apiFetch('/api/bronze/highlight', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, platform }),
-        signal: controller.signal
-      })
-
-      clearTimeout(timeout)
-
-      if (response.ok) {
-        const data = await response.json()
-        const fact: BronzeFact = {
-          platform: data.platform,
-          headline: data.headline,
-          detail: data.detail,
-          metric_value: data.metric_value,
-          metric_name: data.metric_name,
+        if (response.ok) {
+          setState((prev) => ({ ...prev, step }))
         }
-        setState(prev => ({ ...prev, currentBronzeFact: fact, bronzeReady: true }))
-        return fact
+      } catch (err) {
+        logger.error('[ONBOARDING] Update step error:', err)
       }
-    } catch (err) {
-      logger.error('[ONBOARDING] Bronze highlight error:', err)
-    }
-    return null
-  }, [sessionId])
+    },
+    [sessionId]
+  )
 
-  const fetchBronzeFollowup = useCallback(async (platform?: string): Promise<BronzeFact | null> => {
-    if (!sessionId) return null
+  const fetchBronzeHighlight = useCallback(
+    async (platform?: string): Promise<BronzeFact | null> => {
+      if (!sessionId) return null
 
-    try {
-      const response = await apiFetch('/api/bronze/followup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
-        },
-        body: JSON.stringify({ session_id: sessionId, platform })
-      })
+      try {
+        // Timeout after 10s to prevent hang if backend is unresponsive
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 30000)
 
-      if (response.ok) {
-        const data = await response.json()
-        return {
-          platform: data.platform,
-          headline: data.headline,
-          detail: data.detail,
-          metric_value: data.metric_value,
-          metric_name: data.metric_name,
+        const response = await apiFetch('/api/bronze/highlight', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId,
+          },
+          body: JSON.stringify({ session_id: sessionId, platform }),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeout)
+
+        if (response.ok) {
+          const data = await response.json()
+          const fact: BronzeFact = {
+            platform: data.platform,
+            headline: data.headline,
+            detail: data.detail,
+            metric_value: data.metric_value,
+            metric_name: data.metric_name,
+          }
+          setState((prev) => ({ ...prev, currentBronzeFact: fact, bronzeReady: true }))
+          return fact
         }
+      } catch (err) {
+        logger.error('[ONBOARDING] Bronze highlight error:', err)
       }
-    } catch (err) {
-      logger.error('[ONBOARDING] Bronze followup error:', err)
-    }
-    return null
-  }, [sessionId])
+      return null
+    },
+    [sessionId]
+  )
+
+  const fetchBronzeFollowup = useCallback(
+    async (platform?: string): Promise<BronzeFact | null> => {
+      if (!sessionId) return null
+
+      try {
+        const response = await apiFetch('/api/bronze/followup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId,
+          },
+          body: JSON.stringify({ session_id: sessionId, platform }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          return {
+            platform: data.platform,
+            headline: data.headline,
+            detail: data.detail,
+            metric_value: data.metric_value,
+            metric_name: data.metric_name,
+          }
+        }
+      } catch (err) {
+        logger.error('[ONBOARDING] Bronze followup error:', err)
+      }
+      return null
+    },
+    [sessionId]
+  )
 
   const startGrowInsightsAsync = useCallback(async (): Promise<string | null> => {
     if (!sessionId) return null
@@ -318,19 +340,19 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
+          'X-Session-ID': sessionId,
         },
-        body: JSON.stringify({ session_id: sessionId })
+        body: JSON.stringify({ session_id: sessionId }),
       })
 
       if (response.ok) {
         const data = await response.json()
         const taskId = data.task_id
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           growTaskId: taskId,
           growInsightsReady: false,
-          growInsightsProgress: 0
+          growInsightsProgress: 0,
         }))
         return taskId
       }
@@ -340,43 +362,46 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     return null
   }, [sessionId])
 
-  const checkGrowInsightsStatus = useCallback(async (taskIdOverride?: string): Promise<boolean> => {
-    const taskId = taskIdOverride || state.growTaskId
-    logger.log('[ONBOARDING] checkGrowInsightsStatus called, taskId:', taskId)
-    if (!taskId) {
-      logger.log('[ONBOARDING] No growTaskId available, returning false')
-      return false
-    }
-
-    try {
-      const response = await apiFetch(`/api/insights/task/${taskId}`)
-
-      if (response.ok) {
-        const data = await response.json()
-        logger.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
-        const isComplete = data.status === 'completed'
-        const progress = data.progress || 0
-
-        // Extract summary from result if completed
-        let summary: string | null = null
-        if (isComplete && data.result) {
-          summary = data.result.summary || null
-        }
-
-        setState(prev => ({
-          ...prev,
-          growInsightsReady: isComplete,
-          growInsightsProgress: progress,
-          growInsightsSummary: summary,
-        }))
-
-        return isComplete
+  const checkGrowInsightsStatus = useCallback(
+    async (taskIdOverride?: string): Promise<boolean> => {
+      const taskId = taskIdOverride || state.growTaskId
+      logger.log('[ONBOARDING] checkGrowInsightsStatus called, taskId:', taskId)
+      if (!taskId) {
+        logger.log('[ONBOARDING] No growTaskId available, returning false')
+        return false
       }
-    } catch (err) {
-      logger.error('[ONBOARDING] Check grow status error:', err)
-    }
-    return false
-  }, [state.growTaskId])
+
+      try {
+        const response = await apiFetch(`/api/insights/task/${taskId}`)
+
+        if (response.ok) {
+          const data = await response.json()
+          logger.log('[ONBOARDING] Task status:', data.status, 'progress:', data.progress)
+          const isComplete = data.status === 'completed'
+          const progress = data.progress || 0
+
+          // Extract summary from result if completed
+          let summary: string | null = null
+          if (isComplete && data.result) {
+            summary = data.result.summary || null
+          }
+
+          setState((prev) => ({
+            ...prev,
+            growInsightsReady: isComplete,
+            growInsightsProgress: progress,
+            growInsightsSummary: summary,
+          }))
+
+          return isComplete
+        }
+      } catch (err) {
+        logger.error('[ONBOARDING] Check grow status error:', err)
+      }
+      return false
+    },
+    [state.growTaskId]
+  )
 
   const completeOnboarding = useCallback(async () => {
     if (!sessionId) return
@@ -386,16 +411,16 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
+          'X-Session-ID': sessionId,
         },
         body: JSON.stringify({
           session_id: sessionId,
-          platforms_at_completion: state.platformsConnected
-        })
+          platforms_at_completion: state.platformsConnected,
+        }),
       })
 
       if (response.ok) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           completed: true,
           step: ONBOARDING_STEPS.COMPLETED,
@@ -406,7 +431,10 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
         // Persist to localStorage as fallback (backend may not return this flag on re-login)
         if (activeWorkspace?.tenant_id) {
-          localStorage.setItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`, 'true')
+          localStorage.setItem(
+            `${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`,
+            'true'
+          )
         }
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data to update connected_platforms
@@ -418,7 +446,13 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     } catch (err) {
       logger.error('[ONBOARDING] Complete error:', err)
     }
-  }, [sessionId, state.platformsConnected, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
+  }, [
+    sessionId,
+    state.platformsConnected,
+    activeWorkspace?.tenant_id,
+    refreshWorkspaces,
+    markOnboardingComplete,
+  ])
 
   const skipOnboarding = useCallback(async () => {
     if (!sessionId) return
@@ -426,11 +460,11 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     try {
       const response = await apiFetch('/api/onboarding/skip', {
         method: 'POST',
-        headers: { 'X-Session-ID': sessionId }
+        headers: { 'X-Session-ID': sessionId },
       })
 
       if (response.ok) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           skipped: true,
           step: 3, // Skipped second platform
@@ -441,7 +475,10 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
         // Persist to localStorage as fallback (backend may not return this flag on re-login)
         if (activeWorkspace?.tenant_id) {
-          localStorage.setItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`, 'true')
+          localStorage.setItem(
+            `${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`,
+            'true'
+          )
         }
 
         // CRITICAL FIX (Jan 2026): Refresh workspace data after skipping too
@@ -453,12 +490,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     }
   }, [sessionId, activeWorkspace?.tenant_id, refreshWorkspaces, markOnboardingComplete])
 
-  const getAvailablePlatforms = useCallback(async (): Promise<{ id: string; name: string; connected: boolean }[]> => {
+  const getAvailablePlatforms = useCallback(async (): Promise<
+    { id: string; name: string; connected: boolean }[]
+  > => {
     if (!sessionId) return []
 
     try {
       const response = await apiFetch('/api/onboarding/available-platforms', {
-        headers: { 'X-Session-ID': sessionId }
+        headers: { 'X-Session-ID': sessionId },
       })
 
       if (response.ok) {
@@ -505,11 +544,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     reset,
   }
 
-  return (
-    <OnboardingContext.Provider value={contextValue}>
-      {children}
-    </OnboardingContext.Provider>
-  )
+  return <OnboardingContext.Provider value={contextValue}>{children}</OnboardingContext.Provider>
 }
 
 export default OnboardingContext

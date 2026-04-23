@@ -22,14 +22,15 @@ const formatDaysAgo = (isoString: string): string => {
 
 const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { sessionId } = useSession()
-  const { data, isLoading, error, refresh, triggerRefresh, isRefreshing } = useGoldInsights(sessionId)
+  const { data, isLoading, error, refresh, triggerRefresh, isRefreshing } =
+    useGoldInsights(sessionId)
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
   useEffect(() => {
     if (sessionId) {
       trackEvent(sessionId, 'page_visit', 'predict')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -43,11 +44,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
 
   return (
     <div className="w-full h-full relative flex flex-col bg-primary">
-      <TopBar
-        title="Predict"
-        onBack={onBack}
-        className="relative z-20 border-b border-tertiary"
-      />
+      <TopBar title="Predict" onBack={onBack} className="relative z-20 border-b border-tertiary" />
 
       <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
         {isLoading && (
@@ -75,8 +72,12 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
               <div className="bg-secondary border border-utility-warning-300 rounded-lg p-6 flex items-center gap-4">
                 <Spinner size="md" variant="primary" />
                 <div>
-                  <p className="paragraph-md text-secondary">Analysis started — we're crunching your data now.</p>
-                  <p className="paragraph-xs text-tertiary mt-1">This usually takes a few minutes. We'll email you when it's ready.</p>
+                  <p className="paragraph-md text-secondary">
+                    Analysis started — we're crunching your data now.
+                  </p>
+                  <p className="paragraph-xs text-tertiary mt-1">
+                    This usually takes a few minutes. We'll email you when it's ready.
+                  </p>
                 </div>
               </div>
             )}
@@ -99,7 +100,12 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
             {data.status === 'completed' && (
               <div className="bg-linear-to-r from-utility-warning-100 to-utility-brand-100 border border-utility-warning-300 rounded-lg p-6">
                 <h2 className="label-bg text-primary mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-utility-warning-600" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    className="w-5 h-5 text-utility-warning-600"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
                   </svg>
                   ML Prediction Report

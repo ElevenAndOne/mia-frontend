@@ -93,7 +93,7 @@ export function ToastContainer() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
-      {toasts.map(toast => {
+      {toasts.map((toast) => {
         const styles = VARIANT_STYLES[toast.variant]
         const IconComponent = VARIANT_ICONS[toast.variant]
 

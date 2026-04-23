@@ -50,6 +50,6 @@ export function useIntegrationStatus(
     isRefetching: isFetching && !isLoading,
     error: error as Error | null,
     refetch: () => refetch(),
-    invalidate
+    invalidate,
   }
 }

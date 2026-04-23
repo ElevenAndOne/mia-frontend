@@ -52,7 +52,11 @@ export function Dropdown({
   })
 
   // Click outside handling
-  useClickOutside([anchorRef, floatingRef], onClose, isOpen && closeOnOutsideClick && !shouldUseSheet)
+  useClickOutside(
+    [anchorRef, floatingRef],
+    onClose,
+    isOpen && closeOnOutsideClick && !shouldUseSheet
+  )
 
   // Escape key handling
   useEscapeKey(onClose, isOpen && closeOnEscape)

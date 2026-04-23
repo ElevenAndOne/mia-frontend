@@ -17,10 +17,6 @@ export const NarrowPageContainer = ({
   const centeredClass = centered ? 'flex items-center justify-center' : ''
 
   return (
-    <div
-      className={`w-full ${scrollClass} ${centeredClass} ${className}`.trim()}
-    >
-      {children}
-    </div>
+    <div className={`w-full ${scrollClass} ${centeredClass} ${className}`.trim()}>{children}</div>
   )
 }

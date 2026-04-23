@@ -7,7 +7,9 @@ interface GoogleAuthStatusResponse {
   user_id?: string
 }
 
-export const fetchGoogleAuthStatus = async (sessionId: string): Promise<GoogleAuthStatusResponse | null> => {
+export const fetchGoogleAuthStatus = async (
+  sessionId: string
+): Promise<GoogleAuthStatusResponse | null> => {
   const response = await apiFetch('/api/oauth/google/status', {
     headers: { 'X-Session-ID': sessionId },
   })
@@ -18,7 +20,7 @@ export const fetchGoogleAuthStatus = async (sessionId: string): Promise<GoogleAu
 
 export const fetchGoogleAdAccounts = async (
   sessionId: string,
-  userId: string,
+  userId: string
 ): Promise<GoogleAccount[]> => {
   const response = await apiFetch(`/api/oauth/google/ad-accounts?user_id=${userId}`, {
     headers: { 'X-Session-ID': sessionId },

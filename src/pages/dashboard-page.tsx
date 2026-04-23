@@ -141,9 +141,7 @@ const DashboardPage = () => {
         )}
       </div>
 
-      {showBurgerMenu && (
-        <div className="fixed inset-0 z-10" onClick={handleCloseMenu} />
-      )}
+      {showBurgerMenu && <div className="fixed inset-0 z-10" onClick={handleCloseMenu} />}
 
       <BrevoConnectionModal
         isOpen={showBrevoModal}

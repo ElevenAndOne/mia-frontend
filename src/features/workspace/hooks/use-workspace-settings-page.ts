@@ -14,7 +14,15 @@ import {
 import { useWorkspaceSettings } from './use-workspace-settings'
 
 export const useWorkspaceSettingsPage = () => {
-  const { activeWorkspace, availableWorkspaces, sessionId, user, refreshWorkspaces, deleteWorkspace, switchWorkspace } = useSession()
+  const {
+    activeWorkspace,
+    availableWorkspaces,
+    sessionId,
+    user,
+    refreshWorkspaces,
+    deleteWorkspace,
+    switchWorkspace,
+  } = useSession()
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCreateInviteModal, setShowCreateInviteModal] = useState(false)
@@ -29,7 +37,9 @@ export const useWorkspaceSettingsPage = () => {
 
   const selectedWorkspace = useMemo(() => {
     if (!selectedWorkspaceId) return null
-    return availableWorkspaces.find((workspace) => workspace.tenant_id === selectedWorkspaceId) || null
+    return (
+      availableWorkspaces.find((workspace) => workspace.tenant_id === selectedWorkspaceId) || null
+    )
   }, [availableWorkspaces, selectedWorkspaceId])
 
   const canManage = selectedWorkspace?.role === 'owner' || selectedWorkspace?.role === 'admin'
@@ -75,14 +85,17 @@ export const useWorkspaceSettingsPage = () => {
     return buildUnifiedPersonRows(memberRows, pendingInvites)
   }, [memberRows, pendingInvites])
 
-  const handleSelectWorkspace = useCallback((workspaceId: string) => {
-    setSelectedWorkspaceId(workspaceId)
-    setMembers([])
-    setInvites([])
-    setShowCreateInviteModal(false)
-    setCreatedInviteLink(null)
-    setError(null)
-  }, [setMembers, setInvites, setError])
+  const handleSelectWorkspace = useCallback(
+    (workspaceId: string) => {
+      setSelectedWorkspaceId(workspaceId)
+      setMembers([])
+      setInvites([])
+      setShowCreateInviteModal(false)
+      setCreatedInviteLink(null)
+      setError(null)
+    },
+    [setMembers, setInvites, setError]
+  )
 
   const handleBackToOverview = useCallback(() => {
     setSelectedWorkspaceId(null)
@@ -116,41 +129,61 @@ export const useWorkspaceSettingsPage = () => {
     } finally {
       setCreatingInvite(false)
     }
-  }, [selectedWorkspaceId, sessionId, inviteRole, inviteEmail, isLinkInvite, createInvite, setError])
+  }, [
+    selectedWorkspaceId,
+    sessionId,
+    inviteRole,
+    inviteEmail,
+    isLinkInvite,
+    createInvite,
+    setError,
+  ])
 
-  const handleRevokeInvite = useCallback(async (inviteId: string) => {
-    if (!selectedWorkspaceId || !sessionId) return
-    try {
-      await revokeInvite(inviteId)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to revoke invite'
-      setError(message)
-    }
-  }, [selectedWorkspaceId, sessionId, revokeInvite, setError])
+  const handleRevokeInvite = useCallback(
+    async (inviteId: string) => {
+      if (!selectedWorkspaceId || !sessionId) return
+      try {
+        await revokeInvite(inviteId)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to revoke invite'
+        setError(message)
+      }
+    },
+    [selectedWorkspaceId, sessionId, revokeInvite, setError]
+  )
 
-  const handleRemoveMember = useCallback(async (userId: string) => {
-    if (!selectedWorkspaceId || !sessionId) return
-    try {
-      await removeMember(userId)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove member'
-      setError(message)
-    }
-  }, [selectedWorkspaceId, sessionId, removeMember, setError])
+  const handleRemoveMember = useCallback(
+    async (userId: string) => {
+      if (!selectedWorkspaceId || !sessionId) return
+      try {
+        await removeMember(userId)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to remove member'
+        setError(message)
+      }
+    },
+    [selectedWorkspaceId, sessionId, removeMember, setError]
+  )
 
-  const handleUpdateRole = useCallback(async (userId: string, newRole: string) => {
-    if (!selectedWorkspaceId || !sessionId) return
-    try {
-      await updateMemberRole(userId, newRole)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update role'
-      setError(message)
-    }
-  }, [selectedWorkspaceId, sessionId, updateMemberRole, setError])
+  const handleUpdateRole = useCallback(
+    async (userId: string, newRole: string) => {
+      if (!selectedWorkspaceId || !sessionId) return
+      try {
+        await updateMemberRole(userId, newRole)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update role'
+        setError(message)
+      }
+    },
+    [selectedWorkspaceId, sessionId, updateMemberRole, setError]
+  )
 
-  const handleCopyInvite = useCallback((inviteLink: string) => {
-    copy(inviteLink)
-  }, [copy])
+  const handleCopyInvite = useCallback(
+    (inviteLink: string) => {
+      copy(inviteLink)
+    },
+    [copy]
+  )
 
   const openCreateModal = useCallback(() => setShowCreateModal(true), [])
   const closeCreateModal = useCallback(() => setShowCreateModal(false), [])
@@ -176,23 +209,26 @@ export const useWorkspaceSettingsPage = () => {
   const openRenameModal = useCallback(() => setShowRenameModal(true), [])
   const closeRenameModal = useCallback(() => setShowRenameModal(false), [])
 
-  const handleRenameWorkspace = useCallback(async (newName: string): Promise<boolean> => {
-    if (!selectedWorkspaceId || !sessionId || !newName.trim()) return false
-    try {
-      setRenaming(true)
-      setError(null)
-      await renameWorkspace(sessionId, selectedWorkspaceId, newName.trim())
-      await refreshWorkspaces()
-      setShowRenameModal(false)
-      return true
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to rename workspace'
-      setError(message)
-      return false
-    } finally {
-      setRenaming(false)
-    }
-  }, [selectedWorkspaceId, sessionId, refreshWorkspaces, setError])
+  const handleRenameWorkspace = useCallback(
+    async (newName: string): Promise<boolean> => {
+      if (!selectedWorkspaceId || !sessionId || !newName.trim()) return false
+      try {
+        setRenaming(true)
+        setError(null)
+        await renameWorkspace(sessionId, selectedWorkspaceId, newName.trim())
+        await refreshWorkspaces()
+        setShowRenameModal(false)
+        return true
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to rename workspace'
+        setError(message)
+        return false
+      } finally {
+        setRenaming(false)
+      }
+    },
+    [selectedWorkspaceId, sessionId, refreshWorkspaces, setError]
+  )
 
   const openDeleteModal = useCallback(() => setShowDeleteModal(true), [])
   const closeDeleteModal = useCallback(() => setShowDeleteModal(false), [])
@@ -203,7 +239,7 @@ export const useWorkspaceSettingsPage = () => {
     const success = await deleteWorkspace(selectedWorkspaceId)
     if (success) {
       setSelectedWorkspaceId(null)
-      const remaining = availableWorkspaces.filter(w => w.tenant_id !== selectedWorkspaceId)
+      const remaining = availableWorkspaces.filter((w) => w.tenant_id !== selectedWorkspaceId)
       if (remaining.length === 0) {
         setShowCreateModal(true)
       } else if (wasActive) {
@@ -236,7 +272,7 @@ export const useWorkspaceSettingsPage = () => {
       const data = await response.json()
       setError(data.detail || 'Failed to leave workspace')
       return false
-    } catch (err) {
+    } catch {
       setError('Network error while leaving workspace')
       return false
     }

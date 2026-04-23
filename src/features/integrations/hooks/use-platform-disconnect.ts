@@ -8,7 +8,12 @@ interface UsePlatformDisconnectParams {
   onError?: (message: string) => void
 }
 
-export const usePlatformDisconnect = ({ sessionId, platformId, onSuccess, onError }: UsePlatformDisconnectParams) => {
+export const usePlatformDisconnect = ({
+  sessionId,
+  platformId,
+  onSuccess,
+  onError,
+}: UsePlatformDisconnectParams) => {
   const [isDisconnecting, setIsDisconnecting] = useState(false)
 
   const handleDisconnect = useCallback(async () => {

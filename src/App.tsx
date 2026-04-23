@@ -5,7 +5,9 @@ import { ToastContainer } from './components/toast'
 import CreateWorkspaceModal from './features/workspace/views/create-workspace-modal'
 import { useAppController } from './hooks/use-app-controller'
 
-const InsightsDatePickerModal = lazy(() => import('./features/insights/views/insights-date-picker-modal'))
+const InsightsDatePickerModal = lazy(
+  () => import('./features/insights/views/insights-date-picker-modal')
+)
 
 function App() {
   const {

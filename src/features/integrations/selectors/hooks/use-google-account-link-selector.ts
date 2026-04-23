@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../../../contexts/session-context'
 import { useSelectorState } from './use-selector-state'
-import { fetchGoogleAdAccounts, fetchGoogleAuthStatus, linkGoogleAdsAccount } from '../../services/google-account-link-service'
+import {
+  fetchGoogleAdAccounts,
+  fetchGoogleAuthStatus,
+  linkGoogleAdsAccount,
+} from '../../services/google-account-link-service'
 import type { GoogleAccount } from '../../types'
 
 interface UseGoogleAccountLinkSelectorParams {
@@ -102,7 +106,17 @@ export const useGoogleAccountLinkSelector = ({
       onSuccess(selectedId)
       handleClose()
     })
-  }, [sessionId, selectedAccount, selectedId, googleAccounts, refreshAccounts, onSuccess, handleClose, setError, withSubmitting])
+  }, [
+    sessionId,
+    selectedAccount,
+    selectedId,
+    googleAccounts,
+    refreshAccounts,
+    onSuccess,
+    handleClose,
+    setError,
+    withSubmitting,
+  ])
 
   const accountItems = useMemo(() => {
     return googleAccounts.map((account) => ({

@@ -48,9 +48,12 @@ export interface SessionValidationResponse {
  * Validate an existing session
  */
 export const validateSession = async (sessionId: string): Promise<SessionValidationResponse> => {
-  const response = await apiFetch(`/api/session/validate?session_id=${encodeURIComponent(sessionId)}`, {
-    headers: createSessionHeaders(sessionId)
-  })
+  const response = await apiFetch(
+    `/api/session/validate?session_id=${encodeURIComponent(sessionId)}`,
+    {
+      headers: createSessionHeaders(sessionId),
+    }
+  )
 
   if (!response.ok) {
     throw new Error(`Session validation failed: ${response.status}`)
@@ -74,8 +77,8 @@ export const handleMobileOAuthRedirect = async (
     const response = await apiFetch(completeUrl, {
       method: 'POST',
       headers: {
-        'X-Session-ID': sessionId
-      }
+        'X-Session-ID': sessionId,
+      },
     })
 
     return response.ok

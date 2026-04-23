@@ -13,7 +13,7 @@ const saveReturnUrl = (pathname: string, search: string) => {
   localStorage.setItem(RETURN_URL_KEY, pathname + search)
 }
 
-// Export for use in auth success handlers
+// eslint-disable-next-line react-refresh/only-export-components -- utility must colocate with the key constant
 export const consumeReturnUrl = (): string | null => {
   const url = localStorage.getItem(RETURN_URL_KEY)
   localStorage.removeItem(RETURN_URL_KEY)
@@ -31,7 +31,7 @@ export const ProtectedRoute = ({
   children,
   requireAccount = false,
   requireWorkspace = false,
-  requireMetaAuth = false
+  requireMetaAuth = false,
 }: ProtectedRouteProps) => {
   const location = useLocation()
   const {
@@ -40,7 +40,7 @@ export const ProtectedRoute = ({
     selectedAccount,
     activeWorkspace,
     isLoading,
-    connectingPlatform
+    connectingPlatform,
   } = useSession()
 
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
@@ -52,7 +52,8 @@ export const ProtectedRoute = ({
 
   if (isLoading && !isConnectingSecondPlatform) {
     // Use connectingPlatform if set (explicit), otherwise infer from auth state
-    const loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
+    const loadingPlatform =
+      connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
     return <LoadingScreen platform={loadingPlatform} />
   }
 

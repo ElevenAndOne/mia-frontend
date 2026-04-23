@@ -13,23 +13,27 @@ interface BrevoConnectionModalProps {
 }
 
 const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionModalProps) => {
-  const {
-    apiKey,
-    setApiKey,
-    isConnecting,
-    error,
-    success,
-    handleConnect,
-    handleClose,
-  } = useBrevoConnection({ onClose, onSuccess })
+  const { apiKey, setApiKey, isConnecting, error, success, handleConnect, handleClose } =
+    useBrevoConnection({ onClose, onSuccess })
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="md" showCloseButton={false} panelClassName="p-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="md"
+      showCloseButton={false}
+      panelClassName="p-6"
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-utility-info-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-utility-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-6 h-6 text-utility-info-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -47,18 +51,32 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
 
       {/* Success Message */}
       {success && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
           <Alert variant="success">Connected successfully!</Alert>
         </motion.div>
       )}
 
       {/* Error Message */}
       {error && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
           <Alert variant="error">
             {error.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
               part.match(/^https?:\/\//) ? (
-                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline">
+                <a
+                  key={i}
+                  href={part}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
                   {part}
                 </a>
               ) : (
@@ -72,11 +90,13 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
       {/* Description */}
       <div className="mb-6">
         <p className="paragraph-sm text-tertiary mb-4">
-          Connect your Brevo account to analyze email campaign performance alongside your other marketing data.
+          Connect your Brevo account to analyze email campaign performance alongside your other
+          marketing data.
         </p>
         <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3">
           <p className="paragraph-xs text-utility-info-700">
-            <strong>Where to find your API key:</strong> Login to Brevo → Settings → API Keys → Create a new key
+            <strong>Where to find your API key:</strong> Login to Brevo → Settings → API Keys →
+            Create a new key
           </p>
         </div>
       </div>

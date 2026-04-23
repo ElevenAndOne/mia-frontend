@@ -7,7 +7,9 @@ const isClicksMetric = (fact: BronzeFact): boolean => {
   return metricName.includes('click') || headline.includes('click')
 }
 
-const parseHeadline = (fact: BronzeFact): { headlineText: string; metricLabelText: string; metricSuffix: string } => {
+const parseHeadline = (
+  fact: BronzeFact
+): { headlineText: string; metricLabelText: string; metricSuffix: string } => {
   let headlineText = ''
   let metricLabelText = fact.detail || ''
   let metricSuffix = ''
@@ -19,7 +21,7 @@ const parseHeadline = (fact: BronzeFact): { headlineText: string; metricLabelTex
       fact.metric_value.toLocaleString(),
       fact.metric_value.toFixed(2),
       fact.metric_value.toFixed(1),
-      Math.round(fact.metric_value).toLocaleString()
+      Math.round(fact.metric_value).toLocaleString(),
     ]
 
     let valueIndex = -1
@@ -64,15 +66,17 @@ export const buildBronzeCardData = (fact: BronzeFact): BronzeCardData => {
   const { headlineText, metricLabelText, metricSuffix } = parseHeadline(fact)
   // Only show secondaryMetric badge if metricLabel came from the headline (not from fact.detail)
   // When metricLabelText still equals fact.detail, showing secondaryMetric would duplicate it
-  const secondaryMetric = metricLabelText === (fact.detail || '') ? undefined : parseSecondaryMetric(fact.detail)
+  const secondaryMetric =
+    metricLabelText === (fact.detail || '') ? undefined : parseSecondaryMetric(fact.detail)
   const variant: BronzeCardVariant = isClicksMetric(fact) ? 'secondary' : 'primary'
 
   // Format metric value: max 2 decimal places, append suffix (e.g. "%") if parsed from headline
   let metricValue: number | string = fact.metric_value ?? 0
   if (typeof metricValue === 'number' && metricSuffix) {
-    metricValue = (Number.isInteger(metricValue)
-      ? metricValue.toLocaleString()
-      : metricValue.toLocaleString(undefined, { maximumFractionDigits: 2 })) + metricSuffix
+    metricValue =
+      (Number.isInteger(metricValue)
+        ? metricValue.toLocaleString()
+        : metricValue.toLocaleString(undefined, { maximumFractionDigits: 2 })) + metricSuffix
   }
 
   return {
@@ -81,6 +85,6 @@ export const buildBronzeCardData = (fact: BronzeFact): BronzeCardData => {
     metricValue,
     metricLabel: metricLabelText,
     secondaryMetric,
-    variant
+    variant,
   }
 }

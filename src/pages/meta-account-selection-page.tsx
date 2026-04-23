@@ -31,13 +31,8 @@ const MetaAccountSelectionPage = ({ onAccountSelected }: MetaAccountSelectionPag
     navigate('/')
   }
 
-  const {
-    metaUser,
-    metaAccountItems,
-    errorMessage,
-    isPageLoading,
-    handleAccountSelect,
-  } = useMetaAccountSelection({ onAccountSelected: handleAccountSelected })
+  const { metaUser, metaAccountItems, errorMessage, isPageLoading, handleAccountSelect } =
+    useMetaAccountSelection({ onAccountSelected: handleAccountSelected })
 
   if (isPageLoading) {
     return (
@@ -102,14 +97,27 @@ const MetaAccountSelectionPage = ({ onAccountSelected }: MetaAccountSelectionPag
                 <SelectionCard
                   onSelect={() => handleAccountSelect(account.id)}
                   disabled={account.disabled}
-                  className={`w-full p-4 rounded-xl border-2 text-left ${account.disabled
-                    ? 'opacity-60 cursor-not-allowed border-secondary'
-                    : 'border-secondary hover:border-utility-info-300 hover:bg-utility-info-100'
-                    }`}
-                  leading={<MetaLogoBadge className="bg-utility-info-500" iconClassName="text-white" />}
+                  className={`w-full p-4 rounded-xl border-2 text-left ${
+                    account.disabled
+                      ? 'opacity-60 cursor-not-allowed border-secondary'
+                      : 'border-secondary hover:border-utility-info-300 hover:bg-utility-info-100'
+                  }`}
+                  leading={
+                    <MetaLogoBadge className="bg-utility-info-500" iconClassName="text-white" />
+                  }
                   trailing={
-                    <svg className="w-6 h-6 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-6 h-6 text-placeholder-subtle"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   }
                   footer={

@@ -46,7 +46,11 @@ export interface MetaCompleteResponse {
 /**
  * Get Meta OAuth authorization URL
  */
-export const getMetaAuthUrl = async (sessionId: string, frontendOrigin?: string, tenantId?: string): Promise<MetaAuthUrlResponse> => {
+export const getMetaAuthUrl = async (
+  sessionId: string,
+  frontendOrigin?: string,
+  tenantId?: string
+): Promise<MetaAuthUrlResponse> => {
   const params = new URLSearchParams()
   if (frontendOrigin) {
     params.set('frontend_origin', frontendOrigin)
@@ -59,8 +63,8 @@ export const getMetaAuthUrl = async (sessionId: string, frontendOrigin?: string,
 
   const response = await apiFetch(url, {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -78,8 +82,8 @@ export const completeMetaAuth = async (sessionId: string): Promise<MetaCompleteR
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -95,8 +99,8 @@ export const completeMetaAuth = async (sessionId: string): Promise<MetaCompleteR
 export const getMetaAuthStatus = async (sessionId: string): Promise<MetaAuthStatusResponse> => {
   const response = await apiFetch('/api/oauth/meta/status', {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -113,8 +117,8 @@ export const logoutMeta = async (sessionId: string): Promise<void> => {
   await apiFetch('/api/oauth/meta/logout', {
     method: 'POST',
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 }
 
@@ -122,9 +126,5 @@ export const logoutMeta = async (sessionId: string): Promise<void> => {
  * Open Meta OAuth popup
  */
 export const openMetaOAuthPopup = (authUrl: string): Window | null => {
-  return window.open(
-    authUrl,
-    'meta-oauth',
-    'width=500,height=600,scrollbars=yes,resizable=yes'
-  )
+  return window.open(authUrl, 'meta-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes')
 }

@@ -16,7 +16,11 @@ interface UseWorkspaceSettingsParams {
   canManage: boolean
 }
 
-export const useWorkspaceSettings = ({ sessionId, workspaceId, canManage }: UseWorkspaceSettingsParams) => {
+export const useWorkspaceSettings = ({
+  sessionId,
+  workspaceId,
+  canManage,
+}: UseWorkspaceSettingsParams) => {
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [invites, setInvites] = useState<WorkspaceInvite[]>([])
   const [loading, setLoading] = useState(false)
@@ -49,32 +53,44 @@ export const useWorkspaceSettings = ({ sessionId, workspaceId, canManage }: UseW
     refresh()
   }, [workspaceId, refresh])
 
-  const createInvite = useCallback(async (payload: { role: string; email?: string }) => {
-    if (!sessionId || !workspaceId) return null
-    const invite = await createWorkspaceInvite(sessionId, workspaceId, payload)
-    setInvites((prev) => [invite, ...prev])
-    return invite
-  }, [sessionId, workspaceId])
+  const createInvite = useCallback(
+    async (payload: { role: string; email?: string }) => {
+      if (!sessionId || !workspaceId) return null
+      const invite = await createWorkspaceInvite(sessionId, workspaceId, payload)
+      setInvites((prev) => [invite, ...prev])
+      return invite
+    },
+    [sessionId, workspaceId]
+  )
 
-  const revokeInvite = useCallback(async (inviteId: string) => {
-    if (!sessionId || !workspaceId) return
-    await revokeWorkspaceInvite(sessionId, workspaceId, inviteId)
-    setInvites((prev) => prev.filter((invite) => invite.invite_id !== inviteId))
-  }, [sessionId, workspaceId])
+  const revokeInvite = useCallback(
+    async (inviteId: string) => {
+      if (!sessionId || !workspaceId) return
+      await revokeWorkspaceInvite(sessionId, workspaceId, inviteId)
+      setInvites((prev) => prev.filter((invite) => invite.invite_id !== inviteId))
+    },
+    [sessionId, workspaceId]
+  )
 
-  const removeMember = useCallback(async (userId: string) => {
-    if (!sessionId || !workspaceId) return
-    await removeWorkspaceMember(sessionId, workspaceId, userId)
-    setMembers((prev) => prev.filter((member) => member.user_id !== userId))
-  }, [sessionId, workspaceId])
+  const removeMember = useCallback(
+    async (userId: string) => {
+      if (!sessionId || !workspaceId) return
+      await removeWorkspaceMember(sessionId, workspaceId, userId)
+      setMembers((prev) => prev.filter((member) => member.user_id !== userId))
+    },
+    [sessionId, workspaceId]
+  )
 
-  const updateMemberRole = useCallback(async (userId: string, role: string) => {
-    if (!sessionId || !workspaceId) return
-    await updateWorkspaceMemberRole(sessionId, workspaceId, userId, role)
-    setMembers((prev) => prev.map((member) =>
-      member.user_id === userId ? { ...member, role } : member
-    ))
-  }, [sessionId, workspaceId])
+  const updateMemberRole = useCallback(
+    async (userId: string, role: string) => {
+      if (!sessionId || !workspaceId) return
+      await updateWorkspaceMemberRole(sessionId, workspaceId, userId, role)
+      setMembers((prev) =>
+        prev.map((member) => (member.user_id === userId ? { ...member, role } : member))
+      )
+    },
+    [sessionId, workspaceId]
+  )
 
   return {
     members,

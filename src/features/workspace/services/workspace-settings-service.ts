@@ -21,7 +21,10 @@ export interface WorkspaceInvite {
   email_sent?: boolean
 }
 
-export const fetchWorkspaceMembers = async (sessionId: string, workspaceId: string): Promise<WorkspaceMember[]> => {
+export const fetchWorkspaceMembers = async (
+  sessionId: string,
+  workspaceId: string
+): Promise<WorkspaceMember[]> => {
   const response = await apiFetch(`/api/tenants/${workspaceId}/members`, {
     headers: { 'X-Session-ID': sessionId },
   })
@@ -33,7 +36,10 @@ export const fetchWorkspaceMembers = async (sessionId: string, workspaceId: stri
   return response.json()
 }
 
-export const fetchWorkspaceInvites = async (sessionId: string, workspaceId: string): Promise<WorkspaceInvite[]> => {
+export const fetchWorkspaceInvites = async (
+  sessionId: string,
+  workspaceId: string
+): Promise<WorkspaceInvite[]> => {
   const response = await apiFetch(`/api/tenants/${workspaceId}/invites`, {
     headers: { 'X-Session-ID': sessionId },
   })
@@ -67,7 +73,11 @@ export const createWorkspaceInvite = async (
   return response.json()
 }
 
-export const revokeWorkspaceInvite = async (sessionId: string, workspaceId: string, inviteId: string) => {
+export const revokeWorkspaceInvite = async (
+  sessionId: string,
+  workspaceId: string,
+  inviteId: string
+) => {
   const response = await apiFetch(`/api/tenants/${workspaceId}/invites/${inviteId}`, {
     method: 'DELETE',
     headers: { 'X-Session-ID': sessionId },
@@ -78,7 +88,11 @@ export const revokeWorkspaceInvite = async (sessionId: string, workspaceId: stri
   }
 }
 
-export const removeWorkspaceMember = async (sessionId: string, workspaceId: string, userId: string) => {
+export const removeWorkspaceMember = async (
+  sessionId: string,
+  workspaceId: string,
+  userId: string
+) => {
   const response = await apiFetch(`/api/tenants/${workspaceId}/members/${userId}`, {
     method: 'DELETE',
     headers: { 'X-Session-ID': sessionId },

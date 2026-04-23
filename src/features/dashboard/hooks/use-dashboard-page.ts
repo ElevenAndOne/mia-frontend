@@ -57,7 +57,8 @@ export const useDashboardPage = () => {
 
   // Throttle: only show configuration guidance every 5th dashboard visit
   const [shouldShowGuidance] = useState(() => {
-    const count = parseInt(localStorage.getItem(StorageKey.CONFIG_GUIDANCE_VISIT_COUNT) || '0', 10) + 1
+    const count =
+      parseInt(localStorage.getItem(StorageKey.CONFIG_GUIDANCE_VISIT_COUNT) || '0', 10) + 1
     localStorage.setItem(StorageKey.CONFIG_GUIDANCE_VISIT_COUNT, String(count))
     return count % 5 === 1 // Show on 1st, 6th, 11th visit...
   })
@@ -78,7 +79,12 @@ export const useDashboardPage = () => {
     if (needsConfig.length === 0) return null
 
     return `Select your ${needsConfig.join(' and ')} in Integrations to unlock more insights`
-  }, [shouldShowGuidance, connectedPlatforms, selectedAccount?.ga4_property_id, selectedAccount?.facebook_page_id])
+  }, [
+    shouldShowGuidance,
+    connectedPlatforms,
+    selectedAccount?.ga4_property_id,
+    selectedAccount?.facebook_page_id,
+  ])
 
   // Track if initial fetch has happened to prevent re-fetching on every render
   const hasFetchedRef = useRef(false)
@@ -87,78 +93,101 @@ export const useDashboardPage = () => {
     if (sessionId && !hasFetchedRef.current) {
       hasFetchedRef.current = true
       refreshAccounts()
-      refreshWorkspaces().catch(err => logger.error('[MainView] Failed to refresh workspaces:', err))
+      refreshWorkspaces().catch((err) =>
+        logger.error('[MainView] Failed to refresh workspaces:', err)
+      )
     }
   }, [sessionId, refreshAccounts, refreshWorkspaces])
 
-  const handleAccountSwitch = useCallback(async (accountId: string) => {
-    if (isAccountSwitching) return
+  const handleAccountSwitch = useCallback(
+    async (accountId: string) => {
+      if (isAccountSwitching) return
 
-    setIsAccountSwitching(true)
-    // Keep menu open with spinner until switch succeeds — don't close early
+      setIsAccountSwitching(true)
+      // Keep menu open with spinner until switch succeeds — don't close early
 
-    try {
-      const success = await selectAccount(accountId)
+      try {
+        const success = await selectAccount(accountId)
 
-      if (success) {
-        setChatMessages([])
-        setShowBurgerMenu(false)
-        setShowAccountSelector(false)
+        if (success) {
+          setChatMessages([])
+          setShowBurgerMenu(false)
+          setShowAccountSelector(false)
+          setIsAccountSwitching(false)
+          navigate('/integrations')
+        } else {
+          logger.error('❌ [MAIN] Failed to switch account')
+          setIsAccountSwitching(false)
+        }
+      } catch (error) {
+        logger.error('❌ [MAIN] Account switch error:', error)
         setIsAccountSwitching(false)
-        navigate('/integrations')
-      } else {
-        logger.error('❌ [MAIN] Failed to switch account')
-        setIsAccountSwitching(false)
       }
-    } catch (error) {
-      logger.error('❌ [MAIN] Account switch error:', error)
-      setIsAccountSwitching(false)
-    }
-  }, [isAccountSwitching, navigate, selectAccount])
+    },
+    [isAccountSwitching, navigate, selectAccount]
+  )
 
-  const handleChatSubmit = useCallback(async (message: string) => {
-    if (!message.trim()) return
+  const handleChatSubmit = useCallback(
+    async (message: string) => {
+      if (!message.trim()) return
 
-    setChatMessages(prev => [...prev, { role: 'user', content: message }])
-    setIsChatLoading(true)
-
-    setTimeout(() => {
-      const chatContainer = document.querySelector('.chat-messages-container')
-      if (chatContainer) {
-        chatContainer.scrollTop = chatContainer.scrollHeight
-      }
-    }, 100)
-
-    try {
-      const result = await sendChatMessage({
-        message,
-        session_id: sessionId,
-        user_id: user?.google_user_id || '',
-        google_ads_id: selectedAccount?.google_ads_id,
-        ga4_property_id: selectedAccount?.ga4_property_id,
-        date_range: dateRange,
-      })
-
-      setIsChatLoading(false)
-
-      if (result.success && result.claude_response) {
-        setChatMessages(prev => [...prev, { role: 'assistant' as const, content: result.claude_response ?? '' }])
-      } else {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I had trouble processing your question. Please try again.' }])
-      }
+      setChatMessages((prev) => [...prev, { role: 'user', content: message }])
+      setIsChatLoading(true)
 
       setTimeout(() => {
         const chatContainer = document.querySelector('.chat-messages-container')
         if (chatContainer) {
-          chatContainer.scrollTop = chatContainer.scrollHeight - 100
+          chatContainer.scrollTop = chatContainer.scrollHeight
         }
       }, 100)
-    } catch (error) {
-      logger.error('[CHAT] Error:', error)
-      setIsChatLoading(false)
-      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please check your connection and try again.' }])
-    }
-  }, [dateRange, selectedAccount?.ga4_property_id, selectedAccount?.google_ads_id, sessionId, user?.google_user_id])
+
+      try {
+        const result = await sendChatMessage({
+          message,
+          session_id: sessionId,
+          user_id: user?.google_user_id || '',
+          google_ads_id: selectedAccount?.google_ads_id,
+          ga4_property_id: selectedAccount?.ga4_property_id,
+          date_range: dateRange,
+        })
+
+        setIsChatLoading(false)
+
+        if (result.success && result.claude_response) {
+          setChatMessages((prev) => [
+            ...prev,
+            { role: 'assistant' as const, content: result.claude_response ?? '' },
+          ])
+        } else {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'Sorry, I had trouble processing your question. Please try again.',
+            },
+          ])
+        }
+
+        setTimeout(() => {
+          const chatContainer = document.querySelector('.chat-messages-container')
+          if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight - 100
+          }
+        }, 100)
+      } catch (error) {
+        logger.error('[CHAT] Error:', error)
+        setIsChatLoading(false)
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: 'Connection error. Please check your connection and try again.',
+          },
+        ])
+      }
+    },
+    [dateRange, selectedAccount, sessionId, user]
+  )
 
   const handleLogout = async () => {
     await logout()
@@ -190,14 +219,45 @@ export const useDashboardPage = () => {
   const dateRangeLabel = formatDateRangeDisplay(dateRange, 'short')
 
   return {
-    selectedAccount, availableAccounts, activeWorkspace, platformConfig,
-    userName, dateRangeLabel, showChat, chatMessages,
-    showBurgerMenu, showAccountSelector, showWorkspaceSwitcher, showCreateWorkspaceModal,
-    isChatLoading, isAccountSwitching, showBrevoModal, showMore, dateRange, showDatePicker,
-    connectedPlatforms, selectedPlatforms, configurationGuidance, datePickerButtonRef,
-    setShowChat, setShowBurgerMenu, setShowAccountSelector, setShowWorkspaceSwitcher, setShowCreateWorkspaceModal,
-    setShowBrevoModal, setShowMore, setShowDatePicker, setDateRange, togglePlatform,
-    handleAccountSwitch, handleChatSubmit, handleLogout,
-    onIntegrationsClick, onWorkspaceSettingsClick, onGrowQuickClick, onOptimizeQuickClick, onProtectQuickClick,
+    selectedAccount,
+    availableAccounts,
+    activeWorkspace,
+    platformConfig,
+    userName,
+    dateRangeLabel,
+    showChat,
+    chatMessages,
+    showBurgerMenu,
+    showAccountSelector,
+    showWorkspaceSwitcher,
+    showCreateWorkspaceModal,
+    isChatLoading,
+    isAccountSwitching,
+    showBrevoModal,
+    showMore,
+    dateRange,
+    showDatePicker,
+    connectedPlatforms,
+    selectedPlatforms,
+    configurationGuidance,
+    datePickerButtonRef,
+    setShowChat,
+    setShowBurgerMenu,
+    setShowAccountSelector,
+    setShowWorkspaceSwitcher,
+    setShowCreateWorkspaceModal,
+    setShowBrevoModal,
+    setShowMore,
+    setShowDatePicker,
+    setDateRange,
+    togglePlatform,
+    handleAccountSwitch,
+    handleChatSubmit,
+    handleLogout,
+    onIntegrationsClick,
+    onWorkspaceSettingsClick,
+    onGrowQuickClick,
+    onOptimizeQuickClick,
+    onProtectQuickClick,
   }
 }

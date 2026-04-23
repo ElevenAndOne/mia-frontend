@@ -36,7 +36,7 @@ const MARKERS = {
   TITLE: '[Title]:',
   INSIGHT: '[Insight]:',
   INTERPRETATION: '[Interpretation]:',
-  ACTION: '[Action]:'
+  ACTION: '[Action]:',
 }
 
 // Parse displayed text into structured insights
@@ -71,23 +71,32 @@ function parseInsights(text: string): {
     if (insightPos >= 0) {
       const afterInsight = block.slice(insightPos + MARKERS.INSIGHT.length)
       const nextMarkerPos = Math.min(
-        afterInsight.indexOf(MARKERS.INTERPRETATION) >= 0 ? afterInsight.indexOf(MARKERS.INTERPRETATION) : Infinity,
+        afterInsight.indexOf(MARKERS.INTERPRETATION) >= 0
+          ? afterInsight.indexOf(MARKERS.INTERPRETATION)
+          : Infinity,
         afterInsight.indexOf(MARKERS.ACTION) >= 0 ? afterInsight.indexOf(MARKERS.ACTION) : Infinity
       )
-      insight.insight = (nextMarkerPos === Infinity ? afterInsight : afterInsight.slice(0, nextMarkerPos)).trim()
+      insight.insight = (
+        nextMarkerPos === Infinity ? afterInsight : afterInsight.slice(0, nextMarkerPos)
+      ).trim()
     }
 
     // Extract interpretation section
     if (interpPos >= 0) {
       const afterInterp = block.slice(interpPos + MARKERS.INTERPRETATION.length)
       const nextMarkerPos = afterInterp.indexOf(MARKERS.ACTION)
-      insight.interpretation = (nextMarkerPos < 0 ? afterInterp : afterInterp.slice(0, nextMarkerPos)).trim()
+      insight.interpretation = (
+        nextMarkerPos < 0 ? afterInterp : afterInterp.slice(0, nextMarkerPos)
+      ).trim()
     }
 
     // Extract action section
     if (actionPos >= 0) {
       let actionText = block.slice(actionPos + MARKERS.ACTION.length).trim()
-      actionText = actionText.replace(/\n---[\s\S]*$/m, '').replace(/\n##\s*INSIGHT[\s\S]*$/im, '').trim()
+      actionText = actionText
+        .replace(/\n---[\s\S]*$/m, '')
+        .replace(/\n##\s*INSIGHT[\s\S]*$/im, '')
+        .trim()
       insight.action = actionText
     }
 
@@ -109,16 +118,12 @@ function parseInsights(text: string): {
 }
 
 export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
-  const {
-    state,
-    processSSEStream,
-    stopStreaming,
-    reset
-  } = useStreamingCore()
+  const { state, processSSEStream, stopStreaming, reset } = useStreamingCore()
 
   // Keep stable references for completed insights to prevent re-renders
   const prevInsightsRef = useRef<ParsedInsight[]>([])
 
+  /* eslint-disable react-hooks/refs -- intentional: ref stabilises streaming card identity across renders without triggering re-renders */
   const parsed = useMemo(() => {
     const result = parseInsights(state.text)
 
@@ -141,6 +146,7 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     prevInsightsRef.current = stableInsights
     return { ...result, insights: stableInsights }
   }, [state.text])
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     if (state.isComplete && parsed.insights.length > 0) {
@@ -148,28 +154,28 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     }
   }, [state.isComplete, parsed.insights])
 
-  const startStreaming = useCallback(async (
-    insightType: 'grow' | 'optimize' | 'protect',
-    sessionId: string,
-    dateRange: string = '30_days',
-    platforms?: string[]
-  ) => {
-    await processSSEStream(
-      createApiUrl(`/api/quick-insights/${insightType}/stream`),
-      {
+  const startStreaming = useCallback(
+    async (
+      insightType: 'grow' | 'optimize' | 'protect',
+      sessionId: string,
+      dateRange: string = '30_days',
+      platforms?: string[]
+    ) => {
+      await processSSEStream(createApiUrl(`/api/quick-insights/${insightType}/stream`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId  // CRITICAL: Send session ID in header for workspace context lookup
+          'X-Session-ID': sessionId, // CRITICAL: Send session ID in header for workspace context lookup
         },
         body: JSON.stringify({
           session_id: sessionId,
           date_range: dateRange,
-          platforms: platforms && platforms.length > 0 ? platforms : undefined
-        })
-      }
-    )
-  }, [processSSEStream])
+          platforms: platforms && platforms.length > 0 ? platforms : undefined,
+        }),
+      })
+    },
+    [processSSEStream]
+  )
 
   return {
     insights: parsed.insights,
@@ -180,6 +186,6 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     error: state.error,
     startStreaming,
     stopStreaming,
-    reset
+    reset,
   }
 }

@@ -7,13 +7,8 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const WorkspaceSettingsPage = () => {
   const navigate = useNavigate()
-  const {
-    onNewWorkspace,
-    onIntegrationsClick,
-    onHelpClick,
-    onLogout,
-    onWorkspaceSettings,
-  } = useAppShellActions()
+  const { onNewWorkspace, onIntegrationsClick, onHelpClick, onLogout, onWorkspaceSettings } =
+    useAppShellActions()
   const {
     selectedWorkspaceId,
     selectedWorkspace,

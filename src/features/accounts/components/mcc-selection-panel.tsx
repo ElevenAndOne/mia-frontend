@@ -42,10 +42,11 @@ export const MccSelectionPanel = ({
             <SelectionCard
               onSelect={() => (mccItem.isSelected ? onClearMcc() : onSelectMcc(mccItem.id))}
               aria-expanded={mccItem.isSelected}
-              className={`w-full p-4 rounded-xl border-2 text-left cursor-pointer ${mccItem.isSelected
-                ? 'border-brand bg-brand-primary'
-                : 'border-secondary hover:border-primary hover:bg-secondary'
-                }`}
+              className={`w-full p-4 rounded-xl border-2 text-left cursor-pointer ${
+                mccItem.isSelected
+                  ? 'border-brand bg-brand-primary'
+                  : 'border-secondary hover:border-primary hover:bg-secondary'
+              }`}
               leading={
                 <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center paragraph-bg">
                   🏢
@@ -58,7 +59,12 @@ export const MccSelectionPanel = ({
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               }
             >
@@ -82,10 +88,11 @@ export const MccSelectionPanel = ({
                       key={account.id}
                       onSelect={() => onSelectAccount(account.id)}
                       disabled={account.disabled}
-                      className={`w-full p-3 rounded-lg border text-left ${account.disabled
-                        ? 'opacity-60 cursor-not-allowed border-secondary'
-                        : 'border-secondary hover:border-brand-alt hover:bg-brand-primary'
-                        }`}
+                      className={`w-full p-3 rounded-lg border text-left ${
+                        account.disabled
+                          ? 'opacity-60 cursor-not-allowed border-secondary'
+                          : 'border-secondary hover:border-brand-alt hover:bg-brand-primary'
+                      }`}
                       leading={
                         <div
                           className="w-8 h-8 rounded-full flex items-center justify-center paragraph-sm"
@@ -98,8 +105,18 @@ export const MccSelectionPanel = ({
                         account.isSelecting ? (
                           <Spinner size="sm" />
                         ) : (
-                          <svg className="w-4 h-4 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          <svg
+                            className="w-4 h-4 text-placeholder-subtle"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
                           </svg>
                         )
                       }
@@ -126,10 +143,11 @@ export const MccSelectionPanel = ({
                 key={account.id}
                 onSelect={() => onSelectAccount(account.id)}
                 disabled={account.disabled}
-                className={`w-full p-4 rounded-xl border-2 text-left ${account.disabled
-                  ? 'opacity-60 cursor-not-allowed border-secondary'
-                  : 'border-secondary hover:border-primary hover:bg-secondary'
-                  }`}
+                className={`w-full p-4 rounded-xl border-2 text-left ${
+                  account.disabled
+                    ? 'opacity-60 cursor-not-allowed border-secondary'
+                    : 'border-secondary hover:border-primary hover:bg-secondary'
+                }`}
                 leading={
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center paragraph-bg"
@@ -142,8 +160,18 @@ export const MccSelectionPanel = ({
                   account.isSelecting ? (
                     <Spinner size="sm" />
                   ) : (
-                    <svg className="w-5 h-5 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="w-5 h-5 text-placeholder-subtle"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   )
                 }

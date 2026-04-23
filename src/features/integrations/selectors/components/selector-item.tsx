@@ -57,18 +57,16 @@ export function SelectorItem({
       onClick={disabled ? undefined : onSelect}
       className={`relative p-4 rounded-lg border-2 transition-all ${
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-      } ${
-        isSelected
-          ? colors.selected
-          : 'border-secondary bg-primary hover:border-primary'
-      }`}
+      } ${isSelected ? colors.selected : 'border-secondary bg-primary hover:border-primary'}`}
     >
       <div className="flex items-center gap-3">
         {/* Selection indicator (checkbox or radio) */}
         {selectionStyle === 'radio' ? (
           <div
             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-              isSelected ? colors.checkbox.replace('bg-', 'border-').replace(' bg-', ' ') : 'border-primary'
+              isSelected
+                ? colors.checkbox.replace('bg-', 'border-').replace(' bg-', ' ')
+                : 'border-primary'
             }`}
           >
             {isSelected && (
@@ -98,7 +96,9 @@ export function SelectorItem({
           <div className="flex items-center gap-2">
             <p className="subheading-md text-primary truncate">{title}</p>
             {badge && (
-              <span className={`subheading-sm px-2 py-0.5 rounded-full ${BADGE_COLORS[badgeColor]}`}>
+              <span
+                className={`subheading-sm px-2 py-0.5 rounded-full ${BADGE_COLORS[badgeColor]}`}
+              >
                 {badge}
               </span>
             )}

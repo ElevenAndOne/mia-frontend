@@ -1,4 +1,3 @@
-
 interface ChatEmptyStateProps {
   userName?: string
   children?: React.ReactNode

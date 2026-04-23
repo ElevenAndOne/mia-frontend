@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { DateRange } from 'react-day-picker'
-import { buildCustomDateRangeValue, isCustomDateRange, parseCustomDateRange } from '../utils/date-range'
+import {
+  buildCustomDateRangeValue,
+  isCustomDateRange,
+  parseCustomDateRange,
+} from '../utils/date-range'
 
 interface UseDateRangeSelectionParams {
   initialRange: string
@@ -26,7 +30,10 @@ const getDefaultCustomRange = (): DateRange => {
   return { from: thirtyDaysAgo, to: today }
 }
 
-export const useDateRangeSelection = ({ initialRange, isOpen }: UseDateRangeSelectionParams): UseDateRangeSelectionResult => {
+export const useDateRangeSelection = ({
+  initialRange,
+  isOpen,
+}: UseDateRangeSelectionParams): UseDateRangeSelectionResult => {
   const [selectedRange, setSelectedRange] = useState(initialRange)
   const [showCustomPicker, setShowCustomPicker] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()

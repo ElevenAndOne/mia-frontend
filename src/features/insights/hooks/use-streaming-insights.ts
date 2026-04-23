@@ -22,40 +22,35 @@ interface UseStreamingInsightsReturn {
 }
 
 export function useStreamingInsights(): UseStreamingInsightsReturn {
-  const {
-    state,
-    processSSEStream,
-    stopStreaming,
-    reset
-  } = useStreamingCore()
+  const { state, processSSEStream, stopStreaming, reset } = useStreamingCore()
 
-  const startStreaming = useCallback(async (
-    insightType: 'grow' | 'optimize' | 'protect',
-    sessionId: string,
-    dateRange: string = '30_days',
-    platforms?: string[]
-  ) => {
-    await processSSEStream(
-      createApiUrl(`/api/quick-insights/${insightType}/stream`),
-      {
+  const startStreaming = useCallback(
+    async (
+      insightType: 'grow' | 'optimize' | 'protect',
+      sessionId: string,
+      dateRange: string = '30_days',
+      platforms?: string[]
+    ) => {
+      await processSSEStream(createApiUrl(`/api/quick-insights/${insightType}/stream`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId  // CRITICAL: Send session ID in header for workspace context lookup
+          'X-Session-ID': sessionId, // CRITICAL: Send session ID in header for workspace context lookup
         },
         body: JSON.stringify({
           session_id: sessionId,
           date_range: dateRange,
-          platforms: platforms && platforms.length > 0 ? platforms : undefined
-        })
-      }
-    )
-  }, [processSSEStream])
+          platforms: platforms && platforms.length > 0 ? platforms : undefined,
+        }),
+      })
+    },
+    [processSSEStream]
+  )
 
   return {
     ...state,
     startStreaming,
     stopStreaming,
-    reset
+    reset,
   }
 }

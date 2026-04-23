@@ -39,9 +39,7 @@ export const AccountSelectionHeader = ({
         )}
 
         <h1 className="title-h6 text-primary">{title}</h1>
-        {subtitle && (
-          <p className="paragraph-sm text-tertiary">{subtitle}</p>
-        )}
+        {subtitle && <p className="paragraph-sm text-tertiary">{subtitle}</p>}
       </motion.div>
     </div>
   )

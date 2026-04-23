@@ -12,7 +12,11 @@ interface DashboardChatPanelProps {
   onSubmitMessage: (message: string) => void
 }
 
-export const DashboardChatPanel = ({ messages, isLoading, onSubmitMessage }: DashboardChatPanelProps) => {
+export const DashboardChatPanel = ({
+  messages,
+  isLoading,
+  onSubmitMessage,
+}: DashboardChatPanelProps) => {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = () => {
@@ -26,13 +30,20 @@ export const DashboardChatPanel = ({ messages, isLoading, onSubmitMessage }: Das
     <div className="w-full h-full flex flex-col" style={{ maxWidth: '393px' }}>
       <div className="flex-1 overflow-y-auto min-h-0 px-3 py-4 space-y-4 chat-messages-container">
         {messages.map((message, index) => (
-          <div key={message.id ?? `${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-3 rounded-2xl ${
-              message.role === 'user'
-                ? 'bg-brand-solid text-primary-onbrand'
-                : 'bg-secondary text-primary border border-tertiary'
-            }`}>
-              <p className="paragraph-sm whitespace-pre-wrap leading-relaxed select-text">{message.content}</p>
+          <div
+            key={message.id ?? `${message.role}-${index}`}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[85%] p-3 rounded-2xl ${
+                message.role === 'user'
+                  ? 'bg-brand-solid text-primary-onbrand'
+                  : 'bg-secondary text-primary border border-tertiary'
+              }`}
+            >
+              <p className="paragraph-sm whitespace-pre-wrap leading-relaxed select-text">
+                {message.content}
+              </p>
             </div>
           </div>
         ))}
@@ -43,8 +54,14 @@ export const DashboardChatPanel = ({ messages, isLoading, onSubmitMessage }: Das
               <div className="flex items-center gap-2 text-tertiary">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div
+                    className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                    style={{ animationDelay: '0.1s' }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                    style={{ animationDelay: '0.2s' }}
+                  ></div>
                 </div>
                 <span className="paragraph-sm">Mia is analyzing...</span>
               </div>

@@ -4,7 +4,11 @@ import { OverlayPortal, useEscapeKey, useClickOutside, useOverlayContext } from 
 import { DateRangeCalendar } from '../../../components/date-range-calendar'
 import { useDateRangeSelection } from '../../../hooks/use-date-range-selection'
 import { DEFAULT_DATE_RANGE_OPTIONS, formatRangeSpan } from '../../../utils/date-range'
-import { INSIGHT_DESCRIPTIONS, INSIGHT_TITLES, type InsightType } from '../config/insight-definitions'
+import {
+  INSIGHT_DESCRIPTIONS,
+  INSIGHT_TITLES,
+  type InsightType,
+} from '../config/insight-definitions'
 import { IconButton } from '../../../components/icon-button'
 import { Icon } from '../../../components/icon'
 
@@ -15,8 +19,12 @@ interface InsightsDatePickerModalProps {
   insightType: InsightType
 }
 
-
-const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: InsightsDatePickerModalProps) => {
+const InsightsDatePickerModal = ({
+  isOpen,
+  onClose,
+  onGenerate,
+  insightType,
+}: InsightsDatePickerModalProps) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const { registerOverlay, unregisterOverlay, getZIndex } = useOverlayContext()
   const overlayId = useId()
@@ -78,20 +86,27 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
 
               {/* Date Range Selection */}
               <div className="space-y-2 mb-4">
-                <label className="block subheading-md text-secondary mb-3">Select analysis period</label>
+                <label className="block subheading-md text-secondary mb-3">
+                  Select analysis period
+                </label>
                 {DEFAULT_DATE_RANGE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => selectRange(option.value)}
-                    className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${selectedRange === option.value
+                    className={`w-full px-3 py-2 text-left rounded-lg border-2 transition-all ${
+                      selectedRange === option.value
                         ? 'border-utility-purple-600 bg-utility-purple-100 text-utility-purple-700 subheading-md'
                         : 'border-secondary hover:border-primary text-secondary paragraph-sm'
-                      }`}
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="subheading-md">{option.label}</span>
                       {selectedRange === option.value && (
-                        <svg className="w-5 h-5 text-utility-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-5 h-5 text-utility-purple-600"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -113,7 +128,8 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
                   </div>
                   {dateRange?.from && dateRange?.to && (
                     <div className="mt-3 paragraph-xs text-tertiary bg-utility-purple-100 p-2 rounded text-center">
-                      <strong>Selected:</strong> {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
+                      <strong>Selected:</strong>{' '}
+                      {formatRangeSpan(dateRange.from, dateRange.to, { includeYear: true })}
                     </div>
                   )}
                 </div>
@@ -122,8 +138,8 @@ const InsightsDatePickerModal = ({ isOpen, onClose, onGenerate, insightType }: I
               {/* Helper Text */}
               <div className="bg-utility-purple-100 border border-utility-purple-300 rounded-lg p-2 mb-3">
                 <p className="paragraph-xs text-utility-purple-700">
-                  Choose a date range with active campaign data for the most relevant insights. You can change the date range
-                  anytime after generating insights.
+                  Choose a date range with active campaign data for the most relevant insights. You
+                  can change the date range anytime after generating insights.
                 </p>
               </div>
 

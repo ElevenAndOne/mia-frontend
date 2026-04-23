@@ -5,16 +5,16 @@ import { WorkspaceRoleIcon } from './workspace-role-icon'
 
 // Deterministic avatar color — each workspace gets a unique color via FNV-1a hash
 const AVATAR_PALETTES = [
-  'bg-[#3B5BDB] text-white',  // indigo
-  'bg-[#0CA678] text-white',  // teal
-  'bg-[#E67700] text-white',  // amber
-  'bg-[#9C36B5] text-white',  // violet
-  'bg-[#C92A2A] text-white',  // red
-  'bg-[#1971C2] text-white',  // blue
-  'bg-[#5C7CFA] text-white',  // periwinkle
-  'bg-[#2F9E44] text-white',  // green
-  'bg-[#C2255C] text-white',  // rose
-  'bg-[#0E9594] text-white',  // cyan
+  'bg-[#3B5BDB] text-white', // indigo
+  'bg-[#0CA678] text-white', // teal
+  'bg-[#E67700] text-white', // amber
+  'bg-[#9C36B5] text-white', // violet
+  'bg-[#C92A2A] text-white', // red
+  'bg-[#1971C2] text-white', // blue
+  'bg-[#5C7CFA] text-white', // periwinkle
+  'bg-[#2F9E44] text-white', // green
+  'bg-[#C2255C] text-white', // rose
+  'bg-[#0E9594] text-white', // cyan
 ]
 
 function getAvatarPalette(name: string): string {
@@ -76,36 +76,41 @@ export const WorkspaceListItem = ({
   const showDetails = variant === 'detailed'
   const isDisabled = disabled || isSwitching || (disableWhenActive && isActive)
   const platformCount = workspace.connected_platforms.length
-  const resolvedDetails = details ?? (showDetails ? (
-    <div className="flex items-center gap-2 paragraph-xs text-quaternary">
-      <span>
-        {workspace.member_count} member{workspace.member_count !== 1 ? 's' : ''}
-      </span>
-      {platformCount > 0 && (
-        <>
-          <span>·</span>
-          <span>
-            {platformCount} platform{platformCount !== 1 ? 's' : ''}
-          </span>
-        </>
-      )}
-    </div>
-  ) : null)
-  const trailingContent = trailing ?? (showStatusIndicator ? (
-    isActive ? (
-      <Icon.check size={20} className="text-utility-info-500 shrink-0" />
-    ) : isSwitching ? (
-      <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
-    ) : null
-  ) : null)
+  const resolvedDetails =
+    details ??
+    (showDetails ? (
+      <div className="flex items-center gap-2 paragraph-xs text-quaternary">
+        <span>
+          {workspace.member_count} member{workspace.member_count !== 1 ? 's' : ''}
+        </span>
+        {platformCount > 0 && (
+          <>
+            <span>·</span>
+            <span>
+              {platformCount} platform{platformCount !== 1 ? 's' : ''}
+            </span>
+          </>
+        )}
+      </div>
+    ) : null)
+  const trailingContent =
+    trailing ??
+    (showStatusIndicator ? (
+      isActive ? (
+        <Icon.check size={20} className="text-utility-info-500 shrink-0" />
+      ) : isSwitching ? (
+        <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
+      ) : null
+    ) : null)
   const avatarPalette = useGradientAvatar ? getAvatarPalette(workspace.name) : ''
   // Two-letter initials: first letter of first two words, or first two chars
-  const initials = workspace.name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0].toUpperCase())
-    .join('') || workspace.name.slice(0, 2).toUpperCase()
+  const initials =
+    workspace.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join('') || workspace.name.slice(0, 2).toUpperCase()
 
   return (
     <button
@@ -126,7 +131,9 @@ export const WorkspaceListItem = ({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className={`subheading-md text-primary truncate ${titleClassName}`.trim()}>{workspace.name}</span>
+          <span className={`subheading-md text-primary truncate ${titleClassName}`.trim()}>
+            {workspace.name}
+          </span>
           {titleSuffix}
           {showRoleIcon && <WorkspaceRoleIcon role={workspace.role} />}
         </div>

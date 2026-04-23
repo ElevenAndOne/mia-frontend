@@ -70,60 +70,66 @@ export const MemberRowMenu = ({
     return items
   }, [person.canEditRole, person.canRemove])
 
-  const inviteItems: DropdownItem[] = useMemo(() => [
-    {
-      id: 'copy-link',
-      label: 'Copy Invite Link',
-      icon: <Icon.copy_01 size={16} />,
-      onClick: () => {
-        if (person.inviteLink) {
-          onCopyInvite(person.inviteLink)
-        }
-        setIsOpen(false)
+  const inviteItems: DropdownItem[] = useMemo(
+    () => [
+      {
+        id: 'copy-link',
+        label: 'Copy Invite Link',
+        icon: <Icon.copy_01 size={16} />,
+        onClick: () => {
+          if (person.inviteLink) {
+            onCopyInvite(person.inviteLink)
+          }
+          setIsOpen(false)
+        },
       },
-    },
-    { id: 'divider', label: '', onClick: () => {}, divider: true },
-    {
-      id: 'revoke',
-      label: 'Revoke Invite',
-      icon: <Icon.trash_01 size={16} />,
-      onClick: () => {
-        setIsOpen(false)
-        setShowConfirmRevoke(true)
+      { id: 'divider', label: '', onClick: () => {}, divider: true },
+      {
+        id: 'revoke',
+        label: 'Revoke Invite',
+        icon: <Icon.trash_01 size={16} />,
+        onClick: () => {
+          setIsOpen(false)
+          setShowConfirmRevoke(true)
+        },
+        destructive: true,
       },
-      destructive: true,
-    },
-  ], [person.inviteLink, onCopyInvite])
+    ],
+    [person.inviteLink, onCopyInvite]
+  )
 
-  const roleItems: DropdownItem[] = useMemo(() => [
-    {
-      id: 'admin',
-      label: 'Admin',
-      onClick: () => {
-        onUpdateRole(person.id, 'admin')
-        setShowRoleMenu(false)
+  const roleItems: DropdownItem[] = useMemo(
+    () => [
+      {
+        id: 'admin',
+        label: 'Admin',
+        onClick: () => {
+          onUpdateRole(person.id, 'admin')
+          setShowRoleMenu(false)
+        },
+        icon: person.role === 'admin' ? <Icon.check size={16} /> : undefined,
       },
-      icon: person.role === 'admin' ? <Icon.check size={16} /> : undefined,
-    },
-    {
-      id: 'analyst',
-      label: 'Analyst',
-      onClick: () => {
-        onUpdateRole(person.id, 'analyst')
-        setShowRoleMenu(false)
+      {
+        id: 'analyst',
+        label: 'Analyst',
+        onClick: () => {
+          onUpdateRole(person.id, 'analyst')
+          setShowRoleMenu(false)
+        },
+        icon: person.role === 'analyst' ? <Icon.check size={16} /> : undefined,
       },
-      icon: person.role === 'analyst' ? <Icon.check size={16} /> : undefined,
-    },
-    {
-      id: 'viewer',
-      label: 'Viewer',
-      onClick: () => {
-        onUpdateRole(person.id, 'viewer')
-        setShowRoleMenu(false)
+      {
+        id: 'viewer',
+        label: 'Viewer',
+        onClick: () => {
+          onUpdateRole(person.id, 'viewer')
+          setShowRoleMenu(false)
+        },
+        icon: person.role === 'viewer' ? <Icon.check size={16} /> : undefined,
       },
-      icon: person.role === 'viewer' ? <Icon.check size={16} /> : undefined,
-    },
-  ], [person.id, person.role, onUpdateRole])
+    ],
+    [person.id, person.role, onUpdateRole]
+  )
 
   const items = person.type === 'member' ? memberItems : inviteItems
 

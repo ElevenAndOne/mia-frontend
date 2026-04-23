@@ -29,22 +29,25 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
       window.clearTimeout(timeoutId)
       timeoutRefs.current.delete(id)
     }
-    setToasts(prev => prev.filter(t => t.id !== id))
+    setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  const showToast = useCallback((variant: ToastVariant, message: string, duration = DEFAULT_DURATION) => {
-    const id = `toast_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const toast: Toast = { id, variant, message, duration }
+  const showToast = useCallback(
+    (variant: ToastVariant, message: string, duration = DEFAULT_DURATION) => {
+      const id = `toast_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const toast: Toast = { id, variant, message, duration }
 
-    setToasts(prev => [...prev, toast])
+      setToasts((prev) => [...prev, toast])
 
-    if (duration > 0) {
-      const timeoutId = window.setTimeout(() => {
-        dismissToast(id)
-      }, duration)
-      timeoutRefs.current.set(id, timeoutId)
-    }
-  }, [dismissToast])
+      if (duration > 0) {
+        const timeoutId = window.setTimeout(() => {
+          dismissToast(id)
+        }, duration)
+        timeoutRefs.current.set(id, timeoutId)
+      }
+    },
+    [dismissToast]
+  )
 
   const value = useMemo(
     () => ({ toasts, showToast, dismissToast }),

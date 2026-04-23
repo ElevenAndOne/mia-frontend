@@ -5,12 +5,7 @@ export type MarkdownToken =
   | { type: 'bold'; value: string }
   | { type: 'link'; text: string; url: string }
 
-const MARKER_TAGS = [
-  '[Title]:',
-  '[Insight]:',
-  '[Interpretation]:',
-  '[Action]:'
-]
+const MARKER_TAGS = ['[Title]:', '[Insight]:', '[Interpretation]:', '[Action]:']
 
 const stripMarkers = (input: string): string => {
   let output = input
@@ -30,9 +25,7 @@ const convertBullets = (input: string): string => {
  * - "https//example.com" → "https://example.com"
  */
 const normalizeUrl = (url: string): string => {
-  return url
-    .replace(/^http\/\//, 'http://')
-    .replace(/^https\/\//, 'https://')
+  return url.replace(/^http\/\//, 'http://').replace(/^https\/\//, 'https://')
 }
 
 const convertDeepLink = (linkUrl: string, metaAdsId?: string): string => {
@@ -53,7 +46,7 @@ export function parseMarkdownText(input: string, metaAdsId?: string): MarkdownTo
   // Split on bold (**text**) and markdown links [text](url) and bare URLs
   // Also handle malformed http// URLs (missing colon)
   const parts = bulletText.split(
-    /(\*\*[^*]+\*\*|\[[^\[\]]+\]\((?:https?:\/\/[^)]+|https?\/\/[^)]+|DEEPLINK:[^)]+)\)|https?:\/\/[^\s)]+|https?\/\/[^\s)]+)/
+    /(\*\*[^*]+\*\*|\[[^[\]]+\]\((?:https?:\/\/[^)]+|https?\/\/[^)]+|DEEPLINK:[^)]+)\)|https?:\/\/[^\s)]+|https?\/\/[^\s)]+)/
   )
 
   return parts.filter(Boolean).flatMap((part): MarkdownToken[] => {
@@ -64,7 +57,7 @@ export function parseMarkdownText(input: string, metaAdsId?: string): MarkdownTo
     }
 
     // Markdown link: [text](url)
-    const linkMatch = part.match(/^\[([^\[\]]+)\]\(((?:https?:\/\/|https?\/\/|DEEPLINK:)[^)]+)\)$/)
+    const linkMatch = part.match(/^\[([^[\]]+)\]\(((?:https?:\/\/|https?\/\/|DEEPLINK:)[^)]+)\)$/)
     if (linkMatch) {
       const [, linkText, linkUrl] = linkMatch
       const actualUrl = convertDeepLink(linkUrl, metaAdsId)

@@ -62,8 +62,8 @@ export const DeleteWorkspaceModal = ({
         <div className="bg-error-primary border border-error-subtle rounded-xl p-4 mb-4">
           <p className="paragraph-sm text-error">
             This action cannot be undone. This will permanently delete the workspace
-            <span className="font-semibold"> {workspace.name}</span>, all its settings,
-            and remove all members.
+            <span className="font-semibold"> {workspace.name}</span>, all its settings, and remove
+            all members.
           </p>
         </div>
 

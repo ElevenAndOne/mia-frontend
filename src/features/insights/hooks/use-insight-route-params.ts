@@ -5,11 +5,9 @@ import { StorageKey } from '../../../constants/storage-keys'
 export const useInsightRouteParams = () => {
   const [searchParams] = useSearchParams()
   const platforms = searchParams.get('platforms')?.split(',').filter(Boolean)
-  const dateRange = (
-    searchParams.get('range') ||
+  const dateRange = (searchParams.get('range') ||
     localStorage.getItem(StorageKey.DATE_RANGE) ||
-    '30_days'
-  ) as DateRangeValue
+    '30_days') as DateRangeValue
 
   return {
     platforms: platforms && platforms.length > 0 ? platforms : undefined,

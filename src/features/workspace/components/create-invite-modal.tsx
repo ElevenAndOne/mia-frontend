@@ -84,7 +84,9 @@ export const CreateInviteModal = ({
 
             {!isLinkInvite && (
               <div>
-                <label htmlFor="invite-email" className="sr-only">Email address</label>
+                <label htmlFor="invite-email" className="sr-only">
+                  Email address
+                </label>
                 <input
                   id="invite-email"
                   type="email"

@@ -17,14 +17,36 @@ const platformIcons: Record<string, string> = {
 }
 
 const statusConfig = {
-  pending: { label: 'Review Action', color: 'bg-utility-warning-100 border-utility-warning-300', textColor: 'text-utility-warning-700' },
-  confirmed: { label: 'Confirmed', color: 'bg-blue-50 border-blue-300', textColor: 'text-blue-700' },
-  running: { label: 'Executing...', color: 'bg-blue-50 border-blue-300', textColor: 'text-blue-700' },
-  completed: { label: 'Completed', color: 'bg-success-secondary border-success', textColor: 'text-success' },
+  pending: {
+    label: 'Review Action',
+    color: 'bg-utility-warning-100 border-utility-warning-300',
+    textColor: 'text-utility-warning-700',
+  },
+  confirmed: {
+    label: 'Confirmed',
+    color: 'bg-blue-50 border-blue-300',
+    textColor: 'text-blue-700',
+  },
+  running: {
+    label: 'Executing...',
+    color: 'bg-blue-50 border-blue-300',
+    textColor: 'text-blue-700',
+  },
+  completed: {
+    label: 'Completed',
+    color: 'bg-success-secondary border-success',
+    textColor: 'text-success',
+  },
   failed: { label: 'Failed', color: 'bg-error-secondary border-error', textColor: 'text-error' },
 }
 
-export const ActionConfirmCard = ({ action, status, result, onConfirm, onCancel }: ActionConfirmCardProps) => {
+export const ActionConfirmCard = ({
+  action,
+  status,
+  result,
+  onConfirm,
+  onCancel,
+}: ActionConfirmCardProps) => {
   const config = statusConfig[status]
   const icon = platformIcons[action.platform] || '/icons/settings.svg'
 
@@ -34,7 +56,9 @@ export const ActionConfirmCard = ({ action, status, result, onConfirm, onCancel 
         <img src={icon} alt={action.platform} className="w-8 h-8 mt-0.5" />
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${config.textColor} ${config.color}`}>
+            <span
+              className={`text-xs font-semibold px-2 py-0.5 rounded ${config.textColor} ${config.color}`}
+            >
               {config.label}
             </span>
             <span className="text-xs text-quaternary capitalize">{action.platform}</span>
@@ -83,14 +107,17 @@ export const ActionConfirmCard = ({ action, status, result, onConfirm, onCancel 
           {/* Completed result */}
           {status === 'completed' && result && (
             <p className="text-sm text-success">
-              {(result as Record<string, unknown>).message as string || 'Action completed successfully.'}
+              {((result as Record<string, unknown>).message as string) ||
+                'Action completed successfully.'}
             </p>
           )}
 
           {/* Failed result */}
           {status === 'failed' && (
             <p className="text-sm text-error">
-              {result ? (result as Record<string, unknown>).error as string || 'Action failed.' : 'Action failed. Please try again.'}
+              {result
+                ? ((result as Record<string, unknown>).error as string) || 'Action failed.'
+                : 'Action failed. Please try again.'}
             </p>
           )}
         </div>

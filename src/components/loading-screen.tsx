@@ -28,7 +28,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
           <div
             className="w-24 h-24 rounded-full"
             style={{
-              background: 'radial-gradient(circle, var(--color-utility-purple-500) 0%, transparent 70%)',
+              background:
+                'radial-gradient(circle, var(--color-utility-purple-500) 0%, transparent 70%)',
               filter: 'blur(20px)',
               transform: 'scale(1.5)',
               opacity: 0.4,
@@ -45,15 +46,22 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
       </div>
 
       {/* Loading text */}
-      <p className="mt-8 paragraph-bg text-tertiary">
-        {loadingText}
-      </p>
+      <p className="mt-8 paragraph-bg text-tertiary">{loadingText}</p>
 
       {/* Subtle loading dots */}
       <div className="flex items-center gap-1 mt-3">
-        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <div
+          className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce"
+          style={{ animationDelay: '0ms' }}
+        />
+        <div
+          className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce"
+          style={{ animationDelay: '150ms' }}
+        />
+        <div
+          className="w-2 h-2 bg-utility-purple-500 rounded-full animate-bounce"
+          style={{ animationDelay: '300ms' }}
+        />
       </div>
     </div>
   )

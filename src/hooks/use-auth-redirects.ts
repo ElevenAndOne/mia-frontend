@@ -32,7 +32,12 @@ export const useAuthRedirects = ({
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
   useEffect(() => {
-    logger.log('[AUTH-REDIRECT] Effect triggered - isLoading:', isLoading, 'path:', location.pathname)
+    logger.log(
+      '[AUTH-REDIRECT] Effect triggered - isLoading:',
+      isLoading,
+      'path:',
+      location.pathname
+    )
 
     if (isLoading) return
 
@@ -44,7 +49,14 @@ export const useAuthRedirects = ({
       return
     }
 
-    logger.log('[AUTH-REDIRECT] Effect running - path:', path, 'isAuth:', isAuthenticated || isMetaAuthenticated, 'mia_pending_invite:', localStorage.getItem(StorageKey.PENDING_INVITE))
+    logger.log(
+      '[AUTH-REDIRECT] Effect running - path:',
+      path,
+      'isAuth:',
+      isAuthenticated || isMetaAuthenticated,
+      'mia_pending_invite:',
+      localStorage.getItem(StorageKey.PENDING_INVITE)
+    )
 
     // Handle OAuth return - navigate back to where user was before OAuth
     // Check FIRST before any other logic, regardless of current auth state
@@ -83,7 +95,18 @@ export const useAuthRedirects = ({
     }
 
     if (path === '/') {
-      logger.log('[AUTH-REDIRECT] On landing page - hasSeenIntro:', hasSeenIntro, 'isAuth:', isAnyAuthenticated, 'selectedAccount:', !!selectedAccount, 'activeWorkspace:', !!activeWorkspace, 'workspaces:', availableWorkspaces.length)
+      logger.log(
+        '[AUTH-REDIRECT] On landing page - hasSeenIntro:',
+        hasSeenIntro,
+        'isAuth:',
+        isAnyAuthenticated,
+        'selectedAccount:',
+        !!selectedAccount,
+        'activeWorkspace:',
+        !!activeWorkspace,
+        'workspaces:',
+        availableWorkspaces.length
+      )
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
         const returnUrl = consumeReturnUrl()
         navigate(returnUrl || '/home')
@@ -117,10 +140,16 @@ export const useAuthRedirects = ({
       } else {
         // Check localStorage as fallback (backend may not return onboarding_completed flag)
         const localStorageOnboardingComplete = activeWorkspace?.tenant_id
-          ? localStorage.getItem(`${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`) === 'true'
+          ? localStorage.getItem(
+              `${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`
+            ) === 'true'
           : false
 
-        if (user?.onboarding_completed || activeWorkspace?.onboarding_completed || localStorageOnboardingComplete) {
+        if (
+          user?.onboarding_completed ||
+          activeWorkspace?.onboarding_completed ||
+          localStorageOnboardingComplete
+        ) {
           navigate('/home')
         } else {
           navigate('/onboarding')
