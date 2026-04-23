@@ -11,7 +11,7 @@ interface IntegrationPromptState {
 interface IntegrationPromptOptions {
   connectedPlatforms: string[]
   isLoading?: boolean
-  workspaceRole?: string  // Only show for owner/admin (viewers can't manage integrations)
+  workspaceRole?: string // Only show for owner/admin (viewers can't manage integrations)
 }
 
 const formatList = (items: string[]): string => {
@@ -43,12 +43,14 @@ export const useIntegrationPrompt = ({
     if (!connectedPlatforms.includes('ga4')) addMissing('ga4', 'GA4')
     // Meta Ads connected during onboarding, not a "finish setup" item
     // if (!connectedPlatforms.includes('meta_ads')) addMissing('meta_ads', 'Meta Ads')
-    if (!connectedPlatforms.includes('facebook_organic')) addMissing('facebook_organic', 'Facebook Page')
+    if (!connectedPlatforms.includes('facebook_organic'))
+      addMissing('facebook_organic', 'Facebook Page')
 
     if (missingLabels.length === 0) return null
 
     const missingLabel = formatList(missingLabels)
-    const title = missingLabels.length > 1 ? 'Finish connecting your data' : `Connect ${missingLabels[0]}`
+    const title =
+      missingLabels.length > 1 ? 'Finish connecting your data' : `Connect ${missingLabels[0]}`
     const message = `Connect ${missingLabel} to unlock the most accurate insights and recommendations.`
 
     return {

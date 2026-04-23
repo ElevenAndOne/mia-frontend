@@ -36,11 +36,7 @@ export const SelectionCard = ({
         </div>
         {trailing}
       </div>
-      {footer && (
-        <div className="mt-3">
-          {footer}
-        </div>
-      )}
+      {footer && <div className="mt-3">{footer}</div>}
     </button>
   )
 }

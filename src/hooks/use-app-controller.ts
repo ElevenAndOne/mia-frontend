@@ -131,11 +131,18 @@ export const useAppController = () => {
     return () => window.removeEventListener('mia:new-workspace', handler)
   }, [])
 
-  const isConnectingSecondPlatform = Boolean(connectingPlatform && isAnyAuthenticated && selectedAccount)
+  const isConnectingSecondPlatform = Boolean(
+    connectingPlatform && isAnyAuthenticated && selectedAccount
+  )
   let loadingPlatform: 'google' | 'meta' | null = null
   let showLoadingScreen = false
 
-  logger.log('[APP-CONTROLLER] Checking loading screen - path:', location.pathname, 'isLoading:', isLoading)
+  logger.log(
+    '[APP-CONTROLLER] Checking loading screen - path:',
+    location.pathname,
+    'isLoading:',
+    isLoading
+  )
 
   if (oauthLoadingPlatform) {
     logger.log('[APP-CONTROLLER] OAuth loading platform:', oauthLoadingPlatform)
@@ -159,7 +166,8 @@ export const useAppController = () => {
   ) {
     logger.log('[APP-CONTROLLER] Generic loading screen for protected route')
     showLoadingScreen = true
-    loadingPlatform = connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
+    loadingPlatform =
+      connectingPlatform || (isMetaFirstFlow ? 'meta' : isAuthenticated ? 'google' : null)
   } else if (
     location.pathname === '/onboarding' &&
     isLoading &&

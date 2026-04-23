@@ -23,7 +23,10 @@ export interface DateRangeOption {
   value: DateRangePresetValue
 }
 
-const PRESET_DEFINITIONS: Record<DateRangePresetValue, { days: number; label: string; shortLabel: string }> = {
+const PRESET_DEFINITIONS: Record<
+  DateRangePresetValue,
+  { days: number; label: string; shortLabel: string }
+> = {
   '7_days': { days: 7, label: 'Last 7 days', shortLabel: '7d' },
   '14_days': { days: 14, label: 'Last 14 days', shortLabel: '14d' },
   '30_days': { days: 30, label: 'Last 30 days', shortLabel: '30d' },
@@ -32,13 +35,19 @@ const PRESET_DEFINITIONS: Record<DateRangePresetValue, { days: number; label: st
   '365_days': { days: 365, label: 'Last year', shortLabel: '1y' },
 }
 
-export const DEFAULT_DATE_RANGE_OPTIONS: Array<{ value: DateRangePresetValue | 'custom'; label: string }> = [
+export const DEFAULT_DATE_RANGE_OPTIONS: Array<{
+  value: DateRangePresetValue | 'custom' | 'since_launch'
+  label: string
+}> = [
+  { value: 'since_launch', label: 'Since launch' },
   { value: '7_days', label: PRESET_DEFINITIONS['7_days'].label },
   { value: '14_days', label: PRESET_DEFINITIONS['14_days'].label },
   { value: '30_days', label: PRESET_DEFINITIONS['30_days'].label },
   { value: '90_days', label: PRESET_DEFINITIONS['90_days'].label },
   { value: 'custom', label: 'Custom range' },
 ]
+
+export const isSinceLaunchRange = (value: string): boolean => value === 'since_launch'
 
 export const CHAT_DATE_RANGE_OPTIONS: DateRangeOption[] = [
   { id: '7_days', label: PRESET_DEFINITIONS['7_days'].label, value: '7_days' },
@@ -63,7 +72,10 @@ export const parseCustomDateRange = (value: string): DateRangeSpan | null => {
   return { start, end }
 }
 
-export const getPresetDateRange = (value: DateRangePresetValue, now: Date = new Date()): DateRangeSpan => {
+export const getPresetDateRange = (
+  value: DateRangePresetValue,
+  now: Date = new Date()
+): DateRangeSpan => {
   const preset = PRESET_DEFINITIONS[value]
   const end = new Date(now)
   end.setDate(now.getDate() - 1) // yesterday — matches backend which excludes today (incomplete data)
@@ -72,7 +84,10 @@ export const getPresetDateRange = (value: DateRangePresetValue, now: Date = new 
   return { start, end }
 }
 
-export const parseDateRangeValue = (value: string, now: Date = new Date()): DateRangeSpan | null => {
+export const parseDateRangeValue = (
+  value: string,
+  now: Date = new Date()
+): DateRangeSpan | null => {
   if (isCustomDateRange(value)) {
     return parseCustomDateRange(value)
   }
@@ -87,10 +102,7 @@ export const parseDateRangeValue = (value: string, now: Date = new Date()): Date
 export const formatRangeSpan = (
   start: Date,
   end: Date,
-  {
-    includeYear = false,
-    locale = 'en-US',
-  }: { includeYear?: boolean; locale?: string } = {}
+  { includeYear = false, locale = 'en-US' }: { includeYear?: boolean; locale?: string } = {}
 ): string => {
   const options: Intl.DateTimeFormatOptions = includeYear
     ? { month: 'short', day: 'numeric', year: 'numeric' }
@@ -120,4 +132,5 @@ export const formatDateRangeDisplay = (
   return formatRangeSpan(parsed.start, parsed.end, { includeYear: variant === 'long' })
 }
 
-export const getPresetLabel = (value: DateRangePresetValue): string => PRESET_DEFINITIONS[value].label
+export const getPresetLabel = (value: DateRangePresetValue): string =>
+  PRESET_DEFINITIONS[value].label

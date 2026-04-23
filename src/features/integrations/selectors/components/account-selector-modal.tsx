@@ -41,7 +41,12 @@ const ACCENT_BUTTON_CLASSES: Record<AccentColor, string> = {
 
 function DefaultEmptyIcon() {
   return (
-    <svg className="w-16 h-16 text-placeholder-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className="w-16 h-16 text-placeholder-subtle"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -116,7 +121,9 @@ export function AccountSelectorModal({
           <div className="py-8 text-center">
             <div className="mx-auto mb-4">{emptyIcon || <DefaultEmptyIcon />}</div>
             <p className="paragraph-sm text-tertiary">{emptyMessage}</p>
-            {emptySubMessage && <p className="paragraph-sm text-quaternary mt-2">{emptySubMessage}</p>}
+            {emptySubMessage && (
+              <p className="paragraph-sm text-quaternary mt-2">{emptySubMessage}</p>
+            )}
           </div>
         )}
 

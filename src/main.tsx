@@ -1,13 +1,13 @@
 // =============================================================================
 // SENTRY CONFIGURATION - Error Tracking & Performance Monitoring
 // =============================================================================
-import * as Sentry from "@sentry/react";
+import * as Sentry from '@sentry/react'
 
 // Determine sample rates based on environment (maximum privacy)
-const isDevelopment = import.meta.env.MODE === 'development';
-const tracesRate = isDevelopment ? 1.0 : 0.03; // 100% dev, 3% production
-const replaysSessionRate = isDevelopment ? 0.5 : 0.02; // 50% dev, 2% production
-const replaysErrorRate = isDevelopment ? 1.0 : 1.0; // Always capture errors
+const isDevelopment = import.meta.env.MODE === 'development'
+const tracesRate = isDevelopment ? 1.0 : 0.03 // 100% dev, 3% production
+const replaysSessionRate = isDevelopment ? 0.5 : 0.02 // 50% dev, 2% production
+const replaysErrorRate = isDevelopment ? 1.0 : 1.0 // Always capture errors
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -17,8 +17,8 @@ Sentry.init({
       // Don't track certain routes that may contain sensitive data
       shouldCreateSpanForRequest: (url) => {
         // Skip tracking for OAuth callbacks and credential endpoints
-        const sensitiveRoutes = ['/oauth/', '/callback', '/credentials'];
-        return !sensitiveRoutes.some(route => url.includes(route));
+        const sensitiveRoutes = ['/oauth/', '/callback', '/credentials']
+        return !sensitiveRoutes.some((route) => url.includes(route))
       },
     }),
     Sentry.replayIntegration({
@@ -54,49 +54,49 @@ Sentry.init({
     // Additional client-side scrubbing
     // Remove user IP address
     if (event.user) {
-      delete event.user.ip_address;
+      delete event.user.ip_address
       // Mask email if present
       if (event.user.email) {
-        event.user.email = '[REDACTED]';
+        event.user.email = '[REDACTED]'
       }
     }
 
     // Remove potentially sensitive request data
     if (event.request) {
-      delete event.request.cookies;
+      delete event.request.cookies
 
       // Scrub sensitive headers
-      const headers = event.request.headers;
+      const headers = event.request.headers
       if (headers) {
-        const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
-        sensitiveHeaders.forEach(header => {
+        const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key']
+        sensitiveHeaders.forEach((header) => {
           if (headers[header]) {
-            headers[header] = '[REDACTED]';
+            headers[header] = '[REDACTED]'
           }
-        });
+        })
       }
     }
 
-    return event;
+    return event
   },
   // Don't send breadcrumbs for sensitive actions
   beforeBreadcrumb(breadcrumb) {
     // Filter out breadcrumbs that might contain sensitive data
     if (breadcrumb.category === 'console') {
       // Don't send console logs to Sentry
-      return null;
+      return null
     }
     if (breadcrumb.category === 'fetch' || breadcrumb.category === 'xhr') {
       // Check if the URL contains sensitive endpoints
-      const sensitiveEndpoints = ['/oauth/', '/credentials', '/token'];
-      if (sensitiveEndpoints.some(endpoint => breadcrumb.data?.url?.includes(endpoint))) {
+      const sensitiveEndpoints = ['/oauth/', '/credentials', '/token']
+      if (sensitiveEndpoints.some((endpoint) => breadcrumb.data?.url?.includes(endpoint))) {
         // Redact the URL and data
-        breadcrumb.data = { url: '[REDACTED]' };
+        breadcrumb.data = { url: '[REDACTED]' }
       }
     }
-    return breadcrumb;
+    return breadcrumb
   },
-});
+})
 // =============================================================================
 
 import ReactDOM from 'react-dom/client'
@@ -113,7 +113,10 @@ import './index.css'
 // iPhone 16 Pro viewport optimization
 const viewport = document.querySelector('meta[name="viewport"]')
 if (viewport) {
-  viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no')
+  viewport.setAttribute(
+    'content',
+    'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no'
+  )
 }
 
 // Create React Query client with smart defaults
@@ -154,5 +157,5 @@ ReactDOM.createRoot(rootElement).render(
         </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
-  </Sentry.ErrorBoundary>,
+  </Sentry.ErrorBoundary>
 )

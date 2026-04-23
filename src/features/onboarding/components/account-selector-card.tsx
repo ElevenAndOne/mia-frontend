@@ -18,7 +18,7 @@ export const AccountSelectorCard = ({ onAccountSelected }: AccountSelectorCardPr
     const mcc: typeof availableAccounts = []
     const standalone: typeof availableAccounts = []
 
-    availableAccounts.forEach(account => {
+    availableAccounts.forEach((account) => {
       if (account.google_ads_account_type === 'mcc') {
         mcc.push(account)
       } else {
@@ -69,7 +69,9 @@ export const AccountSelectorCard = ({ onAccountSelected }: AccountSelectorCardPr
         animate={{ opacity: 1, y: 0 }}
         className="bg-secondary rounded-2xl p-4 max-w-md"
       >
-        <p className="paragraph-sm text-secondary">No accounts found. Please connect a platform first.</p>
+        <p className="paragraph-sm text-secondary">
+          No accounts found. Please connect a platform first.
+        </p>
       </motion.div>
     )
   }
@@ -84,8 +86,10 @@ export const AccountSelectorCard = ({ onAccountSelected }: AccountSelectorCardPr
         {/* MCC Accounts */}
         {mccAccounts.length > 0 && (
           <div className="mb-3">
-            <p className="paragraph-xs text-tertiary mb-2 uppercase tracking-wide">Manager Accounts</p>
-            {mccAccounts.map(account => (
+            <p className="paragraph-xs text-tertiary mb-2 uppercase tracking-wide">
+              Manager Accounts
+            </p>
+            {mccAccounts.map((account) => (
               <AccountItem
                 key={account.id}
                 account={account}
@@ -104,7 +108,7 @@ export const AccountSelectorCard = ({ onAccountSelected }: AccountSelectorCardPr
             {mccAccounts.length > 0 && (
               <p className="paragraph-xs text-tertiary mb-2 uppercase tracking-wide">Accounts</p>
             )}
-            {standaloneAccounts.map(account => (
+            {standaloneAccounts.map((account) => (
               <AccountItem
                 key={account.id}
                 account={account}

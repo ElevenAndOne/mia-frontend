@@ -3,9 +3,14 @@ interface MetaLogoBadgeProps {
   iconClassName?: string
 }
 
-export const MetaLogoBadge = ({ className = '', iconClassName = 'text-utility-info-600' }: MetaLogoBadgeProps) => {
+export const MetaLogoBadge = ({
+  className = '',
+  iconClassName = 'text-utility-info-600',
+}: MetaLogoBadgeProps) => {
   return (
-    <div className={`w-12 h-12 rounded-full bg-utility-info-200 flex items-center justify-center ${className}`.trim()}>
+    <div
+      className={`w-12 h-12 rounded-full bg-utility-info-200 flex items-center justify-center ${className}`.trim()}
+    >
       <svg viewBox="0 0 24 24" className={`w-7 h-7 ${iconClassName}`}>
         <path
           fill="currentColor"

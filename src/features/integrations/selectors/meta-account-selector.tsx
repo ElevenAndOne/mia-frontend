@@ -59,6 +59,18 @@ const MetaAccountSelector = ({
 
       const data = await response.json()
 
+      if (!response.ok) {
+        const detail = data.detail || ''
+        if (detail.startsWith('meta_token_expired')) {
+          actions.setError(
+            'Your Meta connection has expired. Please disconnect and reconnect Meta in Integrations.'
+          )
+        } else {
+          actions.setError('Failed to fetch Meta accounts')
+        }
+        return
+      }
+
       if (data.success && data.accounts) {
         const sortedAccounts = data.accounts.sort((a: MetaAccount, b: MetaAccount) =>
           a.name.localeCompare(b.name)
@@ -67,7 +79,10 @@ const MetaAccountSelector = ({
 
         // Pre-select only from workspace-scoped currentAccountData — never from selectedAccount
         // (selectedAccount can be stale from a previous workspace and must not drive pre-selection)
-        if (currentAccountData?.meta_ads_id && sortedAccounts.some((a: MetaAccount) => a.id === currentAccountData.meta_ads_id)) {
+        if (
+          currentAccountData?.meta_ads_id &&
+          sortedAccounts.some((a: MetaAccount) => a.id === currentAccountData.meta_ads_id)
+        ) {
           actions.setSelectedId(currentAccountData.meta_ads_id)
         }
       } else {
@@ -90,7 +105,7 @@ const MetaAccountSelector = ({
         },
         body: JSON.stringify({
           meta_account_id: state.selectedId || '',
-          google_account_id: selectedAccount?.id,  // MAR 2026: Explicitly send account to link to
+          google_account_id: selectedAccount?.id, // MAR 2026: Explicitly send account to link to
         }),
       })
 
@@ -127,9 +142,7 @@ const MetaAccountSelector = ({
       accentColor="blue"
     >
       <div>
-        <label className="block subheading-md text-secondary mb-2">
-          Select Meta Ad Account
-        </label>
+        <label className="block subheading-md text-secondary mb-2">Select Meta Ad Account</label>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {accounts.map((account) => (
             <SelectorItem

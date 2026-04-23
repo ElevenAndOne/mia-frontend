@@ -53,11 +53,26 @@ export const MobileNavigation = ({
     { value: 'dark', label: 'Dark', icon: <Icon.moon_01 size={16} /> },
   ]
 
-  const handleIntegrations = () => { onIntegrationsClick?.(); onClose() }
-  const handleCampaigns = () => { onCampaignsClick?.(); onClose() }
-  const handleHelp = () => { onHelpClick?.(); onClose() }
-  const handleWorkspaceSettings = () => { onWorkspaceSettings?.(); onClose() }
-  const handleLogout = () => { onLogout?.(); onClose() }
+  const handleIntegrations = () => {
+    onIntegrationsClick?.()
+    onClose()
+  }
+  const handleCampaigns = () => {
+    onCampaignsClick?.()
+    onClose()
+  }
+  const handleHelp = () => {
+    onHelpClick?.()
+    onClose()
+  }
+  const handleWorkspaceSettings = () => {
+    onWorkspaceSettings?.()
+    onClose()
+  }
+  const handleLogout = () => {
+    onLogout?.()
+    onClose()
+  }
   const handleThemeChange = (value: typeof theme) => setTheme(value)
 
   const handleLoadConversation = (id: string) => {

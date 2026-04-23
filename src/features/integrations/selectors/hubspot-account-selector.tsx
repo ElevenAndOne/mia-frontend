@@ -102,15 +102,12 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     setPendingRemove(null)
 
     try {
-      const response = await apiFetch(
-        `/api/oauth/hubspot/disconnect?hubspot_id=${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'X-Session-ID': sessionId || 'default',
-          },
-        }
-      )
+      const response = await apiFetch(`/api/oauth/hubspot/disconnect?hubspot_id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Session-ID': sessionId || 'default',
+        },
+      })
 
       const data = await response.json()
 
@@ -126,56 +123,56 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
 
   return (
     <>
-    <AccountSelectorModal
-      isOpen={isOpen}
-      onClose={actions.handleClose}
-      title="HubSpot Portals"
-      subtitle="Select which HubSpot portal to use for this account"
-      icon={
-        <svg className="w-6 h-6 text-brand-teriary" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M18.164 7.93V5.282c0-.18-.147-.327-.327-.327h-.72a2.12 2.12 0 0 0-2.118-2.118V.94a.327.327 0 0 0-.327-.327h-2.545a.327.327 0 0 0-.327.327v1.897a2.12 2.12 0 0 0-2.118 2.118h-.72a.327.327 0 0 0-.327.327v2.648c0 .18.147.327.327.327h.72a2.12 2.12 0 0 0 2.118 2.118v3.344a1.91 1.91 0 0 1-1.909 1.909 1.91 1.91 0 0 1-1.909-1.909V13.3a.327.327 0 0 0-.327-.327H5.11a.327.327 0 0 0-.327.327v.418a4.364 4.364 0 0 0 4.364 4.364c.18 0 .36-.011.536-.033l1.59 2.754a.327.327 0 0 0 .283.164h2.89a.327.327 0 0 0 .283-.491l-1.45-2.507a4.353 4.353 0 0 0 2.994-4.142v-.418a.327.327 0 0 0-.327-.327h-2.545a.327.327 0 0 0-.327.327v.418a1.91 1.91 0 0 1-1.909 1.909c-.152 0-.3-.018-.443-.052V11.37a2.12 2.12 0 0 0 2.118-2.118h.72a.327.327 0 0 0 .327-.327z" />
-        </svg>
-      }
-      iconBgColor="bg-brand-secondary"
-      isLoading={state.isLoading}
-      loadingMessage="Loading HubSpot portals..."
-      error={state.error}
-      success={state.success}
-      successMessage="Successfully switched portals!"
-      isEmpty={accounts.length === 0}
-      emptyMessage="No HubSpot portals connected yet."
-      emptySubMessage="Connect a HubSpot portal to get started."
-      isSubmitting={state.isSubmitting}
-      onSubmit={handleSwitchAccount}
-      submitLabel="Switch Portal"
-      submitLoadingLabel="Switching..."
-      submitDisabled={!state.selectedId}
-      accentColor="black"
-    >
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {accounts.map((account) => (
-          <SelectorItem
-            key={account.id}
-            isSelected={state.selectedId === account.id}
-            onSelect={() => actions.setSelectedId(account.id)}
-            title={account.account_name}
-            subtitle={`Portal ID: ${account.portal_id}`}
-            badge={account.is_primary ? 'Primary' : undefined}
-            badgeColor="green"
-            accentColor="black"
-            selectionStyle="radio"
-            onRemove={() => handleRemoveAccount(account.id, account.account_name)}
-          />
-        ))}
-      </div>
-    </AccountSelectorModal>
-    <ConfirmDialog
-      isOpen={pendingRemove !== null}
-      message={`Remove ${pendingRemove?.name ?? ''} from this account?`}
-      confirmLabel="Remove"
-      onConfirm={handleConfirmRemove}
-      onCancel={() => setPendingRemove(null)}
-    />
+      <AccountSelectorModal
+        isOpen={isOpen}
+        onClose={actions.handleClose}
+        title="HubSpot Portals"
+        subtitle="Select which HubSpot portal to use for this account"
+        icon={
+          <svg className="w-6 h-6 text-brand-teriary" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18.164 7.93V5.282c0-.18-.147-.327-.327-.327h-.72a2.12 2.12 0 0 0-2.118-2.118V.94a.327.327 0 0 0-.327-.327h-2.545a.327.327 0 0 0-.327.327v1.897a2.12 2.12 0 0 0-2.118 2.118h-.72a.327.327 0 0 0-.327.327v2.648c0 .18.147.327.327.327h.72a2.12 2.12 0 0 0 2.118 2.118v3.344a1.91 1.91 0 0 1-1.909 1.909 1.91 1.91 0 0 1-1.909-1.909V13.3a.327.327 0 0 0-.327-.327H5.11a.327.327 0 0 0-.327.327v.418a4.364 4.364 0 0 0 4.364 4.364c.18 0 .36-.011.536-.033l1.59 2.754a.327.327 0 0 0 .283.164h2.89a.327.327 0 0 0 .283-.491l-1.45-2.507a4.353 4.353 0 0 0 2.994-4.142v-.418a.327.327 0 0 0-.327-.327h-2.545a.327.327 0 0 0-.327.327v.418a1.91 1.91 0 0 1-1.909 1.909c-.152 0-.3-.018-.443-.052V11.37a2.12 2.12 0 0 0 2.118-2.118h.72a.327.327 0 0 0 .327-.327z" />
+          </svg>
+        }
+        iconBgColor="bg-brand-secondary"
+        isLoading={state.isLoading}
+        loadingMessage="Loading HubSpot portals..."
+        error={state.error}
+        success={state.success}
+        successMessage="Successfully switched portals!"
+        isEmpty={accounts.length === 0}
+        emptyMessage="No HubSpot portals connected yet."
+        emptySubMessage="Connect a HubSpot portal to get started."
+        isSubmitting={state.isSubmitting}
+        onSubmit={handleSwitchAccount}
+        submitLabel="Switch Portal"
+        submitLoadingLabel="Switching..."
+        submitDisabled={!state.selectedId}
+        accentColor="black"
+      >
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {accounts.map((account) => (
+            <SelectorItem
+              key={account.id}
+              isSelected={state.selectedId === account.id}
+              onSelect={() => actions.setSelectedId(account.id)}
+              title={account.account_name}
+              subtitle={`Portal ID: ${account.portal_id}`}
+              badge={account.is_primary ? 'Primary' : undefined}
+              badgeColor="green"
+              accentColor="black"
+              selectionStyle="radio"
+              onRemove={() => handleRemoveAccount(account.id, account.account_name)}
+            />
+          ))}
+        </div>
+      </AccountSelectorModal>
+      <ConfirmDialog
+        isOpen={pendingRemove !== null}
+        message={`Remove ${pendingRemove?.name ?? ''} from this account?`}
+        confirmLabel="Remove"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setPendingRemove(null)}
+      />
     </>
   )
 }

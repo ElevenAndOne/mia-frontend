@@ -93,8 +93,8 @@ export interface SwitchWorkspaceResponse {
 export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> => {
   const response = await apiFetch('/api/tenants', {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -103,16 +103,18 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
 
   const data: WorkspacesResponse = await response.json()
   const rawWorkspaces = data.tenants || []
-  return rawWorkspaces.map((t): Workspace => ({
-    tenant_id: t.tenant_id || '',
-    name: t.name,
-    slug: t.slug,
-    role: (t.role || 'member') as WorkspaceRole,
-    onboarding_completed: t.onboarding_completed ?? false,
-    connected_platforms: t.connected_platforms || [],
-    member_count: t.member_count || 1,
-    is_active: t.is_active
-  }))
+  return rawWorkspaces.map(
+    (t): Workspace => ({
+      tenant_id: t.tenant_id || '',
+      name: t.name,
+      slug: t.slug,
+      role: (t.role || 'member') as WorkspaceRole,
+      onboarding_completed: t.onboarding_completed ?? false,
+      connected_platforms: t.connected_platforms || [],
+      member_count: t.member_count || 1,
+      is_active: t.is_active,
+    })
+  )
 }
 
 /**
@@ -123,8 +125,8 @@ export const fetchCurrentWorkspace = async (
 ): Promise<CurrentWorkspaceResponse> => {
   const response = await apiFetch('/api/tenants/current', {
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {
@@ -146,9 +148,9 @@ export const createWorkspace = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Session-ID': sessionId
+      'X-Session-ID': sessionId,
     },
-    body: JSON.stringify({ name })
+    body: JSON.stringify({ name }),
   })
 
   if (!response.ok) {
@@ -159,7 +161,7 @@ export const createWorkspace = async (
   return {
     tenant_id: data.tenant_id || '',
     name: data.name || name,
-    slug: data.slug || ''
+    slug: data.slug || '',
   }
 }
 
@@ -174,9 +176,9 @@ export const switchWorkspace = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Session-ID': sessionId
+      'X-Session-ID': sessionId,
     },
-    body: JSON.stringify({ tenant_id: tenantId })
+    body: JSON.stringify({ tenant_id: tenantId }),
   })
 
   if (!response.ok) {
@@ -214,15 +216,12 @@ export const renameWorkspace = async (
 /**
  * Delete a workspace (owner only)
  */
-export const deleteWorkspace = async (
-  sessionId: string,
-  tenantId: string
-): Promise<void> => {
+export const deleteWorkspace = async (sessionId: string, tenantId: string): Promise<void> => {
   const response = await apiFetch(`/api/tenants/${tenantId}`, {
     method: 'DELETE',
     headers: {
-      'X-Session-ID': sessionId
-    }
+      'X-Session-ID': sessionId,
+    },
   })
 
   if (!response.ok) {

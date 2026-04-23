@@ -23,7 +23,14 @@ interface ChatViewProps {
   onNewWorkspace?: () => void
 }
 
-export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, onLogout, onWorkspaceSettings, onNewWorkspace }: ChatViewProps) => {
+export const ChatView = ({
+  onIntegrationsClick,
+  onCampaignsClick,
+  onHelpClick,
+  onLogout,
+  onWorkspaceSettings,
+  onNewWorkspace,
+}: ChatViewProps) => {
   const { sessionId } = useSession()
   const { data: goldData } = useGoldInsights(sessionId)
 
@@ -31,9 +38,10 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
   const predictSeenKey = goldData?.created_at
     ? `${StorageKey.PREDICT_SEEN_PREFIX}${goldData.created_at}`
     : null
-  const predictReady = goldData?.status === 'completed'
-    && !!predictSeenKey
-    && localStorage.getItem(predictSeenKey) !== 'true'
+  const predictReady =
+    goldData?.status === 'completed' &&
+    !!predictSeenKey &&
+    localStorage.getItem(predictSeenKey) !== 'true'
 
   const {
     userName,
@@ -48,11 +56,15 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
     hasSelectedPlatforms,
     hasMessages,
     messagesEndRef,
+    scrollContainerRef,
+    lastUserMsgRef,
     handleNewChat,
     handleSubmit,
     handleQuickAction,
     handleConfirmAction,
     handleCancelAction,
+    handleCancel,
+    handleBack,
     integrationPrompt,
     loadConversation,
   } = useChatView()
@@ -70,7 +82,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
 
   // Throttle: only show the integration prompt every 5th chat page visit
   const [shouldShowPromptThisVisit] = useState(() => {
-    const count = parseInt(localStorage.getItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT) || '0', 10) + 1
+    const count =
+      parseInt(localStorage.getItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT) || '0', 10) + 1
     localStorage.setItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT, String(count))
     return count % 5 === 1 // Show on 1st, 6th, 11th visit...
   })
@@ -82,7 +95,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
     setPromptDismissed(false)
   }, [missingKey, integrationPrompt])
 
-  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed && shouldShowPromptThisVisit
+  const showIntegrationPrompt =
+    Boolean(integrationPrompt) && !promptDismissed && shouldShowPromptThisVisit
 
   const handleIntegrationPromptAction = () => {
     if (integrationPrompt) {
@@ -103,6 +117,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
       onCampaignsClick={onCampaignsClick}
       onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
+      onBack={handleBack}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
       onNewWorkspace={onNewWorkspace}
@@ -118,12 +133,14 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
                   disabled={isLoading || !hasSelectedPlatforms}
                   predictReady={predictReady}
                 />
-                <RaceCampaignTracker disabled={isLoading} />
+                <RaceCampaignTracker disabled={isLoading} dateRange={dateRange} />
               </div>
             </ChatEmptyState>
 
             <ChatInput
               onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isLoading={isLoading}
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
@@ -137,31 +154,56 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
           <>
             {/* Desktop back button — sits above messages, no overlap with sidebar */}
             <div className="hidden md:flex items-center px-4 pt-3 pb-1 shrink-0">
-              <BackButton onClick={handleNewChat} label="Back" variant="dark" />
+              <BackButton onClick={handleBack} label="Back" variant="dark" />
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0">
               <div className="max-w-3xl mx-auto px-4 py-6">
-                {messages.filter(m => !m.hidden).map((message) => (
-                  <ChatMessage
-                    key={message.id}
-                    role={message.role}
-                    content={message.content}
-                    pendingAction={message.pendingAction}
-                    actionStatus={message.actionStatus}
-                    actionResult={message.actionResult}
-                    onConfirmAction={message.pendingAction ? () => handleConfirmAction(message.id) : undefined}
-                    onCancelAction={message.pendingAction ? () => handleCancelAction(message.id) : undefined}
-                  />
-                ))}
+                {(() => {
+                  const visible = messages.filter((m) => !m.hidden)
+                  const lastUserIdx = visible.reduce(
+                    (acc, m, i) => (m.role === 'user' ? i : acc),
+                    -1
+                  )
+                  return visible.map((message, idx) => (
+                    <div key={message.id} ref={idx === lastUserIdx ? lastUserMsgRef : undefined}>
+                      <ChatMessage
+                        role={message.role}
+                        content={message.content}
+                        pendingAction={message.pendingAction}
+                        actionStatus={message.actionStatus}
+                        actionResult={message.actionResult}
+                        onConfirmAction={
+                          message.pendingAction
+                            ? () => handleConfirmAction(message.id)
+                            : undefined
+                        }
+                        onCancelAction={
+                          message.pendingAction
+                            ? () => handleCancelAction(message.id)
+                            : undefined
+                        }
+                      />
+                    </div>
+                  ))
+                })()}
 
                 {isLoading && (
                   <div className="mb-6">
                     <div className="flex items-center gap-2 text-quaternary">
                       <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div
+                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                          style={{ animationDelay: '0ms' }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                          style={{ animationDelay: '150ms' }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                          style={{ animationDelay: '300ms' }}
+                        />
                       </div>
                       <span className="paragraph-sm">Thinking...</span>
                     </div>
@@ -169,11 +211,7 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
                 )}
 
                 {streamingContent && (
-                  <ChatMessage
-                    role="assistant"
-                    content={streamingContent}
-                    isStreaming
-                  />
+                  <ChatMessage role="assistant" content={streamingContent} isStreaming />
                 )}
 
                 <div ref={messagesEndRef} />
@@ -182,6 +220,8 @@ export const ChatView = ({ onIntegrationsClick, onCampaignsClick, onHelpClick, o
 
             <ChatInput
               onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              isLoading={isLoading}
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}

@@ -5,7 +5,7 @@ export const TypingIndicator = () => (
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -10 }}
-  className="flex items-center gap-1 px-4 py-3 bg-tertiary rounded-2xl w-fit"
+    className="flex items-center gap-1 px-4 py-3 bg-tertiary rounded-2xl w-fit"
   >
     <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce [animation-delay:0ms]" />
     <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce [animation-delay:150ms]" />

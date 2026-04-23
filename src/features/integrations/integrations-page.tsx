@@ -28,15 +28,15 @@ interface Integration {
   description: string
   icon: string
   connected: boolean
-  linked: boolean  // MAR 2026: true when account-level ID is mapped, false when only tenant-level creds exist
+  linked: boolean // MAR 2026: true when account-level ID is mapped, false when only tenant-level creds exist
   dataPoints?: number
   lastSync?: string
   autoSync?: boolean
 }
 
-
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
-  const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } = useSession()
+  const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } =
+    useSession()
   const { showToast } = useToast()
 
   // Use React Query hook for integration status (cached, deduplicated)
@@ -49,13 +49,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     isLoading: loading,
     error: integrationStatusError,
     refetch: refetchIntegrationStatus,
-    invalidate: invalidateIntegrationStatus
+    invalidate: invalidateIntegrationStatus,
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
   // Show error toast when integration status fetch fails
   useEffect(() => {
     if (integrationStatusError) {
-      showToast('error', 'Failed to load integration status. Some connections may not appear correctly.')
+      showToast(
+        'error',
+        'Failed to load integration status. Some connections may not appear correctly.'
+      )
     }
   }, [integrationStatusError, showToast])
 
@@ -67,10 +70,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   // Without this, the 2-minute React Query staleTime causes cached (stale) data to be used
   useEffect(() => {
     return () => {
-      logger.log('[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page')
+      logger.log(
+        '[INTEGRATIONS] Unmounting - invalidating integration-status cache for fresh data on main page'
+      )
       invalidateIntegrationStatus()
       // Also refresh workspaces to update connected_platforms array
-      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err))
+      refreshWorkspaces().catch((err) =>
+        logger.error('[INTEGRATIONS] Failed to refresh workspaces on unmount:', err)
+      )
       if (oauthPollTimerRef.current) {
         window.clearInterval(oauthPollTimerRef.current)
         oauthPollTimerRef.current = null
@@ -143,19 +150,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
   const setShowMetaAccountSelector = (show: boolean) => setOpenModal(show ? 'meta' : null)
-  const setShowBrevoAccountSelector = (show: boolean) => setOpenModal(show ? 'brevo-selector' : null)
+  const setShowBrevoAccountSelector = (show: boolean) =>
+    setOpenModal(show ? 'brevo-selector' : null)
   const setShowHubSpotAccountSelector = (show: boolean) => setOpenModal(show ? 'hubspot' : null)
   const setShowMailchimpAccountSelector = (show: boolean) => setOpenModal(show ? 'mailchimp' : null)
   const setShowFacebookPageSelector = (show: boolean) => setOpenModal(show ? 'facebook' : null)
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
-  const setShowLinkedInAccountSelector = (show: boolean) => setOpenModal(show ? 'linkedin_ads' : null)
+  const setShowLinkedInAccountSelector = (show: boolean) =>
+    setOpenModal(show ? 'linkedin_ads' : null)
   const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
     if (!platformStatus) return []
 
-    const data =  [
+    const data = [
       {
         id: 'google',
         name: 'Google Ads',
@@ -163,8 +172,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/google-ads.svg',
         connected: platformStatus.google?.connected || false,
         linked: platformStatus.google?.linked ?? platformStatus.google?.connected ?? false,
-        lastSync: platformStatus.google?.connected ? getTimeAgo(platformStatus.google.last_synced) : undefined,
-        autoSync: platformStatus.google?.connected ? true : undefined
+        lastSync: platformStatus.google?.connected
+          ? getTimeAgo(platformStatus.google.last_synced)
+          : undefined,
+        autoSync: platformStatus.google?.connected ? true : undefined,
       },
       {
         id: 'ga4',
@@ -173,8 +184,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/google_analytics.svg',
         connected: platformStatus.ga4?.connected || false,
         linked: platformStatus.ga4?.linked ?? platformStatus.ga4?.connected ?? false,
-        lastSync: platformStatus.ga4?.connected ? getTimeAgo(platformStatus.ga4.last_synced) : undefined,
-        autoSync: platformStatus.ga4?.connected ? true : undefined
+        lastSync: platformStatus.ga4?.connected
+          ? getTimeAgo(platformStatus.ga4.last_synced)
+          : undefined,
+        autoSync: platformStatus.ga4?.connected ? true : undefined,
       },
       {
         id: 'meta',
@@ -183,8 +196,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/meta-color.svg',
         connected: platformStatus.meta?.connected || false,
         linked: platformStatus.meta?.linked ?? platformStatus.meta?.connected ?? false,
-        lastSync: platformStatus.meta?.connected ? getTimeAgo(platformStatus.meta.last_synced) : undefined,
-        autoSync: platformStatus.meta?.connected ? true : undefined
+        lastSync: platformStatus.meta?.connected
+          ? getTimeAgo(platformStatus.meta.last_synced)
+          : undefined,
+        autoSync: platformStatus.meta?.connected ? true : undefined,
       },
       {
         id: 'facebook_organic',
@@ -192,9 +207,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Page posts, engagement & reach',
         icon: '/icons/facebook-48.png',
         connected: platformStatus.facebook_organic?.connected || false,
-        linked: platformStatus.facebook_organic?.linked ?? platformStatus.facebook_organic?.connected ?? false,
-        lastSync: platformStatus.facebook_organic?.connected ? getTimeAgo(platformStatus.facebook_organic.last_synced) : undefined,
-        autoSync: platformStatus.facebook_organic?.connected ? true : undefined
+        linked:
+          platformStatus.facebook_organic?.linked ??
+          platformStatus.facebook_organic?.connected ??
+          false,
+        lastSync: platformStatus.facebook_organic?.connected
+          ? getTimeAgo(platformStatus.facebook_organic.last_synced)
+          : undefined,
+        autoSync: platformStatus.facebook_organic?.connected ? true : undefined,
       },
       {
         id: 'brevo',
@@ -203,8 +223,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/brevo.jpeg',
         connected: platformStatus.brevo?.connected || false,
         linked: platformStatus.brevo?.linked ?? platformStatus.brevo?.connected ?? false,
-        lastSync: platformStatus.brevo?.connected ? getTimeAgo(platformStatus.brevo.last_synced) : undefined,
-        autoSync: platformStatus.brevo?.connected ? false : undefined
+        lastSync: platformStatus.brevo?.connected
+          ? getTimeAgo(platformStatus.brevo.last_synced)
+          : undefined,
+        autoSync: platformStatus.brevo?.connected ? false : undefined,
       },
       {
         id: 'hubspot',
@@ -213,8 +235,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/hubspot.svg',
         connected: platformStatus.hubspot?.connected || false,
         linked: platformStatus.hubspot?.linked ?? platformStatus.hubspot?.connected ?? false,
-        lastSync: platformStatus.hubspot?.connected ? getTimeAgo(platformStatus.hubspot.last_synced) : undefined,
-        autoSync: platformStatus.hubspot?.connected ? true : undefined
+        lastSync: platformStatus.hubspot?.connected
+          ? getTimeAgo(platformStatus.hubspot.last_synced)
+          : undefined,
+        autoSync: platformStatus.hubspot?.connected ? true : undefined,
       },
       {
         id: 'mailchimp',
@@ -223,8 +247,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/radio buttons/mailchimp.png',
         connected: platformStatus.mailchimp?.connected || false,
         linked: platformStatus.mailchimp?.linked ?? platformStatus.mailchimp?.connected ?? false,
-        lastSync: platformStatus.mailchimp?.connected ? getTimeAgo(platformStatus.mailchimp.last_synced) : undefined,
-        autoSync: platformStatus.mailchimp?.connected ? true : undefined
+        lastSync: platformStatus.mailchimp?.connected
+          ? getTimeAgo(platformStatus.mailchimp.last_synced)
+          : undefined,
+        autoSync: platformStatus.mailchimp?.connected ? true : undefined,
       },
       {
         id: 'linkedin_ads',
@@ -232,9 +258,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'B2B advertising and lead generation',
         icon: '/icons/linkedin.svg',
         connected: platformStatus.linkedin_ads?.connected || false,
-        linked: platformStatus.linkedin_ads?.linked ?? platformStatus.linkedin_ads?.connected ?? false,
-        lastSync: platformStatus.linkedin_ads?.connected ? getTimeAgo(platformStatus.linkedin_ads.last_synced) : undefined,
-        autoSync: platformStatus.linkedin_ads?.connected ? true : undefined
+        linked:
+          platformStatus.linkedin_ads?.linked ?? platformStatus.linkedin_ads?.connected ?? false,
+        lastSync: platformStatus.linkedin_ads?.connected
+          ? getTimeAgo(platformStatus.linkedin_ads.last_synced)
+          : undefined,
+        autoSync: platformStatus.linkedin_ads?.connected ? true : undefined,
       },
       {
         id: 'airtable',
@@ -243,8 +272,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         icon: '/icons/Airtable.png',
         connected: platformStatus.airtable?.connected || false,
         linked: platformStatus.airtable?.linked ?? platformStatus.airtable?.connected ?? false,
-        lastSync: platformStatus.airtable?.connected ? getTimeAgo(platformStatus.airtable.last_synced) : undefined,
-        autoSync: platformStatus.airtable?.connected ? true : undefined
+        lastSync: platformStatus.airtable?.connected
+          ? getTimeAgo(platformStatus.airtable.last_synced)
+          : undefined,
+        autoSync: platformStatus.airtable?.connected ? true : undefined,
       },
       {
         id: 'tiktok',
@@ -256,7 +287,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       },
     ]
 
-    return data;
+    return data
   }, [platformStatus, getTimeAgo])
 
   // Handle Brevo API Key Submission
@@ -281,12 +312,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       const response = await apiFetch('/api/oauth/brevo/save-api-key', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           api_key: brevoApiKey.trim(),
-          session_id: sessionId
-        })
+          session_id: sessionId,
+        }),
       })
 
       if (!response.ok) {
@@ -302,8 +333,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setBrevoApiKey('')
       invalidateIntegrationStatus()
       // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err))
-
+      refreshWorkspaces().catch((err) =>
+        logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo connect:', err)
+      )
     } catch (error) {
       logger.error('[Brevo] API key submission error:', error)
       setBrevoError(error instanceof Error ? error.message : 'Failed to save API key')
@@ -320,7 +352,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     try {
       const response = await apiFetch('/api/oauth/brevo/disconnect', {
         method: 'DELETE',
-        headers: createSessionHeaders(sessionId)
+        headers: createSessionHeaders(sessionId),
       })
 
       if (!response.ok) {
@@ -334,8 +366,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setShowBrevoModal(false)
       invalidateIntegrationStatus()
       // CRITICAL FIX (Feb 2026): Refresh workspaces to update connected_platforms for main page toggles
-      refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err))
-
+      refreshWorkspaces().catch((err) =>
+        logger.error('[INTEGRATIONS] Failed to refresh workspaces after Brevo disconnect:', err)
+      )
     } catch (error) {
       logger.error('[Brevo] Unlink error:', error)
       setBrevoError(error instanceof Error ? error.message : 'Failed to disconnect Brevo')
@@ -356,9 +389,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     if (integrationId === 'ga4') {
       if (activeWorkspace?.tenant_id) {
         try {
-          const tenantResponse = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/integrations`, {
-            headers: { 'X-Session-ID': sessionId || '' },
-          })
+          const tenantResponse = await apiFetch(
+            `/api/tenants/${activeWorkspace.tenant_id}/integrations`,
+            {
+              headers: { 'X-Session-ID': sessionId || '' },
+            }
+          )
           if (tenantResponse.ok) {
             const tenantData = await tenantResponse.json()
             const ps = tenantData.platform_status || {}
@@ -368,7 +404,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               return
             }
           }
-        } catch { /* fall through to OAuth */ }
+        } catch {
+          /* fall through to OAuth */
+        }
       }
       // No Google OAuth for this workspace → run Google OAuth redirect
       // After redirect, auto-open GA4 property selector (not Google Ads selector)
@@ -376,10 +414,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       const tenantParam = activeWorkspace?.tenant_id ? `tenant_id=${activeWorkspace.tenant_id}` : ''
       const returnUrl = window.location.origin + '/integrations'
       const frontendOrigin = encodeURIComponent(returnUrl)
-      const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`].filter(Boolean).join('&')
+      const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`]
+        .filter(Boolean)
+        .join('&')
       try {
         const response = await apiFetch(`/api/oauth/google/auth-url?${googleParams}`, {
-          headers: { 'X-Session-ID': sessionId || '' }
+          headers: { 'X-Session-ID': sessionId || '' },
         })
         if (response.ok) {
           const data = await response.json()
@@ -407,55 +447,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     // MAR 2026: If workspace already has OAuth credentials for this platform,
     // skip the OAuth popup and go straight to the account/page selector.
     // This handles switching clients — they've already authed, just need to pick the sub-account.
-    if (activeWorkspace?.tenant_id) {
-      try {
-        const tenantResponse = await apiFetch(`/api/tenants/${activeWorkspace.tenant_id}/integrations`, {
-          headers: { 'X-Session-ID': sessionId || '' },
-        })
-        if (tenantResponse.ok) {
-          const tenantData = await tenantResponse.json()
-          const ps = tenantData.platform_status || {}
 
-          // Meta Ads: workspace has Meta creds → show ad account selector
-          // (Meta selector shows ALL available ad accounts from the Business Manager)
-          if (integrationId === 'meta' && ps.meta_ads) {
-            setShowMetaAccountSelector(true)
-            return
-          }
-          // Facebook Organic: workspace has Meta creds → show page selector
-          // (Page selector shows ALL pages the user manages)
-          if (integrationId === 'facebook_organic' && (ps.meta_ads || ps.facebook_organic)) {
-            setShowFacebookPageSelector(true)
-            return
-          }
-          // HubSpot, Mailchimp, LinkedIn: always go through OAuth flow
-          // Their selectors are account-scoped (only show portals/accounts linked
-          // to the current client), so opening the selector on a new client
-          // would show an empty list. OAuth flow re-runs and links to this client.
-        }
-      } catch (error) {
-        logger.error(`[INTEGRATIONS] Error checking tenant creds for ${integrationId}:`, error)
-        // Fall through to OAuth flow
-      }
-    }
-
-    // Facebook Organic fallback: Check if Meta OAuth is connected via credentials-status
-    if (integrationId === 'facebook_organic') {
+    // Meta Ads / Facebook Organic: check actual credential existence (not tenant_integrations,
+    // which can be stale). Only show selector if token is actually present in the DB.
+    if (integrationId === 'meta' || integrationId === 'facebook_organic') {
       try {
         const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
-          headers: createSessionHeaders(sessionId)
+          headers: createSessionHeaders(sessionId),
         })
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
-            setShowFacebookPageSelector(true)
+            if (integrationId === 'meta') {
+              setShowMetaAccountSelector(true)
+            } else {
+              setShowFacebookPageSelector(true)
+            }
             return
           }
         }
       } catch (error) {
-        logger.error('[FB-ORGANIC] Error checking Meta credentials:', error)
+        logger.error('[META] Error checking Meta credentials:', error)
       }
-      logger.log('[FB-ORGANIC] Meta OAuth not connected, starting Meta OAuth flow')
+      logger.log(`[META] No Meta credentials found, starting OAuth flow for ${integrationId}`)
     }
 
     setConnectingId(integrationId)
@@ -475,7 +489,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       // CRITICAL FIX (Jan 2026): Send X-Session-ID as header, not query param
       // Backend OAuth endpoints expect session ID in header for workspace integration
       const authHeaders = {
-        'X-Session-ID': sessionId || ''
+        'X-Session-ID': sessionId || '',
       }
 
       if (integrationId === 'google') {
@@ -485,11 +499,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         // callback redirects back to integrations page, app detects OAUTH_PENDING and completes.
         const returnUrl = window.location.origin + '/integrations'
         const frontendOrigin = encodeURIComponent(returnUrl)
-        const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`].filter(Boolean).join('&')
-        const response = await apiFetch(
-          `/api/oauth/google/auth-url?${googleParams}`,
-          { headers: authHeaders }
-        )
+        const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`]
+          .filter(Boolean)
+          .join('&')
+        const response = await apiFetch(`/api/oauth/google/auth-url?${googleParams}`, {
+          headers: authHeaders,
+        })
         if (response.ok) {
           const data = await response.json()
           // Use redirect flow — same pattern as session-context.tsx login()
@@ -603,15 +618,20 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           logger.log(`[OAUTH-COMPLETE] user_id from popup: ${oauthUserId}`)
 
           // For Meta/Google/Facebook Organic OAuth, call /complete endpoint to link credentials
-          if (integrationId === 'meta' || integrationId === 'google' || integrationId === 'facebook_organic') {
+          if (
+            integrationId === 'meta' ||
+            integrationId === 'google' ||
+            integrationId === 'facebook_organic'
+          ) {
             try {
               // Facebook Organic and Meta Ads use the same Meta OAuth endpoint
               // SECURITY FIX: Include user_id from postMessage to prevent cross-user issues
-              const completeUrl = (integrationId === 'meta' || integrationId === 'facebook_organic')
-                ? `/api/oauth/meta/complete`
-                : oauthUserId
-                  ? `/api/oauth/google/complete?user_id=${oauthUserId}`
-                  : `/api/oauth/google/complete`
+              const completeUrl =
+                integrationId === 'meta' || integrationId === 'facebook_organic'
+                  ? `/api/oauth/meta/complete`
+                  : oauthUserId
+                    ? `/api/oauth/google/complete?user_id=${oauthUserId}`
+                    : `/api/oauth/google/complete`
 
               logger.log(`Calling ${completeUrl} with session_id:`, sessionId)
 
@@ -619,14 +639,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'X-Session-ID': sessionId || ''
+                  'X-Session-ID': sessionId || '',
                 },
-                body: JSON.stringify({ session_id: sessionId })
+                body: JSON.stringify({ session_id: sessionId }),
               })
 
               if (!completeResponse.ok) {
                 const errorText = await completeResponse.text()
                 logger.error(`${integrationId} /complete failed:`, errorText)
+                showToast('error', `Connection failed. Please try again.`)
               } else {
                 const completeData = await completeResponse.json()
                 logger.log(`${integrationId} /complete succeeded:`, completeData)
@@ -634,7 +655,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 // For Meta Ads, show the account selector after OAuth completes
                 // User must select which Meta ad account to link to this Google Ads account
                 if (integrationId === 'meta' && completeData.success) {
-                  logger.log('[META-OAUTH] Meta OAuth complete - refetching integration status then showing Meta account selector')
+                  logger.log(
+                    '[META-OAUTH] Meta OAuth complete - refetching integration status then showing Meta account selector'
+                  )
                   // Await the refetch so currentAccountData is guaranteed fresh before
                   // the selector opens and runs its pre-selection logic.
                   // This prevents stale meta_ads_id from a previous workspace being pre-selected.
@@ -644,7 +667,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
                 // For Facebook Organic, show the Facebook page selector after OAuth completes
                 if (integrationId === 'facebook_organic' && completeData.success) {
-                  logger.log('[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector')
+                  logger.log(
+                    '[FB-ORGANIC] Meta OAuth complete - now showing Facebook page selector'
+                  )
                   // Show Facebook page selector after a brief delay for cache invalidation
                   setTimeout(() => setShowFacebookPageSelector(true), 500)
                 }
@@ -670,482 +695,573 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           // CRITICAL FIX (Jan 2026): Refresh workspaces to update connected_platforms for main page icons
           logger.log('[INTEGRATIONS] Invalidating integration status cache after OAuth complete')
           invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
+          refreshWorkspaces().catch((err) =>
+            logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+          )
 
           setConnectingId(null)
         }
       }, 500)
     } catch (error) {
       logger.error(`${integrationId} connection error:`, error)
-      showToast('error', `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      showToast(
+        'error',
+        `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
       setConnectingId(null)
     }
   }
 
   // Only owners and admins can manage integrations in a workspace.
   // No workspace (personal context) → allow. Workspace with unknown role → deny (fail-closed).
-  const canManageIntegrations = !activeWorkspace || ['owner', 'admin'].includes(activeWorkspace.role)
+  const canManageIntegrations =
+    !activeWorkspace || ['owner', 'admin'].includes(activeWorkspace.role)
 
-  const connectedSources = integrations.filter(i => i.connected)
-  const availableSources = integrations.filter(i => !i.connected)
+  const connectedSources = integrations.filter((i) => i.connected)
+  const availableSources = integrations.filter((i) => !i.connected)
 
-  const autoSyncCount = connectedSources.filter(s => s.autoSync).length
+  const autoSyncCount = connectedSources.filter((s) => s.autoSync).length
 
   return (
     <>
-    <div
-      className="w-full h-dvh bg-primary flex flex-col overflow-hidden"
-    >
-      {/* Header */}
-      <TopBar
-        title="Integrations"
-        onBack={onBack}
-        className="border-b border-tertiary"
-      />
+      <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
+        {/* Header */}
+        <TopBar title="Integrations" onBack={onBack} className="border-b border-tertiary" />
 
-      {/* Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
-        {/* Loading State */}
-        {loading && integrations.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <Spinner size="lg" />
-          </div>
-        )}
-
-        {/* Connected Sources Section */}
-        {!loading && connectedSources.length > 0 && (
-          <div className="mb-6 max-w-3xl mx-auto w-full">
-            <div className="mb-4">
-              <h2 className="label-md text-primary">{connectedSources.length} Sources</h2>
-              <p className="paragraph-xs text-quaternary">Connect your data sources to unlock powerful new insights</p>
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
+          {/* Loading State */}
+          {loading && integrations.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <Spinner size="lg" />
             </div>
+          )}
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="bg-secondary rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
-                  <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-4 h-4" />
-                </div>
-                <p className="paragraph-xs text-quaternary">Connected</p>
-                <p className="label-sm text-primary">{connectedSources.length}</p>
-              </div>
-
-              <div className="bg-secondary rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
-                  <img src="/icons/autosync.svg" alt="" className="w-4 h-4" />
-                </div>
-                <p className="paragraph-xs text-quaternary">Auto-Sync</p>
-                <p className="label-sm text-primary">{autoSyncCount}</p>
-              </div>
-            </div>
-
-            {/* Connected Platforms List */}
-            <div className="space-y-2">
-              {connectedSources.map(integration => {
-
-                const handleCardClick = undefined
-
-                return (
-                  <div key={integration.id} className="w-full">
-                    <div
-                      className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${loading ? 'opacity-50 pointer-events-none' : ''
-                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
-                      onClick={handleCardClick}
-                    >
-                      <div className="flex items-center  gap-3">
-                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                          <img src={integration.icon} alt="" className="w-10 h-10" loading="lazy" />
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
-                          </div>
-                          <div className="paragraph-xs text-quaternary truncate flex items-center gap-1">
-                            <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
-                            {integration.lastSync && (
-                              <span> • Last synced: {integration.lastSync}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end shrink-0">
-                          {/* Platform Gear Menu - unified dropdown for all platforms */}
-                          <PlatformGearMenu
-                            platformId={integration.id}
-                            platformName={integration.name}
-                            isConnected={integration.connected}
-                            sessionId={sessionId}
-                            userRole={activeWorkspace?.role}
-                            onManage={() => {
-                              // Open the appropriate selector/connect modal
-                              if (integration.id === 'google') setShowGoogleAccountSelector(true)
-                              else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
-                              else if (integration.id === 'meta') setShowMetaAccountSelector(true)
-                              else if (integration.id === 'facebook_organic') setShowFacebookPageSelector(true)
-                              else if (integration.id === 'brevo') {
-                                // If linked, show account selector; if not linked, show connect modal
-                                if (integration.linked) setShowBrevoAccountSelector(true)
-                                else { setShowBrevoModal(true); setBrevoError(''); setBrevoApiKey('') }
-                              }
-                              else if (integration.id === 'hubspot') setShowHubSpotAccountSelector(true)
-                              else if (integration.id === 'mailchimp') setShowMailchimpAccountSelector(true)
-                              else if (integration.id === 'linkedin_ads') setShowLinkedInAccountSelector(true)
-                              else if (integration.id === 'airtable') setShowAirtableBaseSelector(true)
-                            }}
-                            onReconnect={
-                              // OAuth platforms can reconnect to refresh credentials / link to workspace
-                              ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads', 'airtable'].includes(integration.id)
-                                ? () => handleConnect(integration.id)
-                                : undefined
-                            }
-                            onAddAccount={
-                              ['brevo', 'hubspot', 'mailchimp'].includes(integration.id)
-                                ? () => {
-                                  if (integration.id === 'brevo') setShowBrevoModal(true)
-                                  else if (integration.id === 'hubspot') handleConnect('hubspot')
-                                  else if (integration.id === 'mailchimp') handleConnect('mailchimp')
-                                }
-                                : undefined
-                            }
-                            onDisconnectSuccess={() => {
-                              invalidateIntegrationStatus()
-                              refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-                              refreshAccounts().catch(err => logger.error('[INTEGRATIONS] Failed to refresh accounts:', err))
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Available Integrations Section - hidden for viewer/analyst roles */}
-        {!loading && availableSources.length > 0 && canManageIntegrations && (
-          <div className="mb-6 max-w-3xl mx-auto w-full">
-            <h2 className="label-md text-primary mb-1">Available Integrations</h2>
-            <p className="paragraph-xs text-quaternary mb-4">Connect your data sources to unlock powerful new insights</p>
-
-            <div className="space-y-2">
-              {availableSources.map(integration => (
-                <div key={integration.id} className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                      <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                        <img src={integration.icon} alt="" className="w-10 h-10 opacity-60" loading="lazy" />
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <h3 className="subheading-md text-primary truncate">{integration.name}</h3>
-                        <p className="paragraph-xs text-quaternary truncate">{integration.description}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleConnect(integration.id)}
-                      disabled={connectingId !== null || ['tiktok'].includes(integration.id)}
-                      className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                        ['tiktok'].includes(integration.id)
-                        ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
-                        : connectingId === integration.id
-                          ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
-                          : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
-                        }`}
-                    >
-                      {['tiktok'].includes(integration.id)
-                        ? 'Soon'
-                        : connectingId === integration.id
-                          ? 'Connecting...'
-                          : 'Connect'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-
-      </div>
-
-      {/* Brevo API Key Modal */}
-      {showBrevoModal && (
-        <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
-            {/* Header */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <img src="/icons/brevo.jpeg" alt="Brevo" className="w-10 h-10" />
-                <h2 className="title-h6 text-primary">
-                  {currentAccountData?.brevo_api_key ? 'Manage Brevo Connection' : 'Connect Brevo'}
-                </h2>
-              </div>
-              <p className="paragraph-sm text-tertiary">
-                {currentAccountData?.brevo_api_key
-                  ? `Connected to ${currentAccountData.brevo_account_name || 'your Brevo account'} for ${selectedAccount?.name || 'this account'}`
-                  : `Enter your Brevo API key to connect email marketing for ${selectedAccount?.name || 'this account'}.`
-                }
-              </p>
-            </div>
-
-            {/* Instructions - only show when NOT connected */}
-            {!currentAccountData?.brevo_api_key && (
-              <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
-                <h3 className="subheading-md text-utility-info-700 mb-2">How to get your API key:</h3>
-                <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
-                  <li>Log in to your Brevo account</li>
-                  <li>Go to Settings → SMTP & API → API Keys</li>
-                  <li>Click "Generate a new API key"</li>
-                  <li>Copy the key and paste it below</li>
-                </ol>
-                <a
-                  href={EXTERNAL_URLS.BREVO_API_KEYS}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 mt-3 subheading-sm text-utility-info-600 hover:text-utility-info-700"
-                >
-                  Open Brevo API Settings
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-                <p className="mt-3 paragraph-xs text-utility-info-700">
-                  <strong>Important:</strong> If your Brevo account has IP blocking enabled, you must deactivate it before connecting.{' '}
-                  <a
-                    href="https://app.brevo.com/security/authorised_ips"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    Deactivate IP blocking →
-                  </a>
+          {/* Connected Sources Section */}
+          {!loading && connectedSources.length > 0 && (
+            <div className="mb-6 max-w-3xl mx-auto w-full">
+              <div className="mb-4">
+                <h2 className="label-md text-primary">{connectedSources.length} Sources</h2>
+                <p className="paragraph-xs text-quaternary">
+                  Connect your data sources to unlock powerful new insights
                 </p>
               </div>
-            )}
 
-            {/* API Key Input - only show when NOT connected */}
-            {!currentAccountData?.brevo_api_key && (
-              <div className="mb-4">
-                <label className="block subheading-md text-secondary mb-2">
-                  API Key
-                </label>
-                <input
-                  type="text"
-                  value={brevoApiKey}
-                  onChange={(e) => setBrevoApiKey(e.target.value)}
-                  placeholder="xkeysib-..."
-                  className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
-                  disabled={brevoSubmitting}
-                />
-                {brevoError && (
-                  <p className="mt-2 paragraph-xs text-error">
-                    {brevoError.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
-                      part.match(/^https?:\/\//) ? (
-                        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline">
-                          {part}
-                        </a>
-                      ) : part
-                    )}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Connected Account Display - show when connected */}
-            {currentAccountData?.brevo_api_key && (
-              <div className="mb-4 space-y-3">
-                {/* Account Name */}
-                {currentAccountData.brevo_account_name && (
-                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <p className="subheading-md text-success">{currentAccountData.brevo_account_name}</p>
-                        <p className="paragraph-xs text-success">Connected Brevo account</p>
-                      </div>
-                    </div>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="bg-secondary rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
+                    <img src="/icons/checkmark-circle-outline.svg" alt="" className="w-4 h-4" />
                   </div>
-                )}
+                  <p className="paragraph-xs text-quaternary">Connected</p>
+                  <p className="label-sm text-primary">{connectedSources.length}</p>
+                </div>
 
-                {/* Masked API Key */}
-                <div>
-                  <label className="block subheading-md text-secondary mb-2">
-                    API Key
-                  </label>
-                  <div className="w-full px-4 py-3 border border-primary rounded-lg bg-secondary paragraph-sm font-mono text-tertiary">
-                    {currentAccountData.brevo_api_key.substring(0, 10)}...
+                <div className="bg-secondary rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center w-8 h-8 bg-success-secondary rounded-lg mx-auto mb-1">
+                    <img src="/icons/autosync.svg" alt="" className="w-4 h-4" />
                   </div>
+                  <p className="paragraph-xs text-quaternary">Auto-Sync</p>
+                  <p className="label-sm text-primary">{autoSyncCount}</p>
                 </div>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowBrevoModal(false)
-                  setBrevoApiKey('')
-                  setBrevoError('')
-                }}
-                disabled={brevoSubmitting}
-                className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
-              >
-                {currentAccountData?.brevo_api_key ? 'Close' : 'Cancel'}
-              </button>
-              {currentAccountData?.brevo_api_key ? (
-                <button
-                  onClick={() => setShowBrevoUnlinkConfirm(true)}
-                  disabled={brevoSubmitting}
-                  className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {brevoSubmitting ? 'Unlinking...' : 'Unlink'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleBrevoSubmit}
-                  disabled={brevoSubmitting || !brevoApiKey.trim()}
-                  className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {brevoSubmitting ? 'Connecting...' : 'Connect'}
-                </button>
+              {/* Connected Platforms List */}
+              <div className="space-y-2">
+                {connectedSources.map((integration) => {
+                  const handleCardClick = undefined
+
+                  return (
+                    <div key={integration.id} className="w-full">
+                      <div
+                        className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${
+                          loading ? 'opacity-50 pointer-events-none' : ''
+                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
+                        onClick={handleCardClick}
+                      >
+                        <div className="flex items-center  gap-3">
+                          <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                            <img
+                              src={integration.icon}
+                              alt=""
+                              className="w-10 h-10"
+                              loading="lazy"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-2">
+                              <h3 className="subheading-md text-primary truncate">
+                                {integration.name}
+                              </h3>
+                            </div>
+                            <div className="paragraph-xs text-quaternary truncate flex items-center gap-1">
+                              <p className="paragraph-xs text-quaternary truncate">
+                                {integration.description}
+                              </p>
+                              {integration.lastSync && (
+                                <span> • Last synced: {integration.lastSync}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end shrink-0">
+                            {/* Platform Gear Menu - unified dropdown for all platforms */}
+                            <PlatformGearMenu
+                              platformId={integration.id}
+                              platformName={integration.name}
+                              isConnected={integration.connected}
+                              sessionId={sessionId}
+                              userRole={activeWorkspace?.role}
+                              onManage={() => {
+                                // Open the appropriate selector/connect modal
+                                if (integration.id === 'google') setShowGoogleAccountSelector(true)
+                                else if (integration.id === 'ga4') setShowGA4PropertySelector(true)
+                                else if (integration.id === 'meta') setShowMetaAccountSelector(true)
+                                else if (integration.id === 'facebook_organic')
+                                  setShowFacebookPageSelector(true)
+                                else if (integration.id === 'brevo') {
+                                  // If linked, show account selector; if not linked, show connect modal
+                                  if (integration.linked) setShowBrevoAccountSelector(true)
+                                  else {
+                                    setShowBrevoModal(true)
+                                    setBrevoError('')
+                                    setBrevoApiKey('')
+                                  }
+                                } else if (integration.id === 'hubspot')
+                                  setShowHubSpotAccountSelector(true)
+                                else if (integration.id === 'mailchimp')
+                                  setShowMailchimpAccountSelector(true)
+                                else if (integration.id === 'linkedin_ads')
+                                  setShowLinkedInAccountSelector(true)
+                                else if (integration.id === 'airtable')
+                                  setShowAirtableBaseSelector(true)
+                              }}
+                              onReconnect={
+                                // OAuth platforms can reconnect to refresh credentials / link to workspace
+                                [
+                                  'google',
+                                  'meta',
+                                  'ga4',
+                                  'hubspot',
+                                  'mailchimp',
+                                  'linkedin_ads',
+                                  'airtable',
+                                ].includes(integration.id)
+                                  ? () => handleConnect(integration.id)
+                                  : undefined
+                              }
+                              onAddAccount={
+                                ['brevo', 'hubspot', 'mailchimp'].includes(integration.id)
+                                  ? () => {
+                                      if (integration.id === 'brevo') setShowBrevoModal(true)
+                                      else if (integration.id === 'hubspot')
+                                        handleConnect('hubspot')
+                                      else if (integration.id === 'mailchimp')
+                                        handleConnect('mailchimp')
+                                    }
+                                  : undefined
+                              }
+                              onDisconnectSuccess={() => {
+                                invalidateIntegrationStatus()
+                                refreshWorkspaces().catch((err) =>
+                                  logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+                                )
+                                refreshAccounts().catch((err) =>
+                                  logger.error('[INTEGRATIONS] Failed to refresh accounts:', err)
+                                )
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Available Integrations Section - hidden for viewer/analyst roles */}
+          {!loading && availableSources.length > 0 && canManageIntegrations && (
+            <div className="mb-6 max-w-3xl mx-auto w-full">
+              <h2 className="label-md text-primary mb-1">Available Integrations</h2>
+              <p className="paragraph-xs text-quaternary mb-4">
+                Connect your data sources to unlock powerful new insights
+              </p>
+
+              <div className="space-y-2">
+                {availableSources.map((integration) => (
+                  <div
+                    key={integration.id}
+                    className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                          <img
+                            src={integration.icon}
+                            alt=""
+                            className="w-10 h-10 opacity-60"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <h3 className="subheading-md text-primary truncate">
+                            {integration.name}
+                          </h3>
+                          <p className="paragraph-xs text-quaternary truncate">
+                            {integration.description}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleConnect(integration.id)}
+                        disabled={connectingId !== null || ['tiktok'].includes(integration.id)}
+                        className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
+                          ['tiktok'].includes(integration.id)
+                            ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
+                            : connectingId === integration.id
+                              ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
+                              : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                        }`}
+                      >
+                        {['tiktok'].includes(integration.id)
+                          ? 'Soon'
+                          : connectingId === integration.id
+                            ? 'Connecting...'
+                            : 'Connect'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Brevo API Key Modal */}
+        {showBrevoModal && (
+          <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+              {/* Header */}
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <img src="/icons/brevo.jpeg" alt="Brevo" className="w-10 h-10" />
+                  <h2 className="title-h6 text-primary">
+                    {currentAccountData?.brevo_api_key
+                      ? 'Manage Brevo Connection'
+                      : 'Connect Brevo'}
+                  </h2>
+                </div>
+                <p className="paragraph-sm text-tertiary">
+                  {currentAccountData?.brevo_api_key
+                    ? `Connected to ${currentAccountData.brevo_account_name || 'your Brevo account'} for ${selectedAccount?.name || 'this account'}`
+                    : `Enter your Brevo API key to connect email marketing for ${selectedAccount?.name || 'this account'}.`}
+                </p>
+              </div>
+
+              {/* Instructions - only show when NOT connected */}
+              {!currentAccountData?.brevo_api_key && (
+                <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
+                  <h3 className="subheading-md text-utility-info-700 mb-2">
+                    How to get your API key:
+                  </h3>
+                  <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
+                    <li>Log in to your Brevo account</li>
+                    <li>Go to Settings → SMTP & API → API Keys</li>
+                    <li>Click "Generate a new API key"</li>
+                    <li>Copy the key and paste it below</li>
+                  </ol>
+                  <a
+                    href={EXTERNAL_URLS.BREVO_API_KEYS}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-3 subheading-sm text-utility-info-600 hover:text-utility-info-700"
+                  >
+                    Open Brevo API Settings
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                  <p className="mt-3 paragraph-xs text-utility-info-700">
+                    <strong>Important:</strong> If your Brevo account has IP blocking enabled, you
+                    must deactivate it before connecting.{' '}
+                    <a
+                      href="https://app.brevo.com/security/authorised_ips"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      Deactivate IP blocking →
+                    </a>
+                  </p>
+                </div>
               )}
+
+              {/* API Key Input - only show when NOT connected */}
+              {!currentAccountData?.brevo_api_key && (
+                <div className="mb-4">
+                  <label className="block subheading-md text-secondary mb-2">API Key</label>
+                  <input
+                    type="text"
+                    value={brevoApiKey}
+                    onChange={(e) => setBrevoApiKey(e.target.value)}
+                    placeholder="xkeysib-..."
+                    className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                    disabled={brevoSubmitting}
+                  />
+                  {brevoError && (
+                    <p className="mt-2 paragraph-xs text-error">
+                      {brevoError.split(/(https?:\/\/[^\s]+)/).map((part, i) =>
+                        part.match(/^https?:\/\//) ? (
+                          <a
+                            key={i}
+                            href={part}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            {part}
+                          </a>
+                        ) : (
+                          part
+                        )
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Connected Account Display - show when connected */}
+              {currentAccountData?.brevo_api_key && (
+                <div className="mb-4 space-y-3">
+                  {/* Account Name */}
+                  {currentAccountData.brevo_account_name && (
+                    <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
+                      <div className="flex items-center gap-2">
+                        <svg
+                          className="w-5 h-5 text-success"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="subheading-md text-success">
+                            {currentAccountData.brevo_account_name}
+                          </p>
+                          <p className="paragraph-xs text-success">Connected Brevo account</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Masked API Key */}
+                  <div>
+                    <label className="block subheading-md text-secondary mb-2">API Key</label>
+                    <div className="w-full px-4 py-3 border border-primary rounded-lg bg-secondary paragraph-sm font-mono text-tertiary">
+                      {currentAccountData.brevo_api_key.substring(0, 10)}...
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowBrevoModal(false)
+                    setBrevoApiKey('')
+                    setBrevoError('')
+                  }}
+                  disabled={brevoSubmitting}
+                  className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                >
+                  {currentAccountData?.brevo_api_key ? 'Close' : 'Cancel'}
+                </button>
+                {currentAccountData?.brevo_api_key ? (
+                  <button
+                    onClick={() => setShowBrevoUnlinkConfirm(true)}
+                    disabled={brevoSubmitting}
+                    className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {brevoSubmitting ? 'Unlinking...' : 'Unlink'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleBrevoSubmit}
+                    disabled={brevoSubmitting || !brevoApiKey.trim()}
+                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {brevoSubmitting ? 'Connecting...' : 'Connect'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Google Account Selector Modal */}
-      <GoogleAccountSelector
-        isOpen={showGoogleAccountSelector}
-        onClose={() => setShowGoogleAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
-          setShowGoogleAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-      />
+        {/* Google Account Selector Modal */}
+        <GoogleAccountSelector
+          isOpen={showGoogleAccountSelector}
+          onClose={() => setShowGoogleAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
+            setShowGoogleAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+        />
 
-      {/* Meta Account Selector Modal */}
-      <MetaAccountSelector
-        isOpen={showMetaAccountSelector}
-        onClose={() => setShowMetaAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
-          setShowMetaAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-        currentGoogleAccountName={activeWorkspace?.name}
-        currentAccountData={currentAccountData}
-      />
+        {/* Meta Account Selector Modal */}
+        <MetaAccountSelector
+          isOpen={showMetaAccountSelector}
+          onClose={() => setShowMetaAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
+            setShowMetaAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentGoogleAccountName={activeWorkspace?.name}
+          currentAccountData={currentAccountData}
+        />
 
-      {/* Brevo Account Selector Modal */}
-      <BrevoAccountSelector
-        isOpen={showBrevoAccountSelector}
-        onClose={() => setShowBrevoAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
-          setShowBrevoAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-      />
+        {/* Brevo Account Selector Modal */}
+        <BrevoAccountSelector
+          isOpen={showBrevoAccountSelector}
+          onClose={() => setShowBrevoAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[BREVO-ACCOUNT-SELECTOR] Account switched successfully')
+            setShowBrevoAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+        />
 
-      {/* HubSpot Account Selector Modal */}
-      <HubSpotAccountSelector
-        isOpen={showHubSpotAccountSelector}
-        onClose={() => setShowHubSpotAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
-          setShowHubSpotAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-      />
+        {/* HubSpot Account Selector Modal */}
+        <HubSpotAccountSelector
+          isOpen={showHubSpotAccountSelector}
+          onClose={() => setShowHubSpotAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[HUBSPOT-ACCOUNT-SELECTOR] Portal switched successfully')
+            setShowHubSpotAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+        />
 
-      {/* Mailchimp Account Selector Modal */}
-      <MailchimpAccountSelector
-        isOpen={showMailchimpAccountSelector}
-        onClose={() => setShowMailchimpAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
-          setShowMailchimpAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-      />
+        {/* Mailchimp Account Selector Modal */}
+        <MailchimpAccountSelector
+          isOpen={showMailchimpAccountSelector}
+          onClose={() => setShowMailchimpAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[MAILCHIMP-ACCOUNT-SELECTOR] Account switched successfully')
+            setShowMailchimpAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+        />
 
-      {/* Facebook Page Selector Modal */}
-      <FacebookPageSelector
-        isOpen={showFacebookPageSelector}
-        onClose={() => setShowFacebookPageSelector(false)}
-        onSuccess={async () => {
-          logger.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
-          setShowFacebookPageSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-        currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
-        currentAccountData={currentAccountData}
-      />
+        {/* Facebook Page Selector Modal */}
+        <FacebookPageSelector
+          isOpen={showFacebookPageSelector}
+          onClose={() => setShowFacebookPageSelector(false)}
+          onSuccess={async () => {
+            logger.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
+            setShowFacebookPageSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
+          currentAccountData={currentAccountData}
+        />
 
-      {/* GA4 Property Selector Modal */}
-      <GA4PropertySelector
-        isOpen={showGA4PropertySelector}
-        onClose={() => setShowGA4PropertySelector(false)}
-        onSuccess={async () => {
-          logger.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
-          setShowGA4PropertySelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-        currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
-        ga4Properties={ga4Properties}
-        linkedProperties={linkedGA4Properties}
-      />
+        {/* GA4 Property Selector Modal */}
+        <GA4PropertySelector
+          isOpen={showGA4PropertySelector}
+          onClose={() => setShowGA4PropertySelector(false)}
+          onSuccess={async () => {
+            logger.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
+            setShowGA4PropertySelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentAccountName={activeWorkspace?.name ?? selectedAccount?.name}
+          ga4Properties={ga4Properties}
+          linkedProperties={linkedGA4Properties}
+        />
 
-      {/* LinkedIn Account Selector Modal */}
-      <LinkedInAccountSelector
-        isOpen={showLinkedInAccountSelector}
-        onClose={() => setShowLinkedInAccountSelector(false)}
-        onSuccess={async () => {
-          logger.log('[LINKEDIN-ACCOUNT-SELECTOR] Account linked successfully')
-          setShowLinkedInAccountSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
+        {/* LinkedIn Account Selector Modal */}
+        <LinkedInAccountSelector
+          isOpen={showLinkedInAccountSelector}
+          onClose={() => setShowLinkedInAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[LINKEDIN-ACCOUNT-SELECTOR] Account linked successfully')
+            setShowLinkedInAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentAccountData={currentAccountData}
+        />
+        <AirtableBaseSelector
+          isOpen={showAirtableBaseSelector}
+          onClose={() => setShowAirtableBaseSelector(false)}
+          onSuccess={async () => {
+            logger.log('[AIRTABLE-BASE-SELECTOR] Base selected successfully')
+            setShowAirtableBaseSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+        />
+      </div>
+      <ConfirmDialog
+        isOpen={showBrevoUnlinkConfirm}
+        message={`Disconnect Brevo from ${selectedAccount?.name || 'this account'}?`}
+        confirmLabel="Disconnect"
+        onConfirm={() => {
+          setShowBrevoUnlinkConfirm(false)
+          handleBrevoUnlink()
         }}
-        currentAccountData={currentAccountData}
+        onCancel={() => setShowBrevoUnlinkConfirm(false)}
       />
-      <AirtableBaseSelector
-        isOpen={showAirtableBaseSelector}
-        onClose={() => setShowAirtableBaseSelector(false)}
-        onSuccess={async () => {
-          logger.log('[AIRTABLE-BASE-SELECTOR] Base selected successfully')
-          setShowAirtableBaseSelector(false)
-          invalidateIntegrationStatus()
-          refreshWorkspaces().catch(err => logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err))
-          await refreshAccounts()
-        }}
-      />
-    </div>
-    <ConfirmDialog
-      isOpen={showBrevoUnlinkConfirm}
-      message={`Disconnect Brevo from ${selectedAccount?.name || 'this account'}?`}
-      confirmLabel="Disconnect"
-      onConfirm={() => { setShowBrevoUnlinkConfirm(false); handleBrevoUnlink() }}
-      onCancel={() => setShowBrevoUnlinkConfirm(false)}
-    />
     </>
   )
 }

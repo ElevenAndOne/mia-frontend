@@ -53,18 +53,20 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
         // ad_accounts has ALL accounts (MCC parents + sub-accounts + standalone)
         // Filter OUT MCC parent accounts — users should select sub-accounts
         const allAccounts: AdAccount[] = data.ad_accounts || []
-        const nonMccAccounts = allAccounts.filter(a => !a.manager)
+        const nonMccAccounts = allAccounts.filter((a) => !a.manager)
 
-        logger.log(`[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`)
+        logger.log(
+          `[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`
+        )
         setAccounts(nonMccAccounts)
 
         // Pre-select the currently saved account.
         // Priority: workspace TAM field (from backend) → localStorage fallback → auto-select if only one
         const lsKey = activeWorkspace?.tenant_id ? `gads_${activeWorkspace.tenant_id}` : null
-        const savedId = activeWorkspace?.google_ads_customer_id
-          || (lsKey ? localStorage.getItem(lsKey) : null)
+        const savedId =
+          activeWorkspace?.google_ads_customer_id || (lsKey ? localStorage.getItem(lsKey) : null)
         if (savedId) {
-          const match = nonMccAccounts.find(a => a.customer_id === savedId)
+          const match = nonMccAccounts.find((a) => a.customer_id === savedId)
           if (match) {
             setLocalSelectedId(`google_${match.customer_id}`)
           }
@@ -138,9 +140,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       accentColor="green"
     >
       <div>
-        <label className="block subheading-md text-secondary mb-2">
-          Select Google Ads Account
-        </label>
+        <label className="block subheading-md text-secondary mb-2">Select Google Ads Account</label>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {accounts.map((account) => (
             <SelectorItem

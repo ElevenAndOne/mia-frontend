@@ -21,9 +21,12 @@ interface UsePlatformPreferencesResult {
 
 async function fetchPlatformPreferences(sessionId: string): Promise<string[]> {
   try {
-    const response = await apiFetch(`/api/account/platform-preferences?session_id=${encodeURIComponent(sessionId)}`, {
-      headers: createSessionHeaders(sessionId)
-    })
+    const response = await apiFetch(
+      `/api/account/platform-preferences?session_id=${encodeURIComponent(sessionId)}`,
+      {
+        headers: createSessionHeaders(sessionId),
+      }
+    )
     if (response.ok) {
       const data = await response.json()
       return data.selected_platforms || []
@@ -40,15 +43,15 @@ async function savePlatformPreferences(sessionId: string, platforms: string[]): 
     headers: createSessionHeaders(sessionId, true),
     body: JSON.stringify({
       session_id: sessionId,
-      selected_platforms: platforms
-    })
+      selected_platforms: platforms,
+    }),
   })
 }
 
 export function usePlatformPreferences({
   sessionId,
   selectedAccountId,
-  connectedPlatforms
+  connectedPlatforms,
 }: UsePlatformPreferencesProps): UsePlatformPreferencesResult {
   const [selectedPlatforms, setSelectedPlatformsState] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -59,7 +62,9 @@ export function usePlatformPreferences({
   const connectedPlatformsRef = useRef(connectedPlatforms)
   const pendingSaveRef = useRef<string[] | null>(null)
   const sessionIdRef = useRef(sessionId)
+  // eslint-disable-next-line react-hooks/refs -- intentional: sync ref to latest prop so stale closures in effects always read current value
   connectedPlatformsRef.current = connectedPlatforms
+  // eslint-disable-next-line react-hooks/refs
   sessionIdRef.current = sessionId
 
   useEffect(() => {
@@ -77,7 +82,9 @@ export function usePlatformPreferences({
       try {
         const raw = sessionStorage.getItem(KNOWN_CONNECTED_KEY)
         if (raw) lastKnown = JSON.parse(raw)
-      } catch { /* sessionStorage unavailable */ }
+      } catch {
+        /* sessionStorage unavailable */
+      }
 
       const saved = await fetchPlatformPreferences(sessionId)
 
@@ -85,7 +92,7 @@ export function usePlatformPreferences({
       const currentConnected = connectedPlatformsRef.current
 
       if (saved.length > 0) {
-        const newlyConnected = currentConnected.filter(p => !lastKnown.includes(p))
+        const newlyConnected = currentConnected.filter((p) => !lastKnown.includes(p))
         if (newlyConnected.length > 0) {
           logger.log('[PlatformPrefs] Auto-enabling newly connected platforms:', newlyConnected)
           const combined = [...new Set([...saved, ...newlyConnected])]
@@ -101,7 +108,11 @@ export function usePlatformPreferences({
 
       // Persist known connected for cross-page detection
       if (currentConnected.length > 0) {
-        try { sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(currentConnected)) } catch {}
+        try {
+          sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(currentConnected))
+        } catch {
+          // sessionStorage unavailable (private browsing) — not critical
+        }
       }
 
       prevConnectedRef.current = [...currentConnected]
@@ -110,8 +121,7 @@ export function usePlatformPreferences({
     }
 
     loadPreferences()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- connectedPlatforms is accessed via ref to avoid stale closures
-  }, [sessionId, selectedAccountId]) // Reload when session or account changes
+  }, [sessionId, selectedAccountId])
 
   useEffect(() => {
     if (!hasLoadedRef.current || connectedPlatforms.length === 0) return
@@ -126,11 +136,11 @@ export function usePlatformPreferences({
       return
     }
 
-    const newPlatforms = connectedPlatforms.filter(p => !prevConnected.includes(p))
+    const newPlatforms = connectedPlatforms.filter((p) => !prevConnected.includes(p))
 
     if (newPlatforms.length > 0) {
       logger.log('[PlatformPrefs] New platforms detected, enabling:', newPlatforms)
-      setSelectedPlatformsState(prev => {
+      setSelectedPlatformsState((prev) => {
         const combined = [...new Set([...prev, ...newPlatforms])]
         // Also save to backend
         if (sessionId) {
@@ -146,33 +156,40 @@ export function usePlatformPreferences({
   // Keep sessionStorage in sync for cross-page new-platform detection
   useEffect(() => {
     if (connectedPlatforms.length > 0) {
-      try { sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(connectedPlatforms)) } catch {}
+      try {
+        sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(connectedPlatforms))
+      } catch {
+        // sessionStorage unavailable (private browsing) — not critical
+      }
     }
   }, [connectedPlatforms])
 
-  const saveToBackend = useCallback((platforms: string[], rollbackTo: string[]) => {
-    if (!sessionId) return
+  const saveToBackend = useCallback(
+    (platforms: string[], rollbackTo: string[]) => {
+      if (!sessionId) return
 
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // Track pending save so it can be flushed on unmount
-    pendingSaveRef.current = platforms
-
-    debounceTimerRef.current = setTimeout(async () => {
-      pendingSaveRef.current = null
-      setIsSaving(true)
-      try {
-        await savePlatformPreferences(sessionId, platforms)
-      } catch (e) {
-        logger.error('[PlatformPrefs] Save error, rolling back:', e)
-        // Rollback to previous state on failure
-        setSelectedPlatformsState(rollbackTo)
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
       }
-      setIsSaving(false)
-    }, 1000)
-  }, [sessionId])
+
+      // Track pending save so it can be flushed on unmount
+      pendingSaveRef.current = platforms
+
+      debounceTimerRef.current = setTimeout(async () => {
+        pendingSaveRef.current = null
+        setIsSaving(true)
+        try {
+          await savePlatformPreferences(sessionId, platforms)
+        } catch (e) {
+          logger.error('[PlatformPrefs] Save error, rolling back:', e)
+          // Rollback to previous state on failure
+          setSelectedPlatformsState(rollbackTo)
+        }
+        setIsSaving(false)
+      }, 1000)
+    },
+    [sessionId]
+  )
 
   // MAR 2026 FIX: Flush pending save on unmount instead of cancelling it.
   // Previously, toggling a platform then navigating within 1s lost the save.
@@ -188,35 +205,41 @@ export function usePlatformPreferences({
     }
   }, [])
 
-  const setSelectedPlatforms = useCallback((platforms: string[]) => {
-    setSelectedPlatformsState(prev => {
-      saveToBackend(platforms, prev)
-      return platforms
-    })
-  }, [saveToBackend])
+  const setSelectedPlatforms = useCallback(
+    (platforms: string[]) => {
+      setSelectedPlatformsState((prev) => {
+        saveToBackend(platforms, prev)
+        return platforms
+      })
+    },
+    [saveToBackend]
+  )
 
-  const togglePlatform = useCallback((platformId: string) => {
-    setSelectedPlatformsState(current => {
-      // If internal state is still empty (load in-flight), base the toggle off
-      // what the UI is actually showing (all connected platforms) to avoid
-      // the bug where toggling one platform appears to deselect all others.
-      const base = current.length > 0 ? current : connectedPlatformsRef.current
+  const togglePlatform = useCallback(
+    (platformId: string) => {
+      setSelectedPlatformsState((current) => {
+        // If internal state is still empty (load in-flight), base the toggle off
+        // what the UI is actually showing (all connected platforms) to avoid
+        // the bug where toggling one platform appears to deselect all others.
+        const base = current.length > 0 ? current : connectedPlatformsRef.current
 
-      const newPlatforms = base.includes(platformId)
-        ? base.filter(p => p !== platformId)
-        : [...base, platformId]
+        const newPlatforms = base.includes(platformId)
+          ? base.filter((p) => p !== platformId)
+          : [...base, platformId]
 
-      // Don't allow deselecting all platforms
-      if (newPlatforms.length === 0) return current
+        // Don't allow deselecting all platforms
+        if (newPlatforms.length === 0) return current
 
-      // Save to backend (debounced) with rollback capability
-      saveToBackend(newPlatforms, base)
+        // Save to backend (debounced) with rollback capability
+        saveToBackend(newPlatforms, base)
 
-      return newPlatforms
-    })
-  }, [saveToBackend])
+        return newPlatforms
+      })
+    },
+    [saveToBackend]
+  )
 
-  const filteredSelected = selectedPlatforms.filter(p => connectedPlatforms.includes(p))
+  const filteredSelected = selectedPlatforms.filter((p) => connectedPlatforms.includes(p))
   const effectivePlatforms = filteredSelected.length > 0 ? filteredSelected : connectedPlatforms
 
   return {
@@ -224,6 +247,6 @@ export function usePlatformPreferences({
     setSelectedPlatforms,
     togglePlatform,
     isLoading,
-    isSaving
+    isSaving,
   }
 }

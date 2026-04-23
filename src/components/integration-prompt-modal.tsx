@@ -20,16 +20,38 @@ export const IntegrationPromptModal = ({
   onClose,
 }: IntegrationPromptModalProps) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md" showCloseButton={false} panelClassName="p-6" aria-labelledby="integration-prompt-title">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      showCloseButton={false}
+      panelClassName="p-6"
+      aria-labelledby="integration-prompt-title"
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex flex-col items-start gap-3">
-          <div className="w-10 h-10 bg-utility-info-100 rounded-full flex items-center justify-center" aria-hidden="true">
-            <svg className="w-5 h-5 text-utility-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div
+            className="w-10 h-10 bg-utility-info-100 rounded-full flex items-center justify-center"
+            aria-hidden="true"
+          >
+            <svg
+              className="w-5 h-5 text-utility-info-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <div>
-            <h2 id="integration-prompt-title" className="title-h6 text-primary">{title}</h2>
+            <h2 id="integration-prompt-title" className="title-h6 text-primary">
+              {title}
+            </h2>
             <p className="paragraph-sm text-tertiary">{message}</p>
           </div>
         </div>

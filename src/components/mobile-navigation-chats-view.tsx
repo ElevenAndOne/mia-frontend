@@ -2,7 +2,11 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './icon'
 import { useSession } from '../features/shell/../../contexts/session-context'
-import { deleteConversation, renameConversation, pinConversation } from '../features/chat/services/chat-service'
+import {
+  deleteConversation,
+  renameConversation,
+  pinConversation,
+} from '../features/chat/services/chat-service'
 import type { RecentConversation } from '../features/chat/services/chat-service'
 
 function formatRelativeDate(isoDate: string | null): string {
@@ -57,7 +61,7 @@ export const MobileNavigationChatsView = ({
   }, [showSearch])
 
   const filteredConversations = searchQuery.trim()
-    ? recentConversations.filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? recentConversations.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
     : recentConversations
 
   // Close menu on outside click
@@ -65,7 +69,10 @@ export const MobileNavigationChatsView = ({
     if (!menuOpenId) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Element
-      if (!target.closest('[data-chat-menu]')) { setMenuOpenId(null); setMenuPos(null) }
+      if (!target.closest('[data-chat-menu]')) {
+        setMenuOpenId(null)
+        setMenuPos(null)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -74,7 +81,7 @@ export const MobileNavigationChatsView = ({
   const handleDeleteClick = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation()
     setMenuOpenId(null)
-    setConfirmingId(prev => prev === convId ? null : convId)
+    setConfirmingId((prev) => (prev === convId ? null : convId))
   }
 
   const handleConfirmDelete = async (e: React.MouseEvent, convId: string) => {
@@ -82,7 +89,7 @@ export const MobileNavigationChatsView = ({
     if (!sessionId) return
     setDeletingId(convId)
     const ok = await deleteConversation(sessionId, convId)
-    if (ok) onConversationsChange(recentConversations.filter(c => c.conversation_id !== convId))
+    if (ok) onConversationsChange(recentConversations.filter((c) => c.conversation_id !== convId))
     setDeletingId(null)
     setConfirmingId(null)
   }
@@ -107,7 +114,9 @@ export const MobileNavigationChatsView = ({
     const newPinned = await pinConversation(sessionId, conv.conversation_id)
     if (newPinned !== null) {
       const updated = recentConversations
-        .map(c => c.conversation_id === conv.conversation_id ? { ...c, is_pinned: newPinned } : c)
+        .map((c) =>
+          c.conversation_id === conv.conversation_id ? { ...c, is_pinned: newPinned } : c
+        )
         .sort((a, b) => {
           if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
           return new Date(b.last_at || 0).getTime() - new Date(a.last_at || 0).getTime()
@@ -129,9 +138,11 @@ export const MobileNavigationChatsView = ({
     if (!trimmed || !sessionId) return
     const ok = await renameConversation(sessionId, convId, trimmed)
     if (ok) {
-      onConversationsChange(recentConversations.map(c =>
-        c.conversation_id === convId ? { ...c, title: trimmed } : c
-      ))
+      onConversationsChange(
+        recentConversations.map((c) =>
+          c.conversation_id === convId ? { ...c, title: trimmed } : c
+        )
+      )
     }
   }
 
@@ -141,20 +152,28 @@ export const MobileNavigationChatsView = ({
       <div className="border-b border-tertiary">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors" aria-label="Back to menu">
+            <button
+              onClick={onBack}
+              className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
+              aria-label="Back to menu"
+            >
               <Icon.chevron_left size={20} />
             </button>
             <h2 className="label-md text-primary">Recent Chats</h2>
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setShowSearch(s => !s)}
+              onClick={() => setShowSearch((s) => !s)}
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${showSearch ? 'bg-tertiary text-secondary' : 'text-quaternary hover:bg-tertiary hover:text-secondary'}`}
               aria-label="Search chats"
             >
               <Icon.search_sm size={18} />
             </button>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors" aria-label="Close menu">
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
+              aria-label="Close menu"
+            >
               <Icon.x_close size={20} />
             </button>
           </div>
@@ -162,16 +181,22 @@ export const MobileNavigationChatsView = ({
         {showSearch && (
           <div className="px-4 pb-3">
             <div className="relative">
-              <Icon.search_sm size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-quaternary pointer-events-none" />
+              <Icon.search_sm
+                size={15}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-quaternary pointer-events-none"
+              />
               <input
                 ref={searchInputRef}
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search chats..."
                 className="w-full pl-8 pr-7 py-1.5 paragraph-sm bg-secondary border border-tertiary rounded-lg text-primary placeholder:text-quaternary outline-none focus:border-secondary"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-quaternary hover:text-secondary">
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-quaternary hover:text-secondary"
+                >
                   <Icon.x_close size={14} />
                 </button>
               )}
@@ -209,20 +234,25 @@ export const MobileNavigationChatsView = ({
                   >
                     <div className="relative shrink-0 mt-0.5">
                       <Icon.message_chat_square size={18} className="text-quaternary" />
-                      {conv.is_pinned && <Icon.pin_01 size={10} className="absolute -top-1.5 -right-1.5 text-error" />}
+                      {conv.is_pinned && (
+                        <Icon.pin_01
+                          size={10}
+                          className="absolute -top-1.5 -right-1.5 text-error"
+                        />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 pr-16">
                       {isRenaming ? (
                         <input
                           ref={renameInputRef}
                           value={renameValue}
-                          onChange={e => setRenameValue(e.target.value)}
+                          onChange={(e) => setRenameValue(e.target.value)}
                           onBlur={() => handleRenameSave(conv.conversation_id)}
-                          onKeyDown={e => {
+                          onKeyDown={(e) => {
                             if (e.key === 'Enter') handleRenameSave(conv.conversation_id)
                             if (e.key === 'Escape') setRenamingId(null)
                           }}
-                          onClick={e => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full paragraph-sm text-primary bg-tertiary rounded px-1 outline-none"
                         />
                       ) : (
@@ -230,7 +260,9 @@ export const MobileNavigationChatsView = ({
                           {conv.title || 'Chat'}
                         </p>
                       )}
-                      <p className="paragraph-xs text-quaternary mt-0.5">{formatRelativeDate(conv.last_at)}</p>
+                      <p className="paragraph-xs text-quaternary mt-0.5">
+                        {formatRelativeDate(conv.last_at)}
+                      </p>
                     </div>
                   </button>
 
@@ -246,7 +278,10 @@ export const MobileNavigationChatsView = ({
                           {isDeleting ? '...' : 'Delete'}
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmingId(null) }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmingId(null)
+                          }}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary transition-colors"
                         >
                           <Icon.x_close size={14} />
@@ -267,29 +302,35 @@ export const MobileNavigationChatsView = ({
                           >
                             <Icon.dots_vertical size={15} />
                           </button>
-                          {isMenuOpen && menuPos && createPortal(
-                            <div
-                              style={{ position: 'fixed', top: menuPos.top + 4, right: menuPos.right }}
-                              className="z-[9999] w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden"
-                              data-chat-menu
-                            >
-                              <button
-                                onClick={(e) => handlePin(e, conv)}
-                                className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
+                          {isMenuOpen &&
+                            menuPos &&
+                            createPortal(
+                              <div
+                                style={{
+                                  position: 'fixed',
+                                  top: menuPos.top + 4,
+                                  right: menuPos.right,
+                                }}
+                                className="z-[9999] w-36 bg-primary border border-tertiary rounded-lg shadow-lg overflow-hidden"
+                                data-chat-menu
                               >
-                                <Icon.pin_01 size={15} className="text-quaternary" />
-                                <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>
-                              </button>
-                              <button
-                                onClick={(e) => handleRenameStart(e, conv)}
-                                className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
-                              >
-                                <Icon.edit_01 size={15} className="text-quaternary" />
-                                <span>Rename</span>
-                              </button>
-                            </div>,
-                            document.body
-                          )}
+                                <button
+                                  onClick={(e) => handlePin(e, conv)}
+                                  className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
+                                >
+                                  <Icon.pin_01 size={15} className="text-quaternary" />
+                                  <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                </button>
+                                <button
+                                  onClick={(e) => handleRenameStart(e, conv)}
+                                  className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
+                                >
+                                  <Icon.edit_01 size={15} className="text-quaternary" />
+                                  <span>Rename</span>
+                                </button>
+                              </div>,
+                              document.body
+                            )}
                         </div>
                       </>
                     )}

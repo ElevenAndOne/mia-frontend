@@ -39,11 +39,7 @@ export const WorkspaceSettingsOverview = ({
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
-      <TopBar
-        title="Workspaces"
-        onBack={onBack}
-        className="border-b border-tertiary"
-      />
+      <TopBar title="Workspaces" onBack={onBack} className="border-b border-tertiary" />
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
         <div className="space-y-3">
@@ -70,7 +66,9 @@ export const WorkspaceSettingsOverview = ({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <span className="label-md text-primary truncate block">{item.workspace.name}</span>
+                    <span className="label-md text-primary truncate block">
+                      {item.workspace.name}
+                    </span>
                     <div className="flex items-center gap-1.5 paragraph-xs text-quaternary mt-0.5">
                       <span className={`px-1.5 py-0.5 rounded ${item.roleBadgeClass}`}>
                         {item.workspace.role}
@@ -83,10 +81,15 @@ export const WorkspaceSettingsOverview = ({
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     {isActive ? (
-                      <span className="px-2 py-0.5 rounded-full label-xs bg-utility-success-500 text-white">Active</span>
+                      <span className="px-2 py-0.5 rounded-full label-xs bg-utility-success-500 text-white">
+                        Active
+                      </span>
                     ) : (
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleSwitch(item.workspace.tenant_id) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSwitch(item.workspace.tenant_id)
+                        }}
                         disabled={isSwitching}
                         className="px-2 py-0.5 rounded-full label-xs bg-utility-info-500 text-white hover:bg-utility-info-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >

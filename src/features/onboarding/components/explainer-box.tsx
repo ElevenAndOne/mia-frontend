@@ -14,7 +14,7 @@ const EXPLAINER_CONFIG = {
     suffix: ' faster.',
     bg: 'bg-success-primary',
     border: 'border-utility-success-300',
-    titleColor: 'text-success'
+    titleColor: 'text-success',
   },
   optimize: {
     icon: '⚡',
@@ -24,7 +24,7 @@ const EXPLAINER_CONFIG = {
     suffix: ' with less effort.',
     bg: 'bg-warning-primary',
     border: 'border-utility-warning-300',
-    titleColor: 'text-warning'
+    titleColor: 'text-warning',
   },
   protect: {
     icon: '🛡️',
@@ -34,8 +34,8 @@ const EXPLAINER_CONFIG = {
     suffix: ' and budget before problems grow.',
     bg: 'bg-utility-info-100',
     border: 'border-utility-info-300',
-    titleColor: 'text-utility-info-700'
-  }
+    titleColor: 'text-utility-info-700',
+  },
 }
 
 export const ExplainerBox = ({ type }: ExplainerBoxProps) => {

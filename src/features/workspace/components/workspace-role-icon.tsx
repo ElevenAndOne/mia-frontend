@@ -105,7 +105,9 @@ export const WorkspaceRoleIcon = ({
   if (variant === 'inline') return icon
 
   return (
-    <div className={`${BADGE_SIZE_CLASSES[size]} rounded-full flex items-center justify-center ${BADGE_STYLES[roleKey]}`}>
+    <div
+      className={`${BADGE_SIZE_CLASSES[size]} rounded-full flex items-center justify-center ${BADGE_STYLES[roleKey]}`}
+    >
       {icon}
     </div>
   )

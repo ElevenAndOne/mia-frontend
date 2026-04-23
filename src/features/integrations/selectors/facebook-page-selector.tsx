@@ -6,6 +6,13 @@ import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
 import type { FacebookPage } from '../types'
 
+interface ManualPageLookupResult {
+  id: string
+  name: string
+  fan_count: number
+  category: string
+}
+
 interface FacebookPageSelectorProps {
   isOpen: boolean
   onClose: () => void
@@ -24,14 +31,21 @@ const FacebookPageSelector = ({
   const { sessionId, selectedAccount } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
-  const [instagramAccounts, setInstagramAccounts] = useState<Array<{ id: string; username: string; page_id: string }>>([])
-
+  const [instagramAccounts, setInstagramAccounts] = useState<
+    Array<{ id: string; username: string; page_id: string }>
+  >([])
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
     onClose,
     successDelay: 1500,
   })
+
+  const [showManualInput, setShowManualInput] = useState(false)
+  const [manualPageId, setManualPageId] = useState('')
+  const [manualLookupLoading, setManualLookupLoading] = useState(false)
+  const [manualLookupError, setManualLookupError] = useState<string | null>(null)
+  const [manualLookupResult, setManualLookupResult] = useState<ManualPageLookupResult | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +71,18 @@ const FacebookPageSelector = ({
       })
 
       const data = await response.json()
+
+      if (!response.ok) {
+        const detail = data.detail || ''
+        if (detail.startsWith('meta_token_expired')) {
+          actions.setError(
+            'Your Meta connection has expired. Please disconnect and reconnect Meta in Integrations.'
+          )
+        } else {
+          actions.setError('Failed to fetch Facebook Pages')
+        }
+        return
+      }
 
       if (data.success && data.facebook_pages) {
         const sortedPages = data.facebook_pages.sort((a: FacebookPage, b: FacebookPage) =>
@@ -118,6 +144,51 @@ const FacebookPageSelector = ({
     })
   }
 
+  const handleManualLookup = async () => {
+    if (!manualPageId.trim()) return
+    setManualLookupLoading(true)
+    setManualLookupError(null)
+    setManualLookupResult(null)
+
+    try {
+      const response = await apiFetch(
+        `/api/oauth/meta/organic/lookup-page?page_id=${encodeURIComponent(manualPageId.trim())}`,
+        { headers: { 'X-Session-ID': sessionId || 'default' } }
+      )
+      const data = await response.json()
+
+      if (!response.ok) {
+        setManualLookupError(data.detail || 'Page not found or access denied')
+        return
+      }
+
+      if (data.success && data.page) {
+        const foundPage: FacebookPage = {
+          ...data.page,
+          access_token: '',
+        }
+        setManualLookupResult(data.page)
+        // Add to local pages list if not already there
+        if (!pages.find((p) => p.id === foundPage.id)) {
+          setPages((prev) => [...prev, foundPage])
+        }
+        if (data.instagram) {
+          setInstagramAccounts((prev) => {
+            if (!prev.find((ig) => ig.id === data.instagram.id)) {
+              return [...prev, data.instagram]
+            }
+            return prev
+          })
+        }
+        actions.setSelectedId(foundPage.id)
+      }
+    } catch {
+      setManualLookupError('Failed to look up page. Please check the ID and try again.')
+    } finally {
+      setManualLookupLoading(false)
+    }
+  }
+
   const formatFollowers = (count: number): string => {
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
     if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
@@ -164,27 +235,74 @@ const FacebookPageSelector = ({
             <SelectorItem
               key={page.id}
               isSelected={state.selectedId === page.id}
-              onSelect={() =>
-                actions.setSelectedId(state.selectedId === page.id ? null : page.id)
-              }
+              onSelect={() => actions.setSelectedId(state.selectedId === page.id ? null : page.id)}
               title={page.name}
-              subtitle={
-                [
-                  page.fan_count > 0
-                    ? `${page.category} • ${formatFollowers(page.fan_count)} followers`
-                    : page.category,
-                  linkedIg ? `Instagram: @${linkedIg.username}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' • ')
-              }
+              subtitle={[
+                page.fan_count > 0
+                  ? `${page.category} • ${formatFollowers(page.fan_count)} followers`
+                  : page.category,
+                linkedIg ? `Instagram: @${linkedIg.username}` : null,
+              ]
+                .filter(Boolean)
+                .join(' • ')}
               accentColor="blue"
             />
           )
         })}
       </div>
 
-      <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mt-4">
+      {/* Manual page ID fallback */}
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => {
+            setShowManualInput((v) => !v)
+            setManualLookupError(null)
+            setManualLookupResult(null)
+          }}
+          className="paragraph-xs text-tertiary hover:text-secondary hover:underline"
+        >
+          {showManualInput ? '▲ Hide' : "Can't find your page? Enter Page ID manually"}
+        </button>
+
+        {showManualInput && (
+          <div className="mt-2 space-y-2">
+            <p className="paragraph-xs text-tertiary">
+              Find your Page ID in the Meta Business Suite URL:{' '}
+              <span className="font-mono">?page_id=123456789</span>
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualPageId}
+                onChange={(e) => setManualPageId(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleManualLookup()}
+                placeholder="e.g. 103971717906360"
+                className="flex-1 px-3 py-1.5 paragraph-xs border border-primary rounded-md bg-primary text-primary placeholder-tertiary focus:outline-none focus:ring-1 focus:ring-utility-info-500"
+              />
+              <button
+                type="button"
+                onClick={handleManualLookup}
+                disabled={manualLookupLoading || !manualPageId.trim()}
+                className="px-3 py-1.5 paragraph-xs bg-utility-info-600 text-white rounded-md hover:bg-utility-info-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {manualLookupLoading ? 'Looking up...' : 'Look up'}
+              </button>
+            </div>
+            {manualLookupError && (
+              <p className="paragraph-xs text-utility-error-600">{manualLookupError}</p>
+            )}
+            {manualLookupResult && (
+              <p className="paragraph-xs text-utility-success-600">
+                ✓ Found: {manualLookupResult.name} ({formatFollowers(manualLookupResult.fan_count)}{' '}
+                followers) — selected above
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mt-3">
         <p className="paragraph-xs text-utility-info-700">
           Select a Facebook Page to enable organic social insights for your{' '}
           {currentAccountName || 'account'}.

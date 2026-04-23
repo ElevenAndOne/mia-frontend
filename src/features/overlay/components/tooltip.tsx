@@ -12,12 +12,7 @@ import type { TooltipProps, OverlayPlacement } from '../types'
  * - Auto-flips when hitting viewport edge
  * - Accessible with aria-describedby
  */
-export function Tooltip({
-  content,
-  children,
-  placement = 'top',
-  delay = 200,
-}: TooltipProps) {
+export function Tooltip({ content, children, placement = 'top', delay = 200 }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
   const anchorRef = useRef<HTMLSpanElement>(null)
   const floatingRef = useRef<HTMLDivElement>(null)

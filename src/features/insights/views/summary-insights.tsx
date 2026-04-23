@@ -28,9 +28,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-tertiary transition-colors active:scale-95"
     >
       <img src="/icons/calendar.svg" alt="" className="w-5 h-5" />
-      <span className="subheading-md text-secondary">
-        {getDateRangeDisplay(selectedDateRange)}
-      </span>
+      <span className="subheading-md text-secondary">{getDateRangeDisplay(selectedDateRange)}</span>
     </button>
   )
 
@@ -79,20 +77,29 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
             {/* Executive Summary Box */}
             <div className="bg-linear-to-r from-utility-info-100 to-utility-brand-100 border border-utility-info-300 rounded-lg p-6">
               <h2 className="label-bg text-primary mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-utility-info-600" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <svg
+                  className="w-5 h-5 text-utility-info-600"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
                   <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM10 16C6.68629 16 4 13.3137 4 10C4 6.68629 6.68629 4 10 4C13.3137 4 16 6.68629 16 10C16 13.3137 13.3137 16 10 16Z" />
                   <path d="M10 6C9.44772 6 9 6.44772 9 7V11C9 11.5523 9.44772 12 10 12C10.5523 12 11 11.5523 11 11V7C11 6.44772 10.5523 6 10 6Z" />
                   <path d="M10 13C9.44772 13 9 13.4477 9 14C9 14.5523 9.44772 15 10 15C10.5523 15 11 14.5523 11 14C11 13.4477 10.5523 13 10 13Z" />
                 </svg>
                 Executive Summary
               </h2>
-              <p className="paragraph-md text-secondary leading-relaxed whitespace-pre-wrap">{summary}</p>
+              <p className="paragraph-md text-secondary leading-relaxed whitespace-pre-wrap">
+                {summary}
+              </p>
             </div>
 
             {/* Info Box */}
             <div className="bg-secondary border border-secondary rounded-lg p-4">
               <p className="paragraph-sm text-tertiary">
-                <span className="label-sm text-primary">Quick snapshot</span> covering your biggest growth opportunities, optimisation needs, and protection strategies. For detailed insights, visit the Grow, Optimise, or Protect pages.
+                <span className="label-sm text-primary">Quick snapshot</span> covering your biggest
+                growth opportunities, optimisation needs, and protection strategies. For detailed
+                insights, visit the Grow, Optimise, or Protect pages.
               </p>
             </div>
           </div>

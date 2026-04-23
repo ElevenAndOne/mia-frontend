@@ -22,10 +22,18 @@ interface LinkedInAccountSelectorProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
-  currentAccountData?: { linkedin_ads_account_id?: string; linkedin_organization_id?: string } | null
+  currentAccountData?: {
+    linkedin_ads_account_id?: string
+    linkedin_organization_id?: string
+  } | null
 }
 
-const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess, currentAccountData }: LinkedInAccountSelectorProps) => {
+const LinkedInAccountSelector = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  currentAccountData,
+}: LinkedInAccountSelectorProps) => {
   const { sessionId } = useSession()
   const [adAccounts, setAdAccounts] = useState<LinkedInAdAccount[]>([])
   const [organizations, setOrganizations] = useState<LinkedInOrganization[]>([])
@@ -98,9 +106,9 @@ const LinkedInAccountSelector = ({ isOpen, onClose, onSuccess, currentAccountDat
         },
         body: JSON.stringify({
           ad_account_id: state.selectedId || null,
-          ad_account_name: adAccounts.find(a => a.id === state.selectedId)?.name || null,
+          ad_account_name: adAccounts.find((a) => a.id === state.selectedId)?.name || null,
           organization_id: selectedOrgId || null,
-          organization_name: organizations.find(o => o.id === selectedOrgId)?.name || null,
+          organization_name: organizations.find((o) => o.id === selectedOrgId)?.name || null,
         }),
       })
 

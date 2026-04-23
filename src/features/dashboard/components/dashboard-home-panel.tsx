@@ -33,7 +33,10 @@ export const DashboardHomePanel = ({
 }: DashboardHomePanelProps) => {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6">
-      <div className="flex flex-col items-center gap-5 w-full max-w-sm" style={{ fontFamily: 'Geologica, system-ui, sans-serif' }}>
+      <div
+        className="flex flex-col items-center gap-5 w-full max-w-sm"
+        style={{ fontFamily: 'Geologica, system-ui, sans-serif' }}
+      >
         <div className="text-center">
           <h2 className="paragraph-lg text-primary leading-[110%] tracking-[-0.03em] mb-1">
             Hello {userName}.
@@ -49,7 +52,11 @@ export const DashboardHomePanel = ({
             className="flex items-center gap-2 px-4 py-2 bg-utility-info-100 border border-utility-info-300 rounded-full text-utility-info-700 paragraph-xs hover:bg-utility-info-200 transition-colors"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                clipRule="evenodd"
+              />
             </svg>
             <span>{configurationGuidance}</span>
           </button>
@@ -81,7 +88,8 @@ export const DashboardHomePanel = ({
                   }}
                 />
                 <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-primary-solid text-primary-onbrand paragraph-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  {platform.name}{!isConnected && ' (not connected)'}
+                  {platform.name}
+                  {!isConnected && ' (not connected)'}
                 </span>
               </button>
             )

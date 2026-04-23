@@ -21,7 +21,13 @@ interface UseInviteLandingParams {
   onSignIn?: () => void
 }
 
-export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccepted, onSignIn }: UseInviteLandingParams) => {
+export const useInviteLanding = ({
+  inviteId,
+  sessionId,
+  isAuthenticated,
+  onAccepted,
+  onSignIn,
+}: UseInviteLandingParams) => {
   const [inviteDetails, setInviteDetails] = useState<InviteDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +64,7 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
         setError(message)
         setAccepting(false)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inviteId, isAuthenticated, sessionId, inviteDetails])
 
   useEffect(() => {
@@ -81,7 +87,8 @@ export const useInviteLanding = ({ inviteId, sessionId, isAuthenticated, onAccep
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load invite details. Please try again.'
+        const message =
+          err instanceof Error ? err.message : 'Failed to load invite details. Please try again.'
         setError(message)
       } finally {
         setLoading(false)

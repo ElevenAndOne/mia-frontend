@@ -30,6 +30,7 @@ export interface PendingAction {
   platform: string
   summary: string
   params: Record<string, unknown>
+  continue_chain?: boolean
 }
 
 export interface ChatResponse {
@@ -41,7 +42,7 @@ export interface ChatResponse {
 
 export const confirmAction = async (
   sessionId: string,
-  action: PendingAction,
+  action: PendingAction
 ): Promise<{ success: boolean; workflow_id?: string; error?: string }> => {
   const response = await apiFetch('/api/actions/confirm', {
     method: 'POST',
@@ -55,20 +56,22 @@ export const confirmAction = async (
       params: action.params,
     }),
   })
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   return response.json()
 }
 
 export const pollActionStatus = async (
   sessionId: string,
-  workflowId: string,
+  workflowId: string
 ): Promise<{ status: string; result?: Record<string, unknown> }> => {
   const response = await apiFetch(`/api/actions/status/${workflowId}`, {
     headers: { 'X-Session-ID': sessionId },
   })
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
   return response.json()
 }
 
-export const sendChatMessage = async (payload: ChatRequestPayload) => {
+export const sendChatMessage = async (payload: ChatRequestPayload, signal?: AbortSignal) => {
   const v2Payload = {
     message: payload.message,
     session_id: payload.session_id,
@@ -80,6 +83,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload) => {
 
   const response = await apiFetch('/api/chat/v2', {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       'X-Session-ID': payload.session_id || 'default',
@@ -94,7 +98,9 @@ export const sendChatMessage = async (payload: ChatRequestPayload) => {
   return response.json() as Promise<ChatResponse>
 }
 
-export const fetchRecentConversations = async (sessionId: string): Promise<RecentConversation[]> => {
+export const fetchRecentConversations = async (
+  sessionId: string
+): Promise<RecentConversation[]> => {
   try {
     const response = await apiFetch('/api/chat/v2/conversations', {
       headers: { 'X-Session-ID': sessionId },
@@ -107,7 +113,10 @@ export const fetchRecentConversations = async (sessionId: string): Promise<Recen
   }
 }
 
-export const deleteConversation = async (sessionId: string, conversationId: string): Promise<boolean> => {
+export const deleteConversation = async (
+  sessionId: string,
+  conversationId: string
+): Promise<boolean> => {
   try {
     const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {
       method: 'DELETE',
@@ -121,7 +130,11 @@ export const deleteConversation = async (sessionId: string, conversationId: stri
   }
 }
 
-export const renameConversation = async (sessionId: string, conversationId: string, title: string): Promise<boolean> => {
+export const renameConversation = async (
+  sessionId: string,
+  conversationId: string,
+  title: string
+): Promise<boolean> => {
   try {
     const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}/title`, {
       method: 'PATCH',
@@ -136,7 +149,10 @@ export const renameConversation = async (sessionId: string, conversationId: stri
   }
 }
 
-export const pinConversation = async (sessionId: string, conversationId: string): Promise<boolean | null> => {
+export const pinConversation = async (
+  sessionId: string,
+  conversationId: string
+): Promise<boolean | null> => {
   try {
     const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}/pin`, {
       method: 'PATCH',
@@ -152,7 +168,7 @@ export const pinConversation = async (sessionId: string, conversationId: string)
 
 export const fetchConversationMessages = async (
   sessionId: string,
-  conversationId: string,
+  conversationId: string
 ): Promise<ChatHistoryMessage[]> => {
   try {
     const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {

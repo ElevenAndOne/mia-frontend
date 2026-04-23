@@ -14,7 +14,6 @@ export const ProgressDots = ({ current, total }: ProgressDotsProps) => (
   </div>
 )
 
-
 interface SegmentedCircularProgressProps {
   current: number
   total: number
@@ -23,7 +22,13 @@ interface SegmentedCircularProgressProps {
   segmentRatio?: number
 }
 
-export const SegmentedCircularProgress = ({ current, total, size = 56, strokeWidth = 9, segmentRatio = 0.6 }: SegmentedCircularProgressProps) => {
+export const SegmentedCircularProgress = ({
+  current,
+  total,
+  size = 56,
+  strokeWidth = 9,
+  segmentRatio = 0.6,
+}: SegmentedCircularProgressProps) => {
   const safeTotal = Math.max(total, 1)
   const safeCurrent = Math.min(Math.max(current, 0), safeTotal)
   const viewBoxSize = 100
@@ -37,8 +42,15 @@ export const SegmentedCircularProgress = ({ current, total, size = 56, strokeWid
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg className="w-full h-full" viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`} aria-labelledby="progress-title" role="img">
-        <title id="progress-title">Progress: {safeCurrent}/{safeTotal}</title>
+      <svg
+        className="w-full h-full"
+        viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
+        aria-labelledby="progress-title"
+        role="img"
+      >
+        <title id="progress-title">
+          Progress: {safeCurrent}/{safeTotal}
+        </title>
         <g transform="rotate(-90 50 50)">
           {Array.from({ length: safeTotal }, (_, index) => (
             <circle
@@ -52,7 +64,11 @@ export const SegmentedCircularProgress = ({ current, total, size = 56, strokeWid
               strokeLinecap="round"
               strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
               strokeDashoffset={-index * slotLength + centerOffset}
-              className={activeIndex >= index ? 'text-foreground-brand-primary' : 'text-background-quaternary'}
+              className={
+                activeIndex >= index
+                  ? 'text-foreground-brand-primary'
+                  : 'text-background-quaternary'
+              }
             />
           ))}
         </g>

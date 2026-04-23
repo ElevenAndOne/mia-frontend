@@ -5,10 +5,10 @@
  */
 function formatForWhatsApp(text: string): string {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '*$1*')   // **bold** → *bold*
-    .replace(/#{1,6}\s+(.+)/g, '*$1*')    // # Heading → *Heading*
-    .replace(/^[-*]\s+/gm, '• ')          // - bullet → • bullet
-    .replace(/`{1,3}[^`]*`{1,3}/g, '')    // strip inline/block code
+    .replace(/\*\*(.+?)\*\*/g, '*$1*') // **bold** → *bold*
+    .replace(/#{1,6}\s+(.+)/g, '*$1*') // # Heading → *Heading*
+    .replace(/^[-*]\s+/gm, '• ') // - bullet → • bullet
+    .replace(/`{1,3}[^`]*`{1,3}/g, '') // strip inline/block code
     .trim()
 }
 

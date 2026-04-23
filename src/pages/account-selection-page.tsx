@@ -47,14 +47,16 @@ const AccountSelectionPage = ({ onAccountSelected }: AccountSelectionPageProps) 
       <AccountSelectionHeader
         onBack={handleBack}
         title={`Welcome${user?.name ? `, ${user.name.split(' ')[0]}` : ''}!`}
-        leading={user ? (
-          <UserAvatar
-            name={user.name}
-            imageUrl={user.picture_url}
-            size="lg"
-            className="border-2 border-secondary"
-          />
-        ) : null}
+        leading={
+          user ? (
+            <UserAvatar
+              name={user.name}
+              imageUrl={user.picture_url}
+              size="lg"
+              className="border-2 border-secondary"
+            />
+          ) : null
+        }
       />
 
       {error && (

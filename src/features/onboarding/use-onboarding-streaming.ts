@@ -17,32 +17,24 @@ interface UseOnboardingStreamingReturn {
 }
 
 export function useOnboardingStreaming(): UseOnboardingStreamingReturn {
-  const {
-    state,
-    processSSEStream,
-    stopStreaming,
-    reset
-  } = useStreamingCore({ timeout: 65000 })
+  const { state, processSSEStream, stopStreaming, reset } = useStreamingCore({ timeout: 65000 })
 
-  const startStreaming = useCallback(async (
-    sessionId: string,
-    platforms?: string[]
-  ) => {
-    await processSSEStream(
-      createApiUrl('/api/onboarding/grow-summary/stream'),
-      {
+  const startStreaming = useCallback(
+    async (sessionId: string, platforms?: string[]) => {
+      await processSSEStream(createApiUrl('/api/onboarding/grow-summary/stream'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId
+          'X-Session-ID': sessionId,
         },
         body: JSON.stringify({
           session_id: sessionId,
-          platforms: platforms && platforms.length > 0 ? platforms : undefined
-        })
-      }
-    )
-  }, [processSSEStream])
+          platforms: platforms && platforms.length > 0 ? platforms : undefined,
+        }),
+      })
+    },
+    [processSSEStream]
+  )
 
   return {
     streamedText: state.text,
@@ -51,6 +43,6 @@ export function useOnboardingStreaming(): UseOnboardingStreamingReturn {
     error: state.error,
     startStreaming,
     stopStreaming,
-    reset
+    reset,
   }
 }

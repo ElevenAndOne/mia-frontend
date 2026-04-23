@@ -1,45 +1,62 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 
 // ── Campaign detail cache (module-level + sessionStorage, 23h TTL) ─────────
+// Keyed by campaignId so multiple campaigns can be cached per tenant.
 const CACHE_TTL_MS = 23 * 60 * 60 * 1000
 const SS_KEY_PREFIX = 'campaigns_detail_'
-interface CachedDetail { data: CampaignDetail; ts: number }
+interface CachedDetail {
+  data: CampaignDetail
+  ts: number
+}
 const detailCache = new Map<string, CachedDetail>()
 
-function getCachedDetail(tenantId: string): CampaignDetail | undefined {
-  const key = SS_KEY_PREFIX + tenantId
-  const mem = detailCache.get(tenantId)
+function getCachedDetail(campaignId: string): CampaignDetail | undefined {
+  const key = SS_KEY_PREFIX + campaignId
+  const mem = detailCache.get(campaignId)
   if (mem && Date.now() - mem.ts < CACHE_TTL_MS) return mem.data
   try {
     const raw = sessionStorage.getItem(key)
     if (raw) {
       const entry: CachedDetail = JSON.parse(raw)
       if (Date.now() - entry.ts < CACHE_TTL_MS) {
-        detailCache.set(tenantId, entry)
+        detailCache.set(campaignId, entry)
         return entry.data
       }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return undefined
 }
 
-function setCachedDetail(tenantId: string, data: CampaignDetail) {
+function setCachedDetail(campaignId: string, data: CampaignDetail) {
   const entry: CachedDetail = { data, ts: Date.now() }
-  detailCache.set(tenantId, entry)
-  try { sessionStorage.setItem(SS_KEY_PREFIX + tenantId, JSON.stringify(entry)) } catch { /* ignore */ }
+  detailCache.set(campaignId, entry)
+  try {
+    sessionStorage.setItem(SS_KEY_PREFIX + campaignId, JSON.stringify(entry))
+  } catch {
+    /* ignore */
+  }
+}
+
+function bustCachedDetail(campaignId: string) {
+  detailCache.delete(campaignId)
+  try { sessionStorage.removeItem(SS_KEY_PREFIX + campaignId) } catch { /* ignore */ }
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface KPI {
+  kpi_id?: number
   kpi_name: string
   target_value: string | null
   target_numeric: number | null
   unit: string | null
+  hubspot_list_name?: string | null
 }
 
 interface ChannelAction {
@@ -66,6 +83,7 @@ interface CampaignDetail {
   campaign_name: string
   client_name: string | null
   status: string
+  is_primary: boolean
   start_date: string | null
   end_date: string | null
   budget_total: number | null
@@ -81,6 +99,7 @@ interface CampaignSummary {
   campaign_name: string
   client_name: string | null
   status: string
+  is_primary: boolean
   channels: string[] | null
   budget_total: number | null
   budget_currency: string | null
@@ -108,12 +127,16 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(dateStr).toLocaleDateString('en-ZA', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 function formatBudget(amount: number | null, currency: string | null): string {
   if (!amount) return '—'
-  const symbol = currency === 'ZAR' ? 'R' : (currency || '')
+  const symbol = currency === 'ZAR' ? 'R' : currency || ''
   return `${symbol}${amount.toLocaleString()}`
 }
 
@@ -134,14 +157,27 @@ function getDefaultPhaseIndex(campaign: CampaignDetail): number {
 
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; className: string }> = {
-    live:      { label: 'Live',      className: 'bg-utility-success-100 text-utility-success-700 border border-utility-success-200' },
-    draft:     { label: 'Draft',     className: 'bg-secondary text-tertiary border border-tertiary' },
-    paused:    { label: 'Paused',    className: 'bg-utility-warning-100 text-utility-warning-700 border border-utility-warning-200' },
-    completed: { label: 'Completed', className: 'bg-utility-info-100 text-utility-info-700 border border-utility-info-200' },
+    live: {
+      label: 'Live',
+      className:
+        'bg-utility-success-100 text-utility-success-700 border border-utility-success-200',
+    },
+    draft: { label: 'Draft', className: 'bg-secondary text-tertiary border border-tertiary' },
+    paused: {
+      label: 'Paused',
+      className:
+        'bg-utility-warning-100 text-utility-warning-700 border border-utility-warning-200',
+    },
+    completed: {
+      label: 'Completed',
+      className: 'bg-utility-info-100 text-utility-info-700 border border-utility-info-200',
+    },
   }
   const config = configs[status] ?? configs.draft
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full label-xs ${config.className}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full label-xs ${config.className}`}
+    >
       {config.label}
     </span>
   )
@@ -170,7 +206,9 @@ function PhaseTabs({
                 : 'border-transparent hover:bg-secondary'
             }`}
           >
-            <span className={`paragraph-xs font-medium ${isSelected ? 'text-primary' : 'text-tertiary'}`}>
+            <span
+              className={`paragraph-xs font-medium ${isSelected ? 'text-primary' : 'text-tertiary'}`}
+            >
               {phase.phase_name}
             </span>
           </button>
@@ -180,35 +218,86 @@ function PhaseTabs({
   )
 }
 
-function PhaseDetail({ phase }: { phase: Phase }) {
+function PhaseDetail({
+  phase,
+  hubspotLists,
+  hubspotListsMessage,
+  savingKpiId,
+  onLinkHubspotList,
+}: {
+  phase: Phase
+  hubspotLists: { list_id: number; name: string; size: number }[]
+  hubspotListsMessage: string | null
+  savingKpiId: number | null
+  onLinkHubspotList: (kpiId: number, listName: string | null) => void
+}) {
   const [channelsExpanded, setChannelsExpanded] = useState(false)
+
+  // Only show HubSpot list linking if this phase has hubspot as a channel
+  const phaseHasHubspot = phase.channel_actions.some((ca) => ca.channel === 'hubspot')
 
   return (
     <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-4">
       {/* Phase header */}
       <div>
         <h3 className="label-md text-primary">{phase.phase_name} Phase</h3>
-        {phase.objective && (
-          <p className="paragraph-sm text-secondary mt-0.5">{phase.objective}</p>
-        )}
+        {phase.objective && <p className="paragraph-sm text-secondary mt-0.5">{phase.objective}</p>}
       </div>
+
+      {/* HubSpot not connected notice */}
+      {phaseHasHubspot && hubspotLists.length === 0 && hubspotListsMessage && (
+        <p className="paragraph-xs text-quaternary italic">{hubspotListsMessage}</p>
+      )}
 
       {/* KPIs */}
       {phase.kpis.length > 0 && (
         <div>
           <p className="label-xs text-quaternary uppercase tracking-wide mb-2">KPI Targets</p>
           <div className="rounded-lg border border-tertiary overflow-hidden">
-            {phase.kpis.map((kpi, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between px-3 py-2.5 ${
-                  i < phase.kpis.length - 1 ? 'border-b border-tertiary' : ''
-                }`}
-              >
-                <span className="paragraph-sm text-secondary">{kpi.kpi_name}</span>
-                <span className="label-sm text-primary font-medium">{kpi.target_value ?? '—'}</span>
-              </div>
-            ))}
+            {phase.kpis.map((kpi, i) => {
+              // "Total leads" is computed as the sum of other lists — no dropdown needed
+              const isTotalKpi = kpi.kpi_name.toLowerCase().startsWith('total')
+              const showHubspotLink =
+                phaseHasHubspot &&
+                hubspotLists.length > 0 &&
+                kpi.kpi_id !== undefined &&
+                !isTotalKpi
+              return (
+                <div
+                  key={kpi.kpi_id ?? i}
+                  className={`px-3 py-2.5 space-y-1.5 ${
+                    i < phase.kpis.length - 1 ? 'border-b border-tertiary' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="paragraph-sm text-secondary">{kpi.kpi_name}</span>
+                    <span className="label-sm text-primary font-medium shrink-0">{kpi.target_value ?? '—'}</span>
+                  </div>
+                  {showHubspotLink && (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={kpi.hubspot_list_name ?? ''}
+                        disabled={savingKpiId === kpi.kpi_id}
+                        onChange={(e) => onLinkHubspotList(kpi.kpi_id!, e.target.value || null)}
+                        className="flex-1 text-xs rounded border border-tertiary bg-primary text-tertiary px-2 py-1 focus:outline-none focus:border-utility-brand-400 disabled:opacity-50"
+                      >
+                        <option value="">— Link HubSpot list —</option>
+                        {hubspotLists.map((lst) => (
+                          <option key={lst.list_id} value={lst.name}>
+                            {lst.name} ({lst.size.toLocaleString()})
+                          </option>
+                        ))}
+                      </select>
+                      {kpi.hubspot_list_name && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded bg-utility-success-100 text-utility-success-700 label-xs">
+                          linked
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -223,9 +312,16 @@ function PhaseDetail({ phase }: { phase: Phase }) {
             <span>Channel Focus ({phase.channel_actions.length})</span>
             <svg
               className={`w-3 h-3 transition-transform ${channelsExpanded ? 'rotate-180' : ''}`}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
 
@@ -259,70 +355,168 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
-  // Initialise from cache so there's zero spinner flash on re-navigation
-  const cachedOnMount = tenantId ? getCachedDetail(tenantId) : undefined
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(cachedOnMount ?? null)
-  const [loading, setLoading] = useState(cachedOnMount === undefined)
+  const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
+  const [campaignList, setCampaignList] = useState<CampaignSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(() => {
-    if (!cachedOnMount) return null
-    const sorted = [...cachedOnMount.phases].sort((a, b) => a.sort_order - b.sort_order)
-    return sorted[getDefaultPhaseIndex(cachedOnMount)]?.phase_id ?? null
-  })
+  const [settingPrimary, setSettingPrimary] = useState(false)
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
+
+  // HubSpot list state for KPI linking
+  const [hubspotLists, setHubspotLists] = useState<{ list_id: number; name: string; size: number }[]>([])
+  const [hubspotListsMessage, setHubspotListsMessage] = useState<string | null>(null)
+  const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
+
+  const loadCampaignDetail = useCallback(async (
+    campaignId: string,
+    opts?: { bust?: boolean }
+  ) => {
+    if (!sessionId || !tenantId) return
+    if (!opts?.bust) {
+      const cached = getCachedDetail(campaignId)
+      if (cached) {
+        setCampaign(cached)
+        const sorted = [...cached.phases].sort((a, b) => a.sort_order - b.sort_order)
+        setSelectedPhaseId(sorted[getDefaultPhaseIndex(cached)]?.phase_id ?? null)
+        return
+      }
+    }
+    setDetailLoading(true)
+    try {
+      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}`, {
+        headers: { 'X-Session-ID': sessionId },
+      })
+      if (!res.ok) throw new Error('Failed to load campaign detail')
+      const detail: CampaignDetail = await res.json()
+      setCachedDetail(campaignId, detail)
+      setCampaign(detail)
+      const sorted = [...detail.phases].sort((a, b) => a.sort_order - b.sort_order)
+      setSelectedPhaseId(sorted[getDefaultPhaseIndex(detail)]?.phase_id ?? null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [sessionId, tenantId])
 
   useEffect(() => {
     if (!tenantId || !sessionId) return
-
-    // Already have fresh cache — skip fetch
-    if (getCachedDetail(tenantId)) return
-
     const load = async () => {
       setLoading(true)
       setError(null)
       try {
-        // Fetch campaign list to find active one
         const listRes = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, {
           headers: { 'X-Session-ID': sessionId },
         })
         if (!listRes.ok) throw new Error('Failed to load campaigns')
         const list: CampaignSummary[] = await listRes.json()
+        setCampaignList(list)
 
-        const active = list.find(c => c.status === 'live') ?? list[0] ?? null
+        const active =
+          list.find((c) => c.is_primary) ??
+          list.find((c) => c.status === 'live') ??
+          list[0] ??
+          null
         if (!active) {
           setCampaign(null)
           return
         }
 
-        // Fetch full detail
-        const detailRes = await apiFetch(`/api/tenants/${tenantId}/campaigns/${active.campaign_id}`, {
+        await loadCampaignDetail(active.campaign_id)
+
+        // Fetch HubSpot lists in background
+        apiFetch(`/api/tenants/${tenantId}/campaigns/hubspot-lists`, {
           headers: { 'X-Session-ID': sessionId },
         })
-        if (!detailRes.ok) throw new Error('Failed to load campaign detail')
-        const detail: CampaignDetail = await detailRes.json()
-        setCachedDetail(tenantId, detail)
-        setCampaign(detail)
-        const sorted = [...detail.phases].sort((a, b) => a.sort_order - b.sort_order)
-        const defaultIdx = getDefaultPhaseIndex(detail)
-        setSelectedPhaseId(sorted[defaultIdx]?.phase_id ?? null)
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => {
+            if (data?.lists?.length) {
+              setHubspotLists(data.lists)
+              setHubspotListsMessage(null)
+            } else {
+              setHubspotListsMessage(data?.message ?? 'HubSpot not connected')
+            }
+          })
+          .catch(() => { setHubspotListsMessage('Could not load HubSpot lists') })
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
       } finally {
         setLoading(false)
       }
     }
-
     load()
-  }, [tenantId, sessionId])
+  }, [tenantId, sessionId, loadCampaignDetail])
 
-  const sortedPhases = campaign ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order) : []
-  const selectedPhase = sortedPhases.find(p => p.phase_id === selectedPhaseId) ?? sortedPhases[0] ?? null
+  const handleSwitchCampaign = async (campaignId: string) => {
+    if (!campaign || campaignId === campaign.campaign_id) return
+    await loadCampaignDetail(campaignId)
+  }
+
+  const handleSetPrimary = async () => {
+    if (!sessionId || !tenantId || !campaign || settingPrimary) return
+    setSettingPrimary(true)
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/set-primary`,
+        { method: 'PATCH', headers: { 'X-Session-ID': sessionId } }
+      )
+      if (res.ok) {
+        setCampaign((prev) => prev ? { ...prev, is_primary: true } : prev)
+        setCampaignList((prev) =>
+          prev.map((c) => ({ ...c, is_primary: c.campaign_id === campaign.campaign_id }))
+        )
+        bustCachedDetail(campaign.campaign_id)
+      }
+    } finally {
+      setSettingPrimary(false)
+    }
+  }
+
+  const handleLinkHubspotList = async (kpiId: number, listName: string | null) => {
+    if (!sessionId || !tenantId || !campaign) return
+    setSavingKpiId(kpiId)
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/kpis/${kpiId}`,
+        {
+          method: 'PATCH',
+          headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hubspot_list_name: listName }),
+        }
+      )
+      if (res.ok) {
+        setCampaign((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            phases: prev.phases.map((ph) => ({
+              ...ph,
+              kpis: ph.kpis.map((k) =>
+                k.kpi_id === kpiId ? { ...k, hubspot_list_name: listName } : k
+              ),
+            })),
+          }
+        })
+        bustCachedDetail(campaign.campaign_id)
+      }
+    } finally {
+      setSavingKpiId(null)
+    }
+  }
+
+  const sortedPhases = campaign
+    ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order)
+    : []
+  const selectedPhase =
+    sortedPhases.find((p) => p.phase_id === selectedPhaseId) ?? sortedPhases[0] ?? null
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar title="Campaigns" onBack={onBack} />
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5">
-        {loading && (
+        {(loading || detailLoading) && (
           <div className="flex items-center justify-center py-20">
             <Spinner size="md" />
           </div>
@@ -334,12 +528,22 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </div>
         )}
 
-        {!loading && !error && !campaign && (
+        {!loading && !detailLoading && !error && !campaign && (
           <div className="flex flex-col items-center justify-center py-20 text-center px-6">
             <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-quaternary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4m0 4h.01"
+                />
               </svg>
             </div>
             <p className="label-md text-primary mb-1">No active campaign</p>
@@ -363,18 +567,53 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </div>
         )}
 
-        {!loading && !error && campaign && (
+        {!loading && !detailLoading && !error && campaign && (
           <>
             {/* Campaign header card */}
             <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h2 className="label-md text-primary truncate">{campaign.campaign_name}</h2>
+                <div className="min-w-0 flex-1">
+                  {campaignList.length > 1 ? (
+                    <select
+                      value={campaign.campaign_id}
+                      onChange={(e) => handleSwitchCampaign(e.target.value)}
+                      disabled={detailLoading}
+                      className="w-full label-md text-primary bg-transparent border-none outline-none cursor-pointer truncate disabled:opacity-60 -ml-0.5 pr-6"
+                      style={{ appearance: 'auto' }}
+                    >
+                      {campaignList.map((c) => (
+                        <option key={c.campaign_id} value={c.campaign_id}>
+                          {c.is_primary ? '★ ' : ''}{c.campaign_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <h2 className="label-md text-primary truncate">{campaign.campaign_name}</h2>
+                  )}
                   {campaign.client_name && (
                     <p className="paragraph-sm text-tertiary">{campaign.client_name}</p>
                   )}
                 </div>
-                <StatusBadge status={campaign.status} />
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Set-primary star */}
+                  <button
+                    onClick={handleSetPrimary}
+                    disabled={settingPrimary || campaign.is_primary}
+                    title={campaign.is_primary ? 'Primary campaign' : 'Set as primary'}
+                    className="transition-colors disabled:cursor-default"
+                  >
+                    {campaign.is_primary ? (
+                      <svg className="w-4 h-4 text-utility-warning-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-quaternary hover:text-utility-warning-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinejoin="round" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    )}
+                  </button>
+                  <StatusBadge status={campaign.status} />
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -384,14 +623,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                 {campaign.budget_total && (
                   <span className="paragraph-xs text-tertiary">
                     {formatBudget(campaign.budget_total, campaign.budget_currency)} total
-                    {campaign.budget_monthly ? ` · ${formatBudget(campaign.budget_monthly, campaign.budget_currency)}/mo` : ''}
+                    {campaign.budget_monthly
+                      ? ` · ${formatBudget(campaign.budget_monthly, campaign.budget_currency)}/mo`
+                      : ''}
                   </span>
                 )}
               </div>
 
               {campaign.channels && campaign.channels.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
-                  {campaign.channels.map(ch => (
+                  {campaign.channels.map((ch) => (
                     <span
                       key={ch}
                       className="px-2 py-0.5 rounded-full bg-primary border border-tertiary label-xs text-secondary"
@@ -427,7 +668,15 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   selectedId={selectedPhaseId}
                   onSelect={setSelectedPhaseId}
                 />
-                {selectedPhase && <PhaseDetail phase={selectedPhase} />}
+                {selectedPhase && (
+                  <PhaseDetail
+                    phase={selectedPhase}
+                    hubspotLists={hubspotLists}
+                    hubspotListsMessage={hubspotListsMessage}
+                    savingKpiId={savingKpiId}
+                    onLinkHubspotList={handleLinkHubspotList}
+                  />
+                )}
               </div>
             )}
           </>

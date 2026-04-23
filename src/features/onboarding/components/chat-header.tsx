@@ -9,8 +9,7 @@ interface ChatHeaderProps {
 
 export const ChatHeader = ({ current, total, onManageIntegrations }: ChatHeaderProps) => (
   <div className="sticky top-0 w-full p-3 gap-3 border-b border-secondary">
-
-    <div className='w-full max-w-3xl mx-auto flex items-center justify-between'>
+    <div className="w-full max-w-3xl mx-auto flex items-center justify-between">
       <div className="flex items-center gap-3 bg-secondary px-3 py-2 rounded-xl w-full">
         <SegmentedCircularProgress current={current} total={total} size={32} />
         <h1 className="label-sm">Onboarding</h1>

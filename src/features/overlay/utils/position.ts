@@ -241,13 +241,9 @@ export function calculatePosition(options: PositionOptions): OverlayPosition {
       )
 
       // Use flipped position if it has less overflow
-      const currentOverflowSum =
-        overflow.top + overflow.right + overflow.bottom + overflow.left
+      const currentOverflowSum = overflow.top + overflow.right + overflow.bottom + overflow.left
       const flippedOverflowSum =
-        flippedOverflow.top +
-        flippedOverflow.right +
-        flippedOverflow.bottom +
-        flippedOverflow.left
+        flippedOverflow.top + flippedOverflow.right + flippedOverflow.bottom + flippedOverflow.left
 
       if (flippedOverflowSum < currentOverflowSum) {
         x = flippedPosition.x

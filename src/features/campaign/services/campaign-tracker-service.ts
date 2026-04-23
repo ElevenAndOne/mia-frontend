@@ -41,7 +41,6 @@ function ssSet<T>(key: string, entry: CacheEntry<T>): void {
   }
 }
 
-
 function ssClear(prefix: string): void {
   try {
     const keys: string[] = []
@@ -49,8 +48,10 @@ function ssClear(prefix: string): void {
       const k = sessionStorage.key(i)
       if (k && k.startsWith(prefix)) keys.push(k)
     }
-    keys.forEach(k => sessionStorage.removeItem(k))
-  } catch { /* ignore */ }
+    keys.forEach((k) => sessionStorage.removeItem(k))
+  } catch {
+    /* ignore */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ function getTrackerEntry(key: string): CacheEntry<CampaignTracker | null> | unde
   if (mem) return mem
   const ss = ssGet<CampaignTracker | null>(SS_TRACKER_PREFIX + key)
   if (ss) {
-    trackerCache.set(key, ss)  // re-populate in-memory from sessionStorage
+    trackerCache.set(key, ss) // re-populate in-memory from sessionStorage
     return ss
   }
   return undefined
@@ -78,7 +79,7 @@ function getActualsEntry(key: string): CacheEntry<KPIActual[] | null> | undefine
   if (mem) return mem
   const ss = ssGet<KPIActual[] | null>(SS_ACTUALS_PREFIX + key)
   if (ss) {
-    actualsCache.set(key, ss)  // re-populate in-memory from sessionStorage
+    actualsCache.set(key, ss) // re-populate in-memory from sessionStorage
     return ss
   }
   return undefined
@@ -94,10 +95,12 @@ function setActualsEntry(key: string, entry: CacheEntry<KPIActual[] | null>): vo
 // ---------------------------------------------------------------------------
 
 export interface CampaignKPI {
+  kpi_id?: number
   kpi_name: string
   target_value: string | null
   target_numeric: number | null
   unit: string
+  hubspot_list_name?: string | null
 }
 
 export interface CampaignPhase {
@@ -113,6 +116,7 @@ export interface CampaignTracker {
   campaign_name: string
   client_name: string
   status: string
+  is_primary: boolean
   start_date: string | null
   end_date: string | null
   current_phase: string | null
@@ -134,7 +138,7 @@ export interface KPIActual {
 
 export const fetchCampaignTracker = async (
   sessionId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<CampaignTracker | null> => {
   const key = `${tenantId}`
   const cached = getTrackerEntry(key)
@@ -170,19 +174,22 @@ export const fetchPhaseActuals = async (
   tenantId: string,
   campaignId: string,
   phaseName: string,
+  startDate?: string | null,
+  endDate?: string | null
 ): Promise<KPIActual[] | null> => {
-  const key = `${tenantId}:${campaignId}:${phaseName}`
+  const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
+  const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
   const cached = getActualsEntry(key)
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    console.debug('[RACE] actuals: cache hit', { phaseName })
+    console.debug('[RACE] actuals: cache hit', { phaseName, dateKey })
     return cached.data
   }
   try {
-    console.debug('[RACE] actuals: fetching from API', { campaignId, phaseName })
-    const res = await apiFetch(
-      `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`,
-      { headers: { 'X-Session-ID': sessionId } },
-    )
+    console.debug('[RACE] actuals: fetching from API', { campaignId, phaseName, startDate, endDate })
+    let url = `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`
+    if (startDate) url += `&start_date=${startDate}`
+    if (endDate) url += `&end_date=${endDate}`
+    const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId } })
     if (!res.ok) {
       console.warn('[RACE] actuals: API error', res.status, phaseName)
       return cached?.data ?? null
@@ -217,8 +224,15 @@ export const getCachedTracker = (tenantId: string): CampaignTracker | null | und
 }
 
 /** Synchronous cache peek for actuals */
-export const getCachedActuals = (tenantId: string, campaignId: string, phaseName: string): KPIActual[] | null | undefined => {
-  const key = `${tenantId}:${campaignId}:${phaseName}`
+export const getCachedActuals = (
+  tenantId: string,
+  campaignId: string,
+  phaseName: string,
+  startDate?: string | null,
+  endDate?: string | null
+): KPIActual[] | null | undefined => {
+  const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
+  const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
   const cached = getActualsEntry(key)
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
   return undefined
@@ -230,4 +244,20 @@ export const clearTrackerCache = () => {
   actualsCache.clear()
   ssClear(SS_TRACKER_PREFIX)
   ssClear(SS_ACTUALS_PREFIX)
+}
+
+/** Trigger a server-side cache clear + re-warm for all phases, then clear local cache */
+export const refreshCampaignActuals = async (
+  sessionId: string,
+  tenantId: string,
+  campaignId: string
+): Promise<void> => {
+  // Clear local JS + sessionStorage caches so stale data isn't shown
+  actualsCache.clear()
+  ssClear(SS_ACTUALS_PREFIX)
+  // Ask the server to clear the DB cache and re-warm
+  await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh`, {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+  })
 }

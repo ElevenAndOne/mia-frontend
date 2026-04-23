@@ -24,7 +24,7 @@ import {
   buildPlatformLinkedMessages,
   buildSkipMessages,
   buildStreamCompleteMessages,
-  getChoiceLabel
+  getChoiceLabel,
 } from '../onboarding-chat-messages'
 import { useMessageQueue } from './use-message-queue'
 
@@ -50,8 +50,12 @@ interface OnboardingChatState {
   selectedAccountName?: string
 }
 
-export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardingChatArgs): OnboardingChatState => {
-  const { selectedAccount, availableAccounts, sessionId, login, loginMeta, refreshAccounts } = useSession()
+export const useOnboardingChat = ({
+  onComplete,
+  onConnectPlatform,
+}: UseOnboardingChatArgs): OnboardingChatState => {
+  const { selectedAccount, availableAccounts, sessionId, login, loginMeta, refreshAccounts } =
+    useSession()
   const {
     platformsConnected,
     fetchBronzeHighlight,
@@ -59,7 +63,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     advanceStep,
     completeOnboarding,
     skipOnboarding,
-    loadOnboardingStatus
+    loadOnboardingStatus,
   } = useOnboarding()
 
   const {
@@ -68,10 +72,18 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     isComplete: streamComplete,
     error: streamingError,
     startStreaming,
-    reset: resetStreaming
+    reset: resetStreaming,
   } = useOnboardingStreaming()
 
-  const { displayedMessages, isTyping, queueMessages, addImmediateMessage, persistMessages, restoreMessages, clearPersistedMessages } = useMessageQueue()
+  const {
+    displayedMessages,
+    isTyping,
+    queueMessages,
+    addImmediateMessage,
+    persistMessages,
+    restoreMessages,
+    clearPersistedMessages,
+  } = useMessageQueue()
 
   const [currentProgress, setCurrentProgress] = useState(1)
   const [showMetaSelector, setShowMetaSelector] = useState(false)
@@ -94,7 +106,9 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
 
   const handleShowClicks = useCallback(async () => {
     const followupFact = await fetchBronzeFollowup()
-    queueMessages(followupFact ? buildClickMessages(followupFact, initialBronzeFact) : buildNoClickMessages())
+    queueMessages(
+      followupFact ? buildClickMessages(followupFact, initialBronzeFact) : buildNoClickMessages()
+    )
     window.setTimeout(() => showExplainerBoxes(), 500)
   }, [fetchBronzeFollowup, initialBronzeFact, queueMessages, showExplainerBoxes])
 
@@ -111,7 +125,11 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
         startStreaming(sessionId, platformsConnected)
       } else {
         queueMessages([
-          { type: 'mia', content: "I'm still analyzing your data. You can check the Grow page for detailed insights." }
+          {
+            type: 'mia',
+            content:
+              "I'm still analyzing your data. You can check the Grow page for detailed insights.",
+          },
         ])
 
         window.setTimeout(() => {
@@ -173,7 +191,14 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     } else {
       queueMessages(buildCombinedFallbackMessages())
     }
-  }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
+  }, [
+    loadOnboardingStatus,
+    platformsConnected,
+    queueMessages,
+    refreshAccounts,
+    sessionId,
+    startStreaming,
+  ])
 
   const handleGoogleAccountLinked = useCallback(async () => {
     setShowGoogleSelector(false)
@@ -194,7 +219,14 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     } else {
       queueMessages(buildCombinedFallbackMessages())
     }
-  }, [loadOnboardingStatus, platformsConnected, queueMessages, refreshAccounts, sessionId, startStreaming])
+  }, [
+    loadOnboardingStatus,
+    platformsConnected,
+    queueMessages,
+    refreshAccounts,
+    sessionId,
+    startStreaming,
+  ])
 
   const handleSkip = useCallback(async () => {
     clearPersistedMessages() // Clean up stored messages
@@ -215,38 +247,45 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
   }, [onConnectPlatform, skipOnboarding])
 
   // Handle account selection from inline selector
-  const handleAccountSelected = useCallback(async (accountId: string) => {
-    setAccountSelected(true)
+  const handleAccountSelected = useCallback(
+    async (accountId: string) => {
+      setAccountSelected(true)
 
-    // Find the selected account name from available accounts
-    const account = availableAccounts.find(acc => acc.id === accountId)
-    const accountName = account?.name || 'Selected account'
-    addImmediateMessage({ type: 'user', content: accountName })
+      // Find the selected account name from available accounts
+      const account = availableAccounts.find((acc) => acc.id === accountId)
+      const accountName = account?.name || 'Selected account'
+      addImmediateMessage({ type: 'user', content: accountName })
 
-    // Show confirmation and stats intro
-    queueMessages([
-      { type: 'mia', content: "Great choice! I'm connecting to your account now..." }
-    ])
+      // Show confirmation and stats intro
+      queueMessages([
+        { type: 'mia', content: "Great choice! I'm connecting to your account now..." },
+      ])
 
-    // Small delay then continue to stats
-    await new Promise(resolve => setTimeout(resolve, 1000))
+      // Small delay then continue to stats
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    queueMessages(STATS_INTRO_MESSAGES)
+      queueMessages(STATS_INTRO_MESSAGES)
 
-    // Now fetch bronze data
-    const bronzeFact = await fetchBronzeHighlight()
+      // Now fetch bronze data
+      const bronzeFact = await fetchBronzeHighlight()
 
-    if (bronzeFact) {
-      setInitialBronzeFact(bronzeFact)
-      const reachValue = bronzeFact.metric_value ?? 0
+      if (bronzeFact) {
+        setInitialBronzeFact(bronzeFact)
+        const reachValue = bronzeFact.metric_value ?? 0
 
-      queueMessages(reachValue === 0 ? buildBronzeNoReachMessages(bronzeFact) : buildBronzeReachMessages(bronzeFact))
-    } else {
-      queueMessages(buildNoBronzeMessages())
-    }
+        queueMessages(
+          reachValue === 0
+            ? buildBronzeNoReachMessages(bronzeFact)
+            : buildBronzeReachMessages(bronzeFact)
+        )
+      } else {
+        queueMessages(buildNoBronzeMessages())
+      }
 
-    await advanceStep()
-  }, [addImmediateMessage, advanceStep, availableAccounts, fetchBronzeHighlight, queueMessages])
+      await advanceStep()
+    },
+    [addImmediateMessage, advanceStep, availableAccounts, fetchBronzeHighlight, queueMessages]
+  )
 
   const handleChoice = useCallback(
     async (action: string) => {
@@ -298,7 +337,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       handleShowClicks,
       handleSkip,
       handleSkipToExplainers,
-      showExplainerBoxes
+      showExplainerBoxes,
     ]
   )
 
@@ -333,7 +372,11 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
         setInitialBronzeFact(bronzeFact)
         const reachValue = bronzeFact.metric_value ?? 0
 
-        queueMessages(reachValue === 0 ? buildBronzeNoReachMessages(bronzeFact) : buildBronzeReachMessages(bronzeFact))
+        queueMessages(
+          reachValue === 0
+            ? buildBronzeNoReachMessages(bronzeFact)
+            : buildBronzeReachMessages(bronzeFact)
+        )
       } else {
         queueMessages(buildNoBronzeMessages())
       }
@@ -344,7 +387,15 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
       queueMessages(INTRO_MESSAGES)
       queueMessages(ACCOUNT_LINK_MESSAGES)
     }
-  }, [advanceStep, fetchBronzeHighlight, loadOnboardingStatus, queueMessages, refreshAccounts, restoreMessages, selectedAccount])
+  }, [
+    advanceStep,
+    fetchBronzeHighlight,
+    loadOnboardingStatus,
+    queueMessages,
+    refreshAccounts,
+    restoreMessages,
+    selectedAccount,
+  ])
 
   useEffect(() => {
     // Start onboarding even without selected account (will show account selector)
@@ -382,7 +433,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     queueMessages,
     resetStreaming,
     streamComplete,
-    streamedText
+    streamedText,
   ])
 
   // Handle streaming errors
@@ -394,7 +445,8 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     // Show error message in chat
     addImmediateMessage({
       type: 'mia',
-      content: "I'm having trouble loading your insights right now. You can try again or explore the insights pages directly."
+      content:
+        "I'm having trouble loading your insights right now. You can try again or explore the insights pages directly.",
     })
 
     setIsStreamingInsight(false)
@@ -410,7 +462,7 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     addImmediateMessage,
     resetStreaming,
     queueMessages,
-    platformsConnected
+    platformsConnected,
   ])
 
   return {
@@ -427,6 +479,6 @@ export const useOnboardingChat = ({ onComplete, onConnectPlatform }: UseOnboardi
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
     handleAccountSelected,
-    selectedAccountName: selectedAccount?.name
+    selectedAccountName: selectedAccount?.name,
   }
 }

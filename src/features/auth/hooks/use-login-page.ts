@@ -34,91 +34,97 @@ export const useLoginPage = ({
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
 
-  const showAuthError = useCallback((fallback: string, error: unknown) => {
-    const detail = error instanceof Error ? error.message : ''
-    showToast('error', detail ? `${fallback}: ${detail}` : fallback)
-  }, [showToast])
+  const showAuthError = useCallback(
+    (fallback: string, error: unknown) => {
+      const detail = error instanceof Error ? error.message : ''
+      showToast('error', detail ? `${fallback}: ${detail}` : fallback)
+    },
+    [showToast]
+  )
 
-  const handleLogin = useCallback(async (method: LoginMethod) => {
-    if (method === 'google') {
+  const handleLogin = useCallback(
+    async (method: LoginMethod) => {
+      if (method === 'google') {
+        try {
+          setIsGoogleLoading(true)
+          setGoogleLoadingMessage('Opening Google sign-in...')
+          onOAuthStart?.()
+          const success = await login(() => onOAuthPopupClosed?.('google'))
+          if (!success) throw new Error('Authentication failed')
+          setGoogleLoadingMessage('Authentication successful!')
+          onAuthSuccess?.()
+        } catch (error) {
+          logger.error('OAuth error:', error)
+          showAuthError('Authentication failed', error)
+          setIsGoogleLoading(false)
+          setGoogleLoadingMessage('')
+          onOAuthPopupClosed?.(null) // Clear app-level loading screen
+        }
+        return
+      }
+
+      if (method === 'meta') {
+        try {
+          setIsMetaLoading(true)
+          setMetaLoadingMessage('Opening Meta sign-in...')
+          onOAuthStart?.()
+          const success = await loginMeta(() => onOAuthPopupClosed?.('meta'))
+          if (!success) throw new Error('Meta authentication failed')
+          setMetaLoadingMessage('Authentication successful!')
+          if (onMetaAuthSuccess) {
+            onMetaAuthSuccess()
+          } else {
+            onAuthSuccess?.()
+          }
+        } catch (error) {
+          logger.error('[META-LOGIN] Error during OAuth:', error)
+          showAuthError('Meta authentication failed', error)
+          setIsMetaLoading(false)
+          setMetaLoadingMessage('')
+          onOAuthPopupClosed?.(null) // Clear app-level loading screen
+        }
+        return
+      }
+
       try {
         setIsGoogleLoading(true)
-        setGoogleLoadingMessage('Opening Google sign-in...')
+        setGoogleLoadingMessage('Checking session...')
+        const authCheck = await checkExistingAuth()
+        if (authCheck) {
+          setGoogleLoadingMessage('Session found! Redirecting...')
+          await refreshAccounts()
+          setTimeout(() => {
+            onAuthSuccess?.()
+            setIsGoogleLoading(false)
+          }, 200)
+          return
+        }
+        setGoogleLoadingMessage('Redirecting to sign in...')
         onOAuthStart?.()
         const success = await login(() => onOAuthPopupClosed?.('google'))
         if (!success) throw new Error('Authentication failed')
         setGoogleLoadingMessage('Authentication successful!')
         onAuthSuccess?.()
       } catch (error) {
-        logger.error('OAuth error:', error)
-        showAuthError('Authentication failed', error)
+        logger.error('[LOGIN] Login failed:', error)
+        showAuthError('Login failed', error)
         setIsGoogleLoading(false)
         setGoogleLoadingMessage('')
         onOAuthPopupClosed?.(null) // Clear app-level loading screen
       }
-      return
-    }
-
-    if (method === 'meta') {
-      try {
-        setIsMetaLoading(true)
-        setMetaLoadingMessage('Opening Meta sign-in...')
-        onOAuthStart?.()
-        const success = await loginMeta(() => onOAuthPopupClosed?.('meta'))
-        if (!success) throw new Error('Meta authentication failed')
-        setMetaLoadingMessage('Authentication successful!')
-        if (onMetaAuthSuccess) {
-          onMetaAuthSuccess()
-        } else {
-          onAuthSuccess?.()
-        }
-      } catch (error) {
-        logger.error('[META-LOGIN] Error during OAuth:', error)
-        showAuthError('Meta authentication failed', error)
-        setIsMetaLoading(false)
-        setMetaLoadingMessage('')
-        onOAuthPopupClosed?.(null) // Clear app-level loading screen
-      }
-      return
-    }
-
-    try {
-      setIsGoogleLoading(true)
-      setGoogleLoadingMessage('Checking session...')
-      const authCheck = await checkExistingAuth()
-      if (authCheck) {
-        setGoogleLoadingMessage('Session found! Redirecting...')
-        await refreshAccounts()
-        setTimeout(() => {
-          onAuthSuccess?.()
-          setIsGoogleLoading(false)
-        }, 200)
-        return
-      }
-      setGoogleLoadingMessage('Redirecting to sign in...')
-      onOAuthStart?.()
-      const success = await login(() => onOAuthPopupClosed?.('google'))
-      if (!success) throw new Error('Authentication failed')
-      setGoogleLoadingMessage('Authentication successful!')
-      onAuthSuccess?.()
-    } catch (error) {
-      logger.error('[LOGIN] Login failed:', error)
-      showAuthError('Login failed', error)
-      setIsGoogleLoading(false)
-      setGoogleLoadingMessage('')
-      onOAuthPopupClosed?.(null) // Clear app-level loading screen
-    }
-  }, [
-    checkExistingAuth,
-    login,
-    loginMeta,
-    onAuthSuccess,
-    onMetaAuthSuccess,
-    onOAuthPopupClosed,
-    onOAuthStart,
-    refreshAccounts,
-    showAuthError,
-  ])
+    },
+    [
+      checkExistingAuth,
+      login,
+      loginMeta,
+      onAuthSuccess,
+      onMetaAuthSuccess,
+      onOAuthPopupClosed,
+      onOAuthStart,
+      refreshAccounts,
+      showAuthError,
+    ]
+  )
 
   return {
     isBusy: isGoogleLoading || isMetaLoading,

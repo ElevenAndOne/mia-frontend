@@ -8,7 +8,9 @@ export interface IntegrationStatusData {
   linkedGA4Properties: LinkedGA4Property[]
 }
 
-const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean>>): PlatformStatus => {
+const buildPlatformStatus = (
+  flags: Partial<Record<keyof PlatformStatus, boolean>>
+): PlatformStatus => {
   const now = new Date().toISOString()
   return {
     google: { connected: Boolean(flags.google), linked: Boolean(flags.google), last_synced: now },
@@ -20,10 +22,26 @@ const buildPlatformStatus = (flags: Partial<Record<keyof PlatformStatus, boolean
       last_synced: now,
     },
     brevo: { connected: Boolean(flags.brevo), linked: Boolean(flags.brevo), last_synced: now },
-    hubspot: { connected: Boolean(flags.hubspot), linked: Boolean(flags.hubspot), last_synced: now },
-    mailchimp: { connected: Boolean(flags.mailchimp), linked: Boolean(flags.mailchimp), last_synced: now },
-    linkedin_ads: { connected: Boolean(flags.linkedin_ads), linked: Boolean(flags.linkedin_ads), last_synced: now },
-    airtable: { connected: Boolean(flags.airtable), linked: Boolean(flags.airtable), last_synced: now },
+    hubspot: {
+      connected: Boolean(flags.hubspot),
+      linked: Boolean(flags.hubspot),
+      last_synced: now,
+    },
+    mailchimp: {
+      connected: Boolean(flags.mailchimp),
+      linked: Boolean(flags.mailchimp),
+      last_synced: now,
+    },
+    linkedin_ads: {
+      connected: Boolean(flags.linkedin_ads),
+      linked: Boolean(flags.linkedin_ads),
+      last_synced: now,
+    },
+    airtable: {
+      connected: Boolean(flags.airtable),
+      linked: Boolean(flags.airtable),
+      last_synced: now,
+    },
   }
 }
 
@@ -52,7 +70,7 @@ const mergePlatformStatus = (
 
   const tenantOrAccount = (
     accountField: string | null | undefined,
-    tenantEntry: { connected: boolean } | undefined,
+    tenantEntry: { connected: boolean } | undefined
   ) => {
     const isConnected = Boolean(accountField) || Boolean(tenantEntry?.connected)
     return isConnected
@@ -77,7 +95,7 @@ const mergePlatformStatus = (
 
 export const fetchTenantIntegrationStatus = async (
   sessionId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<IntegrationStatusData | null> => {
   const response = await apiFetch(`/api/tenants/${tenantId}/integrations`, {
     headers: { 'X-Session-ID': sessionId },
@@ -110,7 +128,7 @@ export const fetchTenantIntegrationStatus = async (
 
 export const fetchAccountIntegrationStatus = async (
   sessionId: string,
-  selectedAccountId?: string | number,
+  selectedAccountId?: string | number
 ): Promise<IntegrationStatusData> => {
   const accountsResponse = await apiFetch('/api/accounts/available', {
     headers: { 'X-Session-ID': sessionId },
@@ -132,7 +150,8 @@ export const fetchAccountIntegrationStatus = async (
       // If selectedAccount is stale (pointing to a previous workspace), find() returns undefined
       // and we still want the current workspace's account rather than null.
       const account = selectedAccountId
-        ? (accountsData.accounts.find((acc: AccountData) => acc.id === selectedAccountId) ?? accountsData.accounts[0])
+        ? (accountsData.accounts.find((acc: AccountData) => acc.id === selectedAccountId) ??
+          accountsData.accounts[0])
         : accountsData.accounts[0]
 
       if (account) {
@@ -162,7 +181,7 @@ export const fetchAccountIntegrationStatus = async (
 export const fetchIntegrationStatus = async (
   sessionId: string,
   selectedAccountId?: string | number,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<IntegrationStatusData> => {
   // FEB 2026 FIX: Always fetch account data for linked_ga4_properties, ga4_property_id, etc.
   // The tenant endpoint only returns platform connection status, not the actual account-level data

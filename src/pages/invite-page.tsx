@@ -16,10 +16,26 @@ interface InvitePageProps {
 const InvitePage = ({ onAccepted }: InvitePageProps) => {
   const navigate = useNavigate()
   const { inviteId } = useParams<{ inviteId: string }>()
-  const { isAuthenticated, isMetaAuthenticated, isLoading: sessionLoading, sessionId, user, login } = useSession()
+  const {
+    isAuthenticated,
+    isMetaAuthenticated,
+    isLoading: sessionLoading,
+    sessionId,
+    user,
+    login,
+  } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
-  logger.log('[INVITE-PAGE] Component rendering - inviteId:', inviteId, 'sessionLoading:', sessionLoading, 'isAnyAuth:', isAnyAuthenticated, 'path:', window.location.pathname)
+  logger.log(
+    '[INVITE-PAGE] Component rendering - inviteId:',
+    inviteId,
+    'sessionLoading:',
+    sessionLoading,
+    'isAnyAuth:',
+    isAnyAuthenticated,
+    'path:',
+    window.location.pathname
+  )
 
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
@@ -89,8 +105,18 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-error-secondary flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-8 h-8 text-error"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
           <h1 className="title-h6 text-primary mb-2">Invalid Invite</h1>
@@ -111,13 +137,24 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-utility-info-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-utility-info-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <svg
+              className="w-8 h-8 text-utility-info-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
           </div>
           <h1 className="title-h6 text-primary mb-2">Sign In Required</h1>
           <p className="paragraph-sm text-tertiary mb-6">
-            Please sign in to accept this invite and join <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
+            Please sign in to accept this invite and join{' '}
+            <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
           </p>
           <button
             onClick={handleSignIn}
@@ -144,12 +181,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-utility-info-500 to-utility-purple-600 flex items-center justify-center label-lg text-primary-onbrand mx-auto mb-4">
             {inviteDetails?.tenant_name?.charAt(0).toUpperCase()}
           </div>
-          <h1 className="title-h5 text-primary mb-1">
-            Join {inviteDetails?.tenant_name}
-          </h1>
-          <p className="paragraph-sm text-quaternary">
-            You've been invited to collaborate
-          </p>
+          <h1 className="title-h5 text-primary mb-1">Join {inviteDetails?.tenant_name}</h1>
+          <p className="paragraph-sm text-quaternary">You've been invited to collaborate</p>
         </div>
 
         {/* Role info */}
@@ -157,9 +190,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           <div className="flex flex-col items-center gap-4">
             <WorkspaceRoleIcon role={inviteDetails?.role || ''} variant="badge" size="lg" />
             <div>
-              <p className="label-md text-primary capitalize">
-                {inviteDetails?.role} Role
-              </p>
+              <p className="label-md text-primary capitalize">{inviteDetails?.role} Role</p>
               <p className="paragraph-sm text-tertiary">
                 {getWorkspaceRoleDescription(inviteDetails?.role || '')}
               </p>

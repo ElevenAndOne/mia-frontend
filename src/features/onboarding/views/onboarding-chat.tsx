@@ -25,7 +25,7 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
     handleMetaAccountLinked,
     handleGoogleAccountLinked,
     handleAccountSelected,
-    selectedAccountName
+    selectedAccountName,
   } = useOnboardingChat({ onComplete, onConnectPlatform })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -36,7 +36,11 @@ const OnboardingChat = ({ onComplete, onConnectPlatform }: OnboardingChatProps) 
 
   return (
     <div className="flex flex-col h-full bg-primary">
-      <ChatHeader current={currentProgress} total={4} onManageIntegrations={handleGoToIntegrations} />
+      <ChatHeader
+        current={currentProgress}
+        total={4}
+        onManageIntegrations={handleGoToIntegrations}
+      />
 
       <ChatMessageList
         messages={displayedMessages}

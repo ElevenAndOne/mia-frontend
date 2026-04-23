@@ -59,7 +59,7 @@ export function useSelectorState<TId extends string | number = string>({
     setSuccess(false)
   }, [])
 
-  const withSubmitting = useCallback(async <R,>(fn: () => Promise<R>): Promise<R | undefined> => {
+  const withSubmitting = useCallback(async <R>(fn: () => Promise<R>): Promise<R | undefined> => {
     setIsSubmitting(true)
     setError(null)
     try {
@@ -75,6 +75,14 @@ export function useSelectorState<TId extends string | number = string>({
 
   return [
     { selectedId, isLoading, isSubmitting, error, success },
-    { setSelectedId, setIsLoading, setError, handleSuccess, handleClose, resetState, withSubmitting },
+    {
+      setSelectedId,
+      setIsLoading,
+      setError,
+      handleSuccess,
+      handleClose,
+      resetState,
+      withSubmitting,
+    },
   ]
 }

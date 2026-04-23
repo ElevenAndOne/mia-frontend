@@ -8,7 +8,7 @@ type BronzeCardProps = BronzeCardData
 const PLATFORM_STYLES: Record<string, { iconBg: string }> = {
   google_ads: { iconBg: 'bg-primary' },
   meta_ads: { iconBg: 'bg-primary' },
-  ga4: { iconBg: 'bg-primary' }
+  ga4: { iconBg: 'bg-primary' },
 }
 
 const VARIANT_STYLES = {
@@ -16,24 +16,32 @@ const VARIANT_STYLES = {
     bg: 'bg-linear-to-br from-utility-teal-100 to-utility-success-200',
     border: 'border-utility-teal-200',
     badgeBg: 'bg-utility-teal-100',
-    badgeText: 'text-utility-teal-700'
+    badgeText: 'text-utility-teal-700',
   },
   secondary: {
     bg: 'bg-linear-to-br from-utility-info-100 to-utility-info-200',
     border: 'border-utility-info-300',
     badgeBg: 'bg-utility-info-200',
-    badgeText: 'text-utility-info-700'
-  }
+    badgeText: 'text-utility-info-700',
+  },
 }
 
-export const BronzeCard = ({ platform, headline, metricValue, metricLabel, secondaryMetric, variant = 'primary' }: BronzeCardProps) => {
+export const BronzeCard = ({
+  platform,
+  headline,
+  metricValue,
+  metricLabel,
+  secondaryMetric,
+  variant = 'primary',
+}: BronzeCardProps) => {
   const styles = VARIANT_STYLES[variant]
   const platformConfig = PLATFORM_STYLES[platform] || PLATFORM_STYLES.google_ads
-  const formattedValue = typeof metricValue === 'number'
-    ? Number.isInteger(metricValue)
-      ? metricValue.toLocaleString()
-      : metricValue.toLocaleString(undefined, { maximumFractionDigits: 2 })
-    : metricValue
+  const formattedValue =
+    typeof metricValue === 'number'
+      ? Number.isInteger(metricValue)
+        ? metricValue.toLocaleString()
+        : metricValue.toLocaleString(undefined, { maximumFractionDigits: 2 })
+      : metricValue
 
   return (
     <motion.div

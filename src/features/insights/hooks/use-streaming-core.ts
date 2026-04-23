@@ -27,10 +27,7 @@ export interface UseStreamingCoreReturn {
   state: StreamingState
   stopStreaming: () => void
   reset: () => void
-  processSSEStream: (
-    url: string,
-    options: RequestInit
-  ) => Promise<void>
+  processSSEStream: (url: string, options: RequestInit) => Promise<void>
 }
 
 // Reveal interval in ms — ~25 ticks/sec. Each tick triggers a React render,
@@ -47,7 +44,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     text: '',
     isStreaming: false,
     isComplete: false,
-    error: null
+    error: null,
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -89,18 +86,18 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         // Fixed step per tick for consistent, smooth text flow
         displayIndexRef.current = Math.min(current + CHARS_PER_TICK, target)
 
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          text: receivedRef.current.slice(0, displayIndexRef.current)
+          text: receivedRef.current.slice(0, displayIndexRef.current),
         }))
       } else if (streamDoneRef.current) {
         // All text revealed and stream is done — signal completion
         clearRevealInterval()
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           text: receivedRef.current,
           isStreaming: false,
-          isComplete: true
+          isComplete: true,
         }))
       }
       // If current === target but stream not done, interval keeps running
@@ -124,7 +121,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
       text: '',
       isStreaming: false,
       isComplete: false,
-      error: null
+      error: null,
     })
   }, [clearRevealInterval])
 
@@ -137,133 +134,133 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     // Immediately show all received text
     clearRevealInterval()
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       text: receivedRef.current,
-      isStreaming: false
+      isStreaming: false,
     }))
   }, [clearRevealInterval])
 
-  const processSSEStream = useCallback(async (
-    url: string,
-    options: RequestInit
-  ) => {
-    // Reset state
-    receivedRef.current = ''
-    displayIndexRef.current = 0
-    streamDoneRef.current = false
+  const processSSEStream = useCallback(
+    async (url: string, options: RequestInit) => {
+      // Reset state
+      receivedRef.current = ''
+      displayIndexRef.current = 0
+      streamDoneRef.current = false
 
-    setState({
-      text: '',
-      isStreaming: true,
-      isComplete: false,
-      error: null
-    })
-
-    abortControllerRef.current = new AbortController()
-
-    // Optional timeout
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
-    if (timeout) {
-      timeoutId = setTimeout(() => {
-        abortControllerRef.current?.abort()
-      }, timeout)
-    }
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: abortControllerRef.current.signal
+      setState({
+        text: '',
+        isStreaming: true,
+        isComplete: false,
+        error: null,
       })
 
-      if (timeoutId) clearTimeout(timeoutId)
+      abortControllerRef.current = new AbortController()
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      // Optional timeout
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      if (timeout) {
+        timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort()
+        }, timeout)
       }
 
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('No response body')
-      }
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: abortControllerRef.current.signal,
+        })
 
-      const decoder = new TextDecoder()
-      let buffer = ''
+        if (timeoutId) clearTimeout(timeoutId)
 
-      // Start the smooth reveal interval
-      startRevealLoop()
-
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) {
-          streamDoneRef.current = true
-          break
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
 
-        buffer += decoder.decode(value, { stream: true })
-        const messages = buffer.split('\n\n')
-        buffer = messages.pop() || ''
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error('No response body')
+        }
 
-        for (const message of messages) {
-          if (message.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(message.slice(6))
-              if (parsed.text) {
-                // Just accumulate — the reveal interval handles display pacing
-                receivedRef.current += parsed.text
-              } else if (parsed.done) {
-                streamDoneRef.current = true
-              } else if (parsed.error) {
-                streamDoneRef.current = true
-                clearRevealInterval()
-                setState(prev => ({
-                  ...prev,
-                  text: receivedRef.current,
-                  isStreaming: false,
-                  error: parsed.error
-                }))
-                return
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        // Start the smooth reveal interval
+        startRevealLoop()
+
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) {
+            streamDoneRef.current = true
+            break
+          }
+
+          buffer += decoder.decode(value, { stream: true })
+          const messages = buffer.split('\n\n')
+          buffer = messages.pop() || ''
+
+          for (const message of messages) {
+            if (message.startsWith('data: ')) {
+              try {
+                const parsed = JSON.parse(message.slice(6))
+                if (parsed.text) {
+                  // Just accumulate — the reveal interval handles display pacing
+                  receivedRef.current += parsed.text
+                } else if (parsed.done) {
+                  streamDoneRef.current = true
+                } else if (parsed.error) {
+                  streamDoneRef.current = true
+                  clearRevealInterval()
+                  setState((prev) => ({
+                    ...prev,
+                    text: receivedRef.current,
+                    isStreaming: false,
+                    error: parsed.error,
+                  }))
+                  return
+                }
+              } catch {
+                // Ignore JSON parse errors
               }
-            } catch {
-              // Ignore JSON parse errors
             }
           }
         }
-      }
-    } catch (error) {
-      if (timeoutId) clearTimeout(timeoutId)
-      streamDoneRef.current = true
-      clearRevealInterval()
+      } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId)
+        streamDoneRef.current = true
+        clearRevealInterval()
 
-      if (error instanceof Error && error.name === 'AbortError') {
-        if (timeout && receivedRef.current.length === 0) {
-          setState(prev => ({
+        if (error instanceof Error && error.name === 'AbortError') {
+          if (timeout && receivedRef.current.length === 0) {
+            setState((prev) => ({
+              ...prev,
+              isStreaming: false,
+              error: 'Request timed out. Please try again.',
+            }))
+          } else {
+            setState((prev) => ({
+              ...prev,
+              text: receivedRef.current,
+              isStreaming: false,
+            }))
+          }
+        } else {
+          setState((prev) => ({
             ...prev,
             isStreaming: false,
-            error: 'Request timed out. Please try again.'
-          }))
-        } else {
-          setState(prev => ({
-            ...prev,
-            text: receivedRef.current,
-            isStreaming: false
+            error: error instanceof Error ? error.message : 'Unknown error',
           }))
         }
-      } else {
-        setState(prev => ({
-          ...prev,
-          isStreaming: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }))
       }
-    }
-  }, [timeout, startRevealLoop, clearRevealInterval])
+    },
+    [timeout, startRevealLoop, clearRevealInterval]
+  )
 
   return {
     state,
     stopStreaming,
     reset,
-    processSSEStream
+    processSSEStream,
   }
 }

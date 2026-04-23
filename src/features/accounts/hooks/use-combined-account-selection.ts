@@ -9,7 +9,9 @@ interface UseCombinedAccountSelectionParams {
   onAccountSelected: () => void
 }
 
-export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAccountSelectionParams) => {
+export const useCombinedAccountSelection = ({
+  onAccountSelected,
+}: UseCombinedAccountSelectionParams) => {
   const {
     availableAccounts,
     selectAccount,
@@ -49,38 +51,45 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
     }
   }, [selectedMcc, availableAccounts.length, refreshAccounts])
 
-  const handleAccountSelect = useCallback(async (accountId: string) => {
-    if (selectingAccountId) return
-    setSelectingAccountId(accountId)
-    clearError()
+  const handleAccountSelect = useCallback(
+    async (accountId: string) => {
+      if (selectingAccountId) return
+      setSelectingAccountId(accountId)
+      clearError()
 
-    try {
-      const success = await selectAccount(accountId)
-      if (success) onAccountSelected()
-    } catch (err) {
-      logger.error('[ACCOUNT-SELECTION] Error selecting account:', err)
-    } finally {
-      setSelectingAccountId(null)
-    }
-  }, [selectingAccountId, clearError, selectAccount, onAccountSelected])
+      try {
+        const success = await selectAccount(accountId)
+        if (success) onAccountSelected()
+      } catch (err) {
+        logger.error('[ACCOUNT-SELECTION] Error selecting account:', err)
+      } finally {
+        setSelectingAccountId(null)
+      }
+    },
+    [selectingAccountId, clearError, selectAccount, onAccountSelected]
+  )
 
-  const buildAccountItem = useCallback((account: AccountMapping, detail: string, iconOverride?: string): AccountSelectionItem => {
-    return {
-      id: account.id,
-      name: account.name,
-      detail,
-      icon: iconOverride ?? getAccountIcon(account.business_type),
-      iconBackground: account.color || 'var(--background-color-quaternary)',
-      isSelecting: selectingAccountId === account.id,
-      disabled: Boolean(selectingAccountId && selectingAccountId !== account.id),
-    }
-  }, [selectingAccountId])
+  const buildAccountItem = useCallback(
+    (account: AccountMapping, detail: string, iconOverride?: string): AccountSelectionItem => {
+      return {
+        id: account.id,
+        name: account.name,
+        detail,
+        icon: iconOverride ?? getAccountIcon(account.business_type),
+        iconBackground: account.color || 'var(--background-color-quaternary)',
+        isSelecting: selectingAccountId === account.id,
+        disabled: Boolean(selectingAccountId && selectingAccountId !== account.id),
+      }
+    },
+    [selectingAccountId]
+  )
 
   const mccItems = useMemo<MccSelectionItem[]>(() => {
     return mccAccounts.map((mcc) => {
-      const subAccounts = availableAccounts.filter((account) =>
-        mcc.sub_account_ids?.includes(account.google_ads_id || '') &&
-        account.google_ads_account_type !== 'mcc'
+      const subAccounts = availableAccounts.filter(
+        (account) =>
+          mcc.sub_account_ids?.includes(account.google_ads_id || '') &&
+          account.google_ads_account_type !== 'mcc'
       )
 
       return {
@@ -97,18 +106,25 @@ export const useCombinedAccountSelection = ({ onAccountSelected }: UseCombinedAc
 
   const standaloneAccounts = useMemo<AccountSelectionItem[]>(() => {
     return availableAccounts
-      .filter((account) =>
-        account.google_ads_account_type === 'standalone' &&
-        (account.id.startsWith('google_') || account.id.startsWith('user_'))
+      .filter(
+        (account) =>
+          account.google_ads_account_type === 'standalone' &&
+          (account.id.startsWith('google_') || account.id.startsWith('user_'))
       )
-      .map((account) => buildAccountItem(account, `Standalone Account • Ads: ${account.google_ads_id}`))
+      .map((account) =>
+        buildAccountItem(account, `Standalone Account • Ads: ${account.google_ads_id}`)
+      )
   }, [availableAccounts, buildAccountItem])
 
   const directAccounts = useMemo<AccountSelectionItem[]>(() => {
     return availableAccounts
       .filter((account) => {
         if (account.google_ads_account_type === 'mcc') return false
-        return account.id.startsWith('google_') || account.id.startsWith('user_') || account.id.startsWith('meta_')
+        return (
+          account.id.startsWith('google_') ||
+          account.id.startsWith('user_') ||
+          account.id.startsWith('meta_')
+        )
       })
       .map((account) => {
         const detail = account.google_ads_id

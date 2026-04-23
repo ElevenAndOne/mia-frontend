@@ -13,7 +13,7 @@ export const useAppChromeEffects = () => {
   }, [location.pathname])
 
   useEffect(() => {
-    CRITICAL_PRELOAD_IMAGES.forEach(src => {
+    CRITICAL_PRELOAD_IMAGES.forEach((src) => {
       const link = document.createElement('link')
       link.rel = 'preload'
       link.as = 'image'

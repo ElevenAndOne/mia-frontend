@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchGoldInsights, triggerGoldRefresh, type GoldInsightsResponse } from '../services/gold-service'
+import {
+  fetchGoldInsights,
+  triggerGoldRefresh,
+  type GoldInsightsResponse,
+} from '../services/gold-service'
 
 export const useGoldInsights = (sessionId: string | null) => {
   const [data, setData] = useState<GoldInsightsResponse | null>(null)

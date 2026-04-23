@@ -16,7 +16,11 @@ function GoogleIcon() {
   )
 }
 
-const GoogleAccountLinkSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountLinkSelectorProps) => {
+const GoogleAccountLinkSelector = ({
+  isOpen,
+  onClose,
+  onSuccess,
+}: GoogleAccountLinkSelectorProps) => {
   const {
     isLoading,
     isSubmitting,

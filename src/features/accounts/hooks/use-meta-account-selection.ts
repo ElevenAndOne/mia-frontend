@@ -23,8 +23,8 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
   const hasFetchedRef = useRef(false)
 
   const metaAccounts = useMemo(() => {
-    return availableAccounts.filter((account) =>
-      account.id.startsWith('meta_') || (account.meta_ads_id && !account.google_ads_id)
+    return availableAccounts.filter(
+      (account) => account.id.startsWith('meta_') || (account.meta_ads_id && !account.google_ads_id)
     )
   }, [availableAccounts])
 
@@ -62,26 +62,29 @@ export const useMetaAccountSelection = ({ onAccountSelected }: UseMetaAccountSel
     }
   }, [availableAccounts.length, isFetchingAccounts])
 
-  const handleAccountSelect = useCallback(async (accountId: string) => {
-    if (selectingAccountId) return
+  const handleAccountSelect = useCallback(
+    async (accountId: string) => {
+      if (selectingAccountId) return
 
-    setSelectingAccountId(accountId)
-    clearError()
+      setSelectingAccountId(accountId)
+      clearError()
 
-    try {
-      const success = await selectAccount(accountId)
-      if (success) {
-        onAccountSelected()
-      } else {
-        throw new Error('Failed to select account')
+      try {
+        const success = await selectAccount(accountId)
+        if (success) {
+          onAccountSelected()
+        } else {
+          throw new Error('Failed to select account')
+        }
+      } catch (err) {
+        logger.error('[META-ACCOUNT-SELECTION] Error selecting account:', err)
+        setFetchError(err instanceof Error ? err.message : 'Failed to select account')
+      } finally {
+        setSelectingAccountId(null)
       }
-    } catch (err) {
-      logger.error('[META-ACCOUNT-SELECTION] Error selecting account:', err)
-      setFetchError(err instanceof Error ? err.message : 'Failed to select account')
-    } finally {
-      setSelectingAccountId(null)
-    }
-  }, [selectingAccountId, clearError, selectAccount, onAccountSelected])
+    },
+    [selectingAccountId, clearError, selectAccount, onAccountSelected]
+  )
 
   const errorMessage = error || fetchError
   const isPageLoading = isFetchingAccounts || (isLoading && metaAccounts.length === 0)

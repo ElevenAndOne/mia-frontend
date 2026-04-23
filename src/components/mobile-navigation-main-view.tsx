@@ -56,7 +56,10 @@ export const MobileNavigationMainView = ({
       <div className="p-4 space-y-2">
         {onNewWorkspace && (
           <button
-            onClick={() => { onClose(); onNewWorkspace() }}
+            onClick={() => {
+              onClose()
+              onNewWorkspace()
+            }}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.plus size={20} className="text-tertiary" />
@@ -74,7 +77,10 @@ export const MobileNavigationMainView = ({
 
         {onCampaignsClick && (
           <button
-            onClick={() => { onClose(); onCampaignsClick() }}
+            onClick={() => {
+              onClose()
+              onCampaignsClick()
+            }}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Icon.target_01 size={20} className="text-tertiary" />
@@ -132,8 +138,13 @@ export const MobileNavigationMainView = ({
                 {activeWorkspace.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="paragraph-sm text-primary font-medium truncate">{activeWorkspace.name}</p>
-                <p className="paragraph-xs text-quaternary">{activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0} platforms</p>
+                <p className="paragraph-sm text-primary font-medium truncate">
+                  {activeWorkspace.name}
+                </p>
+                <p className="paragraph-xs text-quaternary">
+                  {activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0}{' '}
+                  platforms
+                </p>
               </div>
               <Icon.check size={18} className="text-success shrink-0" />
             </div>

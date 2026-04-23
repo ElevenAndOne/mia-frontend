@@ -14,7 +14,7 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
   maxAttempts: 3,
   baseDelay: 1000,
   maxDelay: 10000,
-  shouldRetry: () => true
+  shouldRetry: () => true,
 }
 
 /**
@@ -24,13 +24,10 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
  * @returns The result of the function
  * @throws The last error if all retries fail
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const { maxAttempts, baseDelay, maxDelay, shouldRetry } = {
     ...DEFAULT_OPTIONS,
-    ...options
+    ...options,
   }
 
   let lastError: unknown
@@ -46,13 +43,10 @@ export async function withRetry<T>(
       }
 
       // Exponential backoff with jitter
-      const delay = Math.min(
-        baseDelay * Math.pow(2, attempt - 1) + Math.random() * 100,
-        maxDelay
-      )
+      const delay = Math.min(baseDelay * Math.pow(2, attempt - 1) + Math.random() * 100, maxDelay)
 
       logger.log(`[Retry] Attempt ${attempt} failed, retrying in ${Math.round(delay)}ms...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
+      await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 
@@ -72,11 +66,13 @@ export function isRetryableError(error: unknown): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase()
     // Retry on server errors (5xx) and timeouts
-    if (message.includes('500') ||
-        message.includes('502') ||
-        message.includes('503') ||
-        message.includes('504') ||
-        message.includes('timeout')) {
+    if (
+      message.includes('500') ||
+      message.includes('502') ||
+      message.includes('503') ||
+      message.includes('504') ||
+      message.includes('timeout')
+    ) {
       return true
     }
   }

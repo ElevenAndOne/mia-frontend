@@ -48,7 +48,15 @@ const PlatformGearMenu = ({
   const supportsMultiAccount = ['brevo', 'hubspot', 'mailchimp'].includes(platformId)
 
   // OAuth platforms that support reconnecting (to refresh credentials / link to workspace)
-  const supportsReconnect = ['google', 'meta', 'ga4', 'hubspot', 'mailchimp', 'linkedin_ads', 'airtable'].includes(platformId)
+  const supportsReconnect = [
+    'google',
+    'meta',
+    'ga4',
+    'hubspot',
+    'mailchimp',
+    'linkedin_ads',
+    'airtable',
+  ].includes(platformId)
 
   // All platforms can be disconnected, including Google Ads
   // This allows users to clear invalid connections (e.g., when google_ads_id is set but no valid account exists)
@@ -139,7 +147,7 @@ const PlatformGearMenu = ({
   return (
     <div className="relative">
       {/* Gear Icon Button */}
-      <IconButton 
+      <IconButton
         ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation()
@@ -148,8 +156,9 @@ const PlatformGearMenu = ({
         className="w-5 h-5 text-primary hover:opacity-70 transition-opacity"
         aria-label={`${platformName} options`}
         title={`${platformName} options`}
-        disabled={isDisconnecting}>
-          <Icon.dots_vertical />
+        disabled={isDisconnecting}
+      >
+        <Icon.dots_vertical />
       </IconButton>
 
       {/* Dropdown Menu */}
@@ -171,7 +180,8 @@ const PlatformGearMenu = ({
       >
         <h3 className="label-bg text-primary mb-2">Disconnect {platformName}?</h3>
         <p className="paragraph-sm text-tertiary mb-4">
-          This will remove your credentials. You'll need to re-authenticate to use {platformName} again.
+          This will remove your credentials. You'll need to re-authenticate to use {platformName}{' '}
+          again.
         </p>
         <div className="flex gap-3">
           <button
