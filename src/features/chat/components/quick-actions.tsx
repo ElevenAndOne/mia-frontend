@@ -114,6 +114,40 @@ export const QuickActions = ({
           </div>
         </div>
       </button>
+
+      {/* Strategise — full-width, purple accent, Pro badge */}
+      <button
+        onClick={() => onAction('strategise')}
+        disabled={disabled}
+        className={`flex flex-col items-start gap-1 px-3 py-3 rounded-xl border text-left transition-all w-full ${
+          disabled
+            ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
+            : 'bg-primary border-brand-300 hover:border-brand-400 hover:shadow-sm active:scale-[0.98]'
+        }`}
+      >
+        <div className="flex items-center gap-2 w-full">
+          <div
+            className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-brand-600'}`}
+          >
+            <Icon.bar_chart_01 size={20} />
+          </div>
+          <div className={`subheading-md ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+            Strategise
+          </div>
+          {!disabled && (
+            <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-brand-100 text-brand-700">
+              Pro
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div
+            className={`paragraph-xs mt-0.5 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+          >
+            Optimise budget allocation across your RACE campaign.
+          </div>
+        </div>
+      </button>
     </div>
   )
 }

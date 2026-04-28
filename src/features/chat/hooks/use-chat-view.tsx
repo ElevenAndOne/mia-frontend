@@ -290,6 +290,9 @@ export const useChatView = () => {
         case 'predict':
           navigate('/insights/predict')
           break
+        case 'strategise':
+          navigate('/strategise')
+          break
       }
     },
     [navigate, selectedPlatforms, dateRange]
