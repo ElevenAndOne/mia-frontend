@@ -93,13 +93,16 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
   const resolvedDates = campaign ? resolveDates(dateRange, campaign.start_date) : null
   const { startDate, endDate } = resolvedDates ?? { startDate: null, endDate: null }
 
-  // Pre-populate actualsMap from cache for all phases we already have
+  // Pre-populate actualsMap from cache for all phases we already have.
+  // Use the resolved dates so we pre-populate the right cache key — if dateRange is
+  // "30d" we must NOT populate from a previously cached "Since launch" entry.
   const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(
     () => {
       if (!cachedOnMount || !tenantId) return {}
+      const { startDate: initStart, endDate: initEnd } = resolveDates(dateRange, cachedOnMount.start_date)
       const map: Record<string, KPIActual[] | 'loading' | 'error'> = {}
       for (const phase of cachedOnMount.phases) {
-        const cached = getCachedActuals(tenantId, cachedOnMount.campaign_id, phase.phase_name)
+        const cached = getCachedActuals(tenantId, cachedOnMount.campaign_id, phase.phase_name, initStart, initEnd)
         if (cached !== undefined && cached !== null) map[phase.phase_name] = cached
       }
       return map
@@ -145,10 +148,12 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
           data.phases.find((p) => p.status === 'active')?.phase_name ||
           data.phases[0]?.phase_name
         setSelectedPhase((prev) => prev ?? defaultPhase ?? null)
-        // Pre-populate actualsMap from JS/sessionStorage cache for all phases
+        // Pre-populate actualsMap from JS/sessionStorage cache for all phases.
+        // Use resolved dates so we don't pull a wrong-range entry into the map.
+        const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date)
         const cached: Record<string, KPIActual[]> = {}
         for (const phase of data.phases) {
-          const hit = getCachedActuals(tenantId, data.campaign_id, phase.phase_name)
+          const hit = getCachedActuals(tenantId, data.campaign_id, phase.phase_name, fetchStart, fetchEnd)
           if (hit !== undefined && hit !== null) cached[phase.phase_name] = hit
         }
         if (Object.keys(cached).length > 0) {
