@@ -255,7 +255,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
   const actualsData = Array.isArray(actuals) ? actuals : null
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-3xl mx-auto px-4">
       <div className="rounded-xl border border-secondary bg-primary overflow-hidden">
         {/* Header */}
         <div className="px-3 pt-3 pb-2 flex items-center justify-between">

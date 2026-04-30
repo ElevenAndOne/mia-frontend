@@ -127,7 +127,7 @@ export const ChatView = ({
         {!hasMessages ? (
           <>
             <ChatEmptyState userName={userName}>
-              <div className="w-full flex flex-col gap-2 pb-4">
+              <div className="w-full flex flex-col gap-3 pb-4">
                 <QuickActions
                   onAction={handleQuickAction}
                   disabled={isLoading || !hasSelectedPlatforms}

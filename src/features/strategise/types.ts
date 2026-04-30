@@ -69,6 +69,7 @@ export interface PhaseAllocation {
   campaign_id: string
   name: string
   stage: string
+  channel?: string | null
   allocated_budget: number
   min_budget?: number
   max_budget?: number
@@ -99,10 +100,13 @@ export interface ScenarioResult {
 
 export interface CoefficientSummary {
   phase: string
+  channel?: string
   kpi: string
   coefficient: number
   confidence: number
   source: string
+  observed_spend?: number | null
+  observed_kpi?: number | null
 }
 
 export interface SolverResult {
@@ -134,6 +138,7 @@ export interface OptimizerRunResult {
   allocated_budget: number
   unallocated_budget: number
   objective_value: number
+  objective_type: string
   result: SolverResult
   scenarios: ScenarioResult[]
   coefficient_summary: CoefficientSummary[]
@@ -159,4 +164,21 @@ export interface RunParams {
   objective_type: ObjectiveType
   planning_period: string
   currency: string
+  constraint_overrides?: ParsedConstraints | null
+  onboarding_transcript?: Array<{ role: string; content: string }> | null
 }
+
+export interface ParsedConstraints {
+  stage_minimum_percentages: Record<string, number>
+  stage_maximum_percentages: Record<string, number>
+  locked_phases: Array<{ phase_id: string; budget: number }>
+  notes: string
+  raw_text: string
+}
+
+export interface RunAnalysis {
+  narrative: string
+  recommendations: string[]
+}
+
+export type ObjectiveAvailability = 'available' | 'needs-targets' | 'needs-revenue'

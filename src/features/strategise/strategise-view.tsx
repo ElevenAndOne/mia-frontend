@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -11,6 +11,8 @@ import type {
   ObjectiveType,
   OptimizerRunResult,
   OptimizerRunSummary,
+  ParsedConstraints,
+  RunAnalysis,
   ScenarioResult,
 } from './types'
 
@@ -23,7 +25,9 @@ interface StrategiseViewProps {
 function fmtCurrency(amount: number | null | undefined, currency = 'ZAR'): string {
   if (amount == null) return '—'
   const sym = currency === 'ZAR' ? 'R' : `${currency} `
-  return `${sym}${amount.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
+  // Normalize -0 (returned by optimizer for disabled campaigns) to 0
+  const normalized = amount === 0 ? 0 : amount
+  return `${sym}${normalized.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
 }
 
 function fmtDate(iso: string): string {
@@ -71,6 +75,15 @@ function stageColor(stage: string): string {
 
 const CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP']
 
+// Which objectives are usable in Phase 1 (benchmark-only coefficients)
+const OBJECTIVE_AVAILABILITY: Record<string, 'available' | 'needs-targets' | 'needs-revenue'> = {
+  maximize_conversions_with_stage_minimums: 'available',
+  maximize_weighted_score: 'available',
+  maximize_target_attainment: 'needs-targets',
+  maximize_revenue: 'needs-revenue',
+  maximize_profit: 'needs-revenue',
+}
+
 function fmtKpi(value: number, kpi: string): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ${kpi}`
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k ${kpi}`
@@ -103,6 +116,8 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
   )
 }
 
+const _STAGE_ORDER = ['reach', 'act', 'convert', 'engage']
+
 function AllocationTable({
   allocations,
   totalBudget,
@@ -112,42 +127,93 @@ function AllocationTable({
   totalBudget: number
   currency: string
 }) {
+  const [openStages, setOpenStages] = React.useState<Set<string>>(new Set())
+
+  const byStage = React.useMemo(() => {
+    const map: Record<string, typeof allocations> = {}
+    for (const a of allocations) {
+      const s = a.stage ?? 'other'
+      if (!map[s]) map[s] = []
+      map[s].push(a)
+    }
+    return map
+  }, [allocations])
+
+  const stageOrder = _STAGE_ORDER.filter((s) => byStage[s])
+
+  const toggleStage = (stage: string) =>
+    setOpenStages((prev) => {
+      const next = new Set(prev)
+      next.has(stage) ? next.delete(stage) : next.add(stage)
+      return next
+    })
+
   return (
-    <div className="space-y-3">
-      {allocations.map((a) => {
-        const pct = totalBudget > 0 ? Math.round((a.allocated_budget / totalBudget) * 100) : 0
-        const phaseName = a.name.includes('—') ? a.name.split('—')[1].trim() : a.name
-        const topKpi = a.expected_outputs
-          ? Object.entries(a.expected_outputs).sort(([, va], [, vb]) => vb - va)[0]
-          : null
+    <div className="space-y-2">
+      {stageOrder.map((stage) => {
+        const rows = byStage[stage]
+        const isOpen = openStages.has(stage)
+        const stageBudget = rows.reduce((sum, a) => sum + (a.allocated_budget === 0 ? 0 : a.allocated_budget), 0)
+        const stagePct = totalBudget > 0 ? Math.round((stageBudget / totalBudget) * 100) : 0
+        const channelCount = rows.length
 
         return (
-          <div key={a.campaign_id} className="bg-primary border border-secondary rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`shrink-0 inline-block px-2 py-0.5 rounded-full label-xs uppercase tracking-wide ${stageColor(a.stage)}`}
-                >
-                  {a.stage}
+          <div key={stage} className="border border-secondary rounded-xl overflow-hidden">
+            {/* Stage header — click to expand/collapse */}
+            <button
+              onClick={() => toggleStage(stage)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-secondary hover:bg-tertiary transition-colors text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className={`inline-block px-2 py-0.5 rounded-full label-xs uppercase tracking-wide ${stageColor(stage)}`}>
+                  {stage}
                 </span>
-                <p className="label-sm text-primary truncate">{phaseName}</p>
+                <span className="paragraph-xs text-tertiary">{channelCount} channel{channelCount !== 1 ? 's' : ''}</span>
               </div>
-              <div className="text-right shrink-0">
-                <p className="label-sm text-primary">{fmtCurrency(a.allocated_budget, currency)}</p>
-                <p className="paragraph-xs text-tertiary">{pct}% of budget</p>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <span className="label-sm text-primary">{fmtCurrency(stageBudget, currency)}</span>
+                  <span className="paragraph-xs text-tertiary ml-1.5">{stagePct}%</span>
+                </div>
+                <span className="text-tertiary paragraph-xs">{isOpen ? '▲' : '▼'}</span>
               </div>
-            </div>
+            </button>
 
-            {topKpi && (
-              <p className="paragraph-xs text-secondary mt-2">
-                Expected: <span className="text-primary font-medium">{fmtKpi(topKpi[1], topKpi[0])}</span>
-              </p>
-            )}
+            {/* Channel rows — only rendered when open */}
+            {isOpen && (
+              <div className="divide-y divide-secondary">
+                {rows.map((a) => {
+                  const pct = totalBudget > 0 ? Math.round((a.allocated_budget / totalBudget) * 100) : 0
+                  const channelName = a.name.includes('—') ? a.name.split('—')[1].trim() : a.name
+                  const topKpi = a.expected_outputs
+                    ? Object.entries(a.expected_outputs)
+                        .filter(([, v]) => v > 0)
+                        .sort(([, va], [, vb]) => vb - va)[0]
+                    : null
 
-            {a.allocation_reason && (
-              <p className="paragraph-xs text-tertiary mt-1.5 leading-relaxed border-t border-secondary pt-2">
-                {a.allocation_reason}
-              </p>
+                  return (
+                    <div key={a.campaign_id} className="bg-primary px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="label-sm text-primary truncate">{channelName}</p>
+                        <div className="text-right shrink-0">
+                          <p className="label-sm text-primary">{fmtCurrency(a.allocated_budget, currency)}</p>
+                          <p className="paragraph-xs text-tertiary">{pct}% of budget</p>
+                        </div>
+                      </div>
+                      {topKpi && (
+                        <p className="paragraph-xs text-secondary mt-1.5">
+                          Expected: <span className="text-primary font-medium">{fmtKpi(topKpi[1] as number, topKpi[0])}</span>
+                        </p>
+                      )}
+                      {a.allocation_reason && (
+                        <p className="paragraph-xs text-tertiary mt-1.5 leading-relaxed border-t border-secondary pt-2">
+                          {a.allocation_reason}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         )
@@ -160,11 +226,20 @@ function ScenarioRow({
   scenario,
   currency,
   isBase,
+  objectiveType,
 }: {
   scenario: ScenarioResult
   currency: string
   isBase?: boolean
+  objectiveType?: string
 }) {
+  const isTargetAttainment = objectiveType === 'maximize_target_attainment'
+  const objDisplay = isTargetAttainment
+    ? '—'
+    : scenario.objective_value != null
+      ? scenario.objective_value.toFixed(1)
+      : '—'
+
   return (
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-lg ${
@@ -186,10 +261,10 @@ function ScenarioRow({
         </p>
       </div>
       <div className="text-right">
-        <p className="paragraph-xs text-tertiary">Objective</p>
-        <p className="label-sm text-primary">
-          {scenario.objective_value != null ? scenario.objective_value.toFixed(1) : '—'}
+        <p className="paragraph-xs text-tertiary">
+          {isTargetAttainment ? 'KPI attainment' : 'Objective'}
         </p>
+        <p className="label-sm text-primary">{objDisplay}</p>
       </div>
     </div>
   )
@@ -210,13 +285,21 @@ function CoefficientsTable({ coefficients }: { coefficients: CoefficientSummary[
         <tbody>
           {coefficients.map((c, i) => {
             const conf = confidenceLabel(c.confidence)
+            const rowLabel = c.channel
+              ? `${c.channel.replace(/_/g, ' ')} · ${c.phase}`
+              : c.phase
             return (
-              <tr key={c.phase} className={i % 2 === 0 ? 'bg-primary' : 'bg-secondary'}>
-                <td className="px-4 py-3 paragraph-sm text-primary">{c.phase}</td>
+              <tr key={`${c.phase}-${c.channel ?? i}`} className={i % 2 === 0 ? 'bg-primary' : 'bg-secondary'}>
+                <td className="px-4 py-3 paragraph-sm text-primary capitalize">{rowLabel}</td>
                 <td className="px-4 py-3 paragraph-xs text-secondary capitalize">{c.kpi}</td>
                 <td className="px-4 py-3 paragraph-xs text-secondary text-right font-mono">
                   {c.coefficient.toFixed(4)}
                   <span className="text-tertiary ml-1 text-xs">{c.kpi}/R1</span>
+                  {c.observed_spend != null && (
+                    <div className="paragraph-xs text-tertiary font-sans mt-0.5">
+                      based on {fmtCurrency(c.observed_spend)} spend
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <span className="inline-flex items-center gap-1.5">
@@ -232,6 +315,86 @@ function CoefficientsTable({ coefficients }: { coefficients: CoefficientSummary[
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function MiaAnalysis({
+  analysis,
+  isAnalysing,
+}: {
+  analysis: RunAnalysis | null
+  isAnalysing: boolean
+}) {
+  const [open, setOpen] = useState(false)
+
+  // Auto-open as soon as analysis starts or arrives
+  useEffect(() => {
+    if (isAnalysing || analysis) setOpen(true)
+  }, [isAnalysing, analysis])
+
+  return (
+    <div>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-brand-secondary border border-brand rounded-xl hover:bg-brand-tertiary transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-brand-600 text-base">✦</span>
+            <span className="label-sm text-brand-700">Mia's analysis</span>
+          </div>
+          <span className="paragraph-xs text-brand-600">Show ▼</span>
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <button
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-brand-secondary border border-brand rounded-xl hover:bg-brand-tertiary transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-brand-600 text-base">✦</span>
+              <span className="label-sm text-brand-700">Mia's analysis</span>
+            </div>
+            <span className="paragraph-xs text-brand-600">Hide ▲</span>
+          </button>
+
+          {isAnalysing && !analysis && (
+            <div className="flex items-center gap-3 px-4 py-4 bg-secondary border border-secondary rounded-xl">
+              <Spinner size="sm" variant="primary" />
+              <span className="paragraph-sm text-secondary">Mia is thinking...</span>
+            </div>
+          )}
+
+          {analysis && (
+            <div className="space-y-3">
+              {/* Mia bubble */}
+              <div className="flex gap-3">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-brand-solid flex items-center justify-center">
+                  <span className="text-xs text-white font-semibold">M</span>
+                </div>
+                <div className="bg-tertiary rounded-2xl rounded-tl-sm px-4 py-3 max-w-[90%]">
+                  <p className="paragraph-sm text-primary whitespace-pre-wrap leading-relaxed">
+                    {analysis.narrative}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              {analysis.recommendations.length > 0 && (
+                <div className="ml-10 space-y-2">
+                  {analysis.recommendations.map((rec, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className="shrink-0 mt-0.5 w-1.5 h-1.5 rounded-full bg-brand-solid mt-2" />
+                      <p className="paragraph-sm text-secondary">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -375,12 +538,16 @@ function ResultsView({
   currency,
   onRunAgain,
   runs,
+  analysis,
+  isAnalysing,
 }: {
   result: OptimizerRunResult
   totalBudget: number
   currency: string
   onRunAgain: () => void
   runs: OptimizerRunSummary[]
+  analysis: RunAnalysis | null
+  isAnalysing: boolean
 }) {
   const res = result.result
   const allocations = res?.allocations ?? []
@@ -440,17 +607,20 @@ function ResultsView({
         </div>
       )}
 
-      {/* Expected KPI totals */}
-      {res?.expected_kpi_totals && Object.keys(res.expected_kpi_totals).length > 0 && (
+      {/* Expected KPI totals — only show KPIs with non-zero expected values */}
+      {res?.expected_kpi_totals &&
+        Object.values(res.expected_kpi_totals).some((v) => (v as number) > 0) && (
         <SectionCard>
           <p className="label-md text-primary mb-3">What Mia expects you'll achieve</p>
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(res.expected_kpi_totals).map(([kpi, value]) => (
-              <div key={kpi} className="bg-primary border border-secondary rounded-lg px-3 py-2.5">
-                <p className="label-sm text-primary">{fmtKpi(value, '')}</p>
-                <p className="paragraph-xs text-tertiary capitalize mt-0.5">{kpi}</p>
-              </div>
-            ))}
+            {Object.entries(res.expected_kpi_totals)
+              .filter(([, value]) => (value as number) > 0)
+              .map(([kpi, value]) => (
+                <div key={kpi} className="bg-primary border border-secondary rounded-lg px-3 py-2.5">
+                  <p className="label-sm text-primary">{fmtKpi(value as number, '')}</p>
+                  <p className="paragraph-xs text-tertiary capitalize mt-0.5">{kpi}</p>
+                </div>
+              ))}
           </div>
         </SectionCard>
       )}
@@ -461,31 +631,49 @@ function ResultsView({
           <p className="label-md text-primary mb-3">Budget scenarios</p>
           <div className="space-y-2">
             {otherScenarios[0] && (
-              <ScenarioRow scenario={otherScenarios[0]} currency={currency} />
+              <ScenarioRow scenario={otherScenarios[0]} currency={currency} objectiveType={result.objective_type} />
             )}
             {baseScenario && (
-              <ScenarioRow scenario={baseScenario} currency={currency} isBase />
+              <ScenarioRow scenario={baseScenario} currency={currency} isBase objectiveType={result.objective_type} />
             )}
             {otherScenarios[1] && (
-              <ScenarioRow scenario={otherScenarios[1]} currency={currency} />
+              <ScenarioRow scenario={otherScenarios[1]} currency={currency} objectiveType={result.objective_type} />
             )}
           </div>
         </div>
       )}
 
-      {/* Efficiency assumptions */}
-      {result.coefficient_summary.length > 0 && (
-        <div>
-          <p className="label-md text-primary mb-1">Efficiency assumptions</p>
-          <p className="paragraph-xs text-tertiary mb-3">
-            How many KPI units Mia expects per R1 of spend in each phase.
-          </p>
-          <CoefficientsTable coefficients={result.coefficient_summary} />
-        </div>
-      )}
+      {/* Efficiency assumptions — only show channels with real data or that received budget.
+          Benchmark-only disabled channels (brevo, organic_social, email) are excluded. */}
+      {result.coefficient_summary.length > 0 && (() => {
+        const channelsWithBudget = new Set(
+          allocations
+            .filter(a => a.allocated_budget > 0)
+            .map(a => a.channel)
+            .filter((c): c is string => Boolean(c))
+        )
+        const relevantCoefficients = result.coefficient_summary.filter(
+          c => c.source !== 'industry_benchmark' || channelsWithBudget.has(c.channel ?? '')
+        )
+        return relevantCoefficients.length > 0 ? (
+          <div>
+            <p className="label-md text-primary mb-1">Efficiency assumptions</p>
+            <p className="paragraph-xs text-tertiary mb-3">
+              How many KPI units Mia expects per R1 of spend in each phase.
+            </p>
+            <CoefficientsTable coefficients={relevantCoefficients} />
+          </div>
+        ) : null
+      })()}
 
       {/* What shaped this allocation */}
       <WhySection result={result} />
+
+      {/* Mia's analysis */}
+      <MiaAnalysis
+        analysis={analysis}
+        isAnalysing={isAnalysing}
+      />
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">
@@ -526,8 +714,23 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
-  const { campaign, isLoadingCampaign, runs, isRunning, result, error, run, reset } =
-    useStrategise(sessionId, tenantId)
+  const {
+    campaign,
+    isLoadingCampaign,
+    runs,
+    isRunning,
+    result,
+    error,
+    run,
+    reset,
+    isParsing,
+    parsedConstraints,
+    parseError,
+    parseUserConstraints,
+    clearConstraints,
+    analysis,
+    isAnalysing,
+  } = useStrategise(sessionId, tenantId)
 
   // Form state
   const [step, setStep] = useState(0)
@@ -539,6 +742,18 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   )
   const [budgetError, setBudgetError] = useState<string | null>(null)
   const [periodError, setPeriodError] = useState<string | null>(null)
+
+  // Step 3 constraints
+  const [constraintsText, setConstraintsText] = useState('')
+  const [showConstraints, setShowConstraints] = useState(false)
+
+  // Pre-fill budget from campaign when loaded
+  const [budgetPrefilled, setBudgetPrefilled] = useState(false)
+  if (campaign && campaign.budget_total && !budgetPrefilled && !budget) {
+    setBudget(String(campaign.budget_total))
+    if (campaign.budget_currency) setCurrency(campaign.budget_currency)
+    setBudgetPrefilled(true)
+  }
 
   const handleBack = () => {
     if (result) {
@@ -570,13 +785,32 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
 
   const handleSubmit = async () => {
     if (!campaign) return
+
+    // Parse constraints if user entered any
+    let constraints: ParsedConstraints | null = parsedConstraints
+    if (constraintsText.trim() && !parsedConstraints) {
+      constraints = await parseUserConstraints(constraintsText, Number(budget), currency)
+    }
+
+    // Build transcript from constraint text for audit trail
+    const transcript = constraintsText.trim()
+      ? [{ role: 'user', content: constraintsText.trim() }]
+      : null
+
     await run({
       campaign_id: campaign.campaign_id,
       total_budget: Number(budget),
       objective_type: objective,
       planning_period: period.trim(),
       currency,
+      constraint_overrides: constraints,
+      onboarding_transcript: transcript,
     })
+  }
+
+  const handleConstraintsChange = (val: string) => {
+    setConstraintsText(val)
+    if (parsedConstraints) clearConstraints()
   }
 
   const showBackButton = step > 0 || !!result
@@ -638,10 +872,7 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
           {isRunning && (
             <SectionCard className="text-center py-12">
               <Spinner size="lg" variant="primary" className="mx-auto mb-4" />
-              <p className="label-md text-primary mb-1">Running optimisation...</p>
-              <p className="paragraph-xs text-tertiary">
-                Mia is solving the LP model — usually under 2 seconds.
-              </p>
+              <p className="label-md text-primary">Running optimisation...</p>
             </SectionCard>
           )}
 
@@ -651,8 +882,10 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
               result={result}
               totalBudget={Number(budget)}
               currency={currency}
-              onRunAgain={() => { reset(); setStep(0) }}
+              onRunAgain={() => { reset(); setStep(0); setConstraintsText(''); setBudgetPrefilled(false) }}
               runs={runs}
+              analysis={analysis}
+              isAnalysing={isAnalysing}
             />
           )}
 
@@ -749,6 +982,8 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
                   <div className="space-y-2">
                     {OBJECTIVE_OPTIONS.map((opt) => {
                       const selected = objective === opt.value
+                      const avail = OBJECTIVE_AVAILABILITY[opt.value] ?? 'available'
+                      const needsData = avail !== 'available'
                       return (
                         <button
                           key={opt.value}
@@ -767,14 +1002,28 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
                             >
                               {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </div>
-                            <div>
-                              <p className="label-sm text-primary">{opt.label}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="label-sm text-primary">{opt.label}</p>
+                                {avail === 'needs-targets' && (
+                                  <span className="px-1.5 py-0.5 rounded label-xs bg-utility-warning-100 text-utility-warning-700">
+                                    Needs campaign targets
+                                  </span>
+                                )}
+                                {avail === 'needs-revenue' && (
+                                  <span className="px-1.5 py-0.5 rounded label-xs bg-secondary text-tertiary">
+                                    Needs revenue data · Phase 2
+                                  </span>
+                                )}
+                              </div>
                               <p className="paragraph-xs text-secondary mt-0.5">
                                 {opt.description}
                               </p>
-                              <p className="paragraph-xs text-tertiary mt-0.5 italic">
-                                {opt.hint}
-                              </p>
+                              {needsData && (
+                                <p className="paragraph-xs text-tertiary mt-0.5 italic">
+                                  {opt.hint}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </button>
@@ -824,6 +1073,45 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
                     </div>
                   </div>
 
+                  {/* Constraints — conversational input */}
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowConstraints((v) => !v)}
+                      className="flex items-center gap-2 paragraph-xs text-secondary hover:text-primary transition-colors"
+                    >
+                      <span className="text-base leading-none">{showConstraints ? '▾' : '▸'}</span>
+                      <span>Any fixed budgets or special rules? <span className="text-tertiary">(optional)</span></span>
+                    </button>
+
+                    {showConstraints && (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          rows={3}
+                          value={constraintsText}
+                          onChange={(e) => handleConstraintsChange(e.target.value)}
+                          placeholder={`e.g. "Lock R10,000 on Reach" or "minimum 35% on Convert" or "don't spend more than 20% on Engage"`}
+                          className="w-full bg-primary border border-secondary rounded-lg px-3 py-2 paragraph-sm text-primary placeholder:text-placeholder focus:outline-none focus:border-brand resize-none"
+                        />
+                        {isParsing && (
+                          <div className="flex items-center gap-2 paragraph-xs text-secondary">
+                            <Spinner size="sm" variant="primary" />
+                            Mia is reading your rules...
+                          </div>
+                        )}
+                        {parsedConstraints && !isParsing && (
+                          <div className="flex items-start gap-2 px-3 py-2 bg-success-primary border border-success-subtle rounded-lg">
+                            <span className="text-success shrink-0">✓</span>
+                            <p className="paragraph-xs text-secondary">{parsedConstraints.notes}</p>
+                          </div>
+                        )}
+                        {parseError && (
+                          <p className="paragraph-xs text-warning">{parseError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Coefficient note */}
                   <div className="bg-utility-warning-50 border border-utility-warning-200 rounded-lg px-4 py-3 mb-5">
                     <p className="paragraph-xs text-secondary">
@@ -841,10 +1129,10 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
                     <Button
                       variant="primary"
                       onClick={handleSubmit}
-                      disabled={isRunning}
+                      disabled={isRunning || isParsing}
                       className="flex-1"
                     >
-                      {isRunning ? 'Running...' : 'Run optimisation →'}
+                      {isParsing ? 'Parsing rules...' : isRunning ? 'Running...' : 'Run optimisation →'}
                     </Button>
                   </div>
                 </SectionCard>
