@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -127,9 +127,9 @@ function AllocationTable({
   totalBudget: number
   currency: string
 }) {
-  const [openStages, setOpenStages] = React.useState<Set<string>>(new Set())
+  const [openStages, setOpenStages] = useState<Set<string>>(new Set())
 
-  const byStage = React.useMemo(() => {
+  const byStage = useMemo(() => {
     const map: Record<string, typeof allocations> = {}
     for (const a of allocations) {
       const s = a.stage ?? 'other'
