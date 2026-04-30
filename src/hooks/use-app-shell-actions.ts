@@ -15,6 +15,7 @@ export const useAppShellActions = () => {
     onIntegrationsClick: () => navigate('/integrations'),
     onCampaignsClick: () => navigate('/campaigns'),
     onStrategiseClick: () => navigate('/strategise'),
+    onReportsClick: () => navigate('/reports'),
     onHelpClick: () => navigate('/help'),
     onLogout: handleLogout,
     onWorkspaceSettings: () => navigate('/settings/workspace'),

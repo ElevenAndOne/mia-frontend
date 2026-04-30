@@ -1,14 +1,14 @@
 import { AppShell } from '../components/app-shell'
-import { ChatView } from '../features/chat/views/chat-view'
+import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
+import { ReportView } from '../features/reports/report-view'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
-const ChatPage = () => {
+const ReportsPage = () => {
   const {
     onNewWorkspace,
     onIntegrationsClick,
     onCampaignsClick,
     onStrategiseClick,
-    onReportsClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -20,23 +20,15 @@ const ChatPage = () => {
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
       onStrategiseClick={onStrategiseClick}
-      onReportsClick={onReportsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <div className="w-full h-full">
-        <ChatView
-          onIntegrationsClick={onIntegrationsClick}
-          onCampaignsClick={onCampaignsClick}
-          onHelpClick={onHelpClick}
-          onLogout={onLogout}
-          onWorkspaceSettings={onWorkspaceSettings}
-          onNewWorkspace={onNewWorkspace}
-        />
-      </div>
+      <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
+        <ReportView />
+      </AnimatedPageWrapper>
     </AppShell>
   )
 }
 
-export default ChatPage
+export default ReportsPage

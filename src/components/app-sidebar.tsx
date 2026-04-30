@@ -7,6 +7,7 @@ interface AppSidebarProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onStrategiseClick?: () => void
+  onReportsClick?: () => void
   onHelpClick?: () => void
   onNewWorkspace?: () => void
 }
@@ -17,6 +18,7 @@ export const AppSidebar = ({
   onIntegrationsClick,
   onCampaignsClick,
   onStrategiseClick,
+  onReportsClick,
   onHelpClick,
   onNewWorkspace,
 }: AppSidebarProps) => {
@@ -34,6 +36,7 @@ export const AppSidebar = ({
           onIntegrationsClick={onIntegrationsClick}
           onCampaignsClick={onCampaignsClick}
           onStrategiseClick={onStrategiseClick}
+          onReportsClick={onReportsClick}
           onHelpClick={onHelpClick}
           onNewWorkspace={onNewWorkspace}
           onLogout={onLogout}

@@ -36,6 +36,7 @@ interface SidebarUserMenuProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onStrategiseClick?: () => void
+  onReportsClick?: () => void
   onHelpClick?: () => void
   onNewWorkspace?: () => void
   onLogout: () => void
@@ -46,6 +47,7 @@ export const SidebarUserMenu = ({
   onIntegrationsClick,
   onCampaignsClick,
   onStrategiseClick,
+  onReportsClick,
   onHelpClick,
   onNewWorkspace,
   onLogout,
@@ -275,6 +277,19 @@ export const SidebarUserMenu = ({
                 >
                   <Icon.bar_chart_01 size={18} className="text-tertiary" />
                   <span>Strategise</span>
+                </button>
+              )}
+              {onReportsClick && (
+                <button
+                  onClick={() => {
+                    handleClose()
+                    onReportsClick()
+                  }}
+                  className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+                  role="menuitem"
+                >
+                  <Icon.file_02 size={18} className="text-tertiary" />
+                  <span>Reports</span>
                 </button>
               )}
               {onWorkspaceSettings && (
