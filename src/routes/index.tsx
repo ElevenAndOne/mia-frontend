@@ -20,6 +20,7 @@ const OnboardingPage = lazy(() => import('../pages/onboarding-page'))
 const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
+const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 
 const LazyLoadSpinner = () => (
@@ -150,6 +151,17 @@ export const AppRoutes = ({
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
                 <CampaignsPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/strategise"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <StrategisePage />
               </ErrorBoundary>
             </ProtectedRoute>
           }

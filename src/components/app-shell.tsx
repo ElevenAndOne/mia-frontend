@@ -7,6 +7,7 @@ interface AppShellProps {
   onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
+  onStrategiseClick?: () => void
   onHelpClick?: () => void
   onLogout: () => void
   onWorkspaceSettings?: () => void
@@ -17,6 +18,7 @@ export const AppShell = ({
   onNewWorkspace,
   onIntegrationsClick,
   onCampaignsClick,
+  onStrategiseClick,
   onHelpClick,
   onLogout,
   onWorkspaceSettings,
@@ -27,6 +29,7 @@ export const AppShell = ({
         onNewWorkspace={onNewWorkspace}
         onIntegrationsClick={onIntegrationsClick}
         onCampaignsClick={onCampaignsClick}
+        onStrategiseClick={onStrategiseClick}
         onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}

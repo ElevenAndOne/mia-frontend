@@ -7,6 +7,7 @@ const ChatPage = () => {
     onNewWorkspace,
     onIntegrationsClick,
     onCampaignsClick,
+    onStrategiseClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -17,6 +18,7 @@ const ChatPage = () => {
       onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
+      onStrategiseClick={onStrategiseClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}

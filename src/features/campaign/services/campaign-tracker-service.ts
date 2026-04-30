@@ -2,11 +2,13 @@ import { apiFetch } from '../../../utils/api'
 
 // ---------------------------------------------------------------------------
 // Cache configuration
-// TTL: 23h — matches backend actuals cache, refreshed by nightly cron at 01:00 SAST.
-// Data is stored in both module-level Maps (fast in-process) and sessionStorage
-// (survives page reloads within the same browser session).
+// Tracker TTL: 5 minutes — just a DB query, needs to pick up new campaigns quickly
+//   (new campaign uploaded at intent.miacreate.ai must appear within one poll cycle)
+// Actuals TTL: 23h — platform API calls, expensive; refreshed by nightly cron at 01:00 SAST
+// Both layers: module-level Map (fast) + sessionStorage (survives page reload in same session)
 // ---------------------------------------------------------------------------
-const CACHE_TTL_MS = 23 * 60 * 60 * 1000
+const TRACKER_CACHE_TTL_MS = 5 * 60 * 1000
+const ACTUALS_CACHE_TTL_MS = 23 * 60 * 60 * 1000
 
 const SS_TRACKER_PREFIX = 'race_tracker_'
 const SS_ACTUALS_PREFIX = 'race_actuals_'
@@ -142,7 +144,7 @@ export const fetchCampaignTracker = async (
 ): Promise<CampaignTracker | null> => {
   const key = `${tenantId}`
   const cached = getTrackerEntry(key)
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.ts < TRACKER_CACHE_TTL_MS) {
     console.debug('[RACE] tracker: cache hit', { tenantId })
     return cached.data
   }
@@ -180,7 +182,7 @@ export const fetchPhaseActuals = async (
   const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
   const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
   const cached = getActualsEntry(key)
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.ts < ACTUALS_CACHE_TTL_MS) {
     console.debug('[RACE] actuals: cache hit', { phaseName, dateKey })
     return cached.data
   }
@@ -219,7 +221,7 @@ export const fetchPhaseActuals = async (
 /** Synchronous cache peek — returns cached tracker if available (not expired), else undefined */
 export const getCachedTracker = (tenantId: string): CampaignTracker | null | undefined => {
   const cached = getTrackerEntry(tenantId)
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
+  if (cached && Date.now() - cached.ts < TRACKER_CACHE_TTL_MS) return cached.data
   return undefined // undefined = not in cache (different from null = no campaign)
 }
 
@@ -234,7 +236,7 @@ export const getCachedActuals = (
   const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
   const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
   const cached = getActualsEntry(key)
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
+  if (cached && Date.now() - cached.ts < ACTUALS_CACHE_TTL_MS) return cached.data
   return undefined
 }
 

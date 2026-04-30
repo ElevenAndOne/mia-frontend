@@ -7,16 +7,20 @@ export const ChatEmptyState = ({ userName, children }: ChatEmptyStateProps) => {
   const greeting = userName ? `Hello ${userName}.` : 'Hello.'
 
   return (
-    <div className="flex-1 flex flex-col gap-3 items-center justify-center px-4">
-      <div className="text-center max-w-md">
-        <h1 className="paragraph-lg md:title-h5 text-primary font-normal md:font-normal mb-1">
-          {greeting}
-        </h1>
-        <p className="paragraph-lg md:title-h5 text-primary font-normal md:font-normal">
-          What can I help with?
-        </p>
+    <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex flex-col items-center min-h-full py-6 gap-3">
+        <div className="flex-1 flex items-end justify-center pb-4">
+          <div className="text-center max-w-md px-4">
+            <h1 className="paragraph-lg md:title-h5 text-primary font-normal md:font-normal mb-1">
+              {greeting}
+            </h1>
+            <p className="paragraph-lg md:title-h5 text-primary font-normal md:font-normal">
+              What can I help with?
+            </p>
+          </div>
+        </div>
+        {children}
       </div>
-      {children}
     </div>
   )
 }
