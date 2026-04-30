@@ -13,9 +13,8 @@ import {
 import type { ClickUpSpace } from '../types'
 
 export const useReports = () => {
-  const { state } = useSession()
-  const sessionId = state.sessionId ?? ''
-  const tenantId = state.activeWorkspace?.tenant_id ?? ''
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id ?? ''
 
   const [reports, setReports] = useState<ReportSummary[]>([])
   const [activeReport, setActiveReport] = useState<ClientReport | null>(null)

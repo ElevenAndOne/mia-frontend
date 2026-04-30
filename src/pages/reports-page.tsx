@@ -1,14 +1,15 @@
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
 import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
 import { ReportView } from '../features/reports/report-view'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const ReportsPage = () => {
+  const navigate = useNavigate()
   const {
     onNewWorkspace,
     onIntegrationsClick,
     onCampaignsClick,
-    onStrategiseClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -19,13 +20,12 @@ const ReportsPage = () => {
       onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
-      onStrategiseClick={onStrategiseClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
       <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
-        <ReportView />
+        <ReportView onBack={() => navigate('/home')} />
       </AnimatedPageWrapper>
     </AppShell>
   )

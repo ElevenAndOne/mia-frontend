@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { TopBar } from '../../components/top-bar'
+import type { CampaignOption } from './services/report-service'
+import { listCampaignOptions } from './services/report-service'
 import type { GenerateReportParams, TopAdMetric, TopOrganicMetric } from './types'
 import {
   MONTH_OPTIONS,
@@ -13,9 +16,9 @@ const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2]
 
-export const ReportView = () => {
-  const { state } = useSession()
-  const tenantId = state.activeWorkspace?.tenant_id ?? ''
+export const ReportView = ({ onBack }: { onBack?: () => void }) => {
+  const { activeWorkspace, sessionId } = useSession()
+  const tenantId = activeWorkspace?.tenant_id ?? ''
   const {
     reports,
     activeReport,
@@ -29,11 +32,22 @@ export const ReportView = () => {
   } = useReports()
 
   const [step, setStep] = useState<'list' | 'configure' | 'report'>('list')
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false)
   const [campaignId, setCampaignId] = useState('')
   const [month, setMonth] = useState(currentMonth)
   const [year, setYear] = useState(currentYear)
   const [topAdMetric, setTopAdMetric] = useState<TopAdMetric>('conversions')
   const [topOrganicMetric, setTopOrganicMetric] = useState<TopOrganicMetric>('engagement_rate')
+
+  useEffect(() => {
+    if (step === 'configure' && tenantId && sessionId && campaigns.length === 0) {
+      setLoadingCampaigns(true)
+      listCampaignOptions(sessionId ?? '', tenantId)
+        .then(setCampaigns)
+        .finally(() => setLoadingCampaigns(false))
+    }
+  }, [step, tenantId, sessionId, campaigns.length])
 
   const handleGenerate = async () => {
     if (!campaignId) return
@@ -68,7 +82,8 @@ export const ReportView = () => {
 
   if (step === 'configure') {
     return (
-      <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
+      <div className="flex flex-col h-full overflow-y-auto">
+      <div className="max-w-xl mx-auto w-full px-4 py-8 space-y-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setStep('list')}
@@ -88,18 +103,24 @@ export const ReportView = () => {
         <div className="space-y-4">
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-              Campaign ID
+              Campaign
             </label>
-            <input
-              type="text"
-              value={campaignId}
-              onChange={(e) => setCampaignId(e.target.value)}
-              placeholder="cmp_..."
-              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            />
-            <p className="paragraph-xs text-tertiary mt-1">
-              Find this in your Campaigns page
-            </p>
+            {loadingCampaigns ? (
+              <div className="w-full h-10 rounded-lg bg-secondary animate-pulse" />
+            ) : (
+              <select
+                value={campaignId}
+                onChange={(e) => setCampaignId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              >
+                <option value="">Select a campaign…</option>
+                {campaigns.map((c) => (
+                  <option key={c.campaign_id} value={c.campaign_id}>
+                    {c.client_name ? `${c.client_name} — ` : ''}{c.campaign_name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -186,12 +207,16 @@ export const ReportView = () => {
           </p>
         )}
       </div>
+      </div>
     )
   }
 
   // List view
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="flex flex-col h-full">
+      <TopBar title="Client Reports" onBack={onBack} />
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="heading-md text-primary">Client Reports</h1>
@@ -238,6 +263,8 @@ export const ReportView = () => {
           ))}
         </div>
       )}
+    </div>
+    </div>
     </div>
   )
 }
@@ -316,7 +343,8 @@ const ReportPreview = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-0 print:px-0">
+    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="max-w-4xl mx-auto w-full px-4 py-6 space-y-0 print:px-0">
       {/* Actions bar — hidden when printing */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <button onClick={onBack} className="text-tertiary hover:text-secondary paragraph-sm">
@@ -727,6 +755,7 @@ const ReportPreview = ({
         <p>Thank you for your continued trust and partnership. Let's keep building momentum!</p>
         <p className="mt-1 font-medium">11&1 Agency</p>
       </div>
+    </div>
     </div>
   )
 }

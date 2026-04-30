@@ -17,6 +17,7 @@ import { trackEvent } from '../../../utils/tracking'
 interface ChatViewProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
+  onReportsClick?: () => void
   onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
@@ -26,6 +27,7 @@ interface ChatViewProps {
 export const ChatView = ({
   onIntegrationsClick,
   onCampaignsClick,
+  onReportsClick,
   onHelpClick,
   onLogout,
   onWorkspaceSettings,
@@ -115,6 +117,7 @@ export const ChatView = ({
       hasMessages={hasMessages}
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
+      onReportsClick={onReportsClick}
       onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
       onBack={handleBack}
@@ -133,7 +136,9 @@ export const ChatView = ({
                   disabled={isLoading || !hasSelectedPlatforms}
                   predictReady={predictReady}
                 />
-                <RaceCampaignTracker disabled={isLoading} dateRange={dateRange} />
+                <div className="md:mt-3">
+                  <RaceCampaignTracker disabled={isLoading} dateRange={dateRange} />
+                </div>
               </div>
             </ChatEmptyState>
 

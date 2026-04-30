@@ -85,6 +85,24 @@ export const getClickUpSpaces = async (
   return data.spaces ?? []
 }
 
+export interface CampaignOption {
+  campaign_id: string
+  campaign_name: string
+  client_name: string | null
+  status: string
+}
+
+export const listCampaignOptions = async (
+  sessionId: string,
+  tenantId: string,
+): Promise<CampaignOption[]> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) return []
+  return response.json()
+}
+
 export const linkClickUpList = async (
   sessionId: string,
   tenantId: string,

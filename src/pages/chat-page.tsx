@@ -29,6 +29,8 @@ const ChatPage = () => {
         <ChatView
           onIntegrationsClick={onIntegrationsClick}
           onCampaignsClick={onCampaignsClick}
+          onStrategiseClick={onStrategiseClick}
+          onReportsClick={onReportsClick}
           onHelpClick={onHelpClick}
           onLogout={onLogout}
           onWorkspaceSettings={onWorkspaceSettings}

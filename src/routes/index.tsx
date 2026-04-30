@@ -21,7 +21,7 @@ const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
-dconst ReportsPage = lazy(() => import('../pages/reports-page'))
+const ReportsPage = lazy(() => import('../pages/reports-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 
 const LazyLoadSpinner = () => (

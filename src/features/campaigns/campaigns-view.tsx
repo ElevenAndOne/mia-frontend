@@ -3,6 +3,7 @@ import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
+import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
 
 // ── Campaign detail cache (module-level + sessionStorage, 23h TTL) ─────────
 // Keyed by campaignId so multiple campaigns can be cached per tenant.
@@ -361,6 +362,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [settingPrimary, setSettingPrimary] = useState(false)
+  const [deletingCampaign, setDeletingCampaign] = useState(false)
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
 
   // HubSpot list state for KPI linking
@@ -467,9 +469,35 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           prev.map((c) => ({ ...c, is_primary: c.campaign_id === campaign.campaign_id }))
         )
         bustCachedDetail(campaign.campaign_id)
+        clearTrackerCache()
       }
     } finally {
       setSettingPrimary(false)
+    }
+  }
+
+  const handleDeleteCampaign = async () => {
+    if (!sessionId || !tenantId || !campaign || deletingCampaign) return
+    if (!confirm(`Delete "${campaign.campaign_name}"? This cannot be undone.`)) return
+    setDeletingCampaign(true)
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}`,
+        { method: 'DELETE', headers: { 'X-Session-ID': sessionId } }
+      )
+      if (res.ok) {
+        bustCachedDetail(campaign.campaign_id)
+        clearTrackerCache()
+        const remaining = campaignList.filter((c) => c.campaign_id !== campaign.campaign_id)
+        setCampaignList(remaining)
+        if (remaining.length > 0) {
+          await loadCampaignDetail(remaining[0].campaign_id)
+        } else {
+          setCampaign(null)
+        }
+      }
+    } finally {
+      setDeletingCampaign(false)
     }
   }
 
@@ -613,6 +641,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     )}
                   </button>
                   <StatusBadge status={campaign.status} />
+                  <button
+                    onClick={handleDeleteCampaign}
+                    disabled={deletingCampaign}
+                    title="Delete campaign"
+                    className="p-1 text-quaternary hover:text-utility-error-500 transition-colors disabled:opacity-40"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 

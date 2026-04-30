@@ -9,6 +9,7 @@ interface MobileNavigationMainViewProps {
   onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
+  onReportsClick?: () => void
   onHelpClick?: () => void
   onWorkspaceSettings?: () => void
   onLogout?: () => void
@@ -28,6 +29,7 @@ export const MobileNavigationMainView = ({
   onNewWorkspace,
   onIntegrationsClick,
   onCampaignsClick,
+  onReportsClick,
   onHelpClick,
   onWorkspaceSettings,
   onLogout,
@@ -85,6 +87,19 @@ export const MobileNavigationMainView = ({
           >
             <Icon.target_01 size={20} className="text-tertiary" />
             <span className="paragraph-sm">Campaigns</span>
+          </button>
+        )}
+
+        {onReportsClick && (
+          <button
+            onClick={() => {
+              onClose()
+              onReportsClick()
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Icon.file_02 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Reports</span>
           </button>
         )}
 
