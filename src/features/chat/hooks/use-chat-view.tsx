@@ -287,11 +287,11 @@ export const useChatView = () => {
         case 'protect':
           navigate(`/insights/protect?${params.toString()}`)
           break
-        case 'predict':
-          navigate('/insights/predict')
-          break
         case 'strategise':
-          navigate('/strategise')
+          navigate('/insights/strategise')
+          break
+        case 'predict':
+          navigate('/predict')
           break
       }
     },

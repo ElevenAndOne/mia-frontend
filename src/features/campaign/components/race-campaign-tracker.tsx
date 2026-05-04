@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { useSession } from '../../../contexts/session-context'
+import { apiFetch } from '../../../utils/api'
 import {
   fetchCampaignTracker,
   fetchPhaseActuals,
@@ -14,6 +15,13 @@ import type {
   KPIActual,
 } from '../services/campaign-tracker-service'
 import { parseDateRangeValue, isSinceLaunchRange } from '../../../utils/date-range'
+
+interface CampaignSummary {
+  campaign_id: string
+  campaign_name: string
+  status: string
+  is_primary: boolean
+}
 
 interface RaceCampaignTrackerProps {
   disabled?: boolean
@@ -75,6 +83,10 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
+  // Campaign picker: null = primary campaign (default)
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+  const [campaignSummaries, setCampaignSummaries] = useState<CampaignSummary[]>([])
+
   // Initialize from synchronous cache so there's zero skeleton flash on re-navigation
   const cachedOnMount = tenantId ? getCachedTracker(tenantId) : undefined
   const [campaign, setCampaign] = useState<CampaignTracker | null>(cachedOnMount ?? null)
@@ -135,11 +147,32 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     actualsMapRef.current = actualsMap
   }, [actualsMap])
 
-  // Fetch campaign tracker data on mount.
+  // Fetch campaigns list on mount — shows picker when >1 live campaign exists
+  useEffect(() => {
+    if (!sessionId || !tenantId) return
+    apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: CampaignSummary[]) => {
+        if (Array.isArray(list) && list.length > 1) {
+          setCampaignSummaries(list)
+        }
+      })
+      .catch(() => {})
+  }, [sessionId, tenantId])
+
+  // Fetch campaign tracker data — re-runs when selected campaign changes
   useEffect(() => {
     if (!sessionId || !tenantId) return
     let cancelled = false
-    fetchCampaignTracker(sessionId, tenantId).then((data) => {
+    // When switching to a specific campaign, reset display immediately
+    if (selectedCampaignId !== null) {
+      setCampaign(null)
+      setSelectedPhase(null)
+      setActualsMap({})
+      actualsMapRef.current = {}
+      setLoading(true)
+    }
+    fetchCampaignTracker(sessionId, tenantId, selectedCampaignId).then((data) => {
       if (cancelled) return
       setCampaign(data)
       if (data) {
@@ -147,7 +180,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
           data.current_phase ||
           data.phases.find((p) => p.status === 'active')?.phase_name ||
           data.phases[0]?.phase_name
-        setSelectedPhase((prev) => prev ?? defaultPhase ?? null)
+        setSelectedPhase((prev) => (selectedCampaignId !== null ? defaultPhase ?? null : prev ?? defaultPhase ?? null))
         // Pre-populate actualsMap from JS/sessionStorage cache for all phases.
         // Use resolved dates so we don't pull a wrong-range entry into the map.
         const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date)
@@ -165,7 +198,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     return () => {
       cancelled = true
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, selectedCampaignId])
 
   // Clear actuals cache when date range changes so new range triggers a fresh fetch
   const prevDateRangeRef = useRef(dateRange)
@@ -271,7 +304,22 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
                 · {!dateRange || isSinceLaunchRange(dateRange) ? 'Since launch' : dateRange.replace(/_/g, ' ').replace(/(\d+) days/, '$1d')}
               </span>
             </p>
-            <p className="subheading-xs text-primary truncate">{campaign.campaign_name}</p>
+            {campaignSummaries.length > 1 ? (
+              <select
+                value={selectedCampaignId ?? campaign.campaign_id}
+                onChange={(e) => setSelectedCampaignId(e.target.value)}
+                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 max-w-[200px] truncate"
+                style={{ appearance: 'auto' }}
+              >
+                {campaignSummaries.map((c) => (
+                  <option key={c.campaign_id} value={c.campaign_id}>
+                    {c.is_primary ? '★ ' : ''}{c.campaign_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="subheading-xs text-primary truncate">{campaign.campaign_name}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button

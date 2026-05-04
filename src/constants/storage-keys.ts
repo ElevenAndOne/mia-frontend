@@ -34,8 +34,8 @@ export const StorageKey = {
   INTEGRATION_HIGHLIGHT: 'mia_integration_highlight',
   KNOWN_CONNECTED_PLATFORMS: 'mia_known_connected_platforms',
 
-  // Predict/Gold insights
-  PREDICT_SEEN_PREFIX: 'mia_predict_seen_',
+  // Strategise/Gold insights
+  STRATEGISE_SEEN_PREFIX: 'mia_strategise_seen_',
 
   // Google OAuth connect-pending flags (set before OAuth redirect, consumed on return)
   GOOGLE_ADS_CONNECT_PENDING: 'mia_google_ads_connect_pending',

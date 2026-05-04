@@ -103,6 +103,7 @@ export interface ReportSpendBreakdown {
 export interface OrganicPost {
   post_id: string
   platform: string
+  post_url: string | null
   description: string
   image_url: string | null
   created_time: string
@@ -158,6 +159,7 @@ export interface ReportTopPaidAd {
   cpc: number
   conversions: number
   top_metric_label: string
+  post_url: string | null
 }
 
 export interface AbTest {

@@ -468,7 +468,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         setCampaignList((prev) =>
           prev.map((c) => ({ ...c, is_primary: c.campaign_id === campaign.campaign_id }))
         )
-        bustCachedDetail(campaign.campaign_id)
+        // Bust ALL campaign detail caches — any could have a stale is_primary value
+        campaignList.forEach((c) => bustCachedDetail(c.campaign_id))
         clearTrackerCache()
       }
     } finally {
@@ -538,6 +539,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     : []
   const selectedPhase =
     sortedPhases.find((p) => p.phase_id === selectedPhaseId) ?? sortedPhases[0] ?? null
+
+  // Derive is_primary from campaignList (fresh API data) — immune to stale cached detail
+  const currentIsPrimary = campaign
+    ? (campaignList.find((c) => c.campaign_id === campaign.campaign_id)?.is_primary ?? campaign.is_primary)
+    : false
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -623,14 +629,14 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Set-primary star */}
+                  {/* Set-primary star — use campaignList for is_primary to avoid stale cached detail */}
                   <button
                     onClick={handleSetPrimary}
-                    disabled={settingPrimary || campaign.is_primary}
-                    title={campaign.is_primary ? 'Primary campaign' : 'Set as primary'}
+                    disabled={settingPrimary || currentIsPrimary}
+                    title={currentIsPrimary ? 'Primary campaign' : 'Set as primary'}
                     className="transition-colors disabled:cursor-default"
                   >
-                    {campaign.is_primary ? (
+                    {currentIsPrimary ? (
                       <svg className="w-4 h-4 text-utility-warning-400" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>

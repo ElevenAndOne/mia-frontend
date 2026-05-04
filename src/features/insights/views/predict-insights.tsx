@@ -28,23 +28,23 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
   useEffect(() => {
     if (sessionId) {
-      trackEvent(sessionId, 'page_visit', 'predict')
+      trackEvent(sessionId, 'page_visit', 'strategise')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     if (data?.status === 'completed' && data.created_at) {
-      localStorage.setItem(`${StorageKey.PREDICT_SEEN_PREFIX}${data.created_at}`, 'true')
+      localStorage.setItem(`${StorageKey.STRATEGISE_SEEN_PREFIX}${data.created_at}`, 'true')
       if (sessionId) {
-        trackEvent(sessionId, 'predict_view', 'predict', { status: data.status })
+        trackEvent(sessionId, 'strategise_view', 'strategise', { status: data.status })
       }
     }
   }, [data?.status, data?.created_at, sessionId])
 
   return (
     <div className="w-full h-full relative flex flex-col bg-primary">
-      <TopBar title="Predict" onBack={onBack} className="relative z-20 border-b border-tertiary" />
+      <TopBar title="Strategise" onBack={onBack} className="relative z-20 border-b border-tertiary" />
 
       <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
         {isLoading && (

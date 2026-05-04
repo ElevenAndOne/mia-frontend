@@ -37,13 +37,13 @@ export const ChatView = ({
   const { data: goldData } = useGoldInsights(sessionId)
 
   // Only show "Ready" pulse if completed AND user hasn't viewed the report yet
-  const predictSeenKey = goldData?.created_at
-    ? `${StorageKey.PREDICT_SEEN_PREFIX}${goldData.created_at}`
+  const strategiseSeenKey = goldData?.created_at
+    ? `${StorageKey.STRATEGISE_SEEN_PREFIX}${goldData.created_at}`
     : null
-  const predictReady =
+  const strategiseReady =
     goldData?.status === 'completed' &&
-    !!predictSeenKey &&
-    localStorage.getItem(predictSeenKey) !== 'true'
+    !!strategiseSeenKey &&
+    localStorage.getItem(strategiseSeenKey) !== 'true'
 
   const {
     userName,
@@ -134,7 +134,7 @@ export const ChatView = ({
                 <QuickActions
                   onAction={handleQuickAction}
                   disabled={isLoading || !hasSelectedPlatforms}
-                  predictReady={predictReady}
+                  strategiseReady={strategiseReady}
                 />
                 <div className="md:mt-3">
                   <RaceCampaignTracker disabled={isLoading} dateRange={dateRange} />

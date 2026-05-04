@@ -158,7 +158,7 @@ export const AppRoutes = ({
         />
 
         <Route
-          path="/strategise"
+          path="/predict"
           element={
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
@@ -167,6 +167,8 @@ export const AppRoutes = ({
             </ProtectedRoute>
           }
         />
+        {/* backward-compat redirect */}
+        <Route path="/strategise" element={<Navigate to="/predict" replace />} />
 
         <Route
           path="/reports"
@@ -225,7 +227,7 @@ export const AppRoutes = ({
         />
 
         <Route
-          path="/insights/predict"
+          path="/insights/strategise"
           element={
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
@@ -234,6 +236,8 @@ export const AppRoutes = ({
             </ProtectedRoute>
           }
         />
+        {/* backward-compat redirect */}
+        <Route path="/insights/predict" element={<Navigate to="/insights/strategise" replace />} />
 
         {/* 404 Not Found - catch-all route */}
         <Route path="*" element={<NotFoundPage />} />

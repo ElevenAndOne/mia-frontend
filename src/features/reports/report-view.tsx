@@ -619,11 +619,18 @@ const ReportPreview = ({
           <div className="space-y-4">
             <div className="flex items-start gap-4">
               {(data.top_paid_ad.thumbnail_url || data.top_paid_ad.image_url) && (
-                <img
-                  src={data.top_paid_ad.thumbnail_url || data.top_paid_ad.image_url || ''}
-                  alt="Top ad creative"
-                  className="w-32 h-32 object-cover rounded-lg border border-primary shrink-0"
-                />
+                <a
+                  href={data.top_paid_ad.post_url || `https://www.facebook.com/ads/library/?id=${data.top_paid_ad.ad_id}&active_status=all`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0"
+                >
+                  <img
+                    src={data.top_paid_ad.thumbnail_url || data.top_paid_ad.image_url || ''}
+                    alt="Top ad creative"
+                    className="w-32 h-32 object-cover rounded-lg border border-primary hover:opacity-80 transition-opacity"
+                  />
+                </a>
               )}
               <div className="space-y-1.5 paragraph-sm flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -633,6 +640,14 @@ const ReportPreview = ({
                   <span className="paragraph-xs text-tertiary">
                     {data.top_paid_ad.top_metric_label}
                   </span>
+                  <a
+                    href={data.top_paid_ad.post_url || `https://www.facebook.com/ads/library/?id=${data.top_paid_ad.ad_id}&active_status=all`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="paragraph-xs text-blue-500 hover:underline ml-auto"
+                  >
+                    {data.top_paid_ad.post_url ? 'View post ↗' : 'View in Ads Library ↗'}
+                  </a>
                 </div>
                 {data.top_paid_ad.headline && (
                   <p className="font-medium text-primary">{data.top_paid_ad.headline}</p>
@@ -665,17 +680,34 @@ const ReportPreview = ({
             {data.top_organic_posts.posts.map((post, i) => (
               <div key={i} className="border border-primary rounded-lg overflow-hidden">
                 {post.image_url && (
-                  <img
-                    src={post.image_url}
-                    alt="Post"
-                    className="w-full h-32 object-cover"
-                  />
+                  post.post_url ? (
+                    <a href={post.post_url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={post.image_url}
+                        alt="Post"
+                        className="w-full h-32 object-cover hover:opacity-80 transition-opacity"
+                      />
+                    </a>
+                  ) : (
+                    <img src={post.image_url} alt="Post" className="w-full h-32 object-cover" />
+                  )
                 )}
                 <div className="p-3 space-y-2 paragraph-xs">
-                  <p className="text-secondary line-clamp-3">{post.description}</p>
+                  {post.post_url ? (
+                    <a
+                      href={post.post_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-secondary line-clamp-3 hover:text-blue-500 transition-colors block"
+                    >
+                      {post.description}
+                    </a>
+                  ) : (
+                    <p className="text-secondary line-clamp-3">{post.description}</p>
+                  )}
                   <div className="grid grid-cols-2 gap-1 text-tertiary">
                     <span>Engagement: {post.engagement_rate}%</span>
-                    <span>Impressions: {post.impressions.toLocaleString()}</span>
+                    <span>Reach: {post.reach.toLocaleString()}</span>
                     <span>Clicks: {post.clicks.toLocaleString()}</span>
                     <span>Reactions: {post.reactions.toLocaleString()}</span>
                   </div>

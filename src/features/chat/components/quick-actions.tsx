@@ -11,7 +11,7 @@ interface QuickAction {
 interface QuickActionsProps {
   onAction: (actionId: string) => void
   disabled?: boolean
-  predictReady?: boolean
+  strategiseReady?: boolean
 }
 
 const actions: QuickAction[] = [
@@ -23,7 +23,7 @@ const actions: QuickAction[] = [
 export const QuickActions = ({
   onAction,
   disabled = false,
-  predictReady = false,
+  strategiseReady = false,
 }: QuickActionsProps) => {
   return (
     <div className="flex flex-col gap-3 w-full max-w-3xl mx-auto px-4">
@@ -79,49 +79,49 @@ export const QuickActions = ({
         ))}
       </div>
 
-      {/* Predict — full-width, extra top gap on desktop to separate from quick insight row */}
-      <button
-        onClick={() => onAction('predict')}
-        disabled={disabled}
-        className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
-          disabled
-            ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-            : 'bg-primary border-brand-300 hover:border-brand-400 hover:shadow-sm active:scale-[0.98]'
-        }`}
-      >
-        <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
-          <Icon.bar_chart_square_02 size={18} />
-        </span>
-        <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
-          Predict
-        </span>
-        {predictReady && !disabled && (
-          <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-secondary text-secondary">
-            Ready
-          </span>
-        )}
-        {!predictReady && !disabled && (
-          <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-            ML-powered predictions from your historical data.
-          </span>
-        )}
-      </button>
-
-      {/* Strategise — full-width, purple accent, Pro badge */}
+      {/* Strategise — full-width, gold data insights */}
       <button
         onClick={() => onAction('strategise')}
         disabled={disabled}
         className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
           disabled
             ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-            : 'bg-primary border-brand-300 hover:border-brand-400 hover:shadow-sm active:scale-[0.98]'
+            : 'bg-primary border-utility-warning-400 hover:border-utility-warning-500 hover:shadow-sm active:scale-[0.98]'
+        }`}
+      >
+        <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+          <Icon.bar_chart_square_02 size={18} />
+        </span>
+        <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+          Strategise
+        </span>
+        {strategiseReady && !disabled && (
+          <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-secondary text-secondary">
+            Ready
+          </span>
+        )}
+        {!strategiseReady && !disabled && (
+          <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
+            ML-powered predictions from your historical data.
+          </span>
+        )}
+      </button>
+
+      {/* Predict — full-width, LP optimizer, Pro badge */}
+      <button
+        onClick={() => onAction('predict')}
+        disabled={disabled}
+        className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
+          disabled
+            ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
+            : 'bg-primary border-utility-warning-400 hover:border-utility-warning-500 hover:shadow-sm active:scale-[0.98]'
         }`}
       >
         <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-brand-600'}`}>
           <Icon.bar_chart_01 size={18} />
         </span>
         <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
-          Strategise
+          Predict
         </span>
         {!disabled && (
           <>

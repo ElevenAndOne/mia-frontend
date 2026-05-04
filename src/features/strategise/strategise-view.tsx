@@ -820,7 +820,7 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   if (isLoadingCampaign) {
     return (
       <div className="w-full h-full flex flex-col bg-primary">
-        <TopBar title="Strategise" onBack={onBack} className="border-b border-tertiary" />
+        <TopBar title="Predict" onBack={onBack} className="border-b border-tertiary" />
         <div className="flex-1 flex items-center justify-center">
           <Spinner size="lg" variant="primary" />
         </div>
@@ -831,7 +831,7 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   return (
     <div className="w-full h-full relative flex flex-col bg-primary">
       <TopBar
-        title="Strategise"
+        title="Predict"
         onBack={showBackButton ? handleBack : onBack}
         className="relative z-20 border-b border-tertiary"
       />
@@ -845,7 +845,7 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
               <p className="text-4xl mb-4">📋</p>
               <p className="label-bg text-primary mb-2">No campaign brief found</p>
               <p className="paragraph-sm text-secondary max-w-xs mx-auto">
-                Upload a campaign brief at the Intent Engine to use Strategise. Mia needs your
+                Upload a campaign brief at the Intent Engine to use Predict. Mia needs your
                 RACE phases to allocate budget.
               </p>
             </SectionCard>

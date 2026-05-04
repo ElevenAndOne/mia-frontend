@@ -140,17 +140,21 @@ export interface KPIActual {
 
 export const fetchCampaignTracker = async (
   sessionId: string,
-  tenantId: string
+  tenantId: string,
+  campaignId?: string | null
 ): Promise<CampaignTracker | null> => {
-  const key = `${tenantId}`
+  const key = campaignId ? `${tenantId}:${campaignId}` : tenantId
   const cached = getTrackerEntry(key)
   if (cached && Date.now() - cached.ts < TRACKER_CACHE_TTL_MS) {
-    console.debug('[RACE] tracker: cache hit', { tenantId })
+    console.debug('[RACE] tracker: cache hit', { tenantId, campaignId })
     return cached.data
   }
   try {
-    console.debug('[RACE] tracker: fetching from API', { tenantId })
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/tracker`, {
+    console.debug('[RACE] tracker: fetching from API', { tenantId, campaignId })
+    const url = campaignId
+      ? `/api/tenants/${tenantId}/campaigns/tracker?campaign_id=${encodeURIComponent(campaignId)}`
+      : `/api/tenants/${tenantId}/campaigns/tracker`
+    const res = await apiFetch(url, {
       headers: { 'X-Session-ID': sessionId },
     })
     if (!res.ok) {
@@ -219,8 +223,9 @@ export const fetchPhaseActuals = async (
 // ---------------------------------------------------------------------------
 
 /** Synchronous cache peek — returns cached tracker if available (not expired), else undefined */
-export const getCachedTracker = (tenantId: string): CampaignTracker | null | undefined => {
-  const cached = getTrackerEntry(tenantId)
+export const getCachedTracker = (tenantId: string, campaignId?: string | null): CampaignTracker | null | undefined => {
+  const key = campaignId ? `${tenantId}:${campaignId}` : tenantId
+  const cached = getTrackerEntry(key)
   if (cached && Date.now() - cached.ts < TRACKER_CACHE_TTL_MS) return cached.data
   return undefined // undefined = not in cache (different from null = no campaign)
 }

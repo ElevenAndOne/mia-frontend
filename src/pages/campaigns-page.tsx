@@ -10,7 +10,7 @@ const CampaignsPage = () => {
     onNewWorkspace,
     onIntegrationsClick,
     onCampaignsClick,
-    onStrategiseClick,
+    onPredictClick,
     onReportsClick,
     onHelpClick,
     onLogout,
@@ -22,7 +22,7 @@ const CampaignsPage = () => {
       onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
-      onStrategiseClick={onStrategiseClick}
+      onPredictClick={onPredictClick}
       onReportsClick={onReportsClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
