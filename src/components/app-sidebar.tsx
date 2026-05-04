@@ -35,7 +35,6 @@ export const AppSidebar = ({
           onWorkspaceSettings={onWorkspaceSettings}
           onIntegrationsClick={onIntegrationsClick}
           onCampaignsClick={onCampaignsClick}
-          onPredictClick={onPredictClick}
           onReportsClick={onReportsClick}
           onHelpClick={onHelpClick}
           onNewWorkspace={onNewWorkspace}

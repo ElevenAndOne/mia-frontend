@@ -128,7 +128,6 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
           setActiveReport(null)
           setStep('list')
         }}
-        tenantId={tenantId}
       />
     )
   }
@@ -435,11 +434,9 @@ const ReportListItem = ({
 const ReportPreview = ({
   report,
   onBack,
-  tenantId,
 }: {
   report: ClientReport
   onBack: () => void
-  tenantId: string
 }) => {
   const data = report.report_data
 

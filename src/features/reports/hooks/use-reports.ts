@@ -27,7 +27,7 @@ export const useReports = () => {
   const [loadingSpaces, setLoadingSpaces] = useState(false)
 
   const loadReports = useCallback(async () => {
-    if (!tenantId) return
+    if (!tenantId || !sessionId) return
     setLoadingReports(true)
     try {
       const data = await listReports(sessionId, tenantId)
@@ -43,7 +43,7 @@ export const useReports = () => {
 
   const generate = useCallback(
     async (params: GenerateReportParams) => {
-      if (!tenantId) return
+      if (!tenantId || !sessionId) return
       setGenerating(true)
       setError(null)
       try {
@@ -74,7 +74,7 @@ export const useReports = () => {
 
   const openReport = useCallback(
     async (reportId: string) => {
-      if (!tenantId) return
+      if (!tenantId || !sessionId) return
       const report = await getReport(sessionId, tenantId, reportId)
       setActiveReport(report)
     },
@@ -83,7 +83,7 @@ export const useReports = () => {
 
   const saveOverrides = useCallback(
     async (reportId: string, overrides: Record<string, unknown>) => {
-      if (!tenantId) return
+      if (!tenantId || !sessionId) return
       const updated = await patchReport(sessionId, tenantId, reportId, overrides)
       setActiveReport(updated)
     },
@@ -92,7 +92,7 @@ export const useReports = () => {
 
   const removeReport = useCallback(
     async (reportId: string) => {
-      if (!tenantId) return
+      if (!tenantId || !sessionId) return
       await deleteReport(sessionId, tenantId, reportId)
       setReports((prev) => prev.filter((r) => r.report_id !== reportId))
       if (activeReport?.report_id === reportId) setActiveReport(null)
@@ -101,7 +101,7 @@ export const useReports = () => {
   )
 
   const loadClickUpSpaces = useCallback(async () => {
-    if (!tenantId || loadingSpaces) return
+    if (!tenantId || !sessionId || loadingSpaces) return
     setLoadingSpaces(true)
     try {
       const spaces = await getClickUpSpaces(sessionId, tenantId)
@@ -113,7 +113,7 @@ export const useReports = () => {
 
   const linkList = useCallback(
     async (campaignId: string, clickupListId: string) => {
-      if (!tenantId) return
+      if (!tenantId || !sessionId) return
       await linkClickUpList(sessionId, tenantId, campaignId, clickupListId)
     },
     [sessionId, tenantId],
