@@ -190,9 +190,24 @@ export interface NextStep {
   description: string
 }
 
+export interface DashboardMetricValue {
+  value: number
+  change_pct: number | null
+}
+
+export interface ReportDashboardMetrics {
+  currency: string
+  prev_period_label: string
+  total_spend: DashboardMetricValue
+  conversions: DashboardMetricValue
+  ctr: DashboardMetricValue
+  cost_per_lead: DashboardMetricValue
+}
+
 export interface ReportDashboard {
   campaign_health: { status: string; description: string }
   top_ad_metric: string
+  metrics: ReportDashboardMetrics | null
   key_takeaways: string[]
   next_steps: NextStep[]
   next_report_period: string

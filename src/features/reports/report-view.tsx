@@ -10,7 +10,7 @@ import {
   TOP_ORGANIC_METRIC_OPTIONS,
 } from './types'
 import { useReports } from './hooks/use-reports'
-import type { ClientReport, KpiItem, ReportSummary } from './types'
+import type { ClientReport, KpiItem, ReportDashboardMetrics, ReportSummary } from './types'
 
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
@@ -857,6 +857,14 @@ const ReportPreview = ({
       {/* Section 12: Dashboard */}
       <SectionCard title="Campaign Performance Dashboard" sectionNum={12}>
         <div className="space-y-4 paragraph-sm">
+          {/* Headline metric tiles */}
+          {data.dashboard.metrics && (
+            <DashboardMetricTiles
+              metrics={data.dashboard.metrics}
+              currency={data.spend_breakdown.currency || data.dashboard.metrics.currency}
+            />
+          )}
+
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="font-medium">Campaign Health:</span>
@@ -962,6 +970,64 @@ const EditableField = ({
     <span className={value ? 'text-secondary' : 'text-tertiary'}>{value || placeholder}</span>
   </div>
 )
+
+const DashboardMetricTiles = ({
+  metrics,
+  currency,
+}: {
+  metrics: ReportDashboardMetrics
+  currency: string
+}) => {
+  const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+  const change = (pct: number | null, invert = false) => {
+    if (pct === null || pct === undefined) return null
+    const positive = invert ? pct < 0 : pct > 0
+    const sign = pct > 0 ? '+' : ''
+    return (
+      <span className={`paragraph-xs font-medium ${positive ? 'text-green-600' : 'text-red-500'}`}>
+        {sign}{pct}%
+      </span>
+    )
+  }
+  const tiles = [
+    {
+      label: 'Total Ad Spend',
+      value: `${currency} ${fmt(metrics.total_spend.value)}`,
+      change: change(metrics.total_spend.change_pct),
+    },
+    {
+      label: 'Conversions',
+      value: String(metrics.conversions.value),
+      change: change(metrics.conversions.change_pct),
+    },
+    {
+      label: 'CTR (All)',
+      value: `${metrics.ctr.value}%`,
+      change: change(metrics.ctr.change_pct),
+    },
+    {
+      label: 'Cost Per Lead',
+      value: metrics.cost_per_lead.value > 0 ? `${currency} ${fmt(metrics.cost_per_lead.value)}` : '—',
+      change: change(metrics.cost_per_lead.change_pct, true), // lower CPL = good
+    },
+  ]
+  return (
+    <div>
+      <p className="paragraph-xs text-tertiary mb-2">
+        vs {metrics.prev_period_label}
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {tiles.map((t) => (
+          <div key={t.label} className="border border-primary rounded-lg p-4 space-y-1">
+            <p className="paragraph-xs text-tertiary">{t.label}</p>
+            <p className="heading-sm text-primary">{t.value}</p>
+            {t.change && <div>{t.change}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const MetricTile = ({ label, value }: { label: string; value: string }) => (
   <div className="border border-primary rounded-lg p-3 text-center">
