@@ -90,6 +90,8 @@ export interface CampaignOption {
   campaign_name: string
   client_name: string | null
   status: string
+  channels: string[] | null
+  clickup_list_id: string | null
 }
 
 export const listCampaignOptions = async (

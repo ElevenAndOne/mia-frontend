@@ -1,5 +1,5 @@
 export type TopAdMetric = 'conversions' | 'ctr' | 'roas' | 'clicks' | 'impressions' | 'cpc'
-export type TopOrganicMetric = 'engagement_rate' | 'impressions' | 'clicks' | 'reactions'
+export type TopOrganicMetric = 'engagement_rate' | 'impressions' | 'reach' | 'clicks' | 'reactions'
 
 export interface TopMetricOption {
   value: TopAdMetric | TopOrganicMetric
@@ -18,6 +18,7 @@ export const TOP_AD_METRIC_OPTIONS: TopMetricOption[] = [
 export const TOP_ORGANIC_METRIC_OPTIONS: TopMetricOption[] = [
   { value: 'engagement_rate', label: 'Engagement Rate' },
   { value: 'impressions', label: 'Impressions' },
+  { value: 'reach', label: 'Reach' },
   { value: 'clicks', label: 'Clicks' },
   { value: 'reactions', label: 'Reactions' },
 ]
@@ -106,6 +107,7 @@ export interface OrganicPost {
   image_url: string | null
   created_time: string
   impressions: number
+  reach: number
   engaged_users: number
   clicks: number
   reactions: number
@@ -225,4 +227,5 @@ export interface GenerateReportParams {
   report_year: number
   top_ad_metric: TopAdMetric
   top_organic_metric: TopOrganicMetric
+  clickup_list_id?: string
 }

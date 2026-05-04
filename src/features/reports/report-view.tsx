@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
-import { listCampaignOptions } from './services/report-service'
-import type { GenerateReportParams, TopAdMetric, TopOrganicMetric } from './types'
+import { listCampaignOptions, getClickUpSpaces } from './services/report-service'
+import type { GenerateReportParams, TopAdMetric, TopOrganicMetric, ClickUpSpace } from './types'
 import {
   MONTH_OPTIONS,
   TOP_AD_METRIC_OPTIONS,
@@ -15,6 +15,15 @@ import type { ClientReport, KpiItem, ReportSummary } from './types'
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2]
+
+const PLATFORM_LABELS: Record<string, string> = {
+  meta_ads: 'Meta',
+  google_ads: 'Google',
+  organic_social: 'Organic',
+  email: 'Email',
+  linkedin_ads: 'LinkedIn',
+  tiktok_ads: 'TikTok',
+}
 
 export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   const { activeWorkspace, sessionId } = useSession()
@@ -34,20 +43,63 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   const [step, setStep] = useState<'list' | 'configure' | 'report'>('list')
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
+  const [spaces, setSpaces] = useState<ClickUpSpace[]>([])
+  const [loadingSpaces, setLoadingSpaces] = useState(false)
+
   const [campaignId, setCampaignId] = useState('')
   const [month, setMonth] = useState(currentMonth)
   const [year, setYear] = useState(currentYear)
   const [topAdMetric, setTopAdMetric] = useState<TopAdMetric>('conversions')
   const [topOrganicMetric, setTopOrganicMetric] = useState<TopOrganicMetric>('engagement_rate')
+  const [selectedSpaceId, setSelectedSpaceId] = useState('')
+  const [selectedListId, setSelectedListId] = useState('')
 
+  const selectedCampaign = campaigns.find((c) => c.campaign_id === campaignId) ?? null
+  const selectedSpace = spaces.find((s) => s.space_id === selectedSpaceId) ?? null
+  const availableLists = selectedSpace?.lists ?? []
+
+  // Load campaigns + ClickUp spaces when configure step opens
   useEffect(() => {
-    if (step === 'configure' && tenantId && sessionId && campaigns.length === 0) {
+    if (step !== 'configure' || !tenantId || !sessionId) return
+    if (campaigns.length === 0) {
       setLoadingCampaigns(true)
-      listCampaignOptions(sessionId ?? '', tenantId)
+      listCampaignOptions(sessionId, tenantId)
         .then(setCampaigns)
         .finally(() => setLoadingCampaigns(false))
     }
-  }, [step, tenantId, sessionId, campaigns.length])
+    if (spaces.length === 0) {
+      setLoadingSpaces(true)
+      getClickUpSpaces(sessionId, tenantId)
+        .then(setSpaces)
+        .finally(() => setLoadingSpaces(false))
+    }
+  }, [step, tenantId, sessionId, campaigns.length, spaces.length])
+
+  // When campaign changes, pre-select its linked ClickUp list if any
+  useEffect(() => {
+    if (!selectedCampaign) {
+      setSelectedSpaceId('')
+      setSelectedListId('')
+      return
+    }
+    const linkedListId = selectedCampaign.clickup_list_id
+    if (!linkedListId) {
+      setSelectedListId('')
+      setSelectedSpaceId('')
+      return
+    }
+    setSelectedListId(linkedListId)
+    const parentSpace = spaces.find((s) => s.lists.some((l) => l.list_id === linkedListId))
+    if (parentSpace) setSelectedSpaceId(parentSpace.space_id)
+  }, [campaignId, selectedCampaign, spaces])
+
+  // Reset list when space changes (unless it belongs to new space)
+  const handleSpaceChange = (spaceId: string) => {
+    setSelectedSpaceId(spaceId)
+    const space = spaces.find((s) => s.space_id === spaceId)
+    const listStillValid = space?.lists.some((l) => l.list_id === selectedListId) ?? false
+    if (!listStillValid) setSelectedListId('')
+  }
 
   const handleGenerate = async () => {
     if (!campaignId) return
@@ -57,6 +109,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
       report_year: year,
       top_ad_metric: topAdMetric,
       top_organic_metric: topOrganicMetric,
+      clickup_list_id: selectedListId || undefined,
     }
     await generate(params)
     setStep('report')
@@ -101,6 +154,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
         )}
 
         <div className="space-y-4">
+          {/* Campaign */}
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
               Campaign
@@ -121,8 +175,21 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                 ))}
               </select>
             )}
+            {selectedCampaign?.channels && selectedCampaign.channels.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {selectedCampaign.channels.map((ch) => (
+                  <span
+                    key={ch}
+                    className="px-2 py-0.5 rounded-full bg-secondary text-secondary paragraph-xs"
+                  >
+                    {PLATFORM_LABELS[ch] ?? ch}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Period */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="paragraph-sm font-medium text-secondary block mb-1.5">
@@ -158,6 +225,53 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
             </div>
           </div>
 
+          {/* ClickUp Studio Hours */}
+          <div>
+            <label className="paragraph-sm font-medium text-secondary block mb-1.5">
+              Studio Hours source{' '}
+              <span className="font-normal text-tertiary">(optional)</span>
+            </label>
+            {loadingSpaces ? (
+              <div className="w-full h-10 rounded-lg bg-secondary animate-pulse" />
+            ) : spaces.length === 0 ? (
+              <p className="paragraph-xs text-tertiary">ClickUp not connected</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={selectedSpaceId}
+                  onChange={(e) => handleSpaceChange(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                >
+                  <option value="">Space…</option>
+                  {spaces.map((s) => (
+                    <option key={s.space_id} value={s.space_id}>
+                      {s.space_name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedListId}
+                  onChange={(e) => setSelectedListId(e.target.value)}
+                  disabled={!selectedSpaceId}
+                  className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-40"
+                >
+                  <option value="">List…</option>
+                  {availableLists.map((l) => (
+                    <option key={l.list_id} value={l.list_id}>
+                      {l.list_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {selectedListId && (
+              <p className="paragraph-xs text-tertiary mt-1.5">
+                This list will be saved to the campaign for future reports.
+              </p>
+            )}
+          </div>
+
+          {/* Metric pickers */}
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
               Rank top paid ad by
@@ -499,7 +613,7 @@ const ReportPreview = ({
       <SectionCard title="Top Organic Post" sectionNum={5}>
         {data.top_organic_posts.posts.length === 0 ? (
           <p className="paragraph-sm text-tertiary">
-            No organic post data available. Connect your Facebook Page to enable this section.
+            No organic posts found for this reporting period.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
