@@ -142,6 +142,24 @@ export interface ReportStudioHours {
   source: 'clickup' | 'not_linked' | 'unavailable' | 'error'
 }
 
+export interface ReportTopPaidAd {
+  ad_id: string
+  ad_name: string
+  platform: string
+  campaign_name: string
+  headline: string
+  body: string
+  image_url: string | null
+  thumbnail_url: string | null
+  impressions: number
+  clicks: number
+  spend: number
+  ctr: number
+  cpc: number
+  conversions: number
+  top_metric_label: string
+}
+
 export interface AbTest {
   what_tested: string
   testing_period: string
@@ -185,6 +203,7 @@ export interface ReportData {
   executive_summary: ReportExecSummary
   kpi_performance: ReportKpiPerformance
   spend_breakdown: ReportSpendBreakdown
+  top_paid_ad: ReportTopPaidAd | null
   top_organic_posts: ReportTopOrganicPosts
   audience_insights: ReportAudienceInsights
   studio_hours: ReportStudioHours

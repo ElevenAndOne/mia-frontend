@@ -609,8 +609,53 @@ const ReportPreview = ({
         </div>
       </SectionCard>
 
-      {/* Section 5: Top Organic Posts */}
-      <SectionCard title="Top Organic Post" sectionNum={5}>
+      {/* Section 5: Top Performing Paid Ad */}
+      <SectionCard title="Top Performing Paid Ad" sectionNum={5}>
+        {!data.top_paid_ad ? (
+          <p className="paragraph-sm text-tertiary">
+            No paid ad data available for this period.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              {(data.top_paid_ad.thumbnail_url || data.top_paid_ad.image_url) && (
+                <img
+                  src={data.top_paid_ad.thumbnail_url || data.top_paid_ad.image_url || ''}
+                  alt="Top ad creative"
+                  className="w-32 h-32 object-cover rounded-lg border border-primary shrink-0"
+                />
+              )}
+              <div className="space-y-1.5 paragraph-sm flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 paragraph-xs font-medium">
+                    {data.top_paid_ad.platform}
+                  </span>
+                  <span className="paragraph-xs text-tertiary">
+                    {data.top_paid_ad.top_metric_label}
+                  </span>
+                </div>
+                {data.top_paid_ad.headline && (
+                  <p className="font-medium text-primary">{data.top_paid_ad.headline}</p>
+                )}
+                {data.top_paid_ad.body && (
+                  <p className="text-secondary line-clamp-3">{data.top_paid_ad.body}</p>
+                )}
+                <p className="paragraph-xs text-tertiary truncate">{data.top_paid_ad.ad_name}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <MetricTile label="Impressions" value={data.top_paid_ad.impressions.toLocaleString()} />
+              <MetricTile label="Clicks" value={data.top_paid_ad.clicks.toLocaleString()} />
+              <MetricTile label="CTR" value={`${data.top_paid_ad.ctr}%`} />
+              <MetricTile label="CPC" value={`R ${data.top_paid_ad.cpc.toFixed(2)}`} />
+              <MetricTile label="Conversions" value={String(data.top_paid_ad.conversions)} />
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Section 6: Top Organic Posts */}
+      <SectionCard title="Top Organic Post" sectionNum={6}>
         {data.top_organic_posts.posts.length === 0 ? (
           <p className="paragraph-sm text-tertiary">
             No organic posts found for this reporting period.
@@ -644,8 +689,8 @@ const ReportPreview = ({
         )}
       </SectionCard>
 
-      {/* Section 6: Audience Insights */}
-      <SectionCard title="Audience Insights" sectionNum={6}>
+      {/* Section 7: Audience Insights */}
+      <SectionCard title="Audience Insights" sectionNum={7}>
         {!data.audience_insights.age_groups?.length ? (
           <p className="paragraph-sm text-tertiary">
             No audience data available. Connect Meta Ads to enable this section.
@@ -689,8 +734,8 @@ const ReportPreview = ({
         )}
       </SectionCard>
 
-      {/* Section 7: Studio Hours */}
-      <SectionCard title="Studio Hours" sectionNum={7}>
+      {/* Section 8: Studio Hours */}
+      <SectionCard title="Studio Hours" sectionNum={8}>
         {data.studio_hours.source === 'not_linked' ? (
           <p className="paragraph-sm text-tertiary">
             Link this campaign to a ClickUp list to auto-populate studio hours.
@@ -718,8 +763,8 @@ const ReportPreview = ({
         )}
       </SectionCard>
 
-      {/* Section 8: Testing & Learnings */}
-      <SectionCard title="Testing & Learnings" sectionNum={8}>
+      {/* Section 9: Testing & Learnings */}
+      <SectionCard title="Testing & Learnings" sectionNum={9}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.testing_learnings.tests.map((test, i) => (
             <div key={i} className="border border-primary rounded-lg p-4 space-y-2 paragraph-sm">
@@ -745,8 +790,8 @@ const ReportPreview = ({
         </div>
       </SectionCard>
 
-      {/* Section 9: Risks & Recommendations */}
-      <SectionCard title="Risks & Recommendations" sectionNum={9}>
+      {/* Section 10: Risks & Recommendations */}
+      <SectionCard title="Risks & Recommendations" sectionNum={10}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 paragraph-sm">
           <div className="border border-primary rounded-lg p-4 space-y-3">
             <p className="font-medium">Risks & Considerations</p>
@@ -777,8 +822,8 @@ const ReportPreview = ({
         </div>
       </SectionCard>
 
-      {/* Section 10: Next Month Plan */}
-      <SectionCard title="Next Month Plan" sectionNum={10}>
+      {/* Section 11: Next Month Plan */}
+      <SectionCard title="Next Month Plan" sectionNum={11}>
         <div className="space-y-3 paragraph-sm">
           <div>
             <p className="font-medium">Focus Areas</p>
@@ -809,8 +854,8 @@ const ReportPreview = ({
         </div>
       </SectionCard>
 
-      {/* Section 11: Dashboard */}
-      <SectionCard title="Campaign Performance Dashboard" sectionNum={11}>
+      {/* Section 12: Dashboard */}
+      <SectionCard title="Campaign Performance Dashboard" sectionNum={12}>
         <div className="space-y-4 paragraph-sm">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
@@ -915,6 +960,13 @@ const EditableField = ({
   <div>
     <span className="font-medium">{label} </span>
     <span className={value ? 'text-secondary' : 'text-tertiary'}>{value || placeholder}</span>
+  </div>
+)
+
+const MetricTile = ({ label, value }: { label: string; value: string }) => (
+  <div className="border border-primary rounded-lg p-3 text-center">
+    <p className="paragraph-xs text-tertiary">{label}</p>
+    <p className="paragraph-sm font-medium text-primary mt-0.5">{value}</p>
   </div>
 )
 
