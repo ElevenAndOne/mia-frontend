@@ -95,15 +95,17 @@ export const QuickActions = ({
         <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
           Strategise
         </span>
-        {strategiseReady && !disabled && (
-          <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-secondary text-secondary">
-            Ready
-          </span>
-        )}
-        {!strategiseReady && !disabled && (
-          <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-            ML-powered predictions from your historical data.
-          </span>
+        {!disabled && (
+          <>
+            <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
+              ML-powered predictions from your historical data.
+            </span>
+            {strategiseReady && (
+              <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-secondary text-secondary">
+                Ready
+              </span>
+            )}
+          </>
         )}
       </button>
 

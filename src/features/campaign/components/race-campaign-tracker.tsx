@@ -210,8 +210,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     }
   }, [dateRange])
 
-  // Fetch actuals when a phase is selected (if not already fetched).
-  // Uses ref for actualsMap so we always read current state without recreating the callback.
+  // Fetch actuals for a phase. Checks JS/sessionStorage cache first, then hits the backend.
+  // Backend has a 23h PostgreSQL cache — subsequent calls return instantly.
   const loadActuals = useCallback(
     async (phaseName: string) => {
       if (!sessionId || !tenantId || !campaign) return
@@ -241,9 +241,19 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     [sessionId, tenantId, campaign, startDate, endDate, refreshKey]
   )
 
+  // Pre-fetch ALL phases on load, not just the active tab.
+  // Selected phase is loaded first for fastest UX; others follow immediately after.
+  // loadActuals handles deduplication internally — safe to call for all phases every render.
   useEffect(() => {
-    if (selectedPhase) loadActuals(selectedPhase)
-  }, [selectedPhase, loadActuals])
+    if (!campaign) return
+    const phaseNames = campaign.phases.map((p) => p.phase_name)
+    const ordered = selectedPhase
+      ? [selectedPhase, ...phaseNames.filter((n) => n !== selectedPhase)]
+      : phaseNames
+    for (const phaseName of ordered) {
+      loadActuals(phaseName)
+    }
+  }, [selectedPhase, loadActuals, campaign])
 
   if (disabled) return null
 
