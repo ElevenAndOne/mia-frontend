@@ -290,12 +290,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         name: 'Smartlead',
         description: 'Cold email outreach campaigns',
         icon: '/icons/smartlead.svg',
-        connected: platformStatus.smartlead?.connected || false,
-        linked: platformStatus.smartlead?.linked ?? platformStatus.smartlead?.connected ?? false,
-        lastSync: platformStatus.smartlead?.connected
-          ? getTimeAgo(platformStatus.smartlead.last_synced)
+        connected: platformStatus?.smartlead?.connected || false,
+        linked: platformStatus?.smartlead?.linked ?? platformStatus?.smartlead?.connected ?? false,
+        lastSync: platformStatus?.smartlead?.connected
+          ? getTimeAgo(platformStatus?.smartlead.last_synced)
           : undefined,
-        autoSync: platformStatus.smartlead?.connected ? false : undefined,
+        autoSync: platformStatus?.smartlead?.connected ? false : undefined,
       },
       {
         id: 'tiktok',
@@ -1212,19 +1212,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="flex items-center gap-3 mb-2">
                   <img src="/icons/smartlead.svg" alt="Smartlead" className="w-10 h-10" />
                   <h2 className="title-h6 text-primary">
-                    {platformStatus.smartlead?.connected
+                    {platformStatus?.smartlead?.connected
                       ? 'Manage Smartlead Connection'
                       : 'Connect Smartlead'}
                   </h2>
                 </div>
                 <p className="paragraph-sm text-tertiary">
-                  {platformStatus.smartlead?.connected
+                  {platformStatus?.smartlead?.connected
                     ? `Smartlead cold email outreach is connected for ${activeWorkspace?.name || selectedAccount?.name || 'this workspace'}.`
                     : `Enter your Smartlead API key to pull cold email campaign data into Mia.`}
                 </p>
               </div>
 
-              {!platformStatus.smartlead?.connected && (
+              {!platformStatus?.smartlead?.connected && (
                 <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
                   <h3 className="subheading-md text-utility-info-700 mb-2">
                     How to get your API key:
@@ -1240,7 +1240,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 </div>
               )}
 
-              {!platformStatus.smartlead?.connected && (
+              {!platformStatus?.smartlead?.connected && (
                 <div className="mb-4">
                   <label className="block subheading-md text-secondary mb-2">API Key</label>
                   <input
@@ -1257,7 +1257,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 </div>
               )}
 
-              {platformStatus.smartlead?.connected && (
+              {platformStatus?.smartlead?.connected && (
                 <div className="mb-4">
                   <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
                     <div className="flex items-center gap-2">
@@ -1290,9 +1290,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   disabled={smartleadSubmitting}
                   className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
                 >
-                  {platformStatus.smartlead?.connected ? 'Close' : 'Cancel'}
+                  {platformStatus?.smartlead?.connected ? 'Close' : 'Cancel'}
                 </button>
-                {platformStatus.smartlead?.connected ? (
+                {platformStatus?.smartlead?.connected ? (
                   <button
                     onClick={() => setShowSmartleadUnlinkConfirm(true)}
                     disabled={smartleadSubmitting}

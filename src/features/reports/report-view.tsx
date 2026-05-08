@@ -449,7 +449,7 @@ const ReportPreview = ({
   // Merge manual_overrides.testing_learnings on top of report_data (overrides win)
   const overrides = report.manual_overrides ?? {}
   const effectiveTesting = (
-    (overrides.testing_learnings as typeof data.testing_learnings | undefined) ??
+    (overrides.testing_learnings as NonNullable<typeof data>['testing_learnings'] | undefined) ??
     data?.testing_learnings
   )
 

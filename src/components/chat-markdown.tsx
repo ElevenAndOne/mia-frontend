@@ -9,8 +9,8 @@ interface ChatMarkdownProps {
 
 export const ChatMarkdown = memo(function ChatMarkdown({ content, className = '' }: ChatMarkdownProps) {
   return (
+    <div className={className}>
     <ReactMarkdown
-      className={className}
       remarkPlugins={[remarkGfm]}
       components={{
         // Tables
@@ -80,5 +80,6 @@ export const ChatMarkdown = memo(function ChatMarkdown({ content, className = ''
     >
       {content}
     </ReactMarkdown>
+    </div>
   )
 })
