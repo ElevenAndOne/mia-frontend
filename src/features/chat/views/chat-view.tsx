@@ -67,6 +67,7 @@ export const ChatView = ({
     handleCancelAction,
     handleCancel,
     handleBack,
+    handleFeedback,
     integrationPrompt,
     loadConversation,
   } = useChatView()
@@ -186,6 +187,13 @@ export const ChatView = ({
                         onCancelAction={
                           message.pendingAction
                             ? () => handleCancelAction(message.id)
+                            : undefined
+                        }
+                        skillWorkspaces={message.skillWorkspaces}
+                        onFeedback={
+                          message.role === 'assistant'
+                            ? (feedback, workspaces) =>
+                                handleFeedback(feedback, workspaces, message.content)
                             : undefined
                         }
                       />

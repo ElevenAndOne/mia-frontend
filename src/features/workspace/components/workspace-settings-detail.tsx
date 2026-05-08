@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
+import { useSession } from '../../../contexts/session-context'
+import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
+
+type SettingsTab = 'members' | 'brand'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -87,11 +92,41 @@ export const WorkspaceSettingsDetail = ({
   onDeleteWorkspace,
   onLeaveWorkspace,
 }: WorkspaceSettingsDetailProps) => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('members')
+  const { sessionId } = useSession()
+
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar title="Workspace Settings" onBack={onBack} className="border-b border-tertiary" />
 
+      {/* Tab strip */}
+      <div className="flex border-b border-tertiary px-4">
+        {(['members', 'brand'] as SettingsTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={[
+              'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors',
+              activeTab === tab
+                ? 'border-brand-solid text-brand-solid'
+                : 'border-transparent text-secondary hover:text-primary',
+            ].join(' ')}
+          >
+            {tab === 'members' ? 'Members' : 'Brand Profile'}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
+
+        {/* Brand Profile tab */}
+        {activeTab === 'brand' && (
+          <MarketingContextPage sessionId={sessionId} />
+        )}
+
+        {/* Members tab */}
+        {activeTab === 'members' && (
+          <>
         {error && (
           <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
             <p className="paragraph-sm text-error">{error}</p>
@@ -171,6 +206,8 @@ export const WorkspaceSettingsDetail = ({
               Leave Workspace
             </button>
           </div>
+        )}
+          </>
         )}
       </div>
 

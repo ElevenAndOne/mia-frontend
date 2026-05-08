@@ -1,5 +1,6 @@
+import { useState } from 'react'
+import { ChatMarkdown } from '../../../components/chat-markdown'
 import { Icon } from '../../../components/icon'
-import { MarkdownText } from '../../../components/markdown-text'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
 import ActionConfirmCard from './action-confirm-card'
@@ -14,6 +15,8 @@ interface ChatMessageProps {
   actionResult?: Record<string, unknown>
   onConfirmAction?: () => void
   onCancelAction?: () => void
+  skillWorkspaces?: string[]
+  onFeedback?: (feedback: 1 | -1, skillWorkspaces: string[]) => void
 }
 
 export const ChatMessage = ({
@@ -25,8 +28,17 @@ export const ChatMessage = ({
   actionResult,
   onConfirmAction,
   onCancelAction,
+  skillWorkspaces = [],
+  onFeedback,
 }: ChatMessageProps) => {
   const { copied, copy } = useClipboard()
+  const [feedbackGiven, setFeedbackGiven] = useState<1 | -1 | null>(null)
+
+  const handleFeedback = (value: 1 | -1) => {
+    if (feedbackGiven !== null) return
+    setFeedbackGiven(value)
+    onFeedback?.(value, skillWorkspaces)
+  }
 
   if (role === 'user') {
     return (
@@ -42,8 +54,8 @@ export const ChatMessage = ({
     <div className="mb-6">
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
-        <div className="text-primary leading-relaxed whitespace-pre-wrap font-mono paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary">
-          <MarkdownText text={content} className="whitespace-pre-wrap" />
+        <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary">
+          <ChatMarkdown content={content} className="text-secondary" />
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />
           )}
@@ -82,55 +94,41 @@ export const ChatMessage = ({
             </svg>
           </button>
 
-          {/* <button
-            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
-            title="Good response"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-            </svg>
-          </button>
+          {onFeedback && (
+            <>
+              <button
+                onClick={() => handleFeedback(1)}
+                disabled={feedbackGiven !== null}
+                className={[
+                  'p-2 rounded-lg transition-colors',
+                  feedbackGiven === 1
+                    ? 'text-success bg-success-subtle'
+                    : 'hover:bg-tertiary text-quaternary hover:text-secondary',
+                ].join(' ')}
+                title="Good response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                </svg>
+              </button>
 
-          <button
-            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
-            title="Bad response"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-            </svg>
-          </button>
-
-          <button
-            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
-            title="Share"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-          </button>
-
-          <button
-            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
-            title="Regenerate"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-          </button>
-
-          <button
-            className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
-            title="More options"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
-            </svg>
-          </button> */}
+              <button
+                onClick={() => handleFeedback(-1)}
+                disabled={feedbackGiven !== null}
+                className={[
+                  'p-2 rounded-lg transition-colors',
+                  feedbackGiven === -1
+                    ? 'text-error bg-error-primary'
+                    : 'hover:bg-tertiary text-quaternary hover:text-secondary',
+                ].join(' ')}
+                title="Bad response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

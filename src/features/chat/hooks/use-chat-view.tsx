@@ -14,6 +14,7 @@ import {
 } from '../services/chat-service'
 import type { PendingAction } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
+import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
 
 export interface ChatMessageItem {
   id: string
@@ -23,6 +24,7 @@ export interface ChatMessageItem {
   pendingAction?: PendingAction
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
+  skillWorkspaces?: string[]
 }
 
 interface LocationState {
@@ -236,6 +238,7 @@ export const useChatView = () => {
               : 'Sorry, I had trouble processing your question. Please try again.',
           pendingAction: result.pending_action || undefined,
           actionStatus: result.pending_action ? 'pending' : undefined,
+          skillWorkspaces: result.skill_workspaces,
         }
 
         setMessages((prev) => [...prev, assistantMessage])
@@ -412,6 +415,18 @@ export const useChatView = () => {
     )
   }, [])
 
+  const handleFeedback = useCallback(
+    async (feedback: 1 | -1, workspaceIds: string[], messageContent: string) => {
+      if (!sessionId || workspaceIds.length === 0) return
+      try {
+        await submitSkillFeedback(sessionId, workspaceIds, messageContent, feedback)
+      } catch {
+        // fire-and-forget — feedback errors are non-critical
+      }
+    },
+    [sessionId]
+  )
+
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort()
   }, [])
@@ -445,6 +460,7 @@ export const useChatView = () => {
     handleCancelAction,
     handleCancel,
     handleBack,
+    handleFeedback,
     integrationPrompt,
     loadConversation,
   }

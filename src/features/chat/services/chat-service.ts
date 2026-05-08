@@ -37,6 +37,7 @@ export interface ChatResponse {
   success: boolean
   claude_response?: string
   pending_action?: PendingAction
+  skill_workspaces?: string[]
   error?: string
 }
 
