@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
@@ -36,7 +36,7 @@ export const ChatInput = ({
   const [message, setMessage] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const platformButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -44,14 +44,24 @@ export const ChatInput = ({
     if (message.trim() && !disabled && hasSelectedPlatforms) {
       onSubmit(message.trim())
       setMessage('')
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto'
+      }
     }
   }
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
     }
+    // Shift+Enter: default textarea behavior inserts newline
+  }
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value)
+    e.target.style.height = 'auto'
+    e.target.style.height = `${e.target.scrollHeight}px`
   }
 
   // FEB 2026: Removed auto-focus on mount - bad UX on mobile
@@ -66,16 +76,16 @@ export const ChatInput = ({
       <div className="bg-tertiary rounded-2xl overflow-visible">
         {/* Text input row */}
         <div className="px-4 py-3">
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
             aria-label="Chat message"
-            className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md"
+            rows={1}
+            className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md resize-none overflow-y-auto max-h-40"
           />
         </div>
 

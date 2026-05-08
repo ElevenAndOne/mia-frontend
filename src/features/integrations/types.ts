@@ -15,6 +15,7 @@ export interface PlatformStatus {
   mailchimp: PlatformConnectionStatus
   linkedin_ads: PlatformConnectionStatus
   airtable: PlatformConnectionStatus
+  smartlead: PlatformConnectionStatus
 }
 
 // GA4 Property types (consolidated from use-integration-status.ts and ga4-property-selector.tsx)

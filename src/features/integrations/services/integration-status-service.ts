@@ -42,6 +42,11 @@ const buildPlatformStatus = (
       linked: Boolean(flags.airtable),
       last_synced: now,
     },
+    smartlead: {
+      connected: Boolean(flags.smartlead),
+      linked: Boolean(flags.smartlead),
+      last_synced: now,
+    },
   }
 }
 
@@ -90,6 +95,7 @@ const mergePlatformStatus = (
     mailchimp: tenantOrAccount(accountData.mailchimp_account_id, tenantStatus.mailchimp),
     linkedin_ads: tenantOrAccount(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
     airtable: tenantOrAccount(accountData.airtable_base_id, tenantStatus.airtable),
+    smartlead: tenantOrAccount(undefined, tenantStatus.smartlead),
   }
 }
 
@@ -116,6 +122,7 @@ export const fetchTenantIntegrationStatus = async (
     mailchimp: data.platform_status?.mailchimp,
     linkedin_ads: data.platform_status?.linkedin_ads,
     airtable: data.platform_status?.airtable,
+    smartlead: data.platform_status?.smartlead,
   }
 
   return {
@@ -173,6 +180,7 @@ export const fetchAccountIntegrationStatus = async (
     mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
     linkedin_ads: Boolean(currentAccountData?.linkedin_ads_account_id),
     airtable: Boolean(currentAccountData?.airtable_base_id),
+    smartlead: false,
   })
 
   return { platformStatus, currentAccountData, ga4Properties, linkedGA4Properties }

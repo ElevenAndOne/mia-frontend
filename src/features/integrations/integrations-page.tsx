@@ -94,6 +94,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [brevoError, setBrevoError] = useState('')
   const [showBrevoUnlinkConfirm, setShowBrevoUnlinkConfirm] = useState(false)
 
+  // Smartlead API Key form state
+  const [smartleadApiKey, setSmartleadApiKey] = useState('')
+  const [smartleadSubmitting, setSmartleadSubmitting] = useState(false)
+  const [smartleadError, setSmartleadError] = useState('')
+  const [showSmartleadUnlinkConfirm, setShowSmartleadUnlinkConfirm] = useState(false)
+
   // Integration highlight state - read from sessionStorage on mount
   const [highlightedIds, setHighlightedIds] = useState<string[]>([])
   const highlightProcessedRef = useRef(false)
@@ -146,6 +152,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showGA4PropertySelector = openModal === 'ga4'
   const showLinkedInAccountSelector = openModal === 'linkedin_ads'
   const showAirtableBaseSelector = openModal === 'airtable'
+  const showSmartleadModal = openModal === 'smartlead'
 
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
@@ -159,6 +166,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowLinkedInAccountSelector = (show: boolean) =>
     setOpenModal(show ? 'linkedin_ads' : null)
   const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
+  const setShowSmartleadModal = (show: boolean) => setOpenModal(show ? 'smartlead' : null)
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
   const integrations = useMemo((): Integration[] => {
@@ -278,6 +286,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         autoSync: platformStatus.airtable?.connected ? true : undefined,
       },
       {
+        id: 'smartlead',
+        name: 'Smartlead',
+        description: 'Cold email outreach campaigns',
+        icon: '/icons/smartlead.svg',
+        connected: platformStatus.smartlead?.connected || false,
+        linked: platformStatus.smartlead?.linked ?? platformStatus.smartlead?.connected ?? false,
+        lastSync: platformStatus.smartlead?.connected
+          ? getTimeAgo(platformStatus.smartlead.last_synced)
+          : undefined,
+        autoSync: platformStatus.smartlead?.connected ? false : undefined,
+      },
+      {
         id: 'tiktok',
         name: 'TikTok Ads',
         description: 'Short-form video advertising',
@@ -377,6 +397,71 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }
 
+  // Handle Smartlead API Key Submission
+  const handleSmartleadSubmit = async () => {
+    if (!smartleadApiKey.trim()) {
+      setSmartleadError('Please enter an API key')
+      return
+    }
+
+    setSmartleadSubmitting(true)
+    setSmartleadError('')
+
+    try {
+      const response = await apiFetch('/api/oauth/smartlead/save-api-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: smartleadApiKey.trim(), session_id: sessionId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to save API key')
+      }
+
+      setShowSmartleadModal(false)
+      setSmartleadApiKey('')
+      invalidateIntegrationStatus()
+      refreshWorkspaces().catch((err) =>
+        logger.error('[INTEGRATIONS] Failed to refresh workspaces after Smartlead connect:', err)
+      )
+    } catch (error) {
+      logger.error('[Smartlead] API key submission error:', error)
+      setSmartleadError(error instanceof Error ? error.message : 'Failed to save API key')
+    } finally {
+      setSmartleadSubmitting(false)
+    }
+  }
+
+  // Handle Smartlead Unlink
+  const handleSmartleadUnlink = async () => {
+    setSmartleadSubmitting(true)
+    setSmartleadError('')
+
+    try {
+      const response = await apiFetch('/api/oauth/smartlead/disconnect', {
+        method: 'POST',
+        headers: createSessionHeaders(sessionId),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to disconnect Smartlead')
+      }
+
+      setShowSmartleadModal(false)
+      invalidateIntegrationStatus()
+      refreshWorkspaces().catch((err) =>
+        logger.error('[INTEGRATIONS] Failed to refresh workspaces after Smartlead disconnect:', err)
+      )
+    } catch (error) {
+      logger.error('[Smartlead] Unlink error:', error)
+      setSmartleadError(error instanceof Error ? error.message : 'Failed to disconnect Smartlead')
+    } finally {
+      setSmartleadSubmitting(false)
+    }
+  }
+
   const handleConnect = async (integrationId: string) => {
     // Jan 2025: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
@@ -441,6 +526,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setShowBrevoModal(true)
       setBrevoError('')
       setBrevoApiKey('')
+      return
+    }
+
+    // Smartlead uses API key (not OAuth) - show modal
+    if (integrationId === 'smartlead') {
+      setShowSmartleadModal(true)
+      setSmartleadError('')
+      setSmartleadApiKey('')
       return
     }
 
@@ -1111,6 +1204,116 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
+        {/* Smartlead API Key Modal */}
+        {showSmartleadModal && (
+          <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <img src="/icons/smartlead.svg" alt="Smartlead" className="w-10 h-10" />
+                  <h2 className="title-h6 text-primary">
+                    {platformStatus.smartlead?.connected
+                      ? 'Manage Smartlead Connection'
+                      : 'Connect Smartlead'}
+                  </h2>
+                </div>
+                <p className="paragraph-sm text-tertiary">
+                  {platformStatus.smartlead?.connected
+                    ? `Smartlead cold email outreach is connected for ${activeWorkspace?.name || selectedAccount?.name || 'this workspace'}.`
+                    : `Enter your Smartlead API key to pull cold email campaign data into Mia.`}
+                </p>
+              </div>
+
+              {!platformStatus.smartlead?.connected && (
+                <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
+                  <h3 className="subheading-md text-utility-info-700 mb-2">
+                    How to get your API key:
+                  </h3>
+                  <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
+                    <li>Log in to your Smartlead account</li>
+                    <li>Go to Settings → API Key</li>
+                    <li>Copy your API key and paste it below</li>
+                  </ol>
+                  <p className="mt-2 paragraph-xs text-utility-info-700">
+                    Requires a SmartDelivery Pro plan or higher for API access.
+                  </p>
+                </div>
+              )}
+
+              {!platformStatus.smartlead?.connected && (
+                <div className="mb-4">
+                  <label className="block subheading-md text-secondary mb-2">API Key</label>
+                  <input
+                    type="text"
+                    value={smartleadApiKey}
+                    onChange={(e) => setSmartleadApiKey(e.target.value)}
+                    placeholder="sl-..."
+                    className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                    disabled={smartleadSubmitting}
+                  />
+                  {smartleadError && (
+                    <p className="mt-2 paragraph-xs text-error">{smartleadError}</p>
+                  )}
+                </div>
+              )}
+
+              {platformStatus.smartlead?.connected && (
+                <div className="mb-4">
+                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <svg
+                        className="w-5 h-5 text-success"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="subheading-md text-success">Smartlead connected</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowSmartleadModal(false)
+                    setSmartleadApiKey('')
+                    setSmartleadError('')
+                  }}
+                  disabled={smartleadSubmitting}
+                  className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                >
+                  {platformStatus.smartlead?.connected ? 'Close' : 'Cancel'}
+                </button>
+                {platformStatus.smartlead?.connected ? (
+                  <button
+                    onClick={() => setShowSmartleadUnlinkConfirm(true)}
+                    disabled={smartleadSubmitting}
+                    className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {smartleadSubmitting ? 'Unlinking...' : 'Unlink'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSmartleadSubmit}
+                    disabled={smartleadSubmitting || !smartleadApiKey.trim()}
+                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {smartleadSubmitting ? 'Connecting...' : 'Connect'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Google Account Selector Modal */}
         <GoogleAccountSelector
           isOpen={showGoogleAccountSelector}
@@ -1261,6 +1464,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           handleBrevoUnlink()
         }}
         onCancel={() => setShowBrevoUnlinkConfirm(false)}
+      />
+      <ConfirmDialog
+        isOpen={showSmartleadUnlinkConfirm}
+        message={`Disconnect Smartlead from ${activeWorkspace?.name || selectedAccount?.name || 'this workspace'}?`}
+        confirmLabel="Disconnect"
+        onConfirm={() => {
+          setShowSmartleadUnlinkConfirm(false)
+          handleSmartleadUnlink()
+        }}
+        onCancel={() => setShowSmartleadUnlinkConfirm(false)}
       />
     </>
   )

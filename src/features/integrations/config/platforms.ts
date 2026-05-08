@@ -62,4 +62,10 @@ export const PLATFORM_CONFIG: PlatformConfigItem[] = [
     icon: '/icons/radio buttons/Airtable-radio.png',
     accountKey: 'airtable_base_id',
   },
+  {
+    id: 'smartlead',
+    name: 'Smartlead',
+    icon: '/icons/smartlead.svg',
+    accountKey: 'smartlead',
+  },
 ]

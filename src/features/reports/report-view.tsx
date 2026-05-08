@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
@@ -37,6 +37,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     error,
     generate,
     openReport,
+    saveOverrides,
     removeReport,
   } = useReports()
 
@@ -128,6 +129,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
           setActiveReport(null)
           setStep('list')
         }}
+        saveOverrides={saveOverrides}
       />
     )
   }
@@ -431,14 +433,69 @@ const ReportListItem = ({
 // Report preview — all 11 sections
 // ---------------------------------------------------------------------------
 
+type TestEntry = { what_tested: string; testing_period: string; result: string; learnings: string }
+
 const ReportPreview = ({
   report,
   onBack,
+  saveOverrides,
 }: {
   report: ClientReport
   onBack: () => void
+  saveOverrides: (reportId: string, overrides: Record<string, unknown>) => Promise<void>
 }) => {
   const data = report.report_data
+
+  // Merge manual_overrides.testing_learnings on top of report_data (overrides win)
+  const overrides = report.manual_overrides ?? {}
+  const effectiveTesting = (
+    (overrides.testing_learnings as typeof data.testing_learnings | undefined) ??
+    data?.testing_learnings
+  )
+
+  const [isEditingTests, setIsEditingTests] = useState(false)
+  const [editTests, setEditTests] = useState<TestEntry[]>([])
+  const [savingTests, setSavingTests] = useState(false)
+
+  const startEditTests = useCallback(() => {
+    setEditTests((effectiveTesting?.tests ?? []).map((t) => ({ ...t })))
+    setIsEditingTests(true)
+  }, [effectiveTesting])
+
+  const cancelEditTests = () => {
+    setIsEditingTests(false)
+    setEditTests([])
+  }
+
+  const saveTests = async () => {
+    setSavingTests(true)
+    try {
+      await saveOverrides(report.report_id, { testing_learnings: { tests: editTests } })
+      setIsEditingTests(false)
+    } finally {
+      setSavingTests(false)
+    }
+  }
+
+  const addTest = () => {
+    setEditTests((prev) => [
+      ...prev,
+      {
+        what_tested: '',
+        testing_period: data?.cover.reporting_period_label ?? '',
+        result: '',
+        learnings: '',
+      },
+    ])
+  }
+
+  const updateTest = (i: number, field: keyof TestEntry, value: string) => {
+    setEditTests((prev) => prev.map((t, idx) => (idx === i ? { ...t, [field]: value } : t)))
+  }
+
+  const removeTest = (i: number) => {
+    setEditTests((prev) => prev.filter((_, idx) => idx !== i))
+  }
 
   const handlePrint = () => window.print()
 
@@ -793,30 +850,97 @@ const ReportPreview = ({
       </SectionCard>
 
       {/* Section 9: Testing & Learnings */}
-      <SectionCard title="Testing & Learnings" sectionNum={9}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data.testing_learnings.tests.map((test, i) => (
-            <div key={i} className="border border-primary rounded-lg p-4 space-y-2 paragraph-sm">
-              <p className="font-medium">A/B Test {i + 1}: Result & learning</p>
-              <EditableField
-                label="What was tested?"
-                value={test.what_tested}
-                placeholder="[Insert]"
-              />
-              <EditableField
-                label="Testing period:"
-                value={test.testing_period}
-                placeholder="[Insert]"
-              />
-              <EditableField label="Result:" value={test.result} placeholder="[Insert]" />
-              <EditableField
-                label="Learnings:"
-                value={test.learnings}
-                placeholder="[Insert]"
-              />
+      <SectionCard
+        title="Testing & Learnings"
+        sectionNum={9}
+        action={
+          isEditingTests ? (
+            <div className="flex gap-2 print:hidden">
+              <button
+                onClick={cancelEditTests}
+                className="px-3 py-1.5 rounded-lg border border-primary paragraph-xs text-secondary hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveTests}
+                disabled={savingTests}
+                className="px-3 py-1.5 rounded-lg bg-brand text-white paragraph-xs font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+              >
+                {savingTests ? 'Saving…' : 'Save'}
+              </button>
             </div>
-          ))}
-        </div>
+          ) : (
+            <button
+              onClick={startEditTests}
+              className="px-3 py-1.5 rounded-lg border border-primary paragraph-xs text-secondary hover:bg-secondary transition-colors print:hidden"
+            >
+              Edit
+            </button>
+          )
+        }
+      >
+        {isEditingTests ? (
+          <div className="space-y-4">
+            {editTests.map((test, i) => (
+              <div key={i} className="border border-primary rounded-lg p-4 space-y-3 paragraph-sm">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">Test {i + 1}</p>
+                  {editTests.length > 1 && (
+                    <button
+                      onClick={() => removeTest(i)}
+                      className="paragraph-xs text-tertiary hover:text-red-500 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <LabeledTextarea
+                  label="What was tested?"
+                  value={test.what_tested}
+                  onChange={(v) => updateTest(i, 'what_tested', v)}
+                />
+                <LabeledTextarea
+                  label="Testing period"
+                  value={test.testing_period}
+                  onChange={(v) => updateTest(i, 'testing_period', v)}
+                  rows={1}
+                />
+                <LabeledTextarea
+                  label="Result"
+                  value={test.result}
+                  onChange={(v) => updateTest(i, 'result', v)}
+                />
+                <LabeledTextarea
+                  label="Learnings"
+                  value={test.learnings}
+                  onChange={(v) => updateTest(i, 'learnings', v)}
+                />
+              </div>
+            ))}
+            <button
+              onClick={addTest}
+              className="paragraph-xs text-brand hover:opacity-80 transition-opacity font-medium"
+            >
+              + Add another test
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(effectiveTesting?.tests ?? []).map((test, i) => (
+              <div key={i} className="border border-primary rounded-lg p-4 space-y-2 paragraph-sm">
+                <p className="font-medium">Test {i + 1}: Result & learning</p>
+                <EditableField label="What was tested?" value={test.what_tested} placeholder="[Insert]" />
+                <EditableField label="Testing period:" value={test.testing_period} placeholder="[Insert]" />
+                <EditableField label="Result:" value={test.result} placeholder="[Insert]" />
+                <EditableField label="Learnings:" value={test.learnings} placeholder="[Insert]" />
+              </div>
+            ))}
+            {(effectiveTesting?.tests ?? []).length === 0 && (
+              <p className="paragraph-sm text-tertiary">No tests recorded yet. Click Edit to add.</p>
+            )}
+          </div>
+        )}
       </SectionCard>
 
       {/* Section 10: Risks & Recommendations */}
@@ -963,16 +1087,21 @@ const ReportPreview = ({
 const SectionCard = ({
   title,
   sectionNum,
+  action,
   children,
 }: {
   title: string
   sectionNum: number
+  action?: React.ReactNode
   children: React.ReactNode
 }) => (
   <div className="border border-primary rounded-xl p-6 mb-4 bg-primary print:break-inside-avoid">
-    <div className="flex items-start gap-3 mb-4">
-      <span className="paragraph-xs text-tertiary shrink-0">Section {sectionNum}</span>
-      <h2 className="heading-sm text-primary">{title}</h2>
+    <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start gap-3">
+        <span className="paragraph-xs text-tertiary shrink-0">Section {sectionNum}</span>
+        <h2 className="heading-sm text-primary">{title}</h2>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
     {children}
   </div>
@@ -997,6 +1126,29 @@ const EditableField = ({
   <div>
     <span className="font-medium">{label} </span>
     <span className={value ? 'text-secondary' : 'text-tertiary'}>{value || placeholder}</span>
+  </div>
+)
+
+const LabeledTextarea = ({
+  label,
+  value,
+  onChange,
+  rows = 3,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  rows?: number
+}) => (
+  <div>
+    <label className="paragraph-xs font-medium text-tertiary block mb-1">{label}</label>
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={rows}
+      className="w-full px-3 py-2 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+      placeholder="Enter details…"
+    />
   </div>
 )
 

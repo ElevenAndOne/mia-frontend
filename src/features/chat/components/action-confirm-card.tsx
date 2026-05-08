@@ -14,6 +14,7 @@ const platformIcons: Record<string, string> = {
   linkedin: '/icons/linkedin.svg',
   meta: '/icons/meta-color.svg',
   google: '/icons/google-ads.svg',
+  smartlead: '/icons/smartlead.svg',
 }
 
 const statusConfig = {
