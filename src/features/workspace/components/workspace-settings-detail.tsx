@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
+import { uploadWorkspaceLogo, deleteWorkspaceLogo } from '../services/workspace-service'
 import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
@@ -93,7 +94,39 @@ export const WorkspaceSettingsDetail = ({
   onLeaveWorkspace,
 }: WorkspaceSettingsDetailProps) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('members')
-  const { sessionId } = useSession()
+  const { sessionId, refreshWorkspaces } = useSession()
+  const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleLogoUpload = async (file: File) => {
+    setUploadingLogo(true)
+    setLogoError(null)
+    try {
+      const url = await uploadWorkspaceLogo(sessionId, workspace.tenant_id, file)
+      setLogoUrl(url)
+      await refreshWorkspaces()
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleLogoRemove = async () => {
+    setUploadingLogo(true)
+    setLogoError(null)
+    try {
+      await deleteWorkspaceLogo(sessionId, workspace.tenant_id)
+      setLogoUrl(null)
+      await refreshWorkspaces()
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : 'Remove failed')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -112,7 +145,7 @@ export const WorkspaceSettingsDetail = ({
                 : 'border-transparent text-secondary hover:text-primary',
             ].join(' ')}
           >
-            {tab === 'members' ? 'Members' : 'Brand Profile'}
+            {tab === 'members' ? 'Members' : 'Brand Guide'}
           </button>
         ))}
       </div>
@@ -121,7 +154,7 @@ export const WorkspaceSettingsDetail = ({
 
         {/* Brand Profile tab */}
         {activeTab === 'brand' && (
-          <MarketingContextPage sessionId={sessionId} />
+          <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} />
         )}
 
         {/* Members tab */}
@@ -161,7 +194,9 @@ export const WorkspaceSettingsDetail = ({
         {isOwner && (
           <div className="mt-8 pt-6 border-t border-tertiary">
             <h3 className="subheading-md text-primary mb-2">Workspace</h3>
-            <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+
+            {/* Rename */}
+            <div className="flex items-center justify-between p-3 bg-secondary rounded-lg mb-3">
               <div>
                 <p className="subheading-md text-primary">{workspace.name}</p>
                 <p className="paragraph-sm text-quaternary">Workspace name</p>
@@ -172,6 +207,57 @@ export const WorkspaceSettingsDetail = ({
               >
                 Rename
               </button>
+            </div>
+
+            {/* Logo */}
+            <div className="p-3 bg-secondary rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-tertiary flex items-center justify-center shrink-0">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Workspace logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <Icon.image_01 size={20} className="text-quaternary" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="subheading-md text-primary">Logo</p>
+                    <p className="paragraph-sm text-quaternary">SVG or PNG, max 500 KB</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {logoUrl && (
+                    <button
+                      onClick={handleLogoRemove}
+                      disabled={uploadingLogo}
+                      className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-error hover:bg-error-primary transition-colors disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
+                  >
+                    {uploadingLogo ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+                  </button>
+                </div>
+              </div>
+              {logoError && (
+                <p className="paragraph-sm text-error mt-2">{logoError}</p>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/svg+xml,image/png,image/webp,image/jpeg"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleLogoUpload(file)
+                  e.target.value = ''
+                }}
+              />
             </div>
           </div>
         )}

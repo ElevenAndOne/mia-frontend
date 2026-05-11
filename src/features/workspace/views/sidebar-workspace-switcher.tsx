@@ -59,12 +59,16 @@ export const SidebarWorkspaceSwitcher = () => {
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-10 h-10 rounded-lg flex items-center justify-center label-xs font-semibold text-white hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/30 ${activeWorkspace?.name ? getAvatarBg(activeWorkspace.name) : 'bg-[#3B5BDB]'}`}
+        className={`w-10 h-10 rounded-lg flex items-center justify-center label-xs font-semibold text-white hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/30 overflow-hidden ${activeWorkspace?.logo_url ? 'bg-secondary' : (activeWorkspace?.name ? getAvatarBg(activeWorkspace.name) : 'bg-[#3B5BDB]')}`}
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label={`Switch workspace. Current: ${activeWorkspace?.name || 'None'}`}
       >
-        {activeWorkspace?.name ? getInitials(activeWorkspace.name) : 'W'}
+        {activeWorkspace?.logo_url ? (
+          <img src={activeWorkspace.logo_url} alt={activeWorkspace.name} className="w-full h-full object-contain" />
+        ) : (
+          activeWorkspace?.name ? getInitials(activeWorkspace.name) : 'W'
+        )}
       </button>
 
       <Popover

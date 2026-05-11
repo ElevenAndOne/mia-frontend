@@ -109,10 +109,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     if (highlightProcessedRef.current) return
     highlightProcessedRef.current = true
 
-    const highlights = getIntegrationHighlight()
+    const highlights = getIntegrationHighlight(activeWorkspace?.tenant_id)
     if (highlights.length > 0) {
       setHighlightedIds(highlights)
-      clearIntegrationHighlight()
+      clearIntegrationHighlight(activeWorkspace?.tenant_id)
       // Auto-clear visual highlight after 3 seconds
       const t = setTimeout(() => setHighlightedIds([]), 5000)
       return () => clearTimeout(t)
@@ -252,7 +252,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         id: 'mailchimp',
         name: 'Mailchimp',
         description: 'Email marketing and campaigns',
-        icon: '/icons/radio buttons/mailchimp.png',
+        icon: '/icons/mailchimp detailpage logo.png',
         connected: platformStatus.mailchimp?.connected || false,
         linked: platformStatus.mailchimp?.linked ?? platformStatus.mailchimp?.connected ?? false,
         lastSync: platformStatus.mailchimp?.connected

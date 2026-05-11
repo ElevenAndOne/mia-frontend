@@ -3,7 +3,10 @@ import { apiFetch, createSessionHeaders } from '../../../utils/api'
 import { logger } from '../../../utils/logger'
 import { StorageKey } from '../../../constants/storage-keys'
 
-const KNOWN_CONNECTED_KEY = StorageKey.KNOWN_CONNECTED_PLATFORMS
+// Key is scoped per workspace account so switching workspaces doesn't carry over
+// the previous workspace's connected-platform list (sessionStorage survives page reloads).
+const knownConnectedKey = (accountId?: string | number) =>
+  `${StorageKey.KNOWN_CONNECTED_PLATFORMS}:${accountId ?? 'user'}`
 
 interface UsePlatformPreferencesProps {
   sessionId: string | null
@@ -80,7 +83,7 @@ export function usePlatformPreferences({
       // newlyConnected would always be empty.
       let lastKnown: string[] = []
       try {
-        const raw = sessionStorage.getItem(KNOWN_CONNECTED_KEY)
+        const raw = sessionStorage.getItem(knownConnectedKey(selectedAccountId))
         if (raw) lastKnown = JSON.parse(raw)
       } catch {
         /* sessionStorage unavailable */
@@ -109,7 +112,7 @@ export function usePlatformPreferences({
       // Persist known connected for cross-page detection
       if (currentConnected.length > 0) {
         try {
-          sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(currentConnected))
+          sessionStorage.setItem(knownConnectedKey(selectedAccountId), JSON.stringify(currentConnected))
         } catch {
           // sessionStorage unavailable (private browsing) — not critical
         }
@@ -157,12 +160,12 @@ export function usePlatformPreferences({
   useEffect(() => {
     if (connectedPlatforms.length > 0) {
       try {
-        sessionStorage.setItem(KNOWN_CONNECTED_KEY, JSON.stringify(connectedPlatforms))
+        sessionStorage.setItem(knownConnectedKey(selectedAccountId), JSON.stringify(connectedPlatforms))
       } catch {
         // sessionStorage unavailable (private browsing) — not critical
       }
     }
-  }, [connectedPlatforms])
+  }, [connectedPlatforms, selectedAccountId])
 
   const saveToBackend = useCallback(
     (platforms: string[], rollbackTo: string[]) => {

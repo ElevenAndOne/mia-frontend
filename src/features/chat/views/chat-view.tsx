@@ -33,7 +33,7 @@ export const ChatView = ({
   onWorkspaceSettings,
   onNewWorkspace,
 }: ChatViewProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const { data: goldData } = useGoldInsights(sessionId)
 
   // Only show "Ready" pulse if completed AND user hasn't viewed the report yet
@@ -103,7 +103,7 @@ export const ChatView = ({
 
   const handleIntegrationPromptAction = () => {
     if (integrationPrompt) {
-      setIntegrationHighlight(integrationPrompt.missingPlatformIds)
+      setIntegrationHighlight(integrationPrompt.missingPlatformIds, activeWorkspace?.tenant_id)
     }
     setPromptDismissed(true)
     onIntegrationsClick?.()

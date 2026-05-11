@@ -1,7 +1,5 @@
 import { StorageKey } from '../../../constants/storage-keys'
 
-const INTEGRATION_HIGHLIGHT_KEY = StorageKey.INTEGRATION_HIGHLIGHT
-
 type IntegrationHighlightId = 'google' | 'ga4' | 'meta' | 'facebook_organic'
 
 const PLATFORM_TO_INTEGRATION: Record<string, IntegrationHighlightId> = {
@@ -11,6 +9,11 @@ const PLATFORM_TO_INTEGRATION: Record<string, IntegrationHighlightId> = {
   facebook_organic: 'facebook_organic',
 }
 
+// Key scoped to the active workspace so highlights from workspace A don't bleed
+// into workspace B after a switch (sessionStorage survives same-tab page reloads).
+const highlightKey = (tenantId?: string | null) =>
+  `${StorageKey.INTEGRATION_HIGHLIGHT}:${tenantId ?? 'user'}`
+
 export const mapPlatformsToIntegrationIds = (platformIds: string[]): IntegrationHighlightId[] => {
   const mapped = platformIds
     .map((id) => PLATFORM_TO_INTEGRATION[id])
@@ -18,15 +21,15 @@ export const mapPlatformsToIntegrationIds = (platformIds: string[]): Integration
   return Array.from(new Set(mapped))
 }
 
-export const setIntegrationHighlight = (platformIds: string[]): void => {
+export const setIntegrationHighlight = (platformIds: string[], tenantId?: string | null): void => {
   if (typeof window === 'undefined') return
   const integrationIds = mapPlatformsToIntegrationIds(platformIds)
-  window.sessionStorage.setItem(INTEGRATION_HIGHLIGHT_KEY, JSON.stringify(integrationIds))
+  window.sessionStorage.setItem(highlightKey(tenantId), JSON.stringify(integrationIds))
 }
 
-export const getIntegrationHighlight = (): IntegrationHighlightId[] => {
+export const getIntegrationHighlight = (tenantId?: string | null): IntegrationHighlightId[] => {
   if (typeof window === 'undefined') return []
-  const raw = window.sessionStorage.getItem(INTEGRATION_HIGHLIGHT_KEY)
+  const raw = window.sessionStorage.getItem(highlightKey(tenantId))
   if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
@@ -39,7 +42,7 @@ export const getIntegrationHighlight = (): IntegrationHighlightId[] => {
   return []
 }
 
-export const clearIntegrationHighlight = (): void => {
+export const clearIntegrationHighlight = (tenantId?: string | null): void => {
   if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(INTEGRATION_HIGHLIGHT_KEY)
+  window.sessionStorage.removeItem(highlightKey(tenantId))
 }

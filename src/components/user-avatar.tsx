@@ -35,6 +35,7 @@ export const UserAvatar = ({
       <img
         src={imageUrl}
         alt={name || 'User'}
+        referrerPolicy="no-referrer"
         className={`${sizeClasses} rounded-full object-cover ${className}`.trim()}
         onError={() => setImgFailed(true)}
       />

@@ -103,7 +103,6 @@ export const WorkspaceListItem = ({
       ) : null
     ) : null)
   const avatarPalette = useGradientAvatar ? getAvatarPalette(workspace.name) : ''
-  // Two-letter initials: first letter of first two words, or first two chars
   const initials =
     workspace.name
       .split(/\s+/)
@@ -124,9 +123,13 @@ export const WorkspaceListItem = ({
       } ${className}`.trim()}
     >
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 ${avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 overflow-hidden ${workspace.logo_url ? 'bg-secondary' : avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
       >
-        {initials}
+        {workspace.logo_url ? (
+          <img src={workspace.logo_url} alt={workspace.name} className="w-full h-full object-contain" />
+        ) : (
+          initials
+        )}
       </div>
 
       <div className="flex-1 min-w-0">

@@ -2,7 +2,7 @@
  * Workspace API service
  * Based on API documentation for /api/tenants endpoints
  */
-import { apiFetch } from '../../../utils/api'
+import { apiFetch, API_BASE_URL } from '../../../utils/api'
 import type { Workspace, WorkspaceRole } from '../types'
 
 /**
@@ -21,6 +21,7 @@ interface RawWorkspace {
   connected_platforms?: string[]
   member_count?: number
   is_active?: boolean
+  logo_url?: string | null
 }
 
 /**
@@ -113,8 +114,43 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
       connected_platforms: t.connected_platforms || [],
       member_count: t.member_count || 1,
       is_active: t.is_active,
+      logo_url: t.logo_url ? `${API_BASE_URL}${t.logo_url}` : null,
     })
   )
+}
+
+export const uploadWorkspaceLogo = async (
+  sessionId: string,
+  tenantId: string,
+  file: File
+): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiFetch(`/api/tenants/${tenantId}/logo`, {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+    body: formData,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Logo upload failed')
+  }
+  const data = await response.json()
+  return `${API_BASE_URL}${data.logo_url}`
+}
+
+export const deleteWorkspaceLogo = async (
+  sessionId: string,
+  tenantId: string
+): Promise<void> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}/logo`, {
+    method: 'DELETE',
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Logo removal failed')
+  }
 }
 
 /**

@@ -41,7 +41,7 @@ export const PLATFORM_CONFIG: PlatformConfigItem[] = [
   {
     id: 'mailchimp',
     name: 'Mailchimp',
-    icon: '/icons/radio buttons/mailchimp.png',
+    icon: '/icons/mailchimp detailpage logo.png',
     accountKey: 'mailchimp_account_id',
   },
   {

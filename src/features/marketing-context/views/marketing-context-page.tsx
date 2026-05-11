@@ -9,6 +9,7 @@ import { ContextFieldsEditor } from './context-fields-editor'
 
 interface Props {
   sessionId: string | null
+  tenantId?: string | null
 }
 
 function timeAgo(isoString: string): string {
@@ -20,7 +21,7 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-export function MarketingContextPage({ sessionId }: Props) {
+export function MarketingContextPage({ sessionId, tenantId }: Props) {
   const {
     context,
     loading,
@@ -28,13 +29,15 @@ export function MarketingContextPage({ sessionId }: Props) {
     uploadResult,
     editedFields,
     snapshotRefreshing,
+    competitorSearching,
     handleFileSelect,
     handleFieldChange,
     handleSaveExtraction,
     handleSaveOverrides,
     handleRefreshSnapshot,
+    handleFindCompetitors,
     handleCancelUpload,
-  } = useMarketingContext(sessionId)
+  } = useMarketingContext(sessionId, tenantId)
 
   const [editingOverrides, setEditingOverrides] = useState(false)
 
@@ -154,15 +157,23 @@ export function MarketingContextPage({ sessionId }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-tertiary">
           <p className="subheading-sm text-primary">Brand Context</p>
           {!editingOverrides && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setEditingOverrides(true)
-              }}
-            >
-              Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFindCompetitors}
+                disabled={competitorSearching}
+              >
+                {competitorSearching ? <Spinner size="sm" /> : 'Find Competitors'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingOverrides(true)}
+              >
+                Edit
+              </Button>
+            </div>
           )}
         </div>
 

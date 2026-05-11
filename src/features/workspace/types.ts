@@ -18,4 +18,6 @@ export interface Workspace {
   is_active?: boolean
   /** Workspace-scoped Google Ads customer ID for picker pre-selection */
   google_ads_customer_id?: string | null
+  /** URL to workspace logo image, null if using letter avatar */
+  logo_url?: string | null
 }

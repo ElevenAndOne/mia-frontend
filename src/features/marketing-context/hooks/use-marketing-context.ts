@@ -3,6 +3,7 @@ import { useToast } from '../../../contexts/toast-context'
 import type { BrandGuideExtracted, MarketingContext, UploadResult } from '../types'
 import {
   fetchMarketingContext,
+  findCompetitors,
   refreshPlatformSnapshot,
   saveBrandGuideExtraction,
   saveManualOverrides,
@@ -18,16 +19,21 @@ export interface UseMarketingContextReturn {
   uploadResult: UploadResult | null
   editedFields: Partial<BrandGuideExtracted>
   snapshotRefreshing: boolean
+  competitorSearching: boolean
   // handlers
   handleFileSelect: (file: File) => Promise<void>
   handleFieldChange: (key: keyof BrandGuideExtracted, value: string | string[]) => void
   handleSaveExtraction: () => Promise<void>
   handleSaveOverrides: () => Promise<void>
   handleRefreshSnapshot: () => Promise<void>
+  handleFindCompetitors: () => Promise<void>
   handleCancelUpload: () => void
 }
 
-export function useMarketingContext(sessionId: string | null): UseMarketingContextReturn {
+export function useMarketingContext(
+  sessionId: string | null,
+  tenantId?: string | null
+): UseMarketingContextReturn {
   const { showToast } = useToast()
   const [context, setContext] = useState<MarketingContext | null>(null)
   const [loading, setLoading] = useState(true)
@@ -35,19 +41,20 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [editedFields, setEditedFields] = useState<Partial<BrandGuideExtracted>>({})
   const [snapshotRefreshing, setSnapshotRefreshing] = useState(false)
+  const [competitorSearching, setCompetitorSearching] = useState(false)
 
   const load = useCallback(async () => {
     if (!sessionId) return
     setLoading(true)
     try {
-      const data = await fetchMarketingContext(sessionId)
+      const data = await fetchMarketingContext(sessionId, tenantId)
       setContext(data)
     } catch {
       // non-critical — context just won't show
     } finally {
       setLoading(false)
     }
-  }, [sessionId])
+  }, [sessionId, tenantId])
 
   useEffect(() => {
     load()
@@ -58,7 +65,7 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
       if (!sessionId) return
       setUploadStep('uploading')
       try {
-        const result = await uploadBrandGuide(sessionId, file)
+        const result = await uploadBrandGuide(sessionId, file, tenantId)
         setUploadResult(result)
         setEditedFields(result.extracted)
         setUploadStep('preview')
@@ -68,7 +75,7 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
         setUploadStep('idle')
       }
     },
-    [sessionId, showToast]
+    [sessionId, tenantId, showToast]
   )
 
   const handleFieldChange = useCallback(
@@ -98,7 +105,8 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
         sessionId,
         uploadResult.filename,
         uploadResult.brand_guide_raw,
-        cleanFields(editedFields) as BrandGuideExtracted
+        cleanFields(editedFields) as BrandGuideExtracted,
+        tenantId
       )
       showToast('success', 'Brand guide saved successfully')
       setUploadStep('done')
@@ -113,7 +121,7 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
   const handleSaveOverrides = useCallback(async () => {
     if (!sessionId) return
     try {
-      await saveManualOverrides(sessionId, cleanFields(editedFields))
+      await saveManualOverrides(sessionId, cleanFields(editedFields), tenantId)
       showToast('success', 'Changes saved')
       await load()
     } catch {
@@ -135,6 +143,26 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
     }
   }, [sessionId, showToast, load])
 
+  const handleFindCompetitors = useCallback(async () => {
+    if (!sessionId) return
+    setCompetitorSearching(true)
+    try {
+      const competitors = await findCompetitors(sessionId, tenantId)
+      if (competitors.length > 0) {
+        await saveManualOverrides(sessionId, { competitors }, tenantId)
+        await load()
+        showToast('success', `Found ${competitors.length} competitors`)
+      } else {
+        showToast('error', 'No competitors found — try adding more brand details')
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Search failed'
+      showToast('error', msg)
+    } finally {
+      setCompetitorSearching(false)
+    }
+  }, [sessionId, showToast, load])
+
   const handleCancelUpload = useCallback(() => {
     setUploadStep('idle')
     setUploadResult(null)
@@ -148,11 +176,13 @@ export function useMarketingContext(sessionId: string | null): UseMarketingConte
     uploadResult,
     editedFields,
     snapshotRefreshing,
+    competitorSearching,
     handleFileSelect,
     handleFieldChange,
     handleSaveExtraction,
     handleSaveOverrides,
     handleRefreshSnapshot,
+    handleFindCompetitors,
     handleCancelUpload,
   }
 }

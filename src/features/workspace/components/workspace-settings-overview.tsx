@@ -58,10 +58,14 @@ export const WorkspaceSettingsOverview = ({
               >
                 <div className="flex items-center gap-3">
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-brand-solid">
-                    <span className="label-bg text-primary-onbrand">
-                      {item.workspace.name.charAt(0).toUpperCase()}
-                    </span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${item.workspace.logo_url ? 'bg-transparent' : 'bg-brand-solid'}`}>
+                    {item.workspace.logo_url ? (
+                      <img src={item.workspace.logo_url} alt={item.workspace.name} className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="label-bg text-primary-onbrand">
+                        {item.workspace.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Info */}

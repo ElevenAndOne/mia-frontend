@@ -1,6 +1,7 @@
 export interface BrandGuideExtracted {
   product_name: string | null
   one_liner: string | null
+  market: string | null
   target_audience: string | null
   problems_solved: string | null
   key_differentiators: string | null
@@ -61,6 +62,7 @@ export interface UploadResult {
 export const FIELD_LABELS: Record<keyof BrandGuideExtracted, string> = {
   product_name: 'Brand / Product Name',
   one_liner: 'One-Liner Description',
+  market: 'Primary Market',
   target_audience: 'Target Audience',
   problems_solved: 'Problems Solved',
   key_differentiators: 'Key Differentiators',
