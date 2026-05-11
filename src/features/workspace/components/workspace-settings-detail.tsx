@@ -101,6 +101,7 @@ export const WorkspaceSettingsDetail = ({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleLogoUpload = async (file: File) => {
+    if (!sessionId) return
     setUploadingLogo(true)
     setLogoError(null)
     try {
@@ -115,6 +116,7 @@ export const WorkspaceSettingsDetail = ({
   }
 
   const handleLogoRemove = async () => {
+    if (!sessionId) return
     setUploadingLogo(true)
     setLogoError(null)
     try {
