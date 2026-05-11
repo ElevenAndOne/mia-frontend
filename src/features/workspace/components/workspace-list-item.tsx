@@ -126,7 +126,7 @@ export const WorkspaceListItem = ({
         className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 overflow-hidden ${workspace.logo_url ? 'bg-secondary' : avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
       >
         {workspace.logo_url ? (
-          <img src={workspace.logo_url} alt={workspace.name} className="w-full h-full object-contain" />
+          <img src={workspace.logo_url} alt={workspace.name} className="w-full h-full object-contain p-2" />
         ) : (
           initials
         )}

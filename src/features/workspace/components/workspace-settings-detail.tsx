@@ -3,6 +3,7 @@ import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
+import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo } from '../services/workspace-service'
 import { CreateInviteModal } from './create-invite-modal'
@@ -12,7 +13,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand'
+type SettingsTab = 'members' | 'brand' | 'campaigns'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -136,7 +137,7 @@ export const WorkspaceSettingsDetail = ({
 
       {/* Tab strip */}
       <div className="flex border-b border-tertiary px-4">
-        {(['members', 'brand'] as SettingsTab[]).map((tab) => (
+        {(['members', 'brand', 'campaigns'] as SettingsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -147,16 +148,21 @@ export const WorkspaceSettingsDetail = ({
                 : 'border-transparent text-secondary hover:text-primary',
             ].join(' ')}
           >
-            {tab === 'members' ? 'Members' : 'Brand Guide'}
+            {tab === 'members' ? 'Members' : tab === 'brand' ? 'Brand Guide' : 'Campaign Guides'}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
 
-        {/* Brand Profile tab */}
+        {/* Brand Guide tab */}
         {activeTab === 'brand' && (
           <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+        )}
+
+        {/* Campaign Guides tab */}
+        {activeTab === 'campaigns' && (
+          <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} />
         )}
 
         {/* Members tab */}
@@ -217,7 +223,7 @@ export const WorkspaceSettingsDetail = ({
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-tertiary flex items-center justify-center shrink-0">
                     {logoUrl ? (
-                      <img src={logoUrl} alt="Workspace logo" className="w-full h-full object-contain" />
+                      <img src={logoUrl} alt="Workspace logo" className="w-full h-full object-contain p-1.5" />
                     ) : (
                       <Icon.image_01 size={20} className="text-quaternary" />
                     )}

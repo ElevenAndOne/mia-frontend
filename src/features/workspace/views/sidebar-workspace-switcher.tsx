@@ -65,7 +65,7 @@ export const SidebarWorkspaceSwitcher = () => {
         aria-label={`Switch workspace. Current: ${activeWorkspace?.name || 'None'}`}
       >
         {activeWorkspace?.logo_url ? (
-          <img src={activeWorkspace.logo_url} alt={activeWorkspace.name} className="w-full h-full object-contain" />
+          <img src={activeWorkspace.logo_url} alt={activeWorkspace.name} className="w-full h-full object-contain p-2" />
         ) : (
           activeWorkspace?.name ? getInitials(activeWorkspace.name) : 'W'
         )}
