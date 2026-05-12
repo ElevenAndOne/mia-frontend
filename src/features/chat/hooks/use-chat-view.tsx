@@ -67,7 +67,7 @@ export const useChatView = () => {
   const streamDoneRef = useRef(false)
   const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const REVEAL_INTERVAL_MS = 40  // ~25 ticks/sec (same as Quick Insights)
-  const CHARS_PER_TICK = 8       // 200 chars/sec — smooth for longer chat responses
+  const CHARS_PER_TICK = 5       // 125 chars/sec
 
   useEffect(() => {
     isMountedRef.current = true
