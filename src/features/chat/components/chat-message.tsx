@@ -54,7 +54,7 @@ export const ChatMessage = ({
     <div className="mb-6">
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
-        <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary">
+        <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary select-text">
           <ChatMarkdown content={content} className="text-secondary" />
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />

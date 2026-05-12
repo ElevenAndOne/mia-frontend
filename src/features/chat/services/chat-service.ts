@@ -99,6 +99,58 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
   return response.json() as Promise<ChatResponse>
 }
 
+export const sendChatMessageStreaming = async (
+  payload: ChatRequestPayload,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; error?: string }) => void,
+  signal?: AbortSignal
+): Promise<void> => {
+  const v2Payload = {
+    message: payload.message,
+    session_id: payload.session_id,
+    date_range: payload.date_range,
+    selected_platforms: payload.selected_platforms,
+    conversation_history: payload.conversation_history,
+    conversation_id: payload.conversation_id,
+  }
+
+  const response = await apiFetch('/api/chat/v2/stream', {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': payload.session_id || 'default',
+    },
+    body: JSON.stringify(v2Payload),
+  })
+
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('No response body')
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const messages = buffer.split('\n\n')
+    buffer = messages.pop() ?? ''
+
+    for (const msg of messages) {
+      if (!msg.startsWith('data: ')) continue
+      try {
+        const parsed = JSON.parse(msg.slice(6))
+        onChunk(parsed)
+      } catch {
+        // malformed SSE chunk — ignore
+      }
+    }
+  }
+}
+
 export const fetchRecentConversations = async (
   sessionId: string
 ): Promise<RecentConversation[]> => {

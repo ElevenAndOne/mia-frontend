@@ -201,7 +201,8 @@ export const ChatView = ({
                   ))
                 })()}
 
-                {isLoading && (
+                {/* Dots while Claude is thinking (tools running, no text yet) */}
+                {isLoading && !streamingContent && (
                   <div className="mb-6">
                     <div className="flex items-center gap-2 text-quaternary">
                       <div className="flex gap-1">
@@ -223,6 +224,7 @@ export const ChatView = ({
                   </div>
                 )}
 
+                {/* Live text stream — transitions to a permanent message when done */}
                 {streamingContent && (
                   <ChatMessage role="assistant" content={streamingContent} isStreaming />
                 )}

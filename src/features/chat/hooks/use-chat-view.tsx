@@ -7,7 +7,7 @@ import { useIntegrationStatus } from '../../integrations/hooks/use-integration-s
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
 import {
-  sendChatMessage,
+  sendChatMessageStreaming,
   confirmAction,
   pollActionStatus,
   fetchConversationMessages,
@@ -21,6 +21,7 @@ export interface ChatMessageItem {
   role: 'user' | 'assistant'
   content: string
   hidden?: boolean
+  isStreaming?: boolean
   pendingAction?: PendingAction
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
@@ -174,7 +175,6 @@ export const useChatView = () => {
 
   const handleSubmit = useCallback(
     async (message: string, options?: { hidden?: boolean }) => {
-      // Generate a conversation ID on the first message of a new chat session
       const activeConvId =
         conversationId ??
         (() => {
@@ -199,8 +199,6 @@ export const useChatView = () => {
       abortControllerRef.current = abortController
 
       try {
-        // Build conversation history from existing messages (last 20 for context)
-        // Include completed action results so Claude knows what was created
         const history = messages.slice(-40).map((m) => {
           let content = m.content
           if (m.actionStatus === 'completed' && m.actionResult) {
@@ -214,7 +212,10 @@ export const useChatView = () => {
           return { role: m.role as 'user' | 'assistant', content }
         })
 
-        const result = await sendChatMessage(
+        let accumulated = ''
+        let pendingAction: PendingAction | undefined
+
+        await sendChatMessageStreaming(
           {
             message,
             session_id: sessionId,
@@ -226,25 +227,28 @@ export const useChatView = () => {
             conversation_history: history.length > 0 ? history : undefined,
             conversation_id: activeConvId,
           },
+          (chunk) => {
+            if (chunk.text) {
+              accumulated += chunk.text
+              setStreamingContent(accumulated)
+            } else if (chunk.pending_action) {
+              pendingAction = chunk.pending_action
+            }
+          },
           abortController.signal
         )
 
+        const finalContent = accumulated || 'Sorry, I had trouble processing your question. Please try again.'
         const assistantMessage: ChatMessageItem = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content:
-            result.success && result.claude_response
-              ? result.claude_response
-              : 'Sorry, I had trouble processing your question. Please try again.',
-          pendingAction: result.pending_action || undefined,
-          actionStatus: result.pending_action ? 'pending' : undefined,
-          skillWorkspaces: result.skill_workspaces,
+          content: finalContent,
+          pendingAction,
+          actionStatus: pendingAction ? 'pending' : undefined,
         }
-
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          // User cancelled — remove the unsent user message, stay silent
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
         } else {
           logger.error('[CHAT] Error:', error)
@@ -258,6 +262,7 @@ export const useChatView = () => {
       } finally {
         abortControllerRef.current = null
         setIsLoading(false)
+        setStreamingContent('')
       }
     },
     [
