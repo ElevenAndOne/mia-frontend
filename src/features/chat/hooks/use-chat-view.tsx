@@ -226,20 +226,13 @@ export const useChatView = () => {
         const remaining = target - current
 
         if (remaining > 0) {
-          if (streamDoneRef.current) {
-            // Stream finished — show everything at once, stop interval
-            displayIndexRef.current = target
-            if (isMountedRef.current) setStreamingContent(receivedRef.current)
-            if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
-            revealIntervalRef.current = null
-          } else {
-            // Still streaming — drip at steady pace
-            displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
-            if (isMountedRef.current) {
-              setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
-            }
+          // Always drip at steady pace — even after streaming ends, keep the consistent reveal
+          displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
+          if (isMountedRef.current) {
+            setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
           }
         } else if (streamDoneRef.current) {
+          // Buffer fully caught up and streaming is done — stop
           if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
           revealIntervalRef.current = null
         }
