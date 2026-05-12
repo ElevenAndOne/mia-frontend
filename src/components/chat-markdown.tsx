@@ -48,14 +48,14 @@ export const ChatMarkdown = memo(function ChatMarkdown({ content, className = ''
         code: ({ children, className: codeClass }) => {
           const isBlock = codeClass?.includes('language-')
           return isBlock ? (
-            <code className="block bg-quaternary rounded px-3 py-2 text-xs font-mono my-2 overflow-x-auto">
+            <code className="block bg-quaternary rounded px-3 py-2 text-xs font-mono">
               {children}
             </code>
           ) : (
-            <code className="bg-quaternary rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+            <code className="bg-quaternary rounded px-1 py-0.5 text-xs font-mono break-all">{children}</code>
           )
         },
-        pre: ({ children }) => <pre className="my-2">{children}</pre>,
+        pre: ({ children }) => <pre className="my-2 overflow-x-auto">{children}</pre>,
         // Paragraphs and links
         p: ({ children }) => <p className="my-1.5 leading-relaxed">{children}</p>,
         a: ({ href, children }) => (
