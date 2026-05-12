@@ -55,9 +55,14 @@ export const ChatMessage = ({
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
         <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary select-text">
-          <ChatMarkdown content={content} className="text-secondary" />
-          {isStreaming && (
-            <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1" />
+          {isStreaming ? (
+            // Plain text while streaming — avoids expensive markdown re-parse on every tick
+            <p className="text-secondary whitespace-pre-wrap">
+              {content}
+              <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1 align-middle" />
+            </p>
+          ) : (
+            <ChatMarkdown content={content} className="text-secondary" />
           )}
         </div>
 
