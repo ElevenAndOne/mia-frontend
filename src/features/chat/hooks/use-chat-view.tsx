@@ -133,17 +133,6 @@ export const useChatView = () => {
     container.scrollTo({ top: Math.max(0, msgTopRelative - 16), behavior: 'smooth' })
   }, [messages])
 
-  // During streaming: follow scroll only if already near the bottom
-  useEffect(() => {
-    if (!streamingContent) return
-    const container = scrollContainerRef.current
-    if (!container) return
-    const { scrollTop, scrollHeight, clientHeight } = container
-    if (scrollHeight - scrollTop - clientHeight < 250) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [streamingContent])
-
   const handleNewChat = useCallback(() => {
     setMessages([])
     setStreamingContent('')
