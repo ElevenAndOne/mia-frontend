@@ -58,11 +58,16 @@ export const useChatView = () => {
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // RAF-based streaming: text accumulates in a ref, requestAnimationFrame batches
-  // all chunks that arrive within one frame into a single setState — smooth 60fps,
-  // no artificial slowing, no trailing lag after Claude finishes.
+  // Interval-based streaming reveal — same mechanism as Quick Insights.
+  // Text accumulates in receivedRef instantly; a fixed setInterval drip-feeds it to
+  // display state at a steady pace INDEPENDENT of chunk arrival timing.
+  // This decouples bursty network chunks from render cadence (key to smoothness).
   const receivedRef = useRef('')
-  const rafRef = useRef<number | null>(null)
+  const displayIndexRef = useRef(0)
+  const streamDoneRef = useRef(false)
+  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const REVEAL_INTERVAL_MS = 40  // ~25 ticks/sec (same as Quick Insights)
+  const CHARS_PER_TICK = 8       // 200 chars/sec — smooth for longer chat responses
 
   useEffect(() => {
     isMountedRef.current = true
@@ -71,7 +76,7 @@ export const useChatView = () => {
       abortControllerRef.current?.abort()
       if (actionPollIntervalRef.current) clearInterval(actionPollIntervalRef.current)
       if (actionPollTimeoutRef.current) clearTimeout(actionPollTimeoutRef.current)
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
     }
   }, [])
 
@@ -197,11 +202,11 @@ export const useChatView = () => {
         hidden: options?.hidden,
       }
 
+      // Reset reveal state
       receivedRef.current = ''
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
+      displayIndexRef.current = 0
+      streamDoneRef.current = false
+      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
 
       justSubmittedRef.current = true
       setMessages((prev) => [...prev, userMessage])
@@ -211,15 +216,34 @@ export const useChatView = () => {
       const abortController = new AbortController()
       abortControllerRef.current = abortController
 
-      // Schedule one RAF render — all chunks that arrive within a single frame are
-      // batched into one setState, giving smooth 60fps output without artificial slowing.
-      const scheduleRender = () => {
-        if (rafRef.current !== null) return
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null
-          if (isMountedRef.current) setStreamingContent(receivedRef.current)
-        })
-      }
+      // Start reveal interval — fires every 40ms INDEPENDENT of chunk arrival.
+      // Each tick reveals CHARS_PER_TICK chars from the accumulated buffer.
+      // When streaming is done, flushes all remaining text immediately so there
+      // is zero trailing lag after Claude finishes generating.
+      revealIntervalRef.current = setInterval(() => {
+        const target = receivedRef.current.length
+        const current = displayIndexRef.current
+        const remaining = target - current
+
+        if (remaining > 0) {
+          if (streamDoneRef.current) {
+            // Stream finished — show everything at once, stop interval
+            displayIndexRef.current = target
+            if (isMountedRef.current) setStreamingContent(receivedRef.current)
+            if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+            revealIntervalRef.current = null
+          } else {
+            // Still streaming — drip at steady pace
+            displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
+            if (isMountedRef.current) {
+              setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
+            }
+          }
+        } else if (streamDoneRef.current) {
+          if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+          revealIntervalRef.current = null
+        }
+      }, REVEAL_INTERVAL_MS)
 
       try {
         const history = messages.slice(-40).map((m) => {
@@ -254,8 +278,7 @@ export const useChatView = () => {
           (chunk) => {
             if (chunk.text) {
               accumulated += chunk.text
-              receivedRef.current = accumulated
-              scheduleRender()
+              receivedRef.current = accumulated  // interval reads this; no setState here
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
@@ -265,11 +288,18 @@ export const useChatView = () => {
           abortController.signal
         )
 
-        // Cancel any pending RAF and flush final content
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current)
-          rafRef.current = null
-        }
+        // Signal done — interval will flush remaining text and stop itself
+        streamDoneRef.current = true
+
+        // Wait for interval to finish flushing before snapping to final markdown
+        await new Promise<void>((resolve) => {
+          const check = setInterval(() => {
+            if (revealIntervalRef.current === null) {
+              clearInterval(check)
+              resolve()
+            }
+          }, REVEAL_INTERVAL_MS)
+        })
 
         const finalContent = accumulated || 'Sorry, I had trouble processing your question. Please try again.'
         const assistantMessage: ChatMessageItem = {
@@ -282,9 +312,9 @@ export const useChatView = () => {
         }
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current)
-          rafRef.current = null
+        if (revealIntervalRef.current) {
+          clearInterval(revealIntervalRef.current)
+          revealIntervalRef.current = null
         }
         if (error instanceof Error && error.name === 'AbortError') {
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
