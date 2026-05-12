@@ -136,7 +136,7 @@ export const uploadWorkspaceLogo = async (
     throw new Error(err.detail || 'Logo upload failed')
   }
   const data = await response.json()
-  return `${API_BASE_URL}${data.logo_url}`
+  return `${API_BASE_URL}${data.logo_url}?v=${Date.now()}`
 }
 
 export const deleteWorkspaceLogo = async (
