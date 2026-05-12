@@ -58,14 +58,11 @@ export const useChatView = () => {
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Dual-buffer streaming reveal (same pattern as Quick Insights)
-  // receivedRef accumulates all text instantly; reveal loop drip-feeds to display state
+  // RAF-based streaming: text accumulates in a ref, requestAnimationFrame batches
+  // all chunks that arrive within one frame into a single setState — smooth 60fps,
+  // no artificial slowing, no trailing lag after Claude finishes.
   const receivedRef = useRef('')
-  const displayIndexRef = useRef(0)
-  const streamDoneRef = useRef(false)
-  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const CHARS_PER_TICK = 12   // ~400 chars/sec at 30ms — fast enough to match Claude
-  const REVEAL_INTERVAL_MS = 30
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     isMountedRef.current = true
@@ -74,7 +71,7 @@ export const useChatView = () => {
       abortControllerRef.current?.abort()
       if (actionPollIntervalRef.current) clearInterval(actionPollIntervalRef.current)
       if (actionPollTimeoutRef.current) clearTimeout(actionPollTimeoutRef.current)
-      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
     }
   }, [])
 
@@ -200,11 +197,11 @@ export const useChatView = () => {
         hidden: options?.hidden,
       }
 
-      // Reset dual-buffer reveal state
       receivedRef.current = ''
-      displayIndexRef.current = 0
-      streamDoneRef.current = false
-      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
 
       justSubmittedRef.current = true
       setMessages((prev) => [...prev, userMessage])
@@ -214,19 +211,15 @@ export const useChatView = () => {
       const abortController = new AbortController()
       abortControllerRef.current = abortController
 
-      // Start smooth reveal loop — drip-feeds buffered text to display at constant rate
-      revealIntervalRef.current = setInterval(() => {
-        const target = receivedRef.current.length
-        const current = displayIndexRef.current
-        if (current < target) {
-          displayIndexRef.current = Math.min(current + CHARS_PER_TICK, target)
-          setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
-        } else if (streamDoneRef.current) {
-          // Fully caught up and streaming complete — clean up
-          clearInterval(revealIntervalRef.current!)
-          revealIntervalRef.current = null
-        }
-      }, REVEAL_INTERVAL_MS)
+      // Schedule one RAF render — all chunks that arrive within a single frame are
+      // batched into one setState, giving smooth 60fps output without artificial slowing.
+      const scheduleRender = () => {
+        if (rafRef.current !== null) return
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null
+          if (isMountedRef.current) setStreamingContent(receivedRef.current)
+        })
+      }
 
       try {
         const history = messages.slice(-40).map((m) => {
@@ -261,7 +254,8 @@ export const useChatView = () => {
           (chunk) => {
             if (chunk.text) {
               accumulated += chunk.text
-              receivedRef.current = accumulated  // Update buffer; interval handles display
+              receivedRef.current = accumulated
+              scheduleRender()
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
@@ -271,21 +265,10 @@ export const useChatView = () => {
           abortController.signal
         )
 
-        // Network done — wait for reveal loop to flush remaining buffered text
-        streamDoneRef.current = true
-        // Small wait to let the interval drain the last chars before snapping to markdown
-        await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (displayIndexRef.current >= receivedRef.current.length) {
-              clearInterval(check)
-              resolve()
-            }
-          }, REVEAL_INTERVAL_MS)
-        })
-
-        if (revealIntervalRef.current) {
-          clearInterval(revealIntervalRef.current)
-          revealIntervalRef.current = null
+        // Cancel any pending RAF and flush final content
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current)
+          rafRef.current = null
         }
 
         const finalContent = accumulated || 'Sorry, I had trouble processing your question. Please try again.'
@@ -299,9 +282,9 @@ export const useChatView = () => {
         }
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
-        if (revealIntervalRef.current) {
-          clearInterval(revealIntervalRef.current)
-          revealIntervalRef.current = null
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current)
+          rafRef.current = null
         }
         if (error instanceof Error && error.name === 'AbortError') {
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
