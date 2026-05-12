@@ -101,7 +101,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
 
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {

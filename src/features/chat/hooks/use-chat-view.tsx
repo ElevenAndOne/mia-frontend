@@ -214,6 +214,7 @@ export const useChatView = () => {
 
         let accumulated = ''
         let pendingAction: PendingAction | undefined
+        let skillWorkspaces: string[] = []
 
         await sendChatMessageStreaming(
           {
@@ -233,6 +234,8 @@ export const useChatView = () => {
               setStreamingContent(accumulated)
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
+            } else if (chunk.skill_workspaces) {
+              skillWorkspaces = chunk.skill_workspaces
             }
           },
           abortController.signal
@@ -245,6 +248,7 @@ export const useChatView = () => {
           content: finalContent,
           pendingAction,
           actionStatus: pendingAction ? 'pending' : undefined,
+          skillWorkspaces,
         }
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
