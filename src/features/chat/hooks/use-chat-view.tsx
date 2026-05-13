@@ -11,6 +11,7 @@ import {
   confirmAction,
   pollActionStatus,
   fetchConversationMessages,
+  transcribeAudio,
 } from '../services/chat-service'
 import type { PendingAction } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
@@ -26,6 +27,7 @@ export interface ChatMessageItem {
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
   skillWorkspaces?: string[]
+  images?: string[]
 }
 
 interface LocationState {
@@ -41,6 +43,7 @@ export const useChatView = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [images, setImages] = useState<string[]>([])
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
   )
@@ -174,8 +177,17 @@ export const useChatView = () => {
     }
   }, [location.state, location.pathname, navigate, loadConversation])
 
+  const addImages = useCallback((newImages: string[]) => {
+    setImages((prev) => [...prev, ...newImages].slice(0, 4))
+  }, [])
+
+  const removeImage = useCallback((index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const handleSubmit = useCallback(
     async (message: string, options?: { hidden?: boolean }) => {
+      const pendingImages = images.slice()
       const activeConvId =
         conversationId ??
         (() => {
@@ -189,6 +201,7 @@ export const useChatView = () => {
         role: 'user',
         content: message,
         hidden: options?.hidden,
+        images: pendingImages.length > 0 ? pendingImages : undefined,
       }
 
       // Reset reveal state
@@ -199,6 +212,7 @@ export const useChatView = () => {
 
       justSubmittedRef.current = true
       setMessages((prev) => [...prev, userMessage])
+      setImages([])  // Clear images immediately after capturing
       setIsLoading(true)
       setStreamingContent('')
 
@@ -256,6 +270,7 @@ export const useChatView = () => {
             selected_platforms: selectedPlatforms,
             conversation_history: history.length > 0 ? history : undefined,
             conversation_id: activeConvId,
+            images: pendingImages.length > 0 ? pendingImages : undefined,
           },
           (chunk) => {
             if (chunk.text) {
@@ -324,6 +339,7 @@ export const useChatView = () => {
       dateRange,
       selectedPlatforms,
       conversationId,
+      images,
     ]
   )
 
@@ -482,6 +498,14 @@ export const useChatView = () => {
     [sessionId]
   )
 
+  const handleTranscribeAudio = useCallback(
+    async (audioBlob: Blob, mimeType: string): Promise<string> => {
+      if (!sessionId) return ''
+      return transcribeAudio(sessionId, audioBlob, mimeType)
+    },
+    [sessionId]
+  )
+
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort()
   }, [])
@@ -516,7 +540,11 @@ export const useChatView = () => {
     handleCancel,
     handleBack,
     handleFeedback,
+    handleTranscribeAudio,
     integrationPrompt,
     loadConversation,
+    images,
+    addImages,
+    removeImage,
   }
 }

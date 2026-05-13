@@ -68,8 +68,12 @@ export const ChatView = ({
     handleCancel,
     handleBack,
     handleFeedback,
+    handleTranscribeAudio,
     integrationPrompt,
     loadConversation,
+    images,
+    addImages,
+    removeImage,
   } = useChatView()
 
   // Track page visit once
@@ -154,6 +158,10 @@ export const ChatView = ({
               selectedPlatforms={selectedPlatforms}
               onPlatformToggle={togglePlatform}
               hasSelectedPlatforms={hasSelectedPlatforms}
+              images={images}
+              onAddImages={addImages}
+              onRemoveImage={removeImage}
+              onTranscribeAudio={handleTranscribeAudio}
             />
           </>
         ) : (
@@ -176,6 +184,7 @@ export const ChatView = ({
                       <ChatMessage
                         role={message.role}
                         content={message.content}
+                        images={message.images}
                         pendingAction={message.pendingAction}
                         actionStatus={message.actionStatus}
                         actionResult={message.actionResult}
@@ -244,6 +253,10 @@ export const ChatView = ({
               selectedPlatforms={selectedPlatforms}
               onPlatformToggle={togglePlatform}
               hasSelectedPlatforms={hasSelectedPlatforms}
+              images={images}
+              onAddImages={addImages}
+              onRemoveImage={removeImage}
+              onTranscribeAudio={handleTranscribeAudio}
             />
           </>
         )}

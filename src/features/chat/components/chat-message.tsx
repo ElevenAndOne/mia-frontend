@@ -17,6 +17,7 @@ interface ChatMessageProps {
   onCancelAction?: () => void
   skillWorkspaces?: string[]
   onFeedback?: (feedback: 1 | -1, skillWorkspaces: string[]) => void
+  images?: string[]
 }
 
 export const ChatMessage = ({
@@ -30,6 +31,7 @@ export const ChatMessage = ({
   onCancelAction,
   skillWorkspaces = [],
   onFeedback,
+  images = [],
 }: ChatMessageProps) => {
   const { copied, copy } = useClipboard()
   const [feedbackGiven, setFeedbackGiven] = useState<1 | -1 | null>(null)
@@ -43,8 +45,22 @@ export const ChatMessage = ({
   if (role === 'user') {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[80%] md:max-w-[60%] bg-tertiary rounded-3xl px-4 py-3">
-          <p className="paragraph-md text-primary whitespace-pre-wrap">{content}</p>
+        <div className="max-w-[80%] md:max-w-[60%]">
+          {images.length > 0 && (
+            <div className="flex gap-1.5 mb-1.5 justify-end flex-wrap">
+              {images.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`image ${i + 1}`}
+                  className="w-20 h-20 object-cover rounded-xl border border-tertiary"
+                />
+              ))}
+            </div>
+          )}
+          <div className="bg-tertiary rounded-3xl px-4 py-3">
+            <p className="paragraph-md text-primary whitespace-pre-wrap">{content}</p>
+          </div>
         </div>
       </div>
     )
@@ -55,14 +71,9 @@ export const ChatMessage = ({
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
         <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary select-text">
-          {isStreaming ? (
-            // Plain text while streaming — avoids expensive markdown re-parse on every tick
-            <p className="text-secondary whitespace-pre-wrap">
-              {content}
-              <span className="inline-block w-2 h-4 bg-quaternary animate-pulse ml-1 align-middle" />
-            </p>
-          ) : (
-            <ChatMarkdown content={content} className="text-secondary" />
+          <ChatMarkdown content={content} className="text-secondary" />
+          {isStreaming && (
+            <span className="inline-block w-2 h-4 bg-quaternary animate-pulse mt-1" />
           )}
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
@@ -18,7 +18,13 @@ interface ChatInputProps {
   selectedPlatforms: string[]
   onPlatformToggle: (platformId: string) => void
   hasSelectedPlatforms?: boolean
+  images?: string[]
+  onAddImages?: (images: string[]) => void
+  onRemoveImage?: (index: number) => void
+  onTranscribeAudio?: (blob: Blob, mimeType: string) => Promise<string>
 }
+
+type MicState = 'idle' | 'recording' | 'processing' | 'error'
 
 export const ChatInput = ({
   onSubmit,
@@ -32,13 +38,20 @@ export const ChatInput = ({
   selectedPlatforms,
   onPlatformToggle,
   hasSelectedPlatforms = false,
+  images = [],
+  onAddImages,
+  onRemoveImage,
+  onTranscribeAudio,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
+  const [micState, setMicState] = useState<MicState>('idle')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const platformButtonRef = useRef<HTMLButtonElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const handleSubmit = () => {
     if (message.trim() && !disabled && hasSelectedPlatforms) {
@@ -55,7 +68,6 @@ export const ChatInput = ({
       e.preventDefault()
       handleSubmit()
     }
-    // Shift+Enter: default textarea behavior inserts newline
   }
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -64,14 +76,127 @@ export const ChatInput = ({
     e.target.style.height = `${e.target.scrollHeight}px`
   }
 
+  const handleImageFiles = useCallback(
+    (files: FileList | null) => {
+      if (!files || !onAddImages) return
+      const remaining = 4 - images.length
+      if (remaining <= 0) return
+      const toRead = Array.from(files).slice(0, remaining)
+      const promises = toRead.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onload = (e) => resolve(e.target?.result as string)
+            reader.readAsDataURL(file)
+          })
+      )
+      Promise.all(promises).then((dataUrls) => onAddImages(dataUrls))
+    },
+    [images.length, onAddImages]
+  )
+
+  const startRecording = useCallback(async () => {
+    if (!onTranscribeAudio) return
+
+    // getUserMedia requires HTTPS (or localhost) — not available on plain HTTP LAN addresses
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicState('error')
+      setTimeout(() => setMicState('idle'), 3000)
+      return
+    }
+
+    // Check current permission state without consuming the user gesture
+    let permissionDenied = false
+    try {
+      const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      permissionDenied = perm.state === 'denied'
+    } catch {
+      // Permissions API unavailable — fall through to getUserMedia
+    }
+
+    if (permissionDenied) {
+      setMicState('error')
+      setTimeout(() => setMicState('idle'), 3000)
+      return
+    }
+
+    // Show spinner immediately — getUserMedia is async and permission prompt may take a moment
+    setMicState('processing')
+    try {
+      // This triggers the browser permission dialog if not yet granted
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      audioChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setMicState('processing')
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType })
+          const transcript = await onTranscribeAudio(blob, mimeType)
+          if (transcript) {
+            setMessage((prev) => (prev ? `${prev} ${transcript}` : transcript))
+            if (inputRef.current) {
+              inputRef.current.style.height = 'auto'
+              inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
+            }
+          }
+        } finally {
+          setMicState('idle')
+        }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setMicState('recording')
+    } catch {
+      setMicState('error')
+      setTimeout(() => setMicState('idle'), 3000)
+    }
+  }, [onTranscribeAudio])
+
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop()
+    mediaRecorderRef.current = null
+  }, [])
+
+  const handleMicClick = useCallback(() => {
+    if (micState === 'idle') startRecording()
+    else if (micState === 'recording') stopRecording()
+  }, [micState, startRecording, stopRecording])
+
   // FEB 2026: Removed auto-focus on mount - bad UX on mobile
-  // Opens keyboard immediately when page loads, taking up screen space
-  // User can tap input when they want to type
 
   const canSubmit = message.trim() && !disabled && hasSelectedPlatforms
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
+      {/* Image preview strip */}
+      {images.length > 0 && (
+        <div className="flex gap-2 mb-2 flex-wrap">
+          {images.map((src, i) => (
+            <div key={i} className="relative group">
+              <img
+                src={src}
+                alt={`attachment ${i + 1}`}
+                className="w-16 h-16 object-cover rounded-lg border border-tertiary"
+              />
+              {onRemoveImage && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveImage(i)}
+                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-quaternary flex items-center justify-center touch-manipulation opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                >
+                  <Icon.x_close size={11} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Main input container */}
       <div className="bg-tertiary rounded-2xl overflow-visible">
         {/* Text input row */}
@@ -97,7 +222,7 @@ export const ChatInput = ({
               ref={calendarButtonRef}
               type="button"
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className="h-10 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary hover:bg-tertiary transition-colors"
+              className="h-11 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
               title="Select date range"
             >
               <Icon.calendar size={18} />
@@ -120,7 +245,7 @@ export const ChatInput = ({
                 ref={platformButtonRef}
                 type="button"
                 onClick={() => setShowPlatformSelector(!showPlatformSelector)}
-                className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors"
+                className="w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
                 title="Select platforms"
               >
                 <Icon.tool_01 size={18} />
@@ -136,39 +261,97 @@ export const ChatInput = ({
               />
             </div>
 
+            {/* Image upload — label approach works universally on mobile (no JS click needed) */}
+            {onAddImages && (
+              <>
+                <input
+                  id="chat-image-input"
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  className="sr-only"
+                  onChange={(e) => { handleImageFiles(e.target.files); e.target.value = '' }}
+                  disabled={images.length >= 4}
+                />
+                <label
+                  htmlFor="chat-image-input"
+                  title={images.length >= 4 ? 'Maximum 4 images' : 'Attach image'}
+                  className={[
+                    'w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation',
+                    images.length >= 4 ? 'opacity-40 pointer-events-none' : 'cursor-pointer',
+                  ].join(' ')}
+                >
+                  <Icon.image_plus size={18} />
+                </label>
+              </>
+            )}
           </div>
 
-          {/* Stop button (while loading) or Submit button */}
-          {isLoading ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-10 h-10 flex items-center justify-center text-white hover:opacity-70 transition-opacity"
-              title="Stop generating"
-            >
-              <svg viewBox="0 0 24 24" width={20} height={20} fill="white">
-                <path d="M3 7.8C3 6.11984 3 5.27976 3.32698 4.63803C3.6146 4.07354 4.07354 3.6146 4.63803 3.32698C5.27976 3 6.11984 3 7.8 3H16.2C17.8802 3 18.7202 3 19.362 3.32698C19.9265 3.6146 20.3854 4.07354 20.673 4.63803C21 5.27976 21 6.11984 21 7.8V16.2C21 17.8802 21 18.7202 20.673 19.362C20.3854 19.9265 19.9265 20.3854 19.362 20.673C18.7202 21 17.8802 21 16.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V7.8Z" />
-                <path
-                  d="M8 9.6C8 9.03995 8 8.75992 8.10899 8.54601C8.20487 8.35785 8.35785 8.20487 8.54601 8.10899C8.75992 8 9.03995 8 9.6 8H14.4C14.9601 8 15.2401 8 15.454 8.10899C15.6422 8.20487 15.7951 8.35785 15.891 8.54601C16 8.75992 16 9.03995 16 9.6V14.4C16 14.9601 16 15.2401 15.891 15.454C15.7951 15.6422 15.6422 15.7951 15.454 15.891C15.2401 16 14.9601 16 14.4 16H9.6C9.03995 16 8.75992 16 8.54601 15.891C8.35785 15.7951 8.20487 15.6422 8.10899 15.454C8 15.2401 8 14.9601 8 14.4V9.6Z"
-                  fill="#1a1a2e"
-                />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                canSubmit
-                  ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
-                  : 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
-              }`}
-              title="Send message"
-            >
-              <Icon.arrow_right size={18} />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {/* Mic button — left of send */}
+            {onTranscribeAudio && !isLoading && (
+              <button
+                type="button"
+                onClick={handleMicClick}
+                disabled={micState === 'processing' || micState === 'error'}
+                className={[
+                  'w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation',
+                  micState === 'recording'
+                    ? 'bg-error-primary text-white animate-pulse'
+                    : micState === 'error'
+                      ? 'bg-error-primary text-white'
+                      : micState === 'processing'
+                        ? 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
+                        : 'bg-quaternary text-tertiary hover:bg-tertiary',
+                ].join(' ')}
+                title={
+                  micState === 'recording' ? 'Stop recording' :
+                  micState === 'error' ? 'Microphone access blocked — check browser permissions' :
+                  'Voice input'
+                }
+              >
+                {micState === 'processing' ? (
+                  <Icon.loading_01 size={18} className="animate-spin" />
+                ) : micState === 'error' ? (
+                  <Icon.microphone_off_01 size={18} />
+                ) : (
+                  <Icon.microphone_01 size={18} />
+                )}
+              </button>
+            )}
+
+            {/* Stop button (while loading) or Submit button */}
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-11 h-11 flex items-center justify-center text-white hover:opacity-70 transition-opacity touch-manipulation"
+                title="Stop generating"
+              >
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="white">
+                  <path d="M3 7.8C3 6.11984 3 5.27976 3.32698 4.63803C3.6146 4.07354 4.07354 3.6146 4.63803 3.32698C5.27976 3 6.11984 3 7.8 3H16.2C17.8802 3 18.7202 3 19.362 3.32698C19.9265 3.6146 20.3854 4.07354 20.673 4.63803C21 5.27976 21 6.11984 21 7.8V16.2C21 17.8802 21 18.7202 20.673 19.362C20.3854 19.9265 19.9265 20.3854 19.362 20.673C18.7202 21 17.8802 21 16.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V7.8Z" />
+                  <path
+                    d="M8 9.6C8 9.03995 8 8.75992 8.10899 8.54601C8.20487 8.35785 8.35785 8.20487 8.54601 8.10899C8.75992 8 9.03995 8 9.6 8H14.4C14.9601 8 15.2401 8 15.454 8.10899C15.6422 8.20487 15.7951 8.35785 15.891 8.54601C16 8.75992 16 9.03995 16 9.6V14.4C16 14.9601 16 15.2401 15.891 15.454C15.7951 15.6422 15.6422 15.7951 15.454 15.891C15.2401 16 14.9601 16 14.4 16H9.6C9.03995 16 8.75992 16 8.54601 15.891C8.35785 15.7951 8.20487 15.6422 8.10899 15.454C8 15.2401 8 14.9601 8 14.4V9.6Z"
+                    fill="#1a1a2e"
+                  />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                  canSubmit
+                    ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                    : 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
+                }`}
+                title="Send message"
+              >
+                <Icon.arrow_right size={18} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ interface ChatRequestPayload {
   selected_platforms?: string[]
   conversation_history?: ChatHistoryMessage[]
   conversation_id?: string
+  images?: string[]
 }
 
 export interface RecentConversation {
@@ -111,6 +112,7 @@ export const sendChatMessageStreaming = async (
     selected_platforms: payload.selected_platforms,
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
+    ...(payload.images?.length ? { images: payload.images } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {
@@ -217,6 +219,24 @@ export const pinConversation = async (
   } catch {
     return null
   }
+}
+
+export const transcribeAudio = async (
+  sessionId: string,
+  audioBlob: Blob,
+  mimeType: string
+): Promise<string> => {
+  const formData = new FormData()
+  const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'wav'
+  formData.append('audio', audioBlob, `recording.${ext}`)
+  const response = await apiFetch('/api/chat/v2/transcribe', {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+    body: formData,
+  })
+  if (!response.ok) throw new Error(`Transcription failed: ${response.status}`)
+  const data = await response.json()
+  return data.transcript as string
 }
 
 export const fetchConversationMessages = async (
