@@ -138,10 +138,19 @@ export const ChatInput = ({
           const blob = new Blob(audioChunksRef.current, { type: mimeType })
           const transcript = await onTranscribeAudio(blob, mimeType)
           if (transcript) {
-            setMessage((prev) => (prev ? `${prev} ${transcript}` : transcript))
-            if (inputRef.current) {
-              inputRef.current.style.height = 'auto'
-              inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
+            const currentText = inputRef.current?.value?.trim() ?? ''
+            const fullMessage = currentText ? `${currentText} ${transcript}` : transcript
+            if (!disabled && hasSelectedPlatforms) {
+              onSubmit(fullMessage)
+              setMessage('')
+              if (inputRef.current) inputRef.current.style.height = 'auto'
+            } else {
+              // Can't send yet (no platforms selected etc.) — populate input instead
+              setMessage(fullMessage)
+              if (inputRef.current) {
+                inputRef.current.style.height = 'auto'
+                inputRef.current.style.height = `${inputRef.current.scrollHeight}px`
+              }
             }
           }
         } finally {
@@ -155,7 +164,7 @@ export const ChatInput = ({
       setMicState('error')
       setTimeout(() => setMicState('idle'), 3000)
     }
-  }, [onTranscribeAudio])
+  }, [onTranscribeAudio, disabled, hasSelectedPlatforms, onSubmit])
 
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop()
