@@ -33,7 +33,7 @@ interface VoiceWaveformProps {
 
 export function VoiceWaveform({ stream }: VoiceWaveformProps) {
   const barsRef = useRef<(HTMLDivElement | null)[]>([])
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number>(0)
 
   useEffect(() => {
     if (!stream) {
