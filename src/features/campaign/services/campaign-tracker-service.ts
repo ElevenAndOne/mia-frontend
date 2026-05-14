@@ -21,6 +21,16 @@ interface CacheEntry<T> {
 const trackerCache = new Map<string, CacheEntry<CampaignTracker | null>>()
 const actualsCache = new Map<string, CacheEntry<KPIActual[] | null>>()
 
+// One-time migration: wipe any stale tracker keys left in sessionStorage from the old dual-layer scheme
+try {
+  const toRemove: string[] = []
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const k = sessionStorage.key(i)
+    if (k && k.startsWith(SS_TRACKER_PREFIX)) toRemove.push(k)
+  }
+  toRemove.forEach((k) => sessionStorage.removeItem(k))
+} catch { /* ignore */ }
+
 // ---------------------------------------------------------------------------
 // sessionStorage helpers — silent on SSR / private-mode failures
 // ---------------------------------------------------------------------------
@@ -61,19 +71,11 @@ function ssClear(prefix: string): void {
 // ---------------------------------------------------------------------------
 
 function getTrackerEntry(key: string): CacheEntry<CampaignTracker | null> | undefined {
-  const mem = trackerCache.get(key)
-  if (mem) return mem
-  const ss = ssGet<CampaignTracker | null>(SS_TRACKER_PREFIX + key)
-  if (ss) {
-    trackerCache.set(key, ss) // re-populate in-memory from sessionStorage
-    return ss
-  }
-  return undefined
+  return trackerCache.get(key)
 }
 
 function setTrackerEntry(key: string, entry: CacheEntry<CampaignTracker | null>): void {
   trackerCache.set(key, entry)
-  ssSet(SS_TRACKER_PREFIX + key, entry)
 }
 
 function getActualsEntry(key: string): CacheEntry<KPIActual[] | null> | undefined {
@@ -249,8 +251,8 @@ export const getCachedActuals = (
 export const clearTrackerCache = () => {
   trackerCache.clear()
   actualsCache.clear()
-  ssClear(SS_TRACKER_PREFIX)
   ssClear(SS_ACTUALS_PREFIX)
+  // Tracker is in-memory only — no sessionStorage to clear
 }
 
 /** Trigger a server-side cache clear + re-warm for all phases, then clear local cache */

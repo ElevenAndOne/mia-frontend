@@ -16,6 +16,9 @@ interface ChatRequestPayload {
   conversation_history?: ChatHistoryMessage[]
   conversation_id?: string
   images?: string[]
+  campaign_id?: string
+  start_date?: string
+  end_date?: string
 }
 
 export interface RecentConversation {
@@ -113,6 +116,9 @@ export const sendChatMessageStreaming = async (
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
     ...(payload.images?.length ? { images: payload.images } : {}),
+    ...(payload.campaign_id
+      ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
+      : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {

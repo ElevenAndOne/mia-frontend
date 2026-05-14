@@ -37,6 +37,9 @@ export const StorageKey = {
   // Strategise/Gold insights
   STRATEGISE_SEEN_PREFIX: 'mia_strategise_seen_',
 
+  // Campaign mode (tenant-scoped — append `_${tenantId}`)
+  CAMPAIGN_MODE_PREFIX: 'mia_campaign_mode_',
+
   // Google OAuth connect-pending flags (set before OAuth redirect, consumed on return)
   GOOGLE_ADS_CONNECT_PENDING: 'mia_google_ads_connect_pending',
   GA4_CONNECT_PENDING: 'mia_ga4_connect_pending',

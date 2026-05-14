@@ -16,6 +16,7 @@
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-gradient: gradient 8s ease infinite;
   --animate-pulse-gold: pulse-gold 2s ease-in-out infinite;
+  --animate-voice-bar-idle: voice-bar-idle 1.8s ease-in-out infinite;
 }
 
 /* Keyframes for custom animations */
@@ -48,6 +49,16 @@
   }
   50% {
     background-position: 100% 50%;
+  }
+}
+
+@keyframes voice-bar-idle {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
   }
 }
 

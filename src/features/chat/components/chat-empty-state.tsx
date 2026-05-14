@@ -8,7 +8,7 @@ export const ChatEmptyState = ({ userName, children }: ChatEmptyStateProps) => {
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
-      <div className="flex flex-col items-center min-h-full py-6 gap-3 justify-center md:gap-6 md:justify-end md:pb-8">
+      <div className="flex flex-col items-center min-h-full pt-6 pb-3 gap-3 justify-end md:gap-6 md:pb-6">
         <div className="md:flex-none flex items-center justify-center pb-4 md:pb-4">
           <div className="text-center max-w-md px-4">
             <h1 className="paragraph-lg md:title-h5 text-primary font-normal md:font-normal mb-1">

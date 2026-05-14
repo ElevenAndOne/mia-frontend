@@ -8,6 +8,7 @@ import {
   getCachedTracker,
   getCachedActuals,
   refreshCampaignActuals,
+  clearTrackerCache,
 } from '../services/campaign-tracker-service'
 import type {
   CampaignTracker,
@@ -15,6 +16,17 @@ import type {
   KPIActual,
 } from '../services/campaign-tracker-service'
 import { parseDateRangeValue, isSinceLaunchRange } from '../../../utils/date-range'
+import { getCampaignMode, setCampaignMode } from '../../../utils/campaign-mode'
+import { isOnTrack } from '../../../utils/on-track'
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+export interface CampaignInfo {
+  campaignId: string
+  campaignName: string
+  startDate: string | null
+  endDate: string | null
+}
 
 interface CampaignSummary {
   campaign_id: string
@@ -26,7 +38,10 @@ interface CampaignSummary {
 interface RaceCampaignTrackerProps {
   disabled?: boolean
   dateRange?: string
+  onCampaignChange?: (info: CampaignInfo | null) => void
 }
+
+// ── Pure helpers ───────────────────────────────────────────────────────────
 
 function resolveDates(
   dateRange: string | undefined,
@@ -71,26 +86,73 @@ function progressPercent(actual: KPIActual): number {
   return Math.min(100, Math.round((actual.actual_value / actual.target_numeric) * 100))
 }
 
+function overPerformPct(actual: KPIActual): number | null {
+  if (actual.actual_value === null || !actual.target_numeric) return null
+  const pct = Math.round((actual.actual_value / actual.target_numeric) * 100)
+  return pct > 100 ? pct - 100 : null
+}
+
+function campaignTimePct(startDate: string, endDate: string): number {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  const now = new Date()
+  if (now <= start) return 0
+  if (now >= end) return 100
+  const total = end.getTime() - start.getTime()
+  const elapsed = now.getTime() - start.getTime()
+  return Math.round((elapsed / total) * 100)
+}
+
+function todayString(): string {
+  return format(new Date(), 'yyyy-MM-dd')
+}
+
 function PhaseStatusDot({ status }: { status: CampaignPhase['status'] }) {
-  // Only show a dot for phases with explicit completed status (has a past end_date).
-  // Phases without dates are all "active" concurrently — no dot needed.
   if (status === 'completed')
     return <span className="w-1.5 h-1.5 rounded-full bg-utility-success-500 inline-block" />
   return null
 }
 
-export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaignTrackerProps) {
+// ── Component ──────────────────────────────────────────────────────────────
+
+export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignChange }: RaceCampaignTrackerProps) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
-  // Campaign picker: null = primary campaign (default)
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+  // Keep latest onCampaignChange in a ref so effects can call it without
+  // adding it to their dep arrays (avoids cascading re-renders if parent
+  // passes an inline function).
+  const onCampaignChangeRef = useRef(onCampaignChange)
+  useEffect(() => { onCampaignChangeRef.current = onCampaignChange }, [onCampaignChange])
+
+  // ── Campaign mode state — initialized from localStorage synchronously ────
+  // getCampaignMode(tenantId) returns: campaign_id | "all" | null
+  // "all"       → All Campaigns mode (no tracker shown)
+  // campaign_id → show that specific campaign
+  // null        → use primary campaign (default)
+
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(() => {
+    if (!tenantId) return null
+    const stored = getCampaignMode(tenantId)
+    return stored && stored !== 'all' ? stored : null
+  })
+
+  const [campaignModeState, setCampaignModeState] = useState<'campaign' | 'all'>(() => {
+    if (!tenantId) return 'campaign'
+    return getCampaignMode(tenantId) === 'all' ? 'all' : 'campaign'
+  })
+
   const [campaignSummaries, setCampaignSummaries] = useState<CampaignSummary[]>([])
 
-  // Initialize from synchronous cache so there's zero skeleton flash on re-navigation
-  const cachedOnMount = tenantId ? getCachedTracker(tenantId) : undefined
+  // Initialize from synchronous cache so there's zero skeleton flash on re-navigation.
+  // Pass the initial campaign ID so we hit the right cache key.
+  const initCampaignId = tenantId ? (() => {
+    const stored = getCampaignMode(tenantId)
+    return stored && stored !== 'all' ? stored : null
+  })() : null
+  const cachedOnMount = tenantId ? getCachedTracker(tenantId, initCampaignId) : undefined
   const [campaign, setCampaign] = useState<CampaignTracker | null>(cachedOnMount ?? null)
-  const [loading, setLoading] = useState(cachedOnMount === undefined) // false if cache hit
+  const [loading, setLoading] = useState(cachedOnMount === undefined && campaignModeState !== 'all')
   const [selectedPhase, setSelectedPhase] = useState<string | null>(() => {
     if (!cachedOnMount) return null
     return (
@@ -105,9 +167,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
   const resolvedDates = campaign ? resolveDates(dateRange, campaign.start_date) : null
   const { startDate, endDate } = resolvedDates ?? { startDate: null, endDate: null }
 
-  // Pre-populate actualsMap from cache for all phases we already have.
-  // Use the resolved dates so we pre-populate the right cache key — if dateRange is
-  // "30d" we must NOT populate from a previously cached "Since launch" entry.
+  // Pre-populate actualsMap from cache for the resolved date range
   const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(
     () => {
       if (!cachedOnMount || !tenantId) return {}
@@ -123,7 +183,6 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
 
   const [refreshing, setRefreshing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  // When true, loadActuals skips all cache/ref guards and fetches unconditionally
   const forceReloadRef = useRef(false)
 
   const handleRefresh = useCallback(async () => {
@@ -132,39 +191,42 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     forceReloadRef.current = true
     actualsMapRef.current = {}
     setActualsMap({})
+    clearTrackerCache()
     try {
       await refreshCampaignActuals(sessionId, tenantId, campaign.campaign_id)
     } catch {
-      // best-effort — local cache already cleared, phases will re-fetch on tab click
+      // best-effort — local cache already cleared, phases will re-fetch
     }
-    setRefreshKey((k) => k + 1) // causes loadActuals to recreate → effect re-fires
+    // Re-fetch tracker so KPI structure reflects the current primary campaign
+    const freshTracker = await fetchCampaignTracker(sessionId, tenantId, selectedCampaignId)
+    setCampaign(freshTracker)
+    setRefreshKey((k) => k + 1)
     setRefreshing(false)
-  }, [sessionId, tenantId, campaign, refreshing])
+  }, [sessionId, tenantId, campaign, refreshing, selectedCampaignId])
 
-  // Ref keeps loadActuals from going stale without adding actualsMap as a dep
   const actualsMapRef = useRef(actualsMap)
   useEffect(() => {
     actualsMapRef.current = actualsMap
   }, [actualsMap])
 
-  // Fetch campaigns list on mount — shows picker when >1 live campaign exists
+  // ── Fetch campaign summaries for the dropdown ──────────────────────────
   useEffect(() => {
     if (!sessionId || !tenantId) return
     apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
       .then((r) => (r.ok ? r.json() : []))
       .then((list: CampaignSummary[]) => {
-        if (Array.isArray(list) && list.length > 1) {
+        if (Array.isArray(list) && list.length > 0) {
           setCampaignSummaries(list)
         }
       })
       .catch(() => {})
   }, [sessionId, tenantId])
 
-  // Fetch campaign tracker data — re-runs when selected campaign changes
+  // ── Fetch campaign tracker data ────────────────────────────────────────
+  // Only runs in 'campaign' mode. Notifies parent once data is loaded.
   useEffect(() => {
-    if (!sessionId || !tenantId) return
+    if (!sessionId || !tenantId || campaignModeState !== 'campaign') return
     let cancelled = false
-    // When switching to a specific campaign, reset display immediately
     if (selectedCampaignId !== null) {
       setCampaign(null)
       setSelectedPhase(null)
@@ -180,9 +242,10 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
           data.current_phase ||
           data.phases.find((p) => p.status === 'active')?.phase_name ||
           data.phases[0]?.phase_name
-        setSelectedPhase((prev) => (selectedCampaignId !== null ? defaultPhase ?? null : prev ?? defaultPhase ?? null))
-        // Pre-populate actualsMap from JS/sessionStorage cache for all phases.
-        // Use resolved dates so we don't pull a wrong-range entry into the map.
+        setSelectedPhase((prev) =>
+          selectedCampaignId !== null ? defaultPhase ?? null : prev ?? defaultPhase ?? null
+        )
+        // Pre-populate actualsMap from cache for all phases
         const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date)
         const cached: Record<string, KPIActual[]> = {}
         for (const phase of data.phases) {
@@ -192,35 +255,43 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
         if (Object.keys(cached).length > 0) {
           setActualsMap((prev) => ({ ...cached, ...prev }))
         }
+        // Notify parent of active campaign info
+        onCampaignChangeRef.current?.({
+          campaignId: data.campaign_id,
+          campaignName: data.campaign_name,
+          startDate: data.start_date,
+          endDate: data.end_date,
+        })
+      } else {
+        // No campaign for this tenant
+        onCampaignChangeRef.current?.(null)
       }
       setLoading(false)
     })
     return () => {
       cancelled = true
     }
-  }, [sessionId, tenantId, selectedCampaignId])
+  }, [sessionId, tenantId, selectedCampaignId, campaignModeState]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear actuals cache when date range changes so new range triggers a fresh fetch
+  // ── Clear actuals when date range changes ────────────────────────────
   const prevDateRangeRef = useRef(dateRange)
   useEffect(() => {
     if (prevDateRangeRef.current !== dateRange) {
       prevDateRangeRef.current = dateRange
-      actualsMapRef.current = {} // clear ref immediately so loadActuals doesn't see stale data
+      actualsMapRef.current = {}
       setActualsMap({})
     }
   }, [dateRange])
 
-  // Fetch actuals for a phase. Checks JS/sessionStorage cache first, then hits the backend.
-  // Backend has a 23h PostgreSQL cache — subsequent calls return instantly.
+  // ── Fetch actuals for a phase ────────────────────────────────────────
   const loadActuals = useCallback(
     async (phaseName: string) => {
       if (!sessionId || !tenantId || !campaign) return
 
       const force = forceReloadRef.current
-      if (force) forceReloadRef.current = false // consume immediately — only applies to one call
+      if (force) forceReloadRef.current = false
 
       if (!force) {
-        // Check module-level + sessionStorage cache first
         const jsCache = getCachedActuals(tenantId, campaign.campaign_id, phaseName, startDate, endDate)
         if (jsCache !== undefined && jsCache !== null) {
           if (!actualsMapRef.current[phaseName]) {
@@ -228,7 +299,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
           }
           return
         }
-        if (actualsMapRef.current[phaseName]) return // already loading/loaded/errored
+        if (actualsMapRef.current[phaseName]) return
       }
 
       setActualsMap((prev) => ({ ...prev, [phaseName]: 'loading' }))
@@ -241,9 +312,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     [sessionId, tenantId, campaign, startDate, endDate, refreshKey]
   )
 
-  // Pre-fetch ALL phases on load, not just the active tab.
-  // Selected phase is loaded first for fastest UX; others follow immediately after.
-  // loadActuals handles deduplication internally — safe to call for all phases every render.
+  // Pre-fetch ALL phases on load
   useEffect(() => {
     if (!campaign) return
     const phaseNames = campaign.phases.map((p) => p.phase_name)
@@ -255,13 +324,71 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     }
   }, [selectedPhase, loadActuals, campaign])
 
+  // ── Campaign select handler ────────────────────────────────────────────
+  const handleCampaignSelect = useCallback(
+    async (value: string) => {
+      if (!tenantId) return
+      if (value === 'all') {
+        setCampaignMode(tenantId, 'all')
+        setCampaignModeState('all')
+        onCampaignChangeRef.current?.(null)
+      } else {
+        setCampaignMode(tenantId, value)
+        setCampaignModeState('campaign')
+        setSelectedCampaignId(value)
+        // Update primary in background — fire and forget
+        if (sessionId) {
+          apiFetch(`/api/tenants/${tenantId}/campaigns/${value}/set-primary`, {
+            method: 'PATCH',
+            headers: { 'X-Session-ID': sessionId },
+          }).catch(() => {})
+        }
+      }
+    },
+    [tenantId, sessionId]
+  )
+
+  // ── Early exits ────────────────────────────────────────────────────────
+
   if (disabled) return null
 
-  // No campaign for this workspace — render nothing so the greeting/quick-actions
-  // stay vertically centered without a ghost skeleton taking up space below.
-  if (!loading && !campaign) return null
+  // All Campaigns mode: just the header card (same border/padding as full tracker header)
+  // min-h on outer div matches full tracker height so layout doesn't shift when switching
+  if (campaignModeState === 'all') {
+    return (
+      <div className="w-full max-w-3xl mx-auto px-4 min-h-[210px]">
+        <div className="rounded-xl border border-secondary bg-primary overflow-hidden">
+          <div className="px-3 pt-3 pb-3">
+            <p className="paragraph-xs text-quaternary leading-none mb-0.5">Campaign</p>
+            {campaignSummaries.length > 0 ? (
+              <select
+                value="all"
+                onChange={(e) => handleCampaignSelect(e.target.value)}
+                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 w-auto"
+                style={{ appearance: 'auto' }}
+              >
+                {campaignSummaries.map((c) => (
+                  <option key={c.campaign_id} value={c.campaign_id}>
+                    {c.is_primary ? '★ ' : ''}{c.campaign_name}
+                  </option>
+                ))}
+                <option value="all">● All Campaigns</option>
+              </select>
+            ) : (
+              <p className="subheading-xs text-primary">All Campaigns</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  // Skeleton — shown while the API call is in flight
+  // No campaign for this workspace — reserve same height as tracker to prevent layout shift
+  if (!loading && !campaign) {
+    return <div className="w-full max-w-3xl mx-auto px-4 min-h-[210px]" />
+  }
+
+  // Skeleton while loading
   if (loading || !campaign) {
     return (
       <div className="w-full max-w-3xl mx-auto">
@@ -296,11 +423,20 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
     )
   }
 
+  // ── Full tracker render ────────────────────────────────────────────────
+
   const activePhaseData = campaign.phases.find((p) => p.phase_name === selectedPhase)
   const actuals = selectedPhase ? actualsMap[selectedPhase] : undefined
   const actualsLoading = actuals === 'loading'
   const actualsError = actuals === 'error'
   const actualsData = Array.isArray(actuals) ? actuals : null
+
+  // On-track dots are shown only when campaign has start/end dates
+  const canShowOnTrack = !!(campaign.start_date && campaign.end_date)
+  const today = todayString()
+
+  // Whether the dropdown is available (≥1 campaigns loaded)
+  const hasDropdown = campaignSummaries.length > 0
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
@@ -311,14 +447,16 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
             <p className="paragraph-xs text-quaternary leading-none mb-0.5">
               Campaign{' '}
               <span className="text-quaternary">
-                · {!dateRange || isSinceLaunchRange(dateRange) ? 'Since launch' : dateRange.replace(/_/g, ' ').replace(/(\d+) days/, '$1d')}
+                · {campaign.start_date && campaign.end_date
+                  ? `${format(new Date(campaign.start_date), 'd MMM')} – ${format(new Date(campaign.end_date), 'd MMM')}`
+                  : (!dateRange || isSinceLaunchRange(dateRange) ? 'Since launch' : dateRange.replace(/_/g, ' ').replace(/(\d+) days/, '$1d'))}
               </span>
             </p>
-            {campaignSummaries.length > 1 ? (
+            {hasDropdown ? (
               <select
                 value={selectedCampaignId ?? campaign.campaign_id}
-                onChange={(e) => setSelectedCampaignId(e.target.value)}
-                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 max-w-[200px] truncate"
+                onChange={(e) => handleCampaignSelect(e.target.value)}
+                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 w-auto max-w-[200px]"
                 style={{ appearance: 'auto' }}
               >
                 {campaignSummaries.map((c) => (
@@ -326,6 +464,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
                     {c.is_primary ? '★ ' : ''}{c.campaign_name}
                   </option>
                 ))}
+                <option value="all">● All Campaigns</option>
               </select>
             ) : (
               <p className="subheading-xs text-primary truncate">{campaign.campaign_name}</p>
@@ -385,23 +524,14 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
           })}
         </div>
 
-        {/* KPI rows — fixed min-height matches 3 KPIs so box size is consistent */}
+        {/* KPI rows */}
         <div className="px-3 py-2.5 space-y-2.5 min-h-[116px]">
           {actualsLoading && (
             <div className="flex items-center justify-center py-4">
               <div className="flex gap-1">
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
-                  style={{ animationDelay: '0ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
-                  style={{ animationDelay: '150ms' }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
-                  style={{ animationDelay: '300ms' }}
-                />
+                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
@@ -418,6 +548,31 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
                 actual.target_numeric &&
                 actual.actual_value >= actual.target_numeric
 
+              // On-track indicator: only when campaign is date-scoped, actual exists and target is numeric
+              const trackStatus =
+                canShowOnTrack &&
+                actual &&
+                actual.actual_value !== null &&
+                actual.target_numeric !== null
+                  ? isOnTrack(
+                      kpi.kpi_name,
+                      actual.target_numeric,
+                      actual.actual_value,
+                      campaign.start_date!,
+                      campaign.end_date!,
+                      today
+                    )
+                  : null
+
+              const overPct = actual ? overPerformPct(actual) : null
+              const timePct = canShowOnTrack ? campaignTimePct(campaign.start_date!, campaign.end_date!) : null
+              const barColor =
+                trackStatus === true
+                  ? 'bg-utility-success-500'
+                  : trackStatus === false
+                    ? 'bg-utility-error-500'
+                    : 'bg-utility-brand-500'
+
               return (
                 <div key={kpi.kpi_name} className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
@@ -430,6 +585,11 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
                           >
                             {formatActual(actual)}
                           </span>
+                          {overPct !== null && (
+                            <span className="paragraph-xs text-utility-success-600 font-medium">
+                              (+{overPct}%)
+                            </span>
+                          )}
                           <span className="paragraph-xs text-quaternary">/</span>
                         </>
                       ) : hasActual ? (
@@ -439,11 +599,25 @@ export function RaceCampaignTracker({ disabled = false, dateRange }: RaceCampaig
                     </div>
                   </div>
                   {hasActual && (
-                    <div className="h-1 rounded-full bg-tertiary overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${metTarget ? 'bg-utility-success-500' : 'bg-utility-brand-500'}`}
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="relative h-3">
+                      {/* Track + fill */}
+                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-tertiary overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      {/* Campaign time-position dot */}
+                      {timePct !== null && (
+                        <div
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 z-10 transition-all duration-500"
+                          style={{
+                            left: `${timePct}%`,
+                            backgroundColor: 'var(--color-text-primary)',
+                            borderColor: 'var(--background-color-primary)',
+                          }}
+                        />
+                      )}
                     </div>
                   )}
                 </div>

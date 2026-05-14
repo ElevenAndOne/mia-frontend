@@ -74,7 +74,20 @@ export const ChatView = ({
     images,
     addImages,
     removeImage,
+    activeCampaign,
+    handleCampaignChange,
   } = useChatView()
+
+  // When a campaign is active, the date picker shows campaign dates and is non-interactive
+  const campaignDateLocked = !!activeCampaign
+  const campaignDateLabel =
+    activeCampaign?.startDate && activeCampaign?.endDate
+      ? `${fmtDate(activeCampaign.startDate)} – ${fmtDate(activeCampaign.endDate)}`
+      : undefined
+
+  function fmtDate(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+  }
 
   // Track page visit once
   const tracked = useRef(false)
@@ -135,15 +148,17 @@ export const ChatView = ({
         {!hasMessages ? (
           <>
             <ChatEmptyState userName={userName}>
-              <div className="w-full flex flex-col gap-3 pb-4">
+              <div className="w-full flex flex-col gap-3">
                 <QuickActions
                   onAction={handleQuickAction}
                   disabled={isLoading || !hasSelectedPlatforms}
                   strategiseReady={strategiseReady}
                 />
-                <div className="md:mt-3">
-                  <RaceCampaignTracker disabled={isLoading} dateRange={dateRange} />
-                </div>
+                <RaceCampaignTracker
+                  disabled={isLoading}
+                  dateRange={dateRange}
+                  onCampaignChange={handleCampaignChange}
+                />
               </div>
             </ChatEmptyState>
 
@@ -154,6 +169,8 @@ export const ChatView = ({
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
+              campaignDateLocked={campaignDateLocked}
+              campaignDateLabel={campaignDateLabel}
               platforms={platforms}
               selectedPlatforms={selectedPlatforms}
               onPlatformToggle={togglePlatform}
@@ -249,6 +266,8 @@ export const ChatView = ({
               disabled={isLoading}
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
+              campaignDateLocked={campaignDateLocked}
+              campaignDateLabel={campaignDateLabel}
               platforms={platforms}
               selectedPlatforms={selectedPlatforms}
               onPlatformToggle={togglePlatform}

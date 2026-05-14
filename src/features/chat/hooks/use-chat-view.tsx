@@ -16,6 +16,7 @@ import {
 import type { PendingAction } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
 import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
+import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 
 export interface ChatMessageItem {
   id: string
@@ -44,6 +45,7 @@ export const useChatView = () => {
   const [streamingContent, setStreamingContent] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
+  const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
   )
@@ -177,6 +179,10 @@ export const useChatView = () => {
     }
   }, [location.state, location.pathname, navigate, loadConversation])
 
+  const handleCampaignChange = useCallback((info: CampaignInfo | null) => {
+    setActiveCampaign(info)
+  }, [])
+
   const addImages = useCallback((newImages: string[]) => {
     setImages((prev) => [...prev, ...newImages].slice(0, 4))
   }, [])
@@ -271,6 +277,13 @@ export const useChatView = () => {
             conversation_history: history.length > 0 ? history : undefined,
             conversation_id: activeConvId,
             images: pendingImages.length > 0 ? pendingImages : undefined,
+            ...(activeCampaign
+              ? {
+                  campaign_id: activeCampaign.campaignId,
+                  start_date: activeCampaign.startDate ?? undefined,
+                  end_date: activeCampaign.endDate ?? undefined,
+                }
+              : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -340,6 +353,7 @@ export const useChatView = () => {
       selectedPlatforms,
       conversationId,
       images,
+      activeCampaign,
     ]
   )
 
@@ -546,5 +560,7 @@ export const useChatView = () => {
     images,
     addImages,
     removeImage,
+    activeCampaign,
+    handleCampaignChange,
   }
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
+import { VoiceWaveform } from './voice-waveform'
 import { Icon } from '../../../components/icon'
 import { formatDateRangeDisplay } from '../../../utils/date-range'
 import type { Platform } from '../types'
@@ -14,6 +15,8 @@ interface ChatInputProps {
   placeholder?: string
   dateRange: string
   onDateRangeChange: (range: string) => void
+  campaignDateLocked?: boolean
+  campaignDateLabel?: string
   platforms: Platform[]
   selectedPlatforms: string[]
   onPlatformToggle: (platformId: string) => void
@@ -34,6 +37,8 @@ export const ChatInput = ({
   placeholder = 'Start chatting...',
   dateRange,
   onDateRangeChange,
+  campaignDateLocked = false,
+  campaignDateLabel,
   platforms,
   selectedPlatforms,
   onPlatformToggle,
@@ -47,6 +52,7 @@ export const ChatInput = ({
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   const [micState, setMicState] = useState<MicState>('idle')
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const platformButtonRef = useRef<HTMLButtonElement>(null)
@@ -125,6 +131,7 @@ export const ChatInput = ({
     try {
       // This triggers the browser permission dialog if not yet granted
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      setActiveStream(stream)
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg'
       const recorder = new MediaRecorder(stream, { mimeType })
       audioChunksRef.current = []
@@ -133,6 +140,7 @@ export const ChatInput = ({
       }
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
+        setActiveStream(null)
         setMicState('processing')
         try {
           const blob = new Blob(audioChunksRef.current, { type: mimeType })
@@ -208,45 +216,81 @@ export const ChatInput = ({
 
       {/* Main input container */}
       <div className="bg-tertiary rounded-2xl overflow-visible">
-        {/* Text input row */}
-        <div className="px-4 py-3">
-          <textarea
-            ref={inputRef}
-            value={message}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            disabled={disabled}
-            aria-label="Chat message"
-            rows={1}
-            className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md resize-none overflow-y-auto max-h-40"
-          />
-        </div>
+        {/* Recording overlay — replaces text area + toolbar */}
+        {micState === 'recording' && (
+          <div className="flex items-center gap-3 px-4 py-4">
+            {/* Pulsing mic dot */}
+            <div className="w-7 h-7 rounded-full bg-quaternary flex items-center justify-center shrink-0 animate-pulse">
+              <Icon.microphone_01 size={13} className="text-tertiary" />
+            </div>
 
-        {/* Toolbar row */}
+            {/* Live waveform — fills remaining space */}
+            <div className="flex-1 flex items-end justify-between px-2">
+              <VoiceWaveform stream={activeStream} />
+            </div>
+
+            {/* Stop button */}
+            <button
+              type="button"
+              onClick={stopRecording}
+              className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center shrink-0 hover:bg-tertiary transition-colors touch-manipulation"
+              title="Stop recording"
+            >
+              <svg viewBox="0 0 24 24" width={14} height={14}>
+                <rect x="4" y="4" width="16" height="16" rx="2" className="fill-tertiary" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* Text input row — hidden during recording */}
+        {micState !== 'recording' && (
+          <div className="px-4 py-3">
+            <textarea
+              ref={inputRef}
+              value={message}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              disabled={disabled}
+              aria-label="Chat message"
+              rows={1}
+              className="w-full bg-transparent outline-none text-primary placeholder:text-placeholder paragraph-md resize-none overflow-y-auto max-h-40"
+            />
+          </div>
+        )}
+
+        {/* Toolbar row — hidden during recording */}
+        {micState !== 'recording' && (
         <div className="flex items-center justify-between px-2 pb-2">
           <div className="flex items-center gap-1 relative">
-            {/* Calendar button */}
+            {/* Calendar button — non-interactive when a campaign locks the date range */}
             <button
               ref={calendarButtonRef}
               type="button"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              className="h-11 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
-              title="Select date range"
+              onClick={campaignDateLocked ? undefined : () => setShowDatePicker(!showDatePicker)}
+              className={`h-11 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary transition-colors touch-manipulation ${
+                campaignDateLocked ? 'pointer-events-none cursor-default' : 'hover:bg-tertiary'
+              }`}
+              title={campaignDateLocked ? 'Date range locked to campaign' : 'Select date range'}
             >
               <Icon.calendar size={18} />
               <span className="paragraph-xs text-tertiary">
-                {formatDateRangeDisplay(dateRange, 'short')}
+                {campaignDateLocked && campaignDateLabel
+                  ? campaignDateLabel
+                  : formatDateRangeDisplay(dateRange, 'short')}
               </span>
             </button>
 
-            <DateRangePopover
-              isOpen={showDatePicker}
-              onClose={() => setShowDatePicker(false)}
-              anchorRef={calendarButtonRef}
-              selectedRange={dateRange}
-              onSelect={onDateRangeChange}
-            />
+            {!campaignDateLocked && (
+              <DateRangePopover
+                isOpen={showDatePicker}
+                onClose={() => setShowDatePicker(false)}
+                anchorRef={calendarButtonRef}
+                selectedRange={dateRange}
+                onSelect={onDateRangeChange}
+              />
+            )}
 
             {/* Platform selector button */}
             <div className="relative">
@@ -297,7 +341,7 @@ export const ChatInput = ({
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Mic button — left of send */}
+            {/* Mic button — left of send (idle / processing / error states only; recording shows waveform overlay) */}
             {onTranscribeAudio && !isLoading && (
               <button
                 type="button"
@@ -305,16 +349,13 @@ export const ChatInput = ({
                 disabled={micState === 'processing' || micState === 'error'}
                 className={[
                   'w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation',
-                  micState === 'recording'
-                    ? 'bg-error-primary text-white animate-pulse'
-                    : micState === 'error'
-                      ? 'bg-error-primary text-white'
-                      : micState === 'processing'
-                        ? 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
-                        : 'bg-quaternary text-tertiary hover:bg-tertiary',
+                  micState === 'error'
+                    ? 'bg-error-primary text-white'
+                    : micState === 'processing'
+                      ? 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
+                      : 'bg-quaternary text-tertiary hover:bg-tertiary',
                 ].join(' ')}
                 title={
-                  micState === 'recording' ? 'Stop recording' :
                   micState === 'error' ? 'Microphone access blocked — check browser permissions' :
                   'Voice input'
                 }
@@ -362,6 +403,7 @@ export const ChatInput = ({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   )
