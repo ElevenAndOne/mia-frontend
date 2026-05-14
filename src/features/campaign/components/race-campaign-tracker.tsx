@@ -236,6 +236,13 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
     }
     fetchCampaignTracker(sessionId, tenantId, selectedCampaignId).then((data) => {
       if (cancelled) return
+      // If we asked for a specific campaign and it came back null (archived/deleted),
+      // clear the stale localStorage key and fall back to primary.
+      if (!data && selectedCampaignId) {
+        setCampaignMode(tenantId, '')
+        setSelectedCampaignId(null)
+        return
+      }
       setCampaign(data)
       if (data) {
         const defaultPhase =
