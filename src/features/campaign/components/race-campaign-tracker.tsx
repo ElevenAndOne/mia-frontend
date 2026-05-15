@@ -45,14 +45,25 @@ interface RaceCampaignTrackerProps {
 
 function resolveDates(
   dateRange: string | undefined,
-  campaignStartDate: string | null
+  campaignStartDate: string | null,
+  campaignEndDate: string | null = null
 ): { startDate: string | null; endDate: string | null } {
   const today = format(new Date(), 'yyyy-MM-dd')
+  // When a campaign is loaded, always use its own date window — never the date picker.
+  // The picker is locked in campaign mode, but its stored value may be a stale custom
+  // range from a previous session, which would cause actuals to fetch the wrong window.
+  if (campaignStartDate) {
+    const campaignEnded = campaignEndDate && new Date(campaignEndDate) < new Date()
+    return {
+      startDate: campaignStartDate,
+      endDate: campaignEnded ? campaignEndDate : today,
+    }
+  }
   if (!dateRange || isSinceLaunchRange(dateRange)) {
-    return { startDate: campaignStartDate ?? null, endDate: today }
+    return { startDate: null, endDate: today }
   }
   const span = parseDateRangeValue(dateRange)
-  if (!span) return { startDate: campaignStartDate ?? null, endDate: today }
+  if (!span) return { startDate: null, endDate: today }
   return {
     startDate: format(span.start, 'yyyy-MM-dd'),
     endDate: format(span.end, 'yyyy-MM-dd'),
@@ -164,14 +175,14 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   })
 
   // Resolved date range for actuals — depends on dateRange prop + campaign start date
-  const resolvedDates = campaign ? resolveDates(dateRange, campaign.start_date) : null
+  const resolvedDates = campaign ? resolveDates(dateRange, campaign.start_date, campaign.end_date) : null
   const { startDate, endDate } = resolvedDates ?? { startDate: null, endDate: null }
 
   // Pre-populate actualsMap from cache for the resolved date range
   const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(
     () => {
       if (!cachedOnMount || !tenantId) return {}
-      const { startDate: initStart, endDate: initEnd } = resolveDates(dateRange, cachedOnMount.start_date)
+      const { startDate: initStart, endDate: initEnd } = resolveDates(dateRange, cachedOnMount.start_date, cachedOnMount.end_date)
       const map: Record<string, KPIActual[] | 'loading' | 'error'> = {}
       for (const phase of cachedOnMount.phases) {
         const cached = getCachedActuals(tenantId, cachedOnMount.campaign_id, phase.phase_name, initStart, initEnd)
@@ -253,7 +264,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
           selectedCampaignId !== null ? defaultPhase ?? null : prev ?? defaultPhase ?? null
         )
         // Pre-populate actualsMap from cache for all phases
-        const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date)
+        const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date, data.end_date)
         const cached: Record<string, KPIActual[]> = {}
         for (const phase of data.phases) {
           const hit = getCachedActuals(tenantId, data.campaign_id, phase.phase_name, fetchStart, fetchEnd)
