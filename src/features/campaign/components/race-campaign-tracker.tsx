@@ -200,13 +200,16 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
     if (!sessionId || !tenantId || !campaign || refreshing) return
     setRefreshing(true)
     forceReloadRef.current = true
-    actualsMapRef.current = {}
-    setActualsMap({})
     clearTrackerCache()
     try {
       await refreshCampaignActuals(sessionId, tenantId, campaign.campaign_id)
+      // Only clear displayed data after server confirms cache is cleared and re-warmed
+      actualsMapRef.current = {}
+      setActualsMap({})
     } catch {
-      // best-effort — local cache already cleared, phases will re-fetch
+      // Server refresh failed (e.g. timeout) — keep existing data visible
+      setRefreshing(false)
+      return
     }
     // Re-fetch tracker so KPI structure reflects the current primary campaign
     const freshTracker = await fetchCampaignTracker(sessionId, tenantId, selectedCampaignId)
