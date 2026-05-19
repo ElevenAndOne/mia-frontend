@@ -4,49 +4,30 @@ import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
+import { usePlugins } from '../plugins/hooks/use-plugins'
 
-// ── Campaign detail cache (module-level + sessionStorage, 23h TTL) ─────────
-// Keyed by campaignId so multiple campaigns can be cached per tenant.
-const CACHE_TTL_MS = 23 * 60 * 60 * 1000
-const SS_KEY_PREFIX = 'campaigns_detail_'
-interface CachedDetail {
-  data: CampaignDetail
-  ts: number
-}
-const detailCache = new Map<string, CachedDetail>()
+// ── Campaign detail cache (module-level only, resets on page load) ──────────
+// Keyed by campaignId. Using only an in-memory Map so a hard refresh always
+// fetches fresh data — sessionStorage would survive refreshes and serve stale
+// KPIs after DB edits.
+const detailCache = new Map<string, CampaignDetail>()
 
 function getCachedDetail(campaignId: string): CampaignDetail | undefined {
-  const key = SS_KEY_PREFIX + campaignId
-  const mem = detailCache.get(campaignId)
-  if (mem && Date.now() - mem.ts < CACHE_TTL_MS) return mem.data
-  try {
-    const raw = sessionStorage.getItem(key)
-    if (raw) {
-      const entry: CachedDetail = JSON.parse(raw)
-      if (Date.now() - entry.ts < CACHE_TTL_MS) {
-        detailCache.set(campaignId, entry)
-        return entry.data
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return undefined
+  return detailCache.get(campaignId)
 }
 
 function setCachedDetail(campaignId: string, data: CampaignDetail) {
-  const entry: CachedDetail = { data, ts: Date.now() }
-  detailCache.set(campaignId, entry)
-  try {
-    sessionStorage.setItem(SS_KEY_PREFIX + campaignId, JSON.stringify(entry))
-  } catch {
-    /* ignore */
-  }
+  detailCache.set(campaignId, data)
 }
 
 function bustCachedDetail(campaignId: string) {
   detailCache.delete(campaignId)
-  try { sessionStorage.removeItem(SS_KEY_PREFIX + campaignId) } catch { /* ignore */ }
+  // Clear any legacy sessionStorage entries written by the old cache implementation
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (key.startsWith('campaigns_detail_')) sessionStorage.removeItem(key)
+    }
+  } catch { /* ignore */ }
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -91,6 +72,7 @@ interface CampaignDetail {
   budget_monthly: number | null
   budget_currency: string | null
   channels: string[] | null
+  clickup_list_id: string | null
   objectives: string[]
   phases: Phase[]
 }
@@ -355,6 +337,7 @@ interface CampaignsViewProps {
 export function CampaignsView({ onBack }: CampaignsViewProps) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
+  const { isEnabled: isPluginEnabled } = usePlugins()
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [campaignList, setCampaignList] = useState<CampaignSummary[]>([])
@@ -369,6 +352,13 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [hubspotLists, setHubspotLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [hubspotListsMessage, setHubspotListsMessage] = useState<string | null>(null)
   const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
+
+  // ClickUp push state
+  const [showClickUpModal, setShowClickUpModal] = useState(false)
+  const [clickUpListId, setClickUpListId] = useState('')
+  const [pushingToClickUp, setPushingToClickUp] = useState(false)
+  const [clickUpResult, setClickUpResult] = useState<{ action: string; task_id?: string; task_url?: string } | null>(null)
+  const [clickUpError, setClickUpError] = useState('')
 
   const loadCampaignDetail = useCallback(async (
     campaignId: string,
@@ -534,6 +524,37 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     }
   }
 
+  const handleClickUpPush = async () => {
+    if (!sessionId || !tenantId || !campaign) return
+    setPushingToClickUp(true)
+    setClickUpError('')
+    setClickUpResult(null)
+    try {
+      const data: Record<string, string> = { campaign_id: campaign.campaign_id }
+      const listId = clickUpListId.trim() || campaign.clickup_list_id || ''
+      if (listId) data.list_id = listId
+
+      const res = await apiFetch(
+        `/api/tenants/${tenantId}/plugins/clickup/invoke/push_campaign_summary`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+          body: JSON.stringify({ data }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Push failed')
+      }
+      const body = await res.json()
+      setClickUpResult(body.result)
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Push to ClickUp failed')
+    } finally {
+      setPushingToClickUp(false)
+    }
+  }
+
   const sortedPhases = campaign
     ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order)
     : []
@@ -546,7 +567,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     : false
 
   return (
-    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
+    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden relative">
       <TopBar title="Campaigns" onBack={onBack} />
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5">
@@ -629,6 +650,24 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Push to ClickUp — only shown when plugin is enabled */}
+                  {isPluginEnabled('clickup') && (
+                    <button
+                      onClick={() => {
+                        setClickUpResult(null)
+                        setClickUpError('')
+                        setClickUpListId(campaign.clickup_list_id || '')
+                        setShowClickUpModal(true)
+                      }}
+                      title="Push to ClickUp"
+                      className="p-1 transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
                   {/* Set-primary star — use campaignList for is_primary to avoid stale cached detail */}
                   <button
                     onClick={handleSetPrimary}
@@ -726,6 +765,110 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </>
         )}
       </div>
+
+      {/* ClickUp Push Modal */}
+      {showClickUpModal && campaign && (
+        <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#7B68EE]/10 shrink-0">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <h2 className="title-h6 text-primary">Push to ClickUp</h2>
+              </div>
+              <p className="paragraph-sm text-tertiary">
+                {clickUpResult
+                  ? clickUpResult.action === 'task_created'
+                    ? 'A ClickUp task was created with your campaign summary.'
+                    : 'Your campaign summary was posted as a comment on the linked task.'
+                  : `Push a summary of "${campaign.campaign_name}" to ClickUp.`}
+              </p>
+            </div>
+
+            {/* Success state */}
+            {clickUpResult && (
+              <div className="mb-4 bg-success-primary border border-utility-success-300 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="subheading-md text-success">
+                    {clickUpResult.action === 'task_created' ? 'Task created' : 'Comment posted'}
+                  </p>
+                </div>
+                {clickUpResult.task_url && (
+                  <a
+                    href={clickUpResult.task_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 paragraph-xs text-utility-success-700 hover:underline"
+                  >
+                    Open in ClickUp
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Pre-push form */}
+            {!clickUpResult && (
+              <>
+                <div className="mb-4">
+                  <label className="block subheading-md text-secondary mb-2">
+                    ClickUp List ID{' '}
+                    <span className="paragraph-xs text-quaternary font-normal">
+                      (required for first push — leave blank if already linked)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={clickUpListId}
+                    onChange={(e) => setClickUpListId(e.target.value)}
+                    placeholder="e.g. 901234567"
+                    className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                    disabled={pushingToClickUp}
+                  />
+                  <p className="mt-1 paragraph-xs text-quaternary">
+                    Find this in ClickUp: right-click a list → Copy link → the number at the end
+                  </p>
+                </div>
+                {clickUpError && (
+                  <p className="mb-3 paragraph-xs text-error">{clickUpError}</p>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowClickUpModal(false)
+                  setClickUpResult(null)
+                  setClickUpError('')
+                }}
+                disabled={pushingToClickUp}
+                className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+              >
+                {clickUpResult ? 'Close' : 'Cancel'}
+              </button>
+              {!clickUpResult && (
+                <button
+                  onClick={handleClickUpPush}
+                  disabled={pushingToClickUp}
+                  className="flex-1 px-4 py-3 bg-[#7B68EE] text-white rounded-lg subheading-md hover:bg-[#6A58DD] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {pushingToClickUp ? 'Pushing...' : 'Push to ClickUp'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
