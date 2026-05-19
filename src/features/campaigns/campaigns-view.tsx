@@ -356,7 +356,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   // ClickUp push state
   const [showClickUpModal, setShowClickUpModal] = useState(false)
   const [pushingToClickUp, setPushingToClickUp] = useState(false)
-  const [clickUpResult, setClickUpResult] = useState<{ action: string; task_id?: string; task_url?: string } | null>(null)
+  const [clickUpResult, setClickUpResult] = useState<{
+    action: string
+    tasks_created?: number
+    comments_posted?: number
+    tasks?: { task_id?: string; task_url?: string }[]
+  } | null>(null)
   const [clickUpError, setClickUpError] = useState('')
   // ClickUp space/folder/list picker
   const [cuSpaces, setCuSpaces] = useState<{ id: string; name: string }[]>([])
@@ -855,10 +860,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               </div>
               <p className="paragraph-sm text-tertiary">
                 {clickUpResult
-                  ? clickUpResult.action === 'task_created'
-                    ? 'A ClickUp task was created with your campaign summary.'
-                    : 'Your campaign summary was posted as a comment on the linked task.'
-                  : `Push a summary of "${campaign.campaign_name}" to ClickUp.`}
+                  ? clickUpResult.action === 'tasks_created'
+                    ? `${clickUpResult.tasks_created} tasks created in ClickUp — one per channel action.`
+                    : `${clickUpResult.comments_posted} tasks updated with a new comment.`
+                  : `Push channel actions for "${campaign.campaign_name}" to ClickUp as tasks.`}
               </p>
             </div>
 
@@ -870,17 +875,19 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="subheading-md text-success">
-                    {clickUpResult.action === 'task_created' ? 'Task created' : 'Comment posted'}
+                    {clickUpResult.action === 'tasks_created'
+                      ? `${clickUpResult.tasks_created} task${(clickUpResult.tasks_created ?? 0) !== 1 ? 's' : ''} created`
+                      : `${clickUpResult.comments_posted} task${(clickUpResult.comments_posted ?? 0) !== 1 ? 's' : ''} updated`}
                   </p>
                 </div>
-                {clickUpResult.task_url && (
+                {clickUpResult.tasks?.[0]?.task_url && (
                   <a
-                    href={clickUpResult.task_url}
+                    href={clickUpResult.tasks[0].task_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 paragraph-xs text-utility-success-700 hover:underline"
                   >
-                    Open in ClickUp
+                    Open first task in ClickUp
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
