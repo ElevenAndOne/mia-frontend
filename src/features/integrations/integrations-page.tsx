@@ -6,6 +6,7 @@ import { useToast } from '../../contexts/toast-context'
 import { apiFetch, createSessionHeaders } from '../../utils/api'
 import { getTimeAgo } from '../../utils/date-display'
 import { useIntegrationStatus } from './hooks/use-integration-status'
+import { usePlugins } from '../plugins/hooks/use-plugins'
 import { getIntegrationHighlight, clearIntegrationHighlight } from './utils/integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
 import FacebookPageSelector from './selectors/facebook-page-selector'
@@ -61,6 +62,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
     }
   }, [integrationStatusError, showToast])
+
+  const { isEnabled: isPluginEnabled, invalidate: invalidatePlugins } = usePlugins()
+
+  // ClickUp plugin state
+  const [showClickUpModal, setShowClickUpModal] = useState(false)
+  const [clickUpApiKey, setClickUpApiKey] = useState('')
+  const [clickUpWorkspaceId, setClickUpWorkspaceId] = useState('')
+  const [clickUpSubmitting, setClickUpSubmitting] = useState(false)
+  const [clickUpError, setClickUpError] = useState('')
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -459,6 +469,71 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setSmartleadError(error instanceof Error ? error.message : 'Failed to disconnect Smartlead')
     } finally {
       setSmartleadSubmitting(false)
+    }
+  }
+
+  const handleClickUpEnable = async () => {
+    if (!clickUpApiKey.trim()) {
+      setClickUpError('Please enter your ClickUp API token')
+      return
+    }
+    if (!activeWorkspace?.tenant_id) {
+      setClickUpError('No active workspace')
+      return
+    }
+    setClickUpSubmitting(true)
+    setClickUpError('')
+    try {
+      const config: Record<string, string> = { api_key: clickUpApiKey.trim() }
+      if (clickUpWorkspaceId.trim()) config.workspace_id = clickUpWorkspaceId.trim()
+
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/clickup/enable`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId || '' },
+          body: JSON.stringify({ version: '0.1.0', config }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to enable ClickUp')
+      }
+      setShowClickUpModal(false)
+      setClickUpApiKey('')
+      setClickUpWorkspaceId('')
+      invalidatePlugins()
+      showToast('success', 'ClickUp connected successfully')
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Failed to enable ClickUp')
+    } finally {
+      setClickUpSubmitting(false)
+    }
+  }
+
+  const handleClickUpDisable = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setClickUpSubmitting(true)
+    setClickUpError('')
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/clickup/disable`,
+        {
+          method: 'POST',
+          headers: createSessionHeaders(sessionId),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to disable ClickUp')
+      }
+      setShowClickUpModal(false)
+      invalidatePlugins()
+      showToast('success', 'ClickUp disconnected')
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Failed to disable ClickUp')
+    } finally {
+      setClickUpSubmitting(false)
     }
   }
 
@@ -1029,6 +1104,55 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               </div>
             </div>
           )}
+
+          {/* Extensions Section — plugins */}
+          {canManageIntegrations && (
+            <div className="mb-6 max-w-3xl mx-auto w-full">
+              <h2 className="label-md text-primary mb-1">Extensions</h2>
+              <p className="paragraph-xs text-quaternary mb-4">
+                Add functionality to MIA for your workspace
+              </p>
+
+              {/* ClickUp */}
+              <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#7B68EE]/10">
+                      {/* ClickUp logo */}
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <h3 className="subheading-md text-primary truncate">ClickUp</h3>
+                        {isPluginEnabled('clickup') && (
+                          <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                            Enabled
+                          </span>
+                        )}
+                      </div>
+                      <p className="paragraph-xs text-quaternary truncate">
+                        Push campaign summaries to ClickUp tasks
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setClickUpError('')
+                      setClickUpApiKey('')
+                      setClickUpWorkspaceId('')
+                      setShowClickUpModal(true)
+                    }}
+                    className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover"
+                  >
+                    {isPluginEnabled('clickup') ? 'Manage' : 'Enable'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Brevo API Key Modal */}
@@ -1307,6 +1431,120 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {smartleadSubmitting ? 'Connecting...' : 'Connect'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ClickUp Extension Modal */}
+        {showClickUpModal && (
+          <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#7B68EE]/10 shrink-0">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                      <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <h2 className="title-h6 text-primary">
+                    {isPluginEnabled('clickup') ? 'Manage ClickUp' : 'Enable ClickUp'}
+                  </h2>
+                </div>
+                <p className="paragraph-sm text-tertiary">
+                  {isPluginEnabled('clickup')
+                    ? 'ClickUp is enabled for this workspace. You can push campaign summaries to ClickUp tasks from the Campaigns page.'
+                    : 'Enter your ClickUp Personal API Token to push MIA campaign summaries to ClickUp tasks.'}
+                </p>
+              </div>
+
+              {!isPluginEnabled('clickup') && (
+                <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
+                  <h3 className="subheading-md text-utility-info-700 mb-2">How to get your API token:</h3>
+                  <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
+                    <li>Log in to ClickUp</li>
+                    <li>Click your profile avatar → Settings</li>
+                    <li>Go to Apps → API Token</li>
+                    <li>Copy the token and paste it below</li>
+                  </ol>
+                </div>
+              )}
+
+              {isPluginEnabled('clickup') ? (
+                <div className="mb-4">
+                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="subheading-md text-success">ClickUp connected</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block subheading-md text-secondary mb-2">
+                      API Token <span className="text-error">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={clickUpApiKey}
+                      onChange={(e) => setClickUpApiKey(e.target.value)}
+                      placeholder="pk_..."
+                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                      disabled={clickUpSubmitting}
+                    />
+                  </div>
+                  <div>
+                    <label className="block subheading-md text-secondary mb-2">
+                      Workspace ID <span className="paragraph-xs text-quaternary">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={clickUpWorkspaceId}
+                      onChange={(e) => setClickUpWorkspaceId(e.target.value)}
+                      placeholder="Auto-detected if blank"
+                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm"
+                      disabled={clickUpSubmitting}
+                    />
+                  </div>
+                  {clickUpError && (
+                    <p className="paragraph-xs text-error">{clickUpError}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowClickUpModal(false)
+                    setClickUpApiKey('')
+                    setClickUpError('')
+                  }}
+                  disabled={clickUpSubmitting}
+                  className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                >
+                  {isPluginEnabled('clickup') ? 'Close' : 'Cancel'}
+                </button>
+                {isPluginEnabled('clickup') ? (
+                  <button
+                    onClick={handleClickUpDisable}
+                    disabled={clickUpSubmitting}
+                    className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
+                  >
+                    {clickUpSubmitting ? 'Disabling...' : 'Disable'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleClickUpEnable}
+                    disabled={clickUpSubmitting || !clickUpApiKey.trim()}
+                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {clickUpSubmitting ? 'Enabling...' : 'Enable'}
                   </button>
                 )}
               </div>
