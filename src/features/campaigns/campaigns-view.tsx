@@ -355,10 +355,19 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
   // ClickUp push state
   const [showClickUpModal, setShowClickUpModal] = useState(false)
-  const [clickUpListId, setClickUpListId] = useState('')
   const [pushingToClickUp, setPushingToClickUp] = useState(false)
   const [clickUpResult, setClickUpResult] = useState<{ action: string; task_id?: string; task_url?: string } | null>(null)
   const [clickUpError, setClickUpError] = useState('')
+  // ClickUp space/folder/list picker
+  const [cuSpaces, setCuSpaces] = useState<{ id: string; name: string }[]>([])
+  const [cuFolders, setCuFolders] = useState<{ id: string; name: string }[]>([])
+  const [cuLists, setCuLists] = useState<{ id: string; name: string }[]>([])
+  const [cuSpaceId, setCuSpaceId] = useState('')
+  const [cuFolderId, setCuFolderId] = useState('')
+  const [cuListId, setCuListId] = useState('')
+  const [cuLoadingSpaces, setCuLoadingSpaces] = useState(false)
+  const [cuLoadingFolders, setCuLoadingFolders] = useState(false)
+  const [cuLoadingLists, setCuLoadingLists] = useState(false)
 
   const loadCampaignDetail = useCallback(async (
     campaignId: string,
@@ -524,30 +533,88 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     }
   }
 
+  const invokeClickUp = async (action: string, data: Record<string, string> = {}) => {
+    const res = await apiFetch(
+      `/api/tenants/${tenantId}/plugins/clickup/invoke/${action}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId! },
+        body: JSON.stringify({ data }),
+      }
+    )
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || `ClickUp ${action} failed`)
+    }
+    const body = await res.json()
+    return body.result
+  }
+
+  const loadClickUpSpaces = async () => {
+    setCuLoadingSpaces(true)
+    setClickUpError('')
+    try {
+      const result = await invokeClickUp('list_spaces')
+      setCuSpaces((result.spaces ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })))
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Failed to load spaces')
+    } finally {
+      setCuLoadingSpaces(false)
+    }
+  }
+
+  const onCuSpaceChange = async (spaceId: string) => {
+    setCuSpaceId(spaceId)
+    setCuFolderId('')
+    setCuListId('')
+    setCuFolders([])
+    setCuLists([])
+    if (!spaceId) return
+    setCuLoadingFolders(true)
+    setClickUpError('')
+    try {
+      const result = await invokeClickUp('list_folders', { space_id: spaceId })
+      setCuFolders((result.folders ?? []).map((f: { id: string; name: string }) => ({ id: f.id, name: f.name })))
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Failed to load folders')
+    } finally {
+      setCuLoadingFolders(false)
+    }
+  }
+
+  const onCuFolderChange = async (folderId: string) => {
+    setCuFolderId(folderId)
+    setCuListId('')
+    setCuLists([])
+    if (!folderId) return
+    setCuLoadingLists(true)
+    setClickUpError('')
+    try {
+      const result = await invokeClickUp('list_folder_lists', { folder_id: folderId })
+      setCuLists((result.lists ?? []).map((l: { id: string; name: string }) => ({ id: l.id, name: l.name })))
+    } catch (err) {
+      setClickUpError(err instanceof Error ? err.message : 'Failed to load lists')
+    } finally {
+      setCuLoadingLists(false)
+    }
+  }
+
   const handleClickUpPush = async () => {
     if (!sessionId || !tenantId || !campaign) return
+    const listId = cuListId || campaign.clickup_list_id || ''
+    if (!listId) {
+      setClickUpError('Please select a list first')
+      return
+    }
     setPushingToClickUp(true)
     setClickUpError('')
     setClickUpResult(null)
     try {
-      const data: Record<string, string> = { campaign_id: campaign.campaign_id }
-      const listId = clickUpListId.trim() || campaign.clickup_list_id || ''
-      if (listId) data.list_id = listId
-
-      const res = await apiFetch(
-        `/api/tenants/${tenantId}/plugins/clickup/invoke/push_campaign_summary`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
-          body: JSON.stringify({ data }),
-        }
-      )
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Push failed')
-      }
-      const body = await res.json()
-      setClickUpResult(body.result)
+      const result = await invokeClickUp('push_campaign_summary', {
+        campaign_id: campaign.campaign_id,
+        list_id: listId,
+      })
+      setClickUpResult(result)
     } catch (err) {
       setClickUpError(err instanceof Error ? err.message : 'Push to ClickUp failed')
     } finally {
@@ -656,8 +723,14 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                       onClick={() => {
                         setClickUpResult(null)
                         setClickUpError('')
-                        setClickUpListId(campaign.clickup_list_id || '')
+                        setCuSpaces([])
+                        setCuFolders([])
+                        setCuLists([])
+                        setCuSpaceId('')
+                        setCuFolderId('')
+                        setCuListId('')
                         setShowClickUpModal(true)
+                        loadClickUpSpaces()
                       }}
                       title="Push to ClickUp"
                       className="p-1 transition-colors"
@@ -819,25 +892,64 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             {/* Pre-push form */}
             {!clickUpResult && (
               <>
-                <div className="mb-4">
-                  <label className="block subheading-md text-secondary mb-2">
-                    ClickUp List ID{' '}
-                    <span className="paragraph-xs text-quaternary font-normal">
-                      (required for first push — leave blank if already linked)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={clickUpListId}
-                    onChange={(e) => setClickUpListId(e.target.value)}
-                    placeholder="e.g. 901234567"
-                    className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
-                    disabled={pushingToClickUp}
-                  />
-                  <p className="mt-1 paragraph-xs text-quaternary">
-                    Find this in ClickUp: right-click a list → Copy link → the number at the end
-                  </p>
+                {/* Space */}
+                <div className="mb-3">
+                  <label className="block subheading-md text-secondary mb-1">Space</label>
+                  <select
+                    value={cuSpaceId}
+                    onChange={(e) => onCuSpaceChange(e.target.value)}
+                    disabled={cuLoadingSpaces || pushingToClickUp}
+                    className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm bg-primary text-primary"
+                  >
+                    <option value="">
+                      {cuLoadingSpaces ? 'Loading spaces…' : cuSpaces.length === 0 ? 'No spaces found' : 'Select a space'}
+                    </option>
+                    {cuSpaces.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Folder */}
+                {cuSpaceId && (
+                  <div className="mb-3">
+                    <label className="block subheading-md text-secondary mb-1">Folder</label>
+                    <select
+                      value={cuFolderId}
+                      onChange={(e) => onCuFolderChange(e.target.value)}
+                      disabled={cuLoadingFolders || pushingToClickUp}
+                      className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm bg-primary text-primary"
+                    >
+                      <option value="">
+                        {cuLoadingFolders ? 'Loading folders…' : cuFolders.length === 0 ? 'No folders found' : 'Select a folder'}
+                      </option>
+                      {cuFolders.map((f) => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* List */}
+                {cuFolderId && (
+                  <div className="mb-4">
+                    <label className="block subheading-md text-secondary mb-1">List</label>
+                    <select
+                      value={cuListId}
+                      onChange={(e) => setCuListId(e.target.value)}
+                      disabled={cuLoadingLists || pushingToClickUp}
+                      className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm bg-primary text-primary"
+                    >
+                      <option value="">
+                        {cuLoadingLists ? 'Loading lists…' : cuLists.length === 0 ? 'No lists found' : 'Select a list'}
+                      </option>
+                      {cuLists.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {clickUpError && (
                   <p className="mb-3 paragraph-xs text-error">{clickUpError}</p>
                 )}
@@ -859,10 +971,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               {!clickUpResult && (
                 <button
                   onClick={handleClickUpPush}
-                  disabled={pushingToClickUp}
+                  disabled={pushingToClickUp || (!cuListId && !campaign?.clickup_list_id)}
                   className="flex-1 px-4 py-3 bg-[#7B68EE] text-white rounded-lg subheading-md hover:bg-[#6A58DD] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {pushingToClickUp ? 'Pushing...' : 'Push to ClickUp'}
+                  {pushingToClickUp ? 'Pushing…' : 'Push to ClickUp'}
                 </button>
               )}
             </div>
