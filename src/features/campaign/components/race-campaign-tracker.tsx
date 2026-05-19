@@ -213,7 +213,10 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
     }
     // Re-fetch tracker so KPI structure reflects the current primary campaign
     const freshTracker = await fetchCampaignTracker(sessionId, tenantId, selectedCampaignId)
-    setCampaign(freshTracker)
+    if (freshTracker) {
+      setCampaign(freshTracker)
+    }
+    // else: keep existing campaign visible — backend may be temporarily unavailable
     setRefreshKey((k) => k + 1)
     setRefreshing(false)
   }, [sessionId, tenantId, campaign, refreshing, selectedCampaignId])
