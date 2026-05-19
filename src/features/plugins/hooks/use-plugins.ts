@@ -27,6 +27,7 @@ export function usePlugins() {
   const tenantId = activeWorkspace?.tenant_id
   const [plugins, setPlugins] = useState<EnabledPlugin[]>([])
   const [loading, setLoading] = useState(false)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
     if (!sessionId || !tenantId) return
@@ -48,12 +49,13 @@ export function usePlugins() {
       })
       .catch(() => setPlugins([]))
       .finally(() => setLoading(false))
-  }, [tenantId, sessionId])
+  }, [tenantId, sessionId, refreshToken])
 
   const isEnabled = (pluginId: string) => plugins.some((p) => p.plugin_id === pluginId)
 
   const invalidate = () => {
     _cache = null
+    setRefreshToken((t) => t + 1)
   }
 
   return { plugins, loading, isEnabled, invalidate }
