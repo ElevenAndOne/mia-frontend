@@ -40,6 +40,18 @@ export const updateWorkspaceAlertsEnabled = async (
   if (!res.ok) throw new Error('Failed to update workspace alert settings')
 }
 
+export const sendTestAlert = async (sessionId: string): Promise<{ sent_to: string }> => {
+  const res = await apiFetch('/api/whatsapp-alerts/test-send', {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || 'Failed to send test message')
+  }
+  return res.json()
+}
+
 export const updateMySubscription = async (
   sessionId: string,
   data: { whatsapp_number?: string; subscribed: boolean }

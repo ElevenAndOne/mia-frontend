@@ -10,6 +10,7 @@ import {
   fetchWorkspaceAlertSettings,
   updateWorkspaceAlertsEnabled,
   updateMySubscription,
+  sendTestAlert,
 } from '../../whatsapp-alerts/whatsapp-alert-service'
 import type { WorkspaceAlertSettings } from '../../whatsapp-alerts/types'
 import { CreateInviteModal } from './create-invite-modal'
@@ -116,10 +117,13 @@ export const WorkspaceSettingsDetail = ({
   const [savingSubscription, setSavingSubscription] = useState(false)
   const [subscriptionSaved, setSubscriptionSaved] = useState(false)
   const [togglingWorkspace, setTogglingWorkspace] = useState(false)
+  const [sendingTest, setSendingTest] = useState(false)
+  const [testSentTo, setTestSentTo] = useState<string | null>(null)
+  const [removingSubscription, setRemovingSubscription] = useState(false)
 
-  useEffect(() => {
-    if (activeTab !== 'whatsapp' || !sessionId) return
-    setAlertSettingsLoading(true)
+  const loadAlertSettings = (showSpinner = false) => {
+    if (!sessionId) return
+    if (showSpinner) setAlertSettingsLoading(true)
     setAlertSettingsError(null)
     fetchWorkspaceAlertSettings(sessionId, workspace.tenant_id)
       .then((s) => {
@@ -131,7 +135,12 @@ export const WorkspaceSettingsDetail = ({
         }
       })
       .catch(() => setAlertSettingsError('Failed to load alert settings.'))
-      .finally(() => setAlertSettingsLoading(false))
+      .finally(() => { if (showSpinner) setAlertSettingsLoading(false) })
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'whatsapp') return
+    loadAlertSettings(true)
   }, [activeTab, sessionId, workspace.tenant_id])
 
   const handleToggleWorkspaceAlerts = async (enabled: boolean) => {
@@ -158,10 +167,41 @@ export const WorkspaceSettingsDetail = ({
       })
       setSubscriptionSaved(true)
       setTimeout(() => setSubscriptionSaved(false), 3000)
+      loadAlertSettings()
     } catch {
       setAlertSettingsError('Failed to save subscription.')
     } finally {
       setSavingSubscription(false)
+    }
+  }
+
+  const handleRemoveSubscription = async () => {
+    if (!sessionId || removingSubscription) return
+    setRemovingSubscription(true)
+    try {
+      await updateMySubscription(sessionId, { whatsapp_number: undefined, subscribed: false })
+      setMyWaNumber('')
+      setMySubscribed(false)
+      loadAlertSettings()
+    } catch {
+      setAlertSettingsError('Failed to remove subscription.')
+    } finally {
+      setRemovingSubscription(false)
+    }
+  }
+
+  const handleSendTest = async () => {
+    if (!sessionId || sendingTest) return
+    setSendingTest(true)
+    setTestSentTo(null)
+    try {
+      const res = await sendTestAlert(sessionId)
+      setTestSentTo(res.sent_to)
+      setTimeout(() => setTestSentTo(null), 6000)
+    } catch (e) {
+      setAlertSettingsError(e instanceof Error ? e.message : 'Failed to send test message.')
+    } finally {
+      setSendingTest(false)
     }
   }
 
@@ -307,13 +347,33 @@ export const WorkspaceSettingsDetail = ({
                       <span className="paragraph-sm text-primary">Receive KPI alert messages</span>
                     </label>
 
-                    <button
-                      onClick={handleSaveSubscription}
-                      disabled={savingSubscription}
-                      className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
-                    >
-                      {savingSubscription ? 'Saving…' : subscriptionSaved ? 'Saved!' : 'Save'}
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={handleSaveSubscription}
+                        disabled={savingSubscription}
+                        className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+                      >
+                        {savingSubscription ? 'Saving…' : subscriptionSaved ? 'Saved!' : 'Save'}
+                      </button>
+                      {(myWaNumber || mySubscribed) && (
+                        <button
+                          onClick={handleRemoveSubscription}
+                          disabled={removingSubscription}
+                          className="px-4 py-2 border border-error-subtle text-error rounded-lg subheading-md hover:bg-error-primary transition-colors disabled:opacity-50"
+                        >
+                          {removingSubscription ? 'Removing…' : 'Remove'}
+                        </button>
+                      )}
+                      {mySubscribed && myWaNumber && (
+                        <button
+                          onClick={handleSendTest}
+                          disabled={sendingTest}
+                          className="px-4 py-2 border border-primary text-secondary rounded-lg subheading-md hover:bg-tertiary transition-colors disabled:opacity-50"
+                        >
+                          {sendingTest ? 'Sending…' : testSentTo ? `Sent to ${testSentTo}` : 'Send test message'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -329,7 +389,7 @@ export const WorkspaceSettingsDetail = ({
                         >
                           <div>
                             <p className="paragraph-sm text-primary">
-                              {m.is_current_user ? 'You' : m.user_id}
+                              {m.is_current_user ? 'You' : (m.name || m.email || m.user_id)}
                               <span className="ml-2 text-quaternary">({m.role})</span>
                             </p>
                             {m.whatsapp_number && (
