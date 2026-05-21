@@ -120,6 +120,7 @@ export const WorkspaceSettingsDetail = ({
   const [sendingTest, setSendingTest] = useState(false)
   const [testSentTo, setTestSentTo] = useState<string | null>(null)
   const [removingSubscription, setRemovingSubscription] = useState(false)
+  const [saveToAll, setSaveToAll] = useState(false)
 
   const loadAlertSettings = (showSpinner = false) => {
     if (!sessionId) return
@@ -164,6 +165,7 @@ export const WorkspaceSettingsDetail = ({
       await updateMySubscription(sessionId, {
         whatsapp_number: myWaNumber || undefined,
         subscribed: mySubscribed,
+        all_workspaces: saveToAll,
       })
       setSubscriptionSaved(true)
       setTimeout(() => setSubscriptionSaved(false), 3000)
@@ -345,6 +347,16 @@ export const WorkspaceSettingsDetail = ({
                         className="w-4 h-4 rounded accent-brand-solid"
                       />
                       <span className="paragraph-sm text-primary">Receive KPI alert messages</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={saveToAll}
+                        onChange={(e) => setSaveToAll(e.target.checked)}
+                        className="w-4 h-4 rounded accent-brand-solid"
+                      />
+                      <span className="paragraph-sm text-secondary">Save to all my workspaces</span>
                     </label>
 
                     <div className="flex items-center gap-2 flex-wrap">

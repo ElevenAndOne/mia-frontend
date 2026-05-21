@@ -54,7 +54,7 @@ export const sendTestAlert = async (sessionId: string): Promise<{ sent_to: strin
 
 export const updateMySubscription = async (
   sessionId: string,
-  data: { whatsapp_number?: string; subscribed: boolean }
+  data: { whatsapp_number?: string; subscribed: boolean; all_workspaces?: boolean }
 ): Promise<void> => {
   const res = await apiFetch('/api/whatsapp-alerts/me/subscription', {
     method: 'PATCH',
