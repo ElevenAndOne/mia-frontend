@@ -216,7 +216,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
       actualsMapRef.current = {}
       setActualsMap({})
     } catch {
-      // Server refresh failed (e.g. timeout) — keep existing data visible
+      // Server refresh failed — restore stale ref so UI keeps showing current data
+      staleActualsRef.current = {}
       setRefreshing(false)
       return
     }
@@ -465,7 +466,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
 
   const activePhaseData = campaign.phases.find((p) => p.phase_name === selectedPhase)
   const actuals = selectedPhase ? actualsMap[selectedPhase] : undefined
-  const staleForPhase = (actuals === 'loading' && selectedPhase) ? staleActualsRef.current[selectedPhase] ?? null : null
+  // Show stale data whenever it exists — covers both 'loading' and undefined (cleared by setActualsMap({}))
+  const staleForPhase = selectedPhase ? (staleActualsRef.current[selectedPhase] ?? null) : null
   const actualsLoading = actuals === 'loading' && !staleForPhase
   const actualsError = actuals === 'error'
   const actualsData = staleForPhase ?? (Array.isArray(actuals) ? actuals : null)
