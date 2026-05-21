@@ -9,6 +9,8 @@ export interface WhatsAppAlertData {
 
 export interface WorkspaceAlertMember {
   user_id: string
+  name: string | null
+  email: string | null
   role: string
   whatsapp_number: string | null
   whatsapp_alerts_subscribed: boolean
