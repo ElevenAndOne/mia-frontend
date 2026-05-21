@@ -12,7 +12,7 @@ export function WhatsAppAlertModal({ data, onClose }: WhatsAppAlertModalProps) {
 
   const handleGoToCampaign = () => {
     onClose()
-    navigate('/campaign')
+    navigate('/campaigns')
   }
 
   return (
