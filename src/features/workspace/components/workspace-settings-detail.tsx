@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
@@ -6,6 +6,12 @@ import { useSession } from '../../../contexts/session-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo } from '../services/workspace-service'
+import {
+  fetchWorkspaceAlertSettings,
+  updateWorkspaceAlertsEnabled,
+  updateMySubscription,
+} from '../../whatsapp-alerts/whatsapp-alert-service'
+import type { WorkspaceAlertSettings } from '../../whatsapp-alerts/types'
 import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
@@ -13,7 +19,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'campaigns'
+type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -101,6 +107,64 @@ export const WorkspaceSettingsDetail = ({
   const [logoError, setLogoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // WhatsApp alerts tab state
+  const [alertSettings, setAlertSettings] = useState<WorkspaceAlertSettings | null>(null)
+  const [alertSettingsLoading, setAlertSettingsLoading] = useState(false)
+  const [alertSettingsError, setAlertSettingsError] = useState<string | null>(null)
+  const [myWaNumber, setMyWaNumber] = useState('')
+  const [mySubscribed, setMySubscribed] = useState(false)
+  const [savingSubscription, setSavingSubscription] = useState(false)
+  const [subscriptionSaved, setSubscriptionSaved] = useState(false)
+  const [togglingWorkspace, setTogglingWorkspace] = useState(false)
+
+  useEffect(() => {
+    if (activeTab !== 'whatsapp' || !sessionId) return
+    setAlertSettingsLoading(true)
+    setAlertSettingsError(null)
+    fetchWorkspaceAlertSettings(sessionId, workspace.tenant_id)
+      .then((s) => {
+        setAlertSettings(s)
+        const me = s.members.find((m) => m.is_current_user)
+        if (me) {
+          setMyWaNumber(me.whatsapp_number || '')
+          setMySubscribed(me.whatsapp_alerts_subscribed)
+        }
+      })
+      .catch(() => setAlertSettingsError('Failed to load alert settings.'))
+      .finally(() => setAlertSettingsLoading(false))
+  }, [activeTab, sessionId, workspace.tenant_id])
+
+  const handleToggleWorkspaceAlerts = async (enabled: boolean) => {
+    if (!sessionId || togglingWorkspace) return
+    setTogglingWorkspace(true)
+    try {
+      await updateWorkspaceAlertsEnabled(sessionId, workspace.tenant_id, enabled)
+      setAlertSettings((prev) => prev ? { ...prev, whatsapp_alerts_enabled: enabled } : prev)
+    } catch {
+      setAlertSettingsError('Failed to update workspace setting.')
+    } finally {
+      setTogglingWorkspace(false)
+    }
+  }
+
+  const handleSaveSubscription = async () => {
+    if (!sessionId || savingSubscription) return
+    setSavingSubscription(true)
+    setSubscriptionSaved(false)
+    try {
+      await updateMySubscription(sessionId, {
+        whatsapp_number: myWaNumber || undefined,
+        subscribed: mySubscribed,
+      })
+      setSubscriptionSaved(true)
+      setTimeout(() => setSubscriptionSaved(false), 3000)
+    } catch {
+      setAlertSettingsError('Failed to save subscription.')
+    } finally {
+      setSavingSubscription(false)
+    }
+  }
+
   const handleLogoUpload = async (file: File) => {
     if (!sessionId) return
     setUploadingLogo(true)
@@ -136,24 +200,161 @@ export const WorkspaceSettingsDetail = ({
       <TopBar title="Workspace Settings" onBack={onBack} className="border-b border-tertiary" />
 
       {/* Tab strip */}
-      <div className="flex border-b border-tertiary px-4">
-        {(['members', 'brand', 'campaigns'] as SettingsTab[]).map((tab) => (
+      <div className="flex border-b border-tertiary px-4 overflow-x-auto">
+        {(['members', 'brand', 'campaigns', 'whatsapp'] as SettingsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={[
-              'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors',
+              'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-solid text-brand-solid'
                 : 'border-transparent text-secondary hover:text-primary',
             ].join(' ')}
           >
-            {tab === 'members' ? 'Members' : tab === 'brand' ? 'Brand Guide' : 'Campaign Guides'}
+            {tab === 'members'
+              ? 'Members'
+              : tab === 'brand'
+              ? 'Brand Guide'
+              : tab === 'campaigns'
+              ? 'Campaign Guides'
+              : 'WhatsApp Alerts'}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
+
+        {/* WhatsApp Alerts tab */}
+        {activeTab === 'whatsapp' && (
+          <div className="space-y-6">
+            {alertSettingsError && (
+              <div className="p-3 bg-error-primary border border-error-subtle rounded-lg">
+                <p className="paragraph-sm text-error">{alertSettingsError}</p>
+              </div>
+            )}
+
+            {alertSettingsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Spinner size="md" variant="dark" />
+              </div>
+            ) : alertSettings ? (
+              <>
+                {/* Workspace-level toggle (owner/admin only) */}
+                {canManage && (
+                  <div className="p-4 bg-secondary rounded-xl border border-tertiary">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="subheading-md text-primary">Enable alerts for this workspace</p>
+                        <p className="paragraph-sm text-tertiary mt-0.5">
+                          When enabled, opted-in members receive WhatsApp messages when campaign
+                          KPIs fall behind target for 3+ days.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleToggleWorkspaceAlerts(!alertSettings.whatsapp_alerts_enabled)
+                        }
+                        disabled={togglingWorkspace}
+                        className={[
+                          'relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50',
+                          alertSettings.whatsapp_alerts_enabled
+                            ? 'bg-brand-solid'
+                            : 'bg-quaternary',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+                            alertSettings.whatsapp_alerts_enabled ? 'translate-x-5' : '',
+                          ].join(' ')}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* My subscription */}
+                <div className="p-4 bg-secondary rounded-xl border border-tertiary space-y-4">
+                  <div>
+                    <p className="subheading-md text-primary">My WhatsApp Alerts</p>
+                    <p className="paragraph-sm text-tertiary mt-0.5">
+                      Add your number to receive campaign alerts on WhatsApp.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="paragraph-sm text-secondary block mb-1.5">
+                        WhatsApp number (with country code)
+                      </label>
+                      <input
+                        type="tel"
+                        value={myWaNumber}
+                        onChange={(e) => setMyWaNumber(e.target.value)}
+                        placeholder="+27 82 123 4567"
+                        className="w-full px-3 py-2.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={mySubscribed}
+                        onChange={(e) => setMySubscribed(e.target.checked)}
+                        className="w-4 h-4 rounded accent-brand-solid"
+                      />
+                      <span className="paragraph-sm text-primary">Receive KPI alert messages</span>
+                    </label>
+
+                    <button
+                      onClick={handleSaveSubscription}
+                      disabled={savingSubscription}
+                      className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+                    >
+                      {savingSubscription ? 'Saving…' : subscriptionSaved ? 'Saved!' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Member overview (admin/owner only) */}
+                {canManage && alertSettings.members.length > 0 && (
+                  <div>
+                    <p className="subheading-md text-primary mb-3">Member Subscriptions</p>
+                    <div className="space-y-2">
+                      {alertSettings.members.map((m) => (
+                        <div
+                          key={m.user_id}
+                          className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg border border-tertiary"
+                        >
+                          <div>
+                            <p className="paragraph-sm text-primary">
+                              {m.is_current_user ? 'You' : m.user_id}
+                              <span className="ml-2 text-quaternary">({m.role})</span>
+                            </p>
+                            {m.whatsapp_number && (
+                              <p className="paragraph-sm text-tertiary">{m.whatsapp_number}</p>
+                            )}
+                          </div>
+                          <span
+                            className={[
+                              'px-2 py-0.5 rounded-full paragraph-sm',
+                              m.whatsapp_alerts_subscribed
+                                ? 'bg-success-subtle text-success'
+                                : 'bg-tertiary text-quaternary',
+                            ].join(' ')}
+                          >
+                            {m.whatsapp_alerts_subscribed ? 'Opted in' : 'Not subscribed'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
+        )}
 
         {/* Brand Guide tab */}
         {activeTab === 'brand' && (

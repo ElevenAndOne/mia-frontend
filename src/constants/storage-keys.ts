@@ -43,4 +43,7 @@ export const StorageKey = {
   // Google OAuth connect-pending flags (set before OAuth redirect, consumed on return)
   GOOGLE_ADS_CONNECT_PENDING: 'mia_google_ads_connect_pending',
   GA4_CONNECT_PENDING: 'mia_ga4_connect_pending',
+
+  // WhatsApp alert deep link token (set from ?wa= URL param, consumed after auth)
+  WA_ALERT_TOKEN: 'mia_wa_alert_token',
 } as const
