@@ -24,6 +24,7 @@ export const useAppController = () => {
     loginMeta,
     refreshAccounts,
     connectingPlatform,
+    sessionId,
   } = useSession()
 
   const [oauthLoadingPlatform, setOauthLoadingPlatform] = useState<'google' | 'meta' | null>(null)
