@@ -7,6 +7,8 @@ import { useInsightsDatePicker } from './use-insights-date-picker'
 import { consumeReturnUrl } from '../routes/protected-route'
 import { StorageKey } from '../constants/storage-keys'
 import { logger } from '../utils/logger'
+import { fetchLatestAlert } from '../features/whatsapp-alerts/whatsapp-alert-service'
+import type { WhatsAppAlertData } from '../features/whatsapp-alerts/types'
 
 export const useAppController = () => {
   const navigate = useNavigate()
@@ -27,6 +29,7 @@ export const useAppController = () => {
   const [oauthLoadingPlatform, setOauthLoadingPlatform] = useState<'google' | 'meta' | null>(null)
   const [showCreateWorkspaceModal, setShowCreateWorkspaceModal] = useState(false)
   const [justAcceptedInvite, setJustAcceptedInvite] = useState(false)
+  const [waAlertData, setWaAlertData] = useState<WhatsAppAlertData | null>(null)
 
   useAppChromeEffects()
   useAuthRedirects({
@@ -36,6 +39,22 @@ export const useAppController = () => {
   })
 
   const insightsDatePicker = useInsightsDatePicker()
+
+  // WhatsApp alert: auto-fetch latest alert once authenticated, show modal if unseen
+  useEffect(() => {
+    if (isLoading || (!isAuthenticated && !isMetaAuthenticated) || !sessionId) return
+
+    fetchLatestAlert(sessionId).then((alert) => {
+      if (!alert) return
+      // Use campaign+phase as a stable dismissal key
+      const dismissKey = `${StorageKey.WA_ALERT_TOKEN}_dismissed`
+      const dismissed: string[] = JSON.parse(localStorage.getItem(dismissKey) || '[]')
+      const alertKey = `${alert.campaign_name}:${alert.phase_name}`
+      if (!dismissed.includes(alertKey)) {
+        setWaAlertData(alert)
+      }
+    }).catch(() => {}) // silently ignore — no alerts is fine
+  }, [isLoading, isAuthenticated, isMetaAuthenticated, sessionId])
 
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
   const isMetaFirstFlow = isMetaAuthenticated && !isAuthenticated
@@ -203,5 +222,17 @@ export const useAppController = () => {
       onSuccess: handleCreateWorkspaceSuccess,
     },
     onNewWorkspace: handleNewWorkspace,
+    waAlertData,
+    clearWaAlert: () => {
+      if (waAlertData) {
+        const dismissKey = `${StorageKey.WA_ALERT_TOKEN}_dismissed`
+        const dismissed: string[] = JSON.parse(localStorage.getItem(dismissKey) || '[]')
+        const alertKey = `${waAlertData.campaign_name}:${waAlertData.phase_name}`
+        if (!dismissed.includes(alertKey)) {
+          localStorage.setItem(dismissKey, JSON.stringify([...dismissed, alertKey]))
+        }
+      }
+      setWaAlertData(null)
+    },
   }
 }

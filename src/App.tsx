@@ -9,6 +9,13 @@ const InsightsDatePickerModal = lazy(
   () => import('./features/insights/views/insights-date-picker-modal')
 )
 
+const WhatsAppAlertModal = lazy(
+  () =>
+    import('./features/whatsapp-alerts/whatsapp-alert-modal').then((m) => ({
+      default: m.WhatsAppAlertModal,
+    }))
+)
+
 function App() {
   const {
     hasSeenIntro,
@@ -18,6 +25,8 @@ function App() {
     appRoutes,
     insightsDatePicker,
     createWorkspaceModal,
+    waAlertData,
+    clearWaAlert,
   } = useAppController()
 
   if (showLoadingScreen) {
@@ -53,6 +62,12 @@ function App() {
         onClose={createWorkspaceModal.onClose}
         onSuccess={createWorkspaceModal.onSuccess}
       />
+
+      {waAlertData && (
+        <Suspense fallback={null}>
+          <WhatsAppAlertModal data={waAlertData} onClose={clearWaAlert} />
+        </Suspense>
+      )}
 
       <ToastContainer />
     </div>
