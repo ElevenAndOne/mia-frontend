@@ -195,9 +195,18 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   const [refreshing, setRefreshing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const forceReloadRef = useRef(false)
+  // Holds the last-known good data for each phase during a manual refresh so we
+  // can keep showing stale numbers instead of loading dots while re-fetching.
+  const staleActualsRef = useRef<Record<string, KPIActual[]>>({})
 
   const handleRefresh = useCallback(async () => {
     if (!sessionId || !tenantId || !campaign || refreshing) return
+    // Snapshot current data as stale BEFORE clearing anything — used to keep
+    // showing old numbers while the refresh is in flight instead of loading dots.
+    const snapshot = actualsMapRef.current
+    staleActualsRef.current = Object.fromEntries(
+      Object.entries(snapshot).filter(([, v]) => Array.isArray(v))
+    ) as Record<string, KPIActual[]>
     setRefreshing(true)
     forceReloadRef.current = true
     clearTrackerCache()
@@ -326,8 +335,13 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
         if (actualsMapRef.current[phaseName]) return
       }
 
-      setActualsMap((prev) => ({ ...prev, [phaseName]: 'loading' }))
+      // Only show loading dots if there's no stale data to display while we wait
+      if (!staleActualsRef.current[phaseName]) {
+        setActualsMap((prev) => ({ ...prev, [phaseName]: 'loading' }))
+      }
       const actuals = await fetchPhaseActuals(sessionId, tenantId, campaign.campaign_id, phaseName, startDate, endDate)
+      // Clear stale for this phase — fresh data is ready
+      delete staleActualsRef.current[phaseName]
       setActualsMap((prev) => ({
         ...prev,
         [phaseName]: actuals ?? 'error',
@@ -451,9 +465,10 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
 
   const activePhaseData = campaign.phases.find((p) => p.phase_name === selectedPhase)
   const actuals = selectedPhase ? actualsMap[selectedPhase] : undefined
-  const actualsLoading = actuals === 'loading'
+  const staleForPhase = (actuals === 'loading' && selectedPhase) ? staleActualsRef.current[selectedPhase] ?? null : null
+  const actualsLoading = actuals === 'loading' && !staleForPhase
   const actualsError = actuals === 'error'
-  const actualsData = Array.isArray(actuals) ? actuals : null
+  const actualsData = staleForPhase ?? (Array.isArray(actuals) ? actuals : null)
 
   // On-track dots are shown only when campaign has start/end dates
   const canShowOnTrack = !!(campaign.start_date && campaign.end_date)
