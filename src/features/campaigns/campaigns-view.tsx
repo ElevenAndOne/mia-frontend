@@ -6,6 +6,7 @@ import { apiFetch } from '../../utils/api'
 import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
 import { usePlugins } from '../plugins/hooks/use-plugins'
 import { sendChatMessage } from '../chat/services/chat-service'
+import { ChatMarkdown } from '../../components/chat-markdown'
 
 // ── Campaign detail cache ──────────────────────────────────────────────────
 const detailCache = new Map<string, CampaignDetail>()
@@ -1075,12 +1076,15 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                 {chatMessages.map((m, i) => (
                   <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm whitespace-pre-wrap leading-relaxed ${
+                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
                       m.role === 'user'
                         ? 'bg-brand-solid text-primary-onbrand'
                         : 'bg-secondary text-primary border border-tertiary'
                     }`}>
-                      {m.content}
+                      {m.role === 'user'
+                        ? <span className="whitespace-pre-wrap">{m.content}</span>
+                        : <ChatMarkdown content={m.content} />
+                      }
                     </div>
                   </div>
                 ))}
