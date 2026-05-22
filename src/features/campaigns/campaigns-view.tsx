@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -319,7 +320,7 @@ function CampaignPickerModal({
 
   const label = PLATFORM_LABELS[channel] ?? channel
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-tertiary">
@@ -387,7 +388,8 @@ function CampaignPickerModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -1452,22 +1454,22 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   >
                     {['ZAR', 'USD', 'GBP', 'EUR'].map((c) => <option key={c}>{c}</option>)}
                   </select>
+                  <span className="paragraph-xs text-quaternary">Monthly:</span>
                   <input
                     type="number"
                     defaultValue={campaign.budget_monthly ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_monthly: e.target.value ? Number(e.target.value) : null })}
-                    placeholder="monthly"
+                    placeholder="—"
                     className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                   />
-                  <span className="paragraph-xs text-quaternary">/mo ·</span>
+                  <span className="paragraph-xs text-quaternary">· Total:</span>
                   <input
                     type="number"
                     defaultValue={campaign.budget_total ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_total: e.target.value ? Number(e.target.value) : null })}
-                    placeholder="total"
+                    placeholder="—"
                     className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                   />
-                  <span className="paragraph-xs text-quaternary">total</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="paragraph-xs text-quaternary">Filter:</span>
