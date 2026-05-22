@@ -3,7 +3,7 @@ import { apiFetch } from '../../../utils/api'
 // ---------------------------------------------------------------------------
 // Cache configuration
 // Tracker TTL: 5 minutes — just a DB query, needs to pick up new campaigns quickly
-//   (new campaign uploaded at intent.miacreate.ai must appear within one poll cycle)
+//   (new draft saved via Mia chat must appear within one poll cycle)
 // Actuals TTL: 23h — platform API calls, expensive; refreshed by nightly cron at 01:00 SAST
 // Both layers: module-level Map (fast) + sessionStorage (survives page reload in same session)
 // ---------------------------------------------------------------------------
