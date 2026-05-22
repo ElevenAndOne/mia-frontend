@@ -100,16 +100,6 @@ export const useDashboardPage = () => {
     }
   }, [sessionId, refreshAccounts, refreshWorkspaces])
 
-  useEffect(() => {
-    if (!sessionId || hasPrefillRef.current) return
-    const prefill = sessionStorage.getItem('mia_prefill_prompt')
-    if (!prefill) return
-    hasPrefillRef.current = true
-    sessionStorage.removeItem('mia_prefill_prompt')
-    setShowChat(true)
-    handleChatSubmit(prefill)
-  }, [sessionId, handleChatSubmit])
-
   const handleAccountSwitch = useCallback(
     async (accountId: string) => {
       if (isAccountSwitching) return
@@ -199,6 +189,16 @@ export const useDashboardPage = () => {
     },
     [dateRange, selectedAccount, sessionId, user]
   )
+
+  useEffect(() => {
+    if (!sessionId || hasPrefillRef.current) return
+    const prefill = sessionStorage.getItem('mia_prefill_prompt')
+    if (!prefill) return
+    hasPrefillRef.current = true
+    sessionStorage.removeItem('mia_prefill_prompt')
+    setShowChat(true)
+    handleChatSubmit(prefill)
+  }, [sessionId, handleChatSubmit])
 
   const handleLogout = async () => {
     await logout()
