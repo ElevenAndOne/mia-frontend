@@ -456,9 +456,22 @@ function ChannelActionCard({
     <div className="rounded-lg border border-tertiary overflow-hidden">
       {/* Header — split so Link button is NOT inside the expand click zone */}
       <div className="flex items-center bg-secondary">
+        {/* Left: Link button next to channel label */}
+        {hasPicker && (
+          <button
+            onClick={() => onOpenPicker?.(action.action_id, action.channel, linked)}
+            className="flex items-center gap-1.5 pl-3 pr-2 py-2.5 shrink-0"
+            title="Link platform campaigns for actuals tracking"
+          >
+            <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full">{label}</span>
+            <span className={`label-xs font-semibold ${linked.length > 0 ? 'text-utility-brand-600' : 'text-utility-brand-500'}`}>
+              {linked.length > 0 ? `${linked.length} linked` : '+ Link'}
+            </span>
+          </button>
+        )}
         {/* Left: clickable expansion area */}
-        <div className="flex items-center gap-2 px-3 py-2.5 flex-1 cursor-pointer min-w-0" onClick={() => setExpanded(!expanded)}>
-          <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>
+        <div className={`flex items-center gap-2 ${hasPicker ? 'pl-0' : 'pl-3'} pr-3 py-2.5 flex-1 cursor-pointer min-w-0`} onClick={() => setExpanded(!expanded)}>
+          {!hasPicker && <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>}
           {action.budget != null && (
             <span className="paragraph-xs text-tertiary shrink-0">
               {formatBudget(action.budget, 'R')}{action.budget_period === 'monthly' ? '/mo' : ' total'}
@@ -479,20 +492,13 @@ function ChannelActionCard({
               {linked.length > 2 && <span className="paragraph-xs text-quaternary">+{linked.length - 2}</span>}
             </div>
           )}
-          <svg className={`w-3.5 h-3.5 text-quaternary transition-transform shrink-0 ml-auto ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        </div>
+        {/* Expand chevron */}
+        <div className="pr-3 py-2.5 cursor-pointer shrink-0" onClick={() => setExpanded(!expanded)}>
+          <svg className={`w-3.5 h-3.5 text-quaternary transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-        {/* Right: Link button — separate from expand zone, no stopPropagation needed */}
-        {hasPicker && (
-          <button
-            onClick={() => onOpenPicker?.(action.action_id, action.channel, linked)}
-            className={`paragraph-xs shrink-0 px-3 py-2.5 border-l border-tertiary transition-colors ${linked.length > 0 ? 'text-utility-brand-600 hover:bg-utility-brand-50' : 'text-quaternary hover:text-secondary hover:bg-secondary'}`}
-            title="Link platform campaigns for actuals tracking"
-          >
-            {linked.length > 0 ? `${linked.length} linked` : 'Link'}
-          </button>
-        )}
       </div>
 
       {expanded && (
