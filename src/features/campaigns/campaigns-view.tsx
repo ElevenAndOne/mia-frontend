@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -320,7 +319,7 @@ function CampaignPickerModal({
 
   const label = PLATFORM_LABELS[channel] ?? channel
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-tertiary">
@@ -388,8 +387,7 @@ function CampaignPickerModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
 
