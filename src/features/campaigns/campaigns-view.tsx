@@ -43,6 +43,12 @@ interface Asset {
   sort_order: number
 }
 
+interface LinkedCampaign {
+  id: string
+  name: string
+  status?: string
+}
+
 interface ChannelAction {
   action_id: string
   channel: string
@@ -54,6 +60,7 @@ interface ChannelAction {
   start_date: string | null
   end_date: string | null
   assets: Asset[]
+  linked_platform_campaigns?: LinkedCampaign[] | null
 }
 
 interface Phase {
@@ -258,6 +265,132 @@ function PhaseTabs({ phases, selectedId, onSelect }: { phases: Phase[]; selected
   )
 }
 
+// Channels that have platform campaign pickers
+const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads'])
+
+function CampaignPickerModal({
+  channel, tenantId, sessionId, current, onSave, onClose,
+}: {
+  channel: string
+  tenantId: string
+  sessionId: string
+  current: LinkedCampaign[]
+  onSave: (selected: LinkedCampaign[]) => void
+  onClose: () => void
+}) {
+  const [campaigns, setCampaigns] = useState<LinkedCampaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set(current.map((c) => c.id)))
+  const [selectedMap, setSelectedMap] = useState<Map<string, LinkedCampaign>>(
+    new Map(current.map((c) => [c.id, c]))
+  )
+
+  useEffect(() => {
+    apiFetch(`/api/tenants/${tenantId}/campaigns/platform-campaigns?channel=${channel}`, {
+      headers: { 'X-Session-ID': sessionId },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        setCampaigns(d.campaigns || [])
+        if (d.message) setError(d.message)
+      })
+      .catch(() => setError('Failed to load campaigns'))
+      .finally(() => setLoading(false))
+  }, [channel, tenantId, sessionId])
+
+  const toggle = (c: LinkedCampaign) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(c.id)) { next.delete(c.id) } else { next.add(c.id) }
+      return next
+    })
+    setSelectedMap((prev) => {
+      const next = new Map(prev)
+      if (next.has(c.id)) { next.delete(c.id) } else { next.set(c.id, c) }
+      return next
+    })
+  }
+
+  const filtered = campaigns.filter((c) =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const label = PLATFORM_LABELS[channel] ?? channel
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-tertiary">
+          <p className="label-sm text-primary">Link {label} campaigns</p>
+          <button onClick={onClose} className="text-quaternary hover:text-secondary">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-3 border-b border-tertiary">
+          <input
+            type="text"
+            placeholder="Search campaigns..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-1.5 rounded-lg border border-tertiary bg-secondary paragraph-sm text-primary outline-none focus:border-utility-brand-400"
+            autoFocus
+          />
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-2">
+          {loading && <p className="paragraph-xs text-tertiary text-center py-6">Loading...</p>}
+          {error && !loading && <p className="paragraph-xs text-quaternary text-center py-4">{error}</p>}
+          {!loading && filtered.length === 0 && !error && (
+            <p className="paragraph-xs text-quaternary text-center py-4">No campaigns found</p>
+          )}
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => toggle(c)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary text-left"
+            >
+              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${selected.has(c.id) ? 'bg-utility-brand-600 border-utility-brand-600' : 'border-tertiary'}`}>
+                {selected.has(c.id) && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="paragraph-xs text-primary truncate">{c.name}</p>
+                {c.status && <p className="paragraph-xs text-quaternary">{c.status}</p>}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {selected.size > 0 && (
+          <div className="px-4 py-2 border-t border-tertiary">
+            <p className="paragraph-xs text-tertiary">{selected.size} selected</p>
+          </div>
+        )}
+
+        <div className="flex gap-2 p-4 border-t border-tertiary">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-tertiary paragraph-sm text-secondary hover:bg-secondary">
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(Array.from(selectedMap.values()))}
+            className="flex-1 py-2 rounded-lg bg-utility-brand-600 paragraph-sm text-white hover:bg-utility-brand-700"
+          >
+            Save {selected.size > 0 ? `(${selected.size})` : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ChannelActionCard({
   action, campaignId, tenantId, sessionId, onUpdate, onDelete,
 }: {
@@ -270,6 +403,7 @@ function ChannelActionCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [assetsExpanded, setAssetsExpanded] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
 
   const patch = async (fields: Record<string, unknown>) => {
     const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
@@ -315,8 +449,33 @@ function ChannelActionCard({
   }
 
   const label = PLATFORM_LABELS[action.channel] ?? action.channel
+  const hasPicker = PICKER_CHANNELS.has(action.channel)
+  const linked = action.linked_platform_campaigns ?? []
+
+  const savePicker = async (selected: LinkedCampaign[]) => {
+    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
+      method: 'PATCH',
+      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linked_platform_campaigns: selected }),
+    })
+    if (res.ok) {
+      onUpdate({ ...action, linked_platform_campaigns: selected })
+    }
+    setShowPicker(false)
+  }
 
   return (
+    <>
+    {showPicker && (
+      <CampaignPickerModal
+        channel={action.channel}
+        tenantId={tenantId}
+        sessionId={sessionId}
+        current={linked}
+        onSave={savePicker}
+        onClose={() => setShowPicker(false)}
+      />
+    )}
     <div className="rounded-lg border border-tertiary overflow-hidden">
       {/* Header row */}
       <div className="flex items-center gap-2 px-3 py-2.5 bg-secondary cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -331,7 +490,29 @@ function ChannelActionCard({
             {formatDate(action.start_date)} – {formatDate(action.end_date)}
           </span>
         )}
+        {/* Linked campaign chips */}
+        {linked.length > 0 && (
+          <div className="flex flex-wrap gap-1 max-w-[40%]">
+            {linked.slice(0, 2).map((c) => (
+              <span key={c.id} className="paragraph-xs text-quaternary bg-tertiary px-1.5 py-0.5 rounded truncate max-w-[120px]" title={c.name}>
+                {c.name}
+              </span>
+            ))}
+            {linked.length > 2 && (
+              <span className="paragraph-xs text-quaternary">+{linked.length - 2}</span>
+            )}
+          </div>
+        )}
         <div className="flex-1" />
+        {hasPicker && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowPicker(true) }}
+            className={`paragraph-xs shrink-0 px-2 py-0.5 rounded border transition-colors ${linked.length > 0 ? 'text-utility-brand-600 border-utility-brand-300 hover:bg-utility-brand-50' : 'text-quaternary border-tertiary hover:text-secondary hover:border-secondary'}`}
+            title="Link platform campaigns for actuals tracking"
+          >
+            {linked.length > 0 ? `${linked.length} linked` : 'Link'}
+          </button>
+        )}
         <svg className={`w-3.5 h-3.5 text-quaternary transition-transform shrink-0 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -495,6 +676,7 @@ function ChannelActionCard({
         </div>
       )}
     </div>
+    </>
   )
 }
 
@@ -575,7 +757,7 @@ function PhaseDetail({
       const d = await res.json()
       onPhaseUpdate({
         ...phase,
-        channel_actions: [...phase.channel_actions, { action_id: d.action_id, channel: d.channel, objective: null, strategy: null, action_notes: null, budget: null, budget_period: null, start_date: null, end_date: null, assets: [] }],
+        channel_actions: [...phase.channel_actions, { action_id: d.action_id, channel: d.channel, objective: null, strategy: null, action_notes: null, budget: null, budget_period: null, start_date: null, end_date: null, assets: [], linked_platform_campaigns: null }],
       })
       setNewChannel(''); setAddingChannel(false)
     }
@@ -1275,7 +1457,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     defaultValue={campaign.budget_monthly ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_monthly: e.target.value ? Number(e.target.value) : null })}
                     placeholder="monthly"
-                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none"
+                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                   />
                   <span className="paragraph-xs text-quaternary">/mo ·</span>
                   <input
@@ -1283,7 +1465,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     defaultValue={campaign.budget_total ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_total: e.target.value ? Number(e.target.value) : null })}
                     placeholder="total"
-                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none"
+                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                   />
                   <span className="paragraph-xs text-quaternary">total</span>
                 </div>
