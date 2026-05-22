@@ -1150,25 +1150,31 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               <div className="flex items-start justify-between gap-2">
                 {/* Title + dropdown */}
                 <div className="relative min-w-0 flex-1" ref={dropdownRef}>
-                  <button
-                    className="flex items-center gap-1.5 text-left"
-                    onClick={() => campaignList.length > 1 && setDropdownOpen(!dropdownOpen)}
-                  >
+                  <div className="flex items-center gap-1.5">
                     {currentIsPrimary && (
                       <svg className="w-3.5 h-3.5 text-utility-warning-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
                     )}
-                    <span className="label-md text-primary truncate">{campaign.campaign_name}</span>
+                    <EditableText
+                      value={campaign.campaign_name}
+                      onSave={(v) => v.trim() && handlePatchCampaign({ campaign_name: v.trim() })}
+                      className="label-md text-primary"
+                    />
                     {campaignList.length > 1 && (
-                      <svg className={`w-3.5 h-3.5 text-tertiary shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <button onClick={() => setDropdownOpen(!dropdownOpen)}>
+                        <svg className={`w-3.5 h-3.5 text-tertiary shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                     )}
-                  </button>
-                  {campaign.client_name && (
-                    <p className="paragraph-sm text-tertiary mt-0.5">{campaign.client_name}</p>
-                  )}
+                  </div>
+                  <EditableText
+                    value={campaign.client_name ?? ''}
+                    onSave={(v) => handlePatchCampaign({ client_name: v.trim() || null })}
+                    className="paragraph-sm text-tertiary mt-0.5"
+                    placeholder="Client name"
+                  />
                   {/* Dropdown */}
                   {dropdownOpen && campaignList.length > 1 && (
                     <div className="absolute top-full left-0 mt-1.5 bg-primary border border-tertiary rounded-xl shadow-lg z-20 min-w-52 max-w-72 overflow-hidden">
@@ -1239,19 +1245,57 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <span className="paragraph-xs text-tertiary">
-                  {formatDate(campaign.start_date)} – {formatDate(campaign.end_date)}
-                </span>
-                {campaign.budget_total && (
-                  <span className="paragraph-xs text-tertiary">
-                    {formatBudget(campaign.budget_total, campaign.budget_currency)} total
-                    {campaign.budget_monthly ? ` · ${formatBudget(campaign.budget_monthly, campaign.budget_currency)}/mo` : ''}
-                  </span>
-                )}
-                {campaign.platform_filter && (
-                  <span className="paragraph-xs text-tertiary">Filter: {campaign.platform_filter}</span>
-                )}
+              {/* Editable dates row */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    defaultValue={campaign.start_date ?? ''}
+                    onBlur={(e) => e.target.value && handlePatchCampaign({ start_date: e.target.value })}
+                    className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer"
+                  />
+                  <span className="paragraph-xs text-quaternary">→</span>
+                  <input
+                    type="date"
+                    defaultValue={campaign.end_date ?? ''}
+                    onBlur={(e) => e.target.value && handlePatchCampaign({ end_date: e.target.value })}
+                    className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={campaign.budget_currency ?? 'ZAR'}
+                    onChange={(e) => handlePatchCampaign({ budget_currency: e.target.value })}
+                    className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary outline-none cursor-pointer"
+                  >
+                    {['ZAR', 'USD', 'GBP', 'EUR'].map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                  <input
+                    type="number"
+                    defaultValue={campaign.budget_monthly ?? ''}
+                    onBlur={(e) => handlePatchCampaign({ budget_monthly: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="monthly"
+                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none"
+                  />
+                  <span className="paragraph-xs text-quaternary">/mo ·</span>
+                  <input
+                    type="number"
+                    defaultValue={campaign.budget_total ?? ''}
+                    onBlur={(e) => handlePatchCampaign({ budget_total: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="total"
+                    className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none"
+                  />
+                  <span className="paragraph-xs text-quaternary">total</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="paragraph-xs text-quaternary">Filter:</span>
+                  <EditableText
+                    value={campaign.platform_filter ?? ''}
+                    onSave={(v) => handlePatchCampaign({ platform_filter: v.trim() || null })}
+                    className="paragraph-xs text-tertiary"
+                    placeholder="not set"
+                  />
+                </div>
               </div>
 
               {campaign.channels && campaign.channels.length > 0 && (
