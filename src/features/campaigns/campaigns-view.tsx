@@ -931,11 +931,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     }
   }
 
-  const handleBuildWithMia = () => {
-    try { sessionStorage.setItem('mia_prefill_prompt', 'I want to build a RACE campaign template for a new client') } catch { /* ignore */ }
-    onBack()
-  }
-
   const handleChatSend = useCallback(async (message?: string) => {
     const text = (message ?? chatInput).trim()
     if (!text || chatLoading || !sessionId) return
