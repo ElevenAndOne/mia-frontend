@@ -5,6 +5,7 @@ import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
 import { usePlugins } from '../plugins/hooks/use-plugins'
+import { sendChatMessage } from '../chat/services/chat-service'
 
 // ── Campaign detail cache ──────────────────────────────────────────────────
 const detailCache = new Map<string, CampaignDetail>()
@@ -711,9 +712,15 @@ function PhaseDetail({
 interface CampaignsViewProps { onBack: () => void }
 
 export function CampaignsView({ onBack }: CampaignsViewProps) {
-  const { sessionId, activeWorkspace } = useSession()
+  const { sessionId, activeWorkspace, user } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const { isEnabled: isPluginEnabled } = usePlugins()
+
+  // Inline chat (empty state)
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatBottomRef = useRef<HTMLDivElement>(null)
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [campaignList, setCampaignList] = useState<CampaignSummary[]>([])
@@ -929,6 +936,46 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     onBack()
   }
 
+  const handleChatSend = useCallback(async (message?: string) => {
+    const text = (message ?? chatInput).trim()
+    if (!text || chatLoading || !sessionId) return
+    setChatInput('')
+    const userMsg = { role: 'user' as const, content: text }
+    setChatMessages((prev) => [...prev, userMsg])
+    setChatLoading(true)
+    setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    try {
+      const history = [...chatMessages, userMsg]
+      const result = await sendChatMessage({
+        message: text,
+        session_id: sessionId,
+        user_id: user?.google_user_id ?? '',
+        date_range: '30_days',
+        conversation_history: history.slice(-10),
+      })
+      const reply = result.claude_response ?? 'Something went wrong. Try again.'
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      // After Mia responds, poll to see if a campaign was just saved
+      if (tenantId) {
+        setTimeout(async () => {
+          const r = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
+          if (r.ok) {
+            const list = await r.json()
+            if (list.length > 0) {
+              setCampaignList(list)
+              await loadCampaignDetail(list[0].campaign_id)
+            }
+          }
+        }, 1000)
+      }
+    } catch {
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
+    } finally {
+      setChatLoading(false)
+    }
+  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user])
+
   // ClickUp helpers
   const invokeClickUp = async (action: string, data: Record<string, string> = {}) => {
     const res = await apiFetch(`/api/tenants/${tenantId}/plugins/clickup/invoke/${action}`, {
@@ -1004,29 +1051,78 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state — inline Mia chat */}
         {!loading && !detailLoading && !error && !campaign && (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
-              </svg>
+          <div className="flex flex-col h-full min-h-0">
+            {/* Intro */}
+            {chatMessages.length === 0 && (
+              <div className="text-center pt-12 pb-6 px-6">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z" />
+                  </svg>
+                </div>
+                <p className="label-md text-primary mb-1">No campaigns yet</p>
+                <p className="paragraph-sm text-tertiary mb-6">Ask Mia to build your first RACE campaign template.</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {['Build a campaign for Dutoit Shallots', 'Build a campaign for Onvlee', 'Build a new RACE template'].map((s) => (
+                    <button key={s} onClick={() => handleChatSend(s)}
+                      className="px-3 py-1.5 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Chat messages */}
+            {chatMessages.length > 0 && (
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                {chatMessages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm whitespace-pre-wrap leading-relaxed ${
+                      m.role === 'user'
+                        ? 'bg-brand-solid text-primary-onbrand'
+                        : 'bg-secondary text-primary border border-tertiary'
+                    }`}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
+                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
+                  placeholder="Ask Mia to build a campaign for..."
+                  className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary"
+                  disabled={chatLoading}
+                />
+                <button
+                  onClick={() => handleChatSend()}
+                  disabled={chatLoading || !chatInput.trim()}
+                  className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40"
+                >
+                  Send
+                </button>
+              </div>
             </div>
-            <p className="label-md text-primary mb-1">No active campaign</p>
-            <p className="paragraph-sm text-tertiary mb-4">Build a RACE campaign template with Mia or upload an existing brief.</p>
-            <button
-              onClick={handleBuildWithMia}
-              className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors"
-            >
-              Build with Mia →
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-3 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary transition-colors"
-            >
-              Refresh
-            </button>
           </div>
         )}
 
