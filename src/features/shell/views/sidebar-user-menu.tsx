@@ -17,6 +17,7 @@ import {
   pinConversation,
 } from '../../chat/services/chat-service'
 import type { RecentConversation } from '../../chat/services/chat-service'
+import { usePlugins } from '../../plugins/hooks/use-plugins'
 
 type MenuView = 'main' | 'chats'
 
@@ -36,6 +37,7 @@ interface SidebarUserMenuProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onReportsClick?: () => void
+  onCreativeStudioClick?: () => void
   onHelpClick?: () => void
   onNewWorkspace?: () => void
   onLogout: () => void
@@ -46,10 +48,12 @@ export const SidebarUserMenu = ({
   onIntegrationsClick,
   onCampaignsClick,
   onReportsClick,
+  onCreativeStudioClick,
   onHelpClick,
   onNewWorkspace,
   onLogout,
 }: SidebarUserMenuProps) => {
+  const { isEnabled } = usePlugins()
   const navigate = useNavigate()
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
@@ -262,6 +266,29 @@ export const SidebarUserMenu = ({
                 >
                   <Icon.target_01 size={18} className="text-tertiary" />
                   <span>Campaigns</span>
+                </button>
+              )}
+              {onCreativeStudioClick && isEnabled('mia-creative-studio') && (
+                <button
+                  onClick={() => {
+                    handleClose()
+                    onCreativeStudioClick()
+                  }}
+                  className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+                  role="menuitem"
+                >
+                  <svg
+                    width={18}
+                    height={18}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="text-tertiary"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                  </svg>
+                  <span>Creative Studio</span>
                 </button>
               )}
               {onReportsClick && (

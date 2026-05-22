@@ -23,6 +23,7 @@ const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
+const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
 
 const LazyLoadSpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -238,6 +239,17 @@ export const AppRoutes = ({
         />
         {/* backward-compat redirect */}
         <Route path="/insights/predict" element={<Navigate to="/insights/strategise" replace />} />
+
+        <Route
+          path="/creative-studio"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <CreativeStudioPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
 
         {/* 404 Not Found - catch-all route */}
         <Route path="*" element={<NotFoundPage />} />
