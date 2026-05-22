@@ -394,7 +394,7 @@ function CampaignPickerModal({
 }
 
 function ChannelActionCard({
-  action, campaignId, tenantId, sessionId, onUpdate, onDelete,
+  action, campaignId, tenantId, sessionId, onUpdate, onDelete, onOpenPicker,
 }: {
   action: ChannelAction
   campaignId: string
@@ -402,10 +402,10 @@ function ChannelActionCard({
   sessionId: string
   onUpdate: (updated: ChannelAction) => void
   onDelete: (actionId: string) => void
+  onOpenPicker?: (actionId: string, channel: string, current: LinkedCampaign[]) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [assetsExpanded, setAssetsExpanded] = useState(false)
-  const [showPicker, setShowPicker] = useState(false)
 
   const patch = async (fields: Record<string, unknown>) => {
     const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
@@ -454,30 +454,7 @@ function ChannelActionCard({
   const hasPicker = PICKER_CHANNELS.has(action.channel)
   const linked = action.linked_platform_campaigns ?? []
 
-  const savePicker = async (selected: LinkedCampaign[]) => {
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
-      method: 'PATCH',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ linked_platform_campaigns: selected }),
-    })
-    if (res.ok) {
-      onUpdate({ ...action, linked_platform_campaigns: selected })
-    }
-    setShowPicker(false)
-  }
-
   return (
-    <>
-    {showPicker && (
-      <CampaignPickerModal
-        channel={action.channel}
-        tenantId={tenantId}
-        sessionId={sessionId}
-        current={linked}
-        onSave={savePicker}
-        onClose={() => setShowPicker(false)}
-      />
-    )}
     <div className="rounded-lg border border-tertiary overflow-hidden">
       {/* Header row */}
       <div className="flex items-center gap-2 px-3 py-2.5 bg-secondary cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -508,7 +485,7 @@ function ChannelActionCard({
         <div className="flex-1" />
         {hasPicker && (
           <button
-            onClick={(e) => { e.stopPropagation(); setShowPicker(true) }}
+            onClick={(e) => { e.stopPropagation(); onOpenPicker?.(action.action_id, action.channel, linked) }}
             className={`paragraph-xs shrink-0 px-2 py-0.5 rounded border transition-colors ${linked.length > 0 ? 'text-utility-brand-600 border-utility-brand-300 hover:bg-utility-brand-50' : 'text-quaternary border-tertiary hover:text-secondary hover:border-secondary'}`}
             title="Link platform campaigns for actuals tracking"
           >
@@ -678,14 +655,13 @@ function ChannelActionCard({
         </div>
       )}
     </div>
-    </>
   )
 }
 
 function PhaseDetail({
   phase, campaignId, tenantId, sessionId,
   hubspotLists, hubspotListsMessage, savingKpiId,
-  onLinkHubspotList, onPhaseUpdate,
+  onLinkHubspotList, onPhaseUpdate, onOpenPicker,
 }: {
   phase: Phase
   campaignId: string
@@ -696,6 +672,7 @@ function PhaseDetail({
   savingKpiId: number | null
   onLinkHubspotList: (kpiId: number, listName: string | null) => void
   onPhaseUpdate: (updated: Phase) => void
+  onOpenPicker: (actionId: string, channel: string, current: LinkedCampaign[]) => void
 }) {
   const [addingKpi, setAddingKpi] = useState(false)
   const [newKpiName, setNewKpiName] = useState('')
@@ -869,6 +846,7 @@ function PhaseDetail({
               sessionId={sessionId}
               onUpdate={handleActionUpdate}
               onDelete={handleActionDelete}
+              onOpenPicker={onOpenPicker}
             />
           ))}
         </div>
@@ -926,6 +904,45 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [hubspotLists, setHubspotLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [hubspotListsMessage, setHubspotListsMessage] = useState<string | null>(null)
   const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
+
+  // Campaign picker (modal lives here so it renders outside any scroll container)
+  const [pickerTarget, setPickerTarget] = useState<{ actionId: string; channel: string; current: LinkedCampaign[] } | null>(null)
+
+  const handleOpenPicker = useCallback((actionId: string, channel: string, current: LinkedCampaign[]) => {
+    setPickerTarget({ actionId, channel, current })
+  }, [])
+
+  const handleClosePicker = useCallback(() => setPickerTarget(null), [])
+
+  const handleSavePicker = useCallback(async (selected: LinkedCampaign[]) => {
+    if (!pickerTarget || !sessionId || !tenantId || !campaign) return
+    const res = await apiFetch(
+      `/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/channel_actions/${pickerTarget.actionId}`,
+      {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linked_platform_campaigns: selected }),
+      }
+    )
+    if (res.ok) {
+      const actionId = pickerTarget.actionId
+      setCampaign((prev) => {
+        if (!prev) return prev
+        const updated = {
+          ...prev,
+          phases: prev.phases.map((ph) => ({
+            ...ph,
+            channel_actions: ph.channel_actions.map((ca) =>
+              ca.action_id === actionId ? { ...ca, linked_platform_campaigns: selected } : ca
+            ),
+          })),
+        }
+        setCachedDetail(prev.campaign_id, updated)
+        return updated
+      })
+    }
+    setPickerTarget(null)
+  }, [pickerTarget, sessionId, tenantId, campaign])
 
   // ClickUp
   const [showClickUpModal, setShowClickUpModal] = useState(false)
@@ -1563,6 +1580,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     savingKpiId={savingKpiId}
                     onLinkHubspotList={handleLinkHubspotList}
                     onPhaseUpdate={handlePhaseUpdate}
+                    onOpenPicker={handleOpenPicker}
                   />
                 )}
               </div>
@@ -1570,6 +1588,18 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </>
         )}
       </div>
+
+      {/* Campaign Picker Modal — rendered here so it's outside any scroll container */}
+      {pickerTarget && tenantId && sessionId && (
+        <CampaignPickerModal
+          channel={pickerTarget.channel}
+          tenantId={tenantId}
+          sessionId={sessionId}
+          current={pickerTarget.current}
+          onSave={handleSavePicker}
+          onClose={handleClosePicker}
+        />
+      )}
 
       {/* ClickUp Push Modal — unchanged */}
       {showClickUpModal && campaign && (
