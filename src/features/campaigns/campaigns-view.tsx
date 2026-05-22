@@ -454,45 +454,45 @@ function ChannelActionCard({
 
   return (
     <div className="rounded-lg border border-tertiary overflow-hidden">
-      {/* Header row */}
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-secondary cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>
-        {action.budget != null && (
-          <span className="paragraph-xs text-tertiary shrink-0">
-            {formatBudget(action.budget, 'R')}{action.budget_period === 'monthly' ? '/mo' : ' total'}
-          </span>
-        )}
-        {(action.start_date || action.end_date) && (
-          <span className="paragraph-xs text-tertiary shrink-0">
-            {formatDate(action.start_date)} – {formatDate(action.end_date)}
-          </span>
-        )}
-        {/* Linked campaign chips */}
-        {linked.length > 0 && (
-          <div className="flex flex-wrap gap-1 max-w-[40%]">
-            {linked.slice(0, 2).map((c) => (
-              <span key={c.id} className="paragraph-xs text-quaternary bg-tertiary px-1.5 py-0.5 rounded truncate max-w-[120px]" title={c.name}>
-                {c.name}
-              </span>
-            ))}
-            {linked.length > 2 && (
-              <span className="paragraph-xs text-quaternary">+{linked.length - 2}</span>
-            )}
-          </div>
-        )}
-        <div className="flex-1" />
+      {/* Header — split so Link button is NOT inside the expand click zone */}
+      <div className="flex items-center bg-secondary">
+        {/* Left: clickable expansion area */}
+        <div className="flex items-center gap-2 px-3 py-2.5 flex-1 cursor-pointer min-w-0" onClick={() => setExpanded(!expanded)}>
+          <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>
+          {action.budget != null && (
+            <span className="paragraph-xs text-tertiary shrink-0">
+              {formatBudget(action.budget, 'R')}{action.budget_period === 'monthly' ? '/mo' : ' total'}
+            </span>
+          )}
+          {(action.start_date || action.end_date) && (
+            <span className="paragraph-xs text-tertiary shrink-0">
+              {formatDate(action.start_date)} – {formatDate(action.end_date)}
+            </span>
+          )}
+          {linked.length > 0 && (
+            <div className="flex flex-wrap gap-1 max-w-[40%]">
+              {linked.slice(0, 2).map((c) => (
+                <span key={c.id} className="paragraph-xs text-quaternary bg-tertiary px-1.5 py-0.5 rounded truncate max-w-[120px]" title={c.name}>
+                  {c.name}
+                </span>
+              ))}
+              {linked.length > 2 && <span className="paragraph-xs text-quaternary">+{linked.length - 2}</span>}
+            </div>
+          )}
+          <svg className={`w-3.5 h-3.5 text-quaternary transition-transform shrink-0 ml-auto ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        {/* Right: Link button — separate from expand zone, no stopPropagation needed */}
         {hasPicker && (
           <button
-            onClick={(e) => { e.stopPropagation(); onOpenPicker?.(action.action_id, action.channel, linked) }}
-            className={`paragraph-xs shrink-0 px-2 py-0.5 rounded border transition-colors ${linked.length > 0 ? 'text-utility-brand-600 border-utility-brand-300 hover:bg-utility-brand-50' : 'text-quaternary border-tertiary hover:text-secondary hover:border-secondary'}`}
+            onClick={() => onOpenPicker?.(action.action_id, action.channel, linked)}
+            className={`paragraph-xs shrink-0 px-3 py-2.5 border-l border-tertiary transition-colors ${linked.length > 0 ? 'text-utility-brand-600 hover:bg-utility-brand-50' : 'text-quaternary hover:text-secondary hover:bg-secondary'}`}
             title="Link platform campaigns for actuals tracking"
           >
             {linked.length > 0 ? `${linked.length} linked` : 'Link'}
           </button>
         )}
-        <svg className={`w-3.5 h-3.5 text-quaternary transition-transform shrink-0 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
       </div>
 
       {expanded && (
