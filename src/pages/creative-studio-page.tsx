@@ -11,6 +11,7 @@ const CreativeStudioPage = () => {
     onIntegrationsClick,
     onCampaignsClick,
     onReportsClick,
+    onCreativeStudioClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -22,11 +23,12 @@ const CreativeStudioPage = () => {
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
       onReportsClick={onReportsClick}
+      onCreativeStudioClick={onCreativeStudioClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
+      <AnimatedPageWrapper preset="slideUp" className="w-full h-full overflow-y-auto">
         <CreativeStudioView onBack={() => navigate('/home')} />
       </AnimatedPageWrapper>
     </AppShell>
