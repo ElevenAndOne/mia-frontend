@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Wand2, Video as VideoIcon, Upload, Loader2,
-  Play, Pause, Download, ChevronDown, Camera, Film,
+  Wand2, Upload,
+  Play, Pause, ChevronDown, Camera, Film,
   Zap, Layers, Palette, Sun, Moon, Cloud, Sunrise,
   Grid3x3, Monitor, Clock, Copy,
   RotateCw, Circle, Split, Move,

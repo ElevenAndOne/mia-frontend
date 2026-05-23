@@ -144,7 +144,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
           setProgress(100)
           const rawUrls = (job.output_urls ?? (job.output_url ? [job.output_url] : []))
           const urls: { url: string }[] = rawUrls.filter((u): u is string => !!u).map(u => ({ url: u }))
-          setGeneratedImages(urls.length ? urls : [{ url: job.output_url }])
+          setGeneratedImages(urls.length ? urls : job.output_url ? [{ url: job.output_url }] : [])
           setIsGenerating(false)
           setJobId(null)
         } else if (job.status === 'failed') {
