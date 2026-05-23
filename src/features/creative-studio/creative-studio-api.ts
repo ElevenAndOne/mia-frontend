@@ -27,17 +27,30 @@ export interface GenerateParams {
   type: 'image' | 'video'
   model: string
   prompt: string
+  // video-specific
+  duration?: number
+  aspect_ratio?: string
+  quality?: string
+  camera_movement?: string | null
+  vfx_template?: string | null
+  // image-specific
+  num_images?: number
+  // shared
+  reference_images?: string[]
+  style_presets?: Record<string, any>
+  iterative_edit?: boolean
+  base_image?: string
+  // optional tagging
   client_name?: string
-  optimize?: boolean
   campaign_id?: string
   phase_id?: string
-  params?: Record<string, unknown>
 }
 
 export interface GenerateJob {
   job_id: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   output_urls?: string[]
+  output_url?: string
   optimized_prompt?: string
   error_message?: string
   type?: string
@@ -54,6 +67,9 @@ export interface CreativeAsset {
   media_type: 'image' | 'video'
   cdn_url: string
   filename?: string
+  prompt?: string
+  model?: string
+  status: 'completed' | 'processing' | 'failed'
   campaign_id?: string
   created_at: string
 }
