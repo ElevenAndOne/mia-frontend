@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { EXTERNAL_URLS } from '../../constants/external-urls'
 import { StorageKey } from '../../constants/storage-keys'
 import { useSession } from '../../contexts/session-context'
@@ -36,6 +37,7 @@ interface Integration {
 }
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
+  const navigate = useNavigate()
   const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } =
     useSession()
   const { showToast } = useToast()
@@ -79,6 +81,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [csRunwayKey, setCsRunwayKey] = useState('')
   const [csSubmitting, setCsSubmitting] = useState(false)
   const [csError, setCsError] = useState('')
+  const [csJustEnabled, setCsJustEnabled] = useState(false)
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -546,10 +549,6 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   }
 
   const handleCreativeStudioEnable = async () => {
-    if (!csGoogleKey.trim() && !csFalKey.trim()) {
-      setCsError('Enter at least one API key (fal.ai or Google)')
-      return
-    }
     if (!activeWorkspace?.tenant_id) {
       setCsError('No active workspace')
       return
@@ -574,14 +573,47 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         const err = await res.json()
         throw new Error(err.detail || 'Failed to enable Creative Studio')
       }
-      setShowCreativeStudioModal(false)
       setCsFalKey('')
       setCsRunwayKey('')
       setCsGoogleKey('')
       invalidatePlugins()
-      showToast('success', 'Creative Studio enabled')
+      setCsJustEnabled(true)
     } catch (err) {
       setCsError(err instanceof Error ? err.message : 'Failed to enable Creative Studio')
+    } finally {
+      setCsSubmitting(false)
+    }
+  }
+
+  const handleCreativeStudioUpdate = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setCsSubmitting(true)
+    setCsError('')
+    try {
+      const config: Record<string, string> = {}
+      if (csFalKey.trim())    config.fal_api_key    = csFalKey.trim()
+      if (csRunwayKey.trim()) config.runway_api_key  = csRunwayKey.trim()
+      if (csGoogleKey.trim()) config.google_api_key  = csGoogleKey.trim()
+
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-creative-studio/enable`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId || '' },
+          body: JSON.stringify({ version: '1.0.0', config }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to update Creative Studio')
+      }
+      setCsFalKey('')
+      setCsRunwayKey('')
+      setCsGoogleKey('')
+      invalidatePlugins()
+      showToast('success', 'API keys updated')
+    } catch (err) {
+      setCsError(err instanceof Error ? err.message : 'Failed to update keys')
     } finally {
       setCsSubmitting(false)
     }
@@ -604,6 +636,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         throw new Error(err.detail || 'Failed to disable Creative Studio')
       }
       setShowCreativeStudioModal(false)
+      setCsJustEnabled(false)
       invalidatePlugins()
       showToast('success', 'Creative Studio disabled')
     } catch (err) {
@@ -1679,101 +1712,98 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </svg>
                   </div>
                   <h2 className="title-h6 text-primary">
-                    {isPluginEnabled('mia-creative-studio') ? 'Manage Creative Studio' : 'Enable Creative Studio'}
+                    {csJustEnabled ? 'Creative Studio enabled!' : isPluginEnabled('mia-creative-studio') ? 'Manage Creative Studio' : 'Enable Creative Studio'}
                   </h2>
                 </div>
-                <p className="paragraph-sm text-tertiary">
-                  {isPluginEnabled('mia-creative-studio')
-                    ? 'Creative Studio is enabled. Generate AI images and videos from the Creative Studio page.'
-                    : 'Enter your API keys to enable AI image and video generation for this workspace.'}
-                </p>
               </div>
 
-              {isPluginEnabled('mia-creative-studio') ? (
-                <div className="mb-4">
-                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {/* Success CTA — shown immediately after enabling */}
+              {csJustEnabled ? (
+                <div className="mb-6">
+                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <svg className="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <p className="subheading-md text-success">Creative Studio connected</p>
+                      <p className="subheading-md text-success">Ready to generate</p>
                     </div>
+                    <p className="paragraph-xs text-tertiary">AI image and video generation is now available for this workspace.</p>
+                  </div>
+                  <button
+                    onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false); navigate('/creative-studio') }}
+                    className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-2"
+                  >
+                    Visit Creative Studio →
+                  </button>
+                  <button
+                    onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false) }}
+                    className="w-full px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : isPluginEnabled('mia-creative-studio') ? (
+                /* Manage state */
+                <div className="mb-4">
+                  <button
+                    onClick={() => { setShowCreativeStudioModal(false); navigate('/creative-studio') }}
+                    className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-4"
+                  >
+                    Open Creative Studio →
+                  </button>
+                  <p className="subheading-md text-secondary mb-3">Update API keys</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block paragraph-xs text-quaternary mb-1">fal.ai API Key <span className="text-quaternary">(Veo 3.1, FLUX, Kling)</span></label>
+                      <input type="password" value={csFalKey} onChange={(e) => setCsFalKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                    <div>
+                      <label className="block paragraph-xs text-quaternary mb-1">Runway API Key <span className="text-quaternary">(Runway Gen-4.5 direct)</span></label>
+                      <input type="password" value={csRunwayKey} onChange={(e) => setCsRunwayKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                    <div>
+                      <label className="block paragraph-xs text-quaternary mb-1">Google API Key <span className="text-quaternary">(Nano Banana 2)</span></label>
+                      <input type="password" value={csGoogleKey} onChange={(e) => setCsGoogleKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                  </div>
+                  {csError && <p className="paragraph-xs text-error mt-2">{csError}</p>}
+                  <div className="flex gap-3 mt-4">
+                    <button onClick={() => { setShowCreativeStudioModal(false); setCsError('') }} disabled={csSubmitting} className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Close</button>
+                    <button onClick={handleCreativeStudioUpdate} disabled={csSubmitting} className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50">
+                      {csSubmitting ? 'Saving...' : 'Save Keys'}
+                    </button>
+                    <button onClick={handleCreativeStudioDisable} disabled={csSubmitting} className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50">
+                      {csSubmitting ? '...' : 'Disable'}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 mb-4">
-                  <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mb-2">
-                    <p className="paragraph-xs text-utility-info-700">At least one key is required. GPT Image 2 works with your existing OpenAI key — no extra keys needed for basic use.</p>
+                /* Enable state */
+                <div>
+                  <p className="paragraph-sm text-tertiary mb-4">Enter your API keys to enable AI image and video generation. All fields are optional — server keys are used as fallback.</p>
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="block subheading-md text-secondary mb-1">fal.ai API Key <span className="paragraph-xs text-quaternary">(Veo 3.1, FLUX, Kling)</span></label>
+                      <input type="password" value={csFalKey} onChange={(e) => setCsFalKey(e.target.value)} placeholder="dec93678-..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                    <div>
+                      <label className="block subheading-md text-secondary mb-1">Runway API Key <span className="paragraph-xs text-quaternary">(Runway Gen-4.5 direct)</span></label>
+                      <input type="password" value={csRunwayKey} onChange={(e) => setCsRunwayKey(e.target.value)} placeholder="key_..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                    <div>
+                      <label className="block subheading-md text-secondary mb-1">Google API Key <span className="paragraph-xs text-quaternary">(Nano Banana 2)</span></label>
+                      <input type="password" value={csGoogleKey} onChange={(e) => setCsGoogleKey(e.target.value)} placeholder="AIzaSy..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                    </div>
+                    {csError && <p className="paragraph-xs text-error">{csError}</p>}
                   </div>
-                  <div>
-                    <label className="block subheading-md text-secondary mb-1">
-                      fal.ai API Key <span className="paragraph-xs text-quaternary">(Veo 3.1, FLUX, Kling, Runway fallback)</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={csFalKey}
-                      onChange={(e) => setCsFalKey(e.target.value)}
-                      placeholder="dec93678-..."
-                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
-                      disabled={csSubmitting}
-                    />
+                  <div className="flex gap-3">
+                    <button onClick={() => { setShowCreativeStudioModal(false); setCsError('') }} disabled={csSubmitting} className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Cancel</button>
+                    <button onClick={handleCreativeStudioEnable} disabled={csSubmitting} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50">
+                      {csSubmitting ? 'Enabling...' : 'Enable'}
+                    </button>
                   </div>
-                  <div>
-                    <label className="block subheading-md text-secondary mb-1">
-                      Runway API Key <span className="paragraph-xs text-quaternary">(Runway Gen-4.5 direct)</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={csRunwayKey}
-                      onChange={(e) => setCsRunwayKey(e.target.value)}
-                      placeholder="key_..."
-                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
-                      disabled={csSubmitting}
-                    />
-                  </div>
-                  <div>
-                    <label className="block subheading-md text-secondary mb-1">
-                      Google API Key <span className="paragraph-xs text-quaternary">(Nano Banana 2 / Gemini)</span>
-                    </label>
-                    <input
-                      type="password"
-                      value={csGoogleKey}
-                      onChange={(e) => setCsGoogleKey(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
-                      disabled={csSubmitting}
-                    />
-                  </div>
-                  {csError && <p className="paragraph-xs text-error">{csError}</p>}
                 </div>
               )}
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowCreativeStudioModal(false); setCsError('') }}
-                  disabled={csSubmitting}
-                  className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
-                >
-                  {isPluginEnabled('mia-creative-studio') ? 'Close' : 'Cancel'}
-                </button>
-                {isPluginEnabled('mia-creative-studio') ? (
-                  <button
-                    onClick={handleCreativeStudioDisable}
-                    disabled={csSubmitting}
-                    className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
-                  >
-                    {csSubmitting ? 'Disabling...' : 'Disable'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCreativeStudioEnable}
-                    disabled={csSubmitting || (!csFalKey.trim() && !csGoogleKey.trim())}
-                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {csSubmitting ? 'Enabling...' : 'Enable'}
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         )}
