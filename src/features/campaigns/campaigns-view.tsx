@@ -951,7 +951,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   // ClickUp
   const [showClickUpModal, setShowClickUpModal] = useState(false)
   const [pushingToClickUp, setPushingToClickUp] = useState(false)
-  const [clickUpResult, setClickUpResult] = useState<{ action: string; tasks_created?: number; comments_posted?: number; tasks?: { task_id?: string; task_url?: string }[] } | null>(null)
+  const [clickUpResult, setClickUpResult] = useState<{ tasks_created?: number; tasks_skipped?: number; errors?: { type: string; error: string }[]; tasks?: { task_id?: string; task_url?: string }[] } | null>(null)
   const [clickUpError, setClickUpError] = useState('')
   const [cuSpaces, setCuSpaces] = useState<{ id: string; name: string }[]>([])
   const [cuFolders, setCuFolders] = useState<{ id: string; name: string }[]>([])
@@ -1621,9 +1621,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               </div>
               <p className="paragraph-sm text-tertiary">
                 {clickUpResult
-                  ? clickUpResult.action === 'tasks_created'
-                    ? `${clickUpResult.tasks_created} tasks created in ClickUp — one per channel action.`
-                    : `${clickUpResult.comments_posted} tasks updated with a new comment.`
+                  ? `${clickUpResult.tasks_created ?? 0} task${(clickUpResult.tasks_created ?? 0) !== 1 ? 's' : ''} created in ClickUp${(clickUpResult.tasks_skipped ?? 0) > 0 ? `, ${clickUpResult.tasks_skipped} already existed` : ''}.`
                   : `Push channel actions for "${campaign.campaign_name}" to ClickUp as tasks.`}
               </p>
             </div>
@@ -1634,9 +1632,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="subheading-md text-success">
-                    {clickUpResult.action === 'tasks_created'
-                      ? `${clickUpResult.tasks_created} task${(clickUpResult.tasks_created ?? 0) !== 1 ? 's' : ''} created`
-                      : `${clickUpResult.comments_posted} task${(clickUpResult.comments_posted ?? 0) !== 1 ? 's' : ''} updated`}
+                    {`${clickUpResult.tasks_created ?? 0} task${(clickUpResult.tasks_created ?? 0) !== 1 ? 's' : ''} created`}
+                    {(clickUpResult.tasks_skipped ?? 0) > 0 && ` · ${clickUpResult.tasks_skipped} skipped`}
                   </p>
                 </div>
                 {clickUpResult.tasks?.[0]?.task_url && (
