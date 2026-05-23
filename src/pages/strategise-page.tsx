@@ -10,6 +10,8 @@ const StrategisePage = () => {
     onNewWorkspace,
     onIntegrationsClick,
     onCampaignsClick,
+    onReportsClick,
+    onCreativeStudioClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -20,6 +22,8 @@ const StrategisePage = () => {
       onNewWorkspace={onNewWorkspace}
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
+      onReportsClick={onReportsClick}
+      onCreativeStudioClick={onCreativeStudioClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}

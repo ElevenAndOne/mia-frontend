@@ -8,6 +8,7 @@ const ChatPage = () => {
     onIntegrationsClick,
     onCampaignsClick,
     onReportsClick,
+    onCreativeStudioClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
@@ -19,6 +20,7 @@ const ChatPage = () => {
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
       onReportsClick={onReportsClick}
+      onCreativeStudioClick={onCreativeStudioClick}
       onHelpClick={onHelpClick}
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
