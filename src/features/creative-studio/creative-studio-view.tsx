@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Video, Image, BookOpen, Layers } from 'lucide-react'
 import { useSession } from '../../contexts/session-context'
 import { AnimatedBackground } from './creative-studio-shared'
+
 import CreateTab from './create-tab'
 import ImagineTab from './imagine-tab'
 import LibraryTab from './library-tab'
@@ -21,12 +22,12 @@ interface Props {
 
 export function CreativeStudioView({ onBack }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('create')
-  const { session } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
 
-  const tenantId = session?.active_tenant_id ?? ''
-  const sessionId = session?.session_id ?? ''
+  const tenantId = activeWorkspace?.tenant_id ?? ''
+  const sid = sessionId ?? ''
 
-  if (!tenantId || !sessionId) {
+  if (!tenantId || !sid) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-slate-400">Session not available</p>
@@ -99,9 +100,9 @@ export function CreativeStudioView({ onBack }: Props) {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
           >
-            {activeTab === 'create' && <CreateTab tenantId={tenantId} sessionId={sessionId} />}
-            {activeTab === 'imagine' && <ImagineTab tenantId={tenantId} sessionId={sessionId} />}
-            {activeTab === 'library' && <LibraryTab tenantId={tenantId} sessionId={sessionId} />}
+            {activeTab === 'create' && <CreateTab tenantId={tenantId} sessionId={sid} />}
+            {activeTab === 'imagine' && <ImagineTab tenantId={tenantId} sessionId={sid} />}
+            {activeTab === 'library' && <LibraryTab tenantId={tenantId} sessionId={sid} />}
           </motion.div>
         </AnimatePresence>
       </div>

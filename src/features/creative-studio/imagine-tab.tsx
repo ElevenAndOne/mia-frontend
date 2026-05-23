@@ -142,7 +142,8 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
         if (job.status === 'completed') {
           clearInterval(pollRef.current!)
           setProgress(100)
-          const urls: { url: string }[] = (job.output_urls ?? [job.output_url]).filter(Boolean).map((u: string) => ({ url: u }))
+          const rawUrls = (job.output_urls ?? (job.output_url ? [job.output_url] : []))
+          const urls: { url: string }[] = rawUrls.filter((u): u is string => !!u).map(u => ({ url: u }))
           setGeneratedImages(urls.length ? urls : [{ url: job.output_url }])
           setIsGenerating(false)
           setJobId(null)

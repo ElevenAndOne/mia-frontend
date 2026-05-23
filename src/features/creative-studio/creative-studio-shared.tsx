@@ -539,6 +539,3 @@ export function AnimatedBackground() {
   )
 }
 
-// Re-export icons used by tabs so they don't need to re-import
-export { Loader2, Film, ImageIcon, Download, Maximize2, Sparkles, Camera, Layers, Wand2, Play, Pause, RotateCw, Upload, Trash2 } from 'lucide-react'
-export { VideoIcon }

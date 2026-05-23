@@ -61,7 +61,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
         if (job.status === 'completed') {
           clearInterval(pollRef.current!)
           setProgress(100)
-          const url = job.output_urls?.[0] ?? job.output_url ?? ''
+          const url: string = job.output_urls?.[0] ?? job.output_url ?? ''
           setGeneratedVideo({ url })
           setIsGenerating(false)
           setJobId(null)
@@ -342,8 +342,8 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               ['References', selectedFiles.length],
               vfxTemplate && ['VFX', vfxTemplates.find(v => v.id === vfxTemplate)?.name],
               cameraMovement && ['Camera', cameraMovements.find(c => c.id === cameraMovement)?.name],
-            ].filter(Boolean).map(([label, val]) => (
-              <div key={label as string} className="flex justify-between">
+            ].filter((row): row is [string, string | number] => Array.isArray(row) && row[1] !== undefined).map(([label, val]) => (
+              <div key={label} className="flex justify-between">
                 <span className="text-slate-400">{label}</span>
                 <span className="text-white capitalize">{String(val)}</span>
               </div>

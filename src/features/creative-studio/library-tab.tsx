@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactElement } from 'react'
 import { Download, Trash2, Search, Play, Eye, CheckCircle, Clock, XCircle, MoreVertical, RefreshCw, Sparkles, Video, Image } from 'lucide-react'
 import { creativeStudioApi, type CreativeAsset } from './creative-studio-api'
 
@@ -17,7 +17,7 @@ function StatusBadge({ status }: { status: string }) {
     processing: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     failed:     'bg-red-500/20 text-red-400 border-red-500/30',
   }
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, ReactElement> = {
     completed: <CheckCircle className="w-3 h-3" />,
     processing: <Clock className="w-3 h-3 animate-spin" />,
     failed:    <XCircle className="w-3 h-3" />,
