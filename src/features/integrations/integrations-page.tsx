@@ -72,6 +72,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [clickUpSubmitting, setClickUpSubmitting] = useState(false)
   const [clickUpError, setClickUpError] = useState('')
 
+  // Creative Studio plugin state
+  const [showCreativeStudioModal, setShowCreativeStudioModal] = useState(false)
+  const [csGoogleKey, setCsGoogleKey] = useState('')
+  const [csFalKey, setCsFalKey] = useState('')
+  const [csRunwayKey, setCsRunwayKey] = useState('')
+  const [csSubmitting, setCsSubmitting] = useState(false)
+  const [csError, setCsError] = useState('')
+
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const oauthPollTimerRef = useRef<number | null>(null)
 
@@ -534,6 +542,74 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setClickUpError(err instanceof Error ? err.message : 'Failed to disable ClickUp')
     } finally {
       setClickUpSubmitting(false)
+    }
+  }
+
+  const handleCreativeStudioEnable = async () => {
+    if (!csGoogleKey.trim() && !csFalKey.trim()) {
+      setCsError('Enter at least one API key (fal.ai or Google)')
+      return
+    }
+    if (!activeWorkspace?.tenant_id) {
+      setCsError('No active workspace')
+      return
+    }
+    setCsSubmitting(true)
+    setCsError('')
+    try {
+      const config: Record<string, string> = {}
+      if (csFalKey.trim())    config.fal_api_key    = csFalKey.trim()
+      if (csRunwayKey.trim()) config.runway_api_key  = csRunwayKey.trim()
+      if (csGoogleKey.trim()) config.google_api_key  = csGoogleKey.trim()
+
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-creative-studio/enable`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId || '' },
+          body: JSON.stringify({ version: '1.0.0', config }),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to enable Creative Studio')
+      }
+      setShowCreativeStudioModal(false)
+      setCsFalKey('')
+      setCsRunwayKey('')
+      setCsGoogleKey('')
+      invalidatePlugins()
+      showToast('success', 'Creative Studio enabled')
+    } catch (err) {
+      setCsError(err instanceof Error ? err.message : 'Failed to enable Creative Studio')
+    } finally {
+      setCsSubmitting(false)
+    }
+  }
+
+  const handleCreativeStudioDisable = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setCsSubmitting(true)
+    setCsError('')
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-creative-studio/disable`,
+        {
+          method: 'POST',
+          headers: createSessionHeaders(sessionId),
+        }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to disable Creative Studio')
+      }
+      setShowCreativeStudioModal(false)
+      invalidatePlugins()
+      showToast('success', 'Creative Studio disabled')
+    } catch (err) {
+      setCsError(err instanceof Error ? err.message : 'Failed to disable Creative Studio')
+    } finally {
+      setCsSubmitting(false)
     }
   }
 
@@ -1113,42 +1189,81 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 Add functionality to MIA for your workspace
               </p>
 
-              {/* ClickUp */}
-              <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
-                    <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#7B68EE]/10">
-                      {/* ClickUp logo */}
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <h3 className="subheading-md text-primary truncate">ClickUp</h3>
-                        {isPluginEnabled('clickup') && (
-                          <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
-                            Enabled
-                          </span>
-                        )}
+              <div className="space-y-3">
+                {/* ClickUp */}
+                <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#7B68EE]/10">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                       </div>
-                      <p className="paragraph-xs text-quaternary truncate">
-                        Push campaign summaries to ClickUp tasks
-                      </p>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <h3 className="subheading-md text-primary truncate">ClickUp</h3>
+                          {isPluginEnabled('clickup') && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                              Enabled
+                            </span>
+                          )}
+                        </div>
+                        <p className="paragraph-xs text-quaternary truncate">
+                          Push campaign summaries to ClickUp tasks
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => {
+                        setClickUpError('')
+                        setClickUpApiKey('')
+                        setClickUpWorkspaceId('')
+                        setShowClickUpModal(true)
+                      }}
+                      className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover"
+                    >
+                      {isPluginEnabled('clickup') ? 'Manage' : 'Enable'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      setClickUpError('')
-                      setClickUpApiKey('')
-                      setClickUpWorkspaceId('')
-                      setShowClickUpModal(true)
-                    }}
-                    className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover"
-                  >
-                    {isPluginEnabled('clickup') ? 'Manage' : 'Enable'}
-                  </button>
+                </div>
+
+                {/* Creative Studio */}
+                <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-purple-500/10">
+                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z" stroke="#A855F7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <h3 className="subheading-md text-primary truncate">Creative Studio</h3>
+                          {isPluginEnabled('mia-creative-studio') && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                              Enabled
+                            </span>
+                          )}
+                        </div>
+                        <p className="paragraph-xs text-quaternary truncate">
+                          AI image & video generation (Veo 3.1, Runway, FLUX, GPT Image)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCsError('')
+                        setCsFalKey('')
+                        setCsRunwayKey('')
+                        setCsGoogleKey('')
+                        setShowCreativeStudioModal(true)
+                      }}
+                      className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover"
+                    >
+                      {isPluginEnabled('mia-creative-studio') ? 'Manage' : 'Enable'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1545,6 +1660,117 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {clickUpSubmitting ? 'Enabling...' : 'Enable'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Creative Studio Modal */}
+        {showCreativeStudioModal && (
+          <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z" stroke="#A855F7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <h2 className="title-h6 text-primary">
+                    {isPluginEnabled('mia-creative-studio') ? 'Manage Creative Studio' : 'Enable Creative Studio'}
+                  </h2>
+                </div>
+                <p className="paragraph-sm text-tertiary">
+                  {isPluginEnabled('mia-creative-studio')
+                    ? 'Creative Studio is enabled. Generate AI images and videos from the Creative Studio page.'
+                    : 'Enter your API keys to enable AI image and video generation for this workspace.'}
+                </p>
+              </div>
+
+              {isPluginEnabled('mia-creative-studio') ? (
+                <div className="mb-4">
+                  <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="subheading-md text-success">Creative Studio connected</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 mb-4">
+                  <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mb-2">
+                    <p className="paragraph-xs text-utility-info-700">At least one key is required. GPT Image 2 works with your existing OpenAI key — no extra keys needed for basic use.</p>
+                  </div>
+                  <div>
+                    <label className="block subheading-md text-secondary mb-1">
+                      fal.ai API Key <span className="paragraph-xs text-quaternary">(Veo 3.1, FLUX, Kling, Runway fallback)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={csFalKey}
+                      onChange={(e) => setCsFalKey(e.target.value)}
+                      placeholder="dec93678-..."
+                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                      disabled={csSubmitting}
+                    />
+                  </div>
+                  <div>
+                    <label className="block subheading-md text-secondary mb-1">
+                      Runway API Key <span className="paragraph-xs text-quaternary">(Runway Gen-4.5 direct)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={csRunwayKey}
+                      onChange={(e) => setCsRunwayKey(e.target.value)}
+                      placeholder="key_..."
+                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                      disabled={csSubmitting}
+                    />
+                  </div>
+                  <div>
+                    <label className="block subheading-md text-secondary mb-1">
+                      Google API Key <span className="paragraph-xs text-quaternary">(Nano Banana 2 / Gemini)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={csGoogleKey}
+                      onChange={(e) => setCsGoogleKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full px-4 py-3 border border-primary rounded-lg focus:ring-2 focus:ring-utility-info-500 focus:border-transparent paragraph-sm font-mono"
+                      disabled={csSubmitting}
+                    />
+                  </div>
+                  {csError && <p className="paragraph-xs text-error">{csError}</p>}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowCreativeStudioModal(false); setCsError('') }}
+                  disabled={csSubmitting}
+                  className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                >
+                  {isPluginEnabled('mia-creative-studio') ? 'Close' : 'Cancel'}
+                </button>
+                {isPluginEnabled('mia-creative-studio') ? (
+                  <button
+                    onClick={handleCreativeStudioDisable}
+                    disabled={csSubmitting}
+                    className="flex-1 px-4 py-3 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
+                  >
+                    {csSubmitting ? 'Disabling...' : 'Disable'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCreativeStudioEnable}
+                    disabled={csSubmitting || (!csFalKey.trim() && !csGoogleKey.trim())}
+                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {csSubmitting ? 'Enabling...' : 'Enable'}
                   </button>
                 )}
               </div>
