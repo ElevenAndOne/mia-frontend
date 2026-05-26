@@ -4,6 +4,7 @@ import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
+import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
 import { sendChatMessage } from '../chat/services/chat-service'
 import { ChatMarkdown } from '../../components/chat-markdown'
@@ -108,6 +109,39 @@ interface CampaignSummary {
   budget_currency: string | null
   start_date: string | null
   end_date: string | null
+}
+
+interface SyncAsset {
+  asset_id: string
+  asset_name: string
+  asset_type: string | null
+  synced: boolean
+  clickup_task_id: string | null
+  clickup_task_url: string | null
+}
+
+interface SyncChannel {
+  action_id: string
+  channel: string
+  channel_label: string
+  assets: SyncAsset[]
+}
+
+interface SyncPhase {
+  phase_id: string
+  phase_name: string
+  channels: SyncChannel[]
+}
+
+interface SyncResult {
+  campaign_id: string
+  campaign_name: string
+  client_name: string | null
+  clickup_list_id: string | null
+  total_assets: number
+  matched: number
+  unmatched: number
+  phases: SyncPhase[]
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -963,6 +997,23 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [cuLoadingFolders, setCuLoadingFolders] = useState(false)
   const [cuLoadingLists, setCuLoadingLists] = useState(false)
 
+  // ClickUp Sync Check
+  const [showSyncModal, setShowSyncModal] = useState(false)
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [syncError, setSyncError] = useState('')
+
+  // "Build new campaign" panel (shown on top of existing campaign)
+  const [showNewCampaignPanel, setShowNewCampaignPanel] = useState(false)
+  const existingCampaignIdsRef = useRef<Set<string>>(new Set())
+
+  // PDF upload (empty-state alternative to chat builder)
+  const [pdfStep, setPdfStep] = useState<'idle' | 'uploading' | 'reviewing' | 'importing'>('idle')
+  const [parsedCampaignData, setParsedCampaignData] = useState<Record<string, any> | null>(null)
+  const [pdfReviewName, setPdfReviewName] = useState('')
+  const [pdfReviewClient, setPdfReviewClient] = useState('')
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
   // Close campaign dropdown on outside click
   useEffect(() => {
     if (!dropdownOpen) return
@@ -1029,9 +1080,28 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   }, [tenantId, sessionId, loadCampaignDetail])
 
   const handleSwitchCampaign = async (campaignId: string) => {
-    if (!campaign || campaignId === campaign.campaign_id) return
+    if (campaignId === 'new') {
+      existingCampaignIdsRef.current = new Set(campaignList.map((c) => c.campaign_id))
+      setChatMessages([])
+      setChatInput('')
+      setPdfStep('idle')
+      setParsedCampaignData(null)
+      setShowNewCampaignPanel(true)
+      setDropdownOpen(false)
+      return
+    }
+    if (!campaign || campaignId === campaign.campaign_id) { setDropdownOpen(false); return }
     setDropdownOpen(false)
+    // Switch = set primary, sync RACE widget localStorage
+    if (sessionId && tenantId) {
+      apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/set-primary`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId },
+      }).catch(() => {})
+      setCampaignMode(tenantId, campaignId)
+    }
     await loadCampaignDetail(campaignId)
+    setCampaignList((prev) => prev.map((c) => ({ ...c, is_primary: c.campaign_id === campaignId })))
   }
 
   const handlePatchCampaign = useCallback(async (fields: Record<string, unknown>) => {
@@ -1162,10 +1232,15 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         setTimeout(async () => {
           const r = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
           if (r.ok) {
-            const list = await r.json()
+            const list: CampaignSummary[] = await r.json()
             if (list.length > 0) {
               setCampaignList(list)
-              await loadCampaignDetail(list[0].campaign_id)
+              // If new campaign panel open, find the newly created campaign
+              const newCampaign = list.find((c) => !existingCampaignIdsRef.current.has(c.campaign_id))
+              const toLoad = newCampaign ?? list.find((c) => c.is_primary) ?? list[0]
+              await loadCampaignDetail(toLoad.campaign_id)
+              if (tenantId) setCampaignMode(tenantId, toLoad.campaign_id)
+              if (showNewCampaignPanel) setShowNewCampaignPanel(false)
             }
           }
         }, 1000)
@@ -1175,7 +1250,69 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     } finally {
       setChatLoading(false)
     }
-  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user])
+  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, showNewCampaignPanel])
+
+  const handlePdfSelect = useCallback(async (file: File) => {
+    if (!sessionId || !tenantId) return
+    setPdfStep('uploading')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/parse-pdf`, {
+        method: 'POST',
+        headers: { 'X-Session-ID': sessionId },
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'PDF parsing failed')
+      }
+      const data = await res.json()
+      setParsedCampaignData(data.parsed_data)
+      setPdfReviewName(data.parsed_data?.campaign?.campaign_name ?? '')
+      setPdfReviewClient(data.parsed_data?.campaign?.client_name ?? '')
+      setPdfStep('reviewing')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'PDF parsing failed')
+      setPdfStep('idle')
+    }
+  }, [sessionId, tenantId])
+
+  const handlePdfImport = useCallback(async () => {
+    if (!sessionId || !tenantId || !parsedCampaignData) return
+    setPdfStep('importing')
+    try {
+      const payload = {
+        ...parsedCampaignData,
+        campaign: { ...parsedCampaignData.campaign, campaign_name: pdfReviewName, client_name: pdfReviewClient },
+      }
+      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/import`, {
+        method: 'POST',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Import failed')
+      }
+      const result = await res.json()
+      setPdfStep('idle')
+      setParsedCampaignData(null)
+      const listRes = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
+      if (listRes.ok) {
+        const list: CampaignSummary[] = await listRes.json()
+        setCampaignList(list)
+      }
+      if (result.campaign_id) {
+        await loadCampaignDetail(result.campaign_id)
+        if (tenantId) setCampaignMode(tenantId, result.campaign_id)
+      }
+      if (showNewCampaignPanel) setShowNewCampaignPanel(false)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Import failed')
+      setPdfStep('reviewing')
+    }
+  }, [sessionId, tenantId, parsedCampaignData, pdfReviewName, pdfReviewClient, loadCampaignDetail, showNewCampaignPanel])
 
   // ClickUp helpers
   const invokeClickUp = async (action: string, data: Record<string, string> = {}) => {
@@ -1231,6 +1368,19 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     finally { setPushingToClickUp(false) }
   }
 
+  const handleClickUpSync = async () => {
+    if (!sessionId || !tenantId || !campaign) return
+    setSyncLoading(true); setSyncError(''); setSyncResult(null); setShowSyncModal(true)
+    try {
+      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/clickup-sync`, {
+        headers: { 'X-Session-ID': sessionId },
+      })
+      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Sync check failed') }
+      setSyncResult(await res.json())
+    } catch (err) { setSyncError(err instanceof Error ? err.message : 'Sync check failed') }
+    finally { setSyncLoading(false) }
+  }
+
   const sortedPhases = campaign ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order) : []
   const selectedPhase = sortedPhases.find((p) => p.phase_id === selectedPhaseId) ?? sortedPhases[0] ?? null
   const currentIsPrimary = campaign
@@ -1252,85 +1402,307 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           </div>
         )}
 
-        {/* Empty state — inline Mia chat */}
+        {/* Empty state — inline Mia chat or PDF upload */}
         {!loading && !detailLoading && !error && !campaign && (
           <div className="flex flex-col h-full min-h-0">
-            {/* Intro */}
-            {chatMessages.length === 0 && (
-              <div className="text-center pt-12 pb-6 px-6">
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z" />
-                  </svg>
-                </div>
-                <p className="label-md text-primary mb-1">No campaigns yet</p>
-                <p className="paragraph-sm text-tertiary mb-6">Ask Mia to build your first RACE campaign template.</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {['Build a campaign for Dutoit Shallots', 'Build a campaign for Onvlee', 'Build a new RACE template'].map((s) => (
-                    <button key={s} onClick={() => handleChatSend(s)}
-                      className="px-3 py-1.5 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors">
-                      {s}
-                    </button>
-                  ))}
-                </div>
+            {/* Hidden PDF file input */}
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
+            />
+
+            {/* PDF uploading */}
+            {pdfStep === 'uploading' && (
+              <div className="flex flex-col items-center justify-center gap-3 py-20">
+                <Spinner />
+                <p className="paragraph-sm text-secondary">Parsing your campaign brief — this may take a minute...</p>
               </div>
             )}
 
-            {/* Chat messages */}
-            {chatMessages.length > 0 && (
-              <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
-                {chatMessages.map((m, i) => (
-                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
-                      m.role === 'user'
-                        ? 'bg-brand-solid text-primary-onbrand'
-                        : 'bg-secondary text-primary border border-tertiary'
-                    }`}>
-                      {m.role === 'user'
-                        ? <span className="whitespace-pre-wrap">{m.content}</span>
-                        : <ChatMarkdown content={m.content} />
-                      }
-                    </div>
+            {/* PDF review */}
+            {(pdfStep === 'reviewing' || pdfStep === 'importing') && parsedCampaignData && (
+              <div className="flex flex-col gap-4 px-1 py-2">
+                <div>
+                  <p className="label-md text-primary mb-1">Review parsed campaign</p>
+                  <p className="paragraph-sm text-tertiary">Check the details below — you can edit everything inline after import too.</p>
+                </div>
+                <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-3">
+                  <div>
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Campaign Name</p>
+                    <input
+                      value={pdfReviewName}
+                      onChange={(e) => setPdfReviewName(e.target.value)}
+                      className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary"
+                    />
                   </div>
-                ))}
-                {chatLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
-                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  <div>
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Client</p>
+                    <input
+                      value={pdfReviewClient}
+                      onChange={(e) => setPdfReviewClient(e.target.value)}
+                      className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary"
+                    />
+                  </div>
+                  {(parsedCampaignData.campaign?.start_date || parsedCampaignData.campaign?.budget_total) && (
+                    <div className="flex flex-wrap gap-4">
+                      {parsedCampaignData.campaign?.start_date && (
+                        <>
+                          <div>
+                            <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Start</p>
+                            <p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.start_date)}</p>
+                          </div>
+                          <div>
+                            <p className="label-xs text-quaternary uppercase tracking-wide mb-1">End</p>
+                            <p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.end_date)}</p>
+                          </div>
+                        </>
+                      )}
+                      {parsedCampaignData.campaign?.budget_total && (
+                        <div>
+                          <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Budget</p>
+                          <p className="paragraph-sm text-primary">{formatBudget(parsedCampaignData.campaign.budget_total, parsedCampaignData.campaign.budget_currency)}</p>
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
+                {parsedCampaignData.phases?.length > 0 && (
+                  <div className="bg-secondary rounded-xl border border-tertiary p-4">
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Phases ({parsedCampaignData.phases.length})</p>
+                    {parsedCampaignData.phases.map((ph: Record<string, any>, i: number) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-tertiary last:border-0">
+                        <span className="paragraph-sm text-primary">{ph.phase_name}</span>
+                        <span className="paragraph-xs text-tertiary">{ph.channel_actions?.length ?? 0} channels · {ph.kpis?.length ?? 0} KPIs</span>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <div ref={chatBottomRef} />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePdfImport}
+                    disabled={pdfStep === 'importing' || !pdfReviewName.trim()}
+                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                  >
+                    {pdfStep === 'importing' && <Spinner size="sm" />}
+                    {pdfStep === 'importing' ? 'Importing...' : 'Import Campaign'}
+                  </button>
+                  <button
+                    onClick={() => { setPdfStep('idle'); setParsedCampaignData(null) }}
+                    disabled={pdfStep === 'importing'}
+                    className="px-4 py-3 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Input */}
-            <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
-                  placeholder="Ask Mia to build a campaign for..."
-                  className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary"
-                  disabled={chatLoading}
-                />
-                <button
-                  onClick={() => handleChatSend()}
-                  disabled={chatLoading || !chatInput.trim()}
-                  className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40"
-                >
-                  Send
-                </button>
-              </div>
-            </div>
+            {/* Normal chat empty state */}
+            {pdfStep === 'idle' && (
+              <>
+                {/* Intro */}
+                {chatMessages.length === 0 && (
+                  <div className="text-center pt-12 pb-6 px-6">
+                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-6 h-6 text-quaternary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z" />
+                      </svg>
+                    </div>
+                    <p className="label-md text-primary mb-1">No campaigns yet</p>
+                    <p className="paragraph-sm text-tertiary mb-6">Ask Mia to build your first RACE campaign template.</p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {['Build a campaign for Dutoit Shallots', 'Build a campaign for Onvlee', 'Build a new RACE template'].map((s) => (
+                        <button key={s} onClick={() => handleChatSend(s)}
+                          className="px-3 py-1.5 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors">
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 justify-center mt-5">
+                      <div className="h-px flex-1 bg-tertiary" />
+                      <span className="paragraph-xs text-quaternary">or</span>
+                      <div className="h-px flex-1 bg-tertiary" />
+                    </div>
+                    <button
+                      onClick={() => pdfInputRef.current?.click()}
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 border border-primary rounded-full paragraph-sm text-tertiary hover:bg-secondary hover:text-primary transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Upload campaign brief (PDF)
+                    </button>
+                  </div>
+                )}
+
+                {/* Chat messages */}
+                {chatMessages.length > 0 && (
+                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                    {chatMessages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
+                          m.role === 'user'
+                            ? 'bg-brand-solid text-primary-onbrand'
+                            : 'bg-secondary text-primary border border-tertiary'
+                        }`}>
+                          {m.role === 'user'
+                            ? <span className="whitespace-pre-wrap">{m.content}</span>
+                            : <ChatMarkdown content={m.content} />
+                          }
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
+                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" />
+                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatBottomRef} />
+                  </div>
+                )}
+
+                {/* Input */}
+                <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
+                      placeholder="Ask Mia to build a campaign for..."
+                      className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary"
+                      disabled={chatLoading}
+                    />
+                    <button
+                      onClick={() => handleChatSend()}
+                      disabled={chatLoading || !chatInput.trim()}
+                      className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        {!loading && !detailLoading && !error && campaign && (
+        {/* New campaign panel (overlay when building an additional campaign) */}
+        {!loading && !detailLoading && !error && campaign && showNewCampaignPanel && (
+          <div className="flex flex-col h-full min-h-0">
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
+            />
+            <div className="flex items-center justify-between px-1 pb-3">
+              <p className="label-md text-primary">Build new campaign</p>
+              <button onClick={() => { setShowNewCampaignPanel(false); setPdfStep('idle'); setParsedCampaignData(null); setChatMessages([]) }} className="paragraph-sm text-tertiary hover:text-primary transition-colors">
+                Cancel
+              </button>
+            </div>
+            {pdfStep === 'uploading' && (
+              <div className="flex flex-col items-center justify-center gap-3 py-20">
+                <Spinner />
+                <p className="paragraph-sm text-secondary">Parsing your campaign brief — this may take a minute...</p>
+              </div>
+            )}
+            {(pdfStep === 'reviewing' || pdfStep === 'importing') && parsedCampaignData && (
+              <div className="flex flex-col gap-4 px-1 py-2">
+                <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-3">
+                  <div>
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Campaign Name</p>
+                    <input value={pdfReviewName} onChange={(e) => setPdfReviewName(e.target.value)} className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary" />
+                  </div>
+                  <div>
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Client</p>
+                    <input value={pdfReviewClient} onChange={(e) => setPdfReviewClient(e.target.value)} className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary" />
+                  </div>
+                  {(parsedCampaignData.campaign?.start_date || parsedCampaignData.campaign?.budget_total) && (
+                    <div className="flex flex-wrap gap-4">
+                      {parsedCampaignData.campaign?.start_date && (
+                        <>
+                          <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">Start</p><p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.start_date)}</p></div>
+                          <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">End</p><p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.end_date)}</p></div>
+                        </>
+                      )}
+                      {parsedCampaignData.campaign?.budget_total && (
+                        <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">Budget</p><p className="paragraph-sm text-primary">{formatBudget(parsedCampaignData.campaign.budget_total, parsedCampaignData.campaign.budget_currency)}</p></div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {parsedCampaignData.phases?.length > 0 && (
+                  <div className="bg-secondary rounded-xl border border-tertiary p-4">
+                    <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Phases ({parsedCampaignData.phases.length})</p>
+                    {parsedCampaignData.phases.map((ph: Record<string, any>, i: number) => (
+                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-tertiary last:border-0">
+                        <span className="paragraph-sm text-primary">{ph.phase_name}</span>
+                        <span className="paragraph-xs text-tertiary">{ph.channel_actions?.length ?? 0} channels · {ph.kpis?.length ?? 0} KPIs</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={handlePdfImport} disabled={pdfStep === 'importing' || !pdfReviewName.trim()} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+                    {pdfStep === 'importing' && <Spinner size="sm" />}
+                    {pdfStep === 'importing' ? 'Importing...' : 'Import Campaign'}
+                  </button>
+                  <button onClick={() => { setPdfStep('idle'); setParsedCampaignData(null) }} disabled={pdfStep === 'importing'} className="px-4 py-3 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors disabled:opacity-40">Cancel</button>
+                </div>
+              </div>
+            )}
+            {pdfStep === 'idle' && (
+              <>
+                {chatMessages.length === 0 && (
+                  <div className="text-center pt-8 pb-6 px-6">
+                    <p className="paragraph-sm text-tertiary mb-5">Ask Mia to build a new RACE campaign, or upload a brief PDF.</p>
+                    <button onClick={() => pdfInputRef.current?.click()} className="inline-flex items-center gap-2 px-4 py-2 border border-primary rounded-full paragraph-sm text-tertiary hover:bg-secondary hover:text-primary transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      Upload campaign brief (PDF)
+                    </button>
+                  </div>
+                )}
+                {chatMessages.length > 0 && (
+                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                    {chatMessages.map((m, i) => (
+                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${m.role === 'user' ? 'bg-brand-solid text-primary-onbrand' : 'bg-secondary text-primary border border-tertiary'}`}>
+                          {m.role === 'user' ? <span className="whitespace-pre-wrap">{m.content}</span> : <ChatMarkdown content={m.content} />}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
+                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatBottomRef} />
+                  </div>
+                )}
+                <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
+                  <div className="flex gap-2">
+                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }} placeholder="Build a campaign for..." className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary" disabled={chatLoading} />
+                    <button onClick={() => handleChatSend()} disabled={chatLoading || !chatInput.trim()} className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40">Send</button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {!loading && !detailLoading && !error && campaign && !showNewCampaignPanel && (
           <>
             {/* Draft banner */}
             {campaign.status === 'draft' && (
@@ -1366,13 +1738,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                       onSave={(v) => v.trim() && handlePatchCampaign({ campaign_name: v.trim() })}
                       className="label-md text-primary"
                     />
-                    {campaignList.length > 1 && (
-                      <button onClick={() => setDropdownOpen(!dropdownOpen)}>
-                        <svg className={`w-3.5 h-3.5 text-tertiary shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
+                    <button onClick={() => setDropdownOpen(!dropdownOpen)}>
+                      <svg className={`w-3.5 h-3.5 text-tertiary shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                   </div>
                   <EditableText
                     value={campaign.client_name ?? ''}
@@ -1381,7 +1751,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     placeholder="Client name"
                   />
                   {/* Dropdown */}
-                  {dropdownOpen && campaignList.length > 1 && (
+                  {dropdownOpen && (
                     <div className="absolute top-full left-0 mt-1.5 bg-primary border border-tertiary rounded-xl shadow-lg z-20 min-w-52 max-w-72 overflow-hidden">
                       {campaignList.map((c) => (
                         <button
@@ -1393,6 +1763,17 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                           {c.status === 'draft' && <span className="ml-1.5 text-quaternary label-xs">draft</span>}
                         </button>
                       ))}
+                      <div className="border-t border-tertiary">
+                        <button
+                          onClick={() => handleSwitchCampaign('new')}
+                          className="w-full text-left px-3 py-2.5 paragraph-sm text-tertiary hover:bg-secondary hover:text-primary transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Build new campaign
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1400,33 +1781,29 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 shrink-0">
                   {isPluginEnabled('clickup') && (
-                    <button
-                      onClick={() => { setClickUpResult(null); setClickUpError(''); setCuSpaces([]); setCuFolders([]); setCuLists([]); setCuSpaceId(''); setCuFolderId(''); setCuListId(''); setShowClickUpModal(true); loadClickUpSpaces() }}
-                      title="Push to ClickUp"
-                      className="p-1 transition-colors"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
+                    <>
+                      <button
+                        onClick={handleClickUpSync}
+                        title="Check ClickUp sync"
+                        className="p-1 transition-colors"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 12l2 2 4-4"/>
+                          <circle cx="12" cy="12" r="9"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => { setClickUpResult(null); setClickUpError(''); setCuSpaces([]); setCuFolders([]); setCuLists([]); setCuSpaceId(''); setCuFolderId(''); setCuListId(''); setShowClickUpModal(true); loadClickUpSpaces() }}
+                        title="Push to ClickUp"
+                        className="p-1 transition-colors"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </>
                   )}
-                  <button
-                    onClick={handleSetPrimary}
-                    disabled={settingPrimary || currentIsPrimary}
-                    title={currentIsPrimary ? 'Primary campaign' : 'Set as primary'}
-                    className="transition-colors disabled:cursor-default"
-                  >
-                    {currentIsPrimary ? (
-                      <svg className="w-4 h-4 text-utility-warning-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-quaternary hover:text-utility-warning-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path strokeLinejoin="round" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    )}
-                  </button>
                   {/* Status — click to cycle */}
                   <button
                     onClick={() => {
@@ -1490,15 +1867,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     onBlur={(e) => handlePatchCampaign({ budget_total: e.target.value ? Number(e.target.value) : null })}
                     placeholder="—"
                     className="w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="paragraph-xs text-quaternary">Filter:</span>
-                  <EditableText
-                    value={campaign.platform_filter ?? ''}
-                    onSave={(v) => handlePatchCampaign({ platform_filter: v.trim() || null })}
-                    className="paragraph-xs text-tertiary"
-                    placeholder="not set"
                   />
                 </div>
               </div>
@@ -1683,6 +2051,113 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               {!clickUpResult && (
                 <button onClick={handleClickUpPush} disabled={pushingToClickUp || (!cuListId && !campaign?.clickup_list_id)} className="flex-1 px-4 py-3 bg-[#7B68EE] text-white rounded-lg subheading-md hover:bg-[#6A58DD] disabled:opacity-50 disabled:cursor-not-allowed">
                   {pushingToClickUp ? 'Pushing…' : 'Push to ClickUp'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ClickUp Sync Check Modal */}
+      {showSyncModal && campaign && (
+        <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-primary rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center gap-3 mb-4 shrink-0">
+              <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#7B68EE]/10 shrink-0">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 12l2 2 4-4"/>
+                  <circle cx="12" cy="12" r="9"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="title-h6 text-primary">ClickUp Sync Check</h2>
+                <p className="paragraph-xs text-tertiary">{campaign.campaign_name}</p>
+              </div>
+            </div>
+
+            {syncLoading && (
+              <div className="flex items-center justify-center py-10 text-tertiary paragraph-sm">
+                Checking ClickUp tasks…
+              </div>
+            )}
+
+            {syncError && !syncLoading && (
+              <p className="paragraph-sm text-error mb-4">{syncError}</p>
+            )}
+
+            {syncResult && !syncLoading && (
+              <>
+                <div className={`mb-4 shrink-0 rounded-lg p-3 flex items-center gap-3 ${syncResult.unmatched === 0 ? 'bg-success-primary border border-utility-success-300' : 'bg-warning-primary border border-utility-warning-300'}`}>
+                  <svg className={`w-5 h-5 shrink-0 ${syncResult.unmatched === 0 ? 'text-success' : 'text-warning'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {syncResult.unmatched === 0
+                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    }
+                  </svg>
+                  <p className="subheading-md text-primary">
+                    {syncResult.matched} / {syncResult.total_assets} assets synced to ClickUp
+                    {syncResult.unmatched > 0 && ` · ${syncResult.unmatched} missing`}
+                  </p>
+                </div>
+
+                <div className="overflow-y-auto flex-1 space-y-4 pr-1">
+                  {syncResult.phases.map((phase) => (
+                    <div key={phase.phase_id}>
+                      <p className="subheading-md text-secondary mb-2">{phase.phase_name}</p>
+                      {phase.channels.map((ch) => (
+                        <div key={ch.action_id} className="mb-3">
+                          <p className="paragraph-xs text-tertiary mb-1.5">{ch.channel_label}</p>
+                          <div className="space-y-1">
+                            {ch.assets.map((asset) => (
+                              <div key={asset.asset_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-secondary">
+                                {asset.synced ? (
+                                  <svg className="w-4 h-4 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4 text-error shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                  </svg>
+                                )}
+                                <span className={`paragraph-xs flex-1 ${asset.synced ? 'text-primary' : 'text-tertiary'}`}>
+                                  {asset.asset_name}
+                                  {asset.asset_type && <span className="text-quaternary ml-1">({asset.asset_type})</span>}
+                                </span>
+                                {asset.synced && asset.clickup_task_url && (
+                                  <a
+                                    href={asset.clickup_task_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="paragraph-xs text-utility-brand-600 hover:underline shrink-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Open ↗
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3 mt-4 shrink-0">
+              <button
+                onClick={() => { setShowSyncModal(false); setSyncResult(null); setSyncError('') }}
+                className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
+              >
+                Close
+              </button>
+              {syncResult && syncResult.unmatched > 0 && (
+                <button
+                  onClick={() => { setShowSyncModal(false); setClickUpResult(null); setClickUpError(''); setCuSpaces([]); setCuFolders([]); setCuLists([]); setCuSpaceId(''); setCuFolderId(''); setCuListId(''); setShowClickUpModal(true); loadClickUpSpaces() }}
+                  className="flex-1 px-4 py-3 bg-[#7B68EE] text-white rounded-lg subheading-md hover:bg-[#6A58DD]"
+                >
+                  Push Missing →
                 </button>
               )}
             </div>

@@ -250,6 +250,43 @@ export const renameWorkspace = async (
 }
 
 /**
+ * Fetch workspace details including website_url
+ */
+export const fetchWorkspaceDetails = async (
+  sessionId: string,
+  tenantId: string
+): Promise<{ website_url: string | null }> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) throw new Error('Failed to fetch workspace details')
+  const data = await response.json()
+  return { website_url: data.website_url ?? null }
+}
+
+/**
+ * Update client website URL for a workspace (owner only)
+ */
+export const updateWorkspaceWebsiteUrl = async (
+  sessionId: string,
+  tenantId: string,
+  websiteUrl: string
+): Promise<void> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify({ website_url: websiteUrl }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update website URL')
+  }
+}
+
+/**
  * Delete a workspace (owner only)
  */
 export const deleteWorkspace = async (sessionId: string, tenantId: string): Promise<void> => {
