@@ -928,7 +928,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [settingPrimary, setSettingPrimary] = useState(false)
   const [deletingCampaign, setDeletingCampaign] = useState(false)
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -1130,22 +1129,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       return updated
     })
   }, [])
-
-  const handleSetPrimary = async () => {
-    if (!sessionId || !tenantId || !campaign || settingPrimary) return
-    setSettingPrimary(true)
-    try {
-      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/set-primary`, {
-        method: 'PATCH', headers: { 'X-Session-ID': sessionId },
-      })
-      if (res.ok) {
-        setCampaign((prev) => prev ? { ...prev, is_primary: true } : prev)
-        setCampaignList((prev) => prev.map((c) => ({ ...c, is_primary: c.campaign_id === campaign.campaign_id })))
-        campaignList.forEach((c) => bustCachedDetail(c.campaign_id))
-        clearTrackerCache()
-      }
-    } finally { setSettingPrimary(false) }
-  }
 
   const handleDeleteCampaign = async () => {
     if (!sessionId || !tenantId || !campaign || deletingCampaign) return
