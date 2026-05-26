@@ -5,7 +5,7 @@ import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
-import { uploadWorkspaceLogo, deleteWorkspaceLogo } from '../services/workspace-service'
+import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl } from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
   updateWorkspaceAlertsEnabled,
@@ -107,6 +107,38 @@ export const WorkspaceSettingsDetail = ({
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Website URL (GSC property)
+  const [websiteUrl, setWebsiteUrl] = useState<string>('')
+  const [websiteUrlInput, setWebsiteUrlInput] = useState<string>('')
+  const [editingWebsite, setEditingWebsite] = useState(false)
+  const [savingWebsite, setSavingWebsite] = useState(false)
+  const [websiteError, setWebsiteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!sessionId || !isOwner) return
+    fetchWorkspaceDetails(sessionId, workspace.tenant_id)
+      .then((d) => {
+        setWebsiteUrl(d.website_url || '')
+        setWebsiteUrlInput(d.website_url || '')
+      })
+      .catch(() => {})
+  }, [sessionId, workspace.tenant_id, isOwner])
+
+  const handleSaveWebsite = async () => {
+    if (!sessionId || savingWebsite) return
+    setSavingWebsite(true)
+    setWebsiteError(null)
+    try {
+      await updateWorkspaceWebsiteUrl(sessionId, workspace.tenant_id, websiteUrlInput.trim())
+      setWebsiteUrl(websiteUrlInput.trim())
+      setEditingWebsite(false)
+    } catch (e) {
+      setWebsiteError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSavingWebsite(false)
+    }
+  }
 
   // WhatsApp alerts tab state
   const [alertSettings, setAlertSettings] = useState<WorkspaceAlertSettings | null>(null)
@@ -488,6 +520,52 @@ export const WorkspaceSettingsDetail = ({
               >
                 Rename
               </button>
+            </div>
+
+            {/* Website URL */}
+            <div className="p-3 bg-secondary rounded-lg mb-3">
+              {editingWebsite ? (
+                <div>
+                  <input
+                    type="url"
+                    value={websiteUrlInput}
+                    onChange={(e) => setWebsiteUrlInput(e.target.value)}
+                    placeholder="https://www.example.com"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveWebsite()}
+                    className="w-full px-3 py-1.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid mb-2"
+                  />
+                  {websiteError && <p className="paragraph-sm text-error mb-2">{websiteError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setEditingWebsite(false); setWebsiteUrlInput(websiteUrl); setWebsiteError(null) }}
+                      className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveWebsite}
+                      disabled={savingWebsite}
+                      className="px-3 py-1.5 bg-brand-solid text-primary-onbrand rounded-lg paragraph-sm hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+                    >
+                      {savingWebsite ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="subheading-md text-primary">{websiteUrl || 'Not set'}</p>
+                    <p className="paragraph-sm text-quaternary">Client website (for Search Console)</p>
+                  </div>
+                  <button
+                    onClick={() => setEditingWebsite(true)}
+                    className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                  >
+                    {websiteUrl ? 'Edit' : 'Set'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Logo */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactElement } from 'react'
-import { Download, Trash2, Search, Play, Eye, CheckCircle, Clock, XCircle, MoreVertical, RefreshCw, Sparkles, Video, Image } from 'lucide-react'
+import { Download, Trash2, Search, Play, Eye, CheckCircle, Clock, XCircle, MoreVertical, RefreshCw, Sparkles, Video, Image, X } from 'lucide-react'
 import { creativeStudioApi, type CreativeAsset } from './creative-studio-api'
+import { apiFetch, createSessionHeaders } from '../../utils/api'
 
 interface Props {
   tenantId: string
@@ -30,9 +31,87 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function AssetCard({ asset, onDelete }: { asset: CreativeAsset; onDelete: (id: string) => void }) {
+async function downloadAsset(tenantId: string, sessionId: string, assetId: string, filename: string, cdnUrl: string) {
+  try {
+    const resp = await apiFetch(
+      `/api/tenants/${tenantId}/plugins/mia-creative-studio/assets/${assetId}/download`,
+      { headers: createSessionHeaders(sessionId) },
+    )
+    if (!resp.ok) throw new Error('Download failed')
+    const blob = await resp.blob()
+    const objUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objUrl
+    a.download = filename || 'asset'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(objUrl)
+  } catch {
+    window.open(cdnUrl, '_blank')
+  }
+}
+
+function LightboxModal({ asset, tenantId, sessionId, onClose }: { asset: CreativeAsset; tenantId: string; sessionId: string; onClose: () => void }) {
+  const isVideo = asset.media_type === 'video'
+  return (
+    <div
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition-colors"
+        onClick={onClose}
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <div className="max-w-5xl max-h-[90vh] w-full flex flex-col items-center gap-4" onClick={e => e.stopPropagation()}>
+        {isVideo ? (
+          <video
+            src={asset.cdn_url}
+            controls
+            autoPlay
+            className="max-h-[80vh] max-w-full rounded-xl"
+          />
+        ) : (
+          <img
+            src={asset.cdn_url}
+            alt={asset.prompt}
+            className="max-h-[80vh] max-w-full object-contain rounded-xl"
+          />
+        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => downloadAsset(tenantId, sessionId, asset.asset_id, asset.filename || `${asset.media_type}_${asset.asset_id}`, asset.cdn_url)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm transition-colors"
+          >
+            <Download className="w-4 h-4" /> Download
+          </button>
+          {asset.prompt && (
+            <p className="text-slate-400 text-sm max-w-lg truncate">{asset.prompt}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AssetCard({
+  asset,
+  tenantId,
+  sessionId,
+  onDelete,
+  onView,
+}: {
+  asset: CreativeAsset
+  tenantId: string
+  sessionId: string
+  onDelete: (id: string) => void
+  onView: (asset: CreativeAsset) => void
+}) {
   const [showMenu, setShowMenu] = useState(false)
   const isVideo = asset.media_type === 'video'
+  const dlFilename = asset.filename || `${asset.media_type}_${asset.asset_id}`
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all group">
@@ -49,18 +128,22 @@ function AssetCard({ asset, onDelete }: { asset: CreativeAsset; onDelete: (id: s
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-          {asset.cdn_url && (
-            <>
-              <button className="p-3 bg-purple-500 rounded-lg hover:bg-purple-600 transition-colors">
-                {isVideo ? <Play className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
-              </button>
-              <a href={asset.cdn_url} download className="p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors">
-                <Download className="w-5 h-5 text-white" />
-              </a>
-            </>
-          )}
-        </div>
+        {asset.cdn_url && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+            <button
+              onClick={() => onView(asset)}
+              className="p-3 bg-purple-500 rounded-lg hover:bg-purple-600 transition-colors"
+            >
+              {isVideo ? <Play className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
+            </button>
+            <button
+              onClick={() => downloadAsset(tenantId, sessionId, asset.asset_id, dlFilename, asset.cdn_url)}
+              className="p-3 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
+            >
+              <Download className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        )}
 
         <div className="absolute top-3 left-3"><StatusBadge status={asset.status} /></div>
         <div className="absolute top-3 right-3">
@@ -77,14 +160,7 @@ function AssetCard({ asset, onDelete }: { asset: CreativeAsset; onDelete: (id: s
           <span>{new Date(asset.created_at).toLocaleDateString()}</span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {asset.cdn_url && (
-              <a href={asset.cdn_url} download className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                <Download className="w-4 h-4" />
-              </a>
-            )}
-          </div>
+        <div className="flex justify-end">
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
               <MoreVertical className="w-4 h-4" />
@@ -120,6 +196,7 @@ export default function LibraryTab({ tenantId, sessionId }: Props) {
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [lightboxAsset, setLightboxAsset] = useState<CreativeAsset | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -151,6 +228,10 @@ export default function LibraryTab({ tenantId, sessionId }: Props) {
 
   return (
     <div>
+      {lightboxAsset && (
+        <LightboxModal asset={lightboxAsset} tenantId={tenantId} sessionId={sessionId} onClose={() => setLightboxAsset(null)} />
+      )}
+
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white mb-1">Asset Library</h2>
         <p className="text-slate-400">All generated images and videos for this workspace</p>
@@ -223,7 +304,9 @@ export default function LibraryTab({ tenantId, sessionId }: Props) {
         </div>
       ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
-          {filtered.map(asset => <AssetCard key={asset.asset_id} asset={asset} onDelete={handleDelete} />)}
+          {filtered.map(asset => (
+            <AssetCard key={asset.asset_id} asset={asset} tenantId={tenantId} sessionId={sessionId} onDelete={handleDelete} onView={setLightboxAsset} />
+          ))}
         </div>
       )}
     </div>

@@ -112,4 +112,62 @@ export const creativeStudioApi = {
       has_context: boolean
       brand_guide_filename: string | null
     }>,
+
+  listCampaigns: (tenantId: string, sessionId: string) =>
+    invoke(tenantId, sessionId, 'list_campaigns') as Promise<{
+      campaigns: {
+        campaign_id: string
+        campaign_name: string
+        client_name: string
+        status: string
+        phases: { phase_id: string; phase_name: string }[]
+      }[]
+    }>,
+}
+
+// ── Creative Intelligence (Phase 4) ─────────────────────────────────────────────
+
+export interface IntelligenceStatus {
+  status: 'never_run' | 'analyzing' | 'completed' | 'failed'
+  analyzed_at?: string
+  top_ad_count?: number
+  date_range_days?: number
+  visual_patterns?: {
+    composition?: string
+    color_palette?: string
+    lighting?: string
+    subject_matter?: string
+    emotional_tone?: string
+    text_overlay?: string
+    winning_patterns_summary?: string
+  }
+  performance_summary?: {
+    avg_ctr?: number
+    top_ad_count?: number
+    date_range_days?: number
+  }
+  error_message?: string
+}
+
+export const creativeIntelligenceApi = {
+  getStatus: async (sessionId: string, tenantId: string): Promise<IntelligenceStatus> => {
+    const res = await apiFetch(
+      `/api/creative-intelligence/status?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`,
+    )
+    if (!res.ok) return { status: 'never_run' }
+    return res.json()
+  },
+
+  refresh: async (sessionId: string, tenantId: string): Promise<{ status: string; message: string }> => {
+    const res = await apiFetch('/api/creative-intelligence/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, tenant_id: tenantId }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to start analysis' }))
+      throw new Error(err.detail || 'Failed to start analysis')
+    }
+    return res.json()
+  },
 }

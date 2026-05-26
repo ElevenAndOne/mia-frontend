@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3 } from 'lucide-react'
+import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp } from 'lucide-react'
 import {
   IMAGE_MODELS, stylePresets, lightingPresets, compositionRules,
   ImageModelSelector, ReferenceUpload, PromptTemplatesPanel, ProgressBar,
   buildEnhancedPrompt,
 } from './creative-studio-shared'
-import { creativeStudioApi } from './creative-studio-api'
+import { creativeStudioApi, creativeIntelligenceApi, type IntelligenceStatus } from './creative-studio-api'
 
 interface Props {
   tenantId: string
@@ -35,7 +35,7 @@ function IterativeEditingInterface({
             <ArrowLeft className="w-4 h-4 text-white" />
           </button>
           <h2 className="text-xl font-bold text-white">Iterative Editing</h2>
-          <div className="flex items-center gap-1 text-yellow-400"><Edit3 className="w-4 h-4" /><span className="text-sm">nano-banana-2</span></div>
+          <div className="flex items-center gap-1 text-yellow-400"><Edit3 className="w-4 h-4" /><span className="text-sm">imagen-4</span></div>
         </div>
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4 mb-4">
           <h3 className="text-sm font-semibold text-white mb-3">Current Image</h3>
@@ -102,7 +102,7 @@ function IterativeEditingInterface({
 }
 
 export default function ImagineTab({ tenantId, sessionId }: Props) {
-  const [imageModel, setImageModel] = useState('gpt-image-2')
+  const [imageModel, setImageModel] = useState('imagen-4')
   const [imagePrompt, setImagePrompt] = useState('')
   const [numImages, setNumImages] = useState(1)
   const [imageQuality, setImageQuality] = useState<'standard' | 'high'>('standard')
@@ -112,13 +112,25 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   const [selectedLighting, setSelectedLighting] = useState('')
   const [selectedComposition, setSelectedComposition] = useState('')
 
+  // Campaign context
+  const [campaigns, setCampaigns] = useState<{ campaign_id: string; campaign_name: string; client_name: string; phases: { phase_id: string; phase_name: string }[] }[]>([])
+  const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [selectedPhaseId, setSelectedPhaseId] = useState('')
+
+  // Performance intelligence
+  const [intelligence, setIntelligence] = useState<IntelligenceStatus | null>(null)
+  const [intelligenceLoading, setIntelligenceLoading] = useState(false)
+  const [showIntelligenceDetails, setShowIntelligenceDetails] = useState(false)
+
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [jobId, setJobId] = useState<string | null>(null)
   const [generatedImages, setGeneratedImages] = useState<{ url: string }[]>([])
+  const [optimizedPrompt, setOptimizedPrompt] = useState<string | null>(null)
+  const [showOptimizedPrompt, setShowOptimizedPrompt] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Iterative editing (nano-banana-2)
+  // Iterative editing (Imagen 4)
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [currentEditImage, setCurrentEditImage] = useState('')
   const [editHistory, setEditHistory] = useState<EditHistoryItem[]>([])
@@ -126,6 +138,45 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   const [editJobId, setEditJobId] = useState<string | null>(null)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Load campaign list on mount
+  useEffect(() => {
+    creativeStudioApi.listCampaigns(tenantId, sessionId)
+      .then(r => setCampaigns(r.campaigns ?? []))
+      .catch(() => {})
+  }, [tenantId, sessionId])
+
+  // Load intelligence status on mount
+  useEffect(() => {
+    creativeIntelligenceApi.getStatus(sessionId, tenantId)
+      .then(setIntelligence)
+      .catch(() => {})
+  }, [tenantId, sessionId])
+
+  // Poll while analyzing
+  useEffect(() => {
+    if (intelligence?.status !== 'analyzing') return
+    const interval = setInterval(async () => {
+      const updated = await creativeIntelligenceApi.getStatus(sessionId, tenantId).catch(() => null)
+      if (updated) {
+        setIntelligence(updated)
+        if (updated.status !== 'analyzing') clearInterval(interval)
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [intelligence?.status, tenantId, sessionId])
+
+  const handleRefreshIntelligence = async () => {
+    setIntelligenceLoading(true)
+    try {
+      await creativeIntelligenceApi.refresh(sessionId, tenantId)
+      setIntelligence(prev => ({ ...(prev ?? {}), status: 'analyzing' } as IntelligenceStatus))
+    } catch {
+      // show inline error via status polling
+    } finally {
+      setIntelligenceLoading(false)
+    }
+  }
 
   // Poll for generation job
   useEffect(() => {
@@ -145,6 +196,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
           const rawUrls = (job.output_urls ?? (job.output_url ? [job.output_url] : []))
           const urls: { url: string }[] = rawUrls.filter((u): u is string => !!u).map(u => ({ url: u }))
           setGeneratedImages(urls.length ? urls : job.output_url ? [{ url: job.output_url }] : [])
+          if (job.optimized_prompt) { setOptimizedPrompt(job.optimized_prompt); setShowOptimizedPrompt(false) }
           setIsGenerating(false)
           setJobId(null)
         } else if (job.status === 'failed') {
@@ -200,6 +252,8 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
     setError(null)
     setProgress(0)
     setGeneratedImages([])
+    setOptimizedPrompt(null)
+    setShowOptimizedPrompt(false)
 
     try {
       const referenceImages = await Promise.all(
@@ -219,6 +273,8 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
         aspect_ratio: aspectRatio,
         reference_images: referenceImages,
         style_presets: { style: selectedStyle, lighting: selectedLighting, composition: selectedComposition },
+        campaign_id: selectedCampaignId || undefined,
+        phase_id: selectedPhaseId || undefined,
       })
 
       if (res.job_id) {
@@ -245,7 +301,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
     try {
       const res = await creativeStudioApi.generate(tenantId, sessionId, {
         type: 'image',
-        model: 'nano-banana-2',
+        model: 'imagen-4',
         prompt: editPromptText,
         reference_images: [currentEditImage],
         iterative_edit: true,
@@ -257,7 +313,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   }
 
   const canGenerate = imagePrompt.trim().length > 0 && !isGenerating
-  const supportsEditing = imageModel === 'nano-banana-2'
+  const supportsEditing = imageModel === 'imagen-4'
 
   return (
     <>
@@ -304,6 +360,141 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
           </div>
 
           <ImageModelSelector value={imageModel} onChange={setImageModel} />
+
+          {/* Campaign context picker */}
+          {campaigns.length > 0 && (
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Target className="w-4 h-4 text-purple-400" /> Campaign Context
+              </h3>
+              <div className="space-y-2">
+                <select
+                  value={selectedCampaignId}
+                  onChange={e => { setSelectedCampaignId(e.target.value); setSelectedPhaseId('') }}
+                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                >
+                  <option value="">No campaign (brand only)</option>
+                  {campaigns.map(c => (
+                    <option key={c.campaign_id} value={c.campaign_id}>
+                      {c.client_name} — {c.campaign_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedCampaignId && (() => {
+                  const c = campaigns.find(x => x.campaign_id === selectedCampaignId)
+                  return c?.phases.length ? (
+                    <select
+                      value={selectedPhaseId}
+                      onChange={e => setSelectedPhaseId(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="">All phases</option>
+                      {c.phases.map(p => (
+                        <option key={p.phase_id} value={p.phase_id}>{p.phase_name}</option>
+                      ))}
+                    </select>
+                  ) : null
+                })()}
+                {selectedCampaignId && (
+                  <p className="text-xs text-purple-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Campaign objectives will guide prompt optimization
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Performance Intelligence panel */}
+          <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Brain className="w-4 h-4 text-blue-400" /> Ad Intelligence
+              </h3>
+              {intelligence?.status === 'completed' && (
+                <button
+                  onClick={() => setShowIntelligenceDetails(v => !v)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  {showIntelligenceDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
+
+            {intelligence?.status === 'analyzing' ? (
+              <div className="flex items-center gap-2 text-blue-400 text-xs">
+                <Loader2 className="w-3 h-3 animate-spin" /> Analyzing your top Meta ads...
+              </div>
+            ) : intelligence?.status === 'completed' ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-400 rounded-full inline-block" />
+                  <span className="text-xs text-slate-400">
+                    {intelligence.top_ad_count} ads analyzed
+                    {intelligence.performance_summary?.avg_ctr
+                      ? ` · avg CTR ${intelligence.performance_summary.avg_ctr.toFixed(1)}%`
+                      : ''}
+                  </span>
+                </div>
+                {intelligence.visual_patterns?.winning_patterns_summary && (
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {intelligence.visual_patterns.winning_patterns_summary}
+                  </p>
+                )}
+                {showIntelligenceDetails && intelligence.visual_patterns && (
+                  <div className="mt-2 space-y-1 border-t border-slate-700 pt-2">
+                    {[
+                      ['Composition', intelligence.visual_patterns.composition],
+                      ['Colors', intelligence.visual_patterns.color_palette],
+                      ['Lighting', intelligence.visual_patterns.lighting],
+                      ['Subject', intelligence.visual_patterns.subject_matter],
+                      ['Tone', intelligence.visual_patterns.emotional_tone],
+                      ['Text', intelligence.visual_patterns.text_overlay],
+                    ].filter(([, v]) => v).map(([label, value]) => (
+                      <div key={label as string} className="text-xs">
+                        <span className="text-slate-500">{label}: </span>
+                        <span className="text-slate-300">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={handleRefreshIntelligence}
+                  disabled={intelligenceLoading}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                >
+                  Re-analyze
+                </button>
+              </div>
+            ) : intelligence?.status === 'failed' ? (
+              <div className="space-y-2">
+                <p className="text-xs text-red-400">{intelligence.error_message || 'Analysis failed'}</p>
+                <button
+                  onClick={handleRefreshIntelligence}
+                  disabled={intelligenceLoading}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
+                >
+                  {intelligenceLoading ? 'Starting...' : 'Try again'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400">
+                  Analyze your top Meta ads to extract winning visual patterns for smarter prompt generation.
+                </p>
+                <button
+                  onClick={handleRefreshIntelligence}
+                  disabled={intelligenceLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {intelligenceLoading ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> Starting...</>
+                  ) : (
+                    <><Brain className="w-3 h-3" /> Analyze Ad Performance</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Centre */}
@@ -346,6 +537,26 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
               </div>
             )}
           </div>
+
+          {/* Optimized prompt reveal */}
+          {optimizedPrompt && (
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-purple-500/30 rounded-xl overflow-hidden">
+              <button
+                onClick={() => setShowOptimizedPrompt(p => !p)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors"
+              >
+                <span className="text-sm font-medium text-purple-300 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5" /> Optimized prompt (Claude)
+                </span>
+                {showOptimizedPrompt ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+              </button>
+              {showOptimizedPrompt && (
+                <div className="px-4 pb-4 text-sm text-slate-300 leading-relaxed border-t border-slate-700/50 pt-3 whitespace-pre-wrap">
+                  {optimizedPrompt}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Prompt */}
           <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">

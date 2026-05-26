@@ -65,6 +65,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }, [integrationStatusError, showToast])
 
+  // Load Figma OAuth status when workspace is ready
+  useEffect(() => {
+    if (activeWorkspace) loadFigmaOAuthStatus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspace?.tenant_id])
+
   const { isEnabled: isPluginEnabled, invalidate: invalidatePlugins } = usePlugins()
 
   // ClickUp plugin state
@@ -82,6 +88,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [csSubmitting, setCsSubmitting] = useState(false)
   const [csError, setCsError] = useState('')
   const [csJustEnabled, setCsJustEnabled] = useState(false)
+
+  // Figma plugin state
+  const [showFigmaModal, setShowFigmaModal] = useState(false)
+  const [figmaSubmitting, setFigmaSubmitting] = useState(false)
+  const [figmaError, setFigmaError] = useState('')
+  const [figmaApiKey, setFigmaApiKey] = useState<string | null>(null)
+  const [figmaKeyCopied, setFigmaKeyCopied] = useState(false)
+
+  // Figma OAuth (account connect) state
+  const [figmaOAuthStatus, setFigmaOAuthStatus] = useState<{
+    connected: boolean
+    figma_email?: string
+    figma_handle?: string
+  } | null>(null)
+  const [figmaOAuthLoading, setFigmaOAuthLoading] = useState(false)
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -643,6 +664,132 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       setCsError(err instanceof Error ? err.message : 'Failed to disable Creative Studio')
     } finally {
       setCsSubmitting(false)
+    }
+  }
+
+  const handleFigmaEnable = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setFigmaSubmitting(true)
+    setFigmaError('')
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-figma-plugin/enable`,
+        { method: 'POST', headers: createSessionHeaders(sessionId) }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to enable Figma plugin')
+      }
+      const data = await res.json()
+      setFigmaApiKey(data.api_key)
+      invalidatePlugins()
+    } catch (err) {
+      setFigmaError(err instanceof Error ? err.message : 'Failed to enable Figma plugin')
+    } finally {
+      setFigmaSubmitting(false)
+    }
+  }
+
+  const handleFigmaRegenerateKey = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setFigmaSubmitting(true)
+    setFigmaError('')
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-figma-plugin/regenerate-key`,
+        { method: 'POST', headers: createSessionHeaders(sessionId) }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to regenerate key')
+      }
+      const data = await res.json()
+      setFigmaApiKey(data.api_key)
+      setFigmaKeyCopied(false)
+    } catch (err) {
+      setFigmaError(err instanceof Error ? err.message : 'Failed to regenerate key')
+    } finally {
+      setFigmaSubmitting(false)
+    }
+  }
+
+  const handleFigmaDisable = async () => {
+    if (!activeWorkspace?.tenant_id) return
+    setFigmaSubmitting(true)
+    setFigmaError('')
+    try {
+      const res = await apiFetch(
+        `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-figma-plugin/disable`,
+        { method: 'POST', headers: createSessionHeaders(sessionId) }
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to disable Figma plugin')
+      }
+      setShowFigmaModal(false)
+      setFigmaApiKey(null)
+      invalidatePlugins()
+      showToast('success', 'Figma plugin disabled')
+    } catch (err) {
+      setFigmaError(err instanceof Error ? err.message : 'Failed to disable Figma plugin')
+    } finally {
+      setFigmaSubmitting(false)
+    }
+  }
+
+  // Figma OAuth handlers
+  const loadFigmaOAuthStatus = async () => {
+    if (!activeWorkspace) return
+    try {
+      const res = await apiFetch(`/api/oauth/figma/status?tenant_id=${activeWorkspace.tenant_id}`, {
+        headers: { 'X-Session-ID': sessionId || '' },
+      })
+      if (!res.ok) return
+      setFigmaOAuthStatus(await res.json())
+    } catch { /* best-effort */ }
+  }
+
+  const handleFigmaOAuthConnect = async () => {
+    if (!activeWorkspace) return
+    setFigmaOAuthLoading(true)
+    try {
+      const res = await apiFetch(`/api/oauth/figma/auth-url?tenant_id=${activeWorkspace.tenant_id}`, {
+        headers: { 'X-Session-ID': sessionId || '' },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to get Figma auth URL')
+      }
+      const { auth_url } = await res.json()
+      const popup = window.open(auth_url, 'figma-oauth', 'width=600,height=700')
+      const poll = setInterval(async () => {
+        if (popup?.closed) {
+          clearInterval(poll)
+          await loadFigmaOAuthStatus()
+          setFigmaOAuthLoading(false)
+        }
+      }, 1000)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to connect Figma')
+      setFigmaOAuthLoading(false)
+    }
+  }
+
+  const handleFigmaOAuthDisconnect = async () => {
+    if (!activeWorkspace) return
+    setFigmaOAuthLoading(true)
+    try {
+      const res = await apiFetch(
+        `/api/oauth/figma/disconnect?tenant_id=${activeWorkspace.tenant_id}`,
+        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } },
+      )
+      if (!res.ok) throw new Error('Failed to disconnect Figma')
+      setFigmaOAuthStatus({ connected: false })
+      showToast('success', 'Figma account disconnected')
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to disconnect Figma')
+    } finally {
+      setFigmaOAuthLoading(false)
     }
   }
 
@@ -1298,6 +1445,96 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </button>
                   </div>
                 </div>
+
+                {/* Figma Plugin */}
+                <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#0ACF83]/10">
+                        <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
+                          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
+                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
+                          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
+                          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <h3 className="subheading-md text-primary truncate">Figma Plugin</h3>
+                          {isPluginEnabled('mia-figma-plugin') && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                              Enabled
+                            </span>
+                          )}
+                        </div>
+                        <p className="paragraph-xs text-quaternary truncate">
+                          Browse &amp; place Creative Studio assets directly in Figma
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setFigmaError('')
+                        setFigmaApiKey(null)
+                        setFigmaKeyCopied(false)
+                        setShowFigmaModal(true)
+                      }}
+                      className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover"
+                    >
+                      {isPluginEnabled('mia-figma-plugin') ? 'Manage' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Figma Account (OAuth — for file search & import) */}
+                <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#1ABCFE]/10">
+                        <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
+                          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
+                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
+                          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
+                          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <h3 className="subheading-md text-primary truncate">Figma Account</h3>
+                          {figmaOAuthStatus?.connected && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                              Connected
+                            </span>
+                          )}
+                        </div>
+                        <p className="paragraph-xs text-quaternary truncate">
+                          {figmaOAuthStatus?.connected
+                            ? `Connected as ${figmaOAuthStatus.figma_handle || figmaOAuthStatus.figma_email || 'Figma user'}`
+                            : 'Search & import Figma files into Creative Studio'}
+                        </p>
+                      </div>
+                    </div>
+                    {figmaOAuthStatus?.connected ? (
+                      <button
+                        onClick={handleFigmaOAuthDisconnect}
+                        disabled={figmaOAuthLoading}
+                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 border border-secondary text-secondary hover:bg-secondary disabled:opacity-50"
+                      >
+                        {figmaOAuthLoading ? 'Disconnecting…' : 'Disconnect'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleFigmaOAuthConnect}
+                        disabled={figmaOAuthLoading}
+                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover disabled:opacity-50"
+                      >
+                        {figmaOAuthLoading ? 'Connecting…' : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1800,6 +2037,86 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     <button onClick={() => { setShowCreativeStudioModal(false); setCsError('') }} disabled={csSubmitting} className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Cancel</button>
                     <button onClick={handleCreativeStudioEnable} disabled={csSubmitting} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50">
                       {csSubmitting ? 'Enabling...' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Figma Plugin Modal */}
+        {showFigmaModal && (
+          <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#0ACF83]/10 shrink-0">
+                  <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
+                    <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
+                    <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
+                    <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
+                    <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                  </svg>
+                </div>
+                <h2 className="title-h6 text-primary">
+                  {isPluginEnabled('mia-figma-plugin') ? 'Figma Plugin' : 'Enable Figma Plugin'}
+                </h2>
+              </div>
+
+              {/* API key display — shown after enable or regenerate */}
+              {figmaApiKey ? (
+                <div className="mb-4">
+                  <div className="bg-utility-success-50 border border-utility-success-200 rounded-lg p-4 mb-4">
+                    <p className="subheading-md text-success mb-1">
+                      {isPluginEnabled('mia-figma-plugin') ? 'New API key generated' : 'Plugin enabled!'}
+                    </p>
+                    <p className="paragraph-xs text-tertiary mb-3">Copy this key — it won't be shown again. Paste it into the MIA Creative Studio plugin in Figma.</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-secondary px-3 py-2 rounded-lg paragraph-xs font-mono text-primary break-all">{figmaApiKey}</code>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(figmaApiKey); setFigmaKeyCopied(true) }}
+                        className="px-3 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-sm hover:bg-brand-solid-hover shrink-0"
+                      >
+                        {figmaKeyCopied ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setShowFigmaModal(false); setFigmaApiKey(null) }}
+                    className="w-full px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : isPluginEnabled('mia-figma-plugin') ? (
+                /* Manage state — already enabled, no key shown */
+                <div>
+                  <p className="paragraph-sm text-tertiary mb-4">
+                    Your Figma plugin is active. If you need a new API key (e.g. it was lost), regenerate one below — the old key is immediately revoked.
+                  </p>
+                  {figmaError && <p className="paragraph-xs text-error mb-3">{figmaError}</p>}
+                  <div className="flex gap-3">
+                    <button onClick={() => { setShowFigmaModal(false); setFigmaError('') }} disabled={figmaSubmitting} className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Close</button>
+                    <button onClick={handleFigmaRegenerateKey} disabled={figmaSubmitting} className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50">
+                      {figmaSubmitting ? 'Generating...' : 'New Key'}
+                    </button>
+                    <button onClick={handleFigmaDisable} disabled={figmaSubmitting} className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50">
+                      {figmaSubmitting ? '...' : 'Disable'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Enable state */
+                <div>
+                  <p className="paragraph-sm text-tertiary mb-4">
+                    Generates an API key for the MIA Creative Studio Figma plugin, letting you browse and place your Creative Studio assets directly on the Figma canvas.
+                  </p>
+                  {figmaError && <p className="paragraph-xs text-error mb-3">{figmaError}</p>}
+                  <div className="flex gap-3">
+                    <button onClick={() => { setShowFigmaModal(false); setFigmaError('') }} disabled={figmaSubmitting} className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Cancel</button>
+                    <button onClick={handleFigmaEnable} disabled={figmaSubmitting} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50">
+                      {figmaSubmitting ? 'Enabling...' : 'Enable'}
                     </button>
                   </div>
                 </div>

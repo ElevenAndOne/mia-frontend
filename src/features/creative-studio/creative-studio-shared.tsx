@@ -23,7 +23,8 @@ export const VIDEO_MODELS = [
 export const IMAGE_MODELS = [
   { id: 'gpt-image-2',   name: 'GPT Image 2',   icon: '🎨', badge: 'Creative',  description: "OpenAI's creative image model" },
   { id: 'flux-2-pro',    name: 'FLUX.2 Pro',    icon: '📸', badge: 'Quality',   description: 'Black Forest Labs via fal.ai' },
-  { id: 'nano-banana-2', name: 'Nano Banana 2', icon: '🍌', badge: 'Editable',  description: 'Continuous editing via Gemini' },
+  { id: 'imagen-4',      name: 'Imagen 4',      icon: '🖼️', badge: 'Quality',   description: "Google's image model via fal.ai" },
+  { id: 'nano-banana-2', name: 'Nano Banana 2', icon: '🍌', badge: 'Editable',  description: 'Continuous editing via Imagen 4' },
 ]
 
 // ── Presets ────────────────────────────────────────────────────────────────
@@ -73,6 +74,10 @@ export const PROMPT_TEMPLATES: Record<string, { category: string; template: stri
     { category: 'Product Shot',   template: 'Premium [product] photography, elegant packaging, lifestyle setting', icon: Package },
     { category: 'Food',           template: 'Appetizing [food item], professional food photography, natural lighting', icon: Coffee },
   ],
+  'imagen-4': [
+    { category: 'Photorealistic', template: 'Photorealistic [subject], studio lighting, sharp detail, commercial quality', icon: Camera },
+    { category: 'Lifestyle',      template: '[Subject] in a natural lifestyle setting, warm tones, editorial feel', icon: Sun },
+  ],
   'nano-banana-2': [
     { category: 'Editable',    template: '[Subject] in a clean, well-lit scene, easy to edit', icon: Wand2 },
     { category: 'Background',  template: '[Subject] on [background], styled for easy isolation', icon: Layers },
@@ -108,6 +113,12 @@ export const PROMPT_TIPS: Record<string, string[]> = {
     'Include professional photography terms',
     "Specify lighting: 'studio lighting', 'golden hour', 'soft box'",
     'Great for product photography — mention surface and texture',
+  ],
+  'imagen-4': [
+    "Google's latest image model — excels at photorealism and detail",
+    'Supports reference images for style and subject guidance',
+    'Great for lifestyle and commercial photography',
+    'Pair with Nano Banana 2 for iterative refinement after generating',
   ],
   'nano-banana-2': [
     'Designed for continuous iterative editing',
@@ -244,6 +255,7 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
   const badgeColor = (badge: string) => {
     if (badge === 'Creative') return 'bg-green-500/20 text-green-300'
     if (badge === 'Quality')  return 'bg-blue-500/20 text-blue-300'
+    if (badge === 'Editable') return 'bg-yellow-500/20 text-yellow-300'
     return 'bg-purple-500/20 text-purple-300'
   }
 
@@ -277,7 +289,7 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
                 className={`w-full p-4 transition-all text-left hover:bg-slate-700 border-b border-slate-700 last:border-b-0 ${value === model.id ? 'bg-purple-500/10' : ''}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${model.id === 'gpt-image-2' ? 'bg-green-500' : model.id === 'flux-2-pro' ? 'bg-blue-500' : 'bg-yellow-500'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${model.id === 'gpt-image-2' ? 'bg-green-500' : model.id === 'flux-2-pro' ? 'bg-blue-500' : model.id === 'imagen-4' ? 'bg-sky-500' : 'bg-yellow-500'}`}>
                     {model.icon}
                   </div>
                   <div className="flex-1">
