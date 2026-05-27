@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import type { BrandGuideExtracted, MarketingContext, UploadResult } from '../types'
+import type { BrandGuideExtracted, GenerateResult, MarketingContext, UploadResult } from '../types'
 
 function tenantParam(tenantId?: string | null): string {
   return tenantId ? `&tenant_id=${encodeURIComponent(tenantId)}` : ''
@@ -34,6 +34,27 @@ export async function uploadBrandGuide(
     throw new Error(err.detail || 'Upload failed')
   }
 
+  return response.json()
+}
+
+export async function generateBrandGuideFromWebsite(
+  sessionId: string,
+  websiteUrl: string,
+  tenantId?: string | null
+): Promise<GenerateResult> {
+  const response = await apiFetch('/api/marketing-context/generate-from-website', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      website_url: websiteUrl,
+      tenant_id: tenantId ?? null,
+    }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Generation failed' }))
+    throw new Error(err.detail || 'Generation failed')
+  }
   return response.json()
 }
 

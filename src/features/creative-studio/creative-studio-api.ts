@@ -132,6 +132,7 @@ export interface IntelligenceStatus {
   analyzed_at?: string
   top_ad_count?: number
   date_range_days?: number
+  campaign_id?: string | null
   visual_patterns?: {
     composition?: string
     color_palette?: string
@@ -150,19 +151,27 @@ export interface IntelligenceStatus {
 }
 
 export const creativeIntelligenceApi = {
-  getStatus: async (sessionId: string, tenantId: string): Promise<IntelligenceStatus> => {
-    const res = await apiFetch(
-      `/api/creative-intelligence/status?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`,
-    )
+  getStatus: async (
+    sessionId: string,
+    tenantId: string,
+    campaignId?: string,
+  ): Promise<IntelligenceStatus> => {
+    let url = `/api/creative-intelligence/status?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`
+    if (campaignId) url += `&campaign_id=${encodeURIComponent(campaignId)}`
+    const res = await apiFetch(url)
     if (!res.ok) return { status: 'never_run' }
     return res.json()
   },
 
-  refresh: async (sessionId: string, tenantId: string): Promise<{ status: string; message: string }> => {
+  refresh: async (
+    sessionId: string,
+    tenantId: string,
+    campaignId?: string,
+  ): Promise<{ status: string; message: string }> => {
     const res = await apiFetch('/api/creative-intelligence/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, tenant_id: tenantId }),
+      body: JSON.stringify({ session_id: sessionId, tenant_id: tenantId, campaign_id: campaignId }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Failed to start analysis' }))

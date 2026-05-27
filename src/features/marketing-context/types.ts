@@ -11,6 +11,19 @@ export interface BrandGuideExtracted {
   primary_goals: string[] | null
   customer_language: string | null
   proof_points: string | null
+  taglines: string[] | null
+  imagery_style: string | null
+  brand_story: string | null
+  certifications: string[] | null
+}
+
+export interface GenerateResult {
+  success: boolean
+  filename: string
+  extracted: BrandGuideExtracted
+  brand_guide_raw: string
+  has_existing: boolean
+  existing_filename: string | null
 }
 
 export interface PlatformSnapshot {
@@ -72,10 +85,16 @@ export const FIELD_LABELS: Record<keyof BrandGuideExtracted, string> = {
   primary_goals: 'Primary Goals',
   customer_language: 'Customer Language',
   proof_points: 'Proof Points',
+  taglines: 'Taglines',
+  imagery_style: 'Imagery Style',
+  brand_story: 'Brand Story',
+  certifications: 'Certifications',
 }
 
 export const ARRAY_FIELDS: Array<keyof BrandGuideExtracted> = [
   'tone_descriptors',
   'competitors',
   'primary_goals',
+  'taglines',
+  'certifications',
 ]

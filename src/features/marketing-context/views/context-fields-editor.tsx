@@ -68,7 +68,7 @@ export function ContextFieldsEditor({
         return (
           <div key={key} className="flex flex-col gap-1.5">
             <label className="paragraph-sm font-medium text-primary">{label}</label>
-            {key === 'problems_solved' || key === 'key_differentiators' || key === 'target_audience' ? (
+            {key === 'problems_solved' || key === 'key_differentiators' || key === 'target_audience' || key === 'imagery_style' || key === 'brand_story' ? (
               <textarea
                 className="w-full rounded-lg border border-tertiary bg-primary px-3 py-2 paragraph-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-brand-solid resize-none"
                 rows={3}
