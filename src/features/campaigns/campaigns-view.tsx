@@ -300,7 +300,7 @@ function PhaseTabs({ phases, selectedId, onSelect }: { phases: Phase[]; selected
 }
 
 // Channels that have platform campaign pickers
-const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads'])
+const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'hubspot'])
 
 function CampaignPickerModal({
   channel, tenantId, sessionId, current, onSave, onClose,
@@ -357,7 +357,7 @@ function CampaignPickerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-tertiary">
-          <p className="label-sm text-primary">Link {label} campaigns</p>
+          <p className="label-sm text-primary">Link {label} {channel === 'hubspot' ? 'lists' : 'campaigns'}</p>
           <button onClick={onClose} className="text-quaternary hover:text-secondary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -368,7 +368,7 @@ function CampaignPickerModal({
         <div className="p-3 border-b border-tertiary">
           <input
             type="text"
-            placeholder="Search campaigns..."
+            placeholder={`Search ${channel === 'hubspot' ? 'lists' : 'campaigns'}...`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full px-3 py-1.5 rounded-lg border border-tertiary bg-secondary paragraph-sm text-primary outline-none focus:border-utility-brand-400"
@@ -996,6 +996,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [cuLoadingFolders, setCuLoadingFolders] = useState(false)
   const [cuLoadingLists, setCuLoadingLists] = useState(false)
 
+  // ClickUp Update
+  const [updatingClickUp, setUpdatingClickUp] = useState(false)
+  const [showUpdateResult, setShowUpdateResult] = useState(false)
+  const [updateResult, setUpdateResult] = useState<{ tasks_updated?: number; tasks_created?: number; tasks_deleted?: number; errors?: { type: string; error: string }[] } | null>(null)
+  const [updateError, setUpdateError] = useState('')
+
   // ClickUp Sync Check
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [syncLoading, setSyncLoading] = useState(false)
@@ -1362,6 +1368,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setSyncResult(await res.json())
     } catch (err) { setSyncError(err instanceof Error ? err.message : 'Sync check failed') }
     finally { setSyncLoading(false) }
+  }
+
+  const handleClickUpUpdate = async () => {
+    if (!campaign) return
+    setUpdatingClickUp(true); setUpdateError(''); setUpdateResult(null); setShowUpdateResult(true)
+    try {
+      const result = await invokeClickUp('update_campaign_summary', { campaign_id: campaign.campaign_id })
+      setUpdateResult(result)
+    } catch (err) { setUpdateError(err instanceof Error ? err.message : 'Update failed') }
+    finally { setUpdatingClickUp(false) }
   }
 
   const sortedPhases = campaign ? [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order) : []
@@ -1776,6 +1792,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                         </svg>
                       </button>
                       <button
+                        onClick={handleClickUpUpdate}
+                        disabled={updatingClickUp}
+                        title="Update ClickUp tasks"
+                        className="p-1 transition-colors disabled:opacity-50"
+                      >
+                        <svg className={`w-4 h-4 ${updatingClickUp ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                      </button>
+                      <button
                         onClick={() => { setClickUpResult(null); setClickUpError(''); setCuSpaces([]); setCuFolders([]); setCuLists([]); setCuSpaceId(''); setCuFolderId(''); setCuListId(''); setShowClickUpModal(true); loadClickUpSpaces() }}
                         title="Push to ClickUp"
                         className="p-1 transition-colors"
@@ -2042,6 +2068,47 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       )}
 
       {/* ClickUp Sync Check Modal */}
+      {showUpdateResult && campaign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a2e] border border-[#2a2a4a] rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="subheading-md text-primary mb-4">ClickUp Update</h3>
+            {updatingClickUp && (
+              <p className="paragraph-sm text-secondary mb-4">Updating ClickUp tasks…</p>
+            )}
+            {updateError && !updatingClickUp && (
+              <p className="paragraph-sm text-error mb-4">{updateError}</p>
+            )}
+            {updateResult && !updatingClickUp && (
+              <div className="space-y-2 mb-4">
+                <div className={`rounded-lg p-3 flex items-center gap-3 ${(updateResult.errors?.length ?? 0) === 0 ? 'bg-success-primary border border-utility-success-300' : 'bg-warning-primary border border-utility-warning-300'}`}>
+                  <svg className={`w-5 h-5 shrink-0 ${(updateResult.errors?.length ?? 0) === 0 ? 'text-success' : 'text-warning'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {(updateResult.errors?.length ?? 0) === 0
+                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/>}
+                  </svg>
+                  <span className="paragraph-sm text-primary">
+                    {updateResult.tasks_updated ?? 0} updated · {updateResult.tasks_created ?? 0} created · {updateResult.tasks_deleted ?? 0} deleted
+                  </span>
+                </div>
+                {(updateResult.errors?.length ?? 0) > 0 && (
+                  <div className="text-xs text-error space-y-1 max-h-32 overflow-y-auto">
+                    {updateResult.errors!.map((e, i) => (
+                      <p key={i}>{e.type}: {e.error}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={() => { setShowUpdateResult(false); setUpdateResult(null); setUpdateError('') }}
+              className="w-full px-4 py-3 bg-[#2a2a4a] text-secondary rounded-lg subheading-sm hover:bg-[#3a3a5a]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {showSyncModal && campaign && (
         <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
           <div className="bg-primary rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[80vh] flex flex-col">
