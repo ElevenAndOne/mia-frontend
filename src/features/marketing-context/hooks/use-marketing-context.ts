@@ -4,6 +4,7 @@ import type { BrandGuideExtracted, MarketingContext, UploadResult } from '../typ
 import {
   fetchMarketingContext,
   findCompetitors,
+  generateBrandGuideFromWebsite,
   refreshPlatformSnapshot,
   saveBrandGuideExtraction,
   saveManualOverrides,
@@ -20,8 +21,12 @@ export interface UseMarketingContextReturn {
   editedFields: Partial<BrandGuideExtracted>
   snapshotRefreshing: boolean
   competitorSearching: boolean
+  isGenerating: boolean
+  generateHasExisting: boolean
+  generateExistingFilename: string | null
   // handlers
   handleFileSelect: (file: File) => Promise<void>
+  handleGenerateFromWebsite: (url: string) => Promise<void>
   handleFieldChange: (key: keyof BrandGuideExtracted, value: string | string[]) => void
   handleSaveExtraction: () => Promise<void>
   handleSaveOverrides: () => Promise<void>
@@ -42,6 +47,9 @@ export function useMarketingContext(
   const [editedFields, setEditedFields] = useState<Partial<BrandGuideExtracted>>({})
   const [snapshotRefreshing, setSnapshotRefreshing] = useState(false)
   const [competitorSearching, setCompetitorSearching] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateHasExisting, setGenerateHasExisting] = useState(false)
+  const [generateExistingFilename, setGenerateExistingFilename] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!sessionId) return
@@ -73,6 +81,28 @@ export function useMarketingContext(
         const msg = err instanceof Error ? err.message : 'Upload failed'
         showToast('error', msg)
         setUploadStep('idle')
+      }
+    },
+    [sessionId, tenantId, showToast]
+  )
+
+  const handleGenerateFromWebsite = useCallback(
+    async (url: string) => {
+      if (!sessionId) return
+      setIsGenerating(true)
+      setUploadStep('uploading')
+      try {
+        const result = await generateBrandGuideFromWebsite(sessionId, url, tenantId)
+        setUploadResult({ success: result.success, filename: result.filename, extracted: result.extracted, brand_guide_raw: result.brand_guide_raw })
+        setEditedFields(result.extracted)
+        setGenerateHasExisting(result.has_existing)
+        setGenerateExistingFilename(result.existing_filename)
+        setUploadStep('preview')
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Generation failed'
+        showToast('error', msg)
+        setUploadStep('idle')
+        setIsGenerating(false)
       }
     },
     [sessionId, tenantId, showToast]
@@ -111,6 +141,9 @@ export function useMarketingContext(
       showToast('success', 'Brand guide saved successfully')
       setUploadStep('done')
       setUploadResult(null)
+      setIsGenerating(false)
+      setGenerateHasExisting(false)
+      setGenerateExistingFilename(null)
       await load()
     } catch {
       showToast('error', 'Failed to save brand guide')
@@ -167,6 +200,9 @@ export function useMarketingContext(
     setUploadStep('idle')
     setUploadResult(null)
     setEditedFields({})
+    setIsGenerating(false)
+    setGenerateHasExisting(false)
+    setGenerateExistingFilename(null)
   }, [])
 
   return {
@@ -177,7 +213,11 @@ export function useMarketingContext(
     editedFields,
     snapshotRefreshing,
     competitorSearching,
+    isGenerating,
+    generateHasExisting,
+    generateExistingFilename,
     handleFileSelect,
+    handleGenerateFromWebsite,
     handleFieldChange,
     handleSaveExtraction,
     handleSaveOverrides,
