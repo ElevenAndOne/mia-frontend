@@ -951,14 +951,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           authUrl = data.auth_url
         }
       } else if (integrationId === 'hubspot') {
+        // HubSpot uses REDIRECT flow — popup fails in Firefox due to cookie blocking
         const response = await apiFetch(
           `/api/oauth/hubspot/auth-url${tenantParam ? '?' + tenantParam : ''}`,
           { headers: authHeaders }
         )
         if (response.ok) {
           const data = await response.json()
-          authUrl = data.auth_url
+          window.location.href = data.auth_url
+          return // Page will redirect; callback redirects back to /integrations
         }
+        throw new Error('Failed to get HubSpot auth URL')
       } else if (integrationId === 'mailchimp') {
         const response = await apiFetch(
           `/api/oauth/mailchimp/auth-url${tenantParam ? '?' + tenantParam : ''}`,
@@ -1520,7 +1523,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       <button
                         onClick={handleFigmaOAuthDisconnect}
                         disabled={figmaOAuthLoading}
-                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 border border-secondary text-secondary hover:bg-secondary disabled:opacity-50"
+                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover disabled:opacity-50"
                       >
                         {figmaOAuthLoading ? 'Disconnecting…' : 'Disconnect'}
                       </button>
