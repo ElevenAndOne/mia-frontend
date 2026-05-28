@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, Film, Download, Play, Pause, RotateCw, Wand2, Camera, Layers, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Film, Download, Play, Pause, RotateCw, Wand2, Camera, Layers, ChevronDown, ChevronUp, Image } from 'lucide-react'
 import {
   VIDEO_MODELS, vfxTemplates, cameraMovements,
   VideoModelSelector, EnhancedTimeline, ProgressBar,
 } from './creative-studio-shared'
 import { creativeStudioApi } from './creative-studio-api'
+import { ReferencePicker } from './reference-picker'
 
 interface Props {
   tenantId: string
@@ -19,6 +20,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
   const [duration, setDuration] = useState(5)
   const [cameraOpen, setCameraOpen] = useState(true)
   const [vfxOpen, setVfxOpen] = useState(true)
+  const [referenceImages, setReferenceImages] = useState<string[]>([])
 
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -104,7 +106,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
         duration,
         aspect_ratio: '16:9',
         quality: 'standard',
-        reference_images: [],
+        reference_images: referenceImages,
         camera_movement: cameraMovement,
         vfx_template: vfxTemplate,
       })
@@ -185,6 +187,14 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               ))}
             </div>
           )}
+        </div>
+
+        {/* References */}
+        <div className="shrink-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <Image className="w-4 h-4 text-slate-400" /> Reference Images
+          </h3>
+          <ReferencePicker tenantId={tenantId} sessionId={sessionId} value={referenceImages} onChange={setReferenceImages} />
         </div>
       </div>
 
@@ -324,7 +334,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
             {([
               ['Model', VIDEO_MODELS.find(m => m.id === videoModel)?.name],
               ['Duration', `${duration}s`],
-              ['References', 'None'],
+              ['References', referenceImages.length > 0 ? `${referenceImages.length} image${referenceImages.length > 1 ? 's' : ''}` : 'None'],
               selectedVfx ? ['VFX', selectedVfx.name] : null,
               selectedCamera ? ['Camera', selectedCamera.name] : null,
             ] as ([string, string] | null)[])
