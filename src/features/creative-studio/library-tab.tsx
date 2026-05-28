@@ -243,6 +243,10 @@ function FigmaImportModal({ tenantId, sessionId, onImported, onClose }: {
     try {
       const res = await figmaApi.listFrames(sessionId, tenantId, file.file_key)
       setFrames(res.frames ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((res as any).unsupported) {
+        setImportError('Could not read this file. Try reconnecting your Figma account in Settings → Integrations.')
+      }
     } catch {
       setFrames([])
     } finally {
