@@ -86,7 +86,11 @@ export const pollActionStatus = async (
 export const uploadChatFile = async (
   sessionId: string,
   file: File
-): Promise<{ type: 'image'; data_url: string } | { type: 'document'; filename: string; content: string }> => {
+): Promise<
+  | { type: 'image'; data_url: string }
+  | { type: 'document'; filename: string; content: string; b64?: never }
+  | { type: 'document'; filename: string; b64: string; content?: never }
+> => {
   const formData = new FormData()
   formData.append('file', file)
   const response = await apiFetch('/api/chat/v2/upload', {
