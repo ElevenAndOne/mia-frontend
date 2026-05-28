@@ -7,7 +7,8 @@ interface ChatHistoryMessage {
 
 export interface AttachedDocument {
   filename: string
-  content: string
+  content?: string  // text-based files (CSV, Excel)
+  b64?: string      // PDFs (sent as native Claude document block)
 }
 
 interface ChatRequestPayload {
