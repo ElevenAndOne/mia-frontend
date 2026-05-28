@@ -1310,7 +1310,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId! },
       body: JSON.stringify({ data }),
     })
-    if (!res.ok) { const err = await res.json(); throw new Error(err.detail || `ClickUp ${action} failed`) }
+    if (!res.ok) {
+      let detail = `ClickUp ${action} failed (${res.status})`
+      try { const err = await res.json(); detail = err.detail || detail } catch { /* non-JSON error body */ }
+      throw new Error(detail)
+    }
     const body = await res.json(); return body.result
   }
 

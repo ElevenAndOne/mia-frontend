@@ -74,6 +74,9 @@ export const ChatView = ({
     images,
     addImages,
     removeImage,
+    documents,
+    addDocument,
+    removeDocument,
     activeCampaign,
     handleCampaignChange,
   } = useChatView()
@@ -178,6 +181,9 @@ export const ChatView = ({
               images={images}
               onAddImages={addImages}
               onRemoveImage={removeImage}
+              documents={documents}
+              onAddFile={addDocument}
+              onRemoveDocument={removeDocument}
               onTranscribeAudio={handleTranscribeAudio}
             />
           </>
@@ -275,6 +281,9 @@ export const ChatView = ({
               images={images}
               onAddImages={addImages}
               onRemoveImage={removeImage}
+              documents={documents}
+              onAddFile={addDocument}
+              onRemoveDocument={removeDocument}
               onTranscribeAudio={handleTranscribeAudio}
             />
           </>

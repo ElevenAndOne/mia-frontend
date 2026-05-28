@@ -12,8 +12,9 @@ import {
   pollActionStatus,
   fetchConversationMessages,
   transcribeAudio,
+  uploadChatFile,
 } from '../services/chat-service'
-import type { PendingAction } from '../services/chat-service'
+import type { PendingAction, AttachedDocument } from '../services/chat-service'
 import { StorageKey } from '../../../constants/storage-keys'
 import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
@@ -45,6 +46,7 @@ export const useChatView = () => {
   const [streamingContent, setStreamingContent] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
+  const [documents, setDocuments] = useState<AttachedDocument[]>([])
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
@@ -191,9 +193,30 @@ export const useChatView = () => {
     setImages((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  const addDocument = useCallback(
+    async (file: File) => {
+      try {
+        const result = await uploadChatFile(sessionId || 'default', file)
+        if (result.type === 'image') {
+          setImages((prev) => [...prev, result.data_url].slice(0, 4))
+        } else {
+          setDocuments((prev) => [...prev, { filename: result.filename, content: result.content }])
+        }
+      } catch (err) {
+        logger.error('File upload failed', err)
+      }
+    },
+    [sessionId]
+  )
+
+  const removeDocument = useCallback((index: number) => {
+    setDocuments((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const handleSubmit = useCallback(
     async (message: string, options?: { hidden?: boolean }) => {
       const pendingImages = images.slice()
+      const pendingDocuments = documents.slice()
       const activeConvId =
         conversationId ??
         (() => {
@@ -218,7 +241,8 @@ export const useChatView = () => {
 
       justSubmittedRef.current = true
       setMessages((prev) => [...prev, userMessage])
-      setImages([])  // Clear images immediately after capturing
+      setImages([])
+      setDocuments([])
       setIsLoading(true)
       setStreamingContent('')
 
@@ -277,6 +301,7 @@ export const useChatView = () => {
             conversation_history: history.length > 0 ? history : undefined,
             conversation_id: activeConvId,
             images: pendingImages.length > 0 ? pendingImages : undefined,
+            documents: pendingDocuments.length > 0 ? pendingDocuments : undefined,
             ...(activeCampaign
               ? {
                   campaign_id: activeCampaign.campaignId,
@@ -560,6 +585,9 @@ export const useChatView = () => {
     images,
     addImages,
     removeImage,
+    documents,
+    addDocument,
+    removeDocument,
     activeCampaign,
     handleCampaignChange,
   }

@@ -6,6 +6,7 @@ import { VoiceWaveform } from './voice-waveform'
 import { Icon } from '../../../components/icon'
 import { formatDateRangeDisplay } from '../../../utils/date-range'
 import type { Platform } from '../types'
+import type { AttachedDocument } from '../services/chat-service'
 
 interface ChatInputProps {
   onSubmit: (message: string) => void
@@ -24,6 +25,9 @@ interface ChatInputProps {
   images?: string[]
   onAddImages?: (images: string[]) => void
   onRemoveImage?: (index: number) => void
+  documents?: AttachedDocument[]
+  onAddFile?: (file: File) => Promise<void>
+  onRemoveDocument?: (index: number) => void
   onTranscribeAudio?: (blob: Blob, mimeType: string) => Promise<string>
 }
 
@@ -46,12 +50,16 @@ export const ChatInput = ({
   images = [],
   onAddImages,
   onRemoveImage,
+  documents = [],
+  onAddFile,
+  onRemoveDocument,
   onTranscribeAudio,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   const [micState, setMicState] = useState<MicState>('idle')
+  const [isUploading, setIsUploading] = useState(false)
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
@@ -82,23 +90,67 @@ export const ChatInput = ({
     e.target.style.height = `${e.target.scrollHeight}px`
   }
 
-  const handleImageFiles = useCallback(
-    (files: FileList | null) => {
-      if (!files || !onAddImages) return
-      const remaining = 4 - images.length
-      if (remaining <= 0) return
-      const toRead = Array.from(files).slice(0, remaining)
-      const promises = toRead.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader()
-            reader.onload = (e) => resolve(e.target?.result as string)
-            reader.readAsDataURL(file)
-          })
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!onAddImages) return
+      const imageItems = Array.from(e.clipboardData.items).filter((item) =>
+        item.type.startsWith('image/')
       )
-      Promise.all(promises).then((dataUrls) => onAddImages(dataUrls))
+      if (imageItems.length === 0) return
+      e.preventDefault()
+      const remaining = 4 - images.length
+      imageItems.slice(0, remaining).forEach((item) => {
+        const file = item.getAsFile()
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string
+          if (dataUrl) onAddImages([dataUrl])
+        }
+        reader.readAsDataURL(file)
+      })
     },
     [images.length, onAddImages]
+  )
+
+  const handleFileChange = useCallback(
+    async (files: FileList | null) => {
+      if (!files) return
+      const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      const imageFiles: File[] = []
+      const otherFiles: File[] = []
+      Array.from(files).forEach((f) => {
+        if (imageTypes.includes(f.type)) imageFiles.push(f)
+        else otherFiles.push(f)
+      })
+
+      // Images: read client-side as before
+      if (imageFiles.length > 0 && onAddImages) {
+        const remaining = 4 - images.length
+        const toRead = imageFiles.slice(0, remaining)
+        const promises = toRead.map(
+          (file) =>
+            new Promise<string>((resolve) => {
+              const reader = new FileReader()
+              reader.onload = (e) => resolve(e.target?.result as string)
+              reader.readAsDataURL(file)
+            })
+        )
+        const dataUrls = await Promise.all(promises)
+        onAddImages(dataUrls)
+      }
+
+      // Docs/other: upload to backend for parsing
+      if (otherFiles.length > 0 && onAddFile) {
+        setIsUploading(true)
+        try {
+          await Promise.all(otherFiles.map((f) => onAddFile(f)))
+        } finally {
+          setIsUploading(false)
+        }
+      }
+    },
+    [images.length, onAddImages, onAddFile]
   )
 
   const startRecording = useCallback(async () => {
@@ -190,11 +242,11 @@ export const ChatInput = ({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
-      {/* Image preview strip */}
-      {images.length > 0 && (
+      {/* Attachment preview strip — images + document pills */}
+      {(images.length > 0 || documents.length > 0) && (
         <div className="flex gap-2 mb-2 flex-wrap">
           {images.map((src, i) => (
-            <div key={i} className="relative group">
+            <div key={`img-${i}`} className="relative group">
               <img
                 src={src}
                 alt={`attachment ${i + 1}`}
@@ -207,6 +259,21 @@ export const ChatInput = ({
                   className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-quaternary flex items-center justify-center touch-manipulation opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                   <Icon.x_close size={11} />
+                </button>
+              )}
+            </div>
+          ))}
+          {documents.map((doc, i) => (
+            <div key={`doc-${i}`} className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[200px]">
+              <Icon.file_attachment_01 size={14} className="text-tertiary shrink-0" />
+              <span className="paragraph-xs text-secondary truncate">{doc.filename}</span>
+              {onRemoveDocument && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveDocument(i)}
+                  className="shrink-0 w-5 h-5 rounded-full bg-tertiary flex items-center justify-center touch-manipulation opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1"
+                >
+                  <Icon.x_close size={9} />
                 </button>
               )}
             </div>
@@ -251,6 +318,7 @@ export const ChatInput = ({
               value={message}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={placeholder}
               disabled={disabled}
               aria-label="Chat message"
@@ -314,27 +382,31 @@ export const ChatInput = ({
               />
             </div>
 
-            {/* Image upload — label approach works universally on mobile (no JS click needed) */}
-            {onAddImages && (
+            {/* Attachment button — images, CSV, Excel, PDF */}
+            {(onAddImages || onAddFile) && (
               <>
                 <input
-                  id="chat-image-input"
+                  id="chat-file-input"
                   type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf"
                   multiple
                   className="sr-only"
-                  onChange={(e) => { handleImageFiles(e.target.files); e.target.value = '' }}
-                  disabled={images.length >= 4}
+                  onChange={(e) => { handleFileChange(e.target.files); e.target.value = '' }}
+                  disabled={isUploading}
                 />
                 <label
-                  htmlFor="chat-image-input"
-                  title={images.length >= 4 ? 'Maximum 4 images' : 'Attach image'}
+                  htmlFor="chat-file-input"
+                  title={isUploading ? 'Uploading…' : 'Attach file or image'}
                   className={[
                     'w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation',
-                    images.length >= 4 ? 'opacity-40 pointer-events-none' : 'cursor-pointer',
+                    isUploading ? 'opacity-40 pointer-events-none' : 'cursor-pointer',
                   ].join(' ')}
                 >
-                  <Icon.image_plus size={18} />
+                  {isUploading ? (
+                    <Icon.loading_01 size={18} className="animate-spin" />
+                  ) : (
+                    <Icon.attachment_01 size={18} />
+                  )}
                 </label>
               </>
             )}
