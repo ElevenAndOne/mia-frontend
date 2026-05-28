@@ -102,12 +102,22 @@ export const ChatInput = ({
       imageItems.slice(0, remaining).forEach((item) => {
         const file = item.getAsFile()
         if (!file) return
-        const reader = new FileReader()
-        reader.onload = (ev) => {
-          const dataUrl = ev.target?.result as string
-          if (dataUrl) onAddImages([dataUrl])
+        // Normalize to PNG via canvas — clipboard items often report wrong MIME type
+        // (e.g. image/jpeg for what is actually PNG data), which Anthropic rejects.
+        const url = URL.createObjectURL(file)
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.naturalWidth
+          canvas.height = img.naturalHeight
+          const ctx = canvas.getContext('2d')
+          if (!ctx) { URL.revokeObjectURL(url); return }
+          ctx.drawImage(img, 0, 0)
+          const dataUrl = canvas.toDataURL('image/png')
+          URL.revokeObjectURL(url)
+          onAddImages([dataUrl])
         }
-        reader.readAsDataURL(file)
+        img.src = url
       })
     },
     [images.length, onAddImages]
