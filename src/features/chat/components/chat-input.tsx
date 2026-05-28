@@ -60,6 +60,7 @@ export const ChatInput = ({
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   const [micState, setMicState] = useState<MicState>('idle')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
@@ -153,8 +154,13 @@ export const ChatInput = ({
       // Docs/other: upload to backend for parsing
       if (otherFiles.length > 0 && onAddFile) {
         setIsUploading(true)
+        setUploadError('')
         try {
           await Promise.all(otherFiles.map((f) => onAddFile(f)))
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Upload failed'
+          setUploadError(msg)
+          console.error('[chat-input] file upload error:', err)
         } finally {
           setIsUploading(false)
         }
@@ -252,6 +258,15 @@ export const ChatInput = ({
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
+      {uploadError && (
+        <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-error-secondary text-error-primary paragraph-xs">
+          <Icon.alert_circle size={13} className="shrink-0" />
+          <span>Upload failed: {uploadError}</span>
+          <button type="button" onClick={() => setUploadError('')} className="ml-auto shrink-0">
+            <Icon.x_close size={11} />
+          </button>
+        </div>
+      )}
       {/* Attachment preview strip — images + document pills */}
       {(images.length > 0 || documents.length > 0) && (
         <div className="flex gap-2 mb-2 flex-wrap">
