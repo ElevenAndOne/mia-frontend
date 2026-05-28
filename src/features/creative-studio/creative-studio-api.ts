@@ -158,11 +158,11 @@ export const creativeStudioApi = {
 
 // ── Figma browser (calls backend directly — no plugin host needed) ──────────────
 
-const figmaBase = (tenantId: string) => `/api/oauth/figma`
+const figmaBase = () => `/api/oauth/figma`
 
 export const figmaApi = {
   listFiles: async (sessionId: string, tenantId: string, query?: string): Promise<{ files: FigmaFile[] }> => {
-    let url = `${figmaBase(tenantId)}/files?tenant_id=${encodeURIComponent(tenantId)}`
+    let url = `${figmaBase()}/files?tenant_id=${encodeURIComponent(tenantId)}`
     if (query) url += `&query=${encodeURIComponent(query)}`
     const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId } })
     if (!res.ok) {
@@ -173,7 +173,7 @@ export const figmaApi = {
   },
 
   listFrames: async (sessionId: string, tenantId: string, fileKey: string): Promise<{ frames: FigmaFrame[] }> => {
-    const res = await apiFetch(`${figmaBase(tenantId)}/frames`, {
+    const res = await apiFetch(`${figmaBase()}/frames`, {
       method: 'POST',
       headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenant_id: tenantId, file_key: fileKey }),
@@ -183,7 +183,7 @@ export const figmaApi = {
   },
 
   importFrames: async (sessionId: string, tenantId: string, fileKey: string, frames: FigmaFrame[]): Promise<{ assets: CreativeAsset[]; imported: number }> => {
-    const res = await apiFetch(`${figmaBase(tenantId)}/import-frames`, {
+    const res = await apiFetch(`${figmaBase()}/import-frames`, {
       method: 'POST',
       headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
       body: JSON.stringify({ tenant_id: tenantId, file_key: fileKey, frames }),
@@ -199,7 +199,7 @@ export const figmaApi = {
     const form = new FormData()
     form.append('tenant_id', tenantId)
     form.append('file', file)
-    const res = await apiFetch(`${figmaBase(tenantId)}/upload-reference`, {
+    const res = await apiFetch(`${figmaBase()}/upload-reference`, {
       method: 'POST',
       headers: { 'X-Session-ID': sessionId },
       body: form,
