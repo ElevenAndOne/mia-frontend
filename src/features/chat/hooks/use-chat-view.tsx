@@ -199,10 +199,10 @@ export const useChatView = () => {
         const result = await uploadChatFile(sessionId || 'default', file)
         if (result.type === 'image') {
           setImages((prev) => [...prev, result.data_url].slice(0, 4))
-        } else if ('b64' in result && result.b64) {
+        } else if (result.b64) {
           setDocuments((prev) => [...prev, { filename: result.filename, b64: result.b64 }])
-        } else {
-          setDocuments((prev) => [...prev, { filename: result.filename, content: (result as { filename: string; content: string }).content }])
+        } else if (result.content) {
+          setDocuments((prev) => [...prev, { filename: result.filename, content: result.content }])
         }
       } catch (err) {
         logger.error('File upload failed', err)
