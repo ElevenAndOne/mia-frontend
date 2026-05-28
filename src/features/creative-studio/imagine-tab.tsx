@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp, Image } from 'lucide-react'
 import { IMAGE_MODELS, ImageModelSelector, ProgressBar } from './creative-studio-shared'
 import { creativeStudioApi, creativeIntelligenceApi, type IntelligenceStatus } from './creative-studio-api'
+import { ReferencePicker } from './reference-picker'
 
 interface Props {
   tenantId: string
@@ -117,6 +118,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   const [showOptimizedPrompt, setShowOptimizedPrompt] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [referenceImages, setReferenceImages] = useState<string[]>([])
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [currentEditImage, setCurrentEditImage] = useState('')
   const [editHistory, setEditHistory] = useState<EditHistoryItem[]>([])
@@ -241,7 +243,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
         num_images: 1,
         quality: 'standard',
         aspect_ratio: '1:1',
-        reference_images: [],
+        reference_images: referenceImages,
         campaign_id: selectedCampaignId || undefined,
         phase_id: selectedPhaseId || undefined,
       })
@@ -297,14 +299,29 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
 
       <div className="grid grid-cols-12 gap-6 items-stretch">
 
-        {/* Left — Model + Campaign Context */}
+        {/* Left — Model + References + Campaign Context */}
         <div className="col-span-3 flex flex-col gap-4">
           <div className="shrink-0 z-10">
             <ImageModelSelector value={imageModel} onChange={setImageModel} />
           </div>
 
+          {/* References — flex-1 mirrors Camera Movement on Create */}
+          <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <Image className="w-4 h-4 text-slate-400" /> Reference Images
+            </h3>
+            <ReferencePicker
+              tenantId={tenantId}
+              sessionId={sessionId}
+              value={referenceImages}
+              onChange={setReferenceImages}
+              disabled={!(IMAGE_MODELS.find(m => m.id === imageModel)?.supportsReferences)}
+              disabledReason={`${IMAGE_MODELS.find(m => m.id === imageModel)?.name ?? 'This model'} does not support reference images`}
+            /></div>
+
+          {/* Campaign Context — shrink-0, compact */}
           {campaigns.length > 0 && (
-            <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+            <div className="shrink-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4 text-purple-400" /> Campaign Context
               </h3>
@@ -522,6 +539,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
             <div className="space-y-2 text-sm">
               {([
                 ['Model', IMAGE_MODELS.find(m => m.id === imageModel)?.name],
+                ['References', referenceImages.length > 0 ? `${referenceImages.length} image${referenceImages.length > 1 ? 's' : ''}` : 'None'],
                 selectedCampaign ? ['Campaign', selectedCampaign.campaign_name] : null,
               ] as ([string, string] | null)[])
                 .filter((row): row is [string, string] => row !== null && row[1] !== undefined)
