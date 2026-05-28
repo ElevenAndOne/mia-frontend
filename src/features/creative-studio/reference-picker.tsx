@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Image, Upload, CheckCircle, Loader2 } from 'lucide-react'
+import { X, Image, Upload, CheckCircle, Loader2, Info } from 'lucide-react'
 import { creativeStudioApi, figmaApi, type CreativeAsset } from './creative-studio-api'
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   sessionId: string
   value: string[]        // CDN URLs of selected reference images
   onChange: (urls: string[]) => void
+  disabled?: boolean
+  disabledReason?: string
 }
 
 function LibraryModal({ tenantId, sessionId, selected, onToggle, onUpload, onClose, uploading }: {
@@ -104,9 +106,20 @@ function LibraryModal({ tenantId, sessionId, selected, onToggle, onUpload, onClo
   )
 }
 
-export function ReferencePicker({ tenantId, sessionId, value, onChange }: Props) {
+export function ReferencePicker({ tenantId, sessionId, value, onChange, disabled, disabledReason }: Props) {
   const [showModal, setShowModal] = useState(false)
   const [uploading, setUploading] = useState(false)
+
+  if (disabled) {
+    return (
+      <div className="flex items-start gap-2.5 px-3 py-3 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+        <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+        <p className="text-slate-500 text-xs leading-relaxed">
+          {disabledReason ?? 'This model does not support reference images'}
+        </p>
+      </div>
+    )
+  }
 
   const toggle = (url: string) =>
     onChange(value.includes(url) ? value.filter(u => u !== url) : [...value, url])

@@ -15,16 +15,16 @@ const S3 = 'https://mia-creative-assets.s3.amazonaws.com/previews'
 // ── Model definitions ──────────────────────────────────────────────────────
 
 export const VIDEO_MODELS = [
-  { id: 'veo-3.1',        name: 'Veo 3.1',         icon: '🎬', badge: 'Cinematic', description: "Google's cinematic AI via fal.ai",  maxDuration: 8,  minDuration: 1 },
-  { id: 'runway-gen-4.5', name: 'Runway Gen-4.5',   icon: '🎥', badge: 'Fast',      description: 'Creative video via Runway API',    maxDuration: 16, minDuration: 1 },
-  { id: 'kling-3.0',      name: 'Kling 3.0 Pro',    icon: '🎞️', badge: 'Creative',  description: 'Kuaishou cinematic via fal.ai',    maxDuration: 10, minDuration: 1 },
+  { id: 'veo-3.1',        name: 'Veo 3.1',         icon: '🎬', badge: 'Cinematic', description: "Google's cinematic AI via fal.ai",  maxDuration: 8,  minDuration: 1, supportsReferences: true  },
+  { id: 'runway-gen-4.5', name: 'Runway Gen-4.5',   icon: '🎥', badge: 'Fast',      description: 'Creative video via Runway API',    maxDuration: 16, minDuration: 1, supportsReferences: false },
+  { id: 'kling-3.0',      name: 'Kling 3.0 Pro',    icon: '🎞️', badge: 'Creative',  description: 'Kuaishou cinematic via fal.ai',    maxDuration: 10, minDuration: 1, supportsReferences: true  },
 ]
 
 export const IMAGE_MODELS = [
-  { id: 'gpt-image-2',   name: 'GPT Image 2',   icon: '🎨', badge: 'Creative',  description: "OpenAI's creative image model" },
-  { id: 'flux-2-pro',    name: 'FLUX.2 Pro',    icon: '📸', badge: 'Quality',   description: 'Black Forest Labs via fal.ai' },
-  { id: 'imagen-4',      name: 'Imagen 4',      icon: '🖼️', badge: 'Quality',   description: "Google's image model via fal.ai" },
-  { id: 'nano-banana-2', name: 'Nano Banana 2', icon: '🍌', badge: 'Editable',  description: 'Continuous editing via Imagen 4' },
+  { id: 'gpt-image-2',   name: 'GPT Image 2',   icon: '🎨', badge: 'Creative',  description: "OpenAI's creative image model",    supportsReferences: true },
+  { id: 'flux-2-pro',    name: 'FLUX.2 Pro',    icon: '📸', badge: 'Quality',   description: 'Black Forest Labs via fal.ai',      supportsReferences: true },
+  { id: 'imagen-4',      name: 'Imagen 4',      icon: '🖼️', badge: 'Quality',   description: "Google's image model via fal.ai",  supportsReferences: true },
+  { id: 'nano-banana-2', name: 'Nano Banana 2', icon: '🍌', badge: 'Editable',  description: 'Continuous editing via Imagen 4',   supportsReferences: true },
 ]
 
 // ── Presets ────────────────────────────────────────────────────────────────
@@ -231,9 +231,13 @@ export function VideoModelSelector({ value, onChange }: { value: string; onChang
                     {model.icon}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white font-medium">{model.name}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">{model.badge}</span>
+                      {model.supportsReferences
+                        ? <span className="text-xs px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300">img → vid</span>
+                        : <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-600/60 text-slate-400">prompt only</span>
+                      }
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">{model.description}</p>
                     <p className="text-xs text-slate-500 mt-0.5">Max: {model.maxDuration}s</p>
@@ -293,9 +297,12 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
                     {model.icon}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white font-medium">{model.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor(model.badge)}`}>{model.badge}</span>
+                      {model.supportsReferences && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300">Ref ✓</span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">{model.description}</p>
                   </div>

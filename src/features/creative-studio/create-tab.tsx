@@ -194,7 +194,14 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
             <Image className="w-4 h-4 text-slate-400" /> Reference Images
           </h3>
-          <ReferencePicker tenantId={tenantId} sessionId={sessionId} value={referenceImages} onChange={setReferenceImages} />
+          <ReferencePicker
+            tenantId={tenantId}
+            sessionId={sessionId}
+            value={referenceImages}
+            onChange={setReferenceImages}
+            disabled={!currentModel?.supportsReferences}
+            disabledReason={`${currentModel?.name ?? 'This model'} generates from prompt only — reference images are not supported`}
+          />
         </div>
       </div>
 
