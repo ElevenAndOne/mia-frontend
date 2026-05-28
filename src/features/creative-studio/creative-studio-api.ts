@@ -69,9 +69,24 @@ export interface CreativeAsset {
   filename?: string
   prompt?: string
   model?: string
+  source?: string
   status: 'completed' | 'processing' | 'failed'
   campaign_id?: string
   created_at: string
+}
+
+export interface FigmaFile {
+  file_key: string
+  name: string
+  project_name: string
+  thumbnail_url?: string
+  last_modified?: string
+}
+
+export interface FigmaFrame {
+  node_id: string
+  name: string
+  page_name: string
 }
 
 export const creativeStudioApi = {
@@ -123,6 +138,78 @@ export const creativeStudioApi = {
         phases: { phase_id: string; phase_name: string }[]
       }[]
     }>,
+
+  listFigmaFiles: (tenantId: string, sessionId: string, query?: string) =>
+    invoke(tenantId, sessionId, 'list_figma_files', { query }) as Promise<{
+      files: FigmaFile[]
+    }>,
+
+  getFigmaFrames: (tenantId: string, sessionId: string, fileKey: string) =>
+    invoke(tenantId, sessionId, 'get_figma_frames', { file_key: fileKey }) as Promise<{
+      frames: FigmaFrame[]
+    }>,
+
+  importFigmaFrames: (tenantId: string, sessionId: string, fileKey: string, frames: FigmaFrame[]) =>
+    invoke(tenantId, sessionId, 'import_figma_frames', { file_key: fileKey, frames }) as Promise<{
+      assets: CreativeAsset[]
+      imported: number
+    }>,
+}
+
+// ── Figma browser (calls backend directly — no plugin host needed) ──────────────
+
+const figmaBase = (tenantId: string) => `/api/oauth/figma`
+
+export const figmaApi = {
+  listFiles: async (sessionId: string, tenantId: string, query?: string): Promise<{ files: FigmaFile[] }> => {
+    let url = `${figmaBase(tenantId)}/files?tenant_id=${encodeURIComponent(tenantId)}`
+    if (query) url += `&query=${encodeURIComponent(query)}`
+    const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId } })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to load files' }))
+      throw new Error(err.detail || 'Failed to load files')
+    }
+    return res.json()
+  },
+
+  listFrames: async (sessionId: string, tenantId: string, fileKey: string): Promise<{ frames: FigmaFrame[] }> => {
+    const res = await apiFetch(`${figmaBase(tenantId)}/frames`, {
+      method: 'POST',
+      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, file_key: fileKey }),
+    })
+    if (!res.ok) throw new Error('Failed to load frames')
+    return res.json()
+  },
+
+  importFrames: async (sessionId: string, tenantId: string, fileKey: string, frames: FigmaFrame[]): Promise<{ assets: CreativeAsset[]; imported: number }> => {
+    const res = await apiFetch(`${figmaBase(tenantId)}/import-frames`, {
+      method: 'POST',
+      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, file_key: fileKey, frames }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Import failed' }))
+      throw new Error(err.detail || 'Import failed')
+    }
+    return res.json()
+  },
+
+  uploadFile: async (sessionId: string, tenantId: string, file: File): Promise<CreativeAsset> => {
+    const form = new FormData()
+    form.append('tenant_id', tenantId)
+    form.append('file', file)
+    const res = await apiFetch(`${figmaBase(tenantId)}/upload-reference`, {
+      method: 'POST',
+      headers: { 'X-Session-ID': sessionId },
+      body: form,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+      throw new Error(err.detail || 'Upload failed')
+    }
+    return res.json()
+  },
 }
 
 // ── Creative Intelligence (Phase 4) ─────────────────────────────────────────────

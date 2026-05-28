@@ -5,6 +5,11 @@ interface ChatHistoryMessage {
   content: string
 }
 
+export interface AttachedDocument {
+  filename: string
+  content: string
+}
+
 interface ChatRequestPayload {
   message: string
   session_id: string | null
@@ -16,6 +21,7 @@ interface ChatRequestPayload {
   conversation_history?: ChatHistoryMessage[]
   conversation_id?: string
   images?: string[]
+  documents?: AttachedDocument[]
   campaign_id?: string
   start_date?: string
   end_date?: string
@@ -76,6 +82,21 @@ export const pollActionStatus = async (
   return response.json()
 }
 
+export const uploadChatFile = async (
+  sessionId: string,
+  file: File
+): Promise<{ type: 'image'; data_url: string } | { type: 'document'; filename: string; content: string }> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiFetch('/api/chat/v2/upload', {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+    body: formData,
+  })
+  if (!response.ok) throw new Error(`Upload failed: ${response.status}`)
+  return response.json()
+}
+
 export const sendChatMessage = async (payload: ChatRequestPayload, signal?: AbortSignal) => {
   const v2Payload = {
     message: payload.message,
@@ -116,6 +137,7 @@ export const sendChatMessageStreaming = async (
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
     ...(payload.images?.length ? { images: payload.images } : {}),
+    ...(payload.documents?.length ? { documents: payload.documents } : {}),
     ...(payload.campaign_id
       ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
       : {}),

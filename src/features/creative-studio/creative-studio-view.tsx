@@ -90,8 +90,8 @@ export function CreativeStudioView({ onBack }: Props) {
         </div>
       </div>
 
-      {/* Content — flex-1 + justify-center for equal top/bottom gap */}
-      <div className="flex-1 flex flex-col justify-center py-6">
+      {/* Content */}
+      <div className="flex-1 pt-8 pb-6">
         <div className="w-full max-w-[1600px] mx-auto px-6">
           <div className={activeTab !== 'create' ? 'hidden' : ''}>
             <CreateTab tenantId={tenantId} sessionId={sid} />
