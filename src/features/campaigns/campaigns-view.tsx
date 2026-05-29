@@ -31,6 +31,7 @@ interface KPI {
   target_numeric: number | null
   unit: string | null
   hubspot_list_name?: string | null
+  brevo_list_name?: string | null
   sort_order?: number
 }
 
@@ -701,8 +702,8 @@ function ChannelActionCard({
 
 function PhaseDetail({
   phase, campaignId, tenantId, sessionId,
-  hubspotLists, hubspotListsMessage, savingKpiId,
-  onLinkHubspotList, onPhaseUpdate, onOpenPicker,
+  hubspotLists, hubspotListsMessage, brevoLists, savingKpiId,
+  onLinkHubspotList, onLinkBrevoList, onPhaseUpdate, onOpenPicker,
 }: {
   phase: Phase
   campaignId: string
@@ -710,8 +711,10 @@ function PhaseDetail({
   sessionId: string
   hubspotLists: { list_id: number; name: string; size: number }[]
   hubspotListsMessage: string | null
+  brevoLists: { list_id: number; name: string; size: number }[]
   savingKpiId: number | null
   onLinkHubspotList: (kpiId: number, listName: string | null) => void
+  onLinkBrevoList: (kpiId: number, listName: string | null) => void
   onPhaseUpdate: (updated: Phase) => void
   onOpenPicker: (actionId: string, channel: string, current: LinkedCampaign[]) => void
 }) {
@@ -722,6 +725,9 @@ function PhaseDetail({
   const [newChannel, setNewChannel] = useState('')
 
   const phaseHasHubspot = phase.channel_actions.some((ca) => ca.channel === 'hubspot')
+  const phaseHasBrevo = phase.channel_actions.some((ca) =>
+    ['brevo', 'email', 'email_marketing', 'email_newsletter', 'newsletter'].includes((ca.channel ?? '').toLowerCase())
+  )
 
   const patchPhase = async (fields: Partial<Phase>) => {
     const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/phases/${phase.phase_id}`, {
@@ -821,7 +827,9 @@ function PhaseDetail({
           <div className="rounded-lg border border-tertiary overflow-hidden mb-2">
             {phase.kpis.map((kpi, i) => {
               const isTotalKpi = kpi.kpi_name.toLowerCase().startsWith('total')
+              const isRateKpi = kpi.unit === 'percent' || /rate|ctr/i.test(kpi.kpi_name)
               const showHubspotLink = phaseHasHubspot && hubspotLists.length > 0 && !isTotalKpi
+              const showBrevoListLink = phaseHasBrevo && brevoLists.length > 0 && !isRateKpi
               return (
                 <div key={kpi.kpi_id} className={`px-3 py-2.5 space-y-1.5 ${i < phase.kpis.length - 1 ? 'border-b border-tertiary' : ''}`}>
                   <div className="flex items-center gap-2">
@@ -850,6 +858,24 @@ function PhaseDetail({
                       </select>
                       {kpi.hubspot_list_name && (
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-utility-success-100 text-utility-success-700 label-xs">linked</span>
+                      )}
+                    </div>
+                  )}
+                  {showBrevoListLink && (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={kpi.brevo_list_name ?? ''}
+                        disabled={savingKpiId === kpi.kpi_id}
+                        onChange={(e) => onLinkBrevoList(kpi.kpi_id, e.target.value || null)}
+                        className="flex-1 text-xs rounded border border-tertiary bg-primary text-tertiary px-2 py-1 focus:outline-none focus:border-utility-brand-400 disabled:opacity-50"
+                      >
+                        <option value="">— Link Brevo list —</option>
+                        {brevoLists.map((lst) => (
+                          <option key={lst.list_id} value={lst.name}>{lst.name} ({lst.size.toLocaleString()})</option>
+                        ))}
+                      </select>
+                      {kpi.brevo_list_name && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 label-xs">list linked</span>
                       )}
                     </div>
                   )}
@@ -943,6 +969,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   // HubSpot
   const [hubspotLists, setHubspotLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [hubspotListsMessage, setHubspotListsMessage] = useState<string | null>(null)
+  // Brevo contacts lists (for KPIs like "Competition entries")
+  const [brevoLists, setBrevoLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
 
   // Campaign picker (modal lives here so it renders outside any scroll container)
@@ -1078,6 +1106,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             else setHubspotListsMessage(data?.message ?? 'HubSpot not connected')
           })
           .catch(() => setHubspotListsMessage('Could not load HubSpot lists'))
+        apiFetch(`/api/tenants/${tenantId}/campaigns/brevo-lists`, { headers: { 'X-Session-ID': sessionId } })
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => { if (data?.lists?.length) setBrevoLists(data.lists) })
+          .catch(() => {})
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
       } finally {
@@ -1175,6 +1207,31 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             phases: prev.phases.map((ph) => ({
               ...ph,
               kpis: ph.kpis.map((k) => k.kpi_id === kpiId ? { ...k, hubspot_list_name: listName } : k),
+            })),
+          }
+        })
+        bustCachedDetail(campaign.campaign_id)
+      }
+    } finally { setSavingKpiId(null) }
+  }
+
+  const handleLinkBrevoList = async (kpiId: number, listName: string | null) => {
+    if (!sessionId || !tenantId || !campaign) return
+    setSavingKpiId(kpiId)
+    try {
+      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/kpis/${kpiId}`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brevo_list_name: listName }),
+      })
+      if (res.ok) {
+        setCampaign((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            phases: prev.phases.map((ph) => ({
+              ...ph,
+              kpis: ph.kpis.map((k) => k.kpi_id === kpiId ? { ...k, brevo_list_name: listName } : k),
             })),
           }
         })
@@ -1965,8 +2022,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     sessionId={sessionId}
                     hubspotLists={hubspotLists}
                     hubspotListsMessage={hubspotListsMessage}
+                    brevoLists={brevoLists}
                     savingKpiId={savingKpiId}
                     onLinkHubspotList={handleLinkHubspotList}
+                    onLinkBrevoList={handleLinkBrevoList}
                     onPhaseUpdate={handlePhaseUpdate}
                     onOpenPicker={handleOpenPicker}
                   />
