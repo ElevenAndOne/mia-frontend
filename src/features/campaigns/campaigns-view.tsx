@@ -827,9 +827,11 @@ function PhaseDetail({
           <div className="rounded-lg border border-tertiary overflow-hidden mb-2">
             {phase.kpis.map((kpi, i) => {
               const isTotalKpi = kpi.kpi_name.toLowerCase().startsWith('total')
-              const isRateKpi = kpi.unit === 'percent' || /rate|ctr/i.test(kpi.kpi_name)
               const showHubspotLink = phaseHasHubspot && hubspotLists.length > 0 && !isTotalKpi
-              const showBrevoListLink = phaseHasBrevo && brevoLists.length > 0 && !isRateKpi
+              // Only show Brevo list picker for KPIs that are explicitly tracked via a contacts list
+              // (competition entries, giveaway entries, subscribers etc.) — NOT reach/impressions/clicks
+              const isBrevoListKpi = /competition|entr|giveaway|contest|subscriber|sign.?up|member/i.test(kpi.kpi_name)
+              const showBrevoListLink = phaseHasBrevo && brevoLists.length > 0 && isBrevoListKpi
               return (
                 <div key={kpi.kpi_id} className={`px-3 py-2.5 space-y-1.5 ${i < phase.kpis.length - 1 ? 'border-b border-tertiary' : ''}`}>
                   <div className="flex items-center gap-2">
