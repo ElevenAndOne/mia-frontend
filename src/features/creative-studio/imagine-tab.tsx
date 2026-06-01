@@ -264,7 +264,8 @@ export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVa
       const variants = formatVariantsRef.current
       if (!variants) return
       const pending = variants.filter(v => v.status === 'generating' && v.jobId)
-      if (!pending.length) return
+      // No jobIds yet (generate calls still in flight) — keep the loop alive
+      if (!pending.length) { if (!cancelled) setTimeout(poll, 4000); return }
 
       const updates: Array<{ ratio: string; url: string | null; status: FormatVariant['status'] }> = []
       await Promise.all(pending.map(async v => {
