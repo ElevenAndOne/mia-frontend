@@ -391,14 +391,9 @@ export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVa
     if (!currentEditImage || !editPromptText.trim()) return
     setIsEditing(true)
     try {
-      // FLUX and GPT Image 2 have native edit endpoints; use them directly.
-      // Nano Banana models don't support reference images so fall back to Imagen 4.
-      const editModel = (imageModel === 'nano-banana-2' || imageModel === 'nano-banana-pro')
-        ? 'imagen-4'
-        : imageModel
       const res = await creativeStudioApi.generate(tenantId, sessionId, {
         type: 'image',
-        model: editModel,
+        model: imageModel,
         prompt: editPromptText,
         reference_images: [currentEditImage],
         iterative_edit: true,
