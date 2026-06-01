@@ -57,12 +57,25 @@ export function useFloatingPosition(
     window.addEventListener('scroll', handleScrollOrResize, true)
     window.addEventListener('resize', handleScrollOrResize)
 
+    // Recompute when the floating element's own size changes — e.g. async content
+    // loads, a sub-view swaps in (taller/shorter), or a search box toggles. Without
+    // this the position is stale and the popover appears to "jump" up the page.
+    let resizeObserver: ResizeObserver | null = null
+    const el = floatingRef.current
+    if (el && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(update)
+      })
+      resizeObserver.observe(el)
+    }
+
     return () => {
       cancelAnimationFrame(rafId)
       window.removeEventListener('scroll', handleScrollOrResize, true)
       window.removeEventListener('resize', handleScrollOrResize)
+      resizeObserver?.disconnect()
     }
-  }, [isOpen, update])
+  }, [isOpen, update, floatingRef])
 
   return { position, update }
 }

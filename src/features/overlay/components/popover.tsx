@@ -82,12 +82,17 @@ export function Popover({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            className={`fixed bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden ${className}`.trim()}
+            className={`fixed bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden flex flex-col ${className}`.trim()}
             style={{
               left: position?.x ?? 0,
               top: position?.y ?? 0,
               transformOrigin: position?.transformOrigin ?? 'top left',
               zIndex,
+              // Cap to available viewport space so tall content scrolls inside
+              // (a child with `flex-1 min-h-0 overflow-y-auto`) instead of
+              // overflowing off-screen. Falls back to viewport-minus-margin
+              // before the first measurement so nothing renders taller than the screen.
+              maxHeight: position?.maxHeight ?? 'calc(100dvh - 16px)',
               // Hide until position is calculated
               visibility: position ? 'visible' : 'hidden',
             }}

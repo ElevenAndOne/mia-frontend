@@ -26,6 +26,7 @@ export interface CampaignInfo {
   campaignName: string
   startDate: string | null
   endDate: string | null
+  status: string
 }
 
 interface CampaignSummary {
@@ -295,6 +296,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
           campaignName: data.campaign_name,
           startDate: data.start_date,
           endDate: data.end_date,
+          status: data.status,
         })
       } else {
         // No campaign for this tenant
@@ -321,6 +323,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   const loadActuals = useCallback(
     async (phaseName: string) => {
       if (!sessionId || !tenantId || !campaign) return
+      if (campaign.status === 'draft') return
 
       const force = forceReloadRef.current
       if (force) forceReloadRef.current = false

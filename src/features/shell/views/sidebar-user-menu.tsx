@@ -218,7 +218,7 @@ export const SidebarUserMenu = ({
         {view === 'main' ? (
           <>
             {/* User Header */}
-            <div className="px-4 py-4 border-b border-tertiary">
+            <div className="px-4 py-4 border-b border-tertiary shrink-0">
               <div className="flex items-center gap-3">
                 <UserAvatar name={user?.name || 'User'} imageUrl={user?.picture_url} size="lg" />
                 <div className="flex-1 min-w-0">
@@ -228,7 +228,7 @@ export const SidebarUserMenu = ({
               </div>
             </div>
 
-            <div className="py-2" role="menu">
+            <div className="flex-1 min-h-0 overflow-y-auto py-2" role="menu">
               {onNewWorkspace && (
                 <button
                   onClick={() => {
@@ -388,7 +388,7 @@ export const SidebarUserMenu = ({
             </div>
 
             {activeWorkspace && (
-              <div className="px-4 py-3 border-t border-tertiary">
+              <div className="px-4 py-3 border-t border-tertiary shrink-0">
                 <p className="paragraph-xs text-quaternary mb-1">Active Workspace</p>
                 <p className="paragraph-sm text-primary truncate">{activeWorkspace.name}</p>
               </div>
@@ -396,8 +396,8 @@ export const SidebarUserMenu = ({
           </>
         ) : (
           /* Chats view */
-          <div className="flex flex-col" style={{ minHeight: '320px' }}>
-            <div className="border-b border-tertiary">
+          <div className="flex flex-col flex-1 min-h-0" style={{ minHeight: '320px' }}>
+            <div className="border-b border-tertiary shrink-0">
               <div className="px-4 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button
@@ -456,7 +456,7 @@ export const SidebarUserMenu = ({
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 min-h-0 overflow-y-auto p-2">
               {recentConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
                   <Icon.message_chat_square size={28} className="text-quaternary" />

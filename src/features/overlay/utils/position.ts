@@ -253,9 +253,41 @@ export function calculatePosition(options: PositionOptions): OverlayPosition {
     }
   }
 
-  // Apply shift to stay within viewport
+  // Available vertical space for this placement — caps the floating element so
+  // tall content scrolls internally instead of overflowing off-screen.
+  const mainAxisOffset = offset.mainAxis ?? 8
+  let maxHeight: number
+  if (finalPlacement.startsWith('top')) {
+    // Anchored above: room between the top of the anchor and the viewport top.
+    maxHeight = anchor.top - mainAxisOffset - padding
+  } else if (finalPlacement.startsWith('bottom')) {
+    // Anchored below: room between the bottom of the anchor and the viewport bottom.
+    maxHeight = viewport.height - anchor.bottom - mainAxisOffset - padding
+  } else {
+    // Side placements (left/right/center): the element floats alongside the
+    // anchor and may use nearly the full viewport height.
+    maxHeight = viewport.height - padding * 2
+  }
+  // Never smaller than a usable minimum (handles tiny/negative on small screens).
+  maxHeight = Math.max(160, Math.floor(maxHeight))
+
+  const effectiveHeight = Math.min(floating.height, maxHeight)
+
+  // Bottom-aligned side placements (e.g. right-end) anchor the element's BOTTOM
+  // to the anchor. getBasePosition derived y from the full (uncapped) height, so
+  // a tall list would start far off-screen. Re-derive from the capped height.
+  if (
+    (finalPlacement === 'left-end' || finalPlacement === 'right-end') &&
+    floating.height > maxHeight
+  ) {
+    y = anchor.bottom - effectiveHeight + (offset.crossAxis ?? 0)
+  }
+
+  // Apply shift to stay within viewport, using the capped height so a tall
+  // element isn't slammed to the top edge.
   if (shift && placement !== 'center') {
-    const shifted = applyShift(x, y, floating, viewport, padding)
+    const cappedFloating = { width: floating.width, height: effectiveHeight }
+    const shifted = applyShift(x, y, cappedFloating, viewport, padding)
     x = shifted.x
     y = shifted.y
   }
@@ -265,5 +297,6 @@ export function calculatePosition(options: PositionOptions): OverlayPosition {
     y,
     placement: finalPlacement,
     transformOrigin: getTransformOrigin(finalPlacement),
+    maxHeight,
   }
 }
