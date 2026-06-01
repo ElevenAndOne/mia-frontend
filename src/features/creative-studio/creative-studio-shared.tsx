@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Wand2, Upload,
+  Upload,
   Play, Pause, ChevronDown, Camera, Film,
   Zap, Layers, Palette, Sun, Moon, Cloud, Sunrise,
   Grid3x3, Monitor, Clock, Copy,
