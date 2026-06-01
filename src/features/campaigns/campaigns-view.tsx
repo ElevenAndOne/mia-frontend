@@ -729,6 +729,12 @@ function PhaseDetail({
     ['brevo', 'email', 'email_marketing', 'email_newsletter', 'newsletter'].includes((ca.channel ?? '').toLowerCase())
   )
 
+  // Nudge: this phase tracks leads/contacts but HubSpot isn't a channel here, so
+  // Mia has no list to count from. Only show when HubSpot is actually connected
+  // (lists fetched) — otherwise adding it as a channel wouldn't help yet.
+  const phaseHasLeadKpi = phase.kpis.some((k) => /lead|contact/i.test(k.kpi_name))
+  const suggestHubspotChannel = phaseHasLeadKpi && !phaseHasHubspot && hubspotLists.length > 0
+
   const patchPhase = async (fields: Partial<Phase>) => {
     const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/phases/${phase.phase_id}`, {
       method: 'PATCH',
@@ -919,6 +925,13 @@ function PhaseDetail({
             />
           ))}
         </div>
+        {suggestHubspotChannel && (
+          <p className="mt-2 paragraph-xs text-utility-warning-700 bg-utility-warning-50 border border-utility-warning-200 rounded-lg px-2.5 py-1.5">
+            This phase tracks leads but HubSpot isn't a channel here. If your leads are tracked
+            in a HubSpot list, add HubSpot as a channel below and link the list so Mia can pull
+            the real number.
+          </p>
+        )}
         {addingChannel ? (
           <div className="flex items-center gap-2 mt-2">
             <select value={newChannel} onChange={(e) => setNewChannel(e.target.value)} autoFocus
