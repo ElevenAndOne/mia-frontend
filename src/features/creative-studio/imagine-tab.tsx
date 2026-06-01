@@ -445,48 +445,55 @@ export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVa
               disabledReason={`${IMAGE_MODELS.find(m => m.id === imageModel)?.name ?? 'This model'} does not support reference images`}
             /></div>
 
-          {/* Campaign Context — shrink-0, compact */}
-          {campaigns.length > 0 && (
-            <div className="shrink-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Target className="w-4 h-4 text-purple-400" /> Campaign Context
-              </h3>
-              <div className="space-y-2">
-                <select
-                  value={selectedCampaignId}
-                  onChange={e => { setSelectedCampaignId(e.target.value); setSelectedPhaseId('') }}
-                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
-                >
-                  <option value="">No campaign (brand only)</option>
-                  {campaigns.map(c => (
-                    <option key={c.campaign_id} value={c.campaign_id}>
-                      {c.client_name} — {c.campaign_name}
-                    </option>
-                  ))}
-                </select>
-                {selectedCampaignId && (() => {
-                  const c = campaigns.find(x => x.campaign_id === selectedCampaignId)
-                  return c?.phases.length ? (
-                    <select
-                      value={selectedPhaseId}
-                      onChange={e => setSelectedPhaseId(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="">All phases</option>
-                      {c.phases.map(p => (
-                        <option key={p.phase_id} value={p.phase_id}>{p.phase_name}</option>
-                      ))}
-                    </select>
-                  ) : null
-                })()}
-                {selectedCampaignId && (
-                  <p className="text-xs text-purple-400 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Campaign objectives will guide prompt optimization
+          {/* Campaign Context — always visible */}
+          <div className="shrink-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4 text-purple-400" /> Campaign Context
+            </h3>
+            <div className="space-y-2">
+              {campaigns.length > 0 ? (
+                <>
+                  <select
+                    value={selectedCampaignId}
+                    onChange={e => { setSelectedCampaignId(e.target.value); setSelectedPhaseId('') }}
+                    className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">No campaign (brand only)</option>
+                    {campaigns.map(c => (
+                      <option key={c.campaign_id} value={c.campaign_id}>
+                        {c.client_name} — {c.campaign_name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCampaignId && (() => {
+                    const c = campaigns.find(x => x.campaign_id === selectedCampaignId)
+                    return c?.phases.length ? (
+                      <select
+                        value={selectedPhaseId}
+                        onChange={e => setSelectedPhaseId(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="">All phases</option>
+                        {c.phases.map(p => (
+                          <option key={p.phase_id} value={p.phase_id}>{p.phase_name}</option>
+                        ))}
+                      </select>
+                    ) : null
+                  })()}
+                  <p className="text-xs flex items-center gap-1">
+                    {selectedCampaignId
+                      ? <><Sparkles className="w-3 h-3 text-purple-400" /><span className="text-purple-400">Campaign objectives will guide prompt optimization</span></>
+                      : <><Sparkles className="w-3 h-3 text-green-400" /><span className="text-green-400">Brand guide active — select a campaign to narrow context</span></>
+                    }
                   </p>
-                )}
-              </div>
+                </>
+              ) : (
+                <p className="text-xs text-green-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Brand guide active — prompt optimization will use your workspace brand context
+                </p>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Centre — Preview + Prompt */}

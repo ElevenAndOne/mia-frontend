@@ -128,16 +128,20 @@ export const creativeStudioApi = {
       brand_guide_filename: string | null
     }>,
 
-  listCampaigns: (tenantId: string, sessionId: string) =>
-    invoke(tenantId, sessionId, 'list_campaigns') as Promise<{
-      campaigns: {
-        campaign_id: string
-        campaign_name: string
-        client_name: string
-        status: string
-        phases: { phase_id: string; phase_name: string }[]
-      }[]
-    }>,
+  listCampaigns: async (tenantId: string, sessionId: string): Promise<{
+    campaigns: {
+      campaign_id: string
+      campaign_name: string
+      client_name: string
+      status: string
+      phases: { phase_id: string; phase_name: string }[]
+    }[]
+  }> => {
+    const url = `/api/creative-studio/campaigns?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`
+    const res = await apiFetch(url)
+    if (!res.ok) return { campaigns: [] }
+    return res.json()
+  },
 
   listFigmaFiles: (tenantId: string, sessionId: string, query?: string) =>
     invoke(tenantId, sessionId, 'list_figma_files', { query }) as Promise<{
