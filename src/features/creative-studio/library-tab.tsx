@@ -92,9 +92,10 @@ function LightboxModal({ asset, tenantId, sessionId, onClose }: {
 
 // ── Generated asset card ───────────────────────────────────────────────────────
 
-function AssetCard({ asset, tenantId, sessionId, onDelete, onView }: {
+function AssetCard({ asset, tenantId, sessionId, onDelete, onView, onCreateVariant }: {
   asset: CreativeAsset; tenantId: string; sessionId: string
   onDelete: (id: string) => void; onView: (asset: CreativeAsset) => void
+  onCreateVariant?: (prompt: string, imageUrl: string) => void
 }) {
   const [showMenu, setShowMenu] = useState(false)
   const isVideo = asset.media_type === 'video'
@@ -145,9 +146,14 @@ function AssetCard({ asset, tenantId, sessionId, onDelete, onView }: {
                 <button className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2">
                   <RefreshCw className="w-3 h-3" /> Regenerate
                 </button>
-                <button className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2">
-                  <Sparkles className="w-3 h-3" /> Create Variant
-                </button>
+                {!isVideo && asset.cdn_url && (
+                  <button
+                    onClick={() => { setShowMenu(false); onCreateVariant?.(asset.prompt ?? '', asset.cdn_url) }}
+                    className="w-full px-3 py-2 text-left text-sm text-purple-300 hover:bg-slate-700 flex items-center gap-2"
+                  >
+                    <Sparkles className="w-3 h-3" /> Create Variant
+                  </button>
+                )}
                 <hr className="my-2 border-slate-700" />
                 <button onClick={() => { setShowMenu(false); onDelete(asset.asset_id) }} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2">
                   <Trash2 className="w-3 h-3" /> Delete
@@ -435,7 +441,7 @@ function FigmaImportModal({ tenantId, sessionId, onImported, onClose }: {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function LibraryTab({ tenantId, sessionId }: Props) {
+export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Props & { onCreateVariant?: (prompt: string, imageUrl: string) => void }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('library')
   const [generatedAssets, setGeneratedAssets] = useState<CreativeAsset[]>([])
   const [referenceAssets, setReferenceAssets] = useState<CreativeAsset[]>([])
@@ -657,7 +663,7 @@ export default function LibraryTab({ tenantId, sessionId }: Props) {
         ) : (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
             {filteredGenerated.map(asset => (
-              <AssetCard key={asset.asset_id} asset={asset} tenantId={tenantId} sessionId={sessionId} onDelete={handleDeleteGenerated} onView={setLightboxAsset} />
+              <AssetCard key={asset.asset_id} asset={asset} tenantId={tenantId} sessionId={sessionId} onDelete={handleDeleteGenerated} onView={setLightboxAsset} onCreateVariant={onCreateVariant} />
             ))}
           </div>
         )

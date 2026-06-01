@@ -1,12 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp, Image } from 'lucide-react'
-import { IMAGE_MODELS, ImageModelSelector, ProgressBar } from './creative-studio-shared'
+import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp, Image, X, Layers, CheckCircle, AlertCircle } from 'lucide-react'
+import { IMAGE_MODELS, ImageModelSelector, ProgressBar, AspectRatioSelector } from './creative-studio-shared'
 import { creativeStudioApi, creativeIntelligenceApi, type IntelligenceStatus } from './creative-studio-api'
 import { ReferencePicker } from './reference-picker'
 
 interface Props {
   tenantId: string
   sessionId: string
+  variantSeed?: { prompt: string; imageUrl: string } | null
+  onClearVariantSeed?: () => void
+}
+
+const ALL_RATIOS = ['1:1', '16:9', '9:16', '4:5'] as const
+type FormatRatio = typeof ALL_RATIOS[number]
+
+interface FormatVariant {
+  ratio: FormatRatio
+  jobId: string | null
+  url: string | null
+  status: 'generating' | 'completed' | 'failed'
 }
 
 interface EditHistoryItem {
@@ -16,10 +28,10 @@ interface EditHistoryItem {
 }
 
 function IterativeEditingInterface({
-  isActive, onBack, currentImage, editHistory, onEdit, isEditing,
+  isActive, onBack, currentImage, editHistory, onEdit, isEditing, modelName,
 }: {
   isActive: boolean; onBack: () => void; currentImage: string
-  editHistory: EditHistoryItem[]; onEdit: (p: string) => void; isEditing: boolean
+  editHistory: EditHistoryItem[]; onEdit: (p: string) => void; isEditing: boolean; modelName: string
 }) {
   const [editPrompt, setEditPrompt] = useState('')
   if (!isActive) return null
@@ -32,7 +44,7 @@ function IterativeEditingInterface({
             <ArrowLeft className="w-4 h-4 text-white" />
           </button>
           <h2 className="text-xl font-bold text-white">Iterative Editing</h2>
-          <div className="flex items-center gap-1 text-yellow-400"><Edit3 className="w-4 h-4" /><span className="text-sm">imagen-4</span></div>
+          <div className="flex items-center gap-1 text-yellow-400"><Edit3 className="w-4 h-4" /><span className="text-sm">{modelName}</span></div>
         </div>
         <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-4 mb-4">
           <h3 className="text-sm font-semibold text-white mb-3">Current Image</h3>
@@ -98,7 +110,7 @@ function IterativeEditingInterface({
   )
 }
 
-export default function ImagineTab({ tenantId, sessionId }: Props) {
+export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVariantSeed }: Props) {
   const [imageModel, setImageModel] = useState('imagen-4')
   const [imagePrompt, setImagePrompt] = useState('')
 
@@ -118,7 +130,11 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   const [showOptimizedPrompt, setShowOptimizedPrompt] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [aspectRatio, setAspectRatio] = useState('1:1')
   const [referenceImages, setReferenceImages] = useState<string[]>([])
+  const [formatVariants, setFormatVariants] = useState<FormatVariant[] | null>(null)
+  const formatVariantsRef = useRef<FormatVariant[] | null>(null)
+  formatVariantsRef.current = formatVariants
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [currentEditImage, setCurrentEditImage] = useState('')
   const [editHistory, setEditHistory] = useState<EditHistoryItem[]>([])
@@ -226,6 +242,109 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
     return () => { cancelled = true; clearInterval(poll) }
   }, [editJobId, tenantId, sessionId])
 
+  // Apply variant seed from Library "Create Variant"
+  useEffect(() => {
+    if (!variantSeed) return
+    setImagePrompt(variantSeed.prompt)
+    setReferenceImages([variantSeed.imageUrl])
+    setGeneratedImages([])
+    setOptimizedPrompt(null)
+    setFormatVariants(null)
+    setError(null)
+  }, [variantSeed])
+
+  // Poll all active format variant jobs
+  const hasGeneratingFormats = formatVariants?.some(v => v.status === 'generating') ?? false
+  useEffect(() => {
+    if (!hasGeneratingFormats) return
+    let cancelled = false
+
+    const poll = async () => {
+      if (cancelled) return
+      const variants = formatVariantsRef.current
+      if (!variants) return
+      const pending = variants.filter(v => v.status === 'generating' && v.jobId)
+      if (!pending.length) return
+
+      const updates: Array<{ ratio: string; url: string | null; status: FormatVariant['status'] }> = []
+      await Promise.all(pending.map(async v => {
+        try {
+          const job = await creativeStudioApi.getJob(tenantId, sessionId, v.jobId!)
+          if (job.status === 'completed') {
+            updates.push({ ratio: v.ratio, url: job.output_urls?.[0] ?? job.output_url ?? null, status: 'completed' })
+          } else if (job.status === 'failed') {
+            updates.push({ ratio: v.ratio, url: null, status: 'failed' })
+          }
+        } catch { /* keep polling */ }
+      }))
+
+      if (!cancelled && updates.length > 0) {
+        setFormatVariants(prev => prev?.map(v => {
+          const u = updates.find(u => u.ratio === v.ratio)
+          return u ? { ...v, url: u.url, status: u.status } : v
+        }) ?? null)
+      }
+      if (!cancelled) setTimeout(poll, 4000)
+    }
+
+    setTimeout(poll, 4000)
+    return () => { cancelled = true }
+  }, [hasGeneratingFormats, tenantId, sessionId])
+
+  const handleGenerateAllFormats = async () => {
+    const baseUrl = generatedImages[0]?.url
+    if (!baseUrl) return
+
+    const sourcePrompt = optimizedPrompt || imagePrompt
+
+    // Seed the grid: current ratio is already done, others are queued
+    const initial: FormatVariant[] = ALL_RATIOS.map(r => ({
+      ratio: r,
+      jobId: null,
+      url: r === aspectRatio ? baseUrl : null,
+      status: r === aspectRatio ? 'completed' : 'generating',
+    }))
+    setFormatVariants(initial)
+
+    // Fire parallel jobs for the other 3 ratios
+    await Promise.all(
+      ALL_RATIOS.filter(r => r !== aspectRatio).map(async (ratio) => {
+        try {
+          const res = await creativeStudioApi.generate(tenantId, sessionId, {
+            type: 'image',
+            model: imageModel,
+            prompt: sourcePrompt,
+            num_images: 1,
+            quality: 'standard',
+            aspect_ratio: ratio,
+            campaign_id: selectedCampaignId || undefined,
+            phase_id: selectedPhaseId || undefined,
+          })
+          if (res.job_id) {
+            setFormatVariants(prev => prev?.map(v => v.ratio === ratio ? { ...v, jobId: res.job_id } : v) ?? null)
+          } else {
+            setFormatVariants(prev => prev?.map(v => v.ratio === ratio ? { ...v, status: 'failed' } : v) ?? null)
+          }
+        } catch {
+          setFormatVariants(prev => prev?.map(v => v.ratio === ratio ? { ...v, status: 'failed' } : v) ?? null)
+        }
+      })
+    )
+  }
+
+  const handleDownloadAll = () => {
+    formatVariants?.filter(v => v.url).forEach((v, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a')
+        a.href = v.url!
+        a.download = `creative_${v.ratio.replace(':', 'x')}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      }, i * 250)
+    })
+  }
+
   const handleGenerate = async () => {
     if (!imagePrompt.trim()) return
     setIsGenerating(true)
@@ -234,6 +353,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
     setGeneratedImages([])
     setOptimizedPrompt(null)
     setShowOptimizedPrompt(false)
+    setFormatVariants(null)
 
     try {
       const res = await creativeStudioApi.generate(tenantId, sessionId, {
@@ -242,7 +362,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
         prompt: imagePrompt,
         num_images: 1,
         quality: 'standard',
-        aspect_ratio: '1:1',
+        aspect_ratio: aspectRatio,
         reference_images: referenceImages,
         campaign_id: selectedCampaignId || undefined,
         phase_id: selectedPhaseId || undefined,
@@ -270,9 +390,14 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
     if (!currentEditImage || !editPromptText.trim()) return
     setIsEditing(true)
     try {
+      // FLUX and GPT Image 2 have native edit endpoints; use them directly.
+      // Nano Banana models don't support reference images so fall back to Imagen 4.
+      const editModel = (imageModel === 'nano-banana-2' || imageModel === 'nano-banana-pro')
+        ? 'imagen-4'
+        : imageModel
       const res = await creativeStudioApi.generate(tenantId, sessionId, {
         type: 'image',
-        model: 'imagen-4',
+        model: editModel,
         prompt: editPromptText,
         reference_images: [currentEditImage],
         iterative_edit: true,
@@ -284,7 +409,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
   }
 
   const canGenerate = imagePrompt.trim().length > 0 && !isGenerating
-  const supportsEditing = imageModel === 'imagen-4'
+  const supportsEditing = IMAGE_MODELS.find(m => m.id === imageModel)?.supportsEditing ?? false
   const selectedCampaign = campaigns.find(c => c.campaign_id === selectedCampaignId)
   const isCampaignScoped = !!selectedCampaignId
   const isCampaignScopedResult = isCampaignScoped && intelligence?.campaign_id === selectedCampaignId
@@ -295,18 +420,19 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
       <IterativeEditingInterface
         isActive={isEditingMode} onBack={() => { setIsEditingMode(false); setCurrentEditImage(''); setEditHistory([]) }}
         currentImage={currentEditImage} editHistory={editHistory} onEdit={handleIterativeEdit} isEditing={isEditing}
+        modelName={IMAGE_MODELS.find(m => m.id === imageModel)?.name ?? imageModel}
       />
 
       <div className="grid grid-cols-12 gap-6 items-stretch">
 
         {/* Left — Model + References + Campaign Context */}
         <div className="col-span-3 flex flex-col gap-4">
-          <div className="shrink-0 z-10">
+          <div className="shrink-0 relative z-20">
             <ImageModelSelector value={imageModel} onChange={setImageModel} />
           </div>
 
           {/* References — flex-1 mirrors Camera Movement on Create */}
-          <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
+          <div className="flex-1 relative z-10 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Image className="w-4 h-4 text-slate-400" /> Reference Images
             </h3>
@@ -365,9 +491,74 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
 
         {/* Centre — Preview + Prompt */}
         <div className="col-span-6 flex flex-col gap-4">
+
+          {/* Variant mode banner */}
+          {variantSeed && (
+            <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+              <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-semibold text-purple-300">Variant mode</span>
+                <span className="text-xs text-slate-400 ml-2 truncate">sourced from: "{variantSeed.prompt.slice(0, 60)}{variantSeed.prompt.length > 60 ? '…' : ''}"</span>
+              </div>
+              <button onClick={onClearVariantSeed} className="p-1 hover:bg-slate-700 rounded text-slate-500 hover:text-white transition-colors shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4 min-h-[280px] flex items-center justify-center">
-            {generatedImages.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 w-full">
+            {/* Format grid view */}
+            {formatVariants ? (
+              <div className="w-full">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Layers className="w-4 h-4 text-purple-400" /> All Formats
+                  </div>
+                  <button onClick={() => setFormatVariants(null)} className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                    <X className="w-3 h-3" /> Back to single
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  {formatVariants.map(v => (
+                    <div key={v.ratio} className="relative bg-slate-800 rounded-lg overflow-hidden aspect-video flex items-center justify-center group">
+                      {v.status === 'completed' && v.url ? (
+                        <>
+                          <img src={v.url} alt={v.ratio} className="w-full h-full object-contain" />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <a href={v.url} download={`creative_${v.ratio.replace(':', 'x')}.png`} className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </div>
+                          <CheckCircle className="absolute bottom-2 right-2 w-4 h-4 text-green-400 drop-shadow" />
+                        </>
+                      ) : v.status === 'generating' ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                          <span className="text-xs text-slate-400">Generating…</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <AlertCircle className="w-5 h-5 text-red-400" />
+                          <span className="text-xs text-red-400">Failed</span>
+                        </div>
+                      )}
+                      <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-slate-900/80 text-slate-300 text-[10px] font-semibold rounded">
+                        {v.ratio}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {!hasGeneratingFormats && (
+                  <button
+                    onClick={handleDownloadAll}
+                    className="w-full py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-lg hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Download All Formats
+                  </button>
+                )}
+              </div>
+            ) : generatedImages.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 w-full">
                 {generatedImages.map((img, idx) => (
                   <div key={idx} className="relative group">
                     <img src={img.url} alt={`Generated ${idx + 1}`} className="w-full rounded-lg" />
@@ -382,13 +573,21 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
                     </div>
                   </div>
                 ))}
+                {/* Generate All Formats */}
+                <button
+                  onClick={handleGenerateAllFormats}
+                  className="w-full py-2 text-sm text-purple-400 hover:text-white border border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10 rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  Generate All Formats — 1:1 · 16:9 · 9:16 · 4:5
+                </button>
               </div>
             ) : (
               <div className="text-center">
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto mb-3" />
-                    <p className="text-white mb-1">Generating image... {progress}%</p>
+                    <p className="text-white mb-1">Generating image… {progress}%</p>
                     {progress > 0 && <ProgressBar progress={progress} />}
                   </>
                 ) : error ? (
@@ -433,14 +632,17 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
               placeholder="Describe your image..."
               maxLength={1000}
             />
-            <div className="flex justify-between items-center mt-2">
-              <span className="text-xs text-slate-500">{imagePrompt.length}/1000</span>
+            <div className="flex justify-between items-center mt-2 gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xs text-slate-500 shrink-0">{imagePrompt.length}/1000</span>
+                <AspectRatioSelector value={aspectRatio} onChange={setAspectRatio} mode="image" />
+              </div>
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${canGenerate ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+                className={`shrink-0 px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${canGenerate ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
               >
-                {isGenerating ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</> : <><Wand2 className="w-3 h-3" /> Generate Image</>}
+                {isGenerating ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</> : <><Wand2 className="w-3 h-3" /> Generate</>}
               </button>
             </div>
           </div>
@@ -539,6 +741,7 @@ export default function ImagineTab({ tenantId, sessionId }: Props) {
             <div className="space-y-2 text-sm">
               {([
                 ['Model', IMAGE_MODELS.find(m => m.id === imageModel)?.name],
+                ['Aspect', aspectRatio],
                 ['References', referenceImages.length > 0 ? `${referenceImages.length} image${referenceImages.length > 1 ? 's' : ''}` : 'None'],
                 selectedCampaign ? ['Campaign', selectedCampaign.campaign_name] : null,
               ] as ([string, string] | null)[])
