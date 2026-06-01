@@ -17,7 +17,7 @@ import type {
 } from '../services/campaign-tracker-service'
 import { parseDateRangeValue, isSinceLaunchRange } from '../../../utils/date-range'
 import { getCampaignMode, setCampaignMode } from '../../../utils/campaign-mode'
-import { isOnTrack } from '../../../utils/on-track'
+import { isOnTrack, isRateMetric, rateMetricStatus } from '../../../utils/on-track'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -585,37 +585,51 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
             (actualsData ?? activePhaseData.kpis).map((kpi, i) => {
               const hasActual = actualsData !== null
               const actual = hasActual ? (actualsData![i] ?? null) : null
-              const pct = actual ? progressPercent(actual) : 0
+              const isRate = isRateMetric(kpi.kpi_name)
+
+              // Rate metrics: bar always 100% wide — colour is the signal, not fill
+              // Cumulative metrics: bar fill = actual / target progress
+              const pct = actual
+                ? isRate ? 100 : progressPercent(actual)
+                : 0
+
               const metTarget =
                 actual &&
                 actual.actual_value !== null &&
                 actual.target_numeric &&
                 actual.actual_value >= actual.target_numeric
 
-              // On-track indicator: only when campaign is date-scoped, actual exists and target is numeric
-              const trackStatus =
-                canShowOnTrack &&
-                actual &&
-                actual.actual_value !== null &&
-                actual.target_numeric !== null
-                  ? isOnTrack(
-                      kpi.kpi_name,
-                      actual.target_numeric,
-                      actual.actual_value,
-                      campaign.start_date!,
-                      campaign.end_date!,
-                      today
-                    )
-                  : null
-
               const overPct = actual ? overPerformPct(actual) : null
               const timePct = canShowOnTrack ? campaignTimePct(campaign.start_date!, campaign.end_date!) : null
-              const barColor =
-                trackStatus === true
-                  ? 'bg-utility-success-500'
-                  : trackStatus === false
-                    ? 'bg-utility-error-500'
-                    : 'bg-utility-brand-500'
+
+              // Bar colour
+              let barColor = 'bg-utility-brand-500'
+              if (actual && actual.actual_value !== null && actual.target_numeric !== null) {
+                if (isRate) {
+                  // 3-state health signal for rate metrics
+                  const rs = rateMetricStatus(kpi.kpi_name, actual.target_numeric, actual.actual_value)
+                  barColor = rs === 'on-track'
+                    ? 'bg-utility-success-500'
+                    : rs === 'at-risk'
+                      ? 'bg-utility-warning-500'
+                      : 'bg-utility-error-500'
+                } else if (canShowOnTrack) {
+                  // Time-paced signal for cumulative metrics
+                  const trackStatus = isOnTrack(
+                    kpi.kpi_name,
+                    actual.target_numeric,
+                    actual.actual_value,
+                    campaign.start_date!,
+                    campaign.end_date!,
+                    today
+                  )
+                  barColor = trackStatus === true
+                    ? 'bg-utility-success-500'
+                    : trackStatus === false
+                      ? 'bg-utility-error-500'
+                      : 'bg-utility-brand-500'
+                }
+              }
 
               return (
                 <div key={kpi.kpi_name} className="space-y-1">
