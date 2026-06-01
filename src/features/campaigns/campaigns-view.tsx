@@ -971,6 +971,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   // HubSpot
   const [hubspotLists, setHubspotLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [hubspotListsMessage, setHubspotListsMessage] = useState<string | null>(null)
+  // True when HubSpot's token is dead and needs re-authorization (drives the reconnect banner)
+  const [hubspotNeedsReconnect, setHubspotNeedsReconnect] = useState(false)
   // Brevo contacts lists (for KPIs like "Competition entries")
   const [brevoLists, setBrevoLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
@@ -983,6 +985,22 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   }, [])
 
   const handleClosePicker = useCallback(() => setPickerTarget(null), [])
+
+  // Reconnect HubSpot — redirect flow (popup is blocked in Firefox by cookie policy).
+  const handleReconnectHubspot = useCallback(async () => {
+    if (!tenantId || !sessionId) return
+    try {
+      const res = await apiFetch(`/api/oauth/hubspot/auth-url?tenant_id=${tenantId}`, {
+        headers: { 'X-Session-ID': sessionId },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.auth_url) window.location.href = data.auth_url
+      }
+    } catch {
+      /* ignore — user can retry from Integrations */
+    }
+  }, [tenantId, sessionId])
 
   const handleSavePicker = useCallback(async (selected: LinkedCampaign[]) => {
     if (!pickerTarget || !sessionId || !tenantId || !campaign) return
@@ -1104,6 +1122,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         apiFetch(`/api/tenants/${tenantId}/campaigns/hubspot-lists`, { headers: { 'X-Session-ID': sessionId } })
           .then((r) => r.ok ? r.json() : null)
           .then((data) => {
+            setHubspotNeedsReconnect(Boolean(data?.needs_reconnect))
             if (data?.lists?.length) { setHubspotLists(data.lists); setHubspotListsMessage(null) }
             else setHubspotListsMessage(data?.message ?? 'HubSpot not connected')
           })
@@ -1464,6 +1483,23 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         {!loading && error && (
           <div className="bg-utility-error-50 border border-utility-error-200 rounded-xl p-4">
             <p className="paragraph-sm text-utility-error-700">{error}</p>
+          </div>
+        )}
+
+        {/* HubSpot reconnect banner — its OAuth token is dead; KPIs sourced from
+            HubSpot (e.g. total leads) will read 0 until it's reconnected. */}
+        {!loading && hubspotNeedsReconnect && (
+          <div className="flex items-center justify-between gap-3 bg-utility-warning-50 border border-utility-warning-200 rounded-xl p-4">
+            <p className="paragraph-sm text-utility-warning-700">
+              HubSpot needs to be reconnected — its authorization has expired, so HubSpot-sourced
+              KPIs (like total leads) won't update until you reconnect.
+            </p>
+            <button
+              onClick={handleReconnectHubspot}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-utility-warning-600 text-white label-sm hover:bg-utility-warning-700 transition-colors"
+            >
+              Reconnect HubSpot
+            </button>
           </div>
         )}
 
