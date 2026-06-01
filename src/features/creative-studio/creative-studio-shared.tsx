@@ -21,10 +21,11 @@ export const VIDEO_MODELS = [
 ]
 
 export const IMAGE_MODELS = [
-  { id: 'gpt-image-2',   name: 'GPT Image 2',   icon: '🎨', badge: 'Creative',  description: "OpenAI's creative image model",    supportsReferences: true },
-  { id: 'flux-2-pro',    name: 'FLUX.2 Pro',    icon: '📸', badge: 'Quality',   description: 'Black Forest Labs via fal.ai',      supportsReferences: true },
-  { id: 'imagen-4',      name: 'Imagen 4',      icon: '🖼️', badge: 'Quality',   description: "Google's image model via fal.ai",  supportsReferences: true },
-  { id: 'nano-banana-2', name: 'Nano Banana 2', icon: '🍌', badge: 'Editable',  description: 'Continuous editing via Imagen 4',   supportsReferences: true },
+  { id: 'gpt-image-2',      name: 'GPT Image 2',      icon: '🎨', badge: 'Creative',      description: "OpenAI's creative image model",           supportsReferences: true,  supportsEditing: true  },
+  { id: 'flux-2-pro',       name: 'FLUX.2 Pro',       icon: '📸', badge: 'Quality',       description: 'Black Forest Labs via fal.ai',             supportsReferences: true,  supportsEditing: true  },
+  { id: 'imagen-4',         name: 'Imagen 4',         icon: '🖼️', badge: 'Quality',       description: "Google's image model via fal.ai",         supportsReferences: true,  supportsEditing: true  },
+  { id: 'nano-banana-2',    name: 'Nano Banana 2',    icon: '🍌', badge: 'Fast',          description: "Google fast image gen via fal.ai",        supportsReferences: false, supportsEditing: false },
+  { id: 'nano-banana-pro',  name: 'Nano Banana Pro',  icon: '🍌', badge: 'Photorealistic', description: 'Gemini 3 Pro — up to 4K photorealism',    supportsReferences: false, supportsEditing: false },
 ]
 
 // ── Presets ────────────────────────────────────────────────────────────────
@@ -79,8 +80,13 @@ export const PROMPT_TEMPLATES: Record<string, { category: string; template: stri
     { category: 'Lifestyle',      template: '[Subject] in a natural lifestyle setting, warm tones, editorial feel', icon: Sun },
   ],
   'nano-banana-2': [
-    { category: 'Editable',    template: '[Subject] in a clean, well-lit scene, easy to edit', icon: Wand2 },
-    { category: 'Background',  template: '[Subject] on [background], styled for easy isolation', icon: Layers },
+    { category: 'Lifestyle',  template: '[Subject] in a natural setting, warm light, editorial feel', icon: Sun },
+    { category: 'Product',    template: '[Product] on [background], clean and well-lit', icon: Package },
+  ],
+  'nano-banana-pro': [
+    { category: 'Hero Image',  template: 'Ultra-photorealistic [subject], studio quality, incredible fine detail', icon: Camera },
+    { category: 'Product',     template: 'Premium [product] photography, pristine textures, commercial grade quality', icon: Package },
+    { category: 'Lifestyle',   template: '[Subject] in a cinematic lifestyle scene, golden hour, shallow depth of field', icon: Sun },
   ],
 }
 
@@ -121,10 +127,16 @@ export const PROMPT_TIPS: Record<string, string[]> = {
     'Pair with Nano Banana 2 for iterative refinement after generating',
   ],
   'nano-banana-2': [
-    'Designed for continuous iterative editing',
-    'Start with a clear base image description',
-    'Use the Edit button to refine iteratively',
-    'Be specific about what to change in edit prompts',
+    "Google's fast image model — good balance of speed and quality",
+    'Best for quick iterations and drafts',
+    'No reference image support — use FLUX or Imagen 4 for reference-guided generation',
+    'Generate a draft here, then switch to Imagen 4 to refine with references',
+  ],
+  'nano-banana-pro': [
+    'Highest quality Google model — ideal for hero images and key visuals',
+    'Supports up to 4K resolution — best for large format and print use',
+    "Takes longer to generate but the quality difference is significant for complex scenes",
+    'No reference image support — generate your base here, then edit in Imagen 4 or GPT Image 2',
   ],
 }
 
@@ -187,6 +199,8 @@ export function buildEnhancedPrompt(basePrompt: string, settings: Record<string,
     enhanced = 'A ' + enhanced
   if (settings.model === 'flux-2-pro')
     enhanced += ', photorealistic, high detail, professional photography'
+  if (settings.model === 'nano-banana-pro')
+    enhanced += ', ultra high resolution, photorealistic, intricate fine detail'
 
   return enhanced
 }
@@ -257,9 +271,10 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
   const selectedModel = IMAGE_MODELS.find(m => m.id === value)
 
   const badgeColor = (badge: string) => {
-    if (badge === 'Creative') return 'bg-green-500/20 text-green-300'
-    if (badge === 'Quality')  return 'bg-blue-500/20 text-blue-300'
-    if (badge === 'Editable') return 'bg-yellow-500/20 text-yellow-300'
+    if (badge === 'Creative')       return 'bg-green-500/20 text-green-300'
+    if (badge === 'Quality')        return 'bg-blue-500/20 text-blue-300'
+    if (badge === 'Fast')           return 'bg-yellow-500/20 text-yellow-300'
+    if (badge === 'Photorealistic') return 'bg-orange-500/20 text-orange-300'
     return 'bg-purple-500/20 text-purple-300'
   }
 
@@ -293,7 +308,7 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
                 className={`w-full p-4 transition-all text-left hover:bg-slate-700 border-b border-slate-700 last:border-b-0 ${value === model.id ? 'bg-purple-500/10' : ''}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${model.id === 'gpt-image-2' ? 'bg-green-500' : model.id === 'flux-2-pro' ? 'bg-blue-500' : model.id === 'imagen-4' ? 'bg-sky-500' : 'bg-yellow-500'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${model.id === 'gpt-image-2' ? 'bg-green-500' : model.id === 'flux-2-pro' ? 'bg-blue-500' : model.id === 'imagen-4' ? 'bg-sky-500' : model.id === 'nano-banana-pro' ? 'bg-orange-500' : 'bg-yellow-500'}`}>
                     {model.icon}
                   </div>
                   <div className="flex-1">
@@ -302,6 +317,9 @@ export function ImageModelSelector({ value, onChange }: { value: string; onChang
                       <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor(model.badge)}`}>{model.badge}</span>
                       {model.supportsReferences && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300">Ref ✓</span>
+                      )}
+                      {model.supportsEditing && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300">Edit ✓</span>
                       )}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">{model.description}</p>
@@ -529,6 +547,64 @@ export function PromptTemplatesPanel({ model, onSelectTemplate, onEnhancePrompt 
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Aspect ratio selector ──────────────────────────────────────────────────
+
+// iconW/H are the shape dimensions inside a fixed 20×14px icon container.
+// All buttons are the same outer size — labels always on the same baseline.
+const IMAGE_ASPECT_RATIOS = [
+  { id: '1:1',  label: '1:1',  iconW: 12, iconH: 12, title: 'Square — Feed' },
+  { id: '16:9', label: '16:9', iconW: 18, iconH: 10, title: 'Landscape — Banner/YouTube' },
+  { id: '9:16', label: '9:16', iconW: 9,  iconH: 14, title: 'Portrait — Story/Reel' },
+  { id: '4:5',  label: '4:5',  iconW: 11, iconH: 14, title: 'Vertical — Feed' },
+]
+
+const VIDEO_ASPECT_RATIOS = [
+  { id: '16:9', label: '16:9', iconW: 18, iconH: 10, title: 'Landscape — Feed/YouTube' },
+  { id: '9:16', label: '9:16', iconW: 9,  iconH: 14, title: 'Portrait — Story/Reel' },
+  { id: '1:1',  label: '1:1',  iconW: 12, iconH: 12, title: 'Square' },
+]
+
+export function AspectRatioSelector({
+  value, onChange, mode = 'image',
+}: {
+  value: string
+  onChange: (ratio: string) => void
+  mode?: 'image' | 'video'
+}) {
+  const options = mode === 'video' ? VIDEO_ASPECT_RATIOS : IMAGE_ASPECT_RATIOS
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-slate-500 shrink-0">Ratio</span>
+      <div className="flex gap-1">
+        {options.map(opt => {
+          const active = value === opt.id
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              title={opt.title}
+              className={`flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg transition-all ${
+                active
+                  ? 'bg-purple-500/20 border border-purple-500/50 text-purple-300'
+                  : 'border border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-400'
+              }`}
+            >
+              {/* Fixed-height container — keeps all labels at the same baseline */}
+              <div className="flex items-center justify-center" style={{ width: 20, height: 14 }}>
+                <div
+                  className={`border-2 rounded-[2px] ${active ? 'border-purple-400' : 'border-current'}`}
+                  style={{ width: opt.iconW, height: opt.iconH }}
+                />
+              </div>
+              <span className="text-[9px] font-semibold leading-none tracking-wide">{opt.label}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

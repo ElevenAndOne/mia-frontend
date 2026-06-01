@@ -19,9 +19,15 @@ interface Props {
   onBack: () => void
 }
 
+interface VariantSeed {
+  prompt: string
+  imageUrl: string
+}
+
 export function CreativeStudioView({ onBack }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('create')
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set<Tab>(['create']))
+  const [variantSeed, setVariantSeed] = useState<VariantSeed | null>(null)
   const { sessionId, activeWorkspace } = useSession()
 
   const tenantId = activeWorkspace?.tenant_id ?? ''
@@ -30,6 +36,11 @@ export function CreativeStudioView({ onBack }: Props) {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
     setMountedTabs(prev => new Set([...prev, tab]))
+  }
+
+  const handleCreateVariant = (prompt: string, imageUrl: string) => {
+    setVariantSeed({ prompt, imageUrl })
+    handleTabChange('imagine')
   }
 
   if (!tenantId || !sid) {
@@ -91,19 +102,28 @@ export function CreativeStudioView({ onBack }: Props) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 pt-8 pb-6">
+      <div className="flex-1 pt-4 pb-6">
         <div className="w-full max-w-[1600px] mx-auto px-6">
           <div className={activeTab !== 'create' ? 'hidden' : ''}>
             <CreateTab tenantId={tenantId} sessionId={sid} />
           </div>
           {mountedTabs.has('imagine') && (
             <div className={activeTab !== 'imagine' ? 'hidden' : ''}>
-              <ImagineTab tenantId={tenantId} sessionId={sid} />
+              <ImagineTab
+                tenantId={tenantId}
+                sessionId={sid}
+                variantSeed={variantSeed}
+                onClearVariantSeed={() => setVariantSeed(null)}
+              />
             </div>
           )}
           {mountedTabs.has('library') && (
             <div className={activeTab !== 'library' ? 'hidden' : ''}>
-              <LibraryTab tenantId={tenantId} sessionId={sid} />
+              <LibraryTab
+                tenantId={tenantId}
+                sessionId={sid}
+                onCreateVariant={handleCreateVariant}
+              />
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Image, Upload, CheckCircle, Loader2, Info } from 'lucide-react'
 import { creativeStudioApi, figmaApi, type CreativeAsset } from './creative-studio-api'
 
@@ -135,13 +136,14 @@ export function ReferencePicker({ tenantId, sessionId, value, onChange, disabled
 
   return (
     <>
-      {showModal && (
+      {showModal && createPortal(
         <LibraryModal
           tenantId={tenantId} sessionId={sessionId}
           selected={value} onToggle={toggle}
           onUpload={handleUpload} onClose={() => setShowModal(false)}
           uploading={uploading}
-        />
+        />,
+        document.body,
       )}
 
       <div className="space-y-3">
