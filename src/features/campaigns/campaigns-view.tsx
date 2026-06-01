@@ -430,12 +430,13 @@ function CampaignPickerModal({
 }
 
 function ChannelActionCard({
-  action, campaignId, tenantId, sessionId, onUpdate, onDelete, onOpenPicker,
+  action, campaignId, tenantId, sessionId, budgetCurrency, onUpdate, onDelete, onOpenPicker,
 }: {
   action: ChannelAction
   campaignId: string
   tenantId: string
   sessionId: string
+  budgetCurrency: string | null
   onUpdate: (updated: ChannelAction) => void
   onDelete: (actionId: string) => void
   onOpenPicker?: (actionId: string, channel: string, current: LinkedCampaign[]) => void
@@ -512,7 +513,7 @@ function ChannelActionCard({
           {!hasPicker && <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>}
           {action.budget != null && (
             <span className="paragraph-xs text-tertiary shrink-0">
-              {formatBudget(action.budget, 'R')}{action.budget_period === 'monthly' ? '/mo' : ' total'}
+              {formatBudget(action.budget, budgetCurrency)}{action.budget_period === 'monthly' ? '/mo' : ' total'}
             </span>
           )}
           {(action.start_date || action.end_date) && (
@@ -570,7 +571,7 @@ function ChannelActionCard({
               <div className="flex items-center gap-1">
                 <input
                   type="number"
-                  key={action.action_id + '-budget'}
+                  key={action.action_id + '-budget-' + (action.budget ?? '')}
                   defaultValue={action.budget ?? ''}
                   onBlur={(e) => {
                     const v = e.target.value ? parseFloat(e.target.value) : null
@@ -593,13 +594,13 @@ function ChannelActionCard({
               <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Active dates</p>
               <div className="space-y-1">
                 <input
-                  type="date" key={action.action_id + '-sd'}
+                  type="date" key={action.action_id + '-sd-' + (action.start_date ?? '')}
                   defaultValue={action.start_date ?? ''}
                   onBlur={(e) => { if (e.target.value !== (action.start_date ?? '')) patch({ start_date: e.target.value || null }) }}
                   className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
                 />
                 <input
-                  type="date" key={action.action_id + '-ed'}
+                  type="date" key={action.action_id + '-ed-' + (action.end_date ?? '')}
                   defaultValue={action.end_date ?? ''}
                   onBlur={(e) => { if (e.target.value !== (action.end_date ?? '')) patch({ end_date: e.target.value || null }) }}
                   className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
@@ -701,7 +702,7 @@ function ChannelActionCard({
 }
 
 function PhaseDetail({
-  phase, campaignId, tenantId, sessionId,
+  phase, campaignId, tenantId, sessionId, budgetCurrency,
   hubspotLists, hubspotListsMessage, brevoLists, savingKpiId,
   onLinkHubspotList, onLinkBrevoList, onPhaseUpdate, onOpenPicker,
 }: {
@@ -709,6 +710,7 @@ function PhaseDetail({
   campaignId: string
   tenantId: string
   sessionId: string
+  budgetCurrency: string | null
   hubspotLists: { list_id: number; name: string; size: number }[]
   hubspotListsMessage: string | null
   brevoLists: { list_id: number; name: string; size: number }[]
@@ -919,6 +921,7 @@ function PhaseDetail({
               campaignId={campaignId}
               tenantId={tenantId}
               sessionId={sessionId}
+              budgetCurrency={budgetCurrency}
               onUpdate={handleActionUpdate}
               onDelete={handleActionDelete}
               onOpenPicker={onOpenPicker}
@@ -2071,6 +2074,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     campaignId={campaign.campaign_id}
                     tenantId={tenantId}
                     sessionId={sessionId}
+                    budgetCurrency={campaign.budget_currency}
                     hubspotLists={hubspotLists}
                     hubspotListsMessage={hubspotListsMessage}
                     brevoLists={brevoLists}

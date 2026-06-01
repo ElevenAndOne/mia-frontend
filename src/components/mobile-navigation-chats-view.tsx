@@ -147,9 +147,9 @@ export const MobileNavigationChatsView = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="border-b border-tertiary">
+      <div className="border-b border-tertiary shrink-0">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -206,7 +206,7 @@ export const MobileNavigationChatsView = ({
       </div>
 
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3">
         {recentConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4">
             <Icon.message_chat_square size={32} className="text-quaternary" />

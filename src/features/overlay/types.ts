@@ -31,6 +31,9 @@ export interface OverlayPosition {
   y: number
   placement: OverlayPlacement
   transformOrigin: string
+  /** Max height (px) the floating element may use given available viewport space.
+   *  Lets tall content (e.g. a long list) scroll internally instead of overflowing. */
+  maxHeight: number
 }
 
 // Offset configuration for anchored overlays
