@@ -4,23 +4,13 @@ import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
 import { clearTrackerCache } from '../campaign/services/campaign-tracker-service'
+import { getCachedDetail, setCachedDetail, clearCampaignDetailCache } from './campaign-detail-cache'
 import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
 import { sendChatMessage } from '../chat/services/chat-service'
 import { ChatMarkdown } from '../../components/chat-markdown'
 
-// ── Campaign detail cache ──────────────────────────────────────────────────
-const detailCache = new Map<string, CampaignDetail>()
-function getCachedDetail(id: string) { return detailCache.get(id) }
-function setCachedDetail(id: string, d: CampaignDetail) { detailCache.set(id, d) }
-function bustCachedDetail(id: string) {
-  detailCache.delete(id)
-  try {
-    for (const k of Object.keys(sessionStorage)) {
-      if (k.startsWith('campaigns_detail_')) sessionStorage.removeItem(k)
-    }
-  } catch { /* ignore */ }
-}
+// ── Campaign detail cache (shared module so chat can bust it too) ───────────
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -639,7 +629,7 @@ function ChannelActionCard({
                           className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-tertiary"
                         >
                           <option value="">type</option>
-                          {['static','carousel','reel','animation','email','search_ad','post_series','video'].map((t) => (
+                          {['static','carousel','reel','animation','email','video','post_series','single_image','story','search_ad','responsive_search_ad','display_ad','pmax','document','text_ad'].map((t) => (
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
@@ -1111,7 +1101,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const loadCampaignDetail = useCallback(async (campaignId: string, opts?: { bust?: boolean }) => {
     if (!sessionId || !tenantId) return
     if (!opts?.bust) {
-      const cached = getCachedDetail(campaignId)
+      const cached = getCachedDetail<CampaignDetail>(campaignId)
       if (cached) {
         setCampaign(cached)
         const sorted = [...cached.phases].sort((a, b) => a.sort_order - b.sort_order)
@@ -1229,7 +1219,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         method: 'DELETE', headers: { 'X-Session-ID': sessionId },
       })
       if (res.ok) {
-        bustCachedDetail(campaign.campaign_id)
+        clearCampaignDetailCache()
         clearTrackerCache()
         const remaining = campaignList.filter((c) => c.campaign_id !== campaign.campaign_id)
         setCampaignList(remaining)
@@ -1259,7 +1249,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             })),
           }
         })
-        bustCachedDetail(campaign.campaign_id)
+        clearCampaignDetailCache()
       }
     } finally { setSavingKpiId(null) }
   }
@@ -1284,7 +1274,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             })),
           }
         })
-        bustCachedDetail(campaign.campaign_id)
+        clearCampaignDetailCache()
       }
     } finally { setSavingKpiId(null) }
   }
