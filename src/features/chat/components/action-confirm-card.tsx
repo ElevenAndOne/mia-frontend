@@ -15,6 +15,91 @@ const platformIcons: Record<string, string> = {
   meta: '/icons/meta-color.svg',
   google: '/icons/google-ads.svg',
   smartlead: '/icons/smartlead.svg',
+  campaign: '/icons/settings.svg',
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  organic_social: 'Organic Social',
+  meta_ads: 'Meta Ads',
+  google_ads: 'Google Ads',
+  linkedin_ads: 'LinkedIn Ads',
+  email: 'Email',
+  website: 'Website',
+}
+
+function CampaignActionPreview({ params }: { params: Record<string, unknown> }) {
+  const phaseName = params.phase_name as string | undefined
+  const channelActions = (params.channel_actions as Array<Record<string, unknown>>) || []
+
+  const items = channelActions.map((ca) => {
+    const channel = ca.channel as string
+    const budget = ca.budget as number | undefined
+    const budgetPeriod = (ca.budget_period as string | undefined) || 'total'
+    const startDate = ca.start_date as string | undefined
+    const endDate = ca.end_date as string | undefined
+    const assets = ((ca.assets as Array<Record<string, unknown>>) || []).map((a) => ({
+      name: a.asset_name as string,
+      type: a.asset_type as string | undefined,
+      launchDate: (a.details as Record<string, string> | undefined)?.launch_date,
+      bestTime: (a.details as Record<string, string> | undefined)?.optimal_post_time,
+    }))
+    return { channel, budget, budgetPeriod, startDate, endDate, assets }
+  })
+
+  return (
+    <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-2">
+      {phaseName && (
+        <div className="flex items-center gap-1.5">
+          <span className="label-xs text-quaternary">Phase:</span>
+          <span className="label-xs text-secondary font-semibold">{phaseName}</span>
+        </div>
+      )}
+      {items.length > 0 && (
+        <div className="space-y-2">
+          <span className="label-xs text-quaternary">Adding to campaign:</span>
+          {items.map((item, i) => (
+            <div key={i} className="flex flex-col gap-0.5 pl-2 border-l-2 border-tertiary">
+              <span className="paragraph-xs text-primary font-medium">
+                {i + 1}. {item.assets[0]?.name || CHANNEL_LABELS[item.channel] || item.channel}
+                {item.assets[0]?.type && (
+                  <span className="text-quaternary font-normal"> ({item.assets[0].type})</span>
+                )}
+              </span>
+              <span className="label-xs text-quaternary">
+                {CHANNEL_LABELS[item.channel] || item.channel}
+              </span>
+              {/* Paid channel: budget + flight dates */}
+              {(item.budget || item.startDate) && (
+                <div className="flex gap-3">
+                  {item.budget && (
+                    <span className="label-xs text-tertiary">
+                      Budget: R{item.budget.toLocaleString()} ({item.budgetPeriod})
+                    </span>
+                  )}
+                  {item.startDate && item.endDate && (
+                    <span className="label-xs text-tertiary">
+                      {item.startDate} → {item.endDate}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* Organic post: launch date + best time */}
+              {item.assets[0]?.launchDate && (
+                <div className="flex gap-3">
+                  <span className="label-xs text-tertiary">Launch: {item.assets[0].launchDate}</span>
+                  {item.assets[0].bestTime && (
+                    <span className="label-xs text-tertiary">
+                      Best time: {item.assets[0].bestTime}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 const statusConfig = {
@@ -49,34 +134,47 @@ export const ActionConfirmCard = ({
   onCancel,
 }: ActionConfirmCardProps) => {
   const config = statusConfig[status]
-  const icon = platformIcons[action.platform] || '/icons/settings.svg'
+  const isCampaignAction = action.platform === 'campaign'
+  const icon = isCampaignAction ? null : (platformIcons[action.platform] || null)
+  const platformLabel = isCampaignAction ? 'Campaign' : action.platform
 
   return (
     <div className={`mt-3 rounded-xl border-2 p-4 ${config.color}`}>
       <div className="flex items-start gap-3">
-        <img src={icon} alt={action.platform} className="w-8 h-8 mt-0.5" />
-        <div className="flex-1">
+        {icon
+          ? <img src={icon} alt={platformLabel} className="w-8 h-8 mt-0.5 flex-shrink-0" />
+          : (
+            <div className="w-8 h-8 mt-0.5 flex-shrink-0 rounded-lg bg-brand-solid/20 flex items-center justify-center">
+              <span className="text-sm">✦</span>
+            </div>
+          )
+        }
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span
-              className={`text-xs font-semibold px-2 py-0.5 rounded ${config.textColor} ${config.color}`}
+              className={`text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0 ${config.textColor} ${config.color}`}
             >
               {config.label}
             </span>
-            <span className="text-xs text-quaternary capitalize">{action.platform}</span>
+            <span className="text-xs text-quaternary truncate">{platformLabel}</span>
           </div>
 
           <p className="paragraph-sm text-primary font-medium mb-2">{action.summary}</p>
 
           {/* Show params preview */}
           {status === 'pending' && action.params && Object.keys(action.params).length > 0 && (
-            <div className="bg-primary/50 rounded-lg p-2 mb-3 text-xs font-mono text-tertiary">
-              {Object.entries(action.params).map(([key, value]) => (
-                <div key={key}>
-                  <span className="text-quaternary">{key}:</span>{' '}
-                  <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+            action.action_type === 'campaign_add_channel_action'
+              ? <CampaignActionPreview params={action.params} />
+              : (
+                <div className="bg-primary/50 rounded-lg p-2 mb-3 text-xs font-mono text-tertiary">
+                  {Object.entries(action.params).map(([key, value]) => (
+                    <div key={key}>
+                      <span className="text-quaternary">{key}:</span>{' '}
+                      <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )
           )}
 
           {/* Action buttons — only when pending */}

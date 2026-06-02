@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { logger } from '../../../utils/logger'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
+import { clearCampaignDetailCache } from '../../campaigns/campaign-detail-cache'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
@@ -512,15 +513,17 @@ export const useChatView = () => {
                 : m
             )
           )
-          // Campaign write: clear tracker cache so the campaigns page shows fresh data
+          // Campaign write: bust both caches so the Campaigns page shows fresh data
+          // when the user navigates there (no auto-navigate — keep them in the chat flow).
           if (message.pendingAction?.action_type === 'campaign_add_channel_action') {
             clearTrackerCache()
+            clearCampaignDetailCache()
             const phaseName = (result as Record<string, unknown>).phase_name as string | undefined
             showToast(
               'success',
               phaseName
-                ? `Added to ${phaseName} phase — view in Campaigns`
-                : 'Added to campaign — view in Campaigns',
+                ? `Added to ${phaseName} phase ✓ Open Campaigns to view.`
+                : 'Added to campaign ✓ Open Campaigns to view.',
               7000
             )
           }
