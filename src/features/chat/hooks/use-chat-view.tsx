@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { logger } from '../../../utils/logger'
+import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
@@ -41,6 +43,7 @@ export const useChatView = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
+  const { showToast } = useToast()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -500,6 +503,27 @@ export const useChatView = () => {
 
           // Safety timeout — stop polling after 5 minutes
           actionPollTimeoutRef.current = setTimeout(stopPolling, 300000)
+        } else if (result.success && !result.workflow_id) {
+          // Synchronous action completed immediately (e.g. campaign_add_channel_action)
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === messageId
+                ? { ...m, actionStatus: 'completed' as const, actionResult: result as Record<string, unknown> }
+                : m
+            )
+          )
+          // Campaign write: clear tracker cache so the campaigns page shows fresh data
+          if (message.pendingAction?.action_type === 'campaign_add_channel_action') {
+            clearTrackerCache()
+            const phaseName = (result as Record<string, unknown>).phase_name as string | undefined
+            showToast(
+              'success',
+              phaseName
+                ? `Added to ${phaseName} phase — view in Campaigns`
+                : 'Added to campaign — view in Campaigns',
+              7000
+            )
+          }
         } else {
           setMessages((prev) =>
             prev.map((m) => (m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m))

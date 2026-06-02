@@ -674,6 +674,18 @@ function ChannelActionCard({
                         />
                       </div>
                     )}
+                    {typeof (asset.details as Record<string, unknown>)?.optimal_post_time === 'string' && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="label-xs text-quaternary">Best time:</span>
+                        <input
+                          type="text"
+                          defaultValue={String((asset.details as Record<string, unknown>).optimal_post_time ?? '')}
+                          onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), optimal_post_time: e.target.value || undefined } })}
+                          placeholder="e.g. Tuesday 09:30"
+                          className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 <button

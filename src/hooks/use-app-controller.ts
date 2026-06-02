@@ -10,6 +10,12 @@ import { logger } from '../utils/logger'
 import { fetchLatestAlert } from '../features/whatsapp-alerts/whatsapp-alert-service'
 import type { WhatsAppAlertData } from '../features/whatsapp-alerts/types'
 
+interface AlertDismissalRecord {
+  key: string
+  snoozedUntil?: number // epoch ms — show again after this time
+  dismissed?: boolean   // permanent hide
+}
+
 export const useAppController = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -41,17 +47,22 @@ export const useAppController = () => {
 
   const insightsDatePicker = useInsightsDatePicker()
 
-  // WhatsApp alert: auto-fetch latest alert once authenticated, show modal if unseen
+  // WhatsApp alert: auto-fetch latest alert once authenticated, show modal if unseen/unsnoozeD
   useEffect(() => {
     if (isLoading || (!isAuthenticated && !isMetaAuthenticated) || !sessionId) return
 
     fetchLatestAlert(sessionId).then((alert) => {
       if (!alert) return
-      // Use campaign+phase as a stable dismissal key
-      const dismissKey = `${StorageKey.WA_ALERT_TOKEN}_dismissed`
-      const dismissed: string[] = JSON.parse(localStorage.getItem(dismissKey) || '[]')
       const alertKey = `${alert.campaign_name}:${alert.phase_name}`
-      if (!dismissed.includes(alertKey)) {
+      const records: AlertDismissalRecord[] = JSON.parse(
+        localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
+      )
+      const record = records.find((r) => r.key === alertKey)
+      const now = Date.now()
+      const isSuppressed =
+        record?.dismissed === true ||
+        (record?.snoozedUntil !== undefined && record.snoozedUntil > now)
+      if (!isSuppressed) {
         setWaAlertData(alert)
       }
     }).catch(() => {}) // silently ignore — no alerts is fine
@@ -224,14 +235,29 @@ export const useAppController = () => {
     },
     onNewWorkspace: handleNewWorkspace,
     waAlertData,
+    // Temporary close — re-shows after 24 hours (backdrop, X button, Remind Me Later)
+    snoozeWaAlert: () => {
+      if (waAlertData) {
+        const alertKey = `${waAlertData.campaign_name}:${waAlertData.phase_name}`
+        const records: AlertDismissalRecord[] = JSON.parse(
+          localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
+        )
+        const filtered = records.filter((r) => r.key !== alertKey)
+        filtered.push({ key: alertKey, snoozedUntil: Date.now() + 24 * 60 * 60 * 1000 })
+        localStorage.setItem(StorageKey.WA_ALERT_DISMISSALS, JSON.stringify(filtered))
+      }
+      setWaAlertData(null)
+    },
+    // Permanent dismiss — never shows this alert again
     clearWaAlert: () => {
       if (waAlertData) {
-        const dismissKey = `${StorageKey.WA_ALERT_TOKEN}_dismissed`
-        const dismissed: string[] = JSON.parse(localStorage.getItem(dismissKey) || '[]')
         const alertKey = `${waAlertData.campaign_name}:${waAlertData.phase_name}`
-        if (!dismissed.includes(alertKey)) {
-          localStorage.setItem(dismissKey, JSON.stringify([...dismissed, alertKey]))
-        }
+        const records: AlertDismissalRecord[] = JSON.parse(
+          localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
+        )
+        const filtered = records.filter((r) => r.key !== alertKey)
+        filtered.push({ key: alertKey, dismissed: true })
+        localStorage.setItem(StorageKey.WA_ALERT_DISMISSALS, JSON.stringify(filtered))
       }
       setWaAlertData(null)
     },

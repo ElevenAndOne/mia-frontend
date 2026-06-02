@@ -26,6 +26,7 @@ function App() {
     insightsDatePicker,
     createWorkspaceModal,
     waAlertData,
+    snoozeWaAlert,
     clearWaAlert,
   } = useAppController()
 
@@ -65,7 +66,11 @@ function App() {
 
       {waAlertData && (
         <Suspense fallback={null}>
-          <WhatsAppAlertModal data={waAlertData} onClose={clearWaAlert} />
+          <WhatsAppAlertModal
+            data={waAlertData}
+            onSnooze={snoozeWaAlert}
+            onDismiss={clearWaAlert}
+          />
         </Suspense>
       )}
 
