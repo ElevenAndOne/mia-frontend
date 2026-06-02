@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { logger } from '../../../utils/logger'
@@ -33,6 +33,16 @@ export const useLoginPage = ({
   const [googleLoadingMessage, setGoogleLoadingMessage] = useState('')
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [metaLoadingMessage, setMetaLoadingMessage] = useState('')
+
+  // Show a toast if Google redirected back with ?google_error (e.g. scope mismatch, token fail)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const googleError = params.get('google_error')
+    if (googleError) {
+      showToast('error', 'Google sign-in failed. Please try again and make sure to allow all permissions.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [showToast])
 
   const showAuthError = useCallback(
     (fallback: string, error: unknown) => {

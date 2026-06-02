@@ -23,7 +23,7 @@ export type OverlayPlacement =
 export type SheetPosition = 'bottom' | 'left' | 'right'
 
 // Modal size options
-export type ModalSize = 'sm' | 'md' | 'lg' | 'full'
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
 
 // Computed position result from positioning engine
 export interface OverlayPosition {

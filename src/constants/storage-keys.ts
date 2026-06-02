@@ -46,4 +46,7 @@ export const StorageKey = {
 
   // WhatsApp alert deep link token (set from ?wa= URL param, consumed after auth)
   WA_ALERT_TOKEN: 'mia_wa_alert_token',
+
+  // WhatsApp alert dismissal/snooze state — array of { key, snoozedUntil?, dismissed? }
+  WA_ALERT_DISMISSALS: 'mia_wa_alert_dismissals',
 } as const
