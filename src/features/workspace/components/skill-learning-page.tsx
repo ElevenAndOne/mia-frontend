@@ -30,7 +30,7 @@ interface Props {
   tenantId: string
 }
 
-export function SkillLearningPage({ sessionId, tenantId }: Props) {
+export function SkillLearningPage({ sessionId }: Props) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [feedbackCounts, setFeedbackCounts] = useState<Record<string, FeedbackCount>>({})
   const [loading, setLoading] = useState(true)
