@@ -1323,12 +1323,13 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             const list: CampaignSummary[] = await r.json()
             if (list.length > 0) {
               setCampaignList(list)
-              // If new campaign panel open, find the newly created campaign
+              // Only close the panel and navigate if a NEW campaign was actually created
               const newCampaign = list.find((c) => !existingCampaignIdsRef.current.has(c.campaign_id))
-              const toLoad = newCampaign ?? list.find((c) => c.is_primary) ?? list[0]
-              await loadCampaignDetail(toLoad.campaign_id)
-              if (tenantId) setCampaignMode(tenantId, toLoad.campaign_id)
-              if (showNewCampaignPanel) setShowNewCampaignPanel(false)
+              if (newCampaign) {
+                await loadCampaignDetail(newCampaign.campaign_id)
+                if (tenantId) setCampaignMode(tenantId, newCampaign.campaign_id)
+                if (showNewCampaignPanel) setShowNewCampaignPanel(false)
+              }
             }
           }
         }, 1000)
