@@ -1261,6 +1261,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
   // "Build new campaign" panel (shown on top of existing campaign)
   const [showNewCampaignPanel, setShowNewCampaignPanel] = useState(false)
+  const [builderSavedCampaign, setBuilderSavedCampaign] = useState<CampaignSummary | null>(null)
+  const [builderCampaignId, setBuilderCampaignId] = useState<string | null>(null)
   const existingCampaignIdsRef = useRef<Set<string>>(new Set())
 
   // PDF upload (empty-state alternative to chat builder)
@@ -1532,6 +1534,9 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         user_id: user?.google_user_id ?? '',
         date_range: '30_days',
         conversation_history: history.slice(-10),
+        // After the builder saves a campaign, pass campaign_id so Mia has full context
+        // to generate assets in the same conversation
+        ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
       })
       const reply = result.claude_response ?? 'Something went wrong. Try again.'
       setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }])
@@ -1544,12 +1549,15 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             const list: CampaignSummary[] = await r.json()
             if (list.length > 0) {
               setCampaignList(list)
-              // Only close the panel and navigate if a NEW campaign was actually created
+              // A NEW campaign was just saved — load it in the background but keep the builder open
+              // so Mia can continue the conversation and add assets without losing context.
               const newCampaign = list.find((c) => !existingCampaignIdsRef.current.has(c.campaign_id))
-              if (newCampaign) {
+              if (newCampaign && !builderSavedCampaign) {
                 await loadCampaignDetail(newCampaign.campaign_id)
                 if (tenantId) setCampaignMode(tenantId, newCampaign.campaign_id)
-                if (showNewCampaignPanel) setShowNewCampaignPanel(false)
+                setBuilderSavedCampaign(newCampaign)
+                setBuilderCampaignId(newCampaign.campaign_id)
+                // Do NOT close the panel — Mia will offer asset generation in the same chat
               }
             }
           }
@@ -1946,11 +1954,35 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
             />
             <div className="flex items-center justify-between px-1 pb-3">
-              <p className="label-md text-primary">Build new campaign</p>
-              <button onClick={() => { setShowNewCampaignPanel(false); setPdfStep('idle'); setParsedCampaignData(null); setChatMessages([]) }} className="paragraph-sm text-tertiary hover:text-primary transition-colors">
-                Cancel
+              <p className="label-md text-primary">
+                {builderSavedCampaign ? (
+                  <span className="flex items-center gap-2">
+                    <span className="text-utility-success-600">✓</span>
+                    {builderSavedCampaign.campaign_name}
+                  </span>
+                ) : 'Build new campaign'}
+              </p>
+              <button
+                onClick={() => {
+                  setShowNewCampaignPanel(false)
+                  setBuilderSavedCampaign(null)
+                  setBuilderCampaignId(null)
+                  setPdfStep('idle')
+                  setParsedCampaignData(null)
+                  setChatMessages([])
+                }}
+                className="paragraph-sm text-tertiary hover:text-primary transition-colors"
+              >
+                {builderSavedCampaign ? 'View campaign →' : 'Cancel'}
               </button>
             </div>
+            {builderSavedCampaign && (
+              <div className="mx-1 mb-3 px-3 py-2 bg-utility-success-50 border border-utility-success-200 rounded-xl">
+                <p className="paragraph-xs text-utility-success-700">
+                  Campaign saved as draft. Continue here to add assets, or click <strong>View campaign →</strong> when you're done.
+                </p>
+              </div>
+            )}
             {pdfStep === 'uploading' && (
               <div className="flex flex-col items-center justify-center gap-3 py-20">
                 <Spinner />
