@@ -99,7 +99,7 @@ export const ChatInput = ({
       )
       if (imageItems.length === 0) return
       e.preventDefault()
-      const remaining = 4 - images.length
+      const remaining = 10 - images.length
       imageItems.slice(0, remaining).forEach((item) => {
         const file = item.getAsFile()
         if (!file) return
@@ -137,7 +137,7 @@ export const ChatInput = ({
 
       // Images: read client-side as before
       if (imageFiles.length > 0 && onAddImages) {
-        const remaining = 4 - images.length
+        const remaining = 10 - images.length
         const toRead = imageFiles.slice(0, remaining)
         const promises = toRead.map(
           (file) =>

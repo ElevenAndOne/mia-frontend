@@ -36,6 +36,7 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
   useEffect(() => {
     if (!isOpen) {
       hasLoadedRef.current = false
+      setLocalSelectedId(null)
       return
     }
     if (hasLoadedRef.current) return

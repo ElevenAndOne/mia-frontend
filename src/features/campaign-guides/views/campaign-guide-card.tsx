@@ -137,6 +137,46 @@ export function CampaignGuideCard({ guide, deleting, onDelete }: Props) {
           </div>
         ) : null}
 
+        {/* Tone + visual */}
+        {(d?.emotional_tone || d?.visual_references || d?.color_palette) && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {d?.emotional_tone && (
+              <div>
+                <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Emotional Tone</p>
+                <p className="paragraph-sm text-primary mt-0.5">{d.emotional_tone}</p>
+              </div>
+            )}
+            {d?.color_palette && (
+              <div>
+                <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Colour Direction</p>
+                <p className="paragraph-sm text-primary mt-0.5">{d.color_palette}</p>
+              </div>
+            )}
+            {d?.visual_references && (
+              <div className="sm:col-span-2">
+                <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Visual Style</p>
+                <p className="paragraph-sm text-primary mt-0.5 line-clamp-2">{d.visual_references}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activation mechanics */}
+        {d?.activation_mechanics && (
+          <div>
+            <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Activations & Mechanics</p>
+            <p className="paragraph-sm text-primary mt-0.5 line-clamp-3">{d.activation_mechanics}</p>
+          </div>
+        )}
+
+        {/* Strategic insights */}
+        {d?.strategic_insights && (
+          <div>
+            <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Strategic Insights</p>
+            <p className="paragraph-sm text-primary mt-0.5 line-clamp-3">{d.strategic_insights}</p>
+          </div>
+        )}
+
         {/* Key events */}
         {d?.key_events?.length ? (
           <div>

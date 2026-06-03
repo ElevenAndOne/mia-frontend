@@ -1,10 +1,11 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
+import { SkillLearningPage } from './skill-learning-page'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl } from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
@@ -20,7 +21,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp'
+type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp' | 'skills'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -275,7 +276,7 @@ export const WorkspaceSettingsDetail = ({
 
       {/* Tab strip */}
       <div className="flex border-b border-tertiary px-4 overflow-x-auto">
-        {(['members', 'brand', 'campaigns', 'whatsapp'] as SettingsTab[]).map((tab) => (
+        {(['members', 'brand', 'campaigns', 'skills', 'whatsapp'] as SettingsTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -292,6 +293,8 @@ export const WorkspaceSettingsDetail = ({
               ? 'Brand Guide'
               : tab === 'campaigns'
               ? 'Campaign Guides'
+              : tab === 'skills'
+              ? 'Skill Learning'
               : 'WhatsApp Alerts'}
           </button>
         ))}
@@ -468,6 +471,11 @@ export const WorkspaceSettingsDetail = ({
         {/* Campaign Guides tab */}
         {activeTab === 'campaigns' && (
           <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+        )}
+
+        {/* Skill Learning tab */}
+        {activeTab === 'skills' && (
+          <SkillLearningPage sessionId={sessionId} tenantId={workspace.tenant_id} />
         )}
 
         {/* Members tab */}

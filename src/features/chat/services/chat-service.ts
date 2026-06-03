@@ -90,6 +90,7 @@ export const uploadChatFile = async (
   | { type: 'image'; data_url: string }
   | { type: 'document'; filename: string; content: string; b64?: never }
   | { type: 'document'; filename: string; b64: string; content?: never }
+  | { type: 'pdf_images'; filename: string; pages: string[] }
 > => {
   const formData = new FormData()
   formData.append('file', file)
@@ -110,6 +111,11 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
     selected_platforms: payload.selected_platforms,
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
+    ...(payload.images?.length ? { images: payload.images } : {}),
+    ...(payload.documents?.length ? { documents: payload.documents } : {}),
+    ...(payload.campaign_id
+      ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
+      : {}),
   }
 
   const response = await apiFetch('/api/chat/v2', {

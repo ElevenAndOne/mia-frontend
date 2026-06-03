@@ -237,29 +237,41 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           const authUserId = urlParams.get('user_id')
 
           if (oauthPending === 'google') {
-            if (!authUserId) {
-              logger.error('[SESSION] No user_id in OAuth redirect URL - cannot complete auth')
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                connectingPlatform: null,
-                error: 'Authentication failed - missing user ID',
-              }))
+            const googleError = urlParams.get('google_error')
+            if (!authUserId || googleError) {
+              // User cancelled OAuth or consent was denied — restore their existing session
+              logger.warn(`[SESSION] OAuth not completed (google_error=${googleError}) - restoring session`)
               window.history.replaceState({}, '', window.location.pathname)
-              return
-            }
-            const success = await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
-            if (!success) {
-              logger.error('[SESSION] OAuth /complete failed')
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                connectingPlatform: null,
-                error: 'Authentication failed',
-              }))
+              setState((prev) => ({ ...prev, connectingPlatform: null }))
+              // No return — fall through to session validation below so user stays logged in
+            } else {
+              const success = await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
+              if (!success) {
+                logger.error('[SESSION] OAuth /complete failed')
+                setState((prev) => ({
+                  ...prev,
+                  isLoading: false,
+                  connectingPlatform: null,
+                  error: 'Authentication failed',
+                }))
+              }
             }
           } else if (oauthPending === 'meta') {
-            await metaAuthService.completeMetaAuth(sessionId)
+            const metaError = urlParams.get('meta_error')
+            if (metaError) {
+              logger.warn(`[SESSION] Meta OAuth cancelled (meta_error=${metaError}) - restoring session`)
+              window.history.replaceState({}, '', window.location.pathname)
+              setState((prev) => ({ ...prev, connectingPlatform: null }))
+              // Fall through to session validation — no return
+            } else {
+              try {
+                await metaAuthService.completeMetaAuth(sessionId)
+              } catch (err) {
+                logger.error('[SESSION] Meta OAuth complete failed — restoring session:', err)
+                setState((prev) => ({ ...prev, connectingPlatform: null }))
+                // Fall through to session validation — don't throw
+              }
+            }
           }
 
           // Clean URL only AFTER OAuth completion succeeds
@@ -347,12 +359,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         setState((prev) => ({ ...prev, sessionId: newSessionId, isLoading: false }))
       } catch (error) {
         logger.error('[SESSION] Initialization error:', error)
-        const errorSessionId = generateSessionId()
-        storeSessionId(errorSessionId)
+        // Preserve existing session ID — generating a new one would sever the backend session
+        // and force the user to reauthenticate on their next refresh.
+        const existingSessionId = getStoredSessionId()
+        const fallbackSessionId = existingSessionId || generateSessionId()
+        if (!existingSessionId) storeSessionId(fallbackSessionId)
         setState((prev) => ({
           ...prev,
           error: 'Failed to initialize session',
-          sessionId: errorSessionId,
+          sessionId: fallbackSessionId,
           isLoading: false,
         }))
       }
