@@ -190,7 +190,7 @@ export const useChatView = () => {
   }, [])
 
   const addImages = useCallback((newImages: string[]) => {
-    setImages((prev) => [...prev, ...newImages].slice(0, 4))
+    setImages((prev) => [...prev, ...newImages].slice(0, 10))
   }, [])
 
   const removeImage = useCallback((index: number) => {
@@ -201,7 +201,10 @@ export const useChatView = () => {
     async (file: File) => {
       const result = await uploadChatFile(sessionId || 'default', file)
       if (result.type === 'image') {
-        setImages((prev) => [...prev, result.data_url].slice(0, 4))
+        setImages((prev) => [...prev, result.data_url].slice(0, 10))
+      } else if (result.type === 'pdf_images') {
+        // Image-based PDF (Figma exports, slide decks) — each page becomes a vision image
+        setImages((prev) => [...prev, ...result.pages].slice(0, 10))
       } else if (result.b64) {
         setDocuments((prev) => [...prev, { filename: result.filename, b64: result.b64 }])
       } else if (result.content) {
@@ -380,6 +383,7 @@ export const useChatView = () => {
       selectedPlatforms,
       conversationId,
       images,
+      documents,
       activeCampaign,
     ]
   )

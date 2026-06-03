@@ -102,6 +102,22 @@ function ExtractionPreview({ extracted }: { extracted: CampaignGuideExtracted })
           </div>
         </div>
       ) : null}
+
+      {(extracted.emotional_tone || extracted.visual_references || extracted.color_palette) ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <PreviewField label="Emotional Tone" value={extracted.emotional_tone} />
+          <PreviewField label="Colour Direction" value={extracted.color_palette} />
+          {extracted.visual_references && (
+            <div className="sm:col-span-2">
+              <p className="paragraph-xs font-medium text-tertiary uppercase tracking-wide">Visual Style</p>
+              <p className="paragraph-sm text-primary mt-0.5">{extracted.visual_references}</p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      <PreviewField label="Activations & Mechanics" value={extracted.activation_mechanics} />
+      <PreviewField label="Strategic Insights" value={extracted.strategic_insights} />
     </div>
   )
 }

@@ -22,6 +22,11 @@ export interface CampaignGuideExtracted {
   key_messages: string[] | null
   key_events: CampaignEvent[] | null
   content_themes: string | null
+  emotional_tone: string | null
+  visual_references: string | null
+  color_palette: string | null
+  activation_mechanics: string | null
+  strategic_insights: string | null
 }
 
 export interface CampaignGuide {

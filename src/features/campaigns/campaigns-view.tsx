@@ -9,6 +9,7 @@ import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
 import { sendChatMessage } from '../chat/services/chat-service'
 import { ChatMarkdown } from '../../components/chat-markdown'
+import { fetchCampaignGuides } from '../campaign-guides/services/campaign-guide-service'
 
 // ── Campaign detail cache (shared module so chat can bust it too) ───────────
 
@@ -85,6 +86,7 @@ interface CampaignDetail {
   meta_filter: string | null
   brevo_filter: string | null
   clickup_list_id: string | null
+  campaign_guide_id: string | null
   objectives: string[]
   phases: Phase[]
 }
@@ -135,26 +137,38 @@ interface SyncResult {
   phases: SyncPhase[]
 }
 
+// ── Channel config types ──────────────────────────────────────────────────
+
+interface ChannelConfig {
+  hidden: string[]
+  custom: { key: string; label: string }[]
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const PLATFORM_LABELS: Record<string, string> = {
-  meta_ads: 'Meta Ads',
+  brevo: 'Brevo',
+  email: 'Email',
   google_ads: 'Google Ads',
-  ga4: 'Google Analytics 4',
-  organic_social: 'Organic Social',
-  facebook_organic: 'Facebook Organic',
-  instagram_organic: 'Instagram Organic',
+  google_display: 'Google Display',
+  hubspot: 'HubSpot',
   linkedin_ads: 'LinkedIn Ads',
   linkedin_organic: 'LinkedIn Organic',
+  mailchimp: 'Mailchimp',
+  meta_ads: 'Meta Ads',
+  organic_social: 'Organic Social',
+  packaging: 'Packaging',
+  point_of_sale: 'Point of Sale',
+  printing: 'Printing',
+  seo: 'SEO',
   tiktok_ads: 'TikTok Ads',
   tiktok_influencers: 'TikTok Influencers',
   website: 'Website',
-  email: 'Email',
-  hubspot: 'HubSpot',
-  brevo: 'Brevo',
-  mailchimp: 'Mailchimp',
-  seo: 'SEO',
+  // Kept for display of legacy campaigns only — excluded from picker
   display: 'Display',
+  facebook_organic: 'Facebook Organic',
+  ga4: 'Google Analytics 4',
+  instagram_organic: 'Instagram Organic',
   airtable: 'Airtable',
 }
 
@@ -522,6 +536,16 @@ function ChannelActionCard({
             </div>
           )}
         </div>
+        {/* Remove button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(action.action_id) }}
+          className="p-1 mr-1 text-quaternary hover:text-utility-error-500 transition-colors shrink-0"
+          title="Remove channel"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         {/* Expand chevron */}
         <div className="pr-3 py-2.5 cursor-pointer shrink-0" onClick={() => setExpanded(!expanded)}>
           <svg className={`w-3.5 h-3.5 text-quaternary transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -688,17 +712,143 @@ function ChannelActionCard({
             )}
           </div>
 
-          {/* Delete channel */}
-          <div className="flex justify-end pt-1 border-t border-tertiary">
-            <button
-              onClick={() => onDelete(action.action_id)}
-              className="label-xs text-quaternary hover:text-utility-error-500 transition-colors"
-            >
-              Remove channel
-            </button>
-          </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Channel options management modal ─────────────────────────────────────
+
+const ALWAYS_HIDDEN = ['ga4', 'airtable']
+
+function ManageChannelsModal({
+  tenantId, sessionId, onClose, onSave,
+}: {
+  tenantId: string
+  sessionId: string
+  onClose: () => void
+  onSave: (config: ChannelConfig) => void
+}) {
+  const [hidden, setHidden] = useState<string[]>([])
+  const [custom, setCustom] = useState<{ key: string; label: string }[]>([])
+  const [newLabel, setNewLabel] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    apiFetch(`/api/tenants/${tenantId}/channel-config`, { headers: { 'X-Session-ID': sessionId } })
+      .then((r) => r.json())
+      .then((d) => { setHidden(d.hidden || []); setCustom(d.custom || []) })
+      .finally(() => setLoading(false))
+  }, [tenantId, sessionId])
+
+  const save = async () => {
+    setSaving(true)
+    const res = await apiFetch(`/api/tenants/${tenantId}/channel-config`, {
+      method: 'PATCH',
+      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hidden, custom }),
+    })
+    if (res.ok) {
+      onSave({ hidden, custom })
+      onClose()
+    }
+    setSaving(false)
+  }
+
+  const addCustom = () => {
+    const label = newLabel.trim()
+    if (!label) return
+    const key = label.toLowerCase().replace(/[^a-z0-9]+/g, '_')
+    if (Object.keys(PLATFORM_LABELS).includes(key) || custom.some((c) => c.key === key)) return
+    setCustom((prev) => [...prev, { key, label }])
+    setNewLabel('')
+  }
+
+  const standardChannels = Object.entries(PLATFORM_LABELS).filter(([k]) => !ALWAYS_HIDDEN.includes(k))
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-primary rounded-xl border border-tertiary w-full max-w-sm max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-tertiary">
+          <h2 className="label-md text-primary">Manage channel options</h2>
+          <button onClick={onClose} className="text-quaternary hover:text-secondary">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <p className="paragraph-xs text-quaternary">Loading...</p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            <p className="paragraph-xs text-tertiary">Toggle which channels appear in the "+ Add channel" dropdown.</p>
+
+            <div className="space-y-1">
+              {standardChannels.map(([key, label]) => {
+                const isHidden = hidden.includes(key)
+                return (
+                  <div key={key} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary transition-colors">
+                    <span className={`paragraph-sm ${isHidden ? 'text-quaternary line-through' : 'text-primary'}`}>{label}</span>
+                    <button
+                      onClick={() => setHidden((prev) => isHidden ? prev.filter((k) => k !== key) : [...prev, key])}
+                      className={`label-xs px-2 py-0.5 rounded-full transition-colors ${isHidden ? 'text-utility-success-600 bg-utility-success-50 hover:bg-utility-success-100' : 'text-utility-error-600 bg-utility-error-50 hover:bg-utility-error-100'}`}
+                    >
+                      {isHidden ? '+ Show' : '× Hide'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {custom.length > 0 && (
+              <div>
+                <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Custom channels</p>
+                <div className="space-y-1">
+                  {custom.map((ch, i) => (
+                    <div key={ch.key} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-secondary transition-colors">
+                      <span className="paragraph-sm text-primary">{ch.label}</span>
+                      <button
+                        onClick={() => setCustom((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="label-xs text-utility-error-600 bg-utility-error-50 hover:bg-utility-error-100 px-2 py-0.5 rounded-full transition-colors"
+                      >
+                        × Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Add custom channel</p>
+              <div className="flex gap-2">
+                <input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+                  placeholder="e.g. Outdoor Advertising"
+                  className="flex-1 px-2 py-1.5 border border-tertiary rounded-lg text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
+                />
+                <button onClick={addCustom} className="label-xs text-utility-brand-600 hover:text-utility-brand-700 shrink-0 px-2">Add</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="px-4 py-3 border-t border-tertiary flex justify-end gap-2">
+          <button onClick={onClose} className="label-xs text-quaternary hover:text-secondary px-3 py-1.5">Cancel</button>
+          <button
+            onClick={save}
+            disabled={saving || loading}
+            className="label-xs bg-utility-brand-600 text-white px-3 py-1.5 rounded-lg hover:bg-utility-brand-700 disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -706,6 +856,7 @@ function ChannelActionCard({
 function PhaseDetail({
   phase, campaignId, tenantId, sessionId, budgetCurrency,
   hubspotLists, hubspotListsMessage, brevoLists, savingKpiId,
+  channelConfig, onChannelConfigSave,
   onLinkHubspotList, onLinkBrevoList, onPhaseUpdate, onOpenPicker,
 }: {
   phase: Phase
@@ -717,6 +868,8 @@ function PhaseDetail({
   hubspotListsMessage: string | null
   brevoLists: { list_id: number; name: string; size: number }[]
   savingKpiId: number | null
+  channelConfig: ChannelConfig
+  onChannelConfigSave: (config: ChannelConfig) => void
   onLinkHubspotList: (kpiId: number, listName: string | null) => void
   onLinkBrevoList: (kpiId: number, listName: string | null) => void
   onPhaseUpdate: (updated: Phase) => void
@@ -727,6 +880,15 @@ function PhaseDetail({
   const [newKpiTarget, setNewKpiTarget] = useState('')
   const [addingChannel, setAddingChannel] = useState(false)
   const [newChannel, setNewChannel] = useState('')
+  const [managingChannels, setManagingChannels] = useState(false)
+
+  // Effective channel options: standard (not hidden) + custom entries
+  const effectiveChannelOptions: [string, string][] = [
+    ...Object.entries(PLATFORM_LABELS).filter(
+      ([k]) => ![...ALWAYS_HIDDEN, 'facebook_organic', 'instagram_organic', 'display', ...channelConfig.hidden].includes(k)
+    ),
+    ...channelConfig.custom.map((c) => [c.key, c.label] as [string, string]),
+  ]
 
   const phaseHasHubspot = phase.channel_actions.some((ca) => ca.channel === 'hubspot')
   const phaseHasBrevo = phase.channel_actions.some((ca) =>
@@ -912,9 +1074,14 @@ function PhaseDetail({
 
       {/* Channel actions */}
       <div>
-        <p className="label-xs text-quaternary uppercase tracking-wide mb-2">
-          Channels ({phase.channel_actions.length})
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="label-xs text-quaternary uppercase tracking-wide">
+            Channels ({phase.channel_actions.length})
+          </p>
+          <button onClick={() => setManagingChannels(true)} className="text-quaternary hover:text-secondary transition-colors" title="Manage channel options">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+        </div>
         <div className="space-y-2">
           {phase.channel_actions.map((ca) => (
             <ChannelActionCard
@@ -942,7 +1109,7 @@ function PhaseDetail({
             <select value={newChannel} onChange={(e) => setNewChannel(e.target.value)} autoFocus
               className="flex-1 px-2 py-1.5 border border-tertiary rounded-lg text-xs bg-primary text-secondary outline-none">
               <option value="">Select channel...</option>
-              {Object.entries(PLATFORM_LABELS).filter(([k]) => !['ga4','airtable'].includes(k)).map(([key, lbl]) => (
+              {effectiveChannelOptions.map(([key, lbl]) => (
                 <option key={key} value={key}>{lbl}</option>
               ))}
             </select>
@@ -953,6 +1120,15 @@ function PhaseDetail({
           <button onClick={() => setAddingChannel(true)} className="mt-2 label-xs text-quaternary hover:text-secondary">+ Add channel</button>
         )}
       </div>
+
+      {managingChannels && (
+        <ManageChannelsModal
+          tenantId={tenantId}
+          sessionId={sessionId}
+          onClose={() => setManagingChannels(false)}
+          onSave={onChannelConfigSave}
+        />
+      )}
     </div>
   )
 }
@@ -994,6 +1170,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   // Brevo contacts lists (for KPIs like "Competition entries")
   const [brevoLists, setBrevoLists] = useState<{ list_id: number; name: string; size: number }[]>([])
   const [savingKpiId, setSavingKpiId] = useState<number | null>(null)
+
+  // Campaign guides (for linking to campaign)
+  const [campaignGuides, setCampaignGuides] = useState<{ id: string; filename: string; campaign_name: string | null }[]>([])
+
+  // Channel config (workspace-level, persisted to backend)
+  const [channelConfig, setChannelConfig] = useState<ChannelConfig>({ hidden: [], custom: [] })
 
   // Campaign picker (modal lives here so it renders outside any scroll container)
   const [pickerTarget, setPickerTarget] = useState<{ actionId: string; channel: string; current: LinkedCampaign[] } | null>(null)
@@ -1149,6 +1331,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           .then((r) => r.ok ? r.json() : null)
           .then((data) => { if (data?.lists?.length) setBrevoLists(data.lists) })
           .catch(() => {})
+        apiFetch(`/api/tenants/${tenantId}/channel-config`, { headers: { 'X-Session-ID': sessionId } })
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => { if (data) setChannelConfig({ hidden: data.hidden || [], custom: data.custom || [] }) })
+          .catch(() => {})
+        // guide list loaded separately via its own effect
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
       } finally {
@@ -1157,6 +1344,26 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     }
     load()
   }, [tenantId, sessionId, loadCampaignDetail])
+
+  // Load campaign guides independently so uploads in another tab are picked up on focus
+  useEffect(() => {
+    if (!sessionId || !tenantId) return
+    const load = () => {
+      fetchCampaignGuides(sessionId, tenantId)
+        .then((guides) => setCampaignGuides(
+          guides.map((g) => ({
+            id: g.id,
+            filename: g.filename,
+            campaign_name: g.extracted_data?.campaign_name ?? null,
+          }))
+        ))
+        .catch(() => {})
+    }
+    load()
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [sessionId, tenantId])
 
   const handleSwitchCampaign = async (campaignId: string) => {
     if (campaignId === 'new') {
@@ -1198,6 +1405,20 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       if ('status' in fields || 'is_primary' in fields || 'campaign_name' in fields) {
         setCampaignList((prev) => prev.map((c) => c.campaign_id === campaign.campaign_id ? { ...c, ...fields } as CampaignSummary : c))
       }
+    }
+  }, [sessionId, tenantId, campaign])
+
+  const handleLinkGuide = useCallback(async (guideId: string | null) => {
+    if (!sessionId || !tenantId || !campaign) return
+    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}/guide`, {
+      method: 'PATCH',
+      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guide_id: guideId }),
+    })
+    if (res.ok) {
+      const updated = { ...campaign, campaign_guide_id: guideId }
+      setCampaign(updated)
+      setCachedDetail(campaign.campaign_id, updated)
     }
   }, [sessionId, tenantId, campaign])
 
@@ -2010,6 +2231,26 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   ))}
                 </div>
               )}
+
+              {/* Campaign guide link */}
+              {campaignGuides.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="label-xs text-quaternary shrink-0">Campaign guide:</span>
+                  <select
+                    value={campaign.campaign_guide_id ?? ''}
+                    onChange={(e) => handleLinkGuide(e.target.value || null)}
+                    className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[240px]"
+                  >
+                    <option value="">— None —</option>
+                    {campaignGuides.map((g) => (
+                      <option key={g.id} value={g.id}>{g.campaign_name ?? g.filename}</option>
+                    ))}
+                  </select>
+                  {campaign.campaign_guide_id && (
+                    <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">linked</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Objectives */}
@@ -2082,6 +2323,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     hubspotListsMessage={hubspotListsMessage}
                     brevoLists={brevoLists}
                     savingKpiId={savingKpiId}
+                    channelConfig={channelConfig}
+                    onChannelConfigSave={setChannelConfig}
                     onLinkHubspotList={handleLinkHubspotList}
                     onLinkBrevoList={handleLinkBrevoList}
                     onPhaseUpdate={handlePhaseUpdate}
