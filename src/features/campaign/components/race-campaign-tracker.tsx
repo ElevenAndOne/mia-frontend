@@ -589,8 +589,10 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
 
               // Rate metrics: bar always 100% wide — colour is the signal, not fill
               // Cumulative metrics: bar fill = actual / target progress
-              const pct = actual
-                ? isRate ? 100 : progressPercent(actual)
+              // Must check actual_value !== null, not just actual object existence
+              const hasValue = actual !== null && actual.actual_value !== null
+              const pct = hasValue
+                ? isRate ? 100 : progressPercent(actual!)
                 : 0
 
               const metTarget =
