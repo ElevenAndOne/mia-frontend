@@ -679,29 +679,25 @@ function ChannelActionCard({
                       placeholder="CTA..."
                       className="paragraph-xs text-tertiary"
                     />
-                    {typeof (asset.details as Record<string, unknown>)?.launch_date === 'string' && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="label-xs text-quaternary">Launch:</span>
-                        <input
-                          type="date"
-                          defaultValue={String((asset.details as Record<string, unknown>).launch_date ?? '')}
-                          onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), launch_date: e.target.value || undefined } })}
-                          className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
-                        />
-                      </div>
-                    )}
-                    {typeof (asset.details as Record<string, unknown>)?.optimal_post_time === 'string' && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="label-xs text-quaternary">Best time:</span>
-                        <input
-                          type="text"
-                          defaultValue={String((asset.details as Record<string, unknown>).optimal_post_time ?? '')}
-                          onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), optimal_post_time: e.target.value || undefined } })}
-                          placeholder="e.g. Tuesday 09:30"
-                          className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="label-xs text-quaternary">Launch:</span>
+                      <input
+                        type="date"
+                        defaultValue={String((asset.details as Record<string, unknown>)?.launch_date ?? '')}
+                        onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), launch_date: e.target.value || undefined } })}
+                        className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="label-xs text-quaternary">Best time:</span>
+                      <input
+                        type="text"
+                        defaultValue={String((asset.details as Record<string, unknown>)?.optimal_post_time ?? '')}
+                        onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), optimal_post_time: e.target.value || undefined } })}
+                        placeholder="e.g. Tuesday 09:30"
+                        className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
+                      />
+                    </div>
                   </div>
                 ))}
                 <button
@@ -1160,8 +1156,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const chatStreamDoneRef = useRef(false)
   const chatRevealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const chatIsMountedRef = useRef(true)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
   const CHAT_REVEAL_MS = 40
   const CHAT_CHARS_PER_TICK = 5
+  // Auto-scroll only when the user is already near the bottom — never yank them
+  // down while they've scrolled up to read.
+  const chatNearBottom = useCallback(() => {
+    const el = chatScrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
   useEffect(() => {
     chatIsMountedRef.current = true
     return () => {
@@ -1569,9 +1573,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       const current = chatDisplayIndexRef.current
       const remaining = target - current
       if (remaining > 0) {
+        const stick = chatNearBottom()
         chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
         if (chatIsMountedRef.current) {
           setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+          if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
         }
       } else if (chatStreamDoneRef.current) {
         if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1597,6 +1603,13 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           if (chunk.text) {
             accumulated += chunk.text
             chatReceivedRef.current = accumulated  // interval reads this — no setState
+            // When the tab is backgrounded the reveal interval is throttled to ~1/s,
+            // so flush everything received straight to display — Mia keeps "typing"
+            // while you're on another tab; it's all there when you return.
+            if (document.hidden) {
+              chatDisplayIndexRef.current = accumulated.length
+              setChatStreamingContent(accumulated)
+            }
           } else if (chunk.status && chunk.status !== 'thinking') {
             setChatThinkingText(chunk.status)
           }
@@ -1679,9 +1692,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         const current = chatDisplayIndexRef.current
         const remaining = target - current
         if (remaining > 0) {
+          const stick = chatNearBottom()
           chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
           if (chatIsMountedRef.current) {
             setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+            if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
           }
         } else if (chatStreamDoneRef.current) {
           if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1703,7 +1718,14 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
           },
           (chunk) => {
-            if (chunk.text) { accumulated += chunk.text; chatReceivedRef.current = accumulated }
+            if (chunk.text) {
+              accumulated += chunk.text
+              chatReceivedRef.current = accumulated
+              if (document.hidden) {
+                chatDisplayIndexRef.current = accumulated.length
+                setChatStreamingContent(accumulated)
+              }
+            }
           }
         )
         chatStreamDoneRef.current = true
@@ -2017,7 +2039,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
                 {/* Chat messages */}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
@@ -2178,7 +2200,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   </div>
                 )}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${m.role === 'user' ? 'bg-brand-solid text-primary-onbrand' : 'bg-secondary text-primary border border-tertiary'}`}>
