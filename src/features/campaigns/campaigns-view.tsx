@@ -1572,7 +1572,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
         if (chatIsMountedRef.current) {
           setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
-          chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
         }
       } else if (chatStreamDoneRef.current) {
         if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1591,6 +1590,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           user_id: user?.google_user_id ?? '',
           date_range: '30_days',
           conversation_history: history.slice(-60),
+          workspace_hint: 'strategy_planning',
           ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
         },
         (chunk) => {
@@ -1627,12 +1627,13 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               setCampaignList(list)
               const newCampaign = list.find((c) => !existingCampaignIdsRef.current.has(c.campaign_id))
               if (newCampaign && !builderSavedCampaign) {
-                await loadCampaignDetail(newCampaign.campaign_id)
-                if (tenantId) setCampaignMode(tenantId, newCampaign.campaign_id)
+                // Open panel BEFORE loadCampaignDetail — prevents flash of campaign detail page
+                setShowNewCampaignPanel(true)
                 setBuilderSavedCampaign(newCampaign)
                 setBuilderCampaignId(newCampaign.campaign_id)
-                // Keep builder chat open so user can continue adding phases / assets
-                setShowNewCampaignPanel(true)
+                if (tenantId) setCampaignMode(tenantId, newCampaign.campaign_id)
+                await loadCampaignDetail(newCampaign.campaign_id)
+                setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 150)
                 trackEvent(sessionId, 'campaign_saved', 'campaigns', { campaign_id: newCampaign.campaign_id })
               }
             }
@@ -1684,7 +1685,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
           if (chatIsMountedRef.current) {
             setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
-            chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
           }
         } else if (chatStreamDoneRef.current) {
           if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1701,6 +1701,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             user_id: user?.google_user_id ?? '',
             date_range: '30_days',
             conversation_history: history.slice(-60),
+            workspace_hint: 'strategy_planning',
             documents: [doc],
             ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
           },
@@ -2048,7 +2049,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     )}
                     {chatStreamingContent && (
                       <div className="flex justify-start">
-                        <div className="max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
+                        <div className="w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
                           <ChatMarkdown content={chatStreamingContent} />
                         </div>
                       </div>
@@ -2200,7 +2201,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     )}
                     {chatStreamingContent && (
                       <div className="flex justify-start">
-                        <div className="max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
+                        <div className="w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
                           <ChatMarkdown content={chatStreamingContent} />
                         </div>
                       </div>
