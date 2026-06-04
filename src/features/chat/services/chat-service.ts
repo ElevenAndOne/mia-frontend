@@ -26,6 +26,7 @@ interface ChatRequestPayload {
   campaign_id?: string
   start_date?: string
   end_date?: string
+  workspace_hint?: string
 }
 
 export interface RecentConversation {
@@ -116,6 +117,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
     ...(payload.campaign_id
       ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
       : {}),
+    ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2', {
@@ -152,6 +154,7 @@ export const sendChatMessageStreaming = async (
     ...(payload.campaign_id
       ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
       : {}),
+    ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {
