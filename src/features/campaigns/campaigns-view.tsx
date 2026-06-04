@@ -7,7 +7,9 @@ import { clearTrackerCache } from '../campaign/services/campaign-tracker-service
 import { getCachedDetail, setCachedDetail, clearCampaignDetailCache } from './campaign-detail-cache'
 import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
-import { sendChatMessage } from '../chat/services/chat-service'
+import { sendChatMessageStreaming, uploadChatFile } from '../chat/services/chat-service'
+import type { AttachedDocument } from '../chat/services/chat-service'
+import { trackEvent } from '../../utils/tracking'
 import { ChatMarkdown } from '../../components/chat-markdown'
 import { fetchCampaignGuides } from '../campaign-guides/services/campaign-guide-service'
 
@@ -1146,7 +1148,27 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+  const [chatThinkingText, setChatThinkingText] = useState('Thinking...')
   const chatBottomRef = useRef<HTMLDivElement>(null)
+
+  // Interval-based streaming reveal — same pattern as normal chat.
+  // Chunks land in chatReceivedRef; a setInterval drip-feeds to chatStreamingContent
+  // at a fixed pace, decoupling bursty network arrivals from render cadence.
+  const [chatStreamingContent, setChatStreamingContent] = useState('')
+  const chatReceivedRef = useRef('')
+  const chatDisplayIndexRef = useRef(0)
+  const chatStreamDoneRef = useRef(false)
+  const chatRevealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const chatIsMountedRef = useRef(true)
+  const CHAT_REVEAL_MS = 40
+  const CHAT_CHARS_PER_TICK = 5
+  useEffect(() => {
+    chatIsMountedRef.current = true
+    return () => {
+      chatIsMountedRef.current = false
+      if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
+    }
+  }, [])
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [campaignList, setCampaignList] = useState<CampaignSummary[]>([])
@@ -1308,6 +1330,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setDetailLoading(false)
     }
   }, [sessionId, tenantId])
+
+  useEffect(() => {
+    trackEvent(sessionId, 'page_visit', 'campaigns')
+  }, [sessionId])
 
   useEffect(() => {
     if (!tenantId || !sessionId) return
@@ -1522,26 +1548,76 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     const text = (message ?? chatInput).trim()
     if (!text || chatLoading || !sessionId) return
     setChatInput('')
+
     const userMsg = { role: 'user' as const, content: text }
     setChatMessages((prev) => [...prev, userMsg])
     setChatLoading(true)
+    setChatThinkingText('Thinking...')
+    trackEvent(sessionId, 'campaign_builder_message', 'campaigns', { has_campaign: !!builderCampaignId })
     setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+
+    // Reset streaming state
+    chatReceivedRef.current = ''
+    chatDisplayIndexRef.current = 0
+    chatStreamDoneRef.current = false
+    if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
+    setChatStreamingContent('')
+
+    // Start reveal interval — drip-feeds chatReceivedRef → chatStreamingContent at steady pace
+    chatRevealIntervalRef.current = setInterval(() => {
+      const target = chatReceivedRef.current.length
+      const current = chatDisplayIndexRef.current
+      const remaining = target - current
+      if (remaining > 0) {
+        chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
+        if (chatIsMountedRef.current) {
+          setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+          chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }
+      } else if (chatStreamDoneRef.current) {
+        if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
+        chatRevealIntervalRef.current = null
+      }
+    }, CHAT_REVEAL_MS)
+
     try {
       const history = [...chatMessages, userMsg]
-      const result = await sendChatMessage({
-        message: text,
-        session_id: sessionId,
-        user_id: user?.google_user_id ?? '',
-        date_range: '30_days',
-        conversation_history: history.slice(-60),
-        // After the builder saves a campaign, pass campaign_id so Mia has full context
-        // to generate assets in the same conversation
-        ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
+      let accumulated = ''
+
+      await sendChatMessageStreaming(
+        {
+          message: text,
+          session_id: sessionId,
+          user_id: user?.google_user_id ?? '',
+          date_range: '30_days',
+          conversation_history: history.slice(-60),
+          ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
+        },
+        (chunk) => {
+          if (chunk.text) {
+            accumulated += chunk.text
+            chatReceivedRef.current = accumulated  // interval reads this — no setState
+          } else if (chunk.status && chunk.status !== 'thinking') {
+            setChatThinkingText(chunk.status)
+          }
+        }
+      )
+
+      // Signal done; wait for interval to flush remaining chars before committing
+      chatStreamDoneRef.current = true
+      await new Promise<void>((resolve) => {
+        const check = setInterval(() => {
+          if (chatRevealIntervalRef.current === null) {
+            clearInterval(check)
+            resolve()
+          }
+        }, CHAT_REVEAL_MS)
       })
-      const reply = result.claude_response ?? 'Something went wrong. Try again.'
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }])
-      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-      // After Mia responds, poll to see if a campaign was just saved
+
+      const finalContent = accumulated || 'Something went wrong. Try again.'
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: finalContent }])
+
+      // Poll for newly saved campaign
       if (tenantId) {
         setTimeout(async () => {
           const r = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
@@ -1549,52 +1625,106 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             const list: CampaignSummary[] = await r.json()
             if (list.length > 0) {
               setCampaignList(list)
-              // A NEW campaign was just saved — load it in the background but keep the builder open
-              // so Mia can continue the conversation and add assets without losing context.
               const newCampaign = list.find((c) => !existingCampaignIdsRef.current.has(c.campaign_id))
               if (newCampaign && !builderSavedCampaign) {
                 await loadCampaignDetail(newCampaign.campaign_id)
                 if (tenantId) setCampaignMode(tenantId, newCampaign.campaign_id)
                 setBuilderSavedCampaign(newCampaign)
                 setBuilderCampaignId(newCampaign.campaign_id)
-                // Do NOT close the panel — Mia will offer asset generation in the same chat
+                // Keep builder chat open so user can continue adding phases / assets
+                setShowNewCampaignPanel(true)
+                trackEvent(sessionId, 'campaign_saved', 'campaigns', { campaign_id: newCampaign.campaign_id })
               }
             }
           }
         }, 1000)
       }
     } catch {
+      if (chatRevealIntervalRef.current) {
+        clearInterval(chatRevealIntervalRef.current)
+        chatRevealIntervalRef.current = null
+      }
       setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
     } finally {
       setChatLoading(false)
+      setChatStreamingContent('')
     }
-  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, showNewCampaignPanel])
+  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, builderCampaignId, builderSavedCampaign])
 
   const handlePdfSelect = useCallback(async (file: File) => {
-    if (!sessionId || !tenantId) return
+    if (!sessionId) return
     setPdfStep('uploading')
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/parse-pdf`, {
-        method: 'POST',
-        headers: { 'X-Session-ID': sessionId },
-        body: formData,
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || 'PDF parsing failed')
+      const result = await uploadChatFile(sessionId, file)
+      let doc: AttachedDocument | null = null
+      if (result.type === 'document') {
+        doc = { filename: result.filename, content: result.content ?? '' }
+      } else if (result.type === 'pdf_images') {
+        doc = { filename: result.filename, content: `[PDF: ${result.filename} — ${result.pages.length} pages attached as images]` }
+      } else if ('b64' in result) {
+        // last-resort b64 fallback — pass filename only, brief likely image-only PDF
+        doc = { filename: result.filename, content: `[PDF: ${result.filename} — could not extract text, please paste the brief content manually]` }
       }
-      const data = await res.json()
-      setParsedCampaignData(data.parsed_data)
-      setPdfReviewName(data.parsed_data?.campaign?.campaign_name ?? '')
-      setPdfReviewClient(data.parsed_data?.campaign?.client_name ?? '')
-      setPdfStep('reviewing')
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'PDF parsing failed')
+      setPdfStep('idle')
+      if (!doc) return
+      // Inject the brief into a chat message and let Mia build from it
+      const userMsg = { role: 'user' as const, content: `Here is our campaign brief (${file.name}). Please build a full RACE campaign template from it.` }
+      setChatMessages((prev) => [...prev, userMsg])
+      setChatLoading(true)
+      chatReceivedRef.current = ''
+      chatDisplayIndexRef.current = 0
+      chatStreamDoneRef.current = false
+      if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
+      setChatStreamingContent('')
+      chatRevealIntervalRef.current = setInterval(() => {
+        const target = chatReceivedRef.current.length
+        const current = chatDisplayIndexRef.current
+        const remaining = target - current
+        if (remaining > 0) {
+          chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
+          if (chatIsMountedRef.current) {
+            setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+            chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }
+        } else if (chatStreamDoneRef.current) {
+          if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
+          chatRevealIntervalRef.current = null
+        }
+      }, CHAT_REVEAL_MS)
+      try {
+        let accumulated = ''
+        const history = [...chatMessages, userMsg]
+        await sendChatMessageStreaming(
+          {
+            message: userMsg.content,
+            session_id: sessionId,
+            user_id: user?.google_user_id ?? '',
+            date_range: '30_days',
+            conversation_history: history.slice(-60),
+            documents: [doc],
+            ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
+          },
+          (chunk) => {
+            if (chunk.text) { accumulated += chunk.text; chatReceivedRef.current = accumulated }
+          }
+        )
+        chatStreamDoneRef.current = true
+        await new Promise<void>((resolve) => {
+          const check = setInterval(() => { if (chatRevealIntervalRef.current === null) { clearInterval(check); resolve() } }, CHAT_REVEAL_MS)
+        })
+        setChatMessages((prev) => [...prev, { role: 'assistant', content: accumulated || 'Something went wrong. Try again.' }])
+      } catch {
+        if (chatRevealIntervalRef.current) { clearInterval(chatRevealIntervalRef.current); chatRevealIntervalRef.current = null }
+        setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
+      } finally {
+        setChatLoading(false)
+        setChatStreamingContent('')
+      }
+    } catch {
+      alert('Could not read PDF. Please try again or paste the brief as text.')
       setPdfStep('idle')
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, chatMessages, builderCampaignId, user])
 
   const handlePdfImport = useCallback(async () => {
     if (!sessionId || !tenantId || !parsedCampaignData) return
@@ -1888,7 +2018,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                 )}
 
                 {/* Chat messages */}
-                {chatMessages.length > 0 && (
+                {(chatMessages.length > 0 || chatLoading) && (
                   <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -1904,12 +2034,22 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                         </div>
                       </div>
                     ))}
-                    {chatLoading && (
+                    {chatLoading && !chatStreamingContent && (
                       <div className="flex justify-start">
-                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
-                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" />
-                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" />
+                            <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                            <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          </div>
+                          <span className="paragraph-sm text-quaternary">{chatThinkingText}</span>
+                        </div>
+                      </div>
+                    )}
+                    {chatStreamingContent && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
+                          <ChatMarkdown content={chatStreamingContent} />
                         </div>
                       </div>
                     )}
@@ -1929,13 +2069,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                       rows={1}
                       disabled={chatLoading}
                     />
-                    <button
-                      onClick={() => handleChatSend()}
-                      disabled={chatLoading || !chatInput.trim()}
-                      className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 shrink-0"
-                    >
-                      Send
-                    </button>
+                    <button onClick={() => handleChatSend()} disabled={chatLoading || !chatInput.trim()} className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 shrink-0">Send</button>
                   </div>
                 </div>
               </>
@@ -2045,7 +2179,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     </button>
                   </div>
                 )}
-                {chatMessages.length > 0 && (
+                {(chatMessages.length > 0 || chatLoading) && (
                   <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -2054,10 +2188,20 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                         </div>
                       </div>
                     ))}
-                    {chatLoading && (
+                    {chatLoading && !chatStreamingContent && (
                       <div className="flex justify-start">
-                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex gap-1">
-                          <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        <div className="bg-secondary border border-tertiary rounded-2xl px-4 py-3 flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} /><div className="w-2 h-2 bg-quaternary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          </div>
+                          <span className="paragraph-sm text-quaternary">{chatThinkingText}</span>
+                        </div>
+                      </div>
+                    )}
+                    {chatStreamingContent && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed bg-secondary text-primary border border-tertiary">
+                          <ChatMarkdown content={chatStreamingContent} />
                         </div>
                       </div>
                     )}

@@ -9,6 +9,7 @@ import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
+import { trackEvent } from '../../../utils/tracking'
 import {
   sendChatMessageStreaming,
   confirmAction,
@@ -48,6 +49,7 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [thinkingText, setThinkingText] = useState('Thinking...')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
@@ -244,12 +246,18 @@ export const useChatView = () => {
       streamDoneRef.current = false
       if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
 
+      trackEvent(sessionId, 'chat_message_sent', 'home', {
+        has_images: pendingImages.length > 0,
+        has_documents: pendingDocuments.length > 0,
+        platform_count: selectedPlatforms.length,
+      })
       justSubmittedRef.current = true
       setMessages((prev) => [...prev, userMessage])
       setImages([])
       setDocuments([])
       setIsLoading(true)
       setStreamingContent('')
+      setThinkingText('Thinking...')
 
       const abortController = new AbortController()
       abortControllerRef.current = abortController
@@ -319,6 +327,8 @@ export const useChatView = () => {
             if (chunk.text) {
               accumulated += chunk.text
               receivedRef.current = accumulated  // interval reads this; no setState here
+            } else if (chunk.status) {
+              if (chunk.status !== 'thinking') setThinkingText(chunk.status)
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
@@ -590,6 +600,7 @@ export const useChatView = () => {
     messages,
     isLoading,
     streamingContent,
+    thinkingText,
     dateRange,
     setDateRange,
     platforms,
