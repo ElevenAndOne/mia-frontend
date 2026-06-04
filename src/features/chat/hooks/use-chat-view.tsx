@@ -277,7 +277,7 @@ export const useChatView = () => {
       }, REVEAL_INTERVAL_MS)
 
       try {
-        const history = messages.slice(-40).map((m) => {
+        const history = messages.slice(-60).map((m) => {
           let content = m.content
           if (m.actionStatus === 'completed' && m.actionResult) {
             const resultMsg = (m.actionResult as Record<string, unknown>).message as
