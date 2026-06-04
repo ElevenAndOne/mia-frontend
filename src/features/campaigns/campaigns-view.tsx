@@ -1662,9 +1662,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         doc = { filename: result.filename, content: result.content ?? '' }
       } else if (result.type === 'pdf_images') {
         doc = { filename: result.filename, content: `[PDF: ${result.filename} — ${result.pages.length} pages attached as images]` }
-      } else if ('b64' in result) {
-        // last-resort b64 fallback — pass filename only, brief likely image-only PDF
-        doc = { filename: result.filename, content: `[PDF: ${result.filename} — could not extract text, please paste the brief content manually]` }
       }
       setPdfStep('idle')
       if (!doc) return
