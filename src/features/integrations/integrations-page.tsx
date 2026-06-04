@@ -23,6 +23,7 @@ import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { logger } from '../../utils/logger'
+import { trackEvent } from '../../utils/tracking'
 
 interface Integration {
   id: string
@@ -54,6 +55,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     refetch: refetchIntegrationStatus,
     invalidate: invalidateIntegrationStatus,
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
+
+  useEffect(() => {
+    trackEvent(sessionId, 'page_visit', 'integrations')
+  }, [sessionId])
 
   // Show error toast when integration status fetch fails
   useEffect(() => {

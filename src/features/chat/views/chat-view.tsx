@@ -50,6 +50,7 @@ export const ChatView = ({
     messages,
     isLoading,
     streamingContent,
+    thinkingText,
     dateRange,
     setDateRange,
     platforms,
@@ -251,7 +252,7 @@ export const ChatView = ({
                           style={{ animationDelay: '300ms' }}
                         />
                       </div>
-                      <span className="paragraph-sm">Thinking...</span>
+                      <span className="paragraph-sm">{thinkingText}</span>
                     </div>
                   </div>
                 )}

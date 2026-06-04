@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Video, Image, BookOpen, Layers } from 'lucide-react'
 import { useSession } from '../../contexts/session-context'
+import { trackEvent } from '../../utils/tracking'
 import { AnimatedBackground } from './creative-studio-shared'
 
 import CreateTab from './create-tab'
@@ -33,9 +34,14 @@ export function CreativeStudioView({ onBack }: Props) {
   const tenantId = activeWorkspace?.tenant_id ?? ''
   const sid = sessionId ?? ''
 
+  useEffect(() => {
+    trackEvent(sessionId, 'page_visit', 'creative_studio')
+  }, [sessionId])
+
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
     setMountedTabs(prev => new Set([...prev, tab]))
+    trackEvent(sessionId, 'creative_studio_tab', 'creative_studio', { tab })
   }
 
   const handleCreateVariant = (prompt: string, imageUrl: string) => {

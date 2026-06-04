@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { trackEvent } from '../../utils/tracking'
 import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
 import { listCampaignOptions, getClickUpSpaces } from './services/report-service'
@@ -58,6 +59,10 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   const selectedCampaign = campaigns.find((c) => c.campaign_id === campaignId) ?? null
   const selectedSpace = spaces.find((s) => s.space_id === selectedSpaceId) ?? null
   const availableLists = selectedSpace?.lists ?? []
+
+  useEffect(() => {
+    trackEvent(sessionId, 'page_visit', 'reports')
+  }, [sessionId])
 
   // Load campaigns + ClickUp spaces when configure step opens
   useEffect(() => {
