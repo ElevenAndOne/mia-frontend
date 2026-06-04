@@ -1533,7 +1533,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         session_id: sessionId,
         user_id: user?.google_user_id ?? '',
         date_range: '30_days',
-        conversation_history: history.slice(-10),
+        conversation_history: history.slice(-60),
         // After the builder saves a campaign, pass campaign_id so Mia has full context
         // to generate assets in the same conversation
         ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
@@ -1919,20 +1919,20 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
                 {/* Input */}
                 <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
+                  <div className="flex gap-2 items-end">
+                    <textarea
                       value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
+                      onChange={(e) => { setChatInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px` }}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }}
                       placeholder="Ask Mia to build a campaign for..."
-                      className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary"
+                      className="flex-1 px-4 py-3 border border-primary rounded-2xl paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary resize-none overflow-hidden min-h-[48px]"
+                      rows={1}
                       disabled={chatLoading}
                     />
                     <button
                       onClick={() => handleChatSend()}
                       disabled={chatLoading || !chatInput.trim()}
-                      className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40"
+                      className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 shrink-0"
                     >
                       Send
                     </button>
@@ -2065,9 +2065,9 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   </div>
                 )}
                 <div className="shrink-0 p-4 border-t border-tertiary bg-primary">
-                  <div className="flex gap-2">
-                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }} placeholder="Build a campaign for..." className="flex-1 px-4 py-3 border border-primary rounded-full paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary" disabled={chatLoading} />
-                    <button onClick={() => handleChatSend()} disabled={chatLoading || !chatInput.trim()} className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40">Send</button>
+                  <div className="flex gap-2 items-end">
+                    <textarea value={chatInput} onChange={(e) => { setChatInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${e.target.scrollHeight}px` }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() } }} placeholder="Build a campaign for..." className="flex-1 px-4 py-3 border border-primary rounded-2xl paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 focus:border-transparent bg-primary text-primary resize-none overflow-hidden min-h-[48px]" rows={1} disabled={chatLoading} />
+                    <button onClick={() => handleChatSend()} disabled={chatLoading || !chatInput.trim()} className="px-5 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 shrink-0">Send</button>
                   </div>
                 </div>
               </>
