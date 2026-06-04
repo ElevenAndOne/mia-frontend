@@ -7,8 +7,8 @@ import { clearTrackerCache } from '../campaign/services/campaign-tracker-service
 import { getCachedDetail, setCachedDetail, clearCampaignDetailCache } from './campaign-detail-cache'
 import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
-import { sendChatMessageStreaming, uploadChatFile } from '../chat/services/chat-service'
-import type { AttachedDocument } from '../chat/services/chat-service'
+import { sendChatMessageStreaming, uploadChatFile, fetchRecentConversations, fetchConversationMessages } from '../chat/services/chat-service'
+import type { AttachedDocument, RecentConversation } from '../chat/services/chat-service'
 import { trackEvent } from '../../utils/tracking'
 import { ChatMarkdown } from '../../components/chat-markdown'
 import { fetchCampaignGuides } from '../campaign-guides/services/campaign-guide-service'
@@ -1146,6 +1146,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatThinkingText, setChatThinkingText] = useState('Thinking...')
   const chatBottomRef = useRef<HTMLDivElement>(null)
+  // Builder chat history — each build gets a `builder_`-prefixed conversation_id so
+  // it persists in chat_history and can be reopened/retried from the history dropdown.
+  const [chatConversationId, setChatConversationId] = useState<string | null>(null)
+  const [pastBuilds, setPastBuilds] = useState<RecentConversation[]>([])
+  const [showBuildHistory, setShowBuildHistory] = useState(false)
+  const buildHistoryRef = useRef<HTMLDivElement>(null)
 
   // Interval-based streaming reveal — same pattern as normal chat.
   // Chunks land in chatReceivedRef; a setInterval drip-feeds to chatStreamingContent
@@ -1553,6 +1559,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     if (!text || chatLoading || !sessionId) return
     setChatInput('')
 
+    // Ensure this build has a persistent conversation id (for history/retry)
+    let convId = chatConversationId
+    if (!convId) { convId = `builder_${crypto.randomUUID()}`; setChatConversationId(convId) }
+
     const userMsg = { role: 'user' as const, content: text }
     setChatMessages((prev) => [...prev, userMsg])
     setChatLoading(true)
@@ -1597,6 +1607,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           date_range: '30_days',
           conversation_history: history.slice(-60),
           workspace_hint: 'strategy_planning',
+          conversation_id: convId,
           ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
         },
         (chunk) => {
@@ -1663,7 +1674,44 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setChatLoading(false)
       setChatStreamingContent('')
     }
-  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, builderCampaignId, builderSavedCampaign])
+  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, builderCampaignId, builderSavedCampaign, chatConversationId])
+
+  // ── Builder chat history (reopen / retry a past build) ──────────────────────
+  const openBuildHistory = useCallback(async () => {
+    if (!sessionId) return
+    setShowBuildHistory((open) => !open)
+    const all = await fetchRecentConversations(sessionId)
+    setPastBuilds(all.filter((c) => c.conversation_id.startsWith('builder_')))
+  }, [sessionId])
+
+  const loadPastBuild = useCallback(async (convId: string) => {
+    if (!sessionId) return
+    setShowBuildHistory(false)
+    const msgs = await fetchConversationMessages(sessionId, convId)
+    setChatMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
+    setChatConversationId(convId)
+    setBuilderSavedCampaign(null)
+    setBuilderCampaignId(null)
+    setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }, [sessionId])
+
+  const startFreshBuild = useCallback(() => {
+    setShowBuildHistory(false)
+    setChatMessages([])
+    setChatConversationId(null)
+    setBuilderSavedCampaign(null)
+    setBuilderCampaignId(null)
+    setChatStreamingContent('')
+  }, [])
+
+  useEffect(() => {
+    if (!showBuildHistory) return
+    const handler = (e: MouseEvent) => {
+      if (buildHistoryRef.current && !buildHistoryRef.current.contains(e.target as Node)) setShowBuildHistory(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showBuildHistory])
 
   const handlePdfSelect = useCallback(async (file: File) => {
     if (!sessionId) return
@@ -1678,6 +1726,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       }
       setPdfStep('idle')
       if (!doc) return
+      let convId = chatConversationId
+      if (!convId) { convId = `builder_${crypto.randomUUID()}`; setChatConversationId(convId) }
       // Inject the brief into a chat message and let Mia build from it
       const userMsg = { role: 'user' as const, content: `Here is our campaign brief (${file.name}). Please build a full RACE campaign template from it.` }
       setChatMessages((prev) => [...prev, userMsg])
@@ -1714,6 +1764,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             date_range: '30_days',
             conversation_history: history.slice(-60),
             workspace_hint: 'strategy_planning',
+            conversation_id: convId,
             documents: [doc],
             ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
           },
@@ -1744,7 +1795,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       alert('Could not read PDF. Please try again or paste the brief as text.')
       setPdfStep('idle')
     }
-  }, [sessionId, chatMessages, builderCampaignId, user])
+  }, [sessionId, chatMessages, builderCampaignId, user, chatConversationId])
 
   const handlePdfImport = useCallback(async () => {
     if (!sessionId || !tenantId || !parsedCampaignData) return
@@ -2002,6 +2053,31 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             {/* Normal chat empty state */}
             {pdfStep === 'idle' && (
               <>
+                {/* Past builds history */}
+                <div className="flex justify-end px-1 pt-1">
+                  <div className="relative" ref={buildHistoryRef}>
+                    <button
+                      onClick={openBuildHistory}
+                      className="paragraph-xs text-tertiary hover:text-primary transition-colors flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Past builds
+                    </button>
+                    {showBuildHistory && (
+                      <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto bg-primary border border-tertiary rounded-xl shadow-lg z-20 py-1">
+                        <button onClick={startFreshBuild} className="w-full text-left px-3 py-2 paragraph-sm text-brand-solid hover:bg-secondary transition-colors">+ New build</button>
+                        {pastBuilds.length === 0 && <p className="px-3 py-2 paragraph-xs text-quaternary">No past builds yet</p>}
+                        {pastBuilds.map((b) => (
+                          <button key={b.conversation_id} onClick={() => loadPastBuild(b.conversation_id)}
+                            className={`w-full text-left px-3 py-2 hover:bg-secondary transition-colors ${b.conversation_id === chatConversationId ? 'bg-secondary' : ''}`}>
+                            <p className="paragraph-sm text-primary truncate">{b.title || 'Untitled build'}</p>
+                            <p className="paragraph-xs text-quaternary">{b.message_count} messages</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {/* Intro */}
                 {chatMessages.length === 0 && (
                   <div className="text-center pt-12 pb-6 px-6">
@@ -2116,19 +2192,44 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   </span>
                 ) : 'Build new campaign'}
               </p>
-              <button
-                onClick={() => {
-                  setShowNewCampaignPanel(false)
-                  setBuilderSavedCampaign(null)
-                  setBuilderCampaignId(null)
-                  setPdfStep('idle')
-                  setParsedCampaignData(null)
-                  setChatMessages([])
-                }}
-                className="paragraph-sm text-tertiary hover:text-primary transition-colors"
-              >
-                {builderSavedCampaign ? 'View campaign →' : 'Cancel'}
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="relative" ref={buildHistoryRef}>
+                  <button
+                    onClick={openBuildHistory}
+                    className="paragraph-sm text-tertiary hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Past builds
+                  </button>
+                  {showBuildHistory && (
+                    <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto bg-primary border border-tertiary rounded-xl shadow-lg z-20 py-1">
+                      <button onClick={startFreshBuild} className="w-full text-left px-3 py-2 paragraph-sm text-brand-solid hover:bg-secondary transition-colors">+ New build</button>
+                      {pastBuilds.length === 0 && <p className="px-3 py-2 paragraph-xs text-quaternary">No past builds yet</p>}
+                      {pastBuilds.map((b) => (
+                        <button key={b.conversation_id} onClick={() => loadPastBuild(b.conversation_id)}
+                          className={`w-full text-left px-3 py-2 hover:bg-secondary transition-colors ${b.conversation_id === chatConversationId ? 'bg-secondary' : ''}`}>
+                          <p className="paragraph-sm text-primary truncate">{b.title || 'Untitled build'}</p>
+                          <p className="paragraph-xs text-quaternary">{b.message_count} messages</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowNewCampaignPanel(false)
+                    setBuilderSavedCampaign(null)
+                    setBuilderCampaignId(null)
+                    setPdfStep('idle')
+                    setParsedCampaignData(null)
+                    setChatMessages([])
+                    setChatConversationId(null)
+                  }}
+                  className="paragraph-sm text-tertiary hover:text-primary transition-colors"
+                >
+                  {builderSavedCampaign ? 'View campaign →' : 'Cancel'}
+                </button>
+              </div>
             </div>
             {builderSavedCampaign && (
               <div className="mx-1 mb-3 px-3 py-2 bg-utility-success-50 border border-utility-success-200 rounded-xl">
