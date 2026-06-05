@@ -196,10 +196,14 @@ export const sendChatMessageStreaming = async (
 }
 
 export const fetchRecentConversations = async (
-  sessionId: string
+  sessionId: string,
+  skill?: string
 ): Promise<RecentConversation[]> => {
   try {
-    const response = await apiFetch('/api/chat/v2/conversations', {
+    const url = skill
+      ? `/api/chat/v2/conversations?skill=${encodeURIComponent(skill)}`
+      : '/api/chat/v2/conversations'
+    const response = await apiFetch(url, {
       headers: { 'X-Session-ID': sessionId },
     })
     if (!response.ok) return []

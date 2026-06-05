@@ -407,13 +407,13 @@ export const ChatInput = ({
               />
             </div>
 
-            {/* Attachment button — images, CSV, Excel, PDF */}
+            {/* Attachment button — images, CSV, Excel, PDF, Markdown */}
             {(onAddImages || onAddFile) && (
               <>
                 <input
                   id="chat-file-input"
                   type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf"
+                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf,text/markdown,.md,.markdown"
                   multiple
                   className="sr-only"
                   onChange={(e) => { handleFileChange(e.target.files); e.target.value = '' }}

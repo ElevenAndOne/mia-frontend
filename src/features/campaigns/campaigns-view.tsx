@@ -1146,8 +1146,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatThinkingText, setChatThinkingText] = useState('Thinking...')
   const chatBottomRef = useRef<HTMLDivElement>(null)
-  // Builder chat history — each build gets a `builder_`-prefixed conversation_id so
-  // it persists in chat_history and can be reopened/retried from the history dropdown.
+  // Builder chat history — each build gets its own conversation_id so it persists in
+  // chat_history and can be reopened/retried from the history dropdown. NOTE: the
+  // chat_history.conversation_id column is varchar(36), so the id must be a bare UUID
+  // (36 chars) — do NOT prefix it (a "builder_" prefix overflows and the row is dropped).
+  // Builds are identified in Past builds by skill (strategy_planning), not by id.
   const [chatConversationId, setChatConversationId] = useState<string | null>(null)
   const [pastBuilds, setPastBuilds] = useState<RecentConversation[]>([])
   const [showBuildHistory, setShowBuildHistory] = useState(false)
@@ -1559,9 +1562,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     if (!text || chatLoading || !sessionId) return
     setChatInput('')
 
-    // Ensure this build has a persistent conversation id (for history/retry)
+    // Ensure this build has a persistent conversation id (for history/retry).
+    // Bare UUID (36 chars) — must fit chat_history.conversation_id varchar(36).
     let convId = chatConversationId
-    if (!convId) { convId = `builder_${crypto.randomUUID()}`; setChatConversationId(convId) }
+    if (!convId) { convId = crypto.randomUUID(); setChatConversationId(convId) }
 
     const userMsg = { role: 'user' as const, content: text }
     setChatMessages((prev) => [...prev, userMsg])
@@ -1680,8 +1684,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const openBuildHistory = useCallback(async () => {
     if (!sessionId) return
     setShowBuildHistory((open) => !open)
-    const all = await fetchRecentConversations(sessionId)
-    setPastBuilds(all.filter((c) => c.conversation_id.startsWith('builder_')))
+    // Campaign builds happen via the builder panel AND via normal chat (the skill
+    // router activates strategy_planning in both). List both by skill, not by id.
+    const all = await fetchRecentConversations(sessionId, 'strategy_planning')
+    setPastBuilds(all)
   }, [sessionId])
 
   const loadPastBuild = useCallback(async (convId: string) => {
@@ -1727,7 +1733,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setPdfStep('idle')
       if (!doc) return
       let convId = chatConversationId
-      if (!convId) { convId = `builder_${crypto.randomUUID()}`; setChatConversationId(convId) }
+      if (!convId) { convId = crypto.randomUUID(); setChatConversationId(convId) }  // bare UUID — fits varchar(36)
       // Inject the brief into a chat message and let Mia build from it
       const userMsg = { role: 'user' as const, content: `Here is our campaign brief (${file.name}). Please build a full RACE campaign template from it.` }
       setChatMessages((prev) => [...prev, userMsg])
@@ -1792,7 +1798,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         setChatStreamingContent('')
       }
     } catch {
-      alert('Could not read PDF. Please try again or paste the brief as text.')
+      alert('Could not read file. Please try again or paste the brief as text.')
       setPdfStep('idle')
     }
   }, [sessionId, chatMessages, builderCampaignId, user, chatConversationId])
@@ -1959,7 +1965,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             <input
               ref={pdfInputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,text/markdown,.md,.markdown"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
             />
@@ -2108,7 +2114,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Upload campaign brief (PDF)
+                      Upload campaign brief (PDF or Markdown)
                     </button>
                   </div>
                 )}
@@ -2179,7 +2185,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             <input
               ref={pdfInputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,text/markdown,.md,.markdown"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
             />
@@ -2296,7 +2302,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     <p className="paragraph-sm text-tertiary mb-5">Ask Mia to build a new RACE campaign, or upload a brief PDF.</p>
                     <button onClick={() => pdfInputRef.current?.click()} className="inline-flex items-center gap-2 px-4 py-2 border border-primary rounded-full paragraph-sm text-tertiary hover:bg-secondary hover:text-primary transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      Upload campaign brief (PDF)
+                      Upload campaign brief (PDF or Markdown)
                     </button>
                   </div>
                 )}
