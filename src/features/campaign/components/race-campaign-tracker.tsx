@@ -447,8 +447,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
             <div className="h-5 w-12 rounded-full bg-tertiary" />
           </div>
           <div className="flex border-t border-secondary">
-            {['Reach', 'Act', 'Convert', 'Engage'].map((label) => (
-              <div key={label} className="flex-1 py-2 flex justify-center">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex-1 py-2 flex justify-center">
                 <div className="h-3 w-10 rounded bg-tertiary" />
               </div>
             ))}

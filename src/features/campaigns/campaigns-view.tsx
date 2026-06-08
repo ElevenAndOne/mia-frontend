@@ -244,8 +244,14 @@ function EditableTextarea({
   const [draft, setDraft] = useState(value)
   const ref = useRef<HTMLTextAreaElement>(null)
 
+  // Grow the textarea to fit its content so the whole text is visible while editing.
+  const autosize = () => {
+    const el = ref.current
+    if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
+  }
+
   useEffect(() => {
-    if (editing) { setDraft(value); setTimeout(() => ref.current?.focus(), 0) }
+    if (editing) { setDraft(value); setTimeout(() => { ref.current?.focus(); autosize() }, 0) }
   }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = () => { setEditing(false); if (draft !== value) onSave(draft) }
@@ -254,10 +260,10 @@ function EditableTextarea({
     return (
       <textarea
         ref={ref} value={draft} rows={rows}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); autosize() }}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Escape') { setEditing(false); setDraft(value) } }}
-        className={`w-full border border-utility-brand-300 rounded-lg outline-none bg-primary px-2 py-1.5 resize-y ${className}`}
+        className={`w-full border border-utility-brand-300 rounded-lg outline-none bg-primary px-2 py-1.5 resize-none overflow-hidden ${className}`}
       />
     )
   }
@@ -669,14 +675,15 @@ function ChannelActionCard({
                     <EditableTextarea
                       value={asset.key_message ?? ''}
                       onSave={(v) => patchAsset(asset.asset_id, { key_message: v || null })}
-                      placeholder="Key message..."
+                      placeholder="Asset copy..."
                       rows={2}
                       className="paragraph-xs text-secondary"
                     />
-                    <EditableText
+                    <EditableTextarea
                       value={asset.cta ?? ''}
                       onSave={(v) => patchAsset(asset.asset_id, { cta: v || null })}
-                      placeholder="CTA..."
+                      placeholder="Caption..."
+                      rows={2}
                       className="paragraph-xs text-tertiary"
                     />
                     <div className="flex items-center gap-1.5">

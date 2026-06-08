@@ -78,7 +78,7 @@ export function Modal({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className={`relative bg-primary rounded-2xl shadow-2xl w-full ${SIZE_CLASSES[size]} ${panelClassName}`.trim()}
+              className={`relative bg-primary rounded-2xl shadow-2xl w-full flex flex-col max-h-[calc(100dvh-2rem)] ${SIZE_CLASSES[size]} ${panelClassName}`.trim()}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -87,7 +87,7 @@ export function Modal({
             >
               {/* Header with title and close button */}
               {(title || showCloseButton) && (
-                <div className="flex items-center justify-between px-6 py-4 border-b border-tertiary">
+                <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-tertiary">
                   {title && (
                     <h2 id={titleId} className="title-h6 text-primary">
                       {title}
@@ -119,8 +119,8 @@ export function Modal({
                 </div>
               )}
 
-              {/* Content */}
-              {children}
+              {/* Content — scrolls when taller than the viewport (esp. mobile) */}
+              <div className="overflow-y-auto overscroll-contain min-h-0">{children}</div>
             </motion.div>
           </motion.div>
         </OverlayPortal>
