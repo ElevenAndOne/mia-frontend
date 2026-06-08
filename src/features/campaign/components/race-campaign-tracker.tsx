@@ -55,9 +55,13 @@ function resolveDates(
   // range from a previous session, which would cause actuals to fetch the wrong window.
   if (campaignStartDate) {
     const campaignEnded = campaignEndDate && new Date(campaignEndDate) < new Date()
+    // Future-dated campaign that hasn't started yet: clamping the end to today would
+    // produce start > end (an invalid window the platforms reject). Use the start as
+    // the end so we never send start > end; the backend returns empty actuals.
+    const notStarted = new Date(campaignStartDate) > new Date()
     return {
       startDate: campaignStartDate,
-      endDate: campaignEnded ? campaignEndDate : today,
+      endDate: campaignEnded ? campaignEndDate : notStarted ? campaignStartDate : today,
     }
   }
   if (!dateRange || isSinceLaunchRange(dateRange)) {
