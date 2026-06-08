@@ -7,8 +7,8 @@ export interface TopMetricOption {
 }
 
 export const TOP_AD_METRIC_OPTIONS: TopMetricOption[] = [
-  { value: 'conversions', label: 'Conversions' },
   { value: 'ctr', label: 'CTR' },
+  { value: 'conversions', label: 'Conversions' },
   { value: 'roas', label: 'ROAS' },
   { value: 'clicks', label: 'Clicks' },
   { value: 'impressions', label: 'Impressions' },
@@ -234,8 +234,10 @@ export interface ClientReport {
   report_id: string
   tenant_id: string
   campaign_id: string
-  report_month: number
-  report_year: number
+  period_start: string | null
+  period_end: string | null
+  report_month: number | null
+  report_year: number | null
   status: 'draft' | 'generating' | 'complete'
   top_ad_metric: string
   top_organic_metric: string
@@ -248,8 +250,10 @@ export interface ClientReport {
 export interface ReportSummary {
   report_id: string
   campaign_id: string
-  report_month: number
-  report_year: number
+  period_start: string | null
+  period_end: string | null
+  report_month: number | null
+  report_year: number | null
   status: string
   client_name: string
   campaign_name: string
@@ -259,8 +263,8 @@ export interface ReportSummary {
 
 export interface GenerateReportParams {
   campaign_id: string
-  report_month: number
-  report_year: number
+  start_date: string // YYYY-MM-DD
+  end_date: string // YYYY-MM-DD
   top_ad_metric: TopAdMetric
   top_organic_metric: TopOrganicMetric
   clickup_list_id?: string

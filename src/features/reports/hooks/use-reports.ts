@@ -53,6 +53,8 @@ export const useReports = () => {
           {
             report_id: report.report_id,
             campaign_id: report.campaign_id,
+            period_start: report.period_start,
+            period_end: report.period_end,
             report_month: report.report_month,
             report_year: report.report_year,
             status: report.status,
