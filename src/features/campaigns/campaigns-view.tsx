@@ -7,8 +7,8 @@ import { clearTrackerCache } from '../campaign/services/campaign-tracker-service
 import { getCachedDetail, setCachedDetail, clearCampaignDetailCache } from './campaign-detail-cache'
 import { setCampaignMode } from '../../utils/campaign-mode'
 import { usePlugins } from '../plugins/hooks/use-plugins'
-import { sendChatMessageStreaming, uploadChatFile } from '../chat/services/chat-service'
-import type { AttachedDocument } from '../chat/services/chat-service'
+import { sendChatMessageStreaming, uploadChatFile, fetchRecentConversations, fetchConversationMessages } from '../chat/services/chat-service'
+import type { AttachedDocument, RecentConversation } from '../chat/services/chat-service'
 import { trackEvent } from '../../utils/tracking'
 import { ChatMarkdown } from '../../components/chat-markdown'
 import { fetchCampaignGuides } from '../campaign-guides/services/campaign-guide-service'
@@ -679,29 +679,25 @@ function ChannelActionCard({
                       placeholder="CTA..."
                       className="paragraph-xs text-tertiary"
                     />
-                    {typeof (asset.details as Record<string, unknown>)?.launch_date === 'string' && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="label-xs text-quaternary">Launch:</span>
-                        <input
-                          type="date"
-                          defaultValue={String((asset.details as Record<string, unknown>).launch_date ?? '')}
-                          onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), launch_date: e.target.value || undefined } })}
-                          className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
-                        />
-                      </div>
-                    )}
-                    {typeof (asset.details as Record<string, unknown>)?.optimal_post_time === 'string' && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="label-xs text-quaternary">Best time:</span>
-                        <input
-                          type="text"
-                          defaultValue={String((asset.details as Record<string, unknown>).optimal_post_time ?? '')}
-                          onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), optimal_post_time: e.target.value || undefined } })}
-                          placeholder="e.g. Tuesday 09:30"
-                          className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="label-xs text-quaternary">Launch:</span>
+                      <input
+                        type="date"
+                        defaultValue={String((asset.details as Record<string, unknown>)?.launch_date ?? '')}
+                        onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), launch_date: e.target.value || undefined } })}
+                        className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="label-xs text-quaternary">Best time:</span>
+                      <input
+                        type="text"
+                        defaultValue={String((asset.details as Record<string, unknown>)?.optimal_post_time ?? '')}
+                        onBlur={(e) => patchAsset(asset.asset_id, { details: { ...(asset.details ?? {}), optimal_post_time: e.target.value || undefined } })}
+                        placeholder="e.g. Tuesday 09:30"
+                        className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-secondary"
+                      />
+                    </div>
                   </div>
                 ))}
                 <button
@@ -1150,6 +1146,15 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const [chatLoading, setChatLoading] = useState(false)
   const [chatThinkingText, setChatThinkingText] = useState('Thinking...')
   const chatBottomRef = useRef<HTMLDivElement>(null)
+  // Builder chat history — each build gets its own conversation_id so it persists in
+  // chat_history and can be reopened/retried from the history dropdown. NOTE: the
+  // chat_history.conversation_id column is varchar(36), so the id must be a bare UUID
+  // (36 chars) — do NOT prefix it (a "builder_" prefix overflows and the row is dropped).
+  // Builds are identified in Past builds by skill (strategy_planning), not by id.
+  const [chatConversationId, setChatConversationId] = useState<string | null>(null)
+  const [pastBuilds, setPastBuilds] = useState<RecentConversation[]>([])
+  const [showBuildHistory, setShowBuildHistory] = useState(false)
+  const buildHistoryRef = useRef<HTMLDivElement>(null)
 
   // Interval-based streaming reveal — same pattern as normal chat.
   // Chunks land in chatReceivedRef; a setInterval drip-feeds to chatStreamingContent
@@ -1160,8 +1165,16 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const chatStreamDoneRef = useRef(false)
   const chatRevealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const chatIsMountedRef = useRef(true)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
   const CHAT_REVEAL_MS = 40
   const CHAT_CHARS_PER_TICK = 5
+  // Auto-scroll only when the user is already near the bottom — never yank them
+  // down while they've scrolled up to read.
+  const chatNearBottom = useCallback(() => {
+    const el = chatScrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
   useEffect(() => {
     chatIsMountedRef.current = true
     return () => {
@@ -1549,6 +1562,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     if (!text || chatLoading || !sessionId) return
     setChatInput('')
 
+    // Ensure this build has a persistent conversation id (for history/retry).
+    // Bare UUID (36 chars) — must fit chat_history.conversation_id varchar(36).
+    let convId = chatConversationId
+    if (!convId) { convId = crypto.randomUUID(); setChatConversationId(convId) }
+
     const userMsg = { role: 'user' as const, content: text }
     setChatMessages((prev) => [...prev, userMsg])
     setChatLoading(true)
@@ -1569,9 +1587,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       const current = chatDisplayIndexRef.current
       const remaining = target - current
       if (remaining > 0) {
+        const stick = chatNearBottom()
         chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
         if (chatIsMountedRef.current) {
           setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+          if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
         }
       } else if (chatStreamDoneRef.current) {
         if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1591,12 +1611,20 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
           date_range: '30_days',
           conversation_history: history.slice(-60),
           workspace_hint: 'strategy_planning',
+          conversation_id: convId,
           ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
         },
         (chunk) => {
           if (chunk.text) {
             accumulated += chunk.text
             chatReceivedRef.current = accumulated  // interval reads this — no setState
+            // When the tab is backgrounded the reveal interval is throttled to ~1/s,
+            // so flush everything received straight to display — Mia keeps "typing"
+            // while you're on another tab; it's all there when you return.
+            if (document.hidden) {
+              chatDisplayIndexRef.current = accumulated.length
+              setChatStreamingContent(accumulated)
+            }
           } else if (chunk.status && chunk.status !== 'thinking') {
             setChatThinkingText(chunk.status)
           }
@@ -1650,7 +1678,46 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setChatLoading(false)
       setChatStreamingContent('')
     }
-  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, builderCampaignId, builderSavedCampaign])
+  }, [chatInput, chatLoading, chatMessages, sessionId, tenantId, user, builderCampaignId, builderSavedCampaign, chatConversationId])
+
+  // ── Builder chat history (reopen / retry a past build) ──────────────────────
+  const openBuildHistory = useCallback(async () => {
+    if (!sessionId) return
+    setShowBuildHistory((open) => !open)
+    // Campaign builds happen via the builder panel AND via normal chat (the skill
+    // router activates strategy_planning in both). List both by skill, not by id.
+    const all = await fetchRecentConversations(sessionId, 'strategy_planning')
+    setPastBuilds(all)
+  }, [sessionId])
+
+  const loadPastBuild = useCallback(async (convId: string) => {
+    if (!sessionId) return
+    setShowBuildHistory(false)
+    const msgs = await fetchConversationMessages(sessionId, convId)
+    setChatMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
+    setChatConversationId(convId)
+    setBuilderSavedCampaign(null)
+    setBuilderCampaignId(null)
+    setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }, [sessionId])
+
+  const startFreshBuild = useCallback(() => {
+    setShowBuildHistory(false)
+    setChatMessages([])
+    setChatConversationId(null)
+    setBuilderSavedCampaign(null)
+    setBuilderCampaignId(null)
+    setChatStreamingContent('')
+  }, [])
+
+  useEffect(() => {
+    if (!showBuildHistory) return
+    const handler = (e: MouseEvent) => {
+      if (buildHistoryRef.current && !buildHistoryRef.current.contains(e.target as Node)) setShowBuildHistory(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showBuildHistory])
 
   const handlePdfSelect = useCallback(async (file: File) => {
     if (!sessionId) return
@@ -1665,6 +1732,8 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       }
       setPdfStep('idle')
       if (!doc) return
+      let convId = chatConversationId
+      if (!convId) { convId = crypto.randomUUID(); setChatConversationId(convId) }  // bare UUID — fits varchar(36)
       // Inject the brief into a chat message and let Mia build from it
       const userMsg = { role: 'user' as const, content: `Here is our campaign brief (${file.name}). Please build a full RACE campaign template from it.` }
       setChatMessages((prev) => [...prev, userMsg])
@@ -1679,9 +1748,11 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         const current = chatDisplayIndexRef.current
         const remaining = target - current
         if (remaining > 0) {
+          const stick = chatNearBottom()
           chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
           if (chatIsMountedRef.current) {
             setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
+            if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
           }
         } else if (chatStreamDoneRef.current) {
           if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1699,11 +1770,19 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             date_range: '30_days',
             conversation_history: history.slice(-60),
             workspace_hint: 'strategy_planning',
+            conversation_id: convId,
             documents: [doc],
             ...(builderCampaignId ? { campaign_id: builderCampaignId } : {}),
           },
           (chunk) => {
-            if (chunk.text) { accumulated += chunk.text; chatReceivedRef.current = accumulated }
+            if (chunk.text) {
+              accumulated += chunk.text
+              chatReceivedRef.current = accumulated
+              if (document.hidden) {
+                chatDisplayIndexRef.current = accumulated.length
+                setChatStreamingContent(accumulated)
+              }
+            }
           }
         )
         chatStreamDoneRef.current = true
@@ -1719,10 +1798,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         setChatStreamingContent('')
       }
     } catch {
-      alert('Could not read PDF. Please try again or paste the brief as text.')
+      alert('Could not read file. Please try again or paste the brief as text.')
       setPdfStep('idle')
     }
-  }, [sessionId, chatMessages, builderCampaignId, user])
+  }, [sessionId, chatMessages, builderCampaignId, user, chatConversationId])
 
   const handlePdfImport = useCallback(async () => {
     if (!sessionId || !tenantId || !parsedCampaignData) return
@@ -1886,7 +1965,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             <input
               ref={pdfInputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,text/markdown,.md,.markdown"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
             />
@@ -1980,6 +2059,31 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             {/* Normal chat empty state */}
             {pdfStep === 'idle' && (
               <>
+                {/* Past builds history */}
+                <div className="flex justify-end px-1 pt-1">
+                  <div className="relative" ref={buildHistoryRef}>
+                    <button
+                      onClick={openBuildHistory}
+                      className="paragraph-xs text-tertiary hover:text-primary transition-colors flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Past builds
+                    </button>
+                    {showBuildHistory && (
+                      <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto bg-primary border border-tertiary rounded-xl shadow-lg z-20 py-1">
+                        <button onClick={startFreshBuild} className="w-full text-left px-3 py-2 paragraph-sm text-brand-solid hover:bg-secondary transition-colors">+ New build</button>
+                        {pastBuilds.length === 0 && <p className="px-3 py-2 paragraph-xs text-quaternary">No past builds yet</p>}
+                        {pastBuilds.map((b) => (
+                          <button key={b.conversation_id} onClick={() => loadPastBuild(b.conversation_id)}
+                            className={`w-full text-left px-3 py-2 hover:bg-secondary transition-colors ${b.conversation_id === chatConversationId ? 'bg-secondary' : ''}`}>
+                            <p className="paragraph-sm text-primary truncate">{b.title || 'Untitled build'}</p>
+                            <p className="paragraph-xs text-quaternary">{b.message_count} messages</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {/* Intro */}
                 {chatMessages.length === 0 && (
                   <div className="text-center pt-12 pb-6 px-6">
@@ -2010,14 +2114,14 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Upload campaign brief (PDF)
+                      Upload campaign brief (PDF or Markdown)
                     </button>
                   </div>
                 )}
 
                 {/* Chat messages */}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
@@ -2081,7 +2185,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
             <input
               ref={pdfInputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,text/markdown,.md,.markdown"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfSelect(f); e.target.value = '' }}
             />
@@ -2094,19 +2198,44 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   </span>
                 ) : 'Build new campaign'}
               </p>
-              <button
-                onClick={() => {
-                  setShowNewCampaignPanel(false)
-                  setBuilderSavedCampaign(null)
-                  setBuilderCampaignId(null)
-                  setPdfStep('idle')
-                  setParsedCampaignData(null)
-                  setChatMessages([])
-                }}
-                className="paragraph-sm text-tertiary hover:text-primary transition-colors"
-              >
-                {builderSavedCampaign ? 'View campaign →' : 'Cancel'}
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="relative" ref={buildHistoryRef}>
+                  <button
+                    onClick={openBuildHistory}
+                    className="paragraph-sm text-tertiary hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Past builds
+                  </button>
+                  {showBuildHistory && (
+                    <div className="absolute right-0 mt-1 w-72 max-h-80 overflow-y-auto bg-primary border border-tertiary rounded-xl shadow-lg z-20 py-1">
+                      <button onClick={startFreshBuild} className="w-full text-left px-3 py-2 paragraph-sm text-brand-solid hover:bg-secondary transition-colors">+ New build</button>
+                      {pastBuilds.length === 0 && <p className="px-3 py-2 paragraph-xs text-quaternary">No past builds yet</p>}
+                      {pastBuilds.map((b) => (
+                        <button key={b.conversation_id} onClick={() => loadPastBuild(b.conversation_id)}
+                          className={`w-full text-left px-3 py-2 hover:bg-secondary transition-colors ${b.conversation_id === chatConversationId ? 'bg-secondary' : ''}`}>
+                          <p className="paragraph-sm text-primary truncate">{b.title || 'Untitled build'}</p>
+                          <p className="paragraph-xs text-quaternary">{b.message_count} messages</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowNewCampaignPanel(false)
+                    setBuilderSavedCampaign(null)
+                    setBuilderCampaignId(null)
+                    setPdfStep('idle')
+                    setParsedCampaignData(null)
+                    setChatMessages([])
+                    setChatConversationId(null)
+                  }}
+                  className="paragraph-sm text-tertiary hover:text-primary transition-colors"
+                >
+                  {builderSavedCampaign ? 'View campaign →' : 'Cancel'}
+                </button>
+              </div>
             </div>
             {builderSavedCampaign && (
               <div className="mx-1 mb-3 px-3 py-2 bg-utility-success-50 border border-utility-success-200 rounded-xl">
@@ -2173,12 +2302,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     <p className="paragraph-sm text-tertiary mb-5">Ask Mia to build a new RACE campaign, or upload a brief PDF.</p>
                     <button onClick={() => pdfInputRef.current?.click()} className="inline-flex items-center gap-2 px-4 py-2 border border-primary rounded-full paragraph-sm text-tertiary hover:bg-secondary hover:text-primary transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      Upload campaign brief (PDF)
+                      Upload campaign brief (PDF or Markdown)
                     </button>
                   </div>
                 )}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${m.role === 'user' ? 'bg-brand-solid text-primary-onbrand' : 'bg-secondary text-primary border border-tertiary'}`}>

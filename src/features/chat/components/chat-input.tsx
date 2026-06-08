@@ -69,7 +69,7 @@ export const ChatInput = ({
   const audioChunksRef = useRef<Blob[]>([])
 
   const handleSubmit = () => {
-    if (message.trim() && !disabled && hasSelectedPlatforms) {
+    if (message.trim() && !disabled) {
       onSubmit(message.trim())
       setMessage('')
       if (inputRef.current) {
@@ -216,12 +216,12 @@ export const ChatInput = ({
           if (transcript) {
             const currentText = inputRef.current?.value?.trim() ?? ''
             const fullMessage = currentText ? `${currentText} ${transcript}` : transcript
-            if (!disabled && hasSelectedPlatforms) {
+            if (!disabled) {
               onSubmit(fullMessage)
               setMessage('')
               if (inputRef.current) inputRef.current.style.height = 'auto'
             } else {
-              // Can't send yet (no platforms selected etc.) — populate input instead
+              // Can't send yet — populate input instead
               setMessage(fullMessage)
               if (inputRef.current) {
                 inputRef.current.style.height = 'auto'
@@ -254,7 +254,7 @@ export const ChatInput = ({
 
   // FEB 2026: Removed auto-focus on mount - bad UX on mobile
 
-  const canSubmit = message.trim() && !disabled && hasSelectedPlatforms
+  const canSubmit = message.trim() && !disabled
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
@@ -407,13 +407,13 @@ export const ChatInput = ({
               />
             </div>
 
-            {/* Attachment button — images, CSV, Excel, PDF */}
+            {/* Attachment button — images, CSV, Excel, PDF, Markdown */}
             {(onAddImages || onAddFile) && (
               <>
                 <input
                   id="chat-file-input"
                   type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf"
+                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf,text/markdown,.md,.markdown"
                   multiple
                   className="sr-only"
                   onChange={(e) => { handleFileChange(e.target.files); e.target.value = '' }}

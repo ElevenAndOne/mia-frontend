@@ -81,6 +81,13 @@ export const useChatView = () => {
   const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const REVEAL_INTERVAL_MS = 40  // ~25 ticks/sec (same as Quick Insights)
   const CHARS_PER_TICK = 5       // 125 chars/sec
+  // Auto-scroll only when the user is already near the bottom — don't yank them
+  // down while they've scrolled up to read.
+  const nearBottom = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }, [])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -273,9 +280,11 @@ export const useChatView = () => {
 
         if (remaining > 0) {
           // Always drip at steady pace — even after streaming ends, keep the consistent reveal
+          const stick = nearBottom()
           displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
           if (isMountedRef.current) {
             setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
+            if (stick) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
           }
         } else if (streamDoneRef.current) {
           // Buffer fully caught up and streaming is done — stop
@@ -327,6 +336,12 @@ export const useChatView = () => {
             if (chunk.text) {
               accumulated += chunk.text
               receivedRef.current = accumulated  // interval reads this; no setState here
+              // Backgrounded tab throttles the reveal interval — flush straight to
+              // display so Mia keeps "typing" while you're on another tab.
+              if (document.hidden) {
+                displayIndexRef.current = accumulated.length
+                setStreamingContent(accumulated)
+              }
             } else if (chunk.status) {
               if (chunk.status !== 'thinking') setThinkingText(chunk.status)
             } else if (chunk.pending_action) {

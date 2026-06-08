@@ -5,17 +5,18 @@ import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
 import { listCampaignOptions, getClickUpSpaces } from './services/report-service'
 import type { GenerateReportParams, TopAdMetric, TopOrganicMetric, ClickUpSpace } from './types'
-import {
-  MONTH_OPTIONS,
-  TOP_AD_METRIC_OPTIONS,
-  TOP_ORGANIC_METRIC_OPTIONS,
-} from './types'
+import { TOP_AD_METRIC_OPTIONS, TOP_ORGANIC_METRIC_OPTIONS } from './types'
 import { useReports } from './hooks/use-reports'
 import type { ClientReport, KpiItem, ReportDashboardMetrics, ReportSummary } from './types'
 
-const currentYear = new Date().getFullYear()
-const currentMonth = new Date().getMonth() + 1
-const YEAR_OPTIONS = [currentYear, currentYear - 1, currentYear - 2]
+// Local-timezone-safe YYYY-MM-DD (avoids the UTC off-by-one from toISOString)
+const toISODate = (d: Date) => {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60 * 1000)
+  return local.toISOString().slice(0, 10)
+}
+const _today = new Date()
+const DEFAULT_END = toISODate(_today)
+const DEFAULT_START = toISODate(new Date(_today.getFullYear(), _today.getMonth(), 1))
 
 const PLATFORM_LABELS: Record<string, string> = {
   meta_ads: 'Meta',
@@ -49,9 +50,9 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   const [loadingSpaces, setLoadingSpaces] = useState(false)
 
   const [campaignId, setCampaignId] = useState('')
-  const [month, setMonth] = useState(currentMonth)
-  const [year, setYear] = useState(currentYear)
-  const [topAdMetric, setTopAdMetric] = useState<TopAdMetric>('conversions')
+  const [startDate, setStartDate] = useState(DEFAULT_START)
+  const [endDate, setEndDate] = useState(DEFAULT_END)
+  const [topAdMetric, setTopAdMetric] = useState<TopAdMetric>('ctr')
   const [topOrganicMetric, setTopOrganicMetric] = useState<TopOrganicMetric>('engagement_rate')
   const [selectedSpaceId, setSelectedSpaceId] = useState('')
   const [selectedListId, setSelectedListId] = useState('')
@@ -109,10 +110,11 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
 
   const handleGenerate = async () => {
     if (!campaignId) return
+    if (!startDate || !endDate || endDate < startDate) return
     const params: GenerateReportParams = {
       campaign_id: campaignId,
-      report_month: month,
-      report_year: year,
+      start_date: startDate,
+      end_date: endDate,
       top_ad_metric: topAdMetric,
       top_organic_metric: topOrganicMetric,
       clickup_list_id: selectedListId || undefined,
@@ -195,41 +197,38 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
             )}
           </div>
 
-          {/* Period */}
+          {/* Reporting period — any date range */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-                Month
+                Start date
               </label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
+              <input
+                type="date"
+                value={startDate}
+                max={endDate || undefined}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              >
-                {MONTH_OPTIONS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-                Year
+                End date
               </label>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              >
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
+          {endDate && startDate && endDate < startDate && (
+            <p className="paragraph-sm text-red-500 mt-1.5">
+              End date must be on or after the start date.
+            </p>
+          )}
 
           {/* ClickUp Studio Hours */}
           <div>
@@ -323,7 +322,8 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
 
         {generating && (
           <p className="paragraph-xs text-tertiary text-center">
-            Pulling platform data, studio hours, and generating AI sections — usually 15–30s
+            Pulling platform data, studio hours, and generating AI sections — this usually takes
+            around a minute, sometimes a little longer.
           </p>
         )}
       </div>
@@ -408,7 +408,10 @@ const ReportListItem = ({
         {report.client_name || report.campaign_name || 'Unnamed report'}
       </p>
       <p className="paragraph-xs text-tertiary">
-        {report.reporting_period_label || `${MONTH_OPTIONS[report.report_month - 1]?.label} ${report.report_year}`}
+        {report.reporting_period_label ||
+          (report.period_start && report.period_end
+            ? `${report.period_start} – ${report.period_end}`
+            : '—')}
       </p>
     </button>
     <div className="flex items-center gap-2">
