@@ -255,13 +255,36 @@ export const renameWorkspace = async (
 export const fetchWorkspaceDetails = async (
   sessionId: string,
   tenantId: string
-): Promise<{ website_url: string | null }> => {
+): Promise<{ website_url: string | null; active_framework: 'race' | 'generic' }> => {
   const response = await apiFetch(`/api/tenants/${tenantId}`, {
     headers: { 'X-Session-ID': sessionId },
   })
   if (!response.ok) throw new Error('Failed to fetch workspace details')
   const data = await response.json()
-  return { website_url: data.website_url ?? null }
+  return {
+    website_url: data.website_url ?? null,
+    active_framework: (data.active_framework ?? 'race') as 'race' | 'generic',
+  }
+}
+
+/**
+ * Update the campaign-builder framework for a workspace (owner only).
+ * 'race' = Reach/Act/Convert/Engage; 'generic' = Awareness/Consideration/Conversion/Retention.
+ */
+export const updateWorkspaceFramework = async (
+  sessionId: string,
+  tenantId: string,
+  framework: 'race' | 'generic'
+): Promise<void> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ active_framework: framework }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update campaign framework')
+  }
 }
 
 /**

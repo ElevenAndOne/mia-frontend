@@ -23,7 +23,7 @@ export const AppSidebar = ({
   onNewWorkspace,
 }: AppSidebarProps) => {
   return (
-    <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-tertiary bg-primary">
+    <aside className="hidden md:flex w-14 flex-col items-center py-4 border-r border-tertiary bg-primary print:hidden">
       {/* Workspace Switcher */}
       <div className="mb-4">
         <SidebarWorkspaceSwitcher />

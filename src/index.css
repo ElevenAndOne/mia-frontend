@@ -333,3 +333,56 @@ body.full-bleed #root {
 [class*='overflow-auto'] {
   -webkit-overflow-scrolling: touch;
 }
+
+/* ---------------------------------------------------------------------------
+   Print / Save PDF
+   The app shell pins the body (position: fixed; overflow: hidden; height:
+   100dvh) and uses h-full + overflow-y-auto scroll containers. When printing,
+   that clips the document to a single viewport, so only ~1 page renders and
+   content is cut off mid-sentence. These rules release the clipping for print
+   so multi-section reports flow naturally across pages.
+--------------------------------------------------------------------------- */
+@media print {
+  html,
+  body {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    /* Preserve the report's colours/backgrounds in the PDF */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Neutralise every height/overflow constraint between body and the report
+     content so nothing clips the flow to a single viewport. */
+  [class*='overflow-y-auto'],
+  [class*='overflow-auto'],
+  [class*='overflow-hidden'],
+  [class*='h-full'],
+  [class*='h-dvh'],
+  [class*='min-h-dvh'],
+  [class*='max-h-dvh'] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Framer Motion leaves inline transform/opacity on the page wrapper, which
+     creates a containing block that can break pagination. */
+  [style*='transform'] {
+    transform: none !important;
+  }
+
+  /* margin: 0 stops Chrome from drawing its injected header/footer band
+     (page title, URL, date, page number). Page spacing is applied as content
+     padding instead — see report-view's print padding. */
+  @page {
+    margin: 0;
+  }
+}

@@ -520,7 +520,7 @@ const ReportPreview = ({
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-    <div className="max-w-4xl mx-auto w-full px-4 py-6 space-y-0 print:px-0">
+    <div className="max-w-4xl mx-auto w-full px-4 py-6 space-y-0 print:px-10 print:py-10">
       {/* Actions bar — hidden when printing */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <button onClick={onBack} className="text-tertiary hover:text-secondary paragraph-sm">

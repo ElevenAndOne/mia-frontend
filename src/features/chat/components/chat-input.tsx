@@ -33,6 +33,38 @@ interface ChatInputProps {
 
 type MicState = 'idle' | 'recording' | 'processing' | 'error'
 
+// Anthropic rejects images whose longest edge exceeds 8000px and downscales
+// anything over ~1568px anyway, so shrink large uploads client-side. Drawing
+// through a canvas also normalizes the format — clipboard items frequently
+// report the wrong MIME type (e.g. image/jpeg for PNG data), which the API 400s.
+const MAX_IMAGE_EDGE = 1568
+
+const resizeImageFile = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img
+      const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(w, h))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(w * scale))
+      canvas.height = Math.max(1, Math.round(h * scale))
+      const ctx = canvas.getContext('2d')
+      URL.revokeObjectURL(url)
+      if (!ctx) {
+        reject(new Error('Canvas unavailable'))
+        return
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Image load failed'))
+    }
+    img.src = url
+  })
+
 export const ChatInput = ({
   onSubmit,
   onCancel,
@@ -61,12 +93,14 @@ export const ChatInput = ({
   const [micState, setMicState] = useState<MicState>('idle')
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const platformButtonRef = useRef<HTMLButtonElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  const dragDepthRef = useRef(0)
 
   const handleSubmit = () => {
     if (message.trim() && !disabled) {
@@ -100,26 +134,15 @@ export const ChatInput = ({
       if (imageItems.length === 0) return
       e.preventDefault()
       const remaining = 10 - images.length
-      imageItems.slice(0, remaining).forEach((item) => {
-        const file = item.getAsFile()
-        if (!file) return
-        // Normalize to PNG via canvas — clipboard items often report wrong MIME type
-        // (e.g. image/jpeg for what is actually PNG data), which Anthropic rejects.
-        const url = URL.createObjectURL(file)
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth
-          canvas.height = img.naturalHeight
-          const ctx = canvas.getContext('2d')
-          if (!ctx) { URL.revokeObjectURL(url); return }
-          ctx.drawImage(img, 0, 0)
-          const dataUrl = canvas.toDataURL('image/png')
-          URL.revokeObjectURL(url)
-          onAddImages([dataUrl])
-        }
-        img.src = url
-      })
+      const files = imageItems
+        .slice(0, remaining)
+        .map((item) => item.getAsFile())
+        .filter((f): f is File => f !== null)
+      Promise.all(files.map(resizeImageFile))
+        .then((urls) => {
+          if (urls.length) onAddImages(urls)
+        })
+        .catch((err) => console.error('[chat-input] paste image error:', err))
     },
     [images.length, onAddImages]
   )
@@ -135,19 +158,11 @@ export const ChatInput = ({
         else otherFiles.push(f)
       })
 
-      // Images: read client-side as before
+      // Images: downscale client-side to stay within Anthropic's size limits
       if (imageFiles.length > 0 && onAddImages) {
         const remaining = 10 - images.length
         const toRead = imageFiles.slice(0, remaining)
-        const promises = toRead.map(
-          (file) =>
-            new Promise<string>((resolve) => {
-              const reader = new FileReader()
-              reader.onload = (e) => resolve(e.target?.result as string)
-              reader.readAsDataURL(file)
-            })
-        )
-        const dataUrls = await Promise.all(promises)
+        const dataUrls = await Promise.all(toRead.map(resizeImageFile))
         onAddImages(dataUrls)
       }
 
@@ -167,6 +182,53 @@ export const ChatInput = ({
       }
     },
     [images.length, onAddImages, onAddFile]
+  )
+
+  const canAttach = Boolean(onAddImages || onAddFile)
+
+  // Drag depth counter avoids flicker: dragenter/dragleave fire for every child
+  // element, so we only clear the overlay once we've left the container itself.
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (!canAttach || !Array.from(e.dataTransfer.types).includes('Files')) return
+      e.preventDefault()
+      dragDepthRef.current += 1
+      setIsDragging(true)
+    },
+    [canAttach]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!isDragging) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    },
+    [isDragging]
+  )
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (!isDragging) return
+      e.preventDefault()
+      dragDepthRef.current -= 1
+      if (dragDepthRef.current <= 0) {
+        dragDepthRef.current = 0
+        setIsDragging(false)
+      }
+    },
+    [isDragging]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!canAttach) return
+      e.preventDefault()
+      dragDepthRef.current = 0
+      setIsDragging(false)
+      if (e.dataTransfer.files?.length) handleFileChange(e.dataTransfer.files)
+    },
+    [canAttach, handleFileChange]
   )
 
   const startRecording = useCallback(async () => {
@@ -307,7 +369,22 @@ export const ChatInput = ({
       )}
 
       {/* Main input container */}
-      <div className="bg-tertiary rounded-2xl overflow-visible">
+      <div
+        className="relative bg-tertiary rounded-2xl overflow-visible"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {/* Drag-and-drop overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 z-20 rounded-2xl border-2 border-dashed border-brand-solid bg-tertiary/90 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 text-secondary paragraph-sm">
+              <Icon.upload_cloud_02 size={18} />
+              <span>Drop images or files to attach</span>
+            </div>
+          </div>
+        )}
         {/* Recording overlay — replaces text area + toolbar */}
         {micState === 'recording' && (
           <div className="flex items-center gap-3 px-4 py-4">

@@ -6,7 +6,7 @@ import { useSession } from '../../../contexts/session-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { SkillLearningPage } from './skill-learning-page'
-import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl } from '../services/workspace-service'
+import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl, updateWorkspaceFramework } from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
   updateWorkspaceAlertsEnabled,
@@ -116,15 +116,35 @@ export const WorkspaceSettingsDetail = ({
   const [savingWebsite, setSavingWebsite] = useState(false)
   const [websiteError, setWebsiteError] = useState<string | null>(null)
 
+  // Campaign-builder framework: 'race' (Reach/Act/Convert/Engage) | 'generic'
+  // (Awareness/Consideration/Conversion/Retention)
+  const [framework, setFramework] = useState<'race' | 'generic'>('race')
+  const [savingFramework, setSavingFramework] = useState(false)
+
   useEffect(() => {
     if (!sessionId || !isOwner) return
     fetchWorkspaceDetails(sessionId, workspace.tenant_id)
       .then((d) => {
         setWebsiteUrl(d.website_url || '')
         setWebsiteUrlInput(d.website_url || '')
+        setFramework(d.active_framework || 'race')
       })
       .catch(() => {})
   }, [sessionId, workspace.tenant_id, isOwner])
+
+  const handleChangeFramework = async (next: 'race' | 'generic') => {
+    if (!sessionId || savingFramework || next === framework) return
+    const prev = framework
+    setFramework(next) // optimistic
+    setSavingFramework(true)
+    try {
+      await updateWorkspaceFramework(sessionId, workspace.tenant_id, next)
+    } catch {
+      setFramework(prev) // revert on failure
+    } finally {
+      setSavingFramework(false)
+    }
+  }
 
   const handleSaveWebsite = async () => {
     if (!sessionId || savingWebsite) return
@@ -574,6 +594,39 @@ export const WorkspaceSettingsDetail = ({
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Campaign builder framework */}
+            <div className="p-3 bg-secondary rounded-lg mb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="subheading-md text-primary">Campaign framework</p>
+                  <p className="paragraph-sm text-quaternary">
+                    {framework === 'race'
+                      ? 'RACE — Reach / Act / Convert / Engage'
+                      : 'Generic — Awareness / Consideration / Conversion / Retention'}
+                  </p>
+                </div>
+                <div className="flex rounded-lg border border-primary overflow-hidden shrink-0">
+                  {(['race', 'generic'] as const).map((fw) => (
+                    <button
+                      key={fw}
+                      onClick={() => handleChangeFramework(fw)}
+                      disabled={savingFramework || !isOwner}
+                      className={`px-3 py-1.5 paragraph-sm transition-colors disabled:opacity-50 ${
+                        framework === fw
+                          ? 'bg-brand-solid text-primary-onbrand'
+                          : 'bg-primary text-secondary hover:bg-tertiary'
+                      }`}
+                    >
+                      {fw === 'race' ? 'RACE' : 'Generic'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="paragraph-sm text-quaternary mt-2">
+                Controls the phases Mia uses when building campaigns for this workspace. Existing campaigns are unaffected.
+              </p>
             </div>
 
             {/* Logo */}
