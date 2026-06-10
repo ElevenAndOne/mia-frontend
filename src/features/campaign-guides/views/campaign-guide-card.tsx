@@ -5,6 +5,7 @@ interface Props {
   guide: CampaignGuide
   deleting: boolean
   onDelete: (id: string) => void
+  canManage?: boolean
 }
 
 function timeAgo(isoString: string): string {
@@ -28,7 +29,7 @@ function Chips({ items }: { items: string[] }) {
   )
 }
 
-export function CampaignGuideCard({ guide, deleting, onDelete }: Props) {
+export function CampaignGuideCard({ guide, deleting, onDelete, canManage = true }: Props) {
   const d = guide.extracted_data
   const uploadedAt = guide.uploaded_at ?? guide.created_at
 
@@ -45,13 +46,15 @@ export function CampaignGuideCard({ guide, deleting, onDelete }: Props) {
             {uploadedAt && ` · uploaded ${timeAgo(uploadedAt)}`}
           </p>
         </div>
-        <button
-          onClick={() => onDelete(guide.id)}
-          disabled={deleting}
-          className="shrink-0 px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-error hover:bg-error-primary transition-colors disabled:opacity-50"
-        >
-          {deleting ? <Spinner size="sm" /> : 'Delete'}
-        </button>
+        {canManage && (
+          <button
+            onClick={() => onDelete(guide.id)}
+            disabled={deleting}
+            className="shrink-0 px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-error hover:bg-error-primary transition-colors disabled:opacity-50"
+          >
+            {deleting ? <Spinner size="sm" /> : 'Delete'}
+          </button>
+        )}
       </div>
 
       {/* Body */}

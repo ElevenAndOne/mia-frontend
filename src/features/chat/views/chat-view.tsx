@@ -61,6 +61,8 @@ export const ChatView = ({
     messagesEndRef,
     scrollContainerRef,
     lastUserMsgRef,
+    handleScroll,
+    handleWheel,
     handleNewChat,
     handleSubmit,
     handleQuickAction,
@@ -195,7 +197,7 @@ export const ChatView = ({
               <BackButton onClick={handleBack} label="Back" variant="dark" />
             </div>
 
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0">
+            <div ref={scrollContainerRef} onScroll={handleScroll} onWheel={handleWheel} className="flex-1 overflow-y-auto min-h-0">
               <div className="max-w-3xl mx-auto px-4 py-6">
                 {(() => {
                   const visible = messages.filter((m) => !m.hidden)

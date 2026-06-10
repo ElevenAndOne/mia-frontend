@@ -85,7 +85,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const [clickUpSubmitting, setClickUpSubmitting] = useState(false)
   const [clickUpError, setClickUpError] = useState('')
 
-  // Creative Studio plugin state
+  // Mia Create plugin state
   const [showCreativeStudioModal, setShowCreativeStudioModal] = useState(false)
   const [csGoogleKey, setCsGoogleKey] = useState('')
   const [csFalKey, setCsFalKey] = useState('')
@@ -597,7 +597,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.detail || 'Failed to enable Creative Studio')
+        throw new Error(err.detail || 'Failed to enable Mia Create')
       }
       setCsFalKey('')
       setCsRunwayKey('')
@@ -605,7 +605,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       invalidatePlugins()
       setCsJustEnabled(true)
     } catch (err) {
-      setCsError(err instanceof Error ? err.message : 'Failed to enable Creative Studio')
+      setCsError(err instanceof Error ? err.message : 'Failed to enable Mia Create')
     } finally {
       setCsSubmitting(false)
     }
@@ -631,7 +631,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.detail || 'Failed to update Creative Studio')
+        throw new Error(err.detail || 'Failed to update Mia Create')
       }
       setCsFalKey('')
       setCsRunwayKey('')
@@ -659,14 +659,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       )
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.detail || 'Failed to disable Creative Studio')
+        throw new Error(err.detail || 'Failed to disable Mia Create')
       }
       setShowCreativeStudioModal(false)
       setCsJustEnabled(false)
       invalidatePlugins()
-      showToast('success', 'Creative Studio disabled')
+      showToast('success', 'Mia Create disabled')
     } catch (err) {
-      setCsError(err instanceof Error ? err.message : 'Failed to disable Creative Studio')
+      setCsError(err instanceof Error ? err.message : 'Failed to disable Mia Create')
     } finally {
       setCsSubmitting(false)
     }
@@ -1416,7 +1416,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   </div>
                 </div>
 
-                {/* Creative Studio */}
+                {/* Mia Create */}
                 <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
@@ -1427,7 +1427,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-2">
-                          <h3 className="subheading-md text-primary truncate">Creative Studio</h3>
+                          <h3 className="subheading-md text-primary truncate">Mia Create</h3>
                           {isPluginEnabled('mia-creative-studio') && (
                             <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
                               Enabled
@@ -1477,7 +1477,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                           )}
                         </div>
                         <p className="paragraph-xs text-quaternary truncate">
-                          Browse &amp; place Creative Studio assets directly in Figma
+                          Browse &amp; place Mia Create assets directly in Figma
                         </p>
                       </div>
                     </div>
@@ -1520,7 +1520,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                         <p className="paragraph-xs text-quaternary truncate">
                           {figmaOAuthStatus?.connected
                             ? `Connected as ${figmaOAuthStatus.figma_handle || figmaOAuthStatus.figma_email || 'Figma user'}`
-                            : 'Search & import Figma files into Creative Studio'}
+                            : 'Search & import Figma files into Mia Create'}
                         </p>
                       </div>
                     </div>
@@ -1945,7 +1945,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           </div>
         )}
 
-        {/* Creative Studio Modal */}
+        {/* Mia Create Modal */}
         {showCreativeStudioModal && (
           <div className="fixed inset-0 bg-overlay/40 flex items-center justify-center z-50 px-4">
             <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
@@ -1957,7 +1957,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </svg>
                   </div>
                   <h2 className="title-h6 text-primary">
-                    {csJustEnabled ? 'Creative Studio enabled!' : isPluginEnabled('mia-creative-studio') ? 'Manage Creative Studio' : 'Enable Creative Studio'}
+                    {csJustEnabled ? 'Mia Create enabled!' : isPluginEnabled('mia-creative-studio') ? 'Manage Mia Create' : 'Enable Mia Create'}
                   </h2>
                 </div>
               </div>
@@ -1978,7 +1978,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false); navigate('/creative-studio') }}
                     className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-2"
                   >
-                    Visit Creative Studio →
+                    Visit Mia Create →
                   </button>
                   <button
                     onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false) }}
@@ -1994,7 +1994,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     onClick={() => { setShowCreativeStudioModal(false); navigate('/creative-studio') }}
                     className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-4"
                   >
-                    Open Creative Studio →
+                    Open Mia Create →
                   </button>
                   <p className="subheading-md text-secondary mb-3">Update API keys</p>
                   <div className="space-y-3">
@@ -2079,7 +2079,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     <p className="subheading-md text-success mb-1">
                       {isPluginEnabled('mia-figma-plugin') ? 'New API key generated' : 'Plugin enabled!'}
                     </p>
-                    <p className="paragraph-xs text-tertiary mb-3">Copy this key — it won't be shown again. Paste it into the MIA Creative Studio plugin in Figma.</p>
+                    <p className="paragraph-xs text-tertiary mb-3">Copy this key — it won't be shown again. Paste it into the Mia Create plugin in Figma.</p>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 bg-secondary px-3 py-2 rounded-lg paragraph-xs font-mono text-primary break-all">{figmaApiKey}</code>
                       <button
@@ -2118,7 +2118,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 /* Enable state */
                 <div>
                   <p className="paragraph-sm text-tertiary mb-4">
-                    Generates an API key for the MIA Creative Studio Figma plugin, letting you browse and place your Creative Studio assets directly on the Figma canvas.
+                    Generates an API key for the Mia Create Figma plugin, letting you browse and place your Mia Create assets directly on the Figma canvas.
                   </p>
                   {figmaError && <p className="paragraph-xs text-error mb-3">{figmaError}</p>}
                   <div className="flex gap-3">

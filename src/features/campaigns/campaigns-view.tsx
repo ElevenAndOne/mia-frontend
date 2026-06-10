@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type WheelEvent } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
@@ -525,7 +525,7 @@ function ChannelActionCard({
           {!hasPicker && <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>}
           {action.budget != null && (
             <span className="paragraph-xs text-tertiary shrink-0">
-              {formatBudget(action.budget, budgetCurrency)}{action.budget_period === 'monthly' ? '/mo' : ' total'}
+              {formatBudget(action.budget, budgetCurrency)}{action.budget_period === 'total' ? ' total' : '/mo'}
             </span>
           )}
           {(action.start_date || action.end_date) && (
@@ -597,7 +597,15 @@ function ChannelActionCard({
                   defaultValue={action.budget ?? ''}
                   onBlur={(e) => {
                     const v = e.target.value ? parseFloat(e.target.value) : null
-                    if (v !== action.budget) patch({ budget: v })
+                    if (v !== action.budget) {
+                      // Persist the dropdown's displayed default ("/mo") — it only shows
+                      // 'monthly' via `?? 'monthly'` and would otherwise save as NULL.
+                      patch(
+                        v != null && !action.budget_period
+                          ? { budget: v, budget_period: 'monthly' }
+                          : { budget: v },
+                      )
+                    }
                   }}
                   placeholder="Optional"
                   className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
@@ -618,13 +626,13 @@ function ChannelActionCard({
                 <input
                   type="date" key={action.action_id + '-sd-' + (action.start_date ?? '')}
                   defaultValue={action.start_date ?? ''}
-                  onBlur={(e) => { if (e.target.value !== (action.start_date ?? '')) patch({ start_date: e.target.value || null }) }}
+                  onChange={(e) => { if (e.target.value !== (action.start_date ?? '')) patch({ start_date: e.target.value || null }) }}
                   className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
                 />
                 <input
                   type="date" key={action.action_id + '-ed-' + (action.end_date ?? '')}
                   defaultValue={action.end_date ?? ''}
-                  onBlur={(e) => { if (e.target.value !== (action.end_date ?? '')) patch({ end_date: e.target.value || null }) }}
+                  onChange={(e) => { if (e.target.value !== (action.end_date ?? '')) patch({ end_date: e.target.value || null }) }}
                   className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
                 />
               </div>
@@ -1177,10 +1185,28 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const CHAT_CHARS_PER_TICK = 5
   // Auto-scroll only when the user is already near the bottom — never yank them
   // down while they've scrolled up to read.
-  const chatNearBottom = useCallback(() => {
+  // Follow the stream ONLY while parked at the very bottom. Any upward intent
+  // (wheel-up or an upward scroll delta) pauses following immediately; returning to
+  // the bottom resumes it. Intent detection (not a "near bottom" threshold) is what
+  // lets the user scroll up mid-stream — the 40ms reveal tick would otherwise re-snap
+  // them back on every tick.
+  const chatShouldAutoScrollRef = useRef(true)
+  const chatPrevScrollTopRef = useRef(0)
+  const handleChatScroll = useCallback(() => {
     const el = chatScrollRef.current
-    if (!el) return true
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+    const goingUp = el.scrollTop < chatPrevScrollTopRef.current - 1
+    // Upward intent ALWAYS wins. A small scroll-up keeps the user inside the 24px
+    // "atBottom" band, so if we re-enabled on atBottom first the reveal tick would
+    // snap them back every 40ms — they'd have to fling >24px in one event to escape.
+    // Only resume following once they're back at the bottom and NOT scrolling up.
+    if (goingUp) chatShouldAutoScrollRef.current = false
+    else if (atBottom) chatShouldAutoScrollRef.current = true
+    chatPrevScrollTopRef.current = el.scrollTop
+  }, [])
+  const handleChatWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY < 0) chatShouldAutoScrollRef.current = false
   }, [])
   useEffect(() => {
     chatIsMountedRef.current = true
@@ -1579,6 +1605,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     setChatLoading(true)
     setChatThinkingText('Thinking...')
     trackEvent(sessionId, 'campaign_builder_message', 'campaigns', { has_campaign: !!builderCampaignId })
+    chatShouldAutoScrollRef.current = true
     setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
 
     // Reset streaming state
@@ -1594,11 +1621,12 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       const current = chatDisplayIndexRef.current
       const remaining = target - current
       if (remaining > 0) {
-        const stick = chatNearBottom()
         chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
         if (chatIsMountedRef.current) {
           setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
-          if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+          // Follow the stream only while pinned to the bottom; 'auto' (instant) so we
+          // never fight a user scrolling up mid-stream.
+          if (chatShouldAutoScrollRef.current) chatBottomRef.current?.scrollIntoView({ behavior: 'auto' })
         }
       } else if (chatStreamDoneRef.current) {
         if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -1745,6 +1773,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       const userMsg = { role: 'user' as const, content: `Here is our campaign brief (${file.name}). Please build a full RACE campaign template from it.` }
       setChatMessages((prev) => [...prev, userMsg])
       setChatLoading(true)
+      chatShouldAutoScrollRef.current = true
       chatReceivedRef.current = ''
       chatDisplayIndexRef.current = 0
       chatStreamDoneRef.current = false
@@ -1755,11 +1784,10 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
         const current = chatDisplayIndexRef.current
         const remaining = target - current
         if (remaining > 0) {
-          const stick = chatNearBottom()
           chatDisplayIndexRef.current = current + Math.min(CHAT_CHARS_PER_TICK, remaining)
           if (chatIsMountedRef.current) {
             setChatStreamingContent(chatReceivedRef.current.slice(0, chatDisplayIndexRef.current))
-            if (stick) chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+            if (chatShouldAutoScrollRef.current) chatBottomRef.current?.scrollIntoView({ behavior: 'auto' })
           }
         } else if (chatStreamDoneRef.current) {
           if (chatRevealIntervalRef.current) clearInterval(chatRevealIntervalRef.current)
@@ -2128,7 +2156,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
                 {/* Chat messages */}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} onScroll={handleChatScroll} onWheel={handleChatWheel} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${
@@ -2314,7 +2342,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   </div>
                 )}
                 {(chatMessages.length > 0 || chatLoading) && (
-                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+                  <div ref={chatScrollRef} onScroll={handleChatScroll} onWheel={handleChatWheel} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                     {chatMessages.map((m, i) => (
                       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${m.role === 'user' ? 'bg-brand-solid text-primary-onbrand' : 'bg-secondary text-primary border border-tertiary'}`}>

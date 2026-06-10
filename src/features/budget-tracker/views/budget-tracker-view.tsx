@@ -16,8 +16,19 @@ const MODE_OPTIONS = [
 ]
 
 export const BudgetTrackerView = ({ onBack }: Props) => {
-  const { campaigns, campaignId, setCampaignId, mode, setMode, snapshot, loading, error } =
-    useBudgetTracker()
+  const {
+    campaigns,
+    campaignId,
+    setCampaignId,
+    mode,
+    setMode,
+    snapshot,
+    loading,
+    error,
+    recommendation,
+    recLoading,
+    loadRecommendation,
+  } = useBudgetTracker()
 
   return (
     <div className="w-full h-full overflow-y-auto">
@@ -49,8 +60,14 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
           )}
           <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
           {snapshot && (
-            <span className="paragraph-xs text-tertiary ml-auto">
+            <span className="paragraph-xs text-tertiary ml-auto text-right">
               {snapshot.window.label} · {snapshot.window.start} → {snapshot.window.end}
+              {snapshot.spent_as_of && (
+                <>
+                  <br />
+                  Spent as of {new Date(snapshot.spent_as_of).toLocaleString()}
+                </>
+              )}
             </span>
           )}
         </div>
@@ -72,7 +89,12 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
                 <BudgetPlatformBreakdown snapshot={snapshot} />
               </div>
               <div className="lg:col-span-1">
-                <BudgetIntelligencePanel snapshot={snapshot} />
+                <BudgetIntelligencePanel
+                  snapshot={snapshot}
+                  recommendation={recommendation}
+                  recLoading={recLoading}
+                  onRun={loadRecommendation}
+                />
               </div>
             </div>
           </div>

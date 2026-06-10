@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { fetchBudgetSnapshot, listCampaigns } from '../services/budget-service'
-import type { BudgetSnapshot, CampaignSummary } from '../types'
+import { fetchBudgetSnapshot, fetchRecommendation, listCampaigns } from '../services/budget-service'
+import type { BudgetRecommendation, BudgetSnapshot, CampaignSummary } from '../types'
 
 export const useBudgetTracker = () => {
   const { sessionId, activeWorkspace } = useSession()
@@ -14,6 +14,10 @@ export const useBudgetTracker = () => {
   const [snapshot, setSnapshot] = useState<BudgetSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Recommendation is expensive (optimizer + Claude, ~15-30s) → lazy, on demand.
+  const [recommendation, setRecommendation] = useState<BudgetRecommendation | null>(null)
+  const [recLoading, setRecLoading] = useState(false)
 
   // Load campaign list and default to the primary (or first) campaign.
   useEffect(() => {
@@ -38,15 +42,25 @@ export const useBudgetTracker = () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
+      // Phase A — instant: allocations/committed/flexible from the DB (skips the slow
+      // spend fetch) so the page paints immediately.
+      const fast = await fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
+        mode,
+        display_currency: 'USD',
+        include_spend: false,
+      })
+      if (fast) setSnapshot(fast)
+      else setError('Could not load budget data for this campaign.')
+      setLoading(false)
+
+      // Phase B — fill in live spend (cached → fast; cold → ~15s, but cards already show).
+      const full = await fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
         mode,
         display_currency: 'USD',
       })
-      if (data) setSnapshot(data)
-      else setError('Could not load budget data for this campaign.')
+      if (full) setSnapshot(full)
     } catch {
       setError('Could not load budget data for this campaign.')
-    } finally {
       setLoading(false)
     }
   }, [sessionId, tenantId, campaignId, mode])
@@ -54,6 +68,24 @@ export const useBudgetTracker = () => {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Recommendation is cleared when the campaign or view (mode) changes — it's scoped to both.
+  useEffect(() => {
+    setRecommendation(null)
+  }, [campaignId, mode])
+
+  const loadRecommendation = useCallback(async () => {
+    if (!sessionId || !tenantId || !campaignId) return
+    setRecLoading(true)
+    try {
+      const rec = await fetchRecommendation(sessionId, tenantId, campaignId, mode)
+      setRecommendation(rec ?? { available: false, reason: 'Could not generate a recommendation.' })
+    } catch {
+      setRecommendation({ available: false, reason: 'Could not generate a recommendation.' })
+    } finally {
+      setRecLoading(false)
+    }
+  }, [sessionId, tenantId, campaignId, mode])
 
   // Warm the OTHER mode's cache in the background after the current view loads, so
   // switching Monthly ⇄ Whole-campaign hits a warm cache instead of a cold ~15s fetch.
@@ -80,5 +112,8 @@ export const useBudgetTracker = () => {
     loading,
     error,
     reload: load,
+    recommendation,
+    recLoading,
+    loadRecommendation,
   }
 }

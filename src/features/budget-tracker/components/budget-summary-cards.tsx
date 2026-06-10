@@ -16,12 +16,16 @@ const PACING_TEXT: Record<string, string> = {
   over: 'text-utility-error-500',
   under: 'text-utility-warning-500',
   on: 'text-utility-success-500',
+  complete: 'text-tertiary',
   unknown: 'text-tertiary',
 }
+
+const Loading = () => <span className="text-3xl font-semibold text-tertiary animate-pulse">…</span>
 
 export const BudgetSummaryCards = ({ snapshot }: Props) => {
   const { totals, currency, fx } = snapshot
   const spentPct = totals.spent_pct ?? 0
+  const pending = !!snapshot.spend_pending
 
   return (
     <div className="flex flex-wrap gap-4">
@@ -32,18 +36,22 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         )}
         <div className="mt-2 space-y-0.5">
           <p className="paragraph-xs text-secondary">
-            Committed {formatMoney(totals.committed, currency)}
+            Allocated {formatMoney(totals.committed, currency)}
           </p>
           <p className={`paragraph-xs ${totals.over_allocated ? 'text-utility-error-500' : 'text-secondary'}`}>
-            Flexible {formatMoney(totals.flexible, currency)}
+            Unallocated {formatMoney(totals.flexible, currency)}
             {totals.over_allocated ? ' · over-allocated' : ''}
           </p>
         </div>
       </Card>
 
-      <Card label="Live Spent">
+      <Card label="Spent">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-3xl font-semibold text-primary">{formatMoney(totals.spent, currency)}</p>
+          {pending ? (
+            <Loading />
+          ) : (
+            <p className="text-3xl font-semibold text-primary">{formatMoney(totals.spent, currency)}</p>
+          )}
           {totals.spent_pct != null && (
             <span className="paragraph-xs text-secondary">{totals.spent_pct}%</span>
           )}
@@ -56,19 +64,34 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         </div>
       </Card>
 
-      <Card label="Budget Pacing">
-        <p className={`text-3xl font-semibold ${PACING_TEXT[totals.pacing_state] ?? 'text-primary'}`}>
-          {totals.pacing_pct == null
-            ? '—'
-            : `${totals.pacing_pct > 0 ? '+' : ''}${totals.pacing_pct}%`}
-        </p>
-        <p className="paragraph-xs text-tertiary mt-1 capitalize">
-          {totals.pacing_state === 'on' ? 'on track' : `${totals.pacing_state} speed`}
-        </p>
+      <Card label={totals.pacing_state === 'complete' ? 'Budget Used' : 'Budget Pacing'}>
+        {pending ? (
+          <Loading />
+        ) : totals.pacing_state === 'complete' ? (
+          <>
+            <p className="text-3xl font-semibold text-primary">{totals.spent_pct ?? 0}%</p>
+            <p className="paragraph-xs text-tertiary mt-1">of budget · campaign ended</p>
+          </>
+        ) : (
+          <>
+            <p className={`text-3xl font-semibold ${PACING_TEXT[totals.pacing_state] ?? 'text-primary'}`}>
+              {totals.pacing_pct == null
+                ? '—'
+                : `${totals.pacing_pct > 0 ? '+' : ''}${totals.pacing_pct}%`}
+            </p>
+            <p className="paragraph-xs text-tertiary mt-1 capitalize">
+              {totals.pacing_state === 'on' ? 'on track' : `${totals.pacing_state} speed`}
+            </p>
+          </>
+        )}
       </Card>
 
       <Card label="Projected Close">
-        <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
+        {pending ? (
+          <Loading />
+        ) : (
+          <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
+        )}
         <p className="paragraph-xs text-tertiary mt-1">linear burn rate</p>
       </Card>
     </div>

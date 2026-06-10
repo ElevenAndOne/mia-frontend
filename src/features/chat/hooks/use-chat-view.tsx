@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
@@ -83,10 +83,30 @@ export const useChatView = () => {
   const CHARS_PER_TICK = 5       // 125 chars/sec
   // Auto-scroll only when the user is already near the bottom — don't yank them
   // down while they've scrolled up to read.
-  const nearBottom = useCallback(() => {
+  // Auto-scroll bookkeeping. We follow the stream ONLY while the user is parked at
+  // the very bottom. Any upward intent (wheel-up or an upward scroll delta) pauses
+  // following immediately; returning to the bottom resumes it. We detect intent
+  // rather than a "near bottom" threshold because the 40ms reveal tick re-scrolls
+  // continuously — a threshold check would re-snap the user back on every tick.
+  const shouldAutoScrollRef = useRef(true)
+  const prevScrollTopRef = useRef(0)
+  const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current
-    if (!el) return true
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+    const goingUp = el.scrollTop < prevScrollTopRef.current - 1
+    // Upward intent ALWAYS wins. A small scroll-up keeps the user inside the 24px
+    // "atBottom" band, so if we re-enabled on atBottom first the reveal tick would
+    // snap them back every 40ms — they'd have to fling >24px in one event to escape.
+    // Only resume following once they're back at the bottom and NOT scrolling up.
+    if (goingUp) shouldAutoScrollRef.current = false
+    else if (atBottom) shouldAutoScrollRef.current = true
+    prevScrollTopRef.current = el.scrollTop
+  }, [])
+  // Wheel-up is unambiguous user intent — pause instantly so a tick can't beat the
+  // scroll event to the punch.
+  const handleWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY < 0) shouldAutoScrollRef.current = false
   }, [])
 
   useEffect(() => {
@@ -280,11 +300,13 @@ export const useChatView = () => {
 
         if (remaining > 0) {
           // Always drip at steady pace — even after streaming ends, keep the consistent reveal
-          const stick = nearBottom()
           displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
           if (isMountedRef.current) {
             setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
-            if (stick) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+            // Only follow the stream while the user is pinned to the bottom. Use 'auto'
+            // (instant) not 'smooth' — a queued smooth animation re-fired every 40ms is
+            // what fought the user when they tried to scroll up.
+            if (shouldAutoScrollRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
           }
         } else if (streamDoneRef.current) {
           // Buffer fully caught up and streaming is done — stop
@@ -626,6 +648,8 @@ export const useChatView = () => {
     messagesEndRef,
     scrollContainerRef,
     lastUserMsgRef,
+    handleScroll,
+    handleWheel,
     handleNewChat,
     handleSubmit,
     handleQuickAction,

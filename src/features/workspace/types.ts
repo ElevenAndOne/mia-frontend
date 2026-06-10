@@ -4,7 +4,7 @@
  */
 
 /** Workspace role as returned by the API */
-export type WorkspaceRole = 'owner' | 'admin' | 'member'
+export type WorkspaceRole = 'owner' | 'admin' | 'analyst' | 'viewer' | 'member'
 
 export interface Workspace {
   tenant_id: string

@@ -10,7 +10,7 @@ export interface BudgetWindow {
   total_days: number
 }
 
-export type PacingState = 'over' | 'under' | 'on' | 'unknown'
+export type PacingState = 'over' | 'under' | 'on' | 'complete' | 'unknown'
 
 export interface BudgetTotals {
   total_allocation: number
@@ -35,6 +35,7 @@ export interface BudgetPlatformRow {
   is_paid: boolean
   budget_period_mixed: boolean
   spend_available: boolean
+  spend_pending?: boolean
   linked: boolean | null
   needs_link?: boolean
   spent: number | null
@@ -55,10 +56,35 @@ export interface BudgetSnapshot {
   campaign_id: string
   campaign_name: string
   currency: string
+  ended?: boolean
+  spent_as_of?: string | null
+  spend_pending?: boolean
   window: BudgetWindow
   totals: BudgetTotals
   platforms: BudgetPlatformRow[]
   fx?: BudgetFx
+}
+
+export interface RecommendationPlatform {
+  platform: string
+  label: string
+  current: number
+  recommended: number
+  delta: number
+  direction: 'increase' | 'decrease' | 'hold'
+}
+
+export interface BudgetRecommendation {
+  available: boolean
+  reason?: string
+  objective_type?: string
+  total_budget?: number
+  currency?: string
+  optimization_score?: number | null
+  platforms?: RecommendationPlatform[]
+  narrative?: string
+  run_id?: string | null
+  generated_at?: string
 }
 
 export interface CampaignSummary {

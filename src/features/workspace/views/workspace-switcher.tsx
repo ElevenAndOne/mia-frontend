@@ -65,9 +65,10 @@ const WorkspaceSwitcher = ({ onClose, onCreateWorkspace, onSettings }: Workspace
       {/* Divider */}
       <div className="border-t border-tertiary"></div>
 
-      {/* Workspace Settings Button - only show if there's an active workspace and user is admin/owner */}
+      {/* Workspace Settings Button — open to all members. Non-managers (analyst/viewer)
+          see a read-only Brand Guide + Campaign Guides view; edit/manage affordances are
+          gated by role inside the settings page. */}
       {activeWorkspace &&
-        (activeWorkspace.role === 'owner' || activeWorkspace.role === 'admin') &&
         onSettings && (
           <button
             onClick={onSettings}

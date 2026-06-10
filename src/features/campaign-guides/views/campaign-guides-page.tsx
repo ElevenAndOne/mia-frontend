@@ -8,6 +8,8 @@ import { CampaignGuideUpload } from './campaign-guide-upload'
 interface Props {
   sessionId: string | null
   tenantId?: string | null
+  /** When false (analyst/viewer), the page is read-only — no upload/save/delete affordances. */
+  canManage?: boolean
 }
 
 function PreviewField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -122,7 +124,7 @@ function ExtractionPreview({ extracted }: { extracted: CampaignGuideExtracted })
   )
 }
 
-export function CampaignGuidesPage({ sessionId, tenantId }: Props) {
+export function CampaignGuidesPage({ sessionId, tenantId, canManage = true }: Props) {
   const {
     guides,
     loading,
@@ -203,12 +205,13 @@ export function CampaignGuidesPage({ sessionId, tenantId }: Props) {
       <div>
         <h2 className="heading-sm text-primary">Campaign Guides</h2>
         <p className="paragraph-sm text-secondary mt-1">
-          Upload campaign PDFs to extract objectives, channels, key messages, and events.
-          Multiple active campaigns are supported.
+          {canManage
+            ? 'Upload campaign PDFs to extract objectives, channels, key messages, and events. Multiple active campaigns are supported.'
+            : 'Campaign guides for this workspace — objectives, channels, key messages, and events.'}
         </p>
       </div>
 
-      <CampaignGuideUpload uploadStep="idle" onFileSelect={handleFileSelect} />
+      {canManage && <CampaignGuideUpload uploadStep="idle" onFileSelect={handleFileSelect} />}
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
@@ -216,7 +219,9 @@ export function CampaignGuidesPage({ sessionId, tenantId }: Props) {
         </div>
       ) : guides.length === 0 ? (
         <div className="rounded-xl border border-tertiary bg-secondary p-5 text-center">
-          <p className="paragraph-sm text-secondary">No campaign guides yet. Upload your first one above.</p>
+          <p className="paragraph-sm text-secondary">
+            {canManage ? 'No campaign guides yet. Upload your first one above.' : 'No campaign guides yet.'}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -226,6 +231,7 @@ export function CampaignGuidesPage({ sessionId, tenantId }: Props) {
               guide={guide}
               deleting={deleting === guide.id}
               onDelete={handleDelete}
+              canManage={canManage}
             />
           ))}
         </div>

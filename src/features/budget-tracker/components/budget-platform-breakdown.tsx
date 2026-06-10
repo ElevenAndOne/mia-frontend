@@ -60,25 +60,33 @@ export const BudgetPlatformBreakdown = ({ snapshot }: Props) => {
                 {row.allocation > 0 ? formatMoney(row.allocation, currency) : '—'}
               </td>
               <td className="py-4 text-sm text-right">
-                {row.spend_available ? (
+                {row.spend_pending ? (
+                  <span className="text-tertiary animate-pulse">…</span>
+                ) : row.spend_available ? (
                   <span className="text-primary">{formatMoney(row.spent, currency)}</span>
                 ) : (
                   <StateNote row={row} onLink={goLink} />
                 )}
               </td>
               <td className="py-4 text-sm text-right">
-                <span
-                  className={
-                    row.remaining != null && row.remaining < 0
-                      ? 'text-utility-error-500'
-                      : 'text-secondary'
-                  }
-                >
-                  {row.spend_available && row.allocation > 0 ? formatMoney(row.remaining, currency) : '—'}
-                </span>
+                {row.spend_pending ? (
+                  <span className="text-tertiary">—</span>
+                ) : (
+                  <span
+                    className={
+                      row.remaining != null && row.remaining < 0
+                        ? 'text-utility-error-500'
+                        : 'text-secondary'
+                    }
+                  >
+                    {row.spend_available && row.allocation > 0 ? formatMoney(row.remaining, currency) : '—'}
+                  </span>
+                )}
               </td>
               <td className="py-4 pl-4">
-                {row.spend_available && row.allocation > 0 ? (
+                {row.spend_pending ? (
+                  <span className="paragraph-xs text-tertiary">—</span>
+                ) : row.spend_available && row.allocation > 0 ? (
                   <div className="flex items-center gap-2">
                     <PacingBar pct={row.spent_pct ?? null} />
                     <span className="paragraph-xs text-tertiary shrink-0 w-9 text-right">
@@ -100,7 +108,9 @@ export const BudgetPlatformBreakdown = ({ snapshot }: Props) => {
           <div key={row.platform} className="rounded-lg border border-tertiary/60 p-3">
             <div className="flex items-center justify-between">
               <span className="paragraph-sm text-primary">{row.label}</span>
-              {row.spend_available ? (
+              {row.spend_pending ? (
+                <span className="paragraph-sm text-tertiary animate-pulse">…</span>
+              ) : row.spend_available ? (
                 <span className="paragraph-sm text-primary">
                   {formatMoney(row.spent, currency)}
                   {row.allocation > 0 && (

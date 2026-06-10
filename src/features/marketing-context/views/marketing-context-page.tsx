@@ -10,6 +10,8 @@ import { ContextFieldsEditor } from './context-fields-editor'
 interface Props {
   sessionId: string | null
   tenantId?: string | null
+  /** When false (analyst/viewer), the page renders read-only — no upload/generate/edit affordances. */
+  canManage?: boolean
 }
 
 function timeAgo(isoString: string): string {
@@ -30,7 +32,7 @@ function GlobeIcon() {
   )
 }
 
-export function MarketingContextPage({ sessionId, tenantId }: Props) {
+export function MarketingContextPage({ sessionId, tenantId, canManage = true }: Props) {
   const {
     context,
     loading,
@@ -138,6 +140,18 @@ export function MarketingContextPage({ sessionId, tenantId }: Props) {
 
   // --- Empty state: no brand guide yet ---
   if (!context?.has_context && uploadStep === 'idle') {
+    if (!canManage) {
+      return (
+        <div className="flex flex-col gap-6">
+          <div>
+            <h2 className="heading-sm text-primary">Marketing Context</h2>
+            <p className="paragraph-sm text-secondary mt-1">
+              No brand guide has been set up for this workspace yet.
+            </p>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex flex-col gap-6">
         <div>
@@ -227,18 +241,20 @@ export function MarketingContextPage({ sessionId, tenantId }: Props) {
             {context?.brand_guide_uploaded_at && ` · uploaded ${timeAgo(context.brand_guide_uploaded_at)}`}
           </p>
         </div>
-        <BrandGuideUpload
-          uploadStep={uploadStep}
-          existingFilename={context?.brand_guide_filename ?? null}
-          onFileSelect={handleFileSelect}
-        />
+        {canManage && (
+          <BrandGuideUpload
+            uploadStep={uploadStep}
+            existingFilename={context?.brand_guide_filename ?? null}
+            onFileSelect={handleFileSelect}
+          />
+        )}
       </div>
 
       {/* Brand context fields */}
       <div className="rounded-xl border border-tertiary bg-primary">
         <div className="flex items-center justify-between px-5 py-4 border-b border-tertiary">
           <p className="subheading-sm text-primary">Brand Context</p>
-          {!editingOverrides && (
+          {canManage && !editingOverrides && (
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -270,7 +286,7 @@ export function MarketingContextPage({ sessionId, tenantId }: Props) {
         </div>
 
         {/* Inline generate URL input (loaded state) */}
-        {showGenerateInput && !editingOverrides && (
+        {canManage && showGenerateInput && !editingOverrides && (
           <div className="px-5 py-3 border-b border-tertiary bg-secondary flex items-center gap-2">
             <input
               type="url"
@@ -342,26 +358,32 @@ export function MarketingContextPage({ sessionId, tenantId }: Props) {
                 : 'Not yet refreshed'}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefreshSnapshot}
-            disabled={snapshotRefreshing}
-          >
-            {snapshotRefreshing ? <Spinner /> : 'Refresh'}
-          </Button>
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshSnapshot}
+              disabled={snapshotRefreshing}
+            >
+              {snapshotRefreshing ? <Spinner /> : 'Refresh'}
+            </Button>
+          )}
         </div>
         <div className="p-5">
           {Object.keys(context?.platform_snapshot ?? {}).length === 0 ? (
             <p className="paragraph-sm text-secondary">
-              No platform data yet.{' '}
-              <button
-                className="text-brand-solid underline"
-                onClick={handleRefreshSnapshot}
-              >
-                Refresh now
-              </button>{' '}
-              to pull current performance baselines.
+              No platform data yet.{canManage ? ' ' : ''}
+              {canManage && (
+                <>
+                  <button
+                    className="text-brand-solid underline"
+                    onClick={handleRefreshSnapshot}
+                  >
+                    Refresh now
+                  </button>{' '}
+                  to pull current performance baselines.
+                </>
+              )}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

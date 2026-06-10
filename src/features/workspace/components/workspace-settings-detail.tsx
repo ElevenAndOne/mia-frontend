@@ -102,7 +102,11 @@ export const WorkspaceSettingsDetail = ({
   onDeleteWorkspace,
   onLeaveWorkspace,
 }: WorkspaceSettingsDetailProps) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('members')
+  // Non-managers (analyst/viewer) get a read-only view limited to the guide tabs.
+  const visibleTabs: SettingsTab[] = canManage
+    ? ['members', 'brand', 'campaigns', 'skills', 'whatsapp']
+    : ['brand', 'campaigns']
+  const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
   const { sessionId, refreshWorkspaces } = useSession()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -296,7 +300,7 @@ export const WorkspaceSettingsDetail = ({
 
       {/* Tab strip */}
       <div className="flex border-b border-tertiary px-4 overflow-x-auto">
-        {(['members', 'brand', 'campaigns', 'skills', 'whatsapp'] as SettingsTab[]).map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -485,12 +489,12 @@ export const WorkspaceSettingsDetail = ({
 
         {/* Brand Guide tab */}
         {activeTab === 'brand' && (
-          <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+          <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
         )}
 
         {/* Campaign Guides tab */}
         {activeTab === 'campaigns' && (
-          <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+          <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
         )}
 
         {/* Skill Learning tab */}

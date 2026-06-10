@@ -1,10 +1,11 @@
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
-import type { BudgetSnapshot, CampaignSummary } from '../types'
+import type { BudgetRecommendation, BudgetSnapshot, CampaignSummary } from '../types'
 
 export interface BudgetQuery {
   mode?: 'monthly' | 'campaign'
   month?: string // "YYYY-MM"
   display_currency?: string
+  include_spend?: boolean
 }
 
 export const fetchBudgetSnapshot = async (
@@ -13,13 +14,30 @@ export const fetchBudgetSnapshot = async (
   campaignId: string,
   query: BudgetQuery = {},
 ): Promise<BudgetSnapshot | null> => {
+  const { include_spend, ...rest } = query
   const params = new URLSearchParams(
-    Object.entries(query).filter(([, v]) => v != null && v !== '') as [string, string][],
+    Object.entries(rest).filter(([, v]) => v != null && v !== '') as [string, string][],
   )
+  if (include_spend === false) params.set('include_spend', 'false')
   const qs = params.toString()
   const response = await apiFetch(
     `/api/tenants/${tenantId}/budget-tracker/${campaignId}${qs ? `?${qs}` : ''}`,
     { headers: createSessionHeaders(sessionId) },
+  )
+  if (!response.ok) return null
+  return response.json()
+}
+
+export const fetchRecommendation = async (
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  mode?: 'monthly' | 'campaign',
+): Promise<BudgetRecommendation | null> => {
+  const qs = mode ? `?mode=${mode}` : ''
+  const response = await apiFetch(
+    `/api/tenants/${tenantId}/budget-tracker/${campaignId}/recommendation${qs}`,
+    { method: 'POST', headers: createSessionHeaders(sessionId) },
   )
   if (!response.ok) return null
   return response.json()

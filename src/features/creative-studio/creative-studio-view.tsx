@@ -77,7 +77,7 @@ export function CreativeStudioView({ onBack }: Props) {
                 <Layers className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white leading-none">Creative Studio</h1>
+                <h1 className="text-lg font-bold text-white leading-none">Mia Create</h1>
                 <p className="text-xs text-slate-400 mt-0.5">AI Image & Video Generation</p>
               </div>
             </div>
