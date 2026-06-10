@@ -22,6 +22,7 @@ const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-pag
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
+const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
 
@@ -177,6 +178,17 @@ export const AppRoutes = ({
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
                 <ReportsPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/budget-tracker"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <BudgetTrackerPage />
               </ErrorBoundary>
             </ProtectedRoute>
           }

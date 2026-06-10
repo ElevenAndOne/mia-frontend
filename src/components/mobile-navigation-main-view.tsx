@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { Icon } from './icon'
 import type { SegmentedControlOption } from './segmented-control'
 import { SegmentedControl } from './segmented-control'
@@ -40,6 +41,7 @@ export const MobileNavigationMainView = ({
   recentConversations = [],
   onRecentChatsClick,
 }: MobileNavigationMainViewProps) => {
+  const navigate = useNavigate()
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -102,6 +104,17 @@ export const MobileNavigationMainView = ({
             <span className="paragraph-sm">Reports</span>
           </button>
         )}
+
+        <button
+          onClick={() => {
+            onClose()
+            navigate('/budget-tracker')
+          }}
+          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+        >
+          <Icon.wallet_01 size={20} className="text-tertiary" />
+          <span className="paragraph-sm">Budget Tracker</span>
+        </button>
 
         {onWorkspaceSettings && (
           <button

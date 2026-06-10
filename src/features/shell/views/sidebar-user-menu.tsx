@@ -304,6 +304,19 @@ export const SidebarUserMenu = ({
                   <span>Reports</span>
                 </button>
               )}
+              {/* Self-navigates (no injected handler) so it appears on every page
+                  without threading a prop through every AppShell consumer. */}
+              <button
+                onClick={() => {
+                  handleClose()
+                  navigate('/budget-tracker')
+                }}
+                className="w-full px-4 py-2.5 text-left paragraph-sm flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+                role="menuitem"
+              >
+                <Icon.wallet_01 size={18} className="text-tertiary" />
+                <span>Budget Tracker</span>
+              </button>
               {onWorkspaceSettings && (
                 <button
                   onClick={() => {
