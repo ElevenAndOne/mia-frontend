@@ -89,13 +89,15 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         )}
       </Card>
 
-      <Card label="Projected Close">
+      <Card label={totals.pacing_state === 'complete' ? 'Final Spend' : 'Projected Close'}>
         {pending ? (
           <Loading />
         ) : (
           <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
         )}
-        <p className="paragraph-xs text-tertiary mt-1">linear burn rate</p>
+        <p className="paragraph-xs text-tertiary mt-1">
+          {totals.pacing_state === 'complete' ? 'actual at close' : 'linear burn rate'}
+        </p>
       </Card>
     </div>
   )
