@@ -13,6 +13,7 @@ export const fetchBudgetSnapshot = async (
   tenantId: string,
   campaignId: string,
   query: BudgetQuery = {},
+  signal?: AbortSignal,
 ): Promise<BudgetSnapshot | null> => {
   const { include_spend, ...rest } = query
   const params = new URLSearchParams(
@@ -22,7 +23,7 @@ export const fetchBudgetSnapshot = async (
   const qs = params.toString()
   const response = await apiFetch(
     `/api/tenants/${tenantId}/budget-tracker/${campaignId}${qs ? `?${qs}` : ''}`,
-    { headers: createSessionHeaders(sessionId) },
+    { headers: createSessionHeaders(sessionId), signal },
   )
   if (!response.ok) return null
   return response.json()

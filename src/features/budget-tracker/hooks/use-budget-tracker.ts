@@ -14,6 +14,7 @@ export const useBudgetTracker = () => {
   const [snapshot, setSnapshot] = useState<BudgetSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [spendError, setSpendError] = useState(false)
 
   // Recommendation is expensive (optimizer + Claude, ~15-30s) → lazy, on demand.
   const [recommendation, setRecommendation] = useState<BudgetRecommendation | null>(null)
@@ -37,36 +38,61 @@ export const useBudgetTracker = () => {
     }
   }, [sessionId, tenantId])
 
+  // Cancels the in-flight spend fetch when the campaign/mode changes or the user leaves
+  // the page — otherwise a slow (~50s) prod fetch keeps running server-side and piles up.
+  const abortRef = useRef<AbortController | null>(null)
+
   const load = useCallback(async () => {
     if (!sessionId || !tenantId || !campaignId) return
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    const { signal } = ctrl
     setLoading(true)
     setError(null)
-    try {
-      // Phase A — instant: allocations/committed/flexible from the DB (skips the slow
-      // spend fetch) so the page paints immediately.
-      const fast = await fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
-        mode,
-        display_currency: 'USD',
-        include_spend: false,
-      })
-      if (fast) setSnapshot(fast)
-      else setError('Could not load budget data for this campaign.')
-      setLoading(false)
+    setSpendError(false)
 
-      // Phase B — fill in live spend (cached → fast; cold → ~15s, but cards already show).
-      const full = await fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
-        mode,
-        display_currency: 'USD',
-      })
-      if (full) setSnapshot(full)
+    // Phase A — instant: allocations/committed/flexible from the DB (skips the slow
+    // spend fetch) so the page paints immediately.
+    let fast: BudgetSnapshot | null = null
+    try {
+      fast = await fetchBudgetSnapshot(
+        sessionId, tenantId, campaignId, { mode, display_currency: 'USD', include_spend: false }, signal,
+      )
     } catch {
+      fast = null
+    }
+    if (signal.aborted) return
+    if (fast) setSnapshot(fast)
+    else {
       setError('Could not load budget data for this campaign.')
       setLoading(false)
+      return
+    }
+    setLoading(false)
+
+    // Phase B — fill in live spend. On failure/timeout, clear the pending state so spend
+    // shows "—" with a retry, rather than spinning on "…" forever.
+    try {
+      const full = await fetchBudgetSnapshot(
+        sessionId, tenantId, campaignId, { mode, display_currency: 'USD' }, signal,
+      )
+      if (signal.aborted) return
+      if (full) setSnapshot(full)
+      else {
+        setSpendError(true)
+        setSnapshot((prev) => (prev ? { ...prev, spend_pending: false } : prev))
+      }
+    } catch {
+      if (signal.aborted) return
+      setSpendError(true)
+      setSnapshot((prev) => (prev ? { ...prev, spend_pending: false } : prev))
     }
   }, [sessionId, tenantId, campaignId, mode])
 
   useEffect(() => {
     void load()
+    return () => abortRef.current?.abort()
   }, [load])
 
   // Recommendation is cleared when the campaign or view (mode) changes — it's scoped to both.
@@ -87,21 +113,6 @@ export const useBudgetTracker = () => {
     }
   }, [sessionId, tenantId, campaignId, mode])
 
-  // Warm the OTHER mode's cache in the background after the current view loads, so
-  // switching Monthly ⇄ Whole-campaign hits a warm cache instead of a cold ~15s fetch.
-  const prewarmedRef = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    if (!snapshot || !sessionId || !tenantId || !campaignId) return
-    const other = mode === 'monthly' ? 'campaign' : 'monthly'
-    const key = `${campaignId}:${other}`
-    if (prewarmedRef.current.has(key)) return
-    prewarmedRef.current.add(key)
-    void fetchBudgetSnapshot(sessionId, tenantId, campaignId, {
-      mode: other,
-      display_currency: 'USD',
-    })
-  }, [snapshot, sessionId, tenantId, campaignId, mode])
-
   return {
     campaigns,
     campaignId,
@@ -111,6 +122,7 @@ export const useBudgetTracker = () => {
     snapshot,
     loading,
     error,
+    spendError,
     reload: load,
     recommendation,
     recLoading,

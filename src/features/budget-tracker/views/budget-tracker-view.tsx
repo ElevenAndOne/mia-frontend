@@ -25,6 +25,8 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
     snapshot,
     loading,
     error,
+    spendError,
+    reload,
     recommendation,
     recLoading,
     loadRecommendation,
@@ -59,6 +61,14 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
             </select>
           )}
           <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
+          {spendError && (
+            <button
+              onClick={reload}
+              className="paragraph-xs text-utility-warning-500 hover:underline"
+            >
+              Live spend couldn’t load — retry
+            </button>
+          )}
           {snapshot && (
             <span className="paragraph-xs text-tertiary ml-auto text-right">
               {snapshot.window.label} · {snapshot.window.start} → {snapshot.window.end}
