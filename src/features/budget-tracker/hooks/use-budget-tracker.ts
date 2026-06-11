@@ -105,19 +105,35 @@ export const useBudgetTracker = () => {
     setMonth(null)
   }, [campaignId])
 
-  // Recommendation is cleared when the campaign or view (mode) changes — it's scoped to both.
+  // Cache the recommendation per view (campaign + mode) so flipping between Monthly /
+  // Whole-campaign restores the already-generated one instantly instead of re-running the
+  // expensive optimizer. Only the manual refresh button re-fetches. Scoped to mode (not
+  // month) since the optimizer works on the monthly/total budget, identical across months.
+  const recCacheRef = useRef<Record<string, BudgetRecommendation>>({})
+  const recKey = campaignId ? `${campaignId}:${mode}` : null
+  // Track the live view so a slow fetch that resolves after a view-flip doesn't land on
+  // the wrong view (it still gets cached for when the user flips back).
+  const recKeyRef = useRef(recKey)
+  recKeyRef.current = recKey
+
+  // On view change, show the cached recommendation for this view (or nothing if none yet).
   useEffect(() => {
-    setRecommendation(null)
-  }, [campaignId, mode])
+    setRecommendation(recKey ? (recCacheRef.current[recKey] ?? null) : null)
+  }, [recKey])
 
   const loadRecommendation = useCallback(async () => {
     if (!sessionId || !tenantId || !campaignId) return
+    const key = `${campaignId}:${mode}`
     setRecLoading(true)
     try {
-      const rec = await fetchRecommendation(sessionId, tenantId, campaignId, mode)
-      setRecommendation(rec ?? { available: false, reason: 'Could not generate a recommendation.' })
+      const rec =
+        (await fetchRecommendation(sessionId, tenantId, campaignId, mode)) ??
+        ({ available: false, reason: 'Could not generate a recommendation.' } as BudgetRecommendation)
+      recCacheRef.current[key] = rec
+      if (recKeyRef.current === key) setRecommendation(rec)
     } catch {
-      setRecommendation({ available: false, reason: 'Could not generate a recommendation.' })
+      if (recKeyRef.current === key)
+        setRecommendation({ available: false, reason: 'Could not generate a recommendation.' })
     } finally {
       setRecLoading(false)
     }
