@@ -47,7 +47,7 @@ export const BudgetPlatformBreakdown = ({ snapshot }: Props) => {
             <th className="font-normal pb-3 text-right">Allocation</th>
             <th className="font-normal pb-3 text-right">Spent</th>
             <th className="font-normal pb-3 text-right">Remaining</th>
-            <th className="font-normal pb-3 pl-4 w-[28%]">Pacing</th>
+            <th className="font-normal pb-3 pl-4 w-[28%]">% Used</th>
           </tr>
         </thead>
         <tbody>

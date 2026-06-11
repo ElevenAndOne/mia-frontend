@@ -25,6 +25,7 @@ export interface BudgetTotals {
   pacing_pct: number | null
   pacing_state: PacingState
   projected_close: number | null
+  projected_capped?: boolean
 }
 
 export interface BudgetPlatformRow {

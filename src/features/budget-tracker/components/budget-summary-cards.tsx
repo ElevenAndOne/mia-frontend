@@ -82,8 +82,14 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
                 ? '—'
                 : `${totals.pacing_pct > 0 ? '+' : ''}${totals.pacing_pct}%`}
             </p>
-            <p className="paragraph-xs text-tertiary mt-1 capitalize">
-              {totals.pacing_state === 'on' ? 'on track' : `${totals.pacing_state} speed`}
+            <p className="paragraph-xs text-tertiary mt-1">
+              {totals.pacing_state === 'on'
+                ? 'on track vs schedule'
+                : totals.pacing_state === 'over'
+                  ? 'ahead of schedule'
+                  : totals.pacing_state === 'under'
+                    ? 'behind schedule'
+                    : `${totals.pacing_state} speed`}
             </p>
           </>
         )}
@@ -96,7 +102,11 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
           <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
         )}
         <p className="paragraph-xs text-tertiary mt-1">
-          {totals.pacing_state === 'complete' ? 'actual at close' : 'linear burn rate'}
+          {totals.pacing_state === 'complete'
+            ? 'actual at close'
+            : totals.projected_capped
+              ? 'capped at planned budget'
+              : 'linear burn rate'}
         </p>
       </Card>
     </div>
