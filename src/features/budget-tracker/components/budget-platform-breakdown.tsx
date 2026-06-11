@@ -23,6 +23,9 @@ const StateNote = ({ row, onLink }: { row: BudgetPlatformRow; onLink: () => void
       </button>
     )
   }
+  if (row.coming_soon) {
+    return <span className="paragraph-xs text-tertiary italic">tracking coming soon</span>
+  }
   return <span className="paragraph-xs text-tertiary">no live spend</span>
 }
 

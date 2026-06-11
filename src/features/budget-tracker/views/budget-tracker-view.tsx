@@ -15,6 +15,13 @@ const MODE_OPTIONS = [
   { label: 'Whole campaign', value: 'campaign' as const },
 ]
 
+// "2026-06" → "June 2026"
+const monthLabel = (ym: string): string => {
+  const [y, m] = ym.split('-').map(Number)
+  if (!y || !m) return ym
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
 export const BudgetTrackerView = ({ onBack }: Props) => {
   const {
     campaigns,
@@ -22,6 +29,8 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
     setCampaignId,
     mode,
     setMode,
+    month,
+    setMonth,
     snapshot,
     loading,
     error,
@@ -61,6 +70,21 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
             </select>
           )}
           <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={setMode} />
+          {mode === 'monthly' && (snapshot?.available_months?.length ?? 0) > 1 && (
+            <select
+              value={month ?? snapshot?.window.month ?? ''}
+              onChange={(e) => setMonth(e.target.value)}
+              className="paragraph-sm text-primary bg-secondary border border-tertiary rounded-lg px-3 py-2 outline-none cursor-pointer"
+              style={{ appearance: 'auto' }}
+              aria-label="Select month"
+            >
+              {snapshot!.available_months!.map((ym) => (
+                <option key={ym} value={ym}>
+                  {monthLabel(ym)}
+                </option>
+              ))}
+            </select>
+          )}
           {spendError && (
             <button
               onClick={reload}

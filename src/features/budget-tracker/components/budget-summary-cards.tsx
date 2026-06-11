@@ -26,6 +26,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
   const { totals, currency, fx } = snapshot
   const spentPct = totals.spent_pct ?? 0
   const pending = !!snapshot.spend_pending
+  // A complete window is either an ended campaign or a finished month within a live one.
+  const completeNote =
+    snapshot.ended || snapshot.window.mode === 'campaign' ? 'campaign ended' : 'month complete'
 
   return (
     <div className="flex flex-wrap gap-4">
@@ -70,7 +73,7 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         ) : totals.pacing_state === 'complete' ? (
           <>
             <p className="text-3xl font-semibold text-primary">{totals.spent_pct ?? 0}%</p>
-            <p className="paragraph-xs text-tertiary mt-1">of budget · campaign ended</p>
+            <p className="paragraph-xs text-tertiary mt-1">of budget · {completeNote}</p>
           </>
         ) : (
           <>

@@ -25,9 +25,11 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
   const { totals, currency } = snapshot
 
   // Instant pacing line from the snapshot (always shown).
+  const completeLabel =
+    snapshot.ended || snapshot.window.mode === 'campaign' ? 'Campaign finished' : 'Month complete'
   const pacingLine =
     totals.pacing_state === 'complete'
-      ? `Campaign finished — spent ${totals.spent_pct ?? 0}% of the budget.`
+      ? `${completeLabel} — spent ${totals.spent_pct ?? 0}% of the budget.`
       : totals.pacing_state === 'over'
         ? `Spend is pacing ahead of schedule (${totals.pacing_pct}% over).`
         : totals.pacing_state === 'under'
@@ -53,7 +55,14 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
 
       {/* Recommendation */}
       <div className="mt-4 pt-4 border-t border-tertiary/60 flex-1">
-        {recLoading ? (
+        {snapshot.window.complete ? (
+          // The viewed window is finished — a forward-looking reallocation isn't
+          // actionable. Mia's recommendations apply to active budgets only.
+          <p className="paragraph-xs text-tertiary">
+            This {snapshot.window.mode === 'monthly' ? 'month' : 'campaign'} is complete —
+            reallocation isn't applicable. Mia's recommendations apply to active budgets.
+          </p>
+        ) : recLoading ? (
           <div className="flex items-center gap-2 text-tertiary">
             <Spinner size="sm" variant="primary" />
             <span className="paragraph-xs">Running optimizer & analysing…</span>
@@ -67,6 +76,9 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
           </button>
         ) : !recommendation.available ? (
           <p className="paragraph-xs text-tertiary">{recommendation.reason}</p>
+        ) : recommendation.kind === 'single_channel' ? (
+          // One trackable paid channel — no mix to optimize. Pacing-only guidance.
+          <p className="paragraph-sm text-secondary">{recommendation.narrative}</p>
         ) : (
           <div className="space-y-3">
             {recommendation.optimization_score != null && (
@@ -80,7 +92,12 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
                 .filter((p) => Math.abs(p.delta) >= 1)
                 .map((p) => (
                   <div key={p.platform} className="flex items-center justify-between paragraph-xs">
-                    <span className="text-secondary">{p.label}</span>
+                    <span className="text-secondary">
+                      {p.label}
+                      {p.data_source === 'estimated' && (
+                        <span className="text-tertiary"> · est.</span>
+                      )}
+                    </span>
                     <span
                       className={
                         p.delta > 0 ? 'text-utility-success-500' : 'text-utility-error-500'
@@ -97,8 +114,17 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
                 ))}
             </div>
             <p className="paragraph-xs text-tertiary">
-              Optimal split for {formatMoney(recommendation.total_budget, recommendation.currency ?? currency)} by
-              observed channel efficiency.
+              Optimal split for {formatMoney(recommendation.total_budget, recommendation.currency ?? currency)} by{' '}
+              {recommendation.data_quality?.estimated?.length
+                ? 'observed data + industry estimates'
+                : 'observed channel efficiency'}
+              .
+              {recommendation.data_quality?.estimated?.length ? (
+                <>
+                  {' '}
+                  No live data yet for: {recommendation.data_quality.estimated.join(', ')}.
+                </>
+              ) : null}
             </p>
           </div>
         )}

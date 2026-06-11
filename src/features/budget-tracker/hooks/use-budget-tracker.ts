@@ -10,6 +10,8 @@ export const useBudgetTracker = () => {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const [mode, setMode] = useState<'monthly' | 'campaign'>('monthly')
+  // null = let the backend pick (current/clamped month); "YYYY-MM" = a specific month.
+  const [month, setMonth] = useState<string | null>(null)
 
   const [snapshot, setSnapshot] = useState<BudgetSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
@@ -54,10 +56,12 @@ export const useBudgetTracker = () => {
 
     // Phase A — instant: allocations/committed/flexible from the DB (skips the slow
     // spend fetch) so the page paints immediately.
+    const monthArg = mode === 'monthly' && month ? month : undefined
     let fast: BudgetSnapshot | null = null
     try {
       fast = await fetchBudgetSnapshot(
-        sessionId, tenantId, campaignId, { mode, display_currency: 'USD', include_spend: false }, signal,
+        sessionId, tenantId, campaignId,
+        { mode, month: monthArg, display_currency: 'USD', include_spend: false }, signal,
       )
     } catch {
       fast = null
@@ -75,7 +79,7 @@ export const useBudgetTracker = () => {
     // shows "—" with a retry, rather than spinning on "…" forever.
     try {
       const full = await fetchBudgetSnapshot(
-        sessionId, tenantId, campaignId, { mode, display_currency: 'USD' }, signal,
+        sessionId, tenantId, campaignId, { mode, month: monthArg, display_currency: 'USD' }, signal,
       )
       if (signal.aborted) return
       if (full) setSnapshot(full)
@@ -88,12 +92,18 @@ export const useBudgetTracker = () => {
       setSpendError(true)
       setSnapshot((prev) => (prev ? { ...prev, spend_pending: false } : prev))
     }
-  }, [sessionId, tenantId, campaignId, mode])
+  }, [sessionId, tenantId, campaignId, mode, month])
 
   useEffect(() => {
     void load()
     return () => abortRef.current?.abort()
   }, [load])
+
+  // A specific month doesn't carry across campaigns (different date ranges) — reset to
+  // the backend default whenever the campaign changes.
+  useEffect(() => {
+    setMonth(null)
+  }, [campaignId])
 
   // Recommendation is cleared when the campaign or view (mode) changes — it's scoped to both.
   useEffect(() => {
@@ -119,6 +129,8 @@ export const useBudgetTracker = () => {
     setCampaignId,
     mode,
     setMode,
+    month,
+    setMonth,
     snapshot,
     loading,
     error,

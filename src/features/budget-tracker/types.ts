@@ -5,7 +5,9 @@ export interface BudgetWindow {
   start: string
   end: string
   mode: 'monthly' | 'campaign'
+  month?: string | null // "YYYY-MM" of the resolved monthly window (null in campaign mode)
   label: string
+  complete?: boolean // window is fully in the past (finished month / ended campaign)
   elapsed_days: number
   total_days: number
 }
@@ -33,6 +35,7 @@ export interface BudgetPlatformRow {
   budget_period: 'monthly' | 'total' | 'mixed' | null
   flights: number
   is_paid: boolean
+  coming_soon?: boolean
   budget_period_mixed: boolean
   spend_available: boolean
   spend_pending?: boolean
@@ -59,6 +62,7 @@ export interface BudgetSnapshot {
   ended?: boolean
   spent_as_of?: string | null
   spend_pending?: boolean
+  available_months?: string[]
   window: BudgetWindow
   totals: BudgetTotals
   platforms: BudgetPlatformRow[]
@@ -72,16 +76,21 @@ export interface RecommendationPlatform {
   recommended: number
   delta: number
   direction: 'increase' | 'decrease' | 'hold'
+  data_source?: 'observed' | 'estimated'
 }
 
 export interface BudgetRecommendation {
   available: boolean
+  kind?: 'reallocation' | 'single_channel'
   reason?: string
   objective_type?: string
+  paid_channel_count?: number
+  paid_channel_label?: string | null
   total_budget?: number
   currency?: string
   optimization_score?: number | null
   platforms?: RecommendationPlatform[]
+  data_quality?: { observed: string[]; estimated: string[] }
   narrative?: string
   run_id?: string | null
   generated_at?: string
