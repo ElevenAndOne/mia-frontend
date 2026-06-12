@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type WheelEvent } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { useToast } from '../../contexts/toast-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { apiFetch } from '../../utils/api'
@@ -36,6 +37,12 @@ interface Asset {
   cta: string | null
   details: Record<string, unknown> | null
   sort_order: number
+  // Asset-level budget + flight dates. The channel total = SUM of its assets'
+  // budgets; null means "no budget" (e.g. organic) and is excluded from the sum.
+  budget: number | null
+  budget_period: string | null
+  start_date: string | null
+  end_date: string | null
 }
 
 interface LinkedCampaign {
@@ -158,6 +165,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   linkedin_organic: 'LinkedIn Organic',
   mailchimp: 'Mailchimp',
   meta_ads: 'Meta Ads',
+  offline_event: 'Offline Event',
   organic_social: 'Organic Social',
   packaging: 'Packaging',
   point_of_sale: 'Point of Sale',
@@ -195,6 +203,24 @@ function getDefaultPhaseIndex(campaign: CampaignDetail): number {
     }
   }
   return 0
+}
+
+// Runs an inline-edit save and only commits the optimistic UI update when the
+// server confirms it. On HTTP error or a network throw it surfaces a toast and
+// leaves state untouched — so a failed save can't silently "stick" on screen and
+// then vanish on the next reload.
+async function commitPatch(
+  doFetch: () => Promise<Response>,
+  onOk: () => void,
+  showToast: (variant: 'error', message: string) => void,
+) {
+  try {
+    const res = await doFetch()
+    if (res.ok) onOk()
+    else showToast('error', "Couldn't save your change — please try again.")
+  } catch {
+    showToast('error', "Couldn't save — check your connection and retry.")
+  }
 }
 
 // ── Inline edit primitives ─────────────────────────────────────────────────
@@ -455,25 +481,30 @@ function ChannelActionCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [assetsExpanded, setAssetsExpanded] = useState(false)
+  const { showToast } = useToast()
 
   const patch = async (fields: Record<string, unknown>) => {
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
-      method: 'PATCH',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    })
-    if (res.ok) onUpdate({ ...action, ...fields } as ChannelAction)
+    await commitPatch(
+      () => apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/channel_actions/${action.action_id}`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }),
+      () => onUpdate({ ...action, ...fields } as ChannelAction),
+      showToast,
+    )
   }
 
   const patchAsset = async (assetId: string, fields: Record<string, unknown>) => {
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/assets/${assetId}`, {
-      method: 'PATCH',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    })
-    if (res.ok) {
-      onUpdate({ ...action, assets: action.assets.map((a) => a.asset_id === assetId ? { ...a, ...fields } as Asset : a) })
-    }
+    await commitPatch(
+      () => apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/assets/${assetId}`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }),
+      () => onUpdate({ ...action, assets: action.assets.map((a) => a.asset_id === assetId ? { ...a, ...fields } as Asset : a) }),
+      showToast,
+    )
   }
 
   const deleteAsset = async (assetId: string) => {
@@ -493,7 +524,7 @@ function ChannelActionCard({
       const d = await res.json()
       onUpdate({
         ...action,
-        assets: [...action.assets, { asset_id: d.asset_id, asset_name: d.asset_name, asset_type: 'static', key_message: null, cta: null, details: {}, sort_order: action.assets.length }],
+        assets: [...action.assets, { asset_id: d.asset_id, asset_name: d.asset_name, asset_type: 'static', key_message: null, cta: null, details: {}, sort_order: action.assets.length, budget: null, budget_period: null, start_date: null, end_date: null }],
       })
       setAssetsExpanded(true)
     }
@@ -502,6 +533,14 @@ function ChannelActionCard({
   const label = PLATFORM_LABELS[action.channel] ?? action.channel
   const hasPicker = PICKER_CHANNELS.has(action.channel)
   const linked = action.linked_platform_campaigns ?? []
+
+  // Channel total = SUM of its assets' budgets. When any asset carries a budget the
+  // channel budget becomes the derived sum (read-only); otherwise the channel keeps a
+  // directly-editable budget (legacy + simple single-asset channels). Mirrors the
+  // backend's collect_allocations fallback exactly.
+  const assetBudgetItems = action.assets.filter((a) => a.budget != null)
+  const usesAssetBudgets = assetBudgetItems.length > 0
+  const assetBudgetTotal = assetBudgetItems.reduce((s, a) => s + Number(a.budget), 0)
 
   return (
     <div className="rounded-lg border border-tertiary overflow-hidden">
@@ -523,11 +562,15 @@ function ChannelActionCard({
         {/* Left: clickable expansion area */}
         <div className={`flex items-center gap-2 ${hasPicker ? 'pl-0' : 'pl-3'} pr-3 py-2.5 flex-1 cursor-pointer min-w-0`} onClick={() => setExpanded(!expanded)}>
           {!hasPicker && <span className="label-xs text-utility-brand-700 bg-utility-brand-100 px-2 py-0.5 rounded-full shrink-0">{label}</span>}
-          {action.budget != null && (
+          {usesAssetBudgets ? (
+            <span className="paragraph-xs text-tertiary shrink-0">
+              {formatBudget(assetBudgetTotal, budgetCurrency)} total
+            </span>
+          ) : action.budget != null ? (
             <span className="paragraph-xs text-tertiary shrink-0">
               {formatBudget(action.budget, budgetCurrency)}{action.budget_period === 'total' ? ' total' : '/mo'}
             </span>
-          )}
+          ) : null}
           {(action.start_date || action.end_date) && (
             <span className="paragraph-xs text-tertiary shrink-0">
               {formatDate(action.start_date)} – {formatDate(action.end_date)}
@@ -590,35 +633,42 @@ function ChannelActionCard({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Budget</p>
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  key={action.action_id + '-budget-' + (action.budget ?? '')}
-                  defaultValue={action.budget ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value ? parseFloat(e.target.value) : null
-                    if (v !== action.budget) {
-                      // Persist the dropdown's displayed default ("/mo") — it only shows
-                      // 'monthly' via `?? 'monthly'` and would otherwise save as NULL.
-                      patch(
-                        v != null && !action.budget_period
-                          ? { budget: v, budget_period: 'monthly' }
-                          : { budget: v },
-                      )
-                    }
-                  }}
-                  placeholder="Optional"
-                  className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
-                />
-                <select
-                  value={action.budget_period ?? 'monthly'}
-                  onChange={(e) => patch({ budget_period: e.target.value })}
-                  className="shrink-0 px-1.5 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none"
-                >
-                  <option value="monthly">/mo</option>
-                  <option value="total">total</option>
-                </select>
-              </div>
+              {usesAssetBudgets ? (
+                <div className="px-2 py-1 border border-tertiary rounded bg-secondary">
+                  <span className="text-xs text-secondary font-medium">{formatBudget(assetBudgetTotal, budgetCurrency)} total</span>
+                  <p className="paragraph-xs text-quaternary mt-0.5">Sum of {assetBudgetItems.length} asset{assetBudgetItems.length === 1 ? '' : 's'} · edit per asset below</p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    key={action.action_id + '-budget-' + (action.budget ?? '')}
+                    defaultValue={action.budget ?? ''}
+                    onBlur={(e) => {
+                      const v = e.target.value ? parseFloat(e.target.value) : null
+                      if (v !== action.budget) {
+                        // Persist the dropdown's displayed default ("/mo") — it only shows
+                        // 'monthly' via `?? 'monthly'` and would otherwise save as NULL.
+                        patch(
+                          v != null && !action.budget_period
+                            ? { budget: v, budget_period: 'monthly' }
+                            : { budget: v },
+                        )
+                      }
+                    }}
+                    placeholder="Optional"
+                    className="w-full px-2 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
+                  />
+                  <select
+                    value={action.budget_period ?? 'monthly'}
+                    onChange={(e) => patch({ budget_period: e.target.value })}
+                    className="shrink-0 px-1.5 py-1 border border-tertiary rounded text-xs bg-primary text-secondary outline-none"
+                  >
+                    <option value="monthly">/mo</option>
+                    <option value="total">total</option>
+                  </select>
+                </div>
+              )}
             </div>
             <div>
               <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Active dates</p>
@@ -669,7 +719,7 @@ function ChannelActionCard({
                           className="text-xs border border-tertiary rounded px-1.5 py-0.5 bg-primary text-tertiary"
                         >
                           <option value="">type</option>
-                          {['static','carousel','reel','animation','email','video','post_series','single_image','story','search_ad','responsive_search_ad','display_ad','pmax','document','text_ad'].map((t) => (
+                          {['static','carousel','reel','animation','email','video','post_series','single_image','story','search_ad','responsive_search_ad','display_ad','pmax','pdf','text_ad'].map((t) => (
                             <option key={t} value={t}>{t}</option>
                           ))}
                         </select>
@@ -694,6 +744,54 @@ function ChannelActionCard({
                       rows={2}
                       className="paragraph-xs text-tertiary"
                     />
+                    {/* Asset budget + flight dates — these roll up to the channel total */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="label-xs text-quaternary uppercase tracking-wide">Budget</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <input
+                            type="number"
+                            key={asset.asset_id + '-budget-' + (asset.budget ?? '')}
+                            defaultValue={asset.budget ?? ''}
+                            onBlur={(e) => {
+                              const v = e.target.value ? parseFloat(e.target.value) : null
+                              if (v !== asset.budget) {
+                                patchAsset(asset.asset_id, v != null && !asset.budget_period ? { budget: v, budget_period: 'total' } : { budget: v })
+                              }
+                            }}
+                            placeholder="—"
+                            className="w-full px-1.5 py-0.5 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                          />
+                          <select
+                            value={asset.budget_period ?? 'total'}
+                            onChange={(e) => patchAsset(asset.asset_id, { budget_period: e.target.value })}
+                            className="shrink-0 px-1 py-0.5 border border-tertiary rounded text-xs bg-primary text-secondary outline-none"
+                          >
+                            <option value="total">total</option>
+                            <option value="monthly">/mo</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="label-xs text-quaternary uppercase tracking-wide">Flight</span>
+                        <div className="space-y-1 mt-0.5">
+                          <input
+                            type="date"
+                            key={asset.asset_id + '-sd-' + (asset.start_date ?? '')}
+                            defaultValue={asset.start_date ?? ''}
+                            onChange={(e) => { if (e.target.value !== (asset.start_date ?? '')) patchAsset(asset.asset_id, { start_date: e.target.value || null }) }}
+                            className="w-full px-1.5 py-0.5 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
+                          />
+                          <input
+                            type="date"
+                            key={asset.asset_id + '-ed-' + (asset.end_date ?? '')}
+                            defaultValue={asset.end_date ?? ''}
+                            onChange={(e) => { if (e.target.value !== (asset.end_date ?? '')) patchAsset(asset.asset_id, { end_date: e.target.value || null }) }}
+                            className="w-full px-1.5 py-0.5 border border-tertiary rounded text-xs bg-primary text-secondary outline-none focus:border-utility-brand-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <span className="label-xs text-quaternary">Launch:</span>
                       <input
@@ -894,6 +992,7 @@ function PhaseDetail({
   const [addingChannel, setAddingChannel] = useState(false)
   const [newChannel, setNewChannel] = useState('')
   const [managingChannels, setManagingChannels] = useState(false)
+  const { showToast } = useToast()
 
   // Effective channel options: standard (not hidden) + custom entries
   const effectiveChannelOptions: [string, string][] = [
@@ -915,21 +1014,27 @@ function PhaseDetail({
   const suggestHubspotChannel = phaseHasLeadKpi && !phaseHasHubspot && hubspotLists.length > 0
 
   const patchPhase = async (fields: Partial<Phase>) => {
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/phases/${phase.phase_id}`, {
-      method: 'PATCH',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    })
-    if (res.ok) onPhaseUpdate({ ...phase, ...fields })
+    await commitPatch(
+      () => apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/phases/${phase.phase_id}`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }),
+      () => onPhaseUpdate({ ...phase, ...fields }),
+      showToast,
+    )
   }
 
   const patchKpi = async (kpiId: number, fields: Partial<KPI>) => {
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/kpis/${kpiId}`, {
-      method: 'PATCH',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    })
-    if (res.ok) onPhaseUpdate({ ...phase, kpis: phase.kpis.map((k) => k.kpi_id === kpiId ? { ...k, ...fields } : k) })
+    await commitPatch(
+      () => apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/kpis/${kpiId}`, {
+        method: 'PATCH',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }),
+      () => onPhaseUpdate({ ...phase, kpis: phase.kpis.map((k) => k.kpi_id === kpiId ? { ...k, ...fields } : k) }),
+      showToast,
+    )
   }
 
   const deleteKpi = async (kpiId: number) => {
@@ -990,7 +1095,16 @@ function PhaseDetail({
     <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-4">
       {/* Phase objective + strategy */}
       <div className="space-y-3">
-        <h3 className="label-md text-primary">{phase.phase_name} Phase</h3>
+        <h3 className="label-md text-primary flex items-center gap-1">
+          {/* Editable so non-RACE frameworks (Awareness/Consideration/…) aren't stuck
+              with hardcoded labels. Empty names are rejected (kept as-is). */}
+          <EditableText
+            value={phase.phase_name}
+            onSave={(v) => { if (v.trim() && v.trim() !== phase.phase_name) patchPhase({ phase_name: v.trim() }) }}
+            className="label-md text-primary"
+          />
+          <span>Phase</span>
+        </h3>
         <div>
           <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Objective</p>
           <EditableTextarea value={phase.objective ?? ''} onSave={(v) => patchPhase({ objective: v || null })} placeholder="Add phase objective..." rows={2} className="paragraph-sm text-secondary" />
@@ -1154,6 +1268,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const { sessionId, activeWorkspace, user } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const { isEnabled: isPluginEnabled } = usePlugins()
+  const { showToast } = useToast()
 
   // Inline chat (empty state)
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
@@ -1334,10 +1449,9 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
   const existingCampaignIdsRef = useRef<Set<string>>(new Set())
 
   // PDF upload (empty-state alternative to chat builder)
-  const [pdfStep, setPdfStep] = useState<'idle' | 'uploading' | 'reviewing' | 'importing'>('idle')
-  const [parsedCampaignData, setParsedCampaignData] = useState<Record<string, any> | null>(null)
-  const [pdfReviewName, setPdfReviewName] = useState('')
-  const [pdfReviewClient, setPdfReviewClient] = useState('')
+  // PDF brief upload routes straight into the Mia chat builder (handlePdfSelect);
+  // there is no separate inline "review/import" step.
+  const [pdfStep, setPdfStep] = useState<'idle' | 'uploading'>('idle')
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
   // Close campaign dropdown on outside click
@@ -1445,7 +1559,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
       setChatMessages([])
       setChatInput('')
       setPdfStep('idle')
-      setParsedCampaignData(null)
       setShowNewCampaignPanel(true)
       setDropdownOpen(false)
       return
@@ -1466,21 +1579,24 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
 
   const handlePatchCampaign = useCallback(async (fields: Record<string, unknown>) => {
     if (!sessionId || !tenantId || !campaign) return
-    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}`, {
-      method: 'PUT',
-      headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-    })
-    if (res.ok) {
-      const updated = { ...campaign, ...fields } as CampaignDetail
-      setCampaign(updated)
-      setCachedDetail(campaign.campaign_id, updated)
-      clearTrackerCache()
-      if ('status' in fields || 'is_primary' in fields || 'campaign_name' in fields) {
-        setCampaignList((prev) => prev.map((c) => c.campaign_id === campaign.campaign_id ? { ...c, ...fields } as CampaignSummary : c))
-      }
-    }
-  }, [sessionId, tenantId, campaign])
+    await commitPatch(
+      () => apiFetch(`/api/tenants/${tenantId}/campaigns/${campaign.campaign_id}`, {
+        method: 'PUT',
+        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      }),
+      () => {
+        const updated = { ...campaign, ...fields } as CampaignDetail
+        setCampaign(updated)
+        setCachedDetail(campaign.campaign_id, updated)
+        clearTrackerCache()
+        if ('status' in fields || 'is_primary' in fields || 'campaign_name' in fields) {
+          setCampaignList((prev) => prev.map((c) => c.campaign_id === campaign.campaign_id ? { ...c, ...fields } as CampaignSummary : c))
+        }
+      },
+      showToast,
+    )
+  }, [sessionId, tenantId, campaign, showToast])
 
   const handleLinkGuide = useCallback(async (guideId: string | null) => {
     if (!sessionId || !tenantId || !campaign) return
@@ -1838,41 +1954,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     }
   }, [sessionId, chatMessages, builderCampaignId, user, chatConversationId])
 
-  const handlePdfImport = useCallback(async () => {
-    if (!sessionId || !tenantId || !parsedCampaignData) return
-    setPdfStep('importing')
-    try {
-      const payload = {
-        ...parsedCampaignData,
-        campaign: { ...parsedCampaignData.campaign, campaign_name: pdfReviewName, client_name: pdfReviewClient },
-      }
-      const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/import`, {
-        method: 'POST',
-        headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.detail || 'Import failed')
-      }
-      const result = await res.json()
-      setPdfStep('idle')
-      setParsedCampaignData(null)
-      const listRes = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, { headers: { 'X-Session-ID': sessionId } })
-      if (listRes.ok) {
-        const list: CampaignSummary[] = await listRes.json()
-        setCampaignList(list)
-      }
-      if (result.campaign_id) {
-        await loadCampaignDetail(result.campaign_id)
-        if (tenantId) setCampaignMode(tenantId, result.campaign_id)
-      }
-      if (showNewCampaignPanel) setShowNewCampaignPanel(false)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Import failed')
-      setPdfStep('reviewing')
-    }
-  }, [sessionId, tenantId, parsedCampaignData, pdfReviewName, pdfReviewClient, loadCampaignDetail, showNewCampaignPanel])
 
   // ClickUp helpers
   const invokeClickUp = async (action: string, data: Record<string, string> = {}) => {
@@ -2010,84 +2091,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               <div className="flex flex-col items-center justify-center gap-3 py-20">
                 <Spinner />
                 <p className="paragraph-sm text-secondary">Parsing your campaign brief — this may take a minute...</p>
-              </div>
-            )}
-
-            {/* PDF review */}
-            {(pdfStep === 'reviewing' || pdfStep === 'importing') && parsedCampaignData && (
-              <div className="flex flex-col gap-4 px-1 py-2">
-                <div>
-                  <p className="label-md text-primary mb-1">Review parsed campaign</p>
-                  <p className="paragraph-sm text-tertiary">Check the details below — you can edit everything inline after import too.</p>
-                </div>
-                <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-3">
-                  <div>
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Campaign Name</p>
-                    <input
-                      value={pdfReviewName}
-                      onChange={(e) => setPdfReviewName(e.target.value)}
-                      className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary"
-                    />
-                  </div>
-                  <div>
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Client</p>
-                    <input
-                      value={pdfReviewClient}
-                      onChange={(e) => setPdfReviewClient(e.target.value)}
-                      className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary"
-                    />
-                  </div>
-                  {(parsedCampaignData.campaign?.start_date || parsedCampaignData.campaign?.budget_total) && (
-                    <div className="flex flex-wrap gap-4">
-                      {parsedCampaignData.campaign?.start_date && (
-                        <>
-                          <div>
-                            <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Start</p>
-                            <p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.start_date)}</p>
-                          </div>
-                          <div>
-                            <p className="label-xs text-quaternary uppercase tracking-wide mb-1">End</p>
-                            <p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.end_date)}</p>
-                          </div>
-                        </>
-                      )}
-                      {parsedCampaignData.campaign?.budget_total && (
-                        <div>
-                          <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Budget</p>
-                          <p className="paragraph-sm text-primary">{formatBudget(parsedCampaignData.campaign.budget_total, parsedCampaignData.campaign.budget_currency)}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {parsedCampaignData.phases?.length > 0 && (
-                  <div className="bg-secondary rounded-xl border border-tertiary p-4">
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Phases ({parsedCampaignData.phases.length})</p>
-                    {parsedCampaignData.phases.map((ph: Record<string, any>, i: number) => (
-                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-tertiary last:border-0">
-                        <span className="paragraph-sm text-primary">{ph.phase_name}</span>
-                        <span className="paragraph-xs text-tertiary">{ph.channel_actions?.length ?? 0} channels · {ph.kpis?.length ?? 0} KPIs</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handlePdfImport}
-                    disabled={pdfStep === 'importing' || !pdfReviewName.trim()}
-                    className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    {pdfStep === 'importing' && <Spinner size="sm" />}
-                    {pdfStep === 'importing' ? 'Importing...' : 'Import Campaign'}
-                  </button>
-                  <button
-                    onClick={() => { setPdfStep('idle'); setParsedCampaignData(null) }}
-                    disabled={pdfStep === 'importing'}
-                    className="px-4 py-3 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors disabled:opacity-40"
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
             )}
 
@@ -2262,7 +2265,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                     setBuilderSavedCampaign(null)
                     setBuilderCampaignId(null)
                     setPdfStep('idle')
-                    setParsedCampaignData(null)
                     setChatMessages([])
                     setChatConversationId(null)
                   }}
@@ -2283,51 +2285,6 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
               <div className="flex flex-col items-center justify-center gap-3 py-20">
                 <Spinner />
                 <p className="paragraph-sm text-secondary">Parsing your campaign brief — this may take a minute...</p>
-              </div>
-            )}
-            {(pdfStep === 'reviewing' || pdfStep === 'importing') && parsedCampaignData && (
-              <div className="flex flex-col gap-4 px-1 py-2">
-                <div className="bg-secondary rounded-xl border border-tertiary p-4 space-y-3">
-                  <div>
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Campaign Name</p>
-                    <input value={pdfReviewName} onChange={(e) => setPdfReviewName(e.target.value)} className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary" />
-                  </div>
-                  <div>
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Client</p>
-                    <input value={pdfReviewClient} onChange={(e) => setPdfReviewClient(e.target.value)} className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm focus:outline-none focus:ring-2 focus:ring-utility-info-500 bg-primary text-primary" />
-                  </div>
-                  {(parsedCampaignData.campaign?.start_date || parsedCampaignData.campaign?.budget_total) && (
-                    <div className="flex flex-wrap gap-4">
-                      {parsedCampaignData.campaign?.start_date && (
-                        <>
-                          <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">Start</p><p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.start_date)}</p></div>
-                          <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">End</p><p className="paragraph-sm text-primary">{formatDate(parsedCampaignData.campaign.end_date)}</p></div>
-                        </>
-                      )}
-                      {parsedCampaignData.campaign?.budget_total && (
-                        <div><p className="label-xs text-quaternary uppercase tracking-wide mb-1">Budget</p><p className="paragraph-sm text-primary">{formatBudget(parsedCampaignData.campaign.budget_total, parsedCampaignData.campaign.budget_currency)}</p></div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {parsedCampaignData.phases?.length > 0 && (
-                  <div className="bg-secondary rounded-xl border border-tertiary p-4">
-                    <p className="label-xs text-quaternary uppercase tracking-wide mb-2">Phases ({parsedCampaignData.phases.length})</p>
-                    {parsedCampaignData.phases.map((ph: Record<string, any>, i: number) => (
-                      <div key={i} className="flex items-center justify-between py-1.5 border-b border-tertiary last:border-0">
-                        <span className="paragraph-sm text-primary">{ph.phase_name}</span>
-                        <span className="paragraph-xs text-tertiary">{ph.channel_actions?.length ?? 0} channels · {ph.kpis?.length ?? 0} KPIs</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <button onClick={handlePdfImport} disabled={pdfStep === 'importing' || !pdfReviewName.trim()} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-full subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
-                    {pdfStep === 'importing' && <Spinner size="sm" />}
-                    {pdfStep === 'importing' ? 'Importing...' : 'Import Campaign'}
-                  </button>
-                  <button onClick={() => { setPdfStep('idle'); setParsedCampaignData(null) }} disabled={pdfStep === 'importing'} className="px-4 py-3 border border-primary rounded-full paragraph-sm text-secondary hover:bg-secondary transition-colors disabled:opacity-40">Cancel</button>
-                </div>
               </div>
             )}
             {pdfStep === 'idle' && (
@@ -2521,15 +2478,17 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                 <div className="flex items-center gap-1.5">
                   <input
                     type="date"
+                    key={'camp-sd-' + (campaign.start_date ?? '')}
                     defaultValue={campaign.start_date ?? ''}
-                    onBlur={(e) => e.target.value && handlePatchCampaign({ start_date: e.target.value })}
+                    onChange={(e) => { if (e.target.value && e.target.value !== (campaign.start_date ?? '')) handlePatchCampaign({ start_date: e.target.value }) }}
                     className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer"
                   />
                   <span className="paragraph-xs text-quaternary">→</span>
                   <input
                     type="date"
+                    key={'camp-ed-' + (campaign.end_date ?? '')}
                     defaultValue={campaign.end_date ?? ''}
-                    onBlur={(e) => e.target.value && handlePatchCampaign({ end_date: e.target.value })}
+                    onChange={(e) => { if (e.target.value && e.target.value !== (campaign.end_date ?? '')) handlePatchCampaign({ end_date: e.target.value }) }}
                     className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer"
                   />
                 </div>
@@ -2544,6 +2503,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   <span className="paragraph-xs text-quaternary">Monthly:</span>
                   <input
                     type="number"
+                    key={'camp-bm-' + (campaign.budget_monthly ?? '')}
                     defaultValue={campaign.budget_monthly ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_monthly: e.target.value ? Number(e.target.value) : null })}
                     placeholder="—"
@@ -2552,6 +2512,7 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
                   <span className="paragraph-xs text-quaternary">· Total:</span>
                   <input
                     type="number"
+                    key={'camp-bt-' + (campaign.budget_total ?? '')}
                     defaultValue={campaign.budget_total ?? ''}
                     onBlur={(e) => handlePatchCampaign({ budget_total: e.target.value ? Number(e.target.value) : null })}
                     placeholder="—"

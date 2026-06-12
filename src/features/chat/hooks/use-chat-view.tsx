@@ -578,15 +578,43 @@ export const useChatView = () => {
               7000
             )
           }
+          // Auto-continue a multi-step sequence (e.g. items spanning several phases),
+          // same as the workflow path — otherwise the chain dies after the first confirm
+          // and the model is tempted to fabricate the remaining steps.
+          if (message.pendingAction?.continue_chain) {
+            const resultMsg =
+              ((result as Record<string, unknown>).message as string) || 'Action completed'
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                handleSubmitRef.current(
+                  `[Action completed: ${resultMsg}] Please continue with the next step.`,
+                  { hidden: true }
+                )
+              }
+            }, 500)
+          }
         } else {
+          // Synchronous action rejected by the backend — show its real reason.
           setMessages((prev) =>
-            prev.map((m) => (m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m))
+            prev.map((m) =>
+              m.id === messageId
+                ? { ...m, actionStatus: 'failed' as const, actionResult: result as Record<string, unknown> }
+                : m
+            )
           )
         }
       } catch (error) {
         logger.error('[CHAT] Action confirm error:', error)
         setMessages((prev) =>
-          prev.map((m) => (m.id === messageId ? { ...m, actionStatus: 'failed' as const } : m))
+          prev.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  actionStatus: 'failed' as const,
+                  actionResult: { error: error instanceof Error ? error.message : String(error) },
+                }
+              : m
+          )
         )
       }
     },

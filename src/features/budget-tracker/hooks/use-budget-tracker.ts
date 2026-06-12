@@ -85,7 +85,17 @@ export const useBudgetTracker = () => {
       if (full) setSnapshot(full)
       else {
         setSpendError(true)
-        setSnapshot((prev) => (prev ? { ...prev, spend_pending: false } : prev))
+        setSnapshot((prev) =>
+          prev
+            ? {
+                ...prev,
+                spend_pending: false,
+                // Clear per-row pending too — otherwise the platform rows pulse "…"
+                // forever even though the summary recovers and shows the retry.
+                platforms: prev.platforms.map((p) => ({ ...p, spend_pending: false })),
+              }
+            : prev,
+        )
       }
     } catch {
       if (signal.aborted) return
@@ -99,11 +109,14 @@ export const useBudgetTracker = () => {
     return () => abortRef.current?.abort()
   }, [load])
 
-  // A specific month doesn't carry across campaigns (different date ranges) — reset to
-  // the backend default whenever the campaign changes.
-  useEffect(() => {
+  // Exposed campaign setter: reset `month` in the SAME update as the campaign change.
+  // A specific month doesn't carry across campaigns (different date ranges); doing this
+  // in a trailing effect instead fired one phase-A fetch with the stale month and then a
+  // second after the reset landed (double fetch + a flash of the wrong window label).
+  const selectCampaign = useCallback((id: string | null) => {
     setMonth(null)
-  }, [campaignId])
+    setCampaignId(id)
+  }, [])
 
   // Cache the recommendation per view (campaign + mode) so flipping between Monthly /
   // Whole-campaign restores the already-generated one instantly instead of re-running the
@@ -142,7 +155,7 @@ export const useBudgetTracker = () => {
   return {
     campaigns,
     campaignId,
-    setCampaignId,
+    setCampaignId: selectCampaign,
     mode,
     setMode,
     month,

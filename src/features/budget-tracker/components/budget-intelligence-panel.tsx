@@ -30,11 +30,13 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
   const pacingLine =
     totals.pacing_state === 'complete'
       ? `${completeLabel} — spent ${totals.spent_pct ?? 0}% of the budget.`
-      : totals.pacing_state === 'over'
-        ? `Spend is pacing ahead of schedule (${totals.pacing_pct}% over).`
-        : totals.pacing_state === 'under'
-          ? `Spend is pacing behind schedule (${Math.abs(totals.pacing_pct ?? 0)}% under).`
-          : 'Spend is tracking on plan for this window.'
+      : totals.pacing_state === 'not_started'
+        ? "This window hasn't started yet — no spend to pace against."
+        : totals.pacing_state === 'over'
+          ? `Spend is pacing ahead of schedule (${totals.pacing_pct}% over).`
+          : totals.pacing_state === 'under'
+            ? `Spend is pacing behind schedule (${Math.abs(totals.pacing_pct ?? 0)}% under).`
+            : 'Spend is tracking on plan for this window.'
 
   return (
     <div className="rounded-2xl border border-utility-brand-500/40 bg-utility-brand-500/5 p-6 h-full flex flex-col">

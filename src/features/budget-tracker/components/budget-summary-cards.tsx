@@ -26,25 +26,36 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
   const { totals, currency, fx } = snapshot
   const spentPct = totals.spent_pct ?? 0
   const pending = !!snapshot.spend_pending
+  const isMonthly = snapshot.window.mode === 'monthly'
   // A complete window is either an ended campaign or a finished month within a live one.
   const completeNote =
     snapshot.ended || snapshot.window.mode === 'campaign' ? 'campaign ended' : 'month complete'
 
   return (
     <div className="flex flex-wrap gap-4">
-      <Card label="Total Allocation">
+      <Card label={isMonthly ? 'Campaign Budget' : 'Total Allocation'}>
         <p className="text-3xl font-semibold text-primary">{formatMoney(totals.total_allocation, currency)}</p>
         {fx && (
           <p className="paragraph-xs text-tertiary">≈ {formatUsd(fx.total_allocation_equiv)}</p>
         )}
         <div className="mt-2 space-y-0.5">
-          <p className="paragraph-xs text-secondary">
-            Allocated {formatMoney(totals.committed, currency)}
-          </p>
-          <p className={`paragraph-xs ${totals.over_allocated ? 'text-utility-error-500' : 'text-secondary'}`}>
-            Unallocated {formatMoney(totals.flexible, currency)}
-            {totals.over_allocated ? ' · over-allocated' : ''}
-          </p>
+          {isMonthly ? (
+            // Monthly view: "committed" is just this month's slice of the campaign budget,
+            // so the remainder is NOT "unallocated" (it's other months) — don't call it that.
+            <p className="paragraph-xs text-secondary">
+              Planned this month {formatMoney(totals.committed, currency)}
+            </p>
+          ) : (
+            <>
+              <p className="paragraph-xs text-secondary">
+                Allocated {formatMoney(totals.committed, currency)}
+              </p>
+              <p className={`paragraph-xs ${totals.over_allocated ? 'text-utility-error-500' : 'text-secondary'}`}>
+                Unallocated {formatMoney(totals.flexible, currency)}
+                {totals.over_allocated ? ' · over-allocated' : ''}
+              </p>
+            </>
+          )}
         </div>
       </Card>
 
@@ -89,7 +100,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
                   ? 'ahead of schedule'
                   : totals.pacing_state === 'under'
                     ? 'behind schedule'
-                    : `${totals.pacing_state} speed`}
+                    : totals.pacing_state === 'not_started'
+                      ? "hasn't started yet"
+                      : 'no pacing data'}
             </p>
           </>
         )}
@@ -104,9 +117,11 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         <p className="paragraph-xs text-tertiary mt-1">
           {totals.pacing_state === 'complete'
             ? 'actual at close'
-            : totals.projected_capped
-              ? 'capped at planned budget'
-              : 'linear burn rate'}
+            : totals.pacing_state === 'not_started'
+              ? 'no spend yet'
+              : totals.projected_capped
+                ? 'capped at planned budget'
+                : 'linear burn rate'}
         </p>
       </Card>
     </div>

@@ -69,7 +69,18 @@ export const confirmAction = async (
       params: action.params,
     }),
   })
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  if (!response.ok) {
+    // Surface the backend's real reason (FastAPI puts it in `detail`) instead of a
+    // generic failure — otherwise every rejection shows the same "Action failed" card.
+    let detail = `HTTP ${response.status}: ${response.statusText}`
+    try {
+      const body = await response.json()
+      detail = (body?.detail as string) || (body?.error as string) || detail
+    } catch {
+      /* non-JSON error body — keep the status line */
+    }
+    return { success: false, error: detail }
+  }
   return response.json()
 }
 

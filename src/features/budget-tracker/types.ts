@@ -12,7 +12,7 @@ export interface BudgetWindow {
   total_days: number
 }
 
-export type PacingState = 'over' | 'under' | 'on' | 'complete' | 'unknown'
+export type PacingState = 'over' | 'under' | 'on' | 'complete' | 'not_started' | 'unknown'
 
 export interface BudgetTotals {
   total_allocation: number

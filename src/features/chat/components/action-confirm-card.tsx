@@ -25,6 +25,10 @@ const CHANNEL_LABELS: Record<string, string> = {
   linkedin_ads: 'LinkedIn Ads',
   email: 'Email',
   website: 'Website',
+  offline_event: 'Offline Event',
+  packaging: 'Packaging',
+  point_of_sale: 'Point of Sale',
+  printing: 'Printing',
 }
 
 function CampaignActionPreview({ params }: { params: Record<string, unknown> }) {
