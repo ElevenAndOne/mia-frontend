@@ -99,6 +99,15 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
                       {p.data_source === 'estimated' && (
                         <span className="text-tertiary"> · est.</span>
                       )}
+                      {p.learning_phase_risk && (
+                        <span
+                          className="text-utility-warning-500"
+                          title="Large swing — apply gradually to avoid resetting this platform's learning phase"
+                        >
+                          {' '}
+                          · ⚠ learning phase
+                        </span>
+                      )}
                     </span>
                     <span
                       className={

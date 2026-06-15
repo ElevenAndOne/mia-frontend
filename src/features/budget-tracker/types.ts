@@ -78,6 +78,9 @@ export interface RecommendationPlatform {
   delta: number
   direction: 'increase' | 'decrease' | 'hold'
   data_source?: 'observed' | 'estimated'
+  // Set when this platform's recommended swing is large vs current — applying it all at once
+  // can reset the platform's learning phase (Meta Andromeda/Advantage+, Google).
+  learning_phase_risk?: boolean
 }
 
 export interface BudgetRecommendation {
@@ -93,6 +96,8 @@ export interface BudgetRecommendation {
   platforms?: RecommendationPlatform[]
   data_quality?: { observed: string[]; estimated: string[] }
   narrative?: string
+  // One-line "apply gradually" caution when any platform swing risks the learning phase.
+  learning_phase_note?: string
   run_id?: string | null
   generated_at?: string
 }
