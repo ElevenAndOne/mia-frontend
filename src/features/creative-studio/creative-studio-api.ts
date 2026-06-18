@@ -216,6 +216,208 @@ export const figmaApi = {
   },
 }
 
+// ── Mia Create — Design DNA + jobs/sets/feedback (session-authed REST) ──────────
+// These hit /api/mia-create/* directly (NOT the plugin-host invoke layer, NOT /api/figma/*
+// which strips X-Session-ID). They back the conversational Imagine tab.
+
+const miaBase = () => `/api/mia-create`
+
+const sessionHeaders = (sessionId: string) => ({ 'X-Session-ID': sessionId })
+
+export interface BrandColour {
+  name?: string | null
+  hex: string
+}
+
+export interface DnaSummary {
+  file_key: string
+  file_name?: string
+  palette_source?: 'named_styles' | 'frequency' | string
+  brand_palette: BrandColour[]
+  named_text_styles: { name?: string; fontFamily: string; fontSize?: number }[]
+  fonts_by_frequency?: { fontFamily: string; count?: number }[]
+  pages: { page: string; frame_count: number }[]
+  brand_pages?: string[]
+  image_fill_count?: number
+  cached_at?: string
+}
+
+export interface VisionScore {
+  on_brand: number
+  focal_point: number
+  headline_space: boolean
+  matches_brief: number
+  overall: number
+  notes?: string
+}
+
+export interface MiaAsset {
+  asset_id: string
+  cdn_url: string
+  media_type: 'image' | 'video'
+  filename?: string
+  job_id?: string | null
+  variant_group?: string | null
+  figma_file_key?: string | null
+  selected?: boolean | null
+  vision_score?: VisionScore | null
+  vision_description?: string | null
+  prompt?: string
+  model?: string
+  ratio?: string | null // set for placement-set images → shown as a size badge
+  created_at?: string
+}
+
+export interface MiaJob {
+  job_id: string
+  type: string
+  model: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  output_urls: string[]
+  original_prompt?: string
+  optimized_prompt?: string
+  error_message?: string
+  variant_group?: string | null
+  destination?: string | null
+  vision_descriptions?: { url: string; description: string }[]
+  created_at?: string
+  completed_at?: string
+}
+
+export interface SetDiversity {
+  diversity: number
+  near_duplicate_pairs: number
+  notes?: string
+}
+
+export interface MiaSet {
+  variant_group: string
+  destination?: string | null
+  set_diversity?: SetDiversity | null
+  complete: boolean
+  jobs: MiaJob[]
+  assets: MiaAsset[]
+}
+
+export const figmaDnaApi = {
+  // Cache-first extract; returns a compact DNA summary (palette/fonts/pages).
+  extract: async (sessionId: string, tenantId: string, fileUrlOrKey: string, campaignId?: string): Promise<DnaSummary> => {
+    const res = await apiFetch(`${miaBase()}/dna/extract`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, file_url_or_key: fileUrlOrKey, campaign_id: campaignId }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not read that Figma file' }))
+      throw new Error(err.detail || 'Could not read that Figma file')
+    }
+    return res.json()
+  },
+
+  refresh: async (sessionId: string, tenantId: string, fileUrlOrKey: string): Promise<DnaSummary> => {
+    const res = await apiFetch(`${miaBase()}/dna/refresh`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, file_url_or_key: fileUrlOrKey }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Refresh failed' }))
+      throw new Error(err.detail || 'Refresh failed')
+    }
+    return res.json()
+  },
+
+  // Cached full DNA for a file (pages/copy) — returns {cached:false} if nothing is cached.
+  get: async (sessionId: string, tenantId: string, fileKey: string): Promise<{ cached: boolean; dna?: Record<string, unknown> }> => {
+    const url = `${miaBase()}/dna?tenant_id=${encodeURIComponent(tenantId)}&file_key=${encodeURIComponent(fileKey)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { cached: false }
+    return res.json()
+  },
+}
+
+export const miaCreateApi = {
+  getJob: async (sessionId: string, tenantId: string, jobId: string): Promise<MiaJob> => {
+    const url = `${miaBase()}/jobs/${jobId}?tenant_id=${encodeURIComponent(tenantId)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) throw new Error(`Job poll failed (${res.status})`)
+    return res.json()
+  },
+
+  getSet: async (sessionId: string, tenantId: string, variantGroup: string): Promise<MiaSet> => {
+    const url = `${miaBase()}/sets/${variantGroup}?tenant_id=${encodeURIComponent(tenantId)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) throw new Error(`Set poll failed (${res.status})`)
+    return res.json()
+  },
+
+  listAssets: async (sessionId: string, tenantId: string, variantGroup?: string, limit = 50): Promise<{ assets: MiaAsset[] }> => {
+    let url = `${miaBase()}/assets?tenant_id=${encodeURIComponent(tenantId)}&limit=${limit}`
+    if (variantGroup) url += `&variant_group=${encodeURIComponent(variantGroup)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { assets: [] }
+    return res.json()
+  },
+
+  makePlacementSet: async (
+    sessionId: string,
+    tenantId: string,
+    body: {
+      asset_id?: string
+      sizes: string[]
+      headline?: string
+      subhead?: string
+      text_color?: string
+      text_position?: string
+    },
+  ): Promise<{ variant_group: string; used_fallback_font: boolean; assets: MiaAsset[] }> => {
+    const res = await apiFetch(`${miaBase()}/placement-set`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, ...body }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Placement set failed' }))
+      throw new Error(err.detail || 'Placement set failed')
+    }
+    return res.json()
+  },
+
+  uploadReference: async (
+    sessionId: string,
+    tenantId: string,
+    file: File,
+  ): Promise<{ asset_id: string; cdn_url: string }> => {
+    const form = new FormData()
+    form.append('tenant_id', tenantId)
+    form.append('file', file)
+    const res = await apiFetch(`${miaBase()}/upload-reference`, {
+      method: 'POST',
+      headers: sessionHeaders(sessionId), // no Content-Type — browser sets multipart boundary
+      body: form,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+      throw new Error(err.detail || 'Upload failed')
+    }
+    return res.json()
+  },
+
+  submitFeedback: async (
+    sessionId: string,
+    tenantId: string,
+    body: { asset_id: string; job_id?: string; rating?: number; tags?: string[]; note?: string },
+  ): Promise<{ ok: boolean; feedback_id?: string }> => {
+    const res = await apiFetch(`${miaBase()}/feedback`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, ...body }),
+    })
+    if (!res.ok) return { ok: false }
+    return res.json()
+  },
+}
+
 // ── Creative Intelligence (Phase 4) ─────────────────────────────────────────────
 
 export interface IntelligenceStatus {

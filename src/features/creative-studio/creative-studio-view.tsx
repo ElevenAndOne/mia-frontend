@@ -6,6 +6,7 @@ import { AnimatedBackground } from './creative-studio-shared'
 
 import CreateTab from './create-tab'
 import ImagineTab from './imagine-tab'
+import ImagineChat from './imagine-chat'
 import LibraryTab from './library-tab'
 
 type Tab = 'create' | 'imagine' | 'library'
@@ -29,6 +30,7 @@ export function CreativeStudioView({ onBack }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('create')
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(new Set<Tab>(['create']))
   const [variantSeed, setVariantSeed] = useState<VariantSeed | null>(null)
+  const [imagineMode, setImagineMode] = useState<'chat' | 'classic'>('chat')
   const { sessionId, activeWorkspace } = useSession()
 
   const tenantId = activeWorkspace?.tenant_id ?? ''
@@ -115,12 +117,39 @@ export function CreativeStudioView({ onBack }: Props) {
           </div>
           {mountedTabs.has('imagine') && (
             <div className={activeTab !== 'imagine' ? 'hidden' : ''}>
-              <ImagineTab
-                tenantId={tenantId}
-                sessionId={sid}
-                variantSeed={variantSeed}
-                onClearVariantSeed={() => setVariantSeed(null)}
-              />
+              <div className="flex items-center gap-1 bg-slate-900/80 rounded-lg p-1 w-fit mb-3">
+                <button
+                  onClick={() => setImagineMode('chat')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    imagineMode === 'chat' ? 'bg-purple-500/30 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Chat with Mia
+                </button>
+                <button
+                  onClick={() => setImagineMode('classic')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    imagineMode === 'classic' ? 'bg-purple-500/30 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Classic
+                </button>
+              </div>
+              {imagineMode === 'chat' ? (
+                <ImagineChat
+                  tenantId={tenantId}
+                  sessionId={sid}
+                  variantSeed={variantSeed}
+                  onClearVariantSeed={() => setVariantSeed(null)}
+                />
+              ) : (
+                <ImagineTab
+                  tenantId={tenantId}
+                  sessionId={sid}
+                  variantSeed={variantSeed}
+                  onClearVariantSeed={() => setVariantSeed(null)}
+                />
+              )}
             </div>
           )}
           {mountedTabs.has('library') && (
