@@ -137,6 +137,18 @@ const queryClient = new QueryClient({
   },
 })
 
+// Server-side PDF print route: seed the session from the URL param BEFORE the app boots
+// so the auth gate doesn't redirect the headless browser to the login screen.
+try {
+  const _printParams = new URLSearchParams(window.location.search)
+  const _sid = _printParams.get('sid')
+  if (window.location.pathname === '/report-print' && _sid) {
+    localStorage.setItem('mia_session_id', _sid)
+  }
+} catch {
+  /* ignore */
+}
+
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Root element not found')
 

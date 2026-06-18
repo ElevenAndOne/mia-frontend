@@ -160,6 +160,7 @@ export interface ReportTopPaidAd {
   conversions: number
   top_metric_label: string
   post_url: string | null
+  why_it_worked?: string
 }
 
 export interface AbTest {

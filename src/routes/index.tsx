@@ -22,6 +22,7 @@ const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-pag
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
+const ReportPrintPage = lazy(() => import('../features/reports/report-print-page'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
@@ -180,6 +181,17 @@ export const AppRoutes = ({
                 <ReportsPage />
               </ErrorBoundary>
             </ProtectedRoute>
+          }
+        />
+
+        {/* Standalone print route for server-side (Playwright) PDF rendering.
+            NOT protected — authenticates via the `sid` query param. */}
+        <Route
+          path="/report-print"
+          element={
+            <ErrorBoundary>
+              <ReportPrintPage />
+            </ErrorBoundary>
           }
         />
 
