@@ -497,6 +497,22 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
 
   useEffect(() => { loadGenerated() }, [tenantId, sessionId])
 
+  // Auto-refresh when the tab/window regains focus — generations happen in the Imagine tab
+  // or the Figma plugin, so returning to the Library should show them without a manual reload.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'hidden') return
+      loadGenerated()
+      if (activeSubTab === 'assets' && referenceLoaded) loadReference()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [tenantId, sessionId, activeSubTab, referenceLoaded])
+
   const handleSubTabChange = (tab: SubTab) => {
     setActiveSubTab(tab)
     if (tab === 'assets' && !referenceLoaded) loadReference()

@@ -96,17 +96,37 @@ export const creativeStudioApi = {
   getJob: (tenantId: string, sessionId: string, jobId: string) =>
     invoke(tenantId, sessionId, 'get_job', { job_id: jobId }) as Promise<GenerateJob>,
 
-  listAssets: (
+  // Direct /api/mia-create path (reads/writes the DB), NOT the plugin-host invoke layer —
+  // the invoke path 503s unless the plugin-host worker is running (it isn't in local dev).
+  listAssets: async (
     tenantId: string,
     sessionId: string,
     filters?: { media_type?: string; asset_type?: string; limit?: number },
-  ) =>
-    invoke(tenantId, sessionId, 'list_assets', filters ?? {}) as Promise<{
-      assets: CreativeAsset[]
-    }>,
+  ): Promise<{ assets: CreativeAsset[] }> => {
+    const params = new URLSearchParams({
+      tenant_id: tenantId,
+      limit: String(filters?.limit ?? 50),
+    })
+    if (filters?.asset_type) params.set('asset_type', filters.asset_type)
+    if (filters?.media_type) params.set('media_type', filters.media_type)
+    const res = await apiFetch(`/api/mia-create/assets?${params.toString()}`, {
+      headers: { 'X-Session-ID': sessionId },
+    })
+    if (!res.ok) return { assets: [] }
+    return res.json()
+  },
 
-  deleteAsset: (tenantId: string, sessionId: string, assetId: string) =>
-    invoke(tenantId, sessionId, 'delete_asset', { asset_id: assetId }),
+  deleteAsset: async (tenantId: string, sessionId: string, assetId: string) => {
+    const res = await apiFetch(
+      `/api/mia-create/assets/${assetId}?tenant_id=${encodeURIComponent(tenantId)}`,
+      { method: 'DELETE', headers: { 'X-Session-ID': sessionId } },
+    )
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Delete failed' }))
+      throw new Error(err.detail || 'Delete failed')
+    }
+    return res.json()
+  },
 
   linkCampaign: (
     tenantId: string,
