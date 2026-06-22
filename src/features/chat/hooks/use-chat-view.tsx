@@ -519,7 +519,7 @@ export const useChatView = () => {
                     m.id === messageId
                       ? {
                           ...m,
-                          actionStatus: (succeeded ? 'completed' : 'failed') as const,
+                          actionStatus: succeeded ? ('completed' as const) : ('failed' as const),
                           actionResult: status.result || undefined,
                         }
                       : m
