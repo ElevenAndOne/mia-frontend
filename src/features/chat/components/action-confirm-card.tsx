@@ -1,4 +1,6 @@
-import type { PendingAction } from '../services/chat-service'
+import { useEffect, useState } from 'react'
+import { useSession } from '../../../contexts/session-context'
+import { fetchMetaPreview, type MetaPreview, type PendingAction } from '../services/chat-service'
 
 interface ActionConfirmCardProps {
   action: PendingAction
@@ -106,6 +108,99 @@ function CampaignActionPreview({ params }: { params: Record<string, unknown> }) 
   )
 }
 
+function fmtMoney(v: number | null | undefined): string | null {
+  if (v === null || v === undefined) return null
+  return `R${v.toLocaleString()}`
+}
+
+/**
+ * Before→after diff for a proposed Meta write. Fetches live current state from
+ * /api/actions/meta/preview and shows only the fields that change. Best-effort:
+ * if the preview isn't available it renders nothing (the text summary stays).
+ */
+function MetaActionPreview({ action }: { action: PendingAction }) {
+  const { sessionId } = useSession()
+  const [preview, setPreview] = useState<MetaPreview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    if (!sessionId) {
+      setLoading(false)
+      return
+    }
+    fetchMetaPreview(sessionId, action)
+      .then((p) => active && setPreview(p))
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [sessionId, action])
+
+  if (loading) {
+    return (
+      <div className="bg-primary/50 rounded-lg p-3 mb-3 flex items-center gap-2 text-quaternary">
+        <div className="w-3 h-3 border-2 border-quaternary border-t-transparent rounded-full animate-spin" />
+        <span className="label-xs">Checking current state…</span>
+      </div>
+    )
+  }
+
+  if (!preview?.available || !preview.before || !preview.after) return null
+
+  const { before, after } = preview
+  const rows: Array<{ label: string; from: string; to: string }> = []
+  if (before.status !== after.status && (before.status || after.status)) {
+    rows.push({ label: 'Status', from: before.status || '—', to: after.status || '—' })
+  }
+  if (before.daily_budget !== after.daily_budget) {
+    rows.push({
+      label: 'Daily budget',
+      from: fmtMoney(before.daily_budget) || '—',
+      to: fmtMoney(after.daily_budget) || '—',
+    })
+  }
+  if (before.lifetime_budget !== after.lifetime_budget) {
+    rows.push({
+      label: 'Lifetime budget',
+      from: fmtMoney(before.lifetime_budget) || '—',
+      to: fmtMoney(after.lifetime_budget) || '—',
+    })
+  }
+  if (before.name !== after.name && (before.name || after.name)) {
+    rows.push({ label: 'Name', from: before.name || '—', to: after.name || '—' })
+  }
+  if (before.start_time !== after.start_time && (before.start_time || after.start_time)) {
+    rows.push({ label: 'Start', from: before.start_time || '—', to: after.start_time || '—' })
+  }
+  if (before.end_time !== after.end_time && (before.end_time || after.end_time)) {
+    rows.push({ label: 'End', from: before.end_time || '—', to: after.end_time || '—' })
+  }
+
+  return (
+    <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-1.5">
+      {(after.name || before.name) && (
+        <div className="paragraph-xs text-primary font-medium truncate">
+          {before.name || after.name}
+          {preview.level && <span className="text-quaternary font-normal"> ({preview.level})</span>}
+        </div>
+      )}
+      {rows.length > 0 ? (
+        rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="label-xs text-quaternary w-24 flex-shrink-0">{r.label}</span>
+            <span className="label-xs text-tertiary line-through">{r.from}</span>
+            <span className="text-quaternary">→</span>
+            <span className="label-xs text-primary font-semibold">{r.to}</span>
+          </div>
+        ))
+      ) : (
+        <span className="label-xs text-quaternary">No change detected from current state.</span>
+      )}
+    </div>
+  )
+}
+
 const statusConfig = {
   pending: {
     label: 'Review Action',
@@ -165,8 +260,15 @@ export const ActionConfirmCard = ({
 
           <p className="paragraph-sm text-primary font-medium mb-2">{action.summary}</p>
 
-          {/* Show params preview */}
-          {status === 'pending' && action.params && Object.keys(action.params).length > 0 && (
+          {/* Meta writes: live before→after diff */}
+          {status === 'pending' && action.action_type?.startsWith('meta_') && (
+            <MetaActionPreview action={action} />
+          )}
+
+          {/* Show params preview (non-Meta) */}
+          {status === 'pending'
+            && !action.action_type?.startsWith('meta_')
+            && action.params && Object.keys(action.params).length > 0 && (
             action.action_type === 'campaign_add_channel_action'
               ? <CampaignActionPreview params={action.params} />
               : (

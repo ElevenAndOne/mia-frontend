@@ -84,6 +84,46 @@ export const confirmAction = async (
   return response.json()
 }
 
+export interface MetaPreviewState {
+  id?: string
+  name?: string
+  status?: string
+  daily_budget?: number | null
+  lifetime_budget?: number | null
+  start_time?: string | null
+  end_time?: string | null
+}
+
+export interface MetaPreview {
+  available: boolean
+  level?: string
+  before?: MetaPreviewState
+  after?: MetaPreviewState
+  error?: string
+}
+
+/**
+ * Fetch the current vs projected state for a proposed Meta write, for the
+ * confirm card's before→after diff. Best-effort: returns {available:false} on
+ * any error so the card silently falls back to the text summary.
+ */
+export const fetchMetaPreview = async (
+  sessionId: string,
+  action: PendingAction
+): Promise<MetaPreview> => {
+  try {
+    const response = await apiFetch('/api/actions/meta/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+      body: JSON.stringify({ action_type: action.action_type, params: action.params }),
+    })
+    if (!response.ok) return { available: false }
+    return response.json()
+  } catch {
+    return { available: false }
+  }
+}
+
 export const pollActionStatus = async (
   sessionId: string,
   workflowId: string

@@ -506,20 +506,27 @@ export const useChatView = () => {
               const status = await pollActionStatus(sessionId, result.workflow_id!)
               if (status.status === 'completed') {
                 stopPolling()
-                const resultMsg = status.result?.message || 'Action completed'
+                // A Temporal workflow can COMPLETE while the underlying activity
+                // returned success:false (e.g. Meta rejected the write). Treat that
+                // as a failure so the card shows red, not a misleading green.
+                const succeeded =
+                  (status.result as Record<string, unknown> | undefined)?.success !== false
+                const resultMsg =
+                  (status.result?.message as string | undefined) ||
+                  (succeeded ? 'Action completed' : 'Action failed')
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === messageId
                       ? {
                           ...m,
-                          actionStatus: 'completed' as const,
+                          actionStatus: (succeeded ? 'completed' : 'failed') as const,
                           actionResult: status.result || undefined,
                         }
                       : m
                   )
                 )
-                // Auto-continue the chain: only fire when Claude flagged more steps pending
-                if (message.pendingAction?.continue_chain) {
+                // Auto-continue the chain: only on genuine success + more steps pending
+                if (succeeded && message.pendingAction?.continue_chain) {
                   setTimeout(() => {
                     if (isMountedRef.current) {
                       handleSubmitRef.current(

@@ -37,6 +37,11 @@ const buildPlatformStatus = (
       linked: Boolean(flags.linkedin_ads),
       last_synced: now,
     },
+    tiktok_ads: {
+      connected: Boolean(flags.tiktok_ads),
+      linked: Boolean(flags.tiktok_ads),
+      last_synced: now,
+    },
     airtable: {
       connected: Boolean(flags.airtable),
       linked: Boolean(flags.airtable),
@@ -94,6 +99,7 @@ const mergePlatformStatus = (
     hubspot: tenantOrAccount(accountData.hubspot_portal_id, tenantStatus.hubspot),
     mailchimp: tenantOrAccount(accountData.mailchimp_account_id, tenantStatus.mailchimp),
     linkedin_ads: tenantOrAccount(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
+    tiktok_ads: tenantOrAccount(accountData.tiktok_advertiser_id, tenantStatus.tiktok_ads),
     airtable: tenantOrAccount(accountData.airtable_base_id, tenantStatus.airtable),
     smartlead: tenantOrAccount(undefined, tenantStatus.smartlead),
   }
@@ -121,6 +127,7 @@ export const fetchTenantIntegrationStatus = async (
     hubspot: data.platform_status?.hubspot,
     mailchimp: data.platform_status?.mailchimp,
     linkedin_ads: data.platform_status?.linkedin_ads,
+    tiktok_ads: data.platform_status?.tiktok_ads,
     airtable: data.platform_status?.airtable,
     smartlead: data.platform_status?.smartlead,
   }
@@ -179,6 +186,7 @@ export const fetchAccountIntegrationStatus = async (
     hubspot: Boolean(currentAccountData?.hubspot_portal_id),
     mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
     linkedin_ads: Boolean(currentAccountData?.linkedin_ads_account_id),
+    tiktok_ads: Boolean(currentAccountData?.tiktok_advertiser_id),
     airtable: Boolean(currentAccountData?.airtable_base_id),
     smartlead: false,
   })

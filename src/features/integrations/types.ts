@@ -14,6 +14,7 @@ export interface PlatformStatus {
   hubspot: PlatformConnectionStatus
   mailchimp: PlatformConnectionStatus
   linkedin_ads: PlatformConnectionStatus
+  tiktok_ads: PlatformConnectionStatus
   airtable: PlatformConnectionStatus
   smartlead: PlatformConnectionStatus
 }
@@ -90,6 +91,7 @@ export interface AccountData {
   facebook_page_id?: string
   linkedin_ads_account_id?: string
   linkedin_organization_id?: string
+  tiktok_advertiser_id?: string
   airtable_base_id?: string
   linked_ga4_properties?: GA4Property[]
 }

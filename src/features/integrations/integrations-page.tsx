@@ -17,6 +17,7 @@ import BrevoAccountSelector from './selectors/brevo-account-selector'
 import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import LinkedInAccountSelector from './selectors/linkedin-account-selector'
+import TikTokAccountSelector from './selectors/tiktok-account-selector'
 import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
@@ -198,6 +199,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showFacebookPageSelector = openModal === 'facebook'
   const showGA4PropertySelector = openModal === 'ga4'
   const showLinkedInAccountSelector = openModal === 'linkedin_ads'
+  const showTikTokAccountSelector = openModal === 'tiktok_ads'
   const showAirtableBaseSelector = openModal === 'airtable'
   const showSmartleadModal = openModal === 'smartlead'
 
@@ -212,6 +214,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
   const setShowLinkedInAccountSelector = (show: boolean) =>
     setOpenModal(show ? 'linkedin_ads' : null)
+  const setShowTikTokAccountSelector = (show: boolean) =>
+    setOpenModal(show ? 'tiktok_ads' : null)
   const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
   const setShowSmartleadModal = (show: boolean) => setOpenModal(show ? 'smartlead' : null)
 
@@ -345,12 +349,17 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         autoSync: platformStatus?.smartlead?.connected ? false : undefined,
       },
       {
-        id: 'tiktok',
+        id: 'tiktok_ads',
         name: 'TikTok Ads',
         description: 'Short-form video advertising',
         icon: '/icons/tiktok.svg',
-        connected: false,
-        linked: false,
+        connected: platformStatus.tiktok_ads?.connected || false,
+        linked:
+          platformStatus.tiktok_ads?.linked ?? platformStatus.tiktok_ads?.connected ?? false,
+        lastSync: platformStatus.tiktok_ads?.connected
+          ? getTimeAgo(platformStatus.tiktok_ads.last_synced)
+          : undefined,
+        autoSync: platformStatus.tiktok_ads?.connected ? true : undefined,
       },
     ]
 
@@ -985,6 +994,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           authUrl = data.auth_url
         }
+      } else if (integrationId === 'tiktok_ads') {
+        const response = await apiFetch(
+          `/api/oauth/tiktok/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          authUrl = data.auth_url
+        }
       } else if (integrationId === 'airtable') {
         const response = await apiFetch(
           `/api/oauth/airtable/auth-url${tenantParam ? '?' + tenantParam : ''}`,
@@ -1115,6 +1133,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           if (integrationId === 'linkedin_ads') {
             logger.log('[LINKEDIN-OAUTH] OAuth complete - showing account selector')
             setTimeout(() => setShowLinkedInAccountSelector(true), 500)
+          }
+
+          // For TikTok, show advertiser selector after OAuth completes
+          if (integrationId === 'tiktok_ads') {
+            logger.log('[TIKTOK-OAUTH] OAuth complete - showing account selector')
+            setTimeout(() => setShowTikTokAccountSelector(true), 500)
           }
 
           // For Airtable, show base selector after OAuth completes
@@ -1264,6 +1288,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                   setShowMailchimpAccountSelector(true)
                                 else if (integration.id === 'linkedin_ads')
                                   setShowLinkedInAccountSelector(true)
+                                else if (integration.id === 'tiktok_ads')
+                                  setShowTikTokAccountSelector(true)
                                 else if (integration.id === 'airtable')
                                   setShowAirtableBaseSelector(true)
                               }}
@@ -1276,6 +1302,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                   'hubspot',
                                   'mailchimp',
                                   'linkedin_ads',
+                                  'tiktok_ads',
                                   'airtable',
                                 ].includes(integration.id)
                                   ? () => handleConnect(integration.id)
@@ -1347,20 +1374,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       </div>
                       <button
                         onClick={() => handleConnect(integration.id)}
-                        disabled={connectingId !== null || ['tiktok'].includes(integration.id)}
+                        disabled={connectingId !== null}
                         className={`px-4 py-2 rounded-lg subheading-sm shrink-0 ${
-                          ['tiktok'].includes(integration.id)
-                            ? 'bg-tertiary text-placeholder-subtle cursor-not-allowed'
-                            : connectingId === integration.id
-                              ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
-                              : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                          connectingId === integration.id
+                            ? 'bg-secondary-solid text-primary-onbrand cursor-wait'
+                            : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
                         }`}
                       >
-                        {['tiktok'].includes(integration.id)
-                          ? 'Soon'
-                          : connectingId === integration.id
-                            ? 'Connecting...'
-                            : 'Connect'}
+                        {connectingId === integration.id ? 'Connecting...' : 'Connect'}
                       </button>
                     </div>
                   </div>
@@ -2252,6 +2273,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           onSuccess={async () => {
             logger.log('[LINKEDIN-ACCOUNT-SELECTOR] Account linked successfully')
             setShowLinkedInAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentAccountData={currentAccountData}
+        />
+
+        {/* TikTok Account Selector Modal */}
+        <TikTokAccountSelector
+          isOpen={showTikTokAccountSelector}
+          onClose={() => setShowTikTokAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[TIKTOK-ACCOUNT-SELECTOR] Account linked successfully')
+            setShowTikTokAccountSelector(false)
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
