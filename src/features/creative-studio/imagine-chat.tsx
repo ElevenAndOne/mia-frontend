@@ -14,7 +14,7 @@ import {
   Sparkles, Layers, Check, X, Palette, Type, Target, Maximize2, Pencil, History, Plus, UploadCloud,
 } from 'lucide-react'
 import { sendChatMessageStreaming } from '../chat/services/chat-service'
-import { figmaDnaApi, miaCreateApi, type DnaSummary, type MiaAsset } from './creative-studio-api'
+import { figmaDnaApi, miaCreateApi, type DnaSummary, type MiaAsset, type PageFrame } from './creative-studio-api'
 
 interface Props {
   tenantId: string
@@ -268,6 +268,13 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
   const [dnaError, setDnaError] = useState<string | null>(null)
   const [selectedPage, setSelectedPage] = useState<string>(init.active?.selectedPage || '')
 
+  // Reference-frame picker: thumbnails of the selected page's frames; the user picks which one
+  // is the visual reference (replaces the backend's blind first-frame pick). selectedRefNode:
+  // null = auto (first frame), 'palette' = no reference (palette/DNA only), else a node_id.
+  const [pageFrames, setPageFrames] = useState<PageFrame[]>([])
+  const [framesLoading, setFramesLoading] = useState(false)
+  const [selectedRefNode, setSelectedRefNode] = useState<string | null>(null)
+
   // Generation controls
   const [destination, setDestination] = useState<Destination>('designer_hero')
   const [numVariants, setNumVariants] = useState(1)
@@ -496,6 +503,21 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     [sessionId, tenantId],
   )
 
+  // Load the selected page's frames as reference thumbnails; reset the pick when the page changes.
+  useEffect(() => {
+    setSelectedRefNode(null)
+    setPageFrames([])
+    if (!dna?.file_key || !selectedPage) return
+    let cancelled = false
+    setFramesLoading(true)
+    figmaDnaApi
+      .listPageFrames(sessionId, tenantId, dna.file_key, selectedPage)
+      .then(r => { if (!cancelled) setPageFrames(r.frames || []) })
+      .catch(() => { if (!cancelled) setPageFrames([]) })
+      .finally(() => { if (!cancelled) setFramesLoading(false) })
+    return () => { cancelled = true }
+  }, [dna?.file_key, selectedPage, sessionId, tenantId])
+
   const buildHint = (): string => {
     // This is a creative-only surface: steer Mia to generate the image via Mia Create rather
     // than route the message into campaign/copy planning. The user's visible bubble stays clean.
@@ -515,10 +537,16 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       )
     }
     // Selecting a page IS the intent to base the look on it — instruct deterministically so the
-    // user doesn't have to also say "base on the Emailers page".
-    const pageRefNudge = selectedPage
-      ? ` The "${selectedPage}" page is selected as the brand reference — set use_page_reference=true and page="${selectedPage}" so the output matches that page's look.`
-      : ''
+    // user doesn't have to also say "base on the Emailers page". The frame-picker refines which
+    // reference is used: a specific frame, or "palette only" (no visual reference).
+    let pageRefNudge = ''
+    if (selectedRefNode === 'palette') {
+      pageRefNudge = ` The user chose PALETTE ONLY — set use_page_reference=false (no visual reference frame); still use page="${selectedPage}" for voice/palette.`
+    } else if (selectedRefNode) {
+      pageRefNudge = ` The user picked a specific reference frame — set use_page_reference=true, page="${selectedPage}", and reference_node_id="${selectedRefNode}" so the output matches THAT frame's look.`
+    } else if (selectedPage) {
+      pageRefNudge = ` The "${selectedPage}" page is selected as the brand reference — set use_page_reference=true and page="${selectedPage}" so the output matches that page's look.`
+    }
     return (
       `\n\n[Use Mia Create to GENERATE the image(s) now by calling the generate_creative tool. ` +
       `Do NOT write a campaign brief, a strategy plan, or save a campaign.${pageRefNudge} ` +
@@ -729,6 +757,41 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
                     <option key={p.page} value={p.page}>{p.page} ({p.frame_count})</option>
                   ))}
                 </select>
+
+                {/* Reference-frame picker — choose the exact frame to style from, or palette-only */}
+                {selectedPage && (
+                  <div className="mt-2">
+                    <p className="text-[11px] text-slate-500 mb-1">
+                      Reference frame{framesLoading ? ' · loading…' : ''}
+                    </p>
+                    <button
+                      onClick={() => setSelectedRefNode(selectedRefNode === 'palette' ? null : 'palette')}
+                      title="Generate from palette & voice only — no visual reference frame"
+                      className={`text-[10px] px-2 py-1 rounded border mb-1.5 ${selectedRefNode === 'palette' ? 'border-purple-400 bg-purple-500/20 text-white' : 'border-slate-700 text-slate-300 hover:border-slate-600'}`}
+                    >
+                      Palette only
+                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pageFrames.filter(f => f.thumbnail_url).map(f => (
+                        <button
+                          key={f.node_id}
+                          onClick={() => setSelectedRefNode(selectedRefNode === f.node_id ? null : f.node_id)}
+                          title={f.name}
+                          className={`w-14 h-14 rounded overflow-hidden border-2 ${selectedRefNode === f.node_id ? 'border-purple-400' : 'border-transparent hover:border-slate-600'}`}
+                        >
+                          <img src={f.thumbnail_url!} alt={f.name} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-600 mt-1">
+                      {selectedRefNode === 'palette'
+                        ? 'No visual reference — palette & voice only.'
+                        : selectedRefNode
+                          ? 'Using your picked frame as the visual reference.'
+                          : 'Default: auto-picks the first frame. Pick one for control.'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

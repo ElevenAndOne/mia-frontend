@@ -354,6 +354,25 @@ export const figmaDnaApi = {
     if (!res.ok) return { cached: false }
     return res.json()
   },
+
+  // Render a page's frames as thumbnails so the user can pick a specific visual reference frame.
+  listPageFrames: async (
+    sessionId: string,
+    tenantId: string,
+    fileKey: string,
+    page: string,
+  ): Promise<{ frames: PageFrame[]; truncated: boolean }> => {
+    const url = `${miaBase()}/dna/frames?tenant_id=${encodeURIComponent(tenantId)}&file_key=${encodeURIComponent(fileKey)}&page=${encodeURIComponent(page)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { frames: [], truncated: false }
+    return res.json()
+  },
+}
+
+export interface PageFrame {
+  node_id: string
+  name: string
+  thumbnail_url: string | null
 }
 
 export const miaCreateApi = {
