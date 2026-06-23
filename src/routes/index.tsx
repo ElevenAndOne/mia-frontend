@@ -20,6 +20,7 @@ const OnboardingPage = lazy(() => import('../pages/onboarding-page'))
 const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
+const CampaignWorkspacePage = lazy(() => import('../pages/campaign-workspace-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
 const ReportPrintPage = lazy(() => import('../features/reports/report-print-page'))
@@ -155,6 +156,20 @@ export const AppRoutes = ({
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
                 <CampaignsPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* New multi-view campaign workspace (Overview / Calendar / Builder).
+            Deep-linkable per campaign + view; the old /campaigns page stays the
+            entry/empty-state until the workspace reaches full parity. */}
+        <Route
+          path="/campaigns/:campaignId/:view"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <CampaignWorkspacePage />
               </ErrorBoundary>
             </ProtectedRoute>
           }

@@ -1,0 +1,179 @@
+/* ===========================================================================
+   Campaign Workspace — scoped dark theme
+   ---------------------------------------------------------------------------
+   The /campaigns redesign is a deliberate dark surface that matches the design
+   artifacts exactly (campaign_builder/*.dc.html). Rather than hardcoding hex in
+   every component, we REMAP the app's semantic color tokens inside
+   `.campaign-workspace`. Any element in this subtree — including reused
+   primitives (SegmentedControl, inputs, EditableText, ChatMarkdown) — renders
+   in the artifact palette automatically, regardless of the app's light/dark
+   mode. A light variant can later be added as `.campaign-workspace.light`
+   without touching component code.
+
+   Custom properties set here win for the subtree because they are declared on
+   the workspace element itself (they don't fight `:root.dark`, which targets a
+   different element — the html root).
+   =========================================================================== */
+
+.campaign-workspace {
+  color-scheme: dark;
+
+  /* ---- Fonts (loaded in index.css) ------------------------------------- */
+  --cw-font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --cw-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* ---- Accent ---------------------------------------------------------- */
+  --cw-accent: #8b6dff;
+  --cw-accent-soft: color-mix(in srgb, #8b6dff 16%, transparent);
+
+  /* ---- Channel hues (keyed by channel key) ----------------------------- */
+  --cw-channel-organic_social: #8b6dff;
+  --cw-channel-meta_ads: #4f8cff;
+  --cw-channel-google_ads: #f0a82e;
+  --cw-channel-google_display: #f0a82e;
+  --cw-channel-email: #2bd4a4;
+  --cw-channel-brevo: #f0772e;
+  --cw-channel-mailchimp: #ffe01b;
+  --cw-channel-website: #e879c9;
+  --cw-channel-seo: #38bdf8;
+  --cw-channel-linkedin_ads: #3b82f6;
+  --cw-channel-linkedin_organic: #60a5fa;
+  --cw-channel-tiktok_ads: #ff4d67;
+  --cw-channel-tiktok_influencers: #ff8fa3;
+  --cw-channel-hubspot: #ff7a59;
+  --cw-channel-offline_event: #a78bfa;
+  --cw-channel-packaging: #fbbf24;
+  --cw-channel-point_of_sale: #34d399;
+  --cw-channel-printing: #c084fc;
+  --cw-channel-default: #9a9aa4;
+
+  /* ---- Asset-type hues ------------------------------------------------- */
+  --cw-type-carousel: #8b6dff;
+  --cw-type-animation: #4f8cff;
+  --cw-type-reel: #4f8cff;
+  --cw-type-video: #4f8cff;
+  --cw-type-static: #f0a82e;
+  --cw-type-single_image: #f0a82e;
+  --cw-type-email: #2bd4a4;
+  --cw-type-default: #9a9aa4;
+
+  /* ---- Phase / funnel-role hues (by sort_order) ------------------------ */
+  --cw-phase-0: #8b6dff;
+  --cw-phase-1: #4f8cff;
+  --cw-phase-2: #2bd4a4;
+  --cw-phase-3: #e879c9;
+
+  /* =====================================================================
+     Remap app semantic tokens → artifact palette (the signature look)
+     ===================================================================== */
+
+  /* Backgrounds */
+  --color-background-primary: #0b0b0e;
+  --color-background-primary-alt: #0b0b0e;
+  --color-background-primary-hover: #15151b;
+  --color-background-secondary: #141419;
+  --color-background-secondary-hover: #1d1d24;
+  --color-background-secondary-alt: #101015;
+  --color-background-secondary-subtle: #0d0d11;
+  --color-background-tertiary: #1c1c22;
+  --color-background-quaternary: #26262e;
+  --color-background-active: #15151b;
+  --color-background-disabled: #15151b;
+  --color-background-disabled-subtle: #101015;
+  --color-background-overlay: #000000;
+
+  /* Text */
+  --color-text-primary: #e9e9ee;
+  --color-text-secondary: #b8b8c0;
+  --color-text-tertiary: #9a9aa4;
+  --color-text-quaternary: #6c6c78;
+  --color-text-placeholder: #55555f;
+  --color-text-disable: #55555f;
+  --color-text-primary-onbrand: #ffffff;
+
+  /* Borders */
+  --color-border-primary: #2a2a32;
+  --color-border-secondary: #26262e;
+  --color-border-tertiary: #232329;
+  --color-border-disabled: #26262e;
+
+  /* Brand (accent purple #8b6dff) */
+  --color-background-brand-solid: #8b6dff;
+  --color-background-brand-solid-hover: #7a5cf0;
+  --color-background-brand-primary: color-mix(in srgb, #8b6dff 14%, transparent);
+  --color-background-brand-secondary: color-mix(in srgb, #8b6dff 20%, transparent);
+  --color-border-brand: #8b6dff;
+  --color-border-brand-alt: #8b6dff;
+  --color-text-brand-primary: #b59bff;
+  --color-text-brand-secondary: #b59bff;
+  --color-text-brand-teriary: #8b6dff;
+  --color-foreground-brand-primary: #8b6dff;
+
+  --color-utility-brand-100: color-mix(in srgb, #8b6dff 14%, transparent);
+  --color-utility-brand-200: color-mix(in srgb, #8b6dff 22%, transparent);
+  --color-utility-brand-300: color-mix(in srgb, #8b6dff 40%, transparent);
+  --color-utility-brand-400: #8b6dff;
+  --color-utility-brand-500: #8b6dff;
+  --color-utility-brand-600: #8b6dff;
+  --color-utility-brand-700: #b59bff;
+
+  /* =====================================================================
+     Re-assert dark values for status utilities so banners/badges look right
+     even when the surrounding app is in LIGHT mode. Mirrors dark-theme.css.
+     ===================================================================== */
+
+  --color-text-error: var(--color-red-400);
+  --color-text-warning: var(--color-orange-400);
+  --color-text-success: var(--color-green-400);
+  --color-foreground-error-primary: var(--color-red-500);
+  --color-foreground-warning-primary: var(--color-orange-500);
+  --color-foreground-success-primary: var(--color-green-500);
+
+  --color-background-error-primary: var(--color-red-950);
+  --color-background-error-secondary: var(--color-red-900);
+  --color-background-warning-primary: var(--color-orange-950);
+  --color-background-warning-secondary: var(--color-orange-900);
+  --color-background-success-primary: var(--color-green-950);
+  --color-background-success-secondary: var(--color-green-900);
+
+  --color-utility-success-50: color-mix(in srgb, #46d39a 12%, transparent);
+  --color-utility-success-100: color-mix(in srgb, #46d39a 13%, transparent);
+  --color-utility-success-200: color-mix(in srgb, #46d39a 26%, transparent);
+  --color-utility-success-300: var(--color-green-800);
+  --color-utility-success-600: var(--color-green-500);
+  --color-utility-success-700: #46d39a;
+
+  --color-utility-warning-50: color-mix(in srgb, #f0b429 12%, transparent);
+  --color-utility-warning-100: color-mix(in srgb, #f0b429 14%, transparent);
+  --color-utility-warning-200: color-mix(in srgb, #f0b429 28%, transparent);
+  --color-utility-warning-600: var(--color-orange-500);
+  --color-utility-warning-700: #f0b429;
+
+  --color-utility-error-50: color-mix(in srgb, #f87171 12%, transparent);
+  --color-utility-error-100: color-mix(in srgb, #f87171 14%, transparent);
+  --color-utility-error-200: color-mix(in srgb, #f87171 28%, transparent);
+  --color-utility-error-500: var(--color-red-500);
+  --color-utility-error-600: var(--color-red-500);
+  --color-utility-error-700: #f87171;
+
+  --color-utility-info-100: color-mix(in srgb, #4f8cff 14%, transparent);
+  --color-utility-info-500: var(--color-blue-500);
+  --color-utility-info-700: #6ea8ff;
+
+  /* Workspace base */
+  font-family: var(--cw-font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+/* Mono numerics helper */
+.campaign-workspace .cw-mono {
+  font-family: var(--cw-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Native date/number inputs: invert the picker glyph so it's visible on dark */
+.campaign-workspace input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
