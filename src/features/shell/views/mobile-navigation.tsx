@@ -45,7 +45,11 @@ export const MobileNavigation = ({
   useEffect(() => {
     if (isOpen && sessionId) {
       setView('main')
-      fetchRecentConversations(sessionId).then(setRecentConversations)
+      // Exclude campaign-builder conversations (skill: strategy_planning) — those
+      // live under "Past builds" on the Campaigns page, not general chat history.
+      fetchRecentConversations(sessionId, undefined, 'strategy_planning').then(
+        setRecentConversations
+      )
     }
   }, [isOpen, sessionId])
 

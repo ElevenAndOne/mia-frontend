@@ -248,12 +248,15 @@ export const sendChatMessageStreaming = async (
 
 export const fetchRecentConversations = async (
   sessionId: string,
-  skill?: string
+  skill?: string,
+  excludeSkill?: string
 ): Promise<RecentConversation[]> => {
   try {
-    const url = skill
-      ? `/api/chat/v2/conversations?skill=${encodeURIComponent(skill)}`
-      : '/api/chat/v2/conversations'
+    const qs = new URLSearchParams()
+    if (skill) qs.set('skill', skill)
+    if (excludeSkill) qs.set('exclude_skill', excludeSkill)
+    const query = qs.toString()
+    const url = query ? `/api/chat/v2/conversations?${query}` : '/api/chat/v2/conversations'
     const response = await apiFetch(url, {
       headers: { 'X-Session-ID': sessionId },
     })

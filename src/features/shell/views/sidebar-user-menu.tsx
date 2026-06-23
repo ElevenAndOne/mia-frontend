@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { useTheme } from '../../../contexts/theme-context'
 import { Popover } from '../../overlay'
@@ -55,7 +55,6 @@ export const SidebarUserMenu = ({
 }: SidebarUserMenuProps) => {
   const { isEnabled } = usePlugins()
   const navigate = useNavigate()
-  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState<MenuView>('main')
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -77,7 +76,11 @@ export const SidebarUserMenu = ({
 
   useEffect(() => {
     if (isOpen && sessionId) {
-      fetchRecentConversations(sessionId).then(setRecentConversations)
+      // Exclude campaign-builder conversations (skill: strategy_planning) — those
+      // belong to "Past builds" on the Campaigns page, not the general chat history.
+      fetchRecentConversations(sessionId, undefined, 'strategy_planning').then(
+        setRecentConversations
+      )
     }
   }, [isOpen, sessionId])
 
@@ -493,7 +496,11 @@ export const SidebarUserMenu = ({
                         <button
                           onClick={() => {
                             if (isRenaming) return
-                            navigate(location.pathname, {
+                            // Always route to the chat page (/home) — the chat view is
+                            // the only place that consumes loadConversationId, so opening
+                            // a recent chat must work from /campaigns, /reports, etc.,
+                            // not just from the page you happen to be on.
+                            navigate('/home', {
                               state: { loadConversationId: conv.conversation_id },
                             })
                             handleClose()
