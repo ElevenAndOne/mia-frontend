@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  ::selection{background:rgba(139,109,255,.3);}
+  .tl-dot{cursor:pointer;}
+  .tl-tip{opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
+  .tl-dot:hover{z-index:60;}
+  .tl-dot:hover .tl-tip{opacity:1;transform:translate(-50%,-10px);}
+  .tl-dot:hover .tl-core{transform:scale(1.5);}
+  .tl-core{transition:transform .15s;}
+  .ov-link{transition:color .15s,background .15s;}
+  .lane{transition:background .18s;}
+  .lane:hover{background:rgba(255,255,255,.018);}
+  .lane:hover .lane-name{color:#fff;}
+  .band{transition:filter .18s,transform .18s;cursor:default;}
+  .band:hover{filter:brightness(1.18);}
+  @keyframes nowpulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+  .now-bead{animation:nowpulse 2.4s ease-in-out infinite;}
+</style>
+</helmet>
+<div style="--acc:{{ accent }}; min-height:100vh; background:#0b0b0e; font-family:'Hanken Grotesk',system-ui,sans-serif; color:#e9e9ee; padding:30px 28px 90px;">
+  <div style="max-width:1280px; margin:0 auto;">
+
+    <!-- header -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:24px;">
+      <div style="display:flex; align-items:center; gap:13px;">
+        <div style="width:30px; height:30px; border-radius:8px; background:#df6a1f; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff;">DF</div>
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="color:#f0b429; font-size:14px;">&#9733;</span>
+            <span style="font-size:21px; font-weight:700; letter-spacing:-.02em;">{{ camp.name }}</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(52,211,153,.13); color:#46d39a; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid rgba(52,211,153,.25);"><span class="now-bead" style="width:6px;height:6px;border-radius:50%;background:#46d39a;"></span>{{ camp.status }}</span>
+          </div>
+          <div style="color:#8e8e98; font-size:13px; margin-top:3px;">{{ camp.brand }} &middot; {{ camp.start }} &rarr; {{ camp.end }} &middot; {{ camp.total }} total</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; background:#141419; border:1px solid #26262e; border-radius:10px; padding:3px;">
+        <a href="Campaign Overview.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Overview</a>
+        <span class="ov-link" style="font-size:12.5px; font-weight:600; color:#f4f4f6; background:var(--acc,#8b6dff); border-radius:7px; padding:7px 14px;">Timeline</span>
+        <a href="Campaign Builder.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Builder</a>
+      </div>
+    </div>
+
+    <!-- live stat strip -->
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px;">
+      <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+        <div style="background:#101015; border:1px solid #232329; border-radius:14px; padding:15px 17px;">
+          <div style="font-size:10.5px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.13em;">{{ s.label }}</div>
+          <div style="display:flex; align-items:baseline; gap:7px; margin-top:9px;">
+            <span style="font-size:25px; font-weight:800; font-family:'JetBrains Mono',monospace; letter-spacing:-.03em; color:{{ s.color }};">{{ s.value }}</span>
+            <span style="font-size:11.5px; color:#8e8e98;">{{ s.unit }}</span>
+          </div>
+          <div style="margin-top:11px; height:4px; border-radius:999px; background:#1c1c22; overflow:hidden;">
+            <div style="height:100%; width:{{ s.barW }}; background:{{ s.color }}; border-radius:999px;"></div>
+          </div>
+          <div style="font-size:11px; color:#7c7c86; margin-top:8px;">{{ s.sub }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- the single view -->
+    <div style="background:#101015; border:1px solid #232329; border-radius:18px; padding:22px 26px 18px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+        <div>
+          <div style="font-size:11px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.14em;">Campaign Timeline</div>
+          <div style="font-size:12.5px; color:#7c7c86; margin-top:3px;">Strategy, execution &amp; spend on one axis</div>
+        </div>
+        <div style="display:flex; gap:14px; align-items:center;">
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#8b6dff;"></span>Carousel</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#4f8cff;"></span>Animation</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#f0a82e;"></span>Static</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#2bd4a4;"></span>Email</span>
+        </div>
+      </div>
+
+      <!-- month axis -->
+      <div style="display:flex; align-items:center;">
+        <div style="width:168px; flex:none;"></div>
+        <div style="flex:1; position:relative; height:18px;">
+          <sc-for list="{{ months }}" as="m" hint-placeholder-count="6">
+            <div style="position:absolute; left:{{ m.left }}; width:{{ m.width }}; text-align:center; font-size:11px; font-weight:600; color:#7c7c86; text-transform:uppercase; letter-spacing:.08em;">{{ m.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- shared track stack -->
+      <div style="position:relative; margin-top:8px;">
+        <!-- gridlines + today playhead overlay -->
+        <div style="position:absolute; left:168px; right:0; top:0; bottom:0; pointer-events:none; z-index:1;">
+          <sc-for list="{{ gridlines }}" as="g" hint-placeholder-count="5">
+            <div style="position:absolute; left:{{ g.left }}; top:0; bottom:0; width:1px; background:#1c1c22;"></div>
+          </sc-for>
+          <div style="position:absolute; left:{{ todayLeft }}; top:0; bottom:18px; width:0; border-left:1.5px dashed rgba(139,109,255,.62); z-index:3;">
+            <div class="now-bead" style="position:absolute; top:-7px; left:-4px; width:8px; height:8px; border-radius:50%; background:var(--acc,#8b6dff); box-shadow:0 0 12px 2px rgba(139,109,255,.6);"></div>
+            <div style="position:absolute; top:-7px; left:9px; white-space:nowrap; font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; color:#b59bff;">TODAY &middot; {{ todayLabel }}</div>
+          </div>
+        </div>
+
+        <!-- section: funnel phases -->
+        <div style="position:relative; z-index:2; padding-top:6px;">
+          <div style="font-size:9.5px; font-weight:700; color:#5a5a64; text-transform:uppercase; letter-spacing:.16em; margin:2px 0 8px 4px;">Funnel</div>
+          <sc-for list="{{ phaseBands }}" as="p" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; height:42px;">
+              <div style="width:168px; flex:none; display:flex; align-items:center; gap:9px; padding-right:14px;">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:{{ p.hue }};">{{ p.num }}</span>
+                <span style="font-size:13px; font-weight:600; color:#dcdce2;">{{ p.name }}</span>
+                <span style="font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:{{ p.hue }}; opacity:.8;">{{ p.role }}</span>
+              </div>
+              <div style="flex:1; position:relative; height:42px;">
+                <div class="band" style="position:absolute; left:{{ p.left }}; width:{{ p.width }}; top:50%; transform:translateY(-50%); height:26px; border-radius:8px; background:linear-gradient(90deg, {{ p.fillA }}, {{ p.fillB }}); border:1px solid {{ p.border }}; display:flex; align-items:center; justify-content:space-between; padding:0 12px; overflow:hidden;">
+                  <span style="font-size:10.5px; color:{{ p.hue }}; font-weight:600; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">{{ p.tagline }}</span>
+                  <span style="font-size:11px; font-weight:700; font-family:'JetBrains Mono',monospace; color:#f1f1f4; white-space:nowrap; padding-left:10px;">{{ p.metric }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- divider -->
+        <div style="position:relative; z-index:2; display:flex; align-items:center; margin:10px 0 4px;">
+          <div style="width:168px; flex:none; font-size:9.5px; font-weight:700; color:#5a5a64; text-transform:uppercase; letter-spacing:.16em; padding-left:4px;">Channels</div>
+          <div style="flex:1; height:1px; background:#1c1c22;"></div>
+        </div>
+
+        <!-- section: channel lanes -->
+        <div style="position:relative; z-index:2;">
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+            <div class="lane" style="display:flex; align-items:center; height:46px; border-radius:7px;">
+              <div style="width:168px; flex:none; display:flex; align-items:center; gap:9px; padding-left:4px; padding-right:14px;">
+                <span style="width:9px; height:9px; border-radius:3px; background:{{ r.color }}; flex:none;"></span>
+                <span class="lane-name" style="font-size:13px; font-weight:600; color:#dcdce2; white-space:nowrap; transition:color .18s;">{{ r.name }}</span>
+              </div>
+              <div style="flex:1; position:relative; height:46px;">
+                <sc-if value="{{ r.hasFlight }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:absolute; left:{{ r.flight.left }}; width:{{ r.flight.width }}; top:50%; transform:translateY(-50%); height:24px; border-radius:7px; background:{{ r.flightSoft }}; border:1px solid {{ r.flightBorder }}; display:flex; align-items:center; justify-content:flex-end; padding:0 11px; overflow:hidden;">
+                    <div style="position:absolute; left:0; top:0; bottom:0; width:{{ r.flight.doneW }}; background:{{ r.flightDone }};"></div>
+                    <span style="position:relative; font-size:10.5px; font-weight:600; color:{{ r.color }}; white-space:nowrap;">{{ r.flightLabel }}</span>
+                  </div>
+                </sc-if>
+                <sc-for list="{{ r.assets }}" as="a" hint-placeholder-count="0">
+                  <div class="tl-dot" style="position:absolute; left:{{ a.left }}; top:50%; transform:translate(-50%,-50%); width:22px; height:22px; display:flex; align-items:center; justify-content:center;">
+                    <span class="tl-core" style="width:12px; height:12px; border-radius:50%; background:{{ a.color }}; border:2.5px solid #0e0e13; box-shadow:0 0 0 1px {{ a.color }}, {{ a.glow }};"></span>
+                    <span class="tl-tip" style="position:absolute; bottom:100%; left:50%; transform:translate(-50%,0); background:#1c1c22; border:1px solid #34343f; border-radius:9px; padding:7px 11px; white-space:nowrap; box-shadow:0 10px 28px rgba(0,0,0,.55); z-index:60;">
+                      <span style="font-size:12px; font-weight:600; color:#f1f1f4;">{{ a.n }}</span>
+                      <span style="font-size:11px; color:#8e8e98; font-family:'JetBrains Mono',monospace; margin-left:6px;">{{ a.dateLabel }}</span>
+                    </span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- divider -->
+        <div style="position:relative; z-index:2; display:flex; align-items:center; margin:10px 0 2px;">
+          <div style="width:168px; flex:none; font-size:9.5px; font-weight:700; color:#5a5a64; text-transform:uppercase; letter-spacing:.16em; padding-left:4px;">Spend</div>
+          <div style="flex:1; height:1px; background:#1c1c22;"></div>
+        </div>
+
+        <!-- section: budget burn -->
+        <div style="position:relative; z-index:2; display:flex; align-items:stretch; height:96px;">
+          <div style="width:168px; flex:none; display:flex; flex-direction:column; justify-content:center; padding-left:4px; padding-right:14px;">
+            <div style="font-size:12px; font-weight:600; color:#dcdce2;">Budget burn</div>
+            <div style="font-size:11px; color:#7c7c86; margin-top:2px; font-family:'JetBrains Mono',monospace;">{{ spentToDate }} <span style="color:#5a5a64;">/ {{ budgetTotal }}</span></div>
+            <div style="font-size:10.5px; color:var(--acc,#8b6dff); margin-top:5px;">{{ paceLabel }}</div>
+          </div>
+          <div style="flex:1; position:relative;">
+            <div style="position:absolute; left:0; right:0; top:8px; border-top:1px dashed #2c2c34; height:0;"></div>
+            <div style="position:absolute; right:2px; top:0; font-size:9px; font-family:'JetBrains Mono',monospace; color:#5a5a64;">{{ budgetTotal }}</div>
+            <svg viewBox="0 0 1000 100" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%;">
+              <defs>
+                <linearGradient id="burnFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="{{ burnTop }}"></stop>
+                  <stop offset="100%" stop-color="{{ burnBot }}"></stop>
+                </linearGradient>
+              </defs>
+              <path d="{{ burnArea }}" fill="url(#burnFill)"></path>
+              <path d="{{ burnLine }}" fill="none" stroke="var(--acc,#8b6dff)" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+              <path d="{{ burnProjArea }}" fill="rgba(139,109,255,.06)"></path>
+              <path d="{{ burnProjLine }}" fill="none" stroke="rgba(139,109,255,.45)" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"></path>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1300,&quot;height&quot;:880},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#8b6dff&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  colors() {
+    return {
+      'Organic Social': '#8b6dff', 'Meta Ads': '#4f8cff', 'Google Ads': '#f0a82e',
+      'Email': '#2bd4a4', 'Website': '#e879c9', 'Brevo': '#f0772e',
+    };
+  }
+
+  data() {
+    return {
+      camp: { name: 'goodness_goes_great', brand: 'Dried Fruit South Africa', start: '06 May 2026', end: '30 Aug 2026', total: 'ZAR 108,000', status: 'Live' },
+      today: '2026-06-22',
+      phases: [
+        { name: 'Reach', role: 'Awareness', hue: '#8b6dff', s: '2026-03-20', e: '2026-06-15', tagline: 'Everyday-staple awareness', metric: '400K reach' },
+        { name: 'Act', role: 'Engagement', hue: '#4f8cff', s: '2026-04-15', e: '2026-07-15', tagline: 'Carousels, reels, polls', metric: '22K visits' },
+        { name: 'Convert', role: 'Conversion', hue: '#2bd4a4', s: '2026-05-06', e: '2026-08-20', tagline: 'Win an Outdoor Hamper', metric: '4,000 entries' },
+        { name: 'Engage', role: 'Loyalty', hue: '#e879c9', s: '2026-06-01', e: '2026-08-30', tagline: 'Trust & authority', metric: '29% open' },
+      ],
+      tl: [
+        { name: 'Organic Social', flight: null, assets: [
+          { n: 'Carousel \u2014 Two Oceans', d: '2026-04-10', t: 'carousel' },
+          { n: 'Animation \u2014 Safari', d: '2026-04-15', t: 'animation' },
+          { n: 'Carousel \u2014 Ironman', d: '2026-04-20', t: 'carousel' },
+          { n: 'Carousel \u2014 George Mountain', d: '2026-05-02', t: 'carousel' },
+          { n: 'Animation \u2014 Cecilia\u2019s', d: '2026-05-08', t: 'animation' },
+          { n: 'Carousel \u2014 Comrades', d: '2026-05-20', t: 'carousel' },
+        ] },
+        { name: 'Google Ads', flight: { s: '2026-05-06', e: '2026-08-30' }, budget: 'R45,000', count: 5, assets: [] },
+        { name: 'Email', flight: null, assets: [
+          { n: 'Newsletter \u2014 Competition Launch', d: '2026-03-30', t: 'email' },
+          { n: 'Newsletter \u2014 Healthy Snacks', d: '2026-04-20', t: 'email' },
+          { n: 'Newsletter \u2014 Recipe Feature', d: '2026-05-04', t: 'email' },
+          { n: 'Newsletter \u2014 Sporting Nutrition', d: '2026-05-18', t: 'email' },
+          { n: 'Newsletter \u2014 Competition Reminder', d: '2026-06-01', t: 'email' },
+        ] },
+        { name: 'Meta Ads', flight: { s: '2026-06-08', e: '2026-08-30' }, budget: 'R8,000/mo', count: 4, assets: [
+          { n: 'Paid \u2014 Goodness Goes Great', d: '2026-06-08', t: 'carousel' },
+          { n: 'Paid \u2014 Goodness Gets Better', d: '2026-06-15', t: 'animation' },
+          { n: 'Paid \u2014 Two Oceans', d: '2026-06-22', t: 'carousel' },
+          { n: 'Paid \u2014 Everyday Wellness', d: '2026-07-01', t: 'static' },
+        ] },
+        { name: 'Brevo', flight: { s: '2026-06-08', e: '2026-08-30' }, count: 2, assets: [] },
+        { name: 'Website', flight: { s: '2026-05-06', e: '2026-08-31' }, alwaysOn: true, assets: [] },
+      ],
+      budget: { total: 108000, flights: [
+        { name: 'Google Ads', amount: 45000, s: '2026-05-06', e: '2026-08-30' },
+        { name: 'Meta Ads', amount: 24000, s: '2026-06-08', e: '2026-08-30' },
+      ] },
+    };
+  }
+
+  renderVals() {
+    const d = this.data();
+    const col = this.colors();
+    const accent = this.props.accentColor || '#8b6dff';
+    const soft = (c, p) => 'color-mix(in srgb, ' + c + ' ' + p + '%, transparent)';
+
+    const T0 = Date.parse('2026-03-01'), T1 = Date.parse('2026-09-01');
+    const span = T1 - T0;
+    const pct = (s) => ((Date.parse(s) - T0) / span) * 100;
+    const tNow = Date.parse(d.today);
+    const todayLeft = pct(d.today) + '%';
+    const todayLabel = new Date(tNow).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+
+    // months
+    const monthDefs = [['Mar', '2026-03-01'], ['Apr', '2026-04-01'], ['May', '2026-05-01'], ['Jun', '2026-06-01'], ['Jul', '2026-07-01'], ['Aug', '2026-08-01'], ['_', '2026-09-01']];
+    const months = [];
+    for (let i = 0; i < monthDefs.length - 1; i++) {
+      const l = pct(monthDefs[i][1]);
+      months.push({ label: monthDefs[i][0], left: l + '%', width: (pct(monthDefs[i + 1][1]) - l) + '%' });
+    }
+    const gridlines = monthDefs.slice(1, -1).map(m => ({ left: pct(m[1]) + '%' }));
+
+    // funnel phase bands
+    const phaseBands = d.phases.map((p, i) => ({
+      num: '0' + (i + 1), name: p.name, role: p.role, hue: p.hue,
+      tagline: p.tagline, metric: p.metric,
+      left: pct(p.s) + '%', width: (pct(p.e) - pct(p.s)) + '%',
+      fillA: soft(p.hue, 22), fillB: soft(p.hue, 7), border: soft(p.hue, 55),
+    }));
+
+    // channel lanes
+    const tlTypeCol = { carousel: '#8b6dff', animation: '#4f8cff', static: '#f0a82e', email: '#2bd4a4' };
+    const rows = d.tl.map(r => {
+      const c = col[r.name] || '#8e8e98';
+      let flight = null;
+      if (r.flight) {
+        const fl = pct(r.flight.s), fr = pct(r.flight.e);
+        const doneRaw = (Math.min(tNow, Date.parse(r.flight.e)) - Date.parse(r.flight.s)) / (Date.parse(r.flight.e) - Date.parse(r.flight.s));
+        const done = Math.max(0, Math.min(1, doneRaw));
+        flight = { left: fl + '%', width: (fr - fl) + '%', doneW: (done * 100) + '%' };
+      }
+      const assets = (r.assets || []).map(a => {
+        const ac = tlTypeCol[a.t] || c;
+        const isLive = Date.parse(a.d) <= tNow;
+        return {
+          n: a.n, left: pct(a.d) + '%', color: ac,
+          glow: isLive ? '0 0 9px 1px ' + soft(ac, 70) : 'none',
+          dateLabel: new Date(a.d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+        };
+      });
+      return {
+        name: r.name, color: c, flight, hasFlight: !!flight,
+        flightSoft: soft(c, 12), flightBorder: soft(c, 55), flightDone: soft(c, 16),
+        assets,
+        flightLabel: r.budget
+          ? (r.assets && r.assets.length ? r.budget : r.budget + (r.count ? ' \u00b7 ' + r.count + ' ads' : ''))
+          : (r.alwaysOn ? 'Always on' : (r.count ? r.count + ' linked' : '')),
+      };
+    });
+
+    // budget burn: integrate daily spend rate across flights
+    const flights = d.budget.flights.map(f => ({
+      amt: f.amount, s: Date.parse(f.s), e: Date.parse(f.e),
+      rate: f.amount / ((Date.parse(f.e) - Date.parse(f.s)) / 86400000),
+    }));
+    const N = 120;
+    let cum = 0;
+    const pastPts = [], projPts = [];
+    let spentNow = 0, prevT = T0;
+    for (let i = 0; i <= N; i++) {
+      const t = T0 + (span * i) / N;
+      // accrue spend between prevT and t
+      let dayPrev = prevT;
+      const stepDays = (t - prevT) / 86400000;
+      let add = 0;
+      flights.forEach(f => {
+        const a = Math.max(f.s, prevT), b = Math.min(f.e, t);
+        if (b > a) add += f.rate * ((b - a) / 86400000);
+      });
+      cum += add;
+      prevT = t;
+      const x = (i / N) * 1000;
+      const y = 100 - (cum / d.budget.total) * 100;
+      if (t <= tNow) { pastPts.push([x, y]); spentNow = cum; }
+      else {
+        if (projPts.length === 0 && pastPts.length) projPts.push(pastPts[pastPts.length - 1]);
+        projPts.push([x, y]);
+      }
+    }
+    const toLine = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const toArea = (pts) => pts.length ? ('M' + pts[0][0].toFixed(1) + ' 100 L' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L') + ' L' + pts[pts.length - 1][0].toFixed(1) + ' 100 Z') : '';
+
+    const spentToDate = 'R' + Math.round(spentNow).toLocaleString('en-US');
+    const allocated = d.budget.flights.reduce((s, f) => s + f.amount, 0);
+    const budgetTotal = 'R' + d.budget.total.toLocaleString('en-US');
+
+    // stat strip
+    const dStart = Date.parse('2026-05-06'), dEnd = Date.parse('2026-08-30');
+    const progress = Math.max(0, Math.min(1, (tNow - dStart) / (dEnd - dStart)));
+    const daysElapsed = Math.round((tNow - dStart) / 86400000);
+    const daysTotal = Math.round((dEnd - dStart) / 86400000);
+    const liveCount = d.tl.filter(r => {
+      if (r.flight) return Date.parse(r.flight.s) <= tNow && Date.parse(r.flight.e) >= tNow;
+      return (r.assets || []).some(a => Date.parse(a.d) <= tNow);
+    }).length;
+    // next launch after today
+    const upcoming = d.tl.flatMap(r => (r.assets || []).map(a => ({ ...a, ch: r.name })))
+      .filter(a => Date.parse(a.d) > tNow).sort((a, b) => Date.parse(a.d) - Date.parse(b.d))[0];
+    const nextLabel = upcoming ? new Date(upcoming.d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '\u2014';
+    const nextSub = upcoming ? upcoming.n.replace(/^[^\u2014]*\u2014\s*/, '') + ' \u00b7 ' + upcoming.ch : 'No upcoming launches';
+    const burnPct = Math.round(spentNow / d.budget.total * 100);
+
+    const stats = [
+      { label: 'Campaign progress', value: Math.round(progress * 100) + '%', unit: 'elapsed', color: accent, barW: Math.round(progress * 100) + '%', sub: 'Day ' + daysElapsed + ' of ' + daysTotal },
+      { label: 'Budget committed', value: 'R' + Math.round(allocated / 1000) + 'K', unit: 'of R108K', color: '#f0a82e', barW: Math.round(allocated / d.budget.total * 100) + '%', sub: spentToDate + ' spent so far' },
+      { label: 'Live right now', value: String(liveCount), unit: 'channels', color: '#2bd4a4', barW: Math.round(liveCount / d.tl.length * 100) + '%', sub: 'of ' + d.tl.length + ' total channels' },
+      { label: 'Next launch', value: nextLabel, unit: '', color: '#4f8cff', barW: '100%', sub: nextSub },
+    ];
+
+    return {
+      accent, camp: d.camp,
+      months, gridlines, todayLeft, todayLabel,
+      phaseBands, rows,
+      stats,
+      burnArea: toArea(pastPts), burnLine: toLine(pastPts),
+      burnProjArea: toArea(projPts), burnProjLine: toLine(projPts),
+      burnTop: soft(accent, 34), burnBot: soft(accent, 2),
+      spentToDate, budgetTotal,
+      paceLabel: burnPct + '% of budget burned',
+    };
+  }
+}
+</script>
+</body>
+</html>

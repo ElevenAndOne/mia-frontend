@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  ::selection{background:rgba(139,109,255,.3);}
+  .chip{cursor:pointer; user-select:none; transition:background .16s,border-color .16s,opacity .16s,transform .12s;}
+  .chip:active{transform:scale(.97);}
+  .navbtn{cursor:pointer; user-select:none; transition:background .15s,color .15s,border-color .15s;}
+  .navbtn:hover{background:#1d1d24; color:#f1f1f4;}
+  .ov-link{transition:color .15s,background .15s;}
+  .pill{position:relative; cursor:default;}
+  .pill .ptip{opacity:0; transition:opacity .14s,transform .14s; pointer-events:none;}
+  .pill:hover{z-index:50;}
+  .pill:hover .ptip{opacity:1; transform:translate(-50%,-8px);}
+  .cell{transition:border-color .16s,background .16s;}
+  .cell:hover{border-color:#33333d;}
+  @keyframes nowpulse{0%,100%{opacity:.45;}50%{opacity:1;}}
+  .now-bead{animation:nowpulse 2.4s ease-in-out infinite;}
+</style>
+</helmet>
+<div style="--acc:{{ accent }}; min-height:100vh; background:#0b0b0e; font-family:'Hanken Grotesk',system-ui,sans-serif; color:#e9e9ee; padding:30px 28px 80px;">
+  <div style="max-width:1280px; margin:0 auto;">
+
+    <!-- header -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:22px;">
+      <div style="display:flex; align-items:center; gap:13px;">
+        <div style="width:30px; height:30px; border-radius:8px; background:#df6a1f; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff;">DF</div>
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="color:#f0b429; font-size:14px;">&#9733;</span>
+            <span style="font-size:21px; font-weight:700; letter-spacing:-.02em;">{{ camp.name }}</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(52,211,153,.13); color:#46d39a; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid rgba(52,211,153,.25);"><span class="now-bead" style="width:6px;height:6px;border-radius:50%;background:#46d39a;"></span>{{ camp.status }}</span>
+          </div>
+          <div style="color:#8e8e98; font-size:13px; margin-top:3px;">{{ camp.brand }} &middot; {{ camp.start }} &rarr; {{ camp.end }} &middot; {{ camp.total }} total</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; background:#141419; border:1px solid #26262e; border-radius:10px; padding:3px;">
+        <a href="Campaign Overview.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Overview</a>
+        <a href="Campaign Timeline.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Timeline</a>
+        <span class="ov-link" style="font-size:12.5px; font-weight:600; color:#f4f4f6; background:var(--acc,#8b6dff); border-radius:7px; padding:7px 14px;">Calendar</span>
+        <a href="Campaign Builder.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Builder</a>
+      </div>
+    </div>
+
+    <!-- control bar: channel toggles + month nav -->
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:18px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap;">
+        <span style="font-size:10.5px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.13em; margin-right:3px;">Channels</span>
+        <sc-for list="{{ channels }}" as="c" hint-placeholder-count="4">
+          <div class="chip" onClick="{{ c.toggle }}" style="display:inline-flex; align-items:center; gap:8px; padding:7px 13px 7px 11px; border-radius:999px; border:1px solid {{ c.chipBorder }}; background:{{ c.chipBg }}; opacity:{{ c.chipOpacity }};">
+            <span style="width:9px; height:9px; border-radius:3px; background:{{ c.dotBg }}; border:1.5px solid {{ c.color }}; flex:none;"></span>
+            <span style="font-size:12.5px; font-weight:600; color:{{ c.textColor }};">{{ c.name }}</span>
+            <span style="font-size:10.5px; font-weight:600; font-family:'JetBrains Mono',monospace; color:{{ c.countColor }}; background:{{ c.countBg }}; border-radius:999px; padding:1px 7px;">{{ c.monthCount }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="navbtn" onClick="{{ prevMonth }}" style="width:32px; height:32px; border-radius:9px; border:1px solid #2a2a32; display:flex; align-items:center; justify-content:center; color:#9a9aa4; font-size:15px; opacity:{{ prevOpacity }};">&#8249;</div>
+        <div style="min-width:150px; text-align:center;">
+          <div style="font-size:16px; font-weight:700; letter-spacing:-.01em;">{{ monthLabel }}</div>
+          <div style="font-size:11px; color:#7c7c86; margin-top:1px;">{{ monthPostCount }} posts scheduled</div>
+        </div>
+        <div class="navbtn" onClick="{{ nextMonth }}" style="width:32px; height:32px; border-radius:9px; border:1px solid #2a2a32; display:flex; align-items:center; justify-content:center; color:#9a9aa4; font-size:15px; opacity:{{ nextOpacity }};">&#8250;</div>
+      </div>
+    </div>
+
+    <!-- calendar -->
+    <div style="background:#101015; border:1px solid #232329; border-radius:18px; padding:18px 20px 20px;">
+      <!-- weekday header -->
+      <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-bottom:10px;">
+        <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7">
+          <div style="font-size:10.5px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.12em; padding-left:4px;">{{ w }}</div>
+        </sc-for>
+      </div>
+      <!-- day grid -->
+      <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:8px;">
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="35">
+          <div class="cell" style="position:relative; min-height:118px; border-radius:11px; border:1px solid {{ d.cellBorder }}; background:{{ d.cellBg }}; padding:8px 8px 7px; opacity:{{ d.cellOpacity }}; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-size:13px; font-weight:{{ d.numWeight }}; font-family:'JetBrains Mono',monospace; color:{{ d.numColor }};">{{ d.num }}</span>
+              <sc-if value="{{ d.isToday }}" hint-placeholder-val="{{ false }}">
+                <span class="now-bead" style="font-size:8.5px; font-weight:700; letter-spacing:.08em; color:#0b0b0e; background:var(--acc,#8b6dff); border-radius:999px; padding:2px 7px;">TODAY</span>
+              </sc-if>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0">
+                <div class="pill" style="display:flex; align-items:center; gap:6px; background:{{ e.bg }}; border:1px solid {{ e.border }}; border-radius:6px; padding:3px 7px;">
+                  <span style="width:6px; height:6px; border-radius:50%; background:{{ e.color }}; flex:none;"></span>
+                  <span style="font-size:11px; font-weight:500; color:#dcdce2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ e.short }}</span>
+                  <span class="ptip" style="position:absolute; bottom:100%; left:50%; transform:translate(-50%,0); background:#1c1c22; border:1px solid #34343f; border-radius:9px; padding:8px 11px; white-space:nowrap; box-shadow:0 12px 30px rgba(0,0,0,.6); z-index:60;">
+                    <span style="display:block; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:{{ e.color }};">{{ e.channel }} &middot; {{ e.type }}</span>
+                    <span style="display:block; font-size:12.5px; font-weight:600; color:#f1f1f4; margin-top:2px;">{{ e.name }}</span>
+                  </span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ d.hasMore }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:10.5px; font-weight:600; color:#7c7c86; padding-left:3px;">+{{ d.moreCount }} more</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- footer legend / empty hint -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding:0 4px;">
+      <div style="font-size:11.5px; color:#7c7c86;">Toggle channels above to filter what shows on each date. Hover a post for details.</div>
+      <div style="font-size:11.5px; color:#7c7c86; font-family:'JetBrains Mono',monospace;">{{ visiblePostCount }} posts visible</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1300,&quot;height&quot;:860},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#8b6dff&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      month: '2026-06',
+      active: { 'Organic Social': true, 'Meta Ads': true, 'Email': true, 'Google Ads': true },
+    };
+  }
+
+  channelMeta() {
+    return [
+      { name: 'Organic Social', color: '#8b6dff' },
+      { name: 'Meta Ads', color: '#4f8cff' },
+      { name: 'Email', color: '#2bd4a4' },
+      { name: 'Google Ads', color: '#f0a82e' },
+    ];
+  }
+
+  events() {
+    return [
+      // Organic Social
+      { ch: 'Organic Social', d: '2026-04-10', type: 'Carousel', name: 'Carousel \u2014 Two Oceans', short: 'Two Oceans' },
+      { ch: 'Organic Social', d: '2026-04-15', type: 'Animation', name: 'Animation \u2014 Safari', short: 'Safari' },
+      { ch: 'Organic Social', d: '2026-04-20', type: 'Carousel', name: 'Carousel \u2014 Ironman', short: 'Ironman' },
+      { ch: 'Organic Social', d: '2026-05-02', type: 'Carousel', name: 'Carousel \u2014 George Mountain', short: 'George Mountain' },
+      { ch: 'Organic Social', d: '2026-05-08', type: 'Animation', name: 'Animation \u2014 Cecilia\u2019s', short: 'Cecilia\u2019s' },
+      { ch: 'Organic Social', d: '2026-05-20', type: 'Carousel', name: 'Carousel \u2014 Comrades', short: 'Comrades' },
+      { ch: 'Organic Social', d: '2026-06-03', type: 'Animation', name: 'Animation \u2014 Trail Run', short: 'Trail Run' },
+      { ch: 'Organic Social', d: '2026-06-12', type: 'Carousel', name: 'Carousel \u2014 Winter Wellness', short: 'Winter Wellness' },
+      { ch: 'Organic Social', d: '2026-06-24', type: 'Carousel', name: 'Carousel \u2014 Hamper Reveal', short: 'Hamper Reveal' },
+      { ch: 'Organic Social', d: '2026-07-06', type: 'Animation', name: 'Animation \u2014 Recipe Reel', short: 'Recipe Reel' },
+      { ch: 'Organic Social', d: '2026-07-18', type: 'Carousel', name: 'Carousel \u2014 Finalists', short: 'Finalists' },
+      { ch: 'Organic Social', d: '2026-08-03', type: 'Carousel', name: 'Carousel \u2014 Winner Teaser', short: 'Winner Teaser' },
+      { ch: 'Organic Social', d: '2026-08-17', type: 'Animation', name: 'Animation \u2014 Winner Announce', short: 'Winner Announce' },
+      // Email
+      { ch: 'Email', d: '2026-03-30', type: 'Newsletter', name: 'Newsletter \u2014 Competition Launch', short: 'Competition Launch' },
+      { ch: 'Email', d: '2026-04-20', type: 'Newsletter', name: 'Newsletter \u2014 Healthy Snacks', short: 'Healthy Snacks' },
+      { ch: 'Email', d: '2026-05-04', type: 'Newsletter', name: 'Newsletter \u2014 Recipe Feature', short: 'Recipe Feature' },
+      { ch: 'Email', d: '2026-05-18', type: 'Newsletter', name: 'Newsletter \u2014 Sporting Nutrition', short: 'Sporting Nutrition' },
+      { ch: 'Email', d: '2026-06-01', type: 'Newsletter', name: 'Newsletter \u2014 Competition Reminder', short: 'Comp. Reminder' },
+      { ch: 'Email', d: '2026-06-15', type: 'Newsletter', name: 'Newsletter \u2014 Mid-Campaign Update', short: 'Mid-Campaign' },
+      { ch: 'Email', d: '2026-07-13', type: 'Newsletter', name: 'Newsletter \u2014 Last Chance Entry', short: 'Last Chance' },
+      { ch: 'Email', d: '2026-08-10', type: 'Newsletter', name: 'Newsletter \u2014 Winner Announcement', short: 'Winner News' },
+      // Meta Ads
+      { ch: 'Meta Ads', d: '2026-06-08', type: 'Carousel', name: 'Paid \u2014 Goodness Goes Great', short: 'Goodness Goes Great' },
+      { ch: 'Meta Ads', d: '2026-06-15', type: 'Animation', name: 'Paid \u2014 Goodness Gets Better', short: 'Goodness Gets Better' },
+      { ch: 'Meta Ads', d: '2026-06-22', type: 'Carousel', name: 'Paid \u2014 Two Oceans', short: 'Two Oceans (Paid)' },
+      { ch: 'Meta Ads', d: '2026-07-01', type: 'Static', name: 'Paid \u2014 Everyday Wellness', short: 'Everyday Wellness' },
+      { ch: 'Meta Ads', d: '2026-07-15', type: 'Static', name: 'Paid \u2014 Mid-Flight Refresh', short: 'Mid-Flight Refresh' },
+      { ch: 'Meta Ads', d: '2026-08-01', type: 'Carousel', name: 'Paid \u2014 Final Push', short: 'Final Push' },
+      // Google Ads
+      { ch: 'Google Ads', d: '2026-06-08', type: 'Search', name: 'Google Search \u2014 Launch', short: 'Search Launch' },
+      { ch: 'Google Ads', d: '2026-07-01', type: 'Search', name: 'Google Search \u2014 Optimization Pass', short: 'Optimization' },
+      { ch: 'Google Ads', d: '2026-08-01', type: 'Search', name: 'Google Search \u2014 Final Push', short: 'Final Push Search' },
+    ];
+  }
+
+  pad(n) { return (n < 10 ? '0' : '') + n; }
+  ymd(dt) { return dt.getFullYear() + '-' + this.pad(dt.getMonth() + 1) + '-' + this.pad(dt.getDate()); }
+
+  toggle(name) {
+    this.setState(s => ({ active: Object.assign({}, s.active, { [name]: !s.active[name] }) }));
+  }
+  shiftMonth(dir) {
+    const months = ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
+    const i = months.indexOf(this.state.month);
+    const ni = Math.max(0, Math.min(months.length - 1, i + dir));
+    if (ni !== i) this.setState({ month: months[ni] });
+  }
+
+  renderVals() {
+    const accent = this.props.accentColor || '#8b6dff';
+    const meta = this.channelMeta();
+    const active = this.state.active;
+    const month = this.state.month;
+    const today = '2026-06-22';
+    const soft = (c, p) => 'color-mix(in srgb, ' + c + ' ' + p + '%, transparent)';
+    const colorOf = {}; meta.forEach(m => colorOf[m.name] = m.color);
+
+    const allEvents = this.events();
+    const monthEvents = allEvents.filter(e => e.d.slice(0, 7) === month);
+
+    // channel chips
+    const channels = meta.map(m => {
+      const on = !!active[m.name];
+      const monthCount = monthEvents.filter(e => e.ch === m.name).length;
+      return {
+        name: m.name, color: m.color, monthCount,
+        toggle: () => this.toggle(m.name),
+        chipBg: on ? soft(m.color, 14) : '#141419',
+        chipBorder: on ? soft(m.color, 50) : '#26262e',
+        chipOpacity: on ? '1' : '.5',
+        dotBg: on ? m.color : 'transparent',
+        textColor: on ? '#f1f1f4' : '#8e8e98',
+        countColor: on ? m.color : '#7c7c86',
+        countBg: on ? soft(m.color, 16) : '#1c1c22',
+      };
+    });
+
+    // visible events (active channels) keyed by date
+    const visible = allEvents.filter(e => active[e.ch]);
+    const byDate = {};
+    visible.forEach(e => { (byDate[e.d] = byDate[e.d] || []).push(e); });
+    const chOrder = meta.map(m => m.name);
+    Object.keys(byDate).forEach(k => byDate[k].sort((a, b) => chOrder.indexOf(a.ch) - chOrder.indexOf(b.ch)));
+
+    // build grid
+    const [y, mo] = month.split('-').map(Number);
+    const daysInMonth = new Date(y, mo, 0).getDate();
+    const first = new Date(y, mo - 1, 1);
+    const startOffset = (first.getDay() + 6) % 7; // Monday = 0
+    const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+    const gridStart = new Date(y, mo - 1, 1 - startOffset);
+
+    const MAX = 4;
+    const days = [];
+    for (let i = 0; i < totalCells; i++) {
+      const cur = new Date(gridStart);
+      cur.setDate(gridStart.getDate() + i);
+      const iso = this.ymd(cur);
+      const inMonth = cur.getMonth() === mo - 1;
+      const isToday = iso === today;
+      const raw = inMonth ? (byDate[iso] || []) : [];
+      const shown = raw.slice(0, MAX);
+      const events = shown.map(e => ({
+        short: e.short, name: e.name, type: e.type, channel: e.ch, color: colorOf[e.ch],
+        bg: soft(colorOf[e.ch], 13), border: soft(colorOf[e.ch], 38),
+      }));
+      const weekend = (i % 7) >= 5;
+      days.push({
+        num: cur.getDate(), isToday,
+        cellOpacity: inMonth ? '1' : '.32',
+        cellBg: isToday ? soft(accent, 9) : (inMonth ? (weekend ? '#0e0e13' : '#131319') : '#0d0d11'),
+        cellBorder: isToday ? soft(accent, 65) : '#212128',
+        numColor: isToday ? accent : (inMonth ? '#dcdce2' : '#5a5a64'),
+        numWeight: isToday ? '700' : '500',
+        events,
+        hasMore: raw.length > MAX,
+        moreCount: Math.max(0, raw.length - MAX),
+      });
+    }
+
+    const months = ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
+    const idx = months.indexOf(month);
+    const monthLabel = first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const monthPostCount = monthEvents.filter(e => active[e.ch]).length;
+
+    return {
+      accent,
+      camp: { name: 'goodness_goes_great', brand: 'Dried Fruit South Africa', start: '06 May 2026', end: '30 Aug 2026', total: 'ZAR 108,000', status: 'Live' },
+      channels,
+      weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      days,
+      monthLabel,
+      monthPostCount,
+      prevMonth: () => this.shiftMonth(-1),
+      nextMonth: () => this.shiftMonth(1),
+      prevOpacity: idx <= 0 ? '.35' : '1',
+      nextOpacity: idx >= months.length - 1 ? '.35' : '1',
+      visiblePostCount: visible.length,
+    };
+  }
+}
+</script>
+</body>
+</html>

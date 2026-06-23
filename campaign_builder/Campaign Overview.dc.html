@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  ::selection{background:rgba(139,109,255,.3);}
+  .ov-card{transition:border-color .18s,background .18s,transform .18s;cursor:pointer;}
+  .ov-card:hover{transform:translateY(-2px);}
+  .tl-dot{cursor:pointer;}
+  .tl-tip{opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
+  .tl-dot:hover{z-index:30;}
+  .tl-dot:hover .tl-tip{opacity:1;transform:translate(-50%,-10px);}
+  .tl-dot:hover .tl-core{transform:scale(1.45);}
+  .tl-core{transition:transform .15s;}
+  .ov-link{transition:color .15s,background .15s;}
+  .ov-row{transition:opacity .2s;}
+</style>
+</helmet>
+<div style="--acc:{{ accent }}; min-height:100vh; background:#0b0b0e; font-family:'Hanken Grotesk',system-ui,sans-serif; color:#e9e9ee; padding:30px 28px 90px;">
+  <div style="max-width:1200px; margin:0 auto;">
+
+    <!-- header -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:13px;">
+        <div style="width:30px; height:30px; border-radius:8px; background:#df6a1f; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff;">DF</div>
+        <div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="color:#f0b429; font-size:14px;">&#9733;</span>
+            <span style="font-size:21px; font-weight:700; letter-spacing:-.02em;">{{ camp.name }}</span>
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(52,211,153,.13); color:#46d39a; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid rgba(52,211,153,.25);"><span style="width:6px;height:6px;border-radius:50%;background:#46d39a;"></span>{{ camp.status }}</span>
+          </div>
+          <div style="color:#8e8e98; font-size:13px; margin-top:3px;">{{ camp.brand }} &middot; {{ camp.start }} &rarr; {{ camp.end }} &middot; {{ camp.total }} total</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; background:#141419; border:1px solid #26262e; border-radius:10px; padding:3px;">
+        <span class="ov-link" style="font-size:12.5px; font-weight:600; color:#f4f4f6; background:var(--acc,#8b6dff); border-radius:7px; padding:7px 14px;">Overview</span>
+        <a href="Campaign Builder.dc.html" class="ov-link" style="font-size:12.5px; font-weight:500; color:#9a9aa4; text-decoration:none; padding:7px 14px; border-radius:7px;">Builder</a>
+      </div>
+    </div>
+
+    <!-- the journey -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin:26px 0 14px;">
+      <div style="font-size:11px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.14em;">The Customer Journey</div>
+      <sc-if value="{{ filterActive }}" hint-placeholder-val="">
+        <div onClick="{{ clearFilter }}" style="font-size:12px; color:var(--acc,#8b6dff); cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--acc,#8b6dff);"></span>Filtering timeline by {{ selectedName }} &mdash; clear
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex; gap:14px; align-items:stretch;">
+      <sc-for list="{{ funnel }}" as="f" hint-placeholder-count="4">
+        <div class="ov-card" onClick="{{ f.onClick }}" style="position:relative; flex:1; min-width:0; background:{{ f.bg }}; border:1px solid {{ f.border }}; border-radius:16px; padding:18px 18px 16px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:{{ f.hue }};">{{ f.num }}</span>
+            <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:{{ f.hue }}; background:{{ f.hueSoft }}; padding:3px 8px; border-radius:6px;">{{ f.role }}</span>
+          </div>
+          <div style="font-size:16px; font-weight:700; margin-top:11px; letter-spacing:-.01em;">{{ f.name }}</div>
+          <div style="font-size:12.5px; color:#90909a; line-height:1.45; margin-top:5px; min-height:36px;">{{ f.objective }}</div>
+
+          <div style="margin-top:14px; padding-top:14px; border-top:1px solid #232329;">
+            <div style="display:flex; align-items:baseline; gap:7px;">
+              <span style="font-size:27px; font-weight:800; font-family:'JetBrains Mono',monospace; letter-spacing:-.03em; color:#f4f4f6;">{{ f.primary }}</span>
+              <span style="font-size:11.5px; color:#8e8e98;">{{ f.primaryLabel }}</span>
+            </div>
+            <div style="font-size:11.5px; color:#7c7c86; margin-top:3px;">{{ f.secondary }}</div>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:14px;">
+            <sc-for list="{{ f.channels }}" as="c" hint-placeholder-count="3">
+              <span style="display:inline-flex; align-items:center; gap:5px; font-size:11px; color:#b6b6bf; background:#101015; border:1px solid #26262e; border-radius:999px; padding:3px 9px 3px 7px; white-space:nowrap;"><span style="width:7px; height:7px; border-radius:50%; background:{{ c.color }}; flex:none;"></span>{{ c.name }}</span>
+            </sc-for>
+          </div>
+
+          <div style="{{ f.arrowStyle }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3a3a44" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- timeline -->
+    <div style="margin-top:34px; background:#101015; border:1px solid #232329; border-radius:16px; padding:22px 24px 10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+        <div style="font-size:11px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.14em;">Campaign Timeline</div>
+        <div style="display:flex; gap:14px;">
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#8b6dff;"></span>Carousel</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#4f8cff;"></span>Animation</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#f0a82e;"></span>Static</span>
+          <span style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#9a9aa4;"><span style="width:9px;height:9px;border-radius:50%;background:#2bd4a4;"></span>Email</span>
+        </div>
+      </div>
+
+      <!-- month header -->
+      <div style="display:flex; align-items:center;">
+        <div style="width:152px; flex:none;"></div>
+        <div style="flex:1; position:relative; height:18px;">
+          <sc-for list="{{ months }}" as="m" hint-placeholder-count="6">
+            <div style="position:absolute; left:{{ m.left }}; width:{{ m.width }}; text-align:center; font-size:11px; font-weight:600; color:#7c7c86; text-transform:uppercase; letter-spacing:.08em;">{{ m.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- rows + gridlines -->
+      <div style="position:relative; margin-top:6px;">
+        <div style="position:absolute; left:152px; right:0; top:0; bottom:0; pointer-events:none;">
+          <sc-for list="{{ gridlines }}" as="g" hint-placeholder-count="5">
+            <div style="position:absolute; left:{{ g.left }}; top:0; bottom:0; width:1px; background:#1e1e25;"></div>
+          </sc-for>
+        </div>
+
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+          <div class="ov-row" style="display:flex; align-items:center; height:48px; border-top:1px solid #1c1c22; opacity:{{ r.opacity }};">
+            <div style="width:152px; flex:none; display:flex; align-items:center; gap:9px; padding-right:14px;">
+              <span style="width:9px; height:9px; border-radius:3px; background:{{ r.color }}; flex:none;"></span>
+              <span style="font-size:13px; font-weight:600; color:#dcdce2; white-space:nowrap;">{{ r.name }}</span>
+            </div>
+            <div style="flex:1; position:relative; height:48px;">
+              <sc-if value="{{ r.hasFlight }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute; left:{{ r.flight.left }}; width:{{ r.flight.width }}; top:50%; transform:translateY(-50%); height:22px; border-radius:7px; background:{{ r.flightSoft }}; border:1px solid {{ r.color }}; display:flex; align-items:center; justify-content:flex-end; padding:0 11px; overflow:hidden;">
+                  <span style="font-size:10.5px; font-weight:600; color:{{ r.color }}; white-space:nowrap;">{{ r.flightLabel }}</span>
+                </div>
+              </sc-if>
+              <sc-for list="{{ r.assets }}" as="a" hint-placeholder-count="0">
+                <div class="tl-dot" style="position:absolute; left:{{ a.left }}; top:50%; transform:translate(-50%,-50%); width:20px; height:20px; display:flex; align-items:center; justify-content:center;">
+                  <span class="tl-core" style="width:12px; height:12px; border-radius:50%; background:{{ a.color }}; border:2.5px solid #101015; box-shadow:0 0 0 1px {{ a.color }};"></span>
+                  <span class="tl-tip" style="position:absolute; bottom:100%; left:50%; transform:translate(-50%,0); background:#1c1c22; border:1px solid #34343f; border-radius:9px; padding:7px 11px; white-space:nowrap; box-shadow:0 10px 28px rgba(0,0,0,.55); z-index:40;">
+                    <span style="font-size:12px; font-weight:600; color:#f1f1f4;">{{ a.n }}</span>
+                    <span style="font-size:11px; color:#8e8e98; font-family:'JetBrains Mono',monospace; margin-left:6px;">{{ a.dateLabel }}</span>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- budget -->
+    <div style="margin-top:24px; background:#101015; border:1px solid #232329; border-radius:16px; padding:22px 24px 24px;">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+        <div style="font-size:11px; font-weight:600; color:#6c6c78; text-transform:uppercase; letter-spacing:.14em;">Budget Allocation</div>
+        <div style="font-size:13px; color:#9a9aa4;"><span style="color:#f4f4f6; font-weight:700; font-family:'JetBrains Mono',monospace;">{{ budgetAllocated }}</span> allocated of {{ budgetTotal }}</div>
+      </div>
+      <div style="display:flex; height:20px; border-radius:999px; overflow:hidden; gap:2px; background:#0b0b0e;">
+        <sc-for list="{{ budgetSegs }}" as="s" hint-placeholder-count="3">
+          <div style="width:{{ s.width }}; background:{{ s.color }}; height:100%;"></div>
+        </sc-for>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:20px; margin-top:16px;">
+        <sc-for list="{{ budgetSegs }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <span style="width:11px; height:11px; border-radius:3px; background:{{ s.color }};"></span>
+            <span style="font-size:13px; color:#cfcfd6;">{{ s.name }}</span>
+            <span style="font-size:13px; font-weight:600; font-family:'JetBrains Mono',monospace; color:#f4f4f6;">{{ s.amount }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1260,&quot;height&quot;:1100},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#8b6dff&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { sel: null };
+
+  colors() {
+    return {
+      'Organic Social': '#8b6dff',
+      'Meta Ads': '#4f8cff',
+      'Google Ads': '#f0a82e',
+      'Email': '#2bd4a4',
+      'Website': '#e879c9',
+      'Brevo': '#f0772e',
+    };
+  }
+
+  data() {
+    return {
+      camp: { name: 'goodness_goes_great', brand: 'Dried Fruit South Africa', start: '06 May 2026', end: '30 Aug 2026', total: 'ZAR 108,000', status: 'Live' },
+      phases: [
+        { name: 'Reach', role: 'Awareness', hue: '#8b6dff', objective: 'Grow awareness of dried fruit as part of everyday routines.', primary: '400K', primaryLabel: 'reach', secondary: '1.2M impressions target', channels: ['Organic Social', 'Google Ads', 'Email', 'Meta Ads'] },
+        { name: 'Act', role: 'Engagement', hue: '#4f8cff', objective: 'Drive engagement and interaction with DFSA content.', primary: '22K', primaryLabel: 'site visits', secondary: 'Carousels, reels, polls, prompts', channels: ['Meta Ads', 'Website', 'Organic Social'] },
+        { name: 'Convert', role: 'Conversion', hue: '#2bd4a4', objective: 'Capture high-intent engagement via the competition.', primary: '4,000', primaryLabel: 'entries', secondary: 'Outdoor Essentials Hamper \u00b7 7,385 list', channels: ['Organic Social', 'Brevo'] },
+        { name: 'Engage', role: 'Loyalty', hue: '#e879c9', objective: 'Build long-term trust and reinforce DFSA authority.', primary: '29%', primaryLabel: 'open rate', secondary: '5% email CTR target', channels: ['Email', 'Organic Social', 'Website'] },
+      ],
+      phaseChannels: {
+        Reach: ['Organic Social', 'Google Ads', 'Email', 'Meta Ads'],
+        Act: ['Meta Ads', 'Website', 'Organic Social'],
+        Convert: ['Organic Social', 'Brevo'],
+        Engage: ['Email', 'Organic Social', 'Website'],
+      },
+      tl: [
+        { name: 'Organic Social', flight: null, count: 6, assets: [
+          { n: 'Carousel \u2014 Two Oceans', d: '2026-04-10', t: 'carousel' },
+          { n: 'Animation \u2014 Safari', d: '2026-04-15', t: 'animation' },
+          { n: 'Carousel \u2014 Ironman', d: '2026-04-20', t: 'carousel' },
+          { n: 'Carousel \u2014 George Mountain', d: '2026-05-02', t: 'carousel' },
+          { n: 'Animation \u2014 Cecilia\u2019s', d: '2026-05-08', t: 'animation' },
+          { n: 'Carousel \u2014 Comrades', d: '2026-05-20', t: 'carousel' },
+        ] },
+        { name: 'Google Ads', flight: { s: '2026-05-06', e: '2026-08-30' }, budget: 'R45,000', count: 5, assets: [] },
+        { name: 'Email', flight: null, count: 5, assets: [
+          { n: 'Newsletter \u2014 Competition Launch', d: '2026-03-30', t: 'email' },
+          { n: 'Newsletter \u2014 Healthy Snacks', d: '2026-04-20', t: 'email' },
+          { n: 'Newsletter \u2014 Recipe Feature', d: '2026-05-04', t: 'email' },
+          { n: 'Newsletter \u2014 Sporting Nutrition', d: '2026-05-18', t: 'email' },
+          { n: 'Newsletter \u2014 Competition Reminder', d: '2026-06-01', t: 'email' },
+        ] },
+        { name: 'Meta Ads', flight: { s: '2026-06-08', e: '2026-08-30' }, budget: 'R8,000/mo', count: 4, assets: [
+          { n: 'Paid \u2014 Goodness Goes Great', d: '2026-06-08', t: 'carousel' },
+          { n: 'Paid \u2014 Goodness Gets Better', d: '2026-06-15', t: 'animation' },
+          { n: 'Paid \u2014 Two Oceans', d: '2026-06-22', t: 'carousel' },
+          { n: 'Paid \u2014 Everyday Wellness', d: '2026-07-01', t: 'static' },
+        ] },
+        { name: 'Brevo', flight: { s: '2026-06-08', e: '2026-08-30' }, count: 2, assets: [] },
+        { name: 'Website', flight: { s: '2026-05-06', e: '2026-08-31' }, alwaysOn: true, count: 0, assets: [] },
+      ],
+      budget: { total: 108000, segs: [
+        { name: 'Google Ads', amount: 45000 },
+        { name: 'Meta Ads', amount: 24000 },
+      ] },
+    };
+  }
+
+  select(i) { this.setState({ sel: this.state.sel === i ? null : i }); }
+  clear() { this.setState({ sel: null }); }
+
+  renderVals() {
+    const d = this.data();
+    const col = this.colors();
+    const accent = this.props.accentColor || '#8b6dff';
+    const soft = (c) => 'color-mix(in srgb, ' + c + ' 16%, transparent)';
+    const sel = this.state.sel;
+    const selName = sel != null ? d.phases[sel].name : null;
+    const selSet = selName ? d.phaseChannels[selName] : null;
+
+    const funnel = d.phases.map((p, i) => {
+      const active = sel === i;
+      return {
+        num: '0' + (i + 1), name: p.name, role: p.role, objective: p.objective,
+        primary: p.primary, primaryLabel: p.primaryLabel, secondary: p.secondary,
+        hue: p.hue, hueSoft: soft(p.hue),
+        channels: p.channels.map(n => ({ name: n, color: col[n] || '#8e8e98' })),
+        bg: active ? soft(p.hue) : '#141419',
+        border: active ? p.hue : '#26262e',
+        onClick: () => this.select(i),
+        arrowStyle: i < 3
+          ? 'position:absolute; right:-17px; top:50%; transform:translateY(-50%); z-index:5; background:#0b0b0e; border-radius:50%; padding:2px; display:flex;'
+          : 'display:none;',
+      };
+    });
+
+    // timeline geometry
+    const T0 = Date.parse('2026-03-01'), T1 = Date.parse('2026-09-01');
+    const pct = (s) => ((Date.parse(s) - T0) / (T1 - T0)) * 100;
+    const monthDefs = [['Mar', '2026-03-01'], ['Apr', '2026-04-01'], ['May', '2026-05-01'], ['Jun', '2026-06-01'], ['Jul', '2026-07-01'], ['Aug', '2026-08-01'], ['_', '2026-09-01']];
+    const months = [];
+    for (let i = 0; i < monthDefs.length - 1; i++) {
+      const l = pct(monthDefs[i][1]);
+      months.push({ label: monthDefs[i][0], left: l + '%', width: (pct(monthDefs[i + 1][1]) - l) + '%' });
+    }
+    const gridlines = monthDefs.slice(1, -1).map(m => ({ left: pct(m[1]) + '%' }));
+
+    const tlTypeCol = { carousel: '#8b6dff', animation: '#4f8cff', static: '#f0a82e', email: '#2bd4a4' };
+    const rows = d.tl.map(r => {
+      const c = col[r.name] || '#8e8e98';
+      const dim = selSet && !selSet.includes(r.name);
+      const flight = r.flight ? { left: pct(r.flight.s) + '%', width: (pct(r.flight.e) - pct(r.flight.s)) + '%' } : null;
+      const assets = (r.assets || []).map(a => ({
+        n: a.n, date: a.d, left: pct(a.d) + '%',
+        color: tlTypeCol[a.t] || c,
+        dateLabel: new Date(a.d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      }));
+      return {
+        name: r.name, color: c, dim, opacity: dim ? '0.28' : '1',
+        flight, flightSoft: soft(c), alwaysOn: !!r.alwaysOn,
+        budget: r.budget || '', count: r.count, assets,
+        hasFlight: !!flight, hasCount: r.count > 0,
+        flightLabel: r.budget
+          ? (r.assets && r.assets.length ? r.budget : r.budget + (r.count ? ' \u00b7 ' + r.count + ' ads' : ''))
+          : (r.alwaysOn ? 'Always on' : (r.count ? r.count + ' linked' : '')),
+      };
+    });
+
+    // budget
+    const allocated = d.budget.segs.reduce((s, x) => s + x.amount, 0);
+    const segs = d.budget.segs.map(s => ({
+      name: s.name, color: col[s.name], amount: 'R' + s.amount.toLocaleString('en-US'),
+      width: (s.amount / d.budget.total * 100) + '%',
+    }));
+    const unalloc = d.budget.total - allocated;
+    segs.push({ name: 'Unallocated', color: '#2c2c34', amount: 'R' + unalloc.toLocaleString('en-US'), width: (unalloc / d.budget.total * 100) + '%', muted: true });
+
+    return {
+      accent, camp: d.camp, funnel,
+      filterActive: sel != null, selectedName: selName, clearFilter: () => this.clear(),
+      months, gridlines, rows,
+      legend: d.tl.map(r => ({ name: r.name, color: col[r.name] })),
+      budgetSegs: segs,
+      budgetAllocated: 'R' + allocated.toLocaleString('en-US'),
+      budgetTotal: 'R' + d.budget.total.toLocaleString('en-US'),
+    };
+  }
+}
+</script>
+</body>
+</html>
