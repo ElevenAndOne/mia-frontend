@@ -1,22 +1,43 @@
-import { ViewSwitcher } from '../components/view-switcher'
-import { StatusBadge } from '../components/status-badge'
+import { useMemo, useState } from 'react'
+import { CampaignIdentityHeader } from '../components/campaign-identity-header'
+import { FunnelCards } from '../components/overview/funnel-cards'
+import { CampaignTimeline } from '../components/overview/campaign-timeline'
+import { BudgetAllocationBar } from '../components/overview/budget-allocation-bar'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
+import { buildFunnel, buildTimeline, channelsByPhase } from '../utils/overview-data'
 
-// Placeholder — the full Overview (funnel cards + timeline + budget bar) lands in P2.
 export const OverviewView = () => {
   const { campaign } = useCampaignWorkspace()
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
+
+  const funnel = useMemo(() => buildFunnel(campaign), [campaign])
+  const timeline = useMemo(() => buildTimeline(campaign), [campaign])
+  const phaseChannels = useMemo(() => channelsByPhase(campaign), [campaign])
+
+  const selectedChannels = selectedPhaseId ? phaseChannels[selectedPhaseId] ?? null : null
+  const selectedName = funnel.find((f) => f.phaseId === selectedPhaseId)?.name
+
+  const toggle = (phaseId: string) => setSelectedPhaseId((cur) => (cur === phaseId ? null : phaseId))
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <span className="title-h5 text-primary">{campaign.campaign_name}</span>
-          <StatusBadge status={campaign.status} pulse />
+      <CampaignIdentityHeader view="overview" />
+
+      <div>
+        <div className="flex items-center justify-between mb-3.5">
+          <span className="label-xs text-quaternary uppercase tracking-[0.14em]">The Customer Journey</span>
+          {selectedPhaseId && (
+            <button onClick={() => setSelectedPhaseId(null)} className="paragraph-xs text-utility-brand-700 inline-flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-utility-brand-600" />
+              Filtering timeline by {selectedName} — clear
+            </button>
+          )}
         </div>
-        <ViewSwitcher campaignId={campaign.campaign_id} current="overview" />
+        <FunnelCards phases={funnel} selectedId={selectedPhaseId} onSelect={toggle} />
       </div>
-      <div className="rounded-2xl border border-secondary bg-secondary p-10 text-center">
-        <p className="paragraph-sm text-tertiary">Overview (funnel · timeline · budget) is coming next.</p>
-      </div>
+
+      <CampaignTimeline timeline={timeline} selectedChannels={selectedChannels} />
+      <BudgetAllocationBar campaign={campaign} />
     </div>
   )
 }
