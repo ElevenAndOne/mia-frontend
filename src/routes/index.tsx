@@ -20,6 +20,7 @@ const OnboardingPage = lazy(() => import('../pages/onboarding-page'))
 const HelpPage = lazy(() => import('../pages/help-page'))
 const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-page'))
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
+const NewCampaignPage = lazy(() => import('../pages/new-campaign-page'))
 const CampaignWorkspacePage = lazy(() => import('../pages/campaign-workspace-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
@@ -161,9 +162,21 @@ export const AppRoutes = ({
           }
         />
 
+        {/* Build a new campaign (chat / brief upload). Also where /campaigns
+            redirects when the workspace has no campaigns yet. */}
+        <Route
+          path="/campaigns/new"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <NewCampaignPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
         {/* New multi-view campaign workspace (Overview / Calendar / Builder).
-            Deep-linkable per campaign + view; the old /campaigns page stays the
-            entry/empty-state until the workspace reaches full parity. */}
+            Deep-linkable per campaign + view. */}
         <Route
           path="/campaigns/:campaignId/:view"
           element={
