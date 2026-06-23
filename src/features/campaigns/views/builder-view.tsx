@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiFetch } from '../../../utils/api'
 import { BuilderHeader } from '../components/builder/builder-header'
 import { ObjectivesEditor } from '../components/builder/objectives-editor'
 import { PhaseStepper } from '../components/builder/phase-stepper'
@@ -14,10 +15,21 @@ import type { LinkedCampaign } from '../types'
 type PickerTarget = { actionId: string; channel: string; current: LinkedCampaign[] }
 
 export const BuilderView = () => {
-  const { campaign } = useCampaignWorkspace()
+  const { campaign, tenantId, sessionId } = useCampaignWorkspace()
   const { patchCampaign, saveObjectives, savePickerLinks } = useCampaignMutations()
   const lists = useWorkspaceLists()
   const navigate = useNavigate()
+
+  // Reconnect HubSpot via redirect (popups are blocked by Firefox cookie policy).
+  const reconnectHubspot = async () => {
+    try {
+      const res = await apiFetch(`/api/oauth/hubspot/auth-url?tenant_id=${tenantId}`, { headers: { 'X-Session-ID': sessionId } })
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.auth_url) window.location.href = data.auth_url
+      }
+    } catch { /* user can retry from Integrations */ }
+  }
 
   const sortedPhases = useMemo(() => [...campaign.phases].sort((a, b) => a.sort_order - b.sort_order), [campaign.phases])
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
@@ -38,8 +50,9 @@ export const BuilderView = () => {
         </div>
       )}
       {lists.hubspotNeedsReconnect && (
-        <div className="bg-utility-warning-50 border border-utility-warning-200 rounded-xl p-3">
-          <p className="paragraph-sm text-utility-warning-700">HubSpot needs reconnecting — HubSpot-sourced KPIs won't update until you reconnect it from Integrations.</p>
+        <div className="bg-utility-warning-50 border border-utility-warning-200 rounded-xl p-3 flex items-center justify-between gap-3">
+          <p className="paragraph-sm text-utility-warning-700">HubSpot needs reconnecting — HubSpot-sourced KPIs (e.g. total leads) won't update until you reconnect.</p>
+          <button onClick={reconnectHubspot} className="shrink-0 px-3 py-1.5 rounded-lg bg-utility-warning-600 text-white label-sm hover:bg-utility-warning-700">Reconnect HubSpot</button>
         </div>
       )}
 

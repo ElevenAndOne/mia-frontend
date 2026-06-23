@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -154,3 +154,36 @@ export const patchAsset = (s: string, t: string, id: string, assetId: string, fi
 
 export const deleteAsset = (s: string, t: string, id: string, assetId: string) =>
   apiFetch(`${base(t)}/${id}/assets/${assetId}`, { method: 'DELETE', headers: auth(s) })
+
+// ── ClickUp ──────────────────────────────────────────────────────────────
+
+export async function fetchClickupSync(s: string, t: string, id: string): Promise<SyncResult> {
+  const res = await apiFetch(`${base(t)}/${id}/clickup-sync`, { headers: auth(s) })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Sync check failed')
+  }
+  return res.json()
+}
+
+// Calls the ClickUp plugin SDK (list_spaces, list_folders, list_folder_lists,
+// push_campaign_summary, update_campaign_summary). Returns the `result` payload.
+export async function invokeClickup(
+  s: string,
+  t: string,
+  action: string,
+  data: Record<string, string> = {},
+): Promise<Record<string, unknown>> {
+  const res = await apiFetch(`/api/tenants/${t}/plugins/clickup/invoke/${action}`, {
+    method: 'POST',
+    headers: authJson(s),
+    body: JSON.stringify({ data }),
+  })
+  if (!res.ok) {
+    let detail = `ClickUp ${action} failed (${res.status})`
+    try { const err = await res.json(); detail = err.detail || detail } catch { /* non-JSON */ }
+    throw new Error(detail)
+  }
+  const body = await res.json()
+  return body.result
+}

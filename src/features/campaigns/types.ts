@@ -99,6 +99,59 @@ export interface CampaignSummary {
 
 export type CampaignView = 'overview' | 'calendar' | 'builder'
 
+// ── ClickUp ────────────────────────────────────────────────────────────────
+
+export interface SyncAsset {
+  asset_id: string
+  asset_name: string
+  asset_type: string | null
+  synced: boolean
+  clickup_task_id: string | null
+  clickup_task_url: string | null
+}
+
+export interface SyncChannel {
+  action_id: string
+  channel: string
+  channel_label: string
+  assets: SyncAsset[]
+}
+
+export interface SyncPhase {
+  phase_id: string
+  phase_name: string
+  channels: SyncChannel[]
+}
+
+export interface SyncResult {
+  campaign_id: string
+  campaign_name: string
+  client_name: string | null
+  clickup_list_id: string | null
+  total_assets: number
+  matched: number
+  unmatched: number
+  phases: SyncPhase[]
+}
+
+export interface ClickUpError { type: string; error: string }
+
+export interface ClickUpPushResult {
+  tasks_created?: number
+  tasks_skipped?: number
+  errors?: ClickUpError[]
+  tasks?: { task_id?: string; task_url?: string }[]
+}
+
+export interface ClickUpUpdateResult {
+  tasks_updated?: number
+  tasks_created?: number
+  tasks_deleted?: number
+  errors?: ClickUpError[]
+}
+
+export interface ClickUpNode { id: string; name: string }
+
 export interface ChannelConfig {
   hidden: string[]
   custom: { key: string; label: string }[]
