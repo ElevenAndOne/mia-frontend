@@ -1,6 +1,6 @@
 import { allocationByChannel } from '../../utils/budget-math'
 import { channelColor, channelLabel } from '../../utils/channel-colors'
-import { currencySymbol } from '../../utils/campaign-dates'
+import { campaignMonths, currencySymbol } from '../../utils/campaign-dates'
 import type { CampaignDetail } from '../../types'
 
 // Budget allocation across paid channels (normalised to campaign total) vs the
@@ -45,6 +45,11 @@ export const BudgetAllocationBar = ({ campaign }: { campaign: CampaignDetail }) 
               </div>
             ))}
           </div>
+          {campaignMonths(campaign) > 1 && (
+            <p className="paragraph-xs text-quaternary mt-3">
+              Monthly budgets are shown as their campaign total (× {campaignMonths(campaign)} months).
+            </p>
+          )}
         </>
       )}
     </div>

@@ -21,7 +21,10 @@ export function buildCalendarEvents(campaign: CampaignDetail): CalendarEvent[] {
   for (const phase of campaign.phases) {
     for (const ca of phase.channel_actions) {
       for (const a of ca.assets) {
-        const d = assetDate(a)
+        // Asset launch/flight date, else fall back to the channel's active start
+        // so paid channels (e.g. Google Ads with flight dates but date-less ad
+        // assets) still appear on the calendar.
+        const d = assetDate(a) ?? ca.start_date
         if (!d) continue
         events.push({
           iso: d.slice(0, 10),

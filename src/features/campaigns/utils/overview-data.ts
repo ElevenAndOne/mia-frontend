@@ -3,7 +3,8 @@
 
 import type { CampaignDetail } from '../types'
 import { assetTypeColor, channelColor, channelLabel } from './channel-colors'
-import { assetDate } from './campaign-dates'
+import { assetDate, campaignMonths } from './campaign-dates'
+import { channelAllocatedTotal } from './budget-math'
 import { phaseHue, phaseRole } from './phase-roles'
 
 export interface FunnelPhase {
@@ -42,6 +43,36 @@ export function buildFunnel(campaign: CampaignDetail): FunnelPhase[] {
         channels,
       }
     })
+}
+
+export interface PhaseSummary {
+  phaseId: string
+  num: string
+  name: string
+  role: string
+  hue: string
+  channels: number
+  assets: number
+  kpis: number
+  budget: number // campaign-total allocation for the phase
+}
+
+// Per-phase counts + budget for the Overview "Phase breakdown" panel.
+export function phaseSummaries(campaign: CampaignDetail): PhaseSummary[] {
+  const months = campaignMonths(campaign)
+  return [...campaign.phases]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((p, i) => ({
+      phaseId: p.phase_id,
+      num: String(i + 1).padStart(2, '0'),
+      name: p.phase_name,
+      role: phaseRole(p.phase_name, p.sort_order ?? i),
+      hue: phaseHue(p.sort_order ?? i),
+      channels: new Set(p.channel_actions.map((ca) => ca.channel)).size,
+      assets: p.channel_actions.reduce((s, ca) => s + ca.assets.length, 0),
+      kpis: p.kpis.length,
+      budget: p.channel_actions.reduce((s, ca) => s + channelAllocatedTotal(ca, months), 0),
+    }))
 }
 
 // Channel keys per phase — used to dim the timeline when a funnel card is selected.
