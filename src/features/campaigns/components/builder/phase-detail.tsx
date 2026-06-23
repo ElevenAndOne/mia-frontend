@@ -4,6 +4,7 @@ import { EditableTextarea } from '../../../../components/editable-textarea'
 import { ChannelActionCard } from './channel-action-card'
 import { KpiList } from './kpi-list'
 import { ManageChannelsModal } from './manage-channels-modal'
+import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import { usePhaseEditor } from '../../hooks/use-phase-editor'
 import { PLATFORM_LABELS } from '../../utils/channel-colors'
 import type { ChannelConfig, LinkedCampaign, Phase } from '../../types'
@@ -60,11 +61,17 @@ export const PhaseDetail = ({
           <span className="text-tertiary font-normal">Phase</span>
         </h3>
         <div>
-          <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Objective</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="label-xs text-quaternary uppercase tracking-wide">Objective</p>
+            <AskMiaButton context={{ fieldLabel: 'phase objective', phaseName: phase.phase_name }} currentValue={phase.objective ?? ''} onInsert={(t) => patchPhase({ objective: t })} />
+          </div>
           <EditableTextarea value={phase.objective ?? ''} onSave={(v) => patchPhase({ objective: v || null })} placeholder="Add phase objective…" rows={2} className="paragraph-sm text-secondary" />
         </div>
         <div>
-          <p className="label-xs text-quaternary uppercase tracking-wide mb-1">Strategy</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="label-xs text-quaternary uppercase tracking-wide">Strategy</p>
+            <AskMiaButton context={{ fieldLabel: 'phase strategy', phaseName: phase.phase_name }} currentValue={phase.strategy ?? ''} onInsert={(t) => patchPhase({ strategy: t })} />
+          </div>
           <EditableTextarea value={phase.strategy ?? ''} onSave={(v) => patchPhase({ strategy: v || null })} placeholder="Add phase strategy…" rows={2} className="paragraph-sm text-secondary" />
         </div>
       </div>
@@ -93,7 +100,7 @@ export const PhaseDetail = ({
         </div>
         <div className="space-y-2.5">
           {phase.channel_actions.map((ca) => (
-            <ChannelActionCard key={ca.action_id} phaseId={phase.phase_id} action={ca} currency={currency} onRemove={() => removeWithConfirm(ca.action_id)} onOpenPicker={onOpenPicker} />
+            <ChannelActionCard key={ca.action_id} phaseId={phase.phase_id} phaseName={phase.phase_name} action={ca} currency={currency} onRemove={() => removeWithConfirm(ca.action_id)} onOpenPicker={onOpenPicker} />
           ))}
         </div>
         {suggestHubspot && (

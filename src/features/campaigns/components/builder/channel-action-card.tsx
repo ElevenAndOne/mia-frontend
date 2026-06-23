@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AssetCard } from './asset-card'
+import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import { useChannelEditor } from '../../hooks/use-channel-editor'
 import { channelLabel } from '../../utils/channel-colors'
 import { formatBudget, formatDate } from '../../utils/campaign-dates'
@@ -8,22 +9,23 @@ import { channelDisplayBudget } from '../../utils/budget-math'
 import type { ChannelAction, LinkedCampaign } from '../../types'
 
 const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'hubspot'])
-const OSA: Array<{ field: 'objective' | 'strategy' | 'action_notes'; label: string; placeholder: string }> = [
-  { field: 'objective', label: 'Objective', placeholder: 'Add objective…' },
-  { field: 'strategy', label: 'Strategy', placeholder: 'Add strategy…' },
-  { field: 'action_notes', label: 'Action', placeholder: 'Add tactical actions, posting schedule, content mix…' },
+const OSA: Array<{ field: 'objective' | 'strategy' | 'action_notes'; label: string; ask: string; placeholder: string }> = [
+  { field: 'objective', label: 'Objective', ask: 'channel objective', placeholder: 'Add objective…' },
+  { field: 'strategy', label: 'Strategy', ask: 'channel strategy', placeholder: 'Add strategy…' },
+  { field: 'action_notes', label: 'Action', ask: 'channel tactics / action plan', placeholder: 'Add tactical actions, posting schedule, content mix…' },
 ]
 const inputCls = 'w-full px-2 py-1.5 border border-tertiary rounded-lg text-xs bg-secondary-subtle text-secondary outline-none focus:border-utility-brand-400'
 
 interface Props {
   phaseId: string
+  phaseName?: string
   action: ChannelAction
   currency: string | null
   onRemove: () => void
   onOpenPicker: (actionId: string, channel: string, current: LinkedCampaign[]) => void
 }
 
-export const ChannelActionCard = ({ phaseId, action, currency, onRemove, onOpenPicker }: Props) => {
+export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemove, onOpenPicker }: Props) => {
   const [expanded, setExpanded] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
   const { patchAction, addAsset, patchAsset, deleteAsset } = useChannelEditor(phaseId, action.action_id)
@@ -77,9 +79,12 @@ export const ChannelActionCard = ({ phaseId, action, currency, onRemove, onOpenP
 
       {expanded && (
         <div className="p-3 space-y-3 border-t border-tertiary">
-          {OSA.map(({ field, label: lbl, placeholder }) => (
+          {OSA.map(({ field, label: lbl, ask, placeholder }) => (
             <div key={field}>
-              <p className="label-xs text-quaternary uppercase tracking-wide mb-1">{lbl}</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="label-xs text-quaternary uppercase tracking-wide">{lbl}</p>
+                <AskMiaButton context={{ fieldLabel: ask, phaseName, channel: label }} currentValue={action[field] ?? ''} onInsert={(t) => patchAction({ [field]: t })} />
+              </div>
               <EditableTextarea value={action[field] ?? ''} onSave={(v) => patchAction({ [field]: v || null })} placeholder={placeholder} rows={field === 'action_notes' ? 3 : 2} className="paragraph-sm text-secondary" />
             </div>
           ))}
@@ -123,7 +128,7 @@ export const ChannelActionCard = ({ phaseId, action, currency, onRemove, onOpenP
             {assetsOpen && (
               <div className="mt-2 space-y-2">
                 {action.assets.map((asset) => (
-                  <AssetCard key={asset.asset_id} asset={asset} onPatch={(f) => patchAsset(asset.asset_id, f)} onDelete={() => deleteAsset(asset.asset_id)} />
+                  <AssetCard key={asset.asset_id} asset={asset} channel={label} phaseName={phaseName} onPatch={(f) => patchAsset(asset.asset_id, f)} onDelete={() => deleteAsset(asset.asset_id)} />
                 ))}
                 <button onClick={addAsset} className="w-full py-2 border border-dashed border-secondary rounded-lg label-xs text-quaternary hover:text-secondary hover:border-tertiary transition-colors">+ Add asset</button>
               </div>

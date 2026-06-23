@@ -155,6 +155,33 @@ export const patchAsset = (s: string, t: string, id: string, assetId: string, fi
 export const deleteAsset = (s: string, t: string, id: string, assetId: string) =>
   apiFetch(`${base(t)}/${id}/assets/${assetId}`, { method: 'DELETE', headers: auth(s) })
 
+// ── Ask Mia (inline field suggestion) ─────────────────────────────────────
+
+export interface SuggestFieldBody {
+  field_label: string
+  phase_name?: string
+  channel?: string
+  asset_name?: string
+  asset_type?: string
+  current_value?: string
+}
+
+export async function suggestField(
+  s: string,
+  t: string,
+  id: string,
+  body: SuggestFieldBody,
+): Promise<string> {
+  const res = await apiFetch(`${base(t)}/${id}/suggest-field`, {
+    method: 'POST',
+    headers: authJson(s),
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error('Suggestion failed')
+  const data = await res.json()
+  return data.suggestion ?? ''
+}
+
 // ── ClickUp ──────────────────────────────────────────────────────────────
 
 export async function fetchClickupSync(s: string, t: string, id: string): Promise<SyncResult> {

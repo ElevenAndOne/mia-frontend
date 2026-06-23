@@ -1,5 +1,6 @@
 import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
+import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import type { Asset } from '../../types'
 
 const ASSET_TYPES = [
@@ -15,14 +16,17 @@ const fieldLabel = 'text-[9.5px] font-semibold text-quaternary uppercase trackin
 
 interface AssetCardProps {
   asset: Asset
+  channel?: string
+  phaseName?: string
   onPatch: (fields: Partial<Asset>) => void
   onDelete: () => void
 }
 
 // One creative deliverable. Asset-level budget + flight roll up to the channel
 // total (see budget-math). Presentational — edits delegate to the channel editor.
-export const AssetCard = ({ asset, onPatch, onDelete }: AssetCardProps) => {
+export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: AssetCardProps) => {
   const details = (asset.details as Record<string, unknown>) ?? {}
+  const askCtx = { phaseName, channel, assetName: asset.asset_name, assetType: asset.asset_type }
   const launch = String(details.launch_date ?? '')
   const bestTime = String(details.optimal_post_time ?? '')
 
@@ -56,20 +60,20 @@ export const AssetCard = ({ asset, onPatch, onDelete }: AssetCardProps) => {
         </button>
       </div>
 
-      <EditableTextarea
-        value={asset.key_message ?? ''}
-        onSave={(v) => onPatch({ key_message: v || null })}
-        placeholder="Asset copy…"
-        rows={2}
-        className="paragraph-xs text-secondary"
-      />
-      <EditableTextarea
-        value={asset.cta ?? ''}
-        onSave={(v) => onPatch({ cta: v || null })}
-        placeholder="Caption…"
-        rows={2}
-        className="paragraph-xs text-tertiary"
-      />
+      <div>
+        <div className="flex items-center justify-between mb-0.5">
+          <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">Copy</span>
+          <AskMiaButton context={{ ...askCtx, fieldLabel: 'asset copy / key message' }} currentValue={asset.key_message ?? ''} onInsert={(t) => onPatch({ key_message: t })} />
+        </div>
+        <EditableTextarea value={asset.key_message ?? ''} onSave={(v) => onPatch({ key_message: v || null })} placeholder="Asset copy…" rows={2} className="paragraph-xs text-secondary" />
+      </div>
+      <div>
+        <div className="flex items-center justify-between mb-0.5">
+          <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">Caption</span>
+          <AskMiaButton context={{ ...askCtx, fieldLabel: 'caption / call-to-action' }} currentValue={asset.cta ?? ''} onInsert={(t) => onPatch({ cta: t })} />
+        </div>
+        <EditableTextarea value={asset.cta ?? ''} onSave={(v) => onPatch({ cta: v || null })} placeholder="Caption…" rows={2} className="paragraph-xs text-tertiary" />
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
