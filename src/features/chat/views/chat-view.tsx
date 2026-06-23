@@ -216,7 +216,7 @@ export const ChatView = ({
                         actionResult={message.actionResult}
                         onConfirmAction={
                           message.pendingAction
-                            ? () => handleConfirmAction(message.id)
+                            ? (override) => handleConfirmAction(message.id, override)
                             : undefined
                         }
                         onCancelAction={

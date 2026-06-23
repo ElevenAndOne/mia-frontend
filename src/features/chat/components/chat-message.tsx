@@ -13,7 +13,7 @@ interface ChatMessageProps {
   pendingAction?: PendingAction
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
-  onConfirmAction?: () => void
+  onConfirmAction?: (overrideParams?: Record<string, unknown>) => void
   onCancelAction?: () => void
   skillWorkspaces?: string[]
   onFeedback?: (feedback: 1 | -1, skillWorkspaces: string[]) => void

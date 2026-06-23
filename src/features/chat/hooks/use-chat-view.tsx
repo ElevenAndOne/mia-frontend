@@ -471,7 +471,7 @@ export const useChatView = () => {
   }, [handleSubmit])
 
   const handleConfirmAction = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, overrideParams?: Record<string, unknown>) => {
       const message = messages.find((m) => m.id === messageId)
       if (!message?.pendingAction || !sessionId) return
 
@@ -480,8 +480,13 @@ export const useChatView = () => {
         prev.map((m) => (m.id === messageId ? { ...m, actionStatus: 'confirmed' as const } : m))
       )
 
+      // Edited gold-card values (campaign actions) override the proposed params.
+      const actionToConfirm = overrideParams
+        ? { ...message.pendingAction, params: overrideParams }
+        : message.pendingAction
+
       try {
-        const result = await confirmAction(sessionId, message.pendingAction)
+        const result = await confirmAction(sessionId, actionToConfirm)
 
         if (result.success && result.workflow_id) {
           // Update to running

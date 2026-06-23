@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { fetchMetaPreview, type MetaPreview, type PendingAction } from '../services/chat-service'
+import { CampaignActionEditor } from './campaign-action-editor'
 
 interface ActionConfirmCardProps {
   action: PendingAction
   status: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   result?: Record<string, unknown>
-  onConfirm: () => void
+  onConfirm: (overrideParams?: Record<string, unknown>) => void
   onCancel: () => void
 }
 
@@ -234,6 +235,10 @@ export const ActionConfirmCard = ({
 }: ActionConfirmCardProps) => {
   const config = statusConfig[status]
   const isCampaignAction = action.platform === 'campaign'
+  // Editable copy of the proposed params — campaign actions can be tweaked
+  // (phase, budget, dates, launch/best-time) before Confirm; the edited params
+  // are what gets sent. Other action types pass through unchanged.
+  const [editedParams, setEditedParams] = useState<Record<string, unknown>>(action.params)
   const icon = isCampaignAction ? null : (platformIcons[action.platform] || null)
   const platformLabel = isCampaignAction ? 'Campaign' : action.platform
 
@@ -270,7 +275,7 @@ export const ActionConfirmCard = ({
             && !action.action_type?.startsWith('meta_')
             && action.params && Object.keys(action.params).length > 0 && (
             action.action_type === 'campaign_add_channel_action'
-              ? <CampaignActionPreview params={action.params} />
+              ? <CampaignActionEditor params={editedParams} onChange={setEditedParams} />
               : (
                 <div className="bg-primary/50 rounded-lg p-2 mb-3 text-xs font-mono text-tertiary">
                   {Object.entries(action.params).map(([key, value]) => (
@@ -283,11 +288,17 @@ export const ActionConfirmCard = ({
               )
           )}
 
+          {/* Post-confirm read-only summary of a campaign write */}
+          {status !== 'pending' && isCampaignAction
+            && action.params && Object.keys(action.params).length > 0 && (
+            <CampaignActionPreview params={editedParams} />
+          )}
+
           {/* Action buttons — only when pending */}
           {status === 'pending' && (
             <div className="flex gap-2">
               <button
-                onClick={onConfirm}
+                onClick={() => onConfirm(isCampaignAction ? editedParams : undefined)}
                 className="px-4 py-1.5 rounded-lg subheading-sm bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover transition-colors"
               >
                 Confirm
