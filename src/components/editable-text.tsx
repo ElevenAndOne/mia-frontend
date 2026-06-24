@@ -23,8 +23,13 @@ export const EditableText = ({
     if (editing) {
       setDraft(value)
       setTimeout(() => {
-        ref.current?.focus()
-        ref.current?.select()
+        const el = ref.current
+        if (el) {
+          el.focus()
+          // Place the caret at the end rather than selecting/jumping to the start.
+          const end = el.value.length
+          el.setSelectionRange(end, end)
+        }
       }, 0)
     }
   }, [editing]) // eslint-disable-line react-hooks/exhaustive-deps

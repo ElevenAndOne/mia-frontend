@@ -22,7 +22,7 @@ export const OverviewView = () => {
         </div>
       </div>
 
-      <PhaseBreakdown summaries={summaries} currency={campaign.budget_currency} />
+      <PhaseBreakdown summaries={summaries} />
       <BudgetAllocationBar campaign={campaign} />
     </div>
   )

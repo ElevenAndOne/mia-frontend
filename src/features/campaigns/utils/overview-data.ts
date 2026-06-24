@@ -3,8 +3,7 @@
 
 import type { CampaignDetail } from '../types'
 import { assetTypeColor, channelColor, channelLabel } from './channel-colors'
-import { assetDate, campaignMonths } from './campaign-dates'
-import { channelAllocatedTotal } from './budget-math'
+import { assetDate } from './campaign-dates'
 import { phaseHue, phaseRole } from './phase-roles'
 
 export interface FunnelPhase {
@@ -54,12 +53,10 @@ export interface PhaseSummary {
   channels: number
   assets: number
   kpis: number
-  budget: number // campaign-total allocation for the phase
 }
 
-// Per-phase counts + budget for the Overview "Phase breakdown" panel.
+// Per-phase counts for the Overview "Phase breakdown" panel.
 export function phaseSummaries(campaign: CampaignDetail): PhaseSummary[] {
-  const months = campaignMonths(campaign)
   return [...campaign.phases]
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((p, i) => ({
@@ -71,7 +68,6 @@ export function phaseSummaries(campaign: CampaignDetail): PhaseSummary[] {
       channels: new Set(p.channel_actions.map((ca) => ca.channel)).size,
       assets: p.channel_actions.reduce((s, ca) => s + ca.assets.length, 0),
       kpis: p.kpis.length,
-      budget: p.channel_actions.reduce((s, ca) => s + channelAllocatedTotal(ca, months), 0),
     }))
 }
 

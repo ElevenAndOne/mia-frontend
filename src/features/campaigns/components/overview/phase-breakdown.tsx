@@ -1,10 +1,8 @@
 import { softColor } from '../../utils/channel-colors'
-import { formatBudget } from '../../utils/campaign-dates'
 import type { PhaseSummary } from '../../utils/overview-data'
 
 interface Props {
   summaries: PhaseSummary[]
-  currency: string | null
 }
 
 const Stat = ({ value, label }: { value: number; label: string }) => (
@@ -15,8 +13,8 @@ const Stat = ({ value, label }: { value: number; label: string }) => (
 )
 
 // Replaces the timeline on Overview: a compact per-phase rollup of channels,
-// assets, KPIs and budget. (The full timeline becomes its own page later.)
-export const PhaseBreakdown = ({ summaries, currency }: Props) => (
+// assets and KPIs. (The full timeline becomes its own page later.)
+export const PhaseBreakdown = ({ summaries }: Props) => (
   <div className="bg-secondary-alt border border-secondary rounded-2xl p-5 md:p-6">
     <span className="label-xs text-quaternary uppercase tracking-[0.14em]">Phase Breakdown</span>
     <div className="mt-4 space-y-2.5">
@@ -32,12 +30,6 @@ export const PhaseBreakdown = ({ summaries, currency }: Props) => (
             <Stat value={p.channels} label="Channels" />
             <Stat value={p.assets} label="Assets" />
             <Stat value={p.kpis} label="KPIs" />
-            {p.budget > 0 && (
-              <div className="text-center">
-                <div className="cw-mono text-lg font-bold leading-none" style={{ color: p.hue }}>{formatBudget(p.budget, currency)}</div>
-                <div className="label-xs text-quaternary uppercase tracking-wide mt-1">Budget</div>
-              </div>
-            )}
           </div>
         </div>
       ))}

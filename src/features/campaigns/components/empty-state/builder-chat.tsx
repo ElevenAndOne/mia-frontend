@@ -13,7 +13,9 @@ export const BuilderChat = () => {
   const started = c.messages.length > 0 || c.loading
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: 'smooth' })
+    // 'auto' (instant), not 'smooth': the reveal tick updates streaming every 40ms,
+    // and a queued smooth animation re-fired that often stutters and fights scrolling.
+    bottom.current?.scrollIntoView({ behavior: 'auto' })
   }, [c.messages, c.streaming])
 
   return (

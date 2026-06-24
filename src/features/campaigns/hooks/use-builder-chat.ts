@@ -11,6 +11,7 @@ import {
   type AttachedDocument,
   type RecentConversation,
 } from '../../chat/services/chat-service'
+import { useThinkingPhrase } from '../../chat/hooks/use-thinking-phrase'
 import { fetchCampaignList } from '../services/campaign-api'
 
 interface Message { role: 'user' | 'assistant'; content: string }
@@ -26,12 +27,34 @@ export function useBuilderChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [thinking, setThinking] = useState('Thinking…')
+  // Empty → rotating whimsical phrase; a real backend status (e.g. "Building your
+  // campaign plan…", "Saving campaign phases…") overrides it.
+  const [thinking, setThinking] = useState('')
   const [streaming, setStreaming] = useState('')
   const [pdfUploading, setPdfUploading] = useState(false)
   const [pastBuilds, setPastBuilds] = useState<RecentConversation[]>([])
   const conversationId = useRef<string | null>(null)
   const knownIds = useRef<Set<string>>(new Set())
+
+  // Interval-based streaming reveal — identical mechanism to normal chat v2
+  // (use-chat-view). Text accumulates in receivedRef instantly; a fixed 40ms
+  // setInterval drip-feeds it to display state at a steady pace INDEPENDENT of
+  // bursty chunk arrival. This is what makes the type-out smooth instead of choppy.
+  const receivedRef = useRef('')
+  const displayIndexRef = useRef(0)
+  const streamDoneRef = useRef(false)
+  const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isMountedRef = useRef(true)
+  const REVEAL_INTERVAL_MS = 40 // ~25 ticks/sec
+  const CHARS_PER_TICK = 5 // 125 chars/sec
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!sessionId || !tenantId) return
@@ -64,9 +87,25 @@ export function useBuilderChat() {
       const history = [...messages, { role: 'user' as const, content }]
       setMessages(history)
       setLoading(true)
-      setThinking('Thinking…')
+      setThinking('')
       setStreaming('')
-      let acc = ''
+
+      // Reset + start the steady reveal tick (decoupled from chunk arrival).
+      receivedRef.current = ''
+      displayIndexRef.current = 0
+      streamDoneRef.current = false
+      if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+      revealIntervalRef.current = setInterval(() => {
+        const remaining = receivedRef.current.length - displayIndexRef.current
+        if (remaining > 0) {
+          displayIndexRef.current += Math.min(CHARS_PER_TICK, remaining)
+          if (isMountedRef.current) setStreaming(receivedRef.current.slice(0, displayIndexRef.current))
+        } else if (streamDoneRef.current) {
+          if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+          revealIntervalRef.current = null
+        }
+      }, REVEAL_INTERVAL_MS)
+
       try {
         await sendChatMessageStreaming(
           {
@@ -80,13 +119,27 @@ export function useBuilderChat() {
             ...(documents ? { documents } : {}),
           },
           (chunk) => {
-            if (chunk.text) { acc += chunk.text; setStreaming(acc) }
-            else if (chunk.status && chunk.status !== 'thinking') setThinking(chunk.status)
+            if (chunk.text) {
+              receivedRef.current += chunk.text
+              // Backgrounded tab throttles setInterval — flush straight to display.
+              if (document.hidden) {
+                displayIndexRef.current = receivedRef.current.length
+                setStreaming(receivedRef.current)
+              }
+            } else if (chunk.status && chunk.status !== 'thinking') setThinking(chunk.status)
           },
         )
-        setMessages((prev) => [...prev, { role: 'assistant', content: acc || 'Something went wrong. Try again.' }])
+        // Signal done — let the reveal tick flush the remainder, then settle.
+        streamDoneRef.current = true
+        await new Promise<void>((resolve) => {
+          const check = setInterval(() => {
+            if (revealIntervalRef.current === null) { clearInterval(check); resolve() }
+          }, REVEAL_INTERVAL_MS)
+        })
+        setMessages((prev) => [...prev, { role: 'assistant', content: receivedRef.current || 'Something went wrong. Try again.' }])
         setTimeout(() => void pollForSavedCampaign(), 1000)
       } catch {
+        if (revealIntervalRef.current) { clearInterval(revealIntervalRef.current); revealIntervalRef.current = null }
         setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
       } finally {
         setLoading(false)
@@ -143,8 +196,10 @@ export function useBuilderChat() {
     conversationId.current = null
   }, [])
 
+  const thinkingPhrase = useThinkingPhrase(loading && !thinking)
+
   return {
-    messages, input, setInput, loading, thinking, streaming, pdfUploading,
+    messages, input, setInput, loading, thinking: thinking || thinkingPhrase, streaming, pdfUploading,
     pastBuilds, send, handlePdf, openHistory, loadPastBuild, startFresh,
   }
 }

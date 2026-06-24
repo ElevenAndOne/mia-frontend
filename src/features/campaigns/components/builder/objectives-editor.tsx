@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AutoGrowTextarea } from '../../../../components/auto-grow-textarea'
 
 interface ObjectivesEditorProps {
   objectives: string[]
@@ -30,12 +31,12 @@ export const ObjectivesEditor = ({ objectives, onSave }: ObjectivesEditorProps) 
         <div className="space-y-2">
           {draft.map((obj, i) => (
             <div key={i} className="flex items-start gap-2">
-              <input
+              <AutoGrowTextarea
                 value={obj}
                 onChange={(e) => setDraft((p) => p.map((o, j) => (j === i ? e.target.value : o)))}
                 onFocus={() => { if (i === draft.length - 1) setDraft((p) => [...p, '']) }}
                 placeholder={i === draft.length - 1 ? '+ Add objective' : 'Objective'}
-                className="flex-1 px-2 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-secondary outline-none focus:border-utility-brand-400"
+                className="flex-1 px-2 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-secondary outline-none focus:border-utility-brand-400 leading-relaxed"
               />
               {obj.trim() && (
                 <button onClick={() => setDraft((p) => p.filter((_, j) => j !== i))} className="mt-2 text-quaternary hover:text-utility-error-500">

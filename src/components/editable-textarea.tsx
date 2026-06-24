@@ -33,7 +33,13 @@ export const EditableTextarea = ({
     if (editing) {
       setDraft(value)
       setTimeout(() => {
-        ref.current?.focus()
+        const el = ref.current
+        if (el) {
+          el.focus()
+          // Place the caret at the end rather than the start.
+          const end = el.value.length
+          el.setSelectionRange(end, end)
+        }
         autosize()
       }, 0)
     }

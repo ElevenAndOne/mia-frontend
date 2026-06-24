@@ -19,6 +19,7 @@ import {
   uploadChatFile,
 } from '../services/chat-service'
 import type { PendingAction, AttachedDocument } from '../services/chat-service'
+import { useThinkingPhrase } from './use-thinking-phrase'
 import { StorageKey } from '../../../constants/storage-keys'
 import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
@@ -49,7 +50,9 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
-  const [thinkingText, setThinkingText] = useState('Thinking...')
+  // Empty by default → the whimsical rotating phrase shows; a real tool status
+  // ("Checking your Google Ads performance…") overrides it when one arrives.
+  const [thinkingText, setThinkingText] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
@@ -158,6 +161,9 @@ export const useChatView = () => {
 
   const hasSelectedPlatforms = selectedPlatforms.length > 0
   const hasMessages = messages.length > 0
+
+  // Rotate a whimsical phrase while loading and no real tool status has arrived.
+  const thinkingPhrase = useThinkingPhrase(isLoading && !thinkingText)
 
   // After submitting, scroll so the user's message is near the top of the viewport
   useEffect(() => {
@@ -284,7 +290,7 @@ export const useChatView = () => {
       setDocuments([])
       setIsLoading(true)
       setStreamingContent('')
-      setThinkingText('Thinking...')
+      setThinkingText('')
 
       const abortController = new AbortController()
       abortControllerRef.current = abortController
@@ -677,7 +683,7 @@ export const useChatView = () => {
     messages,
     isLoading,
     streamingContent,
-    thinkingText,
+    thinkingText: thinkingText || thinkingPhrase,
     dateRange,
     setDateRange,
     platforms,
