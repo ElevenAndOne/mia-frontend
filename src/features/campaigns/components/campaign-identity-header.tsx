@@ -12,15 +12,17 @@ export const CampaignIdentityHeader = ({ view }: { view: CampaignView }) => {
   const total = formatBudget(campaign.budget_total, campaign.budget_currency)
 
   return (
-    <div className="bg-secondary rounded-2xl border border-secondary p-5">
-      <div className="flex items-start justify-between gap-4">
+    <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-[#df6a1f] flex items-center justify-center text-xs font-bold text-white shrink-0">{initials}</div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              {campaign.is_primary && <span className="text-utility-warning-700 text-sm">★</span>}
-              <span className="title-h5 text-primary truncate">{campaign.campaign_name}</span>
-              <StatusBadge status={campaign.status} pulse />
+            <div className="flex items-center gap-2 min-w-0">
+              {campaign.is_primary && <span className="text-utility-warning-700 text-sm shrink-0">★</span>}
+              <span className="title-h5 text-primary truncate min-w-0">{campaign.campaign_name}</span>
+              <span className="shrink-0">
+                <StatusBadge status={campaign.status} pulse />
+              </span>
             </div>
             <div className="paragraph-xs text-tertiary mt-0.5 truncate">
               {[campaign.client_name, `${formatShortDate(campaign.start_date)} → ${formatShortDate(campaign.end_date)}`, total !== '—' ? `${total} total` : null]

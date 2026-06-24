@@ -613,7 +613,7 @@ export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVa
                 className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors"
               >
                 <span className="text-sm font-medium text-purple-300 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5" /> Optimized prompt (Claude)
+                  <Sparkles className="w-3.5 h-3.5" /> Optimised prompt (Claude)
                 </span>
                 {showOptimizedPrompt ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
               </button>

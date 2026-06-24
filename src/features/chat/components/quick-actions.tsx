@@ -16,7 +16,7 @@ interface QuickActionsProps {
 
 const actions: QuickAction[] = [
   { id: 'grow',     label: 'Grow',     icon: <Icon.trend_up_01 size={18} />,  description: 'Analyse growth opportunities across your connected channels.' },
-  { id: 'optimize', label: 'Optimize', icon: <Icon.sliders_01 size={18} />,   description: 'Identify efficiency gains and reduce wasted spend.' },
+  { id: 'optimize', label: 'Optimise', icon: <Icon.sliders_01 size={18} />,   description: 'Identify efficiency gains and reduce wasted spend.' },
   { id: 'protect',  label: 'Protect',  icon: <Icon.shield_tick size={18} />,  description: 'Monitor risks and protect your campaign performance.' },
 ]
 

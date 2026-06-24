@@ -144,7 +144,7 @@ export const stylePresets = [
   { id: 'product',   name: 'Product Photography', icon: Camera,  description: 'Clean, professional product shots' },
   { id: 'lifestyle', name: 'Lifestyle Shot',       icon: Sun,     description: 'Natural, everyday scenes' },
   { id: 'marketing', name: 'Marketing Banner',     icon: Monitor, description: 'Eye-catching promotional' },
-  { id: 'social',    name: 'Social Media Post',    icon: Grid3x3, description: 'Optimized for social' },
+  { id: 'social',    name: 'Social Media Post',    icon: Grid3x3, description: 'Optimised for social' },
 ]
 
 export const compositionRules = [

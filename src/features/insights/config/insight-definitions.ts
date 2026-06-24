@@ -50,7 +50,7 @@ export const INSIGHT_CONFIGS: Record<InsightType, InsightConfig> = {
 
 export const INSIGHT_TITLES: Record<InsightType, string> = {
   grow: 'Grow Insights',
-  optimize: 'Optimize Insights',
+  optimize: 'Optimise Insights',
   protect: 'Protect Insights',
 }
 
