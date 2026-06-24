@@ -28,6 +28,8 @@ import {
 } from '../utils/session'
 import { StorageKey } from '../constants/storage-keys'
 import { logger } from '../utils/logger'
+import { MOCK_MODE } from '../mocks/mock-mode'
+import { mockSessionState } from '../mocks/mock-session'
 
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
@@ -115,7 +117,11 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
-  const [state, setState] = useState<SessionState>(getInitialState)
+  const [state, setState] = useState<SessionState>(
+    // MOCK_MODE: boot straight into a seeded authenticated session (design-preview
+    // build only). Statically false in normal builds, so this branch is dropped.
+    MOCK_MODE ? () => mockSessionState : getInitialState
+  )
 
   // Refs for OAuth timer cleanup on unmount
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -181,6 +187,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Initialize session on mount
   useEffect(() => {
+    // MOCK_MODE: state is already seeded with a complete authenticated session
+    // (see useState initializer). Skip all real auth/network initialization.
+    if (MOCK_MODE) return
+
     const initializeSession = async () => {
       setState((prev) => ({ ...prev, isLoading: true }))
 

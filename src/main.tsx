@@ -110,6 +110,11 @@ import { OnboardingProvider } from './features/onboarding/onboarding-context'
 import { OverlayProvider } from './features/overlay'
 import './index.css'
 
+// Raw build-time token (see vite.config.ts `define`). Used inline below so Rollup
+// sees a literal `if (false)` in normal builds and fully drops the dynamic MSW
+// import + chunk. Folds to 'true' only under dev:mock / build:mock.
+declare const __USE_MOCKS__: string
+
 // iPhone 16 Pro viewport optimization
 const viewport = document.querySelector('meta[name="viewport"]')
 if (viewport) {
@@ -152,22 +157,34 @@ try {
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Root element not found')
 
-ReactDOM.createRoot(rootElement).render(
-  <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <ToastProvider>
-            <SessionProvider>
-              <OnboardingProvider>
-                <OverlayProvider>
-                  <App />
-                </OverlayProvider>
-              </OnboardingProvider>
-            </SessionProvider>
-          </ToastProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  </Sentry.ErrorBoundary>
-)
+// In MOCK_MODE, start the MSW worker before the app renders so the very first
+// data fetches are intercepted. The import is dynamic so it never ships in a
+// normal build. No-op (and tree-shaken) when MOCK_MODE is false.
+async function bootstrap() {
+  if (__USE_MOCKS__ === 'true') {
+    const { worker } = await import('./mocks/browser')
+    await worker.start({ onUnhandledRequest: 'bypass', quiet: false })
+  }
+
+  ReactDOM.createRoot(rootElement!).render(
+    <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <ToastProvider>
+              <SessionProvider>
+                <OnboardingProvider>
+                  <OverlayProvider>
+                    <App />
+                  </OverlayProvider>
+                </OnboardingProvider>
+              </SessionProvider>
+            </ToastProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </Sentry.ErrorBoundary>
+  )
+}
+
+void bootstrap()
