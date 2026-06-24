@@ -1,6 +1,6 @@
-import { Icon } from '../../../components/icon'
 import { Spinner } from '../../../components/spinner'
 import { SegmentedControl } from '../../../components/segmented-control'
+import { TopBar } from '../../../components/top-bar'
 import { useBudgetTracker } from '../hooks/use-budget-tracker'
 import { BudgetSummaryCards } from '../components/budget-summary-cards'
 import { BudgetPlatformBreakdown } from '../components/budget-platform-breakdown'
@@ -42,16 +42,10 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
   } = useBudgetTracker()
 
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 md:px-10 py-8">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={onBack} className="text-tertiary hover:text-primary transition-colors">
-            <Icon.arrow_left size={20} />
-          </button>
-          <h1 className="text-xl font-semibold text-primary">Budget Tracker</h1>
-        </div>
-
+    <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
+      <TopBar title="Budget Tracker" onBack={onBack} className="border-b border-tertiary" />
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-7xl mx-auto px-4 md:px-10 py-8">
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           {campaigns.length > 0 && (
@@ -137,6 +131,7 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
             <p className="paragraph-sm text-secondary">No campaigns found for this workspace.</p>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

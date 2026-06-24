@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
-import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
 import { TopBar } from '../components/top-bar'
 import { Spinner } from '../components/spinner'
 import { useSession } from '../contexts/session-context'
@@ -74,14 +73,12 @@ const CampaignWorkspacePage = () => {
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
-        <div className="campaign-workspace w-full h-dvh flex flex-col overflow-hidden">
-          <TopBar title="Campaigns" onBack={() => navigate('/home')} />
-          <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
-            <div className="max-w-[1200px] mx-auto">{body()}</div>
-          </div>
+      <div className="campaign-workspace w-full h-dvh flex flex-col overflow-hidden">
+        <TopBar title="Campaigns" onBack={() => navigate('/home')} />
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
+          <div className="max-w-[1200px] mx-auto">{body()}</div>
         </div>
-      </AnimatedPageWrapper>
+      </div>
     </AppShell>
   )
 }

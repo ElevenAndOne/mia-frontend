@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
-import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
 import StrategiseView from '../features/strategise/strategise-view'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
@@ -28,9 +27,9 @@ const StrategisePage = () => {
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <AnimatedPageWrapper preset="slideUp" className="w-full h-full">
+      <div className="w-full h-full">
         <StrategiseView onBack={() => navigate('/home')} />
-      </AnimatedPageWrapper>
+      </div>
     </AppShell>
   )
 }

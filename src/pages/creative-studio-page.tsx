@@ -1,11 +1,9 @@
-import { useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
-import { AnimatedPageWrapper } from '../components/animated-page-wrapper'
+import { TopBar } from '../components/top-bar'
 import { CreativeStudioView } from '../features/creative-studio/creative-studio-view'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const CreativeStudioPage = () => {
-  const navigate = useNavigate()
   const {
     onNewWorkspace,
     onIntegrationsClick,
@@ -28,9 +26,12 @@ const CreativeStudioPage = () => {
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <AnimatedPageWrapper preset="slideUp" className="w-full h-full overflow-y-auto">
-        <CreativeStudioView onBack={() => navigate('/home')} />
-      </AnimatedPageWrapper>
+      <div className="w-full h-full flex flex-col min-h-0">
+        <TopBar title="Mia Create" />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <CreativeStudioView />
+        </div>
+      </div>
     </AppShell>
   )
 }
