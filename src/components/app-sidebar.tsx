@@ -113,7 +113,7 @@ export const AppSidebar = () => {
 
   return (
     <aside
-      className={`hidden md:flex shrink-0 flex-col border-r border-secondary bg-primary print:hidden relative overflow-hidden transition-[width] duration-200 ease-out ${
+      className={`hidden md:flex shrink-0 flex-col border-r border-secondary bg-[var(--ui-sidebar)] print:hidden relative overflow-hidden transition-[width] duration-200 ease-out ${
         collapsed ? 'w-[72px]' : 'w-[264px]'
       }`}
     >
@@ -278,7 +278,7 @@ export const AppSidebar = () => {
 
       {/* Recent chats slide-over (only meaningful when expanded) */}
       <div
-        className={`absolute inset-0 flex flex-col min-h-0 bg-primary transition-transform duration-300 ease-out ${
+        className={`absolute inset-0 flex flex-col min-h-0 bg-[var(--ui-sidebar)] transition-transform duration-300 ease-out ${
           showChats ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

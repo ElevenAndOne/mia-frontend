@@ -63,6 +63,12 @@
   --color-background-primary: var(--color-static-white);
   /* page/shell canvas — cream in light so white cards (bg-primary) pop */
   --color-background-canvas: #f0eee9;
+  /* per-component surfaces (independently editable in the theme editor).
+     Reference primitives (not the editor-controlled background tokens) so
+     they don't move when "Card surface" changes. */
+  --ui-sidebar: var(--color-static-white);
+  --ui-topbar: var(--color-static-white);
+  --ui-chat: var(--color-neutral-gray-100);
   --color-background-secondary: var(--color-neutral-gray-50);
   --color-background-secondary-hover: var(--color-neutral-gray-100);
   --color-background-tertiary: var(--color-neutral-gray-100);

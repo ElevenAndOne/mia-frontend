@@ -40,6 +40,10 @@
   --color-background-primary: var(--color-neutral-slate-950);
   /* dark canvas = darkest ink-navy (page sits below raised cards) */
   --color-background-canvas: var(--color-neutral-slate-950);
+  /* per-component surfaces (dark defaults) */
+  --ui-sidebar: var(--color-neutral-slate-950);
+  --ui-topbar: var(--color-neutral-slate-950);
+  --ui-chat: var(--color-neutral-slate-800);
   --color-background-secondary: var(--color-neutral-slate-900);
   --color-background-secondary-hover: var(--color-neutral-slate-800);
   --color-background-tertiary: var(--color-neutral-slate-800);

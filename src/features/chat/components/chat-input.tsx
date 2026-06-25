@@ -370,7 +370,7 @@ export const ChatInput = ({
 
       {/* Main input container */}
       <div
-        className="relative bg-tertiary rounded-2xl overflow-visible"
+        className="relative bg-[var(--ui-chat)] rounded-2xl overflow-visible"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

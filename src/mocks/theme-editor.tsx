@@ -87,11 +87,17 @@ const ROLES: { key: string; label: string; ramp: string; def: string }[] = [
 ]
 
 // surface roles set a token DIRECTLY (no ramp) — cards/panels/borders
-const SURFACES: { key: string; label: string; cssVar: string; def: string }[] = [
+const SURFACES: { key: string; label: string; cssVar: string; def: string; vars?: string[] }[] = [
   { key: 'card', label: 'Card surface', cssVar: '--color-background-primary', def: '#ffffff' },
-  { key: 'panel', label: 'Panel surface', cssVar: '--color-background-secondary', def: '#f8f7f4' },
-  { key: 'border', label: 'Borders', cssVar: '--color-border-primary', def: '#d2cec6' },
+  { key: 'sidebar', label: 'Sidebar', cssVar: '--ui-sidebar', def: '#ffffff' },
+  { key: 'topbar', label: 'Top bar', cssVar: '--ui-topbar', def: '#ffffff' },
+  { key: 'chat', label: 'Chat box', cssVar: '--ui-chat', def: '#f6f5f2' },
+  { key: 'panel', label: 'Panel / hover', cssVar: '--color-background-secondary', def: '#f8f7f4' },
+  // Borders sets all three border tokens so visible borders (mostly tertiary/secondary) change.
+  { key: 'border', label: 'Borders', cssVar: '--color-border-tertiary', def: '#d2cec6', vars: ['--color-border-primary', '--color-border-secondary', '--color-border-tertiary'] },
 ]
+const applySurfaceVars = (s: { cssVar: string; vars?: string[] }, hex: string) =>
+  (s.vars ?? [s.cssVar]).forEach((v) => document.documentElement.style.setProperty(v, hex))
 
 const read = (v: string, f: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(v).trim() || f
@@ -121,9 +127,9 @@ export default function ThemeEditor() {
     setVals((p) => ({ ...p, [key]: hex }))
     applyRamp(ramp, hex)
   }
-  const setSurface = (key: string, cssVar: string, hex: string) => {
-    setSurf((p) => ({ ...p, [key]: hex }))
-    document.documentElement.style.setProperty(cssVar, hex)
+  const setSurface = (s: (typeof SURFACES)[number], hex: string) => {
+    setSurf((p) => ({ ...p, [s.key]: hex }))
+    applySurfaceVars(s, hex)
   }
   const setCanvasColor = (hex: string) => {
     setCanvas(hex)
@@ -213,12 +219,12 @@ export default function ThemeEditor() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ flex: 1 }}>{s.label}</span>
                 <input type="text" value={cur} spellCheck={false} placeholder="#000000"
-                  onChange={(e) => { const v = e.target.value; setSurf((p) => ({ ...p, [s.key]: v })); if (HEX.test(v)) document.documentElement.style.setProperty(s.cssVar, v) }}
+                  onChange={(e) => { const v = e.target.value; setSurf((p) => ({ ...p, [s.key]: v })); if (HEX.test(v)) applySurfaceVars(s, v) }}
                   style={hexStyle} />
-                <input type="color" value={valid ? cur : '#000000'} onChange={(e) => setSurface(s.key, s.cssVar, e.target.value)}
+                <input type="color" value={valid ? cur : '#000000'} onChange={(e) => setSurface(s, e.target.value)}
                   title="custom colour" style={{ width: 28, height: 22, border: 'none', background: 'none', cursor: 'pointer' }} />
               </div>
-              {swatchRow(cur, (hex) => setSurface(s.key, s.cssVar, hex))}
+              {swatchRow(cur, (hex) => setSurface(s, hex))}
             </div>
           )
         })}

@@ -21,7 +21,7 @@ export function TopBar({ title, breadcrumbs, rightSlot, className = '' }: TopBar
   const crumbs: Crumb[] = breadcrumbs ?? [{ label: 'Home', to: '/home' }, { label: title }]
 
   return (
-    <div className={`px-5 pt-2.5 pb-3 bg-primary border-b border-tertiary shrink-0 ${className}`}>
+    <div className={`px-5 pt-2.5 pb-3 bg-[var(--ui-topbar)] border-b border-tertiary shrink-0 ${className}`}>
       <Breadcrumbs items={crumbs} />
       <div className="flex items-center gap-2 mt-1.5">
         <h1
