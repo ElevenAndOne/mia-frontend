@@ -123,8 +123,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-color-primary);
-  /* NO background - let components fill the space */
-  background: var(--background-color-primary);
+  /* Page canvas — cream in light, ink-navy in dark (cards stay white via bg-primary) */
+  background: var(--color-background-canvas);
   /* Mobile touch optimizations */
   -webkit-touch-callout: none;
   -webkit-user-select: none;

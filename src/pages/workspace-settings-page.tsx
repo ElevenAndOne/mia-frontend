@@ -80,7 +80,7 @@ const WorkspaceSettingsPage = () => {
           onWorkspaceCreated={handleWorkspaceCreated}
         />
       ) : !selectedWorkspace ? (
-        <div className="w-full h-dvh bg-primary flex items-center justify-center">
+        <div className="w-full h-dvh bg-canvas flex items-center justify-center">
           <p className="paragraph-sm text-quaternary">Workspace not found</p>
         </div>
       ) : (

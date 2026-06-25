@@ -100,6 +100,7 @@ Sentry.init({
 // =============================================================================
 
 import ReactDOM from 'react-dom/client'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
@@ -114,6 +115,9 @@ import './index.css'
 // sees a literal `if (false)` in normal builds and fully drops the dynamic MSW
 // import + chunk. Folds to 'true' only under dev:mock / build:mock.
 declare const __USE_MOCKS__: string
+
+// Live theme editor — only in the mock/demo build (dropped from normal builds).
+const ThemeEditor = __USE_MOCKS__ === 'true' ? lazy(() => import('./mocks/theme-editor')) : null
 
 // iPhone 16 Pro viewport optimization
 const viewport = document.querySelector('meta[name="viewport"]')
@@ -176,6 +180,11 @@ async function bootstrap() {
                 <OnboardingProvider>
                   <OverlayProvider>
                     <App />
+                    {ThemeEditor && (
+                      <Suspense fallback={null}>
+                        <ThemeEditor />
+                      </Suspense>
+                    )}
                   </OverlayProvider>
                 </OnboardingProvider>
               </SessionProvider>

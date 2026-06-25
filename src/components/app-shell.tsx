@@ -24,7 +24,7 @@ interface AppShellProps {
 export const AppShell = ({ children }: AppShellProps) => {
   return (
     <CommandPaletteProvider>
-      <div className="flex h-full w-full bg-primary">
+      <div className="flex h-full w-full bg-canvas">
         <AppSidebar />
         <main className="flex-1 flex flex-col min-w-0 min-h-0">{children}</main>
       </div>

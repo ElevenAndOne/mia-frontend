@@ -100,6 +100,9 @@
   }
 
   /* Background colors */
+  .bg-canvas {
+    background-color: var(--color-background-canvas);
+  }
   .bg-primary {
     background-color: var(--background-color-primary);
   }

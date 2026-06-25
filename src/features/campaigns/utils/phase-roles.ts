@@ -3,7 +3,8 @@
 // Engage=Loyalty). For generic / custom frameworks we fall back to position so
 // non-RACE workspaces still get sensible roles and colours.
 
-const PHASE_HUES = ['#8b6dff', '#4f8cff', '#2bd4a4', '#e879c9']
+// New-palette journey hues: periwinkle · turquoise · golden · rose
+const PHASE_HUES = ['#8398CA', '#44B8AB', '#F4C247', '#E499BA']
 
 // RACE phase name → role label (case-insensitive)
 const RACE_ROLES: Record<string, string> = {

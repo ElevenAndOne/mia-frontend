@@ -203,7 +203,7 @@ function InsightPage({
   }
 
   return (
-    <div className="w-full h-full relative flex flex-col bg-primary">
+    <div className="w-full h-full relative flex flex-col bg-canvas">
       {/* Date Range Selector */}
       <DateRangeSelector
         isOpen={isDateSelectorOpen}
@@ -222,7 +222,7 @@ function InsightPage({
       />
 
       {/* Content Area */}
-      <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+      <div className="flex-1 bg-canvas p-6 safe-bottom overflow-y-auto">
         {/* Loading state - only show if no insights yet */}
         {isStreaming && insights.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">

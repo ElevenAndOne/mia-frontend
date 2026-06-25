@@ -819,7 +819,7 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
 
   if (isLoadingCampaign) {
     return (
-      <div className="w-full h-full flex flex-col bg-primary">
+      <div className="w-full h-full flex flex-col bg-canvas">
         <TopBar title="Predict" onBack={onBack} className="border-b border-tertiary" />
         <div className="flex-1 flex items-center justify-center">
           <Spinner size="lg" variant="primary" />
@@ -829,14 +829,14 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   }
 
   return (
-    <div className="w-full h-full relative flex flex-col bg-primary">
+    <div className="w-full h-full relative flex flex-col bg-canvas">
       <TopBar
         title="Predict"
         onBack={showBackButton ? handleBack : onBack}
         className="relative z-20 border-b border-tertiary"
       />
 
-      <div className="flex-1 bg-primary p-5 safe-bottom overflow-y-auto">
+      <div className="flex-1 bg-canvas p-5 safe-bottom overflow-y-auto">
         <div className="max-w-2xl mx-auto w-full space-y-5">
 
           {/* No campaign */}

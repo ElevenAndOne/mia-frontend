@@ -59,7 +59,7 @@ export const ChatLayout = ({
   })
 
   return (
-    <div className="flex h-full w-full bg-primary">
+    <div className="flex h-full w-full bg-canvas">
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 min-h-0">{children}</main>
 

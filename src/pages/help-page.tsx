@@ -25,7 +25,7 @@ const HelpPage = () => {
       onLogout={onLogout}
       onWorkspaceSettings={onWorkspaceSettings}
     >
-      <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
+      <div className="w-full h-dvh bg-canvas flex flex-col overflow-hidden">
         <TopBar title="Help" onBack={() => navigate(-1)} className="border-b border-tertiary" />
 
         <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">

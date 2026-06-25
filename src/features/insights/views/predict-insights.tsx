@@ -43,10 +43,10 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   }, [data?.status, data?.created_at, sessionId])
 
   return (
-    <div className="w-full h-full relative flex flex-col bg-primary">
+    <div className="w-full h-full relative flex flex-col bg-canvas">
       <TopBar title="Strategise" onBack={onBack} className="relative z-20 border-b border-tertiary" />
 
-      <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+      <div className="flex-1 bg-canvas p-6 safe-bottom overflow-y-auto">
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
             <Spinner size="lg" variant="primary" className="mb-4" />

@@ -33,7 +33,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
   )
 
   return (
-    <div className="w-full h-full relative flex flex-col bg-primary">
+    <div className="w-full h-full relative flex flex-col bg-canvas">
       {/* Date Range Selector */}
       <DateRangeSelector
         isOpen={isDateSelectorOpen}
@@ -52,7 +52,7 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
       />
 
       {/* Content Area */}
-      <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+      <div className="flex-1 bg-canvas p-6 safe-bottom overflow-y-auto">
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
             <Spinner size="lg" variant="primary" className="mb-4" />

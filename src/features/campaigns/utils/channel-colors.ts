@@ -29,38 +29,40 @@ export const PLATFORM_LABELS: Record<string, string> = {
   airtable: 'Airtable',
 }
 
+// New brand palette mapped across channels — platform families kept recognisable
+// (Google golds, LinkedIn blues, TikTok pink/raspberry) and all kept distinct.
 const CHANNEL_HEX: Record<string, string> = {
-  organic_social: '#8b6dff',
-  meta_ads: '#4f8cff',
-  google_ads: '#f0a82e',
-  google_display: '#f0a82e',
-  email: '#2bd4a4',
-  brevo: '#f0772e',
-  mailchimp: '#ffe01b',
-  website: '#e879c9',
-  seo: '#38bdf8',
-  linkedin_ads: '#3b82f6',
-  linkedin_organic: '#60a5fa',
-  tiktok_ads: '#ff4d67',
-  tiktok_influencers: '#ff8fa3',
-  hubspot: '#ff7a59',
-  offline_event: '#a78bfa',
-  packaging: '#fbbf24',
-  point_of_sale: '#34d399',
-  printing: '#c084fc',
+  organic_social: '#8398ca', // periwinkle
+  meta_ads: '#5c78ba', // deep periwinkle-blue
+  google_ads: '#f4c247', // golden
+  google_display: '#e2a50e', // deep gold
+  email: '#44b8ab', // turquoise
+  brevo: '#e15d44', // terracotta
+  mailchimp: '#ffbe98', // peach
+  website: '#e499ba', // rose
+  seo: '#007a9b', // petrol-teal
+  linkedin_ads: '#3c538b', // navy blue
+  linkedin_organic: '#a1b0d4', // light periwinkle
+  tiktok_ads: '#c54966', // raspberry
+  tiktok_influencers: '#df95b6', // light rose
+  hubspot: '#d88818', // amber
+  offline_event: '#9f8286', // mauve
+  packaging: '#babc72', // sage
+  point_of_sale: '#379086', // deep teal
+  printing: '#b3361e', // rust
 }
 
 const TYPE_HEX: Record<string, string> = {
-  carousel: '#8b6dff',
-  animation: '#4f8cff',
-  reel: '#4f8cff',
-  video: '#4f8cff',
-  static: '#f0a82e',
-  single_image: '#f0a82e',
-  email: '#2bd4a4',
+  carousel: '#8398ca', // periwinkle
+  animation: '#5c78ba', // blue
+  reel: '#5c78ba',
+  video: '#5c78ba',
+  static: '#f4c247', // golden
+  single_image: '#f4c247',
+  email: '#44b8ab', // turquoise
 }
 
-const DEFAULT_HEX = '#9a9aa4'
+const DEFAULT_HEX = '#a39c8f' // warm neutral
 
 export function channelLabel(channel: string): string {
   return PLATFORM_LABELS[channel] ?? channel
