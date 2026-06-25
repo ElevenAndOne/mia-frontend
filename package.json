@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "dev:mock": "VITE_USE_MOCKS=true vite",
+    "dev:mock": "VITE_USE_MOCKS=true vite --port 5180",
     "build:mock": "tsc -b && VITE_USE_MOCKS=true vite build",
-    "preview:mock": "vite preview --port 4173",
+    "preview:mock": "vite preview --port 5180",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "lint": "eslint .",
     "format": "prettier --write src/",

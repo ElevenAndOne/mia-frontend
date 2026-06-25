@@ -175,9 +175,10 @@ Plain-English version Josh is taking to the designer:
 
 **Done:** research + this plan; exact palette extracted from Figma; **mock preview harness BUILT & PROVEN** — all 20 routes render in light + dark, credential-free.
 
-**Harness usage:**
-- `npm run dev:mock` → open http://localhost:5173/home (no login; demo "Northwind Coffee" data)
-- Screenshot gallery: once `npx playwright install chromium`, with dev:mock running → `PREVIEW_URL=http://localhost:5173 npm run screenshots` → open `screenshots/index.html`
+**Harness usage** (port **5180**, kept off 5173 so it never clashes with the real frontend dev server):
+- `npm run dev:mock` → open http://localhost:5180/home (no login; demo "Northwind Coffee" data)
+- Screenshot gallery: once `npx playwright install chromium`, with dev:mock running → `PREVIEW_URL=http://localhost:5180 npm run screenshots` → open `screenshots/index.html`
+- Fixtures now cover: campaigns (rich RACE), budget-tracker, reports, integrations status, insights (grow/optimize/protect streamed + summary). Thin/empty still: strategise (needs optimizer-run fixture), onboarding.
 - Normal `npm run build` is unaffected (MSW fully tree-shaken out; verified). All mock code gated by `VITE_USE_MOCKS` / `__USE_MOCKS__`.
 
 **Not started:** the recolor itself (gated on §7 answers — primary color is the key unlock).

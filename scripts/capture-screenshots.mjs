@@ -6,9 +6,11 @@
  * Prerequisites:
  *   1. Install the browser once:  npx playwright install chromium
  *   2. Serve the mock build, EITHER:
- *        - npm run dev:mock                 (dev server,  http://localhost:5173)
- *        - npm run build:mock && npm run preview:mock   (prod build, http://localhost:4173)
- *   3. Run:  PREVIEW_URL=http://localhost:5173 npm run screenshots
+ *        - npm run dev:mock                 (dev server,  http://localhost:5180)
+ *        - npm run build:mock && npm run preview:mock   (prod build, http://localhost:5180)
+ *   3. Run:  PREVIEW_URL=http://localhost:5180 npm run screenshots
+ *
+ * Port 5180 is used (not 5173) so this never collides with the real frontend dev server.
  *
  * Output: screenshots/<theme>/<route>.png  (+ an index.html gallery)
  *
@@ -19,7 +21,7 @@ import { chromium } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-const BASE = process.env.PREVIEW_URL || 'http://localhost:5173'
+const BASE = process.env.PREVIEW_URL || 'http://localhost:5180'
 const OUT = 'screenshots'
 const THEMES = ['light', 'dark']
 const VIEWPORT = { width: 1440, height: 900 }
@@ -31,11 +33,8 @@ const ROUTES = [
   ['home-chat', '/home'],
   ['integrations', '/integrations'],
   ['help', '/help'],
+  // Campaigns is a single route; overview/calendar/builder are in-app tabs.
   ['campaigns', '/campaigns'],
-  ['campaigns-new', '/campaigns/new'],
-  ['campaign-overview', '/campaigns/mock_campaign_1/overview'],
-  ['campaign-calendar', '/campaigns/mock_campaign_1/calendar'],
-  ['campaign-builder', '/campaigns/mock_campaign_1/builder'],
   ['insights-grow', '/insights/grow'],
   ['insights-optimize', '/insights/optimize'],
   ['insights-protect', '/insights/protect'],
@@ -68,10 +67,12 @@ async function run() {
     for (const [name, path] of ROUTES) {
       const file = join(OUT, theme, `${name}.png`)
       try {
-        // 'load' not 'networkidle' — pages with looping video / live connections
-        // (e.g. the intro page) never reach network idle.
         await page.goto(`${BASE}${path}`, { waitUntil: 'load', timeout: 30000 })
-        await page.waitForTimeout(1800) // let animations/charts settle
+        // Wait for data fetches to settle (campaigns does list→set-primary→detail).
+        // Capped + caught so pages with a looping video/live connection (intro)
+        // that never reach idle just proceed after the timeout.
+        await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {})
+        await page.waitForTimeout(900) // let animations/charts paint
         await mkdir(dirname(file), { recursive: true })
         await page.screenshot({ path: file, fullPage: true })
         captured[theme].push({ name, path, file })
