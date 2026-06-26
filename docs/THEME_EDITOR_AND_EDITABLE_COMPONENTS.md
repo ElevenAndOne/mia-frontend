@@ -25,22 +25,26 @@ theme open by default). Each control = 12 brand swatches + hex field + picker.
 - **Chat & home** — Chat box · Chat bubble (you) · Chat bubble (Mia)
 - **Campaigns** — Phase tags: Awareness · Engagement · Conversion · Loyalty
 - **Metrics & KPI** — KPI/metric numbers (the big figures on budget + campaign cards)
+- **Chart / channel colours** — all 18 channels (Meta, Google, LinkedIn, TikTok, email, SEO, …) used on charts, calendar blocks, budget bars and campaign channel dots
 
 All apply to both light and dark — toggle the theme in the sidebar to check both.
 Already covered implicitly: **status badges** (follow Success/Warning) and
 **segmented toggles** (follow Brand).
 
-## Done since first draft
-Phase tags ✅ · chat bubbles ✅ · active nav ✅ · metric/KPI numbers ✅ · grouped
-+ collapsible + page-split editor ✅. Status badges + segmented toggles confirmed
-already-covered (follow Success/Warning + Brand).
+## Done
+Phase tags ✅ · chat bubbles ✅ · active nav ✅ · metric/KPI numbers ✅ ·
+**18 chart/channel colours ✅** · grouped + collapsible + page-split editor ✅.
+Status badges + segmented toggles already follow Success/Warning + Brand.
 
-## Still proposed — "what else" (remaining)
+Channel colours: `channelColor()` returns `var(--ch-<channel>, <hex>)` and
+`--cw-channel-*` reference `--ch-*` (hex fallback), so the JS charts/calendar/
+budget bars and the campaign workspace all follow the same editable source.
+
+## Still proposed (minor, optional)
 | Component | What it is | Notes / effort |
 |-----------|-----------|----------------|
-| **Channel / chart colours** | the 18 channel hues on charts/calendar/budget bars | Already remapped on-palette (`channel-colors.ts` + `--cw-channel-*`); to make live-editable, expose a "Chart colours" group (18 controls) and route the hues through CSS vars. Medium. |
-| **Mia Intelligence / accent panels** | tinted info panels (e.g. budget recommendation box) | Currently brand-tinted; could get a dedicated accent var. Small. |
-| **Insight card accents** | per-section insight highlights | Small. |
+| **Accent / info panels** | tinted boxes (e.g. Mia Intelligence recommendation) | Currently brand-tinted; could get a dedicated accent var. Small. |
+| **Asset-type colours** | calendar block colours by asset type (7) | Like channels — route `assetTypeColor()` through `--at-*` vars. Small. |
 
 ## Implementation notes (for whoever continues this)
 - Editor component: `src/mocks/theme-editor.tsx` (MOCK_MODE only; lazy + flag-gated in `main.tsx`, tree-shaken from prod — verified).
