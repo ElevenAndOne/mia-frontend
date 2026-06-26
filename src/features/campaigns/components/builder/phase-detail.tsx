@@ -57,7 +57,7 @@ export const PhaseDetail = ({
     <div className="bg-secondary-alt rounded-2xl border border-secondary p-5 space-y-5">
       <div className="space-y-3">
         <h3 className="title-h6 text-primary flex items-center gap-1.5">
-          <EditableText value={phase.phase_name} onSave={(v) => { if (v.trim() && v.trim() !== phase.phase_name) patchPhase({ phase_name: v.trim() }) }} className="title-h6 text-primary" />
+          <EditableText value={phase.phase_name} onSave={(v) => { if (v.trim() && v.trim() !== phase.phase_name) patchPhase({ phase_name: v.trim() }) }} className="title-h6 text-primary max-w-[14rem]" />
           <span className="text-tertiary font-normal">Phase</span>
         </h3>
         <div>

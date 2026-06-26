@@ -135,6 +135,12 @@ export const AppSidebar = () => {
 
         <nav className={`flex-1 min-h-0 overflow-y-auto py-2 ${collapsed ? 'px-2' : 'px-3'}`} role="menu">
           <NavItem
+            icon={<Icon.edit_03 size={18} />}
+            label="New Chat"
+            collapsed={collapsed}
+            onClick={() => actions.onNewChat()}
+          />
+          <NavItem
             icon={<Icon.plus size={18} />}
             label="New Workspace"
             collapsed={collapsed}

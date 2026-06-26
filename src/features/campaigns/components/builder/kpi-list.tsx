@@ -54,7 +54,9 @@ export const KpiList = ({
                   <div className="flex-1 min-w-0">
                     <EditableText value={kpi.kpi_name} onSave={(v) => onPatchKpi(kpi.kpi_id, { kpi_name: v })} className="paragraph-sm text-secondary" />
                   </div>
-                  <EditableText value={kpi.target_value ?? '—'} onSave={(v) => onPatchKpi(kpi.kpi_id, { target_value: v })} className="label-sm text-primary font-medium shrink-0 cw-mono" />
+                  <div className="shrink-0 w-32 text-right">
+                    <EditableText value={kpi.target_value ?? '—'} onSave={(v) => onPatchKpi(kpi.kpi_id, { target_value: v })} className="label-sm text-primary font-medium cw-mono text-right" />
+                  </div>
                   <button onClick={() => onDeleteKpi(kpi.kpi_id)} className="p-0.5 text-quaternary hover:text-utility-error-500 shrink-0">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
