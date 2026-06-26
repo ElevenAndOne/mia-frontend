@@ -18,7 +18,10 @@ const RACE_ROLES: Record<string, string> = {
 const POSITION_ROLES = ['Awareness', 'Engagement', 'Conversion', 'Loyalty']
 
 export function phaseHue(sortOrder: number): string {
-  return PHASE_HUES[sortOrder] ?? PHASE_HUES[PHASE_HUES.length - 1]
+  // Returns a CSS var (live-editable in the theme editor) with the palette hex
+  // as a built-in fallback, so it renders correctly even without an override.
+  const i = sortOrder >= 0 && sortOrder < PHASE_HUES.length ? sortOrder : PHASE_HUES.length - 1
+  return `var(--ui-phase-${i}, ${PHASE_HUES[i]})`
 }
 
 export function phaseRole(phaseName: string, sortOrder: number): string {

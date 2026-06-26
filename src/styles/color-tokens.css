@@ -69,6 +69,9 @@
   --ui-sidebar: var(--color-static-white);
   --ui-topbar: var(--color-static-white);
   --ui-chat: var(--color-neutral-gray-100);
+  --ui-bubble-user: var(--color-neutral-gray-100);
+  --ui-bubble-mia: var(--color-neutral-gray-50);
+  --ui-nav-active: var(--color-neutral-gray-50);
   --color-background-secondary: var(--color-neutral-gray-50);
   --color-background-secondary-hover: var(--color-neutral-gray-100);
   --color-background-tertiary: var(--color-neutral-gray-100);

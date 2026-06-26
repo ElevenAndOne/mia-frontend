@@ -95,6 +95,13 @@ const SURFACES: { key: string; label: string; cssVar: string; def: string; vars?
   { key: 'panel', label: 'Panel / hover', cssVar: '--color-background-secondary', def: '#f8f7f4' },
   // Borders sets all three border tokens so visible borders (mostly tertiary/secondary) change.
   { key: 'border', label: 'Borders', cssVar: '--color-border-tertiary', def: '#d2cec6', vars: ['--color-border-primary', '--color-border-secondary', '--color-border-tertiary'] },
+  { key: 'navActive', label: 'Active nav item', cssVar: '--ui-nav-active', def: '#f8f7f4' },
+  { key: 'bubbleUser', label: 'Chat bubble (you)', cssVar: '--ui-bubble-user', def: '#f6f5f2' },
+  { key: 'bubbleMia', label: 'Chat bubble (Mia)', cssVar: '--ui-bubble-mia', def: '#f8f7f4' },
+  { key: 'phase0', label: 'Phase · Awareness', cssVar: '--ui-phase-0', def: '#8398ca' },
+  { key: 'phase1', label: 'Phase · Engagement', cssVar: '--ui-phase-1', def: '#44b8ab' },
+  { key: 'phase2', label: 'Phase · Conversion', cssVar: '--ui-phase-2', def: '#f4c247' },
+  { key: 'phase3', label: 'Phase · Loyalty', cssVar: '--ui-phase-3', def: '#e499ba' },
 ]
 const applySurfaceVars = (s: { cssVar: string; vars?: string[] }, hex: string) =>
   (s.vars ?? [s.cssVar]).forEach((v) => document.documentElement.style.setProperty(v, hex))
@@ -210,7 +217,7 @@ export default function ThemeEditor() {
       </div>
 
       <div style={{ borderTop: '1px solid #302e2a', margin: '4px 0 12px', paddingTop: 10 }}>
-        <div style={{ color: '#8596ad', fontSize: 11, marginBottom: 8 }}>SURFACES (cards / panels / borders)</div>
+        <div style={{ color: '#8596ad', fontSize: 11, marginBottom: 8 }}>SURFACES & COMPONENTS</div>
         {SURFACES.map((s) => {
           const cur = surf[s.key] ?? s.def
           const valid = HEX.test(cur)

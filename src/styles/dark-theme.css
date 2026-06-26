@@ -44,6 +44,9 @@
   --ui-sidebar: var(--color-neutral-slate-950);
   --ui-topbar: var(--color-neutral-slate-950);
   --ui-chat: var(--color-neutral-slate-800);
+  --ui-bubble-user: var(--color-neutral-slate-800);
+  --ui-bubble-mia: var(--color-neutral-slate-900);
+  --ui-nav-active: var(--color-neutral-slate-900);
   --color-background-secondary: var(--color-neutral-slate-900);
   --color-background-secondary-hover: var(--color-neutral-slate-800);
   --color-background-tertiary: var(--color-neutral-slate-800);

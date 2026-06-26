@@ -30,7 +30,7 @@ const NavItem = ({ icon, label, active, collapsed, onClick, trailing }: NavItemP
     title={collapsed ? label : undefined}
     className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
       collapsed ? 'justify-center px-0' : 'px-3'
-    } ${active ? 'bg-secondary text-primary' : 'text-secondary hover:bg-secondary'}`}
+    } ${active ? 'bg-[var(--ui-nav-active)] text-primary' : 'text-secondary hover:bg-secondary'}`}
     role="menuitem"
     aria-current={active ? 'page' : undefined}
   >
