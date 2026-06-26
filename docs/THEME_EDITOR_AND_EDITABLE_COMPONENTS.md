@@ -17,31 +17,30 @@ control offers the **12 brand swatches + a hex field + a native picker**.
 "Export" copies the chosen values as JSON to hand back to us.
 
 ## Currently editable (live in the panel)
-**Colour roles** (regenerate full ramps): Brand/primary · Success · Warning · Error · Info
-**Backgrounds / surfaces** (set directly, independently):
-- Page background (the cream/ink canvas)
-- Card surface (content cards)
-- Sidebar (left nav)
-- Top bar (breadcrumb/header strip)
-- Chat box (the "Start chatting…" input)
-- Panel / hover
-- Borders (sets all three border tokens at once)
+The panel is organised into **collapsible groups, most-important first** (Brand &
+theme open by default). Each control = 12 brand swatches + hex field + picker.
+
+- **Brand & theme** — Brand/primary · Page background · Card surface · Sidebar · Top bar · Active nav item · Panel/hover · Borders
+- **Status colours** — Success · Warning · Error · Info
+- **Chat & home** — Chat box · Chat bubble (you) · Chat bubble (Mia)
+- **Campaigns** — Phase tags: Awareness · Engagement · Conversion · Loyalty
+- **Metrics & KPI** — KPI/metric numbers (the big figures on budget + campaign cards)
 
 All apply to both light and dark — toggle the theme in the sidebar to check both.
+Already covered implicitly: **status badges** (follow Success/Warning) and
+**segmented toggles** (follow Brand).
 
-## Proposed — "what else we can make editable" (next round)
-Each needs a little wiring (give the element a dedicated CSS var, then add a
-control). Rough effort noted.
+## Done since first draft
+Phase tags ✅ · chat bubbles ✅ · active nav ✅ · metric/KPI numbers ✅ · grouped
++ collapsible + page-split editor ✅. Status badges + segmented toggles confirmed
+already-covered (follow Success/Warning + Brand).
 
+## Still proposed — "what else" (remaining)
 | Component | What it is | Notes / effort |
 |-----------|-----------|----------------|
-| **Phase tags** | `01 Awareness` / `Engagement` / `Conversion` / `Loyalty` badges | Currently fixed hues in `phase-roles.ts` (JS) → convert to 4 CSS vars. Small. |
-| **Status badges** | `complete` / `generating` / live pills | Currently tied to Success/Warning tokens → give dedicated vars so they're separate. Small. |
-| **Chat bubbles** | user vs Mia message backgrounds | Two vars on the chat message components. Small. |
-| **Segmented toggles** | `Monthly / Whole campaign`, `Auto / Light / Dark` pills | Active-segment background var. Small–med. |
-| **Active nav highlight** | selected sidebar item background | One var on the nav item active state. Small. |
-| **Metric / KPI accents** | the big numbers / accent text on cards | Decide if these follow Brand or a separate accent var. Small. |
-| **Channel / chart colours** | the 18 channel hues on charts/calendar | Already remapped on-palette in `channel-colors.ts` + `--cw-channel-*`; could expose a "Chart colours" section (long list). Medium. |
+| **Channel / chart colours** | the 18 channel hues on charts/calendar/budget bars | Already remapped on-palette (`channel-colors.ts` + `--cw-channel-*`); to make live-editable, expose a "Chart colours" group (18 controls) and route the hues through CSS vars. Medium. |
+| **Mia Intelligence / accent panels** | tinted info panels (e.g. budget recommendation box) | Currently brand-tinted; could get a dedicated accent var. Small. |
+| **Insight card accents** | per-section insight highlights | Small. |
 
 ## Implementation notes (for whoever continues this)
 - Editor component: `src/mocks/theme-editor.tsx` (MOCK_MODE only; lazy + flag-gated in `main.tsx`, tree-shaken from prod — verified).
