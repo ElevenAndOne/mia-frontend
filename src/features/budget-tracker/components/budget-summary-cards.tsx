@@ -34,7 +34,7 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
   return (
     <div className="flex flex-wrap gap-4">
       <Card label={isMonthly ? 'Campaign Budget' : 'Total Allocation'}>
-        <p className="text-3xl font-semibold text-primary">{formatMoney(totals.total_allocation, currency)}</p>
+        <p className="text-3xl font-semibold text-[var(--ui-metric)]">{formatMoney(totals.total_allocation, currency)}</p>
         {fx && (
           <p className="paragraph-xs text-tertiary">≈ {formatUsd(fx.total_allocation_equiv)}</p>
         )}
@@ -64,7 +64,7 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
           {pending ? (
             <Loading />
           ) : (
-            <p className="text-3xl font-semibold text-primary">{formatMoney(totals.spent, currency)}</p>
+            <p className="text-3xl font-semibold text-[var(--ui-metric)]">{formatMoney(totals.spent, currency)}</p>
           )}
           {totals.spent_pct != null && (
             <span className="paragraph-xs text-secondary">{totals.spent_pct}%</span>
@@ -83,7 +83,7 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
           <Loading />
         ) : totals.pacing_state === 'complete' ? (
           <>
-            <p className="text-3xl font-semibold text-primary">{totals.spent_pct ?? 0}%</p>
+            <p className="text-3xl font-semibold text-[var(--ui-metric)]">{totals.spent_pct ?? 0}%</p>
             <p className="paragraph-xs text-tertiary mt-1">of budget · {completeNote}</p>
           </>
         ) : (
@@ -112,7 +112,7 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         {pending ? (
           <Loading />
         ) : (
-          <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
+          <p className="text-3xl font-semibold text-[var(--ui-metric)]">{formatMoney(totals.projected_close, currency)}</p>
         )}
         <p className="paragraph-xs text-tertiary mt-1">
           {totals.pacing_state === 'complete'

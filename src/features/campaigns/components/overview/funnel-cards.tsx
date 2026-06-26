@@ -21,7 +21,7 @@ export const FunnelCards = ({ phases }: { phases: FunnelPhase[] }) => (
         <div className="mt-3.5 pt-3.5 border-t border-tertiary">
           {p.primaryValue ? (
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-extrabold cw-mono tracking-tight text-primary">{p.primaryValue}</span>
+              <span className="text-2xl font-extrabold cw-mono tracking-tight text-[var(--ui-metric)]">{p.primaryValue}</span>
               <span className="paragraph-xs text-tertiary">{p.primaryLabel}</span>
             </div>
           ) : (

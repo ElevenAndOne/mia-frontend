@@ -72,6 +72,8 @@
   --ui-bubble-user: var(--color-neutral-gray-100);
   --ui-bubble-mia: var(--color-neutral-gray-50);
   --ui-nav-active: var(--color-neutral-gray-50);
+  /* big KPI/metric numbers — defaults to primary text (theme-aware) until overridden */
+  --ui-metric: var(--color-text-primary);
   --color-background-secondary: var(--color-neutral-gray-50);
   --color-background-secondary-hover: var(--color-neutral-gray-100);
   --color-background-tertiary: var(--color-neutral-gray-100);
