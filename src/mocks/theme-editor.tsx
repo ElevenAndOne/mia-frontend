@@ -68,7 +68,19 @@ const GROUPS: { id: string; label: string }[] = [
   { id: 'chat', label: 'Chat & home' },
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'metrics', label: 'Metrics & KPI' },
+  { id: 'charts', label: 'Chart / channel colours' },
 ]
+const CHART_CONTROLS: Ctl[] = [
+  ['organic_social', 'Organic Social', '#8398ca'], ['meta_ads', 'Meta Ads', '#5c78ba'],
+  ['google_ads', 'Google Ads', '#f4c247'], ['google_display', 'Google Display', '#e2a50e'],
+  ['email', 'Email', '#44b8ab'], ['brevo', 'Brevo', '#e15d44'],
+  ['mailchimp', 'Mailchimp', '#ffbe98'], ['website', 'Website', '#e499ba'],
+  ['seo', 'SEO', '#007a9b'], ['linkedin_ads', 'LinkedIn Ads', '#3c538b'],
+  ['linkedin_organic', 'LinkedIn Organic', '#a1b0d4'], ['tiktok_ads', 'TikTok Ads', '#c54966'],
+  ['tiktok_influencers', 'TikTok Influencers', '#df95b6'], ['hubspot', 'HubSpot', '#d88818'],
+  ['offline_event', 'Offline Event', '#9f8286'], ['packaging', 'Packaging', '#babc72'],
+  ['point_of_sale', 'Point of Sale', '#379086'], ['printing', 'Printing', '#b3361e'],
+].map(([k, label, def]) => ({ key: `ch_${k}`, label, group: 'charts', cssVar: `--ch-${k}`, def }))
 const CONTROLS: Ctl[] = [
   // Brand & theme (the foundation — most impactful)
   { key: 'brand', label: 'Brand / primary', group: 'brand', ramp: 'purple', def: '#007A9B' },
@@ -95,6 +107,8 @@ const CONTROLS: Ctl[] = [
   { key: 'phase3', label: 'Phase · Loyalty', group: 'campaigns', cssVar: '--ui-phase-3', def: '#e499ba' },
   // Metrics
   { key: 'metric', label: 'KPI / metric numbers', group: 'metrics', cssVar: '--ui-metric', def: '#1c1a18' },
+  // Chart / channel colours (18) — appended from CHART_CONTROLS
+  ...CHART_CONTROLS,
 ]
 
 const HEX = /^#[0-9a-fA-F]{6}$/

@@ -69,7 +69,9 @@ export function channelLabel(channel: string): string {
 }
 
 export function channelColor(channel: string): string {
-  return CHANNEL_HEX[channel] ?? DEFAULT_HEX
+  // CSS var (live-editable in the theme editor) with the palette hex as fallback.
+  const hex = CHANNEL_HEX[channel] ?? DEFAULT_HEX
+  return `var(--ch-${channel}, ${hex})`
 }
 
 export function assetTypeColor(type: string | null | undefined): string {

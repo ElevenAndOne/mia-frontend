@@ -20,25 +20,25 @@
   --cw-accent-soft: color-mix(in srgb, #007a9b 16%, transparent);
 
   /* ---- Channel hues — new palette (mirror channel-colors.ts) ----------- */
-  --cw-channel-organic_social: #8398ca;
-  --cw-channel-meta_ads: #5c78ba;
-  --cw-channel-google_ads: #f4c247;
-  --cw-channel-google_display: #e2a50e;
-  --cw-channel-email: #44b8ab;
-  --cw-channel-brevo: #e15d44;
-  --cw-channel-mailchimp: #ffbe98;
-  --cw-channel-website: #e499ba;
-  --cw-channel-seo: #007a9b;
-  --cw-channel-linkedin_ads: #3c538b;
-  --cw-channel-linkedin_organic: #a1b0d4;
-  --cw-channel-tiktok_ads: #c54966;
-  --cw-channel-tiktok_influencers: #df95b6;
-  --cw-channel-hubspot: #d88818;
-  --cw-channel-offline_event: #9f8286;
-  --cw-channel-packaging: #babc72;
-  --cw-channel-point_of_sale: #379086;
-  --cw-channel-printing: #b3361e;
-  --cw-channel-default: #a39c8f;
+  --cw-channel-organic_social: var(--ch-organic_social, #8398ca);
+  --cw-channel-meta_ads: var(--ch-meta_ads, #5c78ba);
+  --cw-channel-google_ads: var(--ch-google_ads, #f4c247);
+  --cw-channel-google_display: var(--ch-google_display, #e2a50e);
+  --cw-channel-email: var(--ch-email, #44b8ab);
+  --cw-channel-brevo: var(--ch-brevo, #e15d44);
+  --cw-channel-mailchimp: var(--ch-mailchimp, #ffbe98);
+  --cw-channel-website: var(--ch-website, #e499ba);
+  --cw-channel-seo: var(--ch-seo, #007a9b);
+  --cw-channel-linkedin_ads: var(--ch-linkedin_ads, #3c538b);
+  --cw-channel-linkedin_organic: var(--ch-linkedin_organic, #a1b0d4);
+  --cw-channel-tiktok_ads: var(--ch-tiktok_ads, #c54966);
+  --cw-channel-tiktok_influencers: var(--ch-tiktok_influencers, #df95b6);
+  --cw-channel-hubspot: var(--ch-hubspot, #d88818);
+  --cw-channel-offline_event: var(--ch-offline_event, #9f8286);
+  --cw-channel-packaging: var(--ch-packaging, #babc72);
+  --cw-channel-point_of_sale: var(--ch-point_of_sale, #379086);
+  --cw-channel-printing: var(--ch-printing, #b3361e);
+  --cw-channel-default: var(--ch-default, #a39c8f);
 
   /* ---- Asset-type hues ------------------------------------------------- */
   --cw-type-carousel: #8398ca;
