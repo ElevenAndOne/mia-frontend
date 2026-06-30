@@ -2,8 +2,9 @@ type Json = Record<string, unknown>
 
 const CHANNEL_LABELS: Record<string, string> = {
   organic_social: 'Organic Social', meta_ads: 'Meta Ads', google_ads: 'Google Ads',
-  linkedin_ads: 'LinkedIn Ads', email: 'Email', website: 'Website', brevo: 'Brevo',
-  hubspot: 'HubSpot', offline_event: 'Offline Event', packaging: 'Packaging',
+  google_display: 'Google Display', linkedin_ads: 'LinkedIn Ads', linkedin_organic: 'LinkedIn Organic',
+  email: 'Email', website: 'Website', brevo: 'Brevo', mailchimp: 'Mailchimp', seo: 'SEO',
+  tiktok_ads: 'TikTok Ads', hubspot: 'HubSpot', offline_event: 'Offline Event', packaging: 'Packaging',
   point_of_sale: 'Point of Sale', printing: 'Printing',
 }
 
@@ -22,7 +23,6 @@ export const CampaignActionEditor = ({ params, onChange }: Props) => {
   const phaseName = (params.phase_name as string) ?? ''
   const cas = (params.channel_actions as Json[]) ?? []
 
-  const setPhase = (v: string) => onChange({ ...params, phase_name: v })
   const setCA = (i: number, patch: Json) =>
     onChange({ ...params, channel_actions: cas.map((ca, idx) => (idx === i ? { ...ca, ...patch } : ca)) })
   const setAssetDetail = (ci: number, ai: number, key: string, value: string) => {
@@ -33,12 +33,17 @@ export const CampaignActionEditor = ({ params, onChange }: Props) => {
     })
     setCA(ci, { assets })
   }
+  const removeAsset = (ci: number, ai: number) =>
+    setCA(ci, { assets: ((cas[ci].assets as Json[]) ?? []).filter((_, idx) => idx !== ai) })
+  const removeChannel = (ci: number) =>
+    onChange({ ...params, channel_actions: cas.filter((_, idx) => idx !== ci) })
 
   return (
     <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-3">
       <div className="flex items-center gap-2">
         <span className={lbl}>Phase</span>
-        <input value={phaseName} onChange={(e) => setPhase(e.target.value)} className={`${input} flex-1`} placeholder="Phase name" />
+        {/* Phases are predefined on the campaign — display only, not editable. */}
+        <span className="paragraph-xs text-secondary font-medium">{phaseName || '—'}</span>
       </div>
 
       {cas.map((ca, ci) => {
@@ -47,7 +52,10 @@ export const CampaignActionEditor = ({ params, onChange }: Props) => {
         const period = (ca.budget_period as string) ?? 'total'
         return (
           <div key={ci} className="pl-2 border-l-2 border-tertiary space-y-2">
-            <span className="label-xs text-secondary font-semibold">{CHANNEL_LABELS[channel] || channel}</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="label-xs text-secondary font-semibold">{CHANNEL_LABELS[channel] || channel}</span>
+              <button type="button" onClick={() => removeChannel(ci)} className="text-[10px] font-semibold text-quaternary hover:text-utility-error-500 uppercase tracking-wide" aria-label={`Remove ${CHANNEL_LABELS[channel] || channel} channel`}>Remove channel</button>
+            </div>
 
             <div className="flex flex-wrap gap-2 items-end">
               <div>
@@ -74,7 +82,10 @@ export const CampaignActionEditor = ({ params, onChange }: Props) => {
               const details = (a.details as Json) ?? {}
               return (
                 <div key={ai} className="space-y-1">
-                  <span className="paragraph-xs text-primary">{(a.asset_name as string) || 'Asset'}{a.asset_type ? <span className="text-quaternary"> ({a.asset_type as string})</span> : null}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="paragraph-xs text-primary">{(a.asset_name as string) || 'Asset'}{a.asset_type ? <span className="text-quaternary"> ({a.asset_type as string})</span> : null}</span>
+                    <button type="button" onClick={() => removeAsset(ci, ai)} className="shrink-0 text-quaternary hover:text-utility-error-500 leading-none text-sm px-1" aria-label={`Remove ${(a.asset_name as string) || 'asset'}`}>✕</button>
+                  </div>
                   <div className="flex flex-wrap gap-2 items-end">
                     <div>
                       <span className={lbl}>Launch</span>

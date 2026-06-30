@@ -241,6 +241,9 @@ export const ActionConfirmCard = ({
   const [editedParams, setEditedParams] = useState<Record<string, unknown>>(action.params)
   const icon = isCampaignAction ? null : (platformIcons[action.platform] || null)
   const platformLabel = isCampaignAction ? 'Campaign' : action.platform
+  // Block confirming a campaign action the user has emptied out (all channels removed).
+  const emptyCampaign = isCampaignAction
+    && ((editedParams.channel_actions as unknown[] | undefined)?.length ?? 0) === 0
 
   return (
     <div className={`mt-3 rounded-xl border-2 p-4 ${config.color}`}>
@@ -299,7 +302,8 @@ export const ActionConfirmCard = ({
             <div className="flex gap-2">
               <button
                 onClick={() => onConfirm(isCampaignAction ? editedParams : undefined)}
-                className="px-4 py-1.5 rounded-lg subheading-sm bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover transition-colors"
+                disabled={emptyCampaign}
+                className="px-4 py-1.5 rounded-lg subheading-sm bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-solid"
               >
                 Confirm
               </button>

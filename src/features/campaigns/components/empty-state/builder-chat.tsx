@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type WheelEvent } from 'react'
 import { ChatMarkdown } from '../../../../components/chat-markdown'
 import { ChatComposer } from './chat-composer'
 import { BuildHistoryMenu } from './build-history-menu'
@@ -9,13 +9,44 @@ import { useBuilderChat } from '../../hooks/use-builder-chat'
 export const BuilderChat = () => {
   const c = useBuilderChat()
   const fileInput = useRef<HTMLInputElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const started = c.messages.length > 0 || c.loading
 
+  // Follow the stream ONLY while the user is parked at the bottom. Any upward intent
+  // (wheel-up or an upward scroll delta) pauses following so they can read back while
+  // Mia replies; returning to the bottom resumes it. Mirrors the main chat view —
+  // the previous unconditional scrollIntoView yanked the user down every reveal tick.
+  const shouldAutoScrollRef = useRef(true)
+  const prevScrollTopRef = useRef(0)
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+    const goingUp = el.scrollTop < prevScrollTopRef.current - 1
+    if (goingUp) shouldAutoScrollRef.current = false
+    else if (atBottom) shouldAutoScrollRef.current = true
+    prevScrollTopRef.current = el.scrollTop
+  }
+  const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY < 0) shouldAutoScrollRef.current = false
+  }
+
+  // A new outgoing message means the user wants to follow the next reply — resume.
+  const lastRole = c.messages[c.messages.length - 1]?.role
   useEffect(() => {
-    // 'auto' (instant), not 'smooth': the reveal tick updates streaming every 40ms,
-    // and a queued smooth animation re-fired that often stutters and fights scrolling.
-    bottom.current?.scrollIntoView({ behavior: 'auto' })
+    if (lastRole === 'user') shouldAutoScrollRef.current = true
+  }, [c.messages.length, lastRole])
+
+  useEffect(() => {
+    // Scroll the message container DIRECTLY (set scrollTop), NOT bottom.scrollIntoView().
+    // scrollIntoView scrolls every scrollable ancestor to reveal the target, so inside the
+    // Campaigns page (BuilderChat is nested under AppShell) it also yanked an outer scroller
+    // and fought the user. Setting scrollRef.scrollTop only ever moves this container — and
+    // only while the user is parked at the bottom (shouldAutoScrollRef).
+    if (!shouldAutoScrollRef.current) return
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [c.messages, c.streaming])
 
   return (
@@ -55,7 +86,7 @@ export const BuilderChat = () => {
       )}
 
       {!c.pdfUploading && started && (
-        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+        <div ref={scrollRef} onScroll={handleScroll} onWheel={handleWheel} className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
           {c.messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] px-4 py-3 rounded-2xl paragraph-sm leading-relaxed ${m.role === 'user' ? 'bg-brand-solid text-primary-onbrand' : 'bg-secondary text-primary border border-secondary'}`}>
