@@ -25,6 +25,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   organic_social: 'Organic',
   email: 'Email',
   linkedin_ads: 'LinkedIn',
+  linkedin_organic: 'LinkedIn Organic',
   tiktok_ads: 'TikTok',
 }
 
