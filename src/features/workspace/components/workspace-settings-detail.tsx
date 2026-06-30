@@ -6,6 +6,7 @@ import { useSession } from '../../../contexts/session-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { SkillLearningPage } from './skill-learning-page'
+import { MiaStyleTab } from './mia-style-tab'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl, updateWorkspaceFramework } from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
@@ -21,7 +22,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp' | 'skills'
+type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp' | 'skills' | 'mia'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -104,8 +105,8 @@ export const WorkspaceSettingsDetail = ({
 }: WorkspaceSettingsDetailProps) => {
   // Non-managers (analyst/viewer) get a read-only view limited to the guide tabs.
   const visibleTabs: SettingsTab[] = canManage
-    ? ['members', 'brand', 'campaigns', 'skills', 'whatsapp']
-    : ['brand', 'campaigns']
+    ? ['members', 'brand', 'campaigns', 'skills', 'whatsapp', 'mia']
+    : ['brand', 'campaigns', 'mia']
   const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
   const { sessionId, refreshWorkspaces } = useSession()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
@@ -319,6 +320,8 @@ export const WorkspaceSettingsDetail = ({
               ? 'Campaign Guides'
               : tab === 'skills'
               ? 'Skill Learning'
+              : tab === 'mia'
+              ? 'Mia'
               : 'WhatsApp Alerts'}
           </button>
         ))}
@@ -500,6 +503,11 @@ export const WorkspaceSettingsDetail = ({
         {/* Skill Learning tab */}
         {activeTab === 'skills' && (
           <SkillLearningPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+        )}
+
+        {/* Mia interaction style tab */}
+        {activeTab === 'mia' && (
+          <MiaStyleTab sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
         )}
 
         {/* Members tab */}
