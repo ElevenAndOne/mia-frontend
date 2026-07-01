@@ -121,8 +121,10 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
       top_organic_metric: topOrganicMetric,
       clickup_list_id: selectedListId || undefined,
     }
-    await generate(params)
-    setStep('report')
+    const report = await generate(params)
+    // Only advance to the report view if the POST succeeded; otherwise stay on the
+    // configure step so the error banner is visible.
+    if (report) setStep('report')
   }
 
   const handleOpenReport = async (reportId: string) => {
@@ -131,13 +133,72 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   }
 
   if (step === 'report' && activeReport) {
+    const backToList = () => {
+      setActiveReport(null)
+      setStep('list')
+    }
+
+    // Report still generating on the backend — show progress, poll runs in the hook.
+    if (activeReport.status === 'generating' || (!activeReport.report_data && !error)) {
+      return (
+        <div className="flex flex-col h-full">
+          <TopBar title="Client Reports" onBack={backToList} />
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="text-center space-y-4 max-w-sm">
+              <div className="mx-auto h-10 w-10 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+              <p className="paragraph-md font-medium text-primary">Generating your report…</p>
+              <p className="paragraph-sm text-tertiary">
+                Pulling platform data, studio hours, and generating AI sections — this usually takes
+                around a minute, sometimes a little longer. You can leave this page; it’ll keep
+                generating and show up in your reports list.
+              </p>
+              <button
+                onClick={backToList}
+                className="paragraph-sm text-tertiary hover:text-secondary"
+              >
+                ← Back to reports
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Generation failed (or timed out) — surface the error with a way out.
+    if (activeReport.status === 'failed' || (!activeReport.report_data && error)) {
+      return (
+        <div className="flex flex-col h-full">
+          <TopBar title="Client Reports" onBack={backToList} />
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="text-center space-y-4 max-w-sm">
+              <p className="paragraph-md font-medium text-primary">Report generation failed</p>
+              <p className="paragraph-sm text-tertiary">
+                {error || 'Something went wrong while generating this report. Please try again.'}
+              </p>
+              <button
+                onClick={() => setStep('configure')}
+                className="px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Try again
+              </button>
+              <div>
+                <button
+                  onClick={backToList}
+                  className="paragraph-sm text-tertiary hover:text-secondary"
+                >
+                  ← Back to reports
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <ReportOnePager
         report={activeReport}
-        onBack={() => {
-          setActiveReport(null)
-          setStep('list')
-        }}
+        onBack={backToList}
         saveOverrides={saveOverrides}
       />
     )

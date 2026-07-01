@@ -239,7 +239,7 @@ export interface ClientReport {
   period_end: string | null
   report_month: number | null
   report_year: number | null
-  status: 'draft' | 'generating' | 'complete'
+  status: 'draft' | 'generating' | 'complete' | 'failed'
   top_ad_metric: string
   top_organic_metric: string
   report_data: ReportData | null
