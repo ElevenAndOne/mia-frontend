@@ -63,27 +63,32 @@ export const validateSession = async (sessionId: string): Promise<SessionValidat
 }
 
 /**
- * Handle mobile OAuth redirect completion
+ * Redeem a single-use OAuth login claim code for a server-minted session (Audit #4).
+ *
+ * The backend OAuth callback now mints the AuthSession server-side from the identity
+ * proven by the code exchange, and hands the frontend only this short-lived, single-use
+ * claim code — never a user_id. We exchange it for the session id + the same user-state
+ * payload /validate returns. Replaces handleMobileOAuthRedirect, which POSTed a
+ * client-supplied user_id to /complete to mint a session (the takeover vector).
  */
-export const handleMobileOAuthRedirect = async (
-  sessionId: string,
-  userId?: string | null
-): Promise<boolean> => {
+export const claimSession = async (
+  claimCode: string
+): Promise<SessionValidationResponse | null> => {
   try {
-    const completeUrl = userId
-      ? `/api/oauth/google/complete?user_id=${userId}`
-      : '/api/oauth/google/complete'
-
-    const response = await apiFetch(completeUrl, {
+    const response = await apiFetch('/api/session/claim', {
       method: 'POST',
-      headers: {
-        'X-Session-ID': sessionId,
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claim_code: claimCode }),
     })
 
-    return response.ok
+    if (!response.ok) {
+      logger.error('[SESSION] Claim redemption failed:', response.status)
+      return null
+    }
+
+    return (await response.json()) as SessionValidationResponse
   } catch (error) {
-    logger.error('[SESSION] Mobile OAuth complete error:', error)
-    return false
+    logger.error('[SESSION] Claim redemption error:', error)
+    return null
   }
 }
