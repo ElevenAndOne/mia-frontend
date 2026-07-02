@@ -17,6 +17,9 @@ export interface StreamingState {
   isStreaming: boolean
   isComplete: boolean
   error: string | null
+  /** Platforms whose data HARD-FAILED to load this run (Audit #6/#13) — distinct from
+   *  a genuine no-activity period. Surface as a "temporarily unavailable" banner. */
+  unavailablePlatforms: string[]
 }
 
 export interface StreamingConfig {
@@ -45,6 +48,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     isStreaming: false,
     isComplete: false,
     error: null,
+    unavailablePlatforms: [],
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -122,6 +126,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
       isStreaming: false,
       isComplete: false,
       error: null,
+      unavailablePlatforms: [],
     })
   }, [clearRevealInterval])
 
@@ -153,6 +158,7 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         isStreaming: true,
         isComplete: false,
         error: null,
+        unavailablePlatforms: [],
       })
 
       abortControllerRef.current = new AbortController()
@@ -204,7 +210,14 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
             if (message.startsWith('data: ')) {
               try {
                 const parsed = JSON.parse(message.slice(6))
-                if (parsed.text) {
+                if (parsed.data_completeness?.errors?.length) {
+                  // Platforms that HARD-FAILED to load (Audit #6/#13). Surface as a banner
+                  // so a fetch failure isn't rendered as a blank/empty "no data" state.
+                  const platforms: string[] = parsed.data_completeness.errors
+                    .map((e: { platform?: string }) => e.platform)
+                    .filter(Boolean)
+                  setState((prev) => ({ ...prev, unavailablePlatforms: platforms }))
+                } else if (parsed.text) {
                   // Just accumulate — the reveal interval handles display pacing
                   receivedRef.current += parsed.text
                 } else if (parsed.done) {

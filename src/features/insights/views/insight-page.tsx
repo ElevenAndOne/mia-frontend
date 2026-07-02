@@ -52,6 +52,7 @@ function InsightPage({
     isStreaming,
     isComplete,
     error,
+    unavailablePlatforms,
     startStreaming,
     stopStreaming,
     reset,
@@ -75,6 +76,22 @@ function InsightPage({
       startStreaming(insightType, sessionId, selectedDateRange, platforms)
     }
   }
+
+  // Audit #6/#13: friendly labels for platforms whose data failed to load, so a fetch
+  // failure is shown as "temporarily unavailable" rather than rendered as a blank state.
+  const PLATFORM_LABELS: Record<string, string> = {
+    google_ads: 'Google Ads',
+    google_analytics: 'Google Analytics',
+    ga4: 'Google Analytics',
+    facebook: 'Meta Ads',
+    meta_ads: 'Meta Ads',
+    facebook_organic: 'Facebook / Instagram',
+    hubspot: 'HubSpot',
+    brevo: 'Brevo',
+    mailchimp: 'Mailchimp',
+    linkedin_ads: 'LinkedIn',
+  }
+  const unavailableLabel = unavailablePlatforms.map((p) => PLATFORM_LABELS[p] || p).join(', ')
 
   // Date picker button for TopBar right slot
   const datePickerButton = (
@@ -223,6 +240,18 @@ function InsightPage({
 
       {/* Content Area */}
       <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+        {/* Data-availability banner (Audit #6/#13): a platform whose data HARD-FAILED to
+            load is shown as temporarily unavailable — never rendered as a blank/empty
+            "no data" state, which reads as "inactive" and hides real outages. */}
+        {unavailablePlatforms.length > 0 && (
+          <div className="bg-secondary border border-secondary rounded-lg px-4 py-3 mb-4 max-w-3xl mx-auto w-full">
+            <p className="paragraph-sm text-tertiary">
+              {unavailableLabel} data couldn’t be loaded this time, so it’s not included below.
+              This is a temporary loading issue — not paused or inactive campaigns.
+            </p>
+          </div>
+        )}
+
         {/* Loading state - only show if no insights yet */}
         {isStreaming && insights.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">

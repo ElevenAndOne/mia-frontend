@@ -21,6 +21,8 @@ interface UseStreamingInsightsParsedReturn {
   isStreaming: boolean
   isComplete: boolean
   error: string | null
+  /** Platforms whose data failed to load this run (Audit #6/#13). */
+  unavailablePlatforms: string[]
   startStreaming: (
     insightType: 'grow' | 'optimize' | 'protect',
     sessionId: string,
@@ -184,6 +186,7 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
     isStreaming: state.isStreaming,
     isComplete: state.isComplete,
     error: state.error,
+    unavailablePlatforms: state.unavailablePlatforms,
     startStreaming,
     stopStreaming,
     reset,
