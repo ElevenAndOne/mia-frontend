@@ -777,9 +777,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const authData = await googleAuthService.getGoogleAuthStatus(state.sessionId || '')
 
       if (authData.authenticated) {
-        if (authData.needs_session_creation && authData.user_info?.id) {
-          await googleAuthService.completeGoogleAuth(state.sessionId || '', authData.user_info.id)
-        }
+        // SECURITY (Audit #4): sessions are minted SERVER-SIDE (OAuth callback + claim),
+        // so the frontend never asks the backend to create one. The old
+        // needs_session_creation -> completeGoogleAuth (/complete) path is retired —
+        // /complete is now non-minting and 401s without a valid session, so acting on
+        // needs_session_creation here would throw instead of restoring cleanly.
 
         await refreshAccounts()
 
