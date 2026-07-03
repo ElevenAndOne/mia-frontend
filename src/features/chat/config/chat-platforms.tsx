@@ -12,5 +12,6 @@ export const CHAT_PLATFORM_CONFIG = [
   { id: 'hubspot', name: 'HubSpot', icon: platformIcon('/icons/hubspot.svg', 'HubSpot'), statusKey: 'hubspot' },
   { id: 'linkedin_ads', name: 'LinkedIn Ads', icon: platformIcon('/icons/linkedin.svg', 'LinkedIn Ads'), statusKey: 'linkedin_ads' },
   { id: 'tiktok_ads', name: 'TikTok Ads', icon: platformIcon('/icons/tiktok.svg', 'TikTok Ads'), statusKey: 'tiktok_ads' },
+  { id: 'tiktok_organic', name: 'TikTok Organic', icon: platformIcon('/icons/tiktok.svg', 'TikTok Organic'), statusKey: 'tiktok_organic' },
   { id: 'airtable', name: 'Airtable', icon: platformIcon('/icons/Airtable.png', 'Airtable'), statusKey: 'airtable' },
 ]

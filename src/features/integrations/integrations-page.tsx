@@ -18,6 +18,7 @@ import HubSpotAccountSelector from './selectors/hubspot-account-selector'
 import MailchimpAccountSelector from './selectors/mailchimp-account-selector'
 import LinkedInAccountSelector from './selectors/linkedin-account-selector'
 import TikTokAccountSelector from './selectors/tiktok-account-selector'
+import TikTokOrganicAccountSelector from './selectors/tiktok-organic-account-selector'
 import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import { TopBar } from '../../components/top-bar'
@@ -200,6 +201,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showGA4PropertySelector = openModal === 'ga4'
   const showLinkedInAccountSelector = openModal === 'linkedin_ads'
   const showTikTokAccountSelector = openModal === 'tiktok_ads'
+  const showTikTokOrganicAccountSelector = openModal === 'tiktok_organic'
   const showAirtableBaseSelector = openModal === 'airtable'
   const showSmartleadModal = openModal === 'smartlead'
 
@@ -216,6 +218,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setOpenModal(show ? 'linkedin_ads' : null)
   const setShowTikTokAccountSelector = (show: boolean) =>
     setOpenModal(show ? 'tiktok_ads' : null)
+  const setShowTikTokOrganicAccountSelector = (show: boolean) =>
+    setOpenModal(show ? 'tiktok_organic' : null)
   const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
   const setShowSmartleadModal = (show: boolean) => setOpenModal(show ? 'smartlead' : null)
 
@@ -360,6 +364,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           ? getTimeAgo(platformStatus.tiktok_ads.last_synced)
           : undefined,
         autoSync: platformStatus.tiktok_ads?.connected ? true : undefined,
+      },
+      {
+        id: 'tiktok_organic',
+        name: 'TikTok Organic',
+        description: 'Organic TikTok content & account insights',
+        icon: '/icons/tiktok.svg',
+        connected: platformStatus.tiktok_organic?.connected || false,
+        linked:
+          platformStatus.tiktok_organic?.linked ??
+          platformStatus.tiktok_organic?.connected ??
+          false,
+        lastSync: platformStatus.tiktok_organic?.connected
+          ? getTimeAgo(platformStatus.tiktok_organic.last_synced)
+          : undefined,
+        autoSync: platformStatus.tiktok_organic?.connected ? true : undefined,
       },
     ]
 
@@ -1003,6 +1022,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           const data = await response.json()
           authUrl = data.auth_url
         }
+      } else if (integrationId === 'tiktok_organic') {
+        const response = await apiFetch(
+          `/api/oauth/tiktok-organic/auth-url${tenantParam ? '?' + tenantParam : ''}`,
+          { headers: authHeaders }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          authUrl = data.auth_url
+        }
       } else if (integrationId === 'airtable') {
         const response = await apiFetch(
           `/api/oauth/airtable/auth-url${tenantParam ? '?' + tenantParam : ''}`,
@@ -1139,6 +1167,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           if (integrationId === 'tiktok_ads') {
             logger.log('[TIKTOK-OAUTH] OAuth complete - showing account selector')
             setTimeout(() => setShowTikTokAccountSelector(true), 500)
+          }
+
+          // For TikTok Organic, show account selector after OAuth completes
+          if (integrationId === 'tiktok_organic') {
+            logger.log('[TIKTOK-ORGANIC-OAUTH] OAuth complete - showing account selector')
+            setTimeout(() => setShowTikTokOrganicAccountSelector(true), 500)
           }
 
           // For Airtable, show base selector after OAuth completes
@@ -2289,6 +2323,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           onSuccess={async () => {
             logger.log('[TIKTOK-ACCOUNT-SELECTOR] Account linked successfully')
             setShowTikTokAccountSelector(false)
+            invalidateIntegrationStatus()
+            refreshWorkspaces().catch((err) =>
+              logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
+            )
+            await refreshAccounts()
+          }}
+          currentAccountData={currentAccountData}
+        />
+
+        {/* TikTok Organic Account Selector Modal */}
+        <TikTokOrganicAccountSelector
+          isOpen={showTikTokOrganicAccountSelector}
+          onClose={() => setShowTikTokOrganicAccountSelector(false)}
+          onSuccess={async () => {
+            logger.log('[TIKTOK-ORGANIC-ACCOUNT-SELECTOR] Account linked successfully')
+            setShowTikTokOrganicAccountSelector(false)
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
