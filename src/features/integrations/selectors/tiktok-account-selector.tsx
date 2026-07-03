@@ -8,6 +8,8 @@ import { useSelectorState } from './hooks/use-selector-state'
 interface TikTokAdvertiser {
   id: string
   name: string
+  currency?: string
+  timezone?: string
 }
 
 interface TikTokAccountSelectorProps {
@@ -140,7 +142,7 @@ const TikTokAccountSelector = ({
                   key={advertiser.id}
                   isSelected={state.selectedId === advertiser.id}
                   onSelect={() => actions.setSelectedId(advertiser.id)}
-                  title={advertiser.name}
+                  title={advertiser.currency ? `${advertiser.name} (${advertiser.currency})` : advertiser.name}
                   subtitle={`ID: ${advertiser.id}`}
                   accentColor="black"
                   selectionStyle="radio"
