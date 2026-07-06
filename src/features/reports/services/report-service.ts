@@ -47,6 +47,23 @@ export const getReport = async (
   return response.json()
 }
 
+/**
+ * Fetch report data for the standalone print page using a signed, short-lived,
+ * report-scoped print token instead of a session (Audit #4 Phase 5). The token
+ * is minted server-side and authorizes only this one report read.
+ */
+export const getReportForPrint = async (
+  token: string,
+  tenantId: string,
+  reportId: string,
+): Promise<ClientReport | null> => {
+  const response = await apiFetch(
+    `/api/tenants/${tenantId}/reports/${reportId}/print-data?token=${encodeURIComponent(token)}`,
+  )
+  if (!response.ok) return null
+  return response.json()
+}
+
 export const patchReport = async (
   sessionId: string,
   tenantId: string,

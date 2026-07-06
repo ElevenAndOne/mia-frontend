@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ReportOnePager } from './report-onepager'
-import { getReport } from './services/report-service'
+import { getReportForPrint } from './services/report-service'
 import type { ClientReport } from './types'
 
 /**
- * Standalone print route (/report-print?sid=&tid=&rid=) used by the backend Playwright
- * PDF renderer. Not behind ProtectedRoute — it authenticates via the `sid` query param
- * passed by the server. Sets data-print-ready="true" once the report has loaded so
- * Playwright knows when to capture.
+ * Standalone print route (/report-print?token=&tid=&rid=) used by the backend Playwright
+ * PDF renderer. Not behind ProtectedRoute — it authenticates via a signed, short-lived,
+ * report-scoped print `token` (Audit #4 Phase 5), NOT a session id. Sets
+ * data-print-ready="true" once the report has loaded so Playwright knows when to capture.
  */
 export const ReportPrintPage = () => {
   const [params] = useSearchParams()
-  const sid = params.get('sid') || ''
+  const token = params.get('token') || ''
   const tid = params.get('tid') || ''
   const rid = params.get('rid') || ''
   const [report, setReport] = useState<ClientReport | null>(null)
@@ -20,11 +20,11 @@ export const ReportPrintPage = () => {
 
   useEffect(() => {
     let active = true
-    if (!sid || !tid || !rid) {
+    if (!token || !tid || !rid) {
       setError(true)
       return
     }
-    getReport(sid, tid, rid)
+    getReportForPrint(token, tid, rid)
       .then((r) => {
         if (!active) return
         if (r) setReport(r)
@@ -34,7 +34,7 @@ export const ReportPrintPage = () => {
     return () => {
       active = false
     }
-  }, [sid, tid, rid])
+  }, [token, tid, rid])
 
   const ready = !!report || error
   return (
