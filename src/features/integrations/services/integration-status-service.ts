@@ -42,6 +42,11 @@ const buildPlatformStatus = (
       linked: Boolean(flags.tiktok_ads),
       last_synced: now,
     },
+    tiktok_organic: {
+      connected: Boolean(flags.tiktok_organic),
+      linked: Boolean(flags.tiktok_organic),
+      last_synced: now,
+    },
     airtable: {
       connected: Boolean(flags.airtable),
       linked: Boolean(flags.airtable),
@@ -100,6 +105,7 @@ const mergePlatformStatus = (
     mailchimp: tenantOrAccount(accountData.mailchimp_account_id, tenantStatus.mailchimp),
     linkedin_ads: tenantOrAccount(accountData.linkedin_ads_account_id, tenantStatus.linkedin_ads),
     tiktok_ads: tenantOrAccount(accountData.tiktok_advertiser_id, tenantStatus.tiktok_ads),
+    tiktok_organic: tenantOrAccount(accountData.tiktok_business_id, tenantStatus.tiktok_organic),
     airtable: tenantOrAccount(accountData.airtable_base_id, tenantStatus.airtable),
     smartlead: tenantOrAccount(undefined, tenantStatus.smartlead),
   }

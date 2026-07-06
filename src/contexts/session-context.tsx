@@ -234,20 +234,29 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           // Complete OAuth flow
           // IMPORTANT: Extract user_id BEFORE cleaning URL, but clean AFTER /complete succeeds
           const urlParams = new URLSearchParams(window.location.search)
-          const authUserId = urlParams.get('user_id')
 
           if (oauthPending === 'google') {
+            // SECURITY (Audit #4): login sessions are now minted SERVER-SIDE in the OAuth
+            // callback. The frontend receives only a single-use claim code (never a user_id)
+            // and redeems it here for the real, server-minted session id.
+            const claim = urlParams.get('claim')
             const googleError = urlParams.get('google_error')
-            if (!authUserId || googleError) {
+            if (googleError || !claim) {
               // User cancelled OAuth or consent was denied — restore their existing session
               logger.warn(`[SESSION] OAuth not completed (google_error=${googleError}) - restoring session`)
               window.history.replaceState({}, '', window.location.pathname)
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // No return — fall through to session validation below so user stays logged in
             } else {
-              const success = await sessionService.handleMobileOAuthRedirect(sessionId, authUserId)
-              if (!success) {
-                logger.error('[SESSION] OAuth /complete failed')
+              const claimed = await sessionService.claimSession(claim)
+              if (claimed?.session_id) {
+                // Replace any pre-login client id with the server-minted session id.
+                storeSessionId(claimed.session_id)
+                sessionId = claimed.session_id
+                // Strip the single-use claim from the URL so a refresh can't re-attempt it.
+                window.history.replaceState({}, '', window.location.pathname)
+              } else {
+                logger.error('[SESSION] OAuth claim redemption failed')
                 setState((prev) => ({
                   ...prev,
                   isLoading: false,
@@ -768,9 +777,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const authData = await googleAuthService.getGoogleAuthStatus(state.sessionId || '')
 
       if (authData.authenticated) {
-        if (authData.needs_session_creation && authData.user_info?.id) {
-          await googleAuthService.completeGoogleAuth(state.sessionId || '', authData.user_info.id)
-        }
+        // SECURITY (Audit #4): sessions are minted SERVER-SIDE (OAuth callback + claim),
+        // so the frontend never asks the backend to create one. The old
+        // needs_session_creation -> completeGoogleAuth (/complete) path is retired —
+        // /complete is now non-minting and 401s without a valid session, so acting on
+        // needs_session_creation here would throw instead of restoring cleanly.
 
         await refreshAccounts()
 

@@ -74,30 +74,12 @@ export const getGoogleAuthUrl = async (returnUrl?: string): Promise<GoogleAuthUr
   return response.json()
 }
 
-/**
- * Complete Google OAuth flow (creates database session)
- */
-export const completeGoogleAuth = async (
-  sessionId: string,
-  userId?: string | null
-): Promise<GoogleCompleteResponse> => {
-  const completeUrl = userId
-    ? `/api/oauth/google/complete?user_id=${userId}`
-    : '/api/oauth/google/complete'
-
-  const response = await apiFetch(completeUrl, {
-    method: 'POST',
-    headers: {
-      'X-Session-ID': sessionId,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`OAuth complete failed: ${response.status}`)
-  }
-
-  return response.json()
-}
+// REMOVED (Jul 2026 — Audit #4): completeGoogleAuth POSTed a client-supplied user_id to
+// /api/oauth/google/complete to mint a database session from the frontend. Sessions are
+// now minted server-side in the OAuth callback and handed to the frontend as a single-use
+// claim (see session-service.claimSession). /complete is non-minting and 401s without a
+// valid session, so this had no safe use left. Its only caller (checkExistingAuth's
+// needs_session_creation branch) was removed. Do NOT reintroduce a frontend session mint.
 
 /**
  * Check Google OAuth authentication status

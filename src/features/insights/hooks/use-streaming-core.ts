@@ -17,6 +17,12 @@ export interface StreamingState {
   isStreaming: boolean
   isComplete: boolean
   error: string | null
+  /** Platforms whose data HARD-FAILED to load this run (Audit #6/#13) — distinct from
+   *  a genuine no-activity period. Surface as a "temporarily unavailable" banner. */
+  unavailablePlatforms: string[]
+  /** Platforms whose data loaded but is INCOMPLETE (a mid-fetch error truncated the
+   *  window). Data is shown but should be flagged as partial / a lower bound. */
+  partialPlatforms: string[]
 }
 
 export interface StreamingConfig {
@@ -45,6 +51,8 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
     isStreaming: false,
     isComplete: false,
     error: null,
+    unavailablePlatforms: [],
+    partialPlatforms: [],
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -122,6 +130,8 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
       isStreaming: false,
       isComplete: false,
       error: null,
+      unavailablePlatforms: [],
+      partialPlatforms: [],
     })
   }, [clearRevealInterval])
 
@@ -153,6 +163,8 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
         isStreaming: true,
         isComplete: false,
         error: null,
+        unavailablePlatforms: [],
+        partialPlatforms: [],
       })
 
       abortControllerRef.current = new AbortController()
@@ -204,7 +216,28 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
             if (message.startsWith('data: ')) {
               try {
                 const parsed = JSON.parse(message.slice(6))
-                if (parsed.text) {
+                if (parsed.data_completeness) {
+                  // Platforms that HARD-FAILED to load (Audit #6/#13) — surface as a banner
+                  // so a fetch failure isn't rendered as a blank "no data" state. Partials
+                  // loaded but are INCOMPLETE (mid-fetch truncation) — flag as a lower bound.
+                  const dc = parsed.data_completeness as {
+                    errors?: { platform?: string }[]
+                    partials?: { platform?: string }[]
+                  }
+                  const unavailable: string[] = (dc.errors || [])
+                    .map((e) => e.platform)
+                    .filter(Boolean) as string[]
+                  const partial: string[] = (dc.partials || [])
+                    .map((e) => e.platform)
+                    .filter(Boolean) as string[]
+                  if (unavailable.length || partial.length) {
+                    setState((prev) => ({
+                      ...prev,
+                      unavailablePlatforms: unavailable,
+                      partialPlatforms: partial,
+                    }))
+                  }
+                } else if (parsed.text) {
                   // Just accumulate — the reveal interval handles display pacing
                   receivedRef.current += parsed.text
                 } else if (parsed.done) {
