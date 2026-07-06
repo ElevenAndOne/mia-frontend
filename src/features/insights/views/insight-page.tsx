@@ -53,6 +53,7 @@ function InsightPage({
     isComplete,
     error,
     unavailablePlatforms,
+    partialPlatforms,
     startStreaming,
     stopStreaming,
     reset,
@@ -90,8 +91,13 @@ function InsightPage({
     brevo: 'Brevo',
     mailchimp: 'Mailchimp',
     linkedin_ads: 'LinkedIn',
+    tiktok_ads: 'TikTok Ads',
+    tiktok_organic: 'TikTok Organic',
   }
   const unavailableLabel = unavailablePlatforms.map((p) => PLATFORM_LABELS[p] || p).join(', ')
+  // Partials that AREN'T also hard-failed (avoid showing both banners for one platform).
+  const partialOnly = partialPlatforms.filter((p) => !unavailablePlatforms.includes(p))
+  const partialLabel = partialOnly.map((p) => PLATFORM_LABELS[p] || p).join(', ')
 
   // Date picker button for TopBar right slot
   const datePickerButton = (
@@ -248,6 +254,17 @@ function InsightPage({
             <p className="paragraph-sm text-tertiary">
               {unavailableLabel} data couldn’t be loaded this time, so it’s not included below.
               This is a temporary loading issue — not paused or inactive campaigns.
+            </p>
+          </div>
+        )}
+
+        {/* Partial-fetch banner: data loaded but a mid-fetch error truncated the window,
+            so the figures are incomplete (a lower bound), not the full picture. */}
+        {partialOnly.length > 0 && (
+          <div className="bg-secondary border border-secondary rounded-lg px-4 py-3 mb-4 max-w-3xl mx-auto w-full">
+            <p className="paragraph-sm text-tertiary">
+              Some {partialLabel} data couldn’t be fully loaded this time, so the figures below
+              may be incomplete (a lower bound). This is a temporary loading issue.
             </p>
           </div>
         )}
