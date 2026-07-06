@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { TopBar } from '../../../components/top-bar'
 import { Spinner } from '../../../components/spinner'
+import { ChatMarkdown } from '../../../components/chat-markdown'
 import { useGoldInsights } from '../hooks/use-gold-insights'
 import { StorageKey } from '../../../constants/storage-keys'
 import { trackEvent } from '../../../utils/tracking'
@@ -87,6 +88,13 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                 <p className="paragraph-md text-secondary">
                   Your deep analysis is being prepared. Check back soon.
                 </p>
+                <button
+                  onClick={triggerRefresh}
+                  disabled={isRefreshing}
+                  className="mt-3 paragraph-xs text-tertiary underline hover:text-secondary disabled:opacity-50"
+                >
+                  {isRefreshing ? 'Requesting...' : 'Analyse now'}
+                </button>
               </div>
             )}
 
@@ -98,7 +106,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
             )}
 
             {data.status === 'completed' && (
-              <div className="bg-linear-to-r from-utility-warning-100 to-utility-brand-100 border border-utility-warning-300 rounded-lg p-6">
+              <div className="bg-secondary border border-secondary rounded-lg p-6">
                 <h2 className="label-bg text-primary mb-4 flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-utility-warning-600"
@@ -110,9 +118,10 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                   </svg>
                   ML Prediction Report
                 </h2>
-                <p className="paragraph-md text-secondary leading-relaxed whitespace-pre-wrap">
-                  {data.summary}
-                </p>
+                <ChatMarkdown
+                  content={data.summary ?? ''}
+                  className="paragraph-md text-secondary leading-relaxed"
+                />
                 <div className="flex items-center justify-between mt-4">
                   {data.created_at && (
                     <p className="paragraph-xs text-tertiary">
