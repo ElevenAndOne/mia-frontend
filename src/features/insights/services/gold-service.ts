@@ -7,6 +7,7 @@ export interface GoldInsightsResponse {
   created_at: string | null
   job_status: string | null
   failure_reason: string | null
+  refresh_in_progress?: boolean
 }
 
 export const fetchGoldInsights = async (sessionId: string): Promise<GoldInsightsResponse> => {

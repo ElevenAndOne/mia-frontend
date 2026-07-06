@@ -118,6 +118,14 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                   </svg>
                   ML Prediction Report
                 </h2>
+                {data.refresh_in_progress && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <Spinner size="sm" variant="primary" />
+                    <p className="paragraph-xs text-tertiary">
+                      Re-analysis in progress — this report will update automatically.
+                    </p>
+                  </div>
+                )}
                 <ChatMarkdown
                   content={data.summary ?? ''}
                   className="paragraph-md text-secondary leading-relaxed"

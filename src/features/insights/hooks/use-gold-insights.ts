@@ -35,17 +35,21 @@ export const useGoldInsights = (sessionId: string | null) => {
     refresh()
   }, [refresh])
 
-  // Poll every 30s while status is 'triggered' or 'running'
+  // Poll every 30s while a run is in flight ('triggered', 'running', or a
+  // background re-analysis behind an already-completed report)
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current)
       pollRef.current = null
     }
 
-    if (data?.status === 'triggered' || data?.status === 'running') {
+    const inFlight = (d: GoldInsightsResponse | null) =>
+      d?.status === 'triggered' || d?.status === 'running' || d?.refresh_in_progress === true
+
+    if (inFlight(data)) {
       pollRef.current = setInterval(async () => {
         const result = await refresh()
-        if (result && result.status !== 'triggered' && result.status !== 'running') {
+        if (result && !inFlight(result)) {
           if (pollRef.current) {
             clearInterval(pollRef.current)
             pollRef.current = null
@@ -60,7 +64,7 @@ export const useGoldInsights = (sessionId: string | null) => {
         pollRef.current = null
       }
     }
-  }, [data?.status, refresh])
+  }, [data?.status, data?.refresh_in_progress, refresh])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
