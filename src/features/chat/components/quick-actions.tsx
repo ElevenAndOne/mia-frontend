@@ -26,7 +26,7 @@ export const QuickActions = ({
   strategiseReady = false,
 }: QuickActionsProps) => {
   return (
-    <div className="flex flex-col gap-2.5 w-full max-w-3xl mx-auto px-4">
+    <div className="flex flex-col gap-3 w-full max-w-3xl mx-auto px-4">
 
       {/* Grow / Optimize / Protect — 3 equal columns on mobile */}
       <div className="grid grid-cols-3 gap-2 md:hidden">
@@ -52,13 +52,13 @@ export const QuickActions = ({
       </div>
 
       {/* Grow / Optimize / Protect — full-width stacked cards on desktop */}
-      <div className="hidden md:flex md:flex-col gap-2.5">
+      <div className="hidden md:flex md:flex-col gap-3">
         {actions.map((action) => (
           <button
             key={`desktop-${action.id}`}
             onClick={() => onAction(action.id)}
             disabled={disabled}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all w-full ${
+            className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
               disabled
                 ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
                 : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'

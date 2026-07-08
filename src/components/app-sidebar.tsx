@@ -28,7 +28,7 @@ const NavItem = ({ icon, label, active, collapsed, onClick, trailing }: NavItemP
   <button
     onClick={onClick}
     title={collapsed ? label : undefined}
-    className={`w-full py-2 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
+    className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
       collapsed ? 'justify-center px-0' : 'px-3'
     } ${active ? 'bg-secondary text-primary' : 'text-secondary hover:bg-secondary'}`}
     role="menuitem"
@@ -247,7 +247,7 @@ export const AppSidebar = () => {
 
         {/* User identity */}
         <div
-          className={`flex items-center gap-3 py-2 border-t border-tertiary ${
+          className={`flex items-center gap-3 py-3 border-t border-tertiary ${
             collapsed ? 'justify-center px-2' : 'px-4'
           }`}
         >
