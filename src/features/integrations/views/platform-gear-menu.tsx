@@ -3,8 +3,7 @@ import { useToast } from '../../../contexts/toast-context'
 import { Dropdown, Modal, type DropdownItem } from '../../overlay'
 import { usePlatformDisconnect } from '../hooks/use-platform-disconnect'
 import { IconButton } from '../../../components/icon-button'
-import { Icon } from '../../../components/icon'
-
+import { DotsVertical } from '../../../components/icon/dots-vertical'
 interface PlatformGearMenuProps {
   platformId: string
   platformName: string
@@ -158,7 +157,7 @@ const PlatformGearMenu = ({
         title={`${platformName} options`}
         disabled={isDisconnecting}
       >
-        <Icon.dots_vertical />
+        <DotsVertical />
       </IconButton>
 
       {/* Dropdown Menu */}

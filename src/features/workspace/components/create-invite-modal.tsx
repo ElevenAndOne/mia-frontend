@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { CheckCircle } from '../../../components/icon/check-circle'
 import { Modal } from '../../overlay'
 
 interface CreateInviteModalProps {
@@ -141,7 +141,7 @@ export const CreateInviteModal = ({
         ) : (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-success">
-              <Icon.check_circle size={20} />
+              <CheckCircle size={20} />
               <span className="subheading-md">
                 {createdInviteEmail
                   ? `Invite sent to ${createdInviteEmail}!`

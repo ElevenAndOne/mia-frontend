@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { SearchMd } from '../../../components/icon/search-md'
 import { useOptionalCommandPalette } from '../context/command-palette-context'
 
 interface CommandPaletteTriggerProps {
@@ -28,7 +28,7 @@ export const CommandPaletteTrigger = ({
         aria-label="Open command palette"
         className={`flex w-9 h-9 items-center justify-center rounded-lg bg-secondary border border-secondary hover:border-primary text-quaternary hover:text-secondary transition-colors ${className}`}
       >
-        <Icon.search_md size={16} />
+        <SearchMd size={16} />
       </button>
     )
   }
@@ -39,7 +39,7 @@ export const CommandPaletteTrigger = ({
       aria-label="Open command palette"
       className={`flex items-center gap-2.5 ${fullWidth ? 'w-full' : 'w-[200px]'} px-3 py-1.5 rounded-lg bg-secondary border border-secondary hover:border-primary text-quaternary transition-colors ${className}`}
     >
-      <Icon.search_md size={15} className="shrink-0" />
+      <SearchMd size={15} className="shrink-0" />
       <span className="flex-1 text-left paragraph-sm truncate">Search or jump to…</span>
       <kbd className="paragraph-xs border border-tertiary rounded px-1.5 py-0.5">⌘K</kbd>
     </button>

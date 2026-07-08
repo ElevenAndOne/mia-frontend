@@ -3,7 +3,17 @@ import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
 import { VoiceWaveform } from './voice-waveform'
-import { Icon } from '../../../components/icon'
+import { AlertCircle } from '../../../components/icon/alert-circle'
+import { ArrowRight } from '../../../components/icon/arrow-right'
+import { Attachment01 } from '../../../components/icon/attachment-01'
+import { Calendar } from '../../../components/icon/calendar'
+import { FileAttachment01 } from '../../../components/icon/file-attachment-01'
+import { Loading01 } from '../../../components/icon/loading-01'
+import { Microphone01 } from '../../../components/icon/microphone-01'
+import { MicrophoneOff01 } from '../../../components/icon/microphone-off-01'
+import { Tool01 } from '../../../components/icon/tool-01'
+import { UploadCloud02 } from '../../../components/icon/upload-cloud-02'
+import { XClose } from '../../../components/icon/x-close'
 import { formatDateRangeDisplay } from '../../../utils/date-range'
 import type { Platform } from '../types'
 import type { AttachedDocument } from '../services/chat-service'
@@ -322,10 +332,10 @@ export const ChatInput = ({
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">
       {uploadError && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-error-secondary text-error-primary paragraph-xs">
-          <Icon.alert_circle size={13} className="shrink-0" />
+          <AlertCircle size={13} className="shrink-0" />
           <span>Upload failed: {uploadError}</span>
           <button type="button" onClick={() => setUploadError('')} className="ml-auto shrink-0">
-            <Icon.x_close size={11} />
+            <XClose size={11} />
           </button>
         </div>
       )}
@@ -345,14 +355,14 @@ export const ChatInput = ({
                   onClick={() => onRemoveImage(i)}
                   className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-quaternary flex items-center justify-center touch-manipulation opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
-                  <Icon.x_close size={11} />
+                  <XClose size={11} />
                 </button>
               )}
             </div>
           ))}
           {documents.map((doc, i) => (
             <div key={`doc-${i}`} className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[200px]">
-              <Icon.file_attachment_01 size={14} className="text-tertiary shrink-0" />
+              <FileAttachment01 size={14} className="text-tertiary shrink-0" />
               <span className="paragraph-xs text-secondary truncate">{doc.filename}</span>
               {onRemoveDocument && (
                 <button
@@ -360,7 +370,7 @@ export const ChatInput = ({
                   onClick={() => onRemoveDocument(i)}
                   className="shrink-0 w-5 h-5 rounded-full bg-tertiary flex items-center justify-center touch-manipulation opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1"
                 >
-                  <Icon.x_close size={9} />
+                  <XClose size={9} />
                 </button>
               )}
             </div>
@@ -380,7 +390,7 @@ export const ChatInput = ({
         {isDragging && (
           <div className="absolute inset-0 z-20 rounded-2xl border-2 border-dashed border-brand-solid bg-tertiary/90 flex items-center justify-center pointer-events-none">
             <div className="flex items-center gap-2 text-secondary paragraph-sm">
-              <Icon.upload_cloud_02 size={18} />
+              <UploadCloud02 size={18} />
               <span>Drop images or files to attach</span>
             </div>
           </div>
@@ -390,7 +400,7 @@ export const ChatInput = ({
           <div className="flex items-center gap-3 px-4 py-4">
             {/* Pulsing mic dot */}
             <div className="w-7 h-7 rounded-full bg-quaternary flex items-center justify-center shrink-0 animate-pulse">
-              <Icon.microphone_01 size={13} className="text-tertiary" />
+              <Microphone01 size={13} className="text-tertiary" />
             </div>
 
             {/* Live waveform — fills remaining space */}
@@ -444,7 +454,7 @@ export const ChatInput = ({
               }`}
               title={campaignDateLocked ? 'Date range locked to campaign' : 'Select date range'}
             >
-              <Icon.calendar size={18} />
+              <Calendar size={18} />
               <span className="paragraph-xs text-tertiary">
                 {campaignDateLocked && campaignDateLabel
                   ? campaignDateLabel
@@ -471,7 +481,7 @@ export const ChatInput = ({
                 className="w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
                 title="Select platforms"
               >
-                <Icon.tool_01 size={18} />
+                <Tool01 size={18} />
               </button>
 
               <PlatformSelector
@@ -505,9 +515,9 @@ export const ChatInput = ({
                   ].join(' ')}
                 >
                   {isUploading ? (
-                    <Icon.loading_01 size={18} className="animate-spin" />
+                    <Loading01 size={18} className="animate-spin" />
                   ) : (
-                    <Icon.attachment_01 size={18} />
+                    <Attachment01 size={18} />
                   )}
                 </label>
               </>
@@ -535,11 +545,11 @@ export const ChatInput = ({
                 }
               >
                 {micState === 'processing' ? (
-                  <Icon.loading_01 size={18} className="animate-spin" />
+                  <Loading01 size={18} className="animate-spin" />
                 ) : micState === 'error' ? (
-                  <Icon.microphone_off_01 size={18} />
+                  <MicrophoneOff01 size={18} />
                 ) : (
-                  <Icon.microphone_01 size={18} />
+                  <Microphone01 size={18} />
                 )}
               </button>
             )}
@@ -572,7 +582,7 @@ export const ChatInput = ({
                 }`}
                 title="Send message"
               >
-                <Icon.arrow_right size={18} />
+                <ArrowRight size={18} />
               </button>
             )}
           </div>

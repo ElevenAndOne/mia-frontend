@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { Icon } from '../../../components/icon'
+import { ChevronDown } from '../../../components/icon/chevron-down'
 import { Popover } from '../../overlay'
 import { useRovingFocus } from '../../../hooks/use-roving-focus'
 import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
@@ -87,7 +87,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
                 {name || 'Select workspace'}
               </span>
             </span>
-            <Icon.chevron_down size={16} className="text-quaternary shrink-0" />
+            <ChevronDown size={16} className="text-quaternary shrink-0" />
           </>
         )}
       </button>

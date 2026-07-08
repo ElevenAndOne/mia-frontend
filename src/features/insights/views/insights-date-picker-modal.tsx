@@ -10,8 +10,7 @@ import {
   type InsightType,
 } from '../config/insight-definitions'
 import { IconButton } from '../../../components/icon-button'
-import { Icon } from '../../../components/icon'
-
+import { XClose } from '../../../components/icon/x-close'
 interface InsightsDatePickerModalProps {
   isOpen: boolean
   onClose: () => void
@@ -78,7 +77,7 @@ const InsightsDatePickerModal = ({
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="title-h6 text-primary">{INSIGHT_TITLES[insightType]}</h2>
                   <IconButton onClick={onClose} aria-label="Close">
-                    <Icon.x_close />
+                    <XClose />
                   </IconButton>
                 </div>
                 <p className="paragraph-sm text-tertiary">{INSIGHT_DESCRIPTIONS[insightType]}</p>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
-import { Icon } from '../../../components/icon'
+import { Check } from '../../../components/icon/check'
+import { Copy01 } from '../../../components/icon/copy-01'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
 import ActionConfirmCard from './action-confirm-card'
@@ -97,7 +98,7 @@ export const ChatMessage = ({
             className="p-2 rounded-lg hover:bg-tertiary text-quaternary hover:text-secondary transition-colors"
             title={copied ? 'Copied!' : 'Copy'}
           >
-            {copied ? <Icon.check size={16} /> : <Icon.copy_01 size={16} />}
+            {copied ? <Check size={16} /> : <Copy01 size={16} />}
           </button>
 
           <button

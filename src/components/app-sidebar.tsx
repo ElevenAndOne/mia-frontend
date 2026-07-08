@@ -9,7 +9,23 @@ import { useRecentConversations } from '../features/shell/hooks/use-recent-conve
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
 import { SidebarWorkspaceButton } from '../features/shell/views/sidebar-workspace-button'
-import { Icon } from './icon'
+import { ChevronLeftDouble } from './icon/chevron-left-double'
+import { ChevronRight } from './icon/chevron-right'
+import { ChevronRightDouble } from './icon/chevron-right-double'
+import { Edit03 } from './icon/edit-03'
+import { File02 } from './icon/file-02'
+import { Globe01 } from './icon/globe-01'
+import { HelpCircle } from './icon/help-circle'
+import { LogOut01 } from './icon/log-out-01'
+import { MessageChatSquare } from './icon/message-chat-square'
+import { Monitor01 } from './icon/monitor-01'
+import { Moon01 } from './icon/moon-01'
+import { Plus } from './icon/plus'
+import { Settings01 } from './icon/settings-01'
+import { Stars01 } from './icon/stars-01'
+import { Sun } from './icon/sun'
+import { Target01 } from './icon/target-01'
+import { Wallet01 } from './icon/wallet-01'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
 import { UserAvatar } from './user-avatar'
 
@@ -95,9 +111,9 @@ export const AppSidebar = () => {
               : ''
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
-    { value: 'system', label: 'Auto', icon: <Icon.monitor_01 size={16} /> },
-    { value: 'light', label: 'Light', icon: <Icon.sun size={16} /> },
-    { value: 'dark', label: 'Dark', icon: <Icon.moon_01 size={16} /> },
+    { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },
+    { value: 'light', label: 'Light', icon: <Sun size={16} /> },
+    { value: 'dark', label: 'Dark', icon: <Moon01 size={16} /> },
   ]
 
   const openConversation = (conversationId: string) => {
@@ -135,26 +151,26 @@ export const AppSidebar = () => {
 
         <nav className={`flex-1 min-h-0 overflow-y-auto py-2 ${collapsed ? 'px-2' : 'px-3'}`} role="menu">
           <NavItem
-            icon={<Icon.edit_03 size={18} />}
+            icon={<Edit03 size={18} />}
             label="New Chat"
             collapsed={collapsed}
             onClick={() => actions.onNewChat()}
           />
           <NavItem
-            icon={<Icon.plus size={18} />}
+            icon={<Plus size={18} />}
             label="New Workspace"
             collapsed={collapsed}
             onClick={() => actions.onNewWorkspace()}
           />
           <NavItem
-            icon={<Icon.globe_01 size={18} />}
+            icon={<Globe01 size={18} />}
             label="Integrations"
             collapsed={collapsed}
             active={activeKey === 'integrations'}
             onClick={actions.onIntegrationsClick}
           />
           <NavItem
-            icon={<Icon.target_01 size={18} />}
+            icon={<Target01 size={18} />}
             label="Campaigns"
             collapsed={collapsed}
             active={activeKey === 'campaigns'}
@@ -162,7 +178,7 @@ export const AppSidebar = () => {
           />
           {isEnabled('mia-creative-studio') && (
             <NavItem
-              icon={<Icon.stars_01 size={18} />}
+              icon={<Stars01 size={18} />}
               label="Mia Create"
               collapsed={collapsed}
               active={activeKey === 'mia-create'}
@@ -170,21 +186,21 @@ export const AppSidebar = () => {
             />
           )}
           <NavItem
-            icon={<Icon.file_02 size={18} />}
+            icon={<File02 size={18} />}
             label="Reports"
             collapsed={collapsed}
             active={activeKey === 'reports'}
             onClick={actions.onReportsClick}
           />
           <NavItem
-            icon={<Icon.wallet_01 size={18} />}
+            icon={<Wallet01 size={18} />}
             label="Budget Tracker"
             collapsed={collapsed}
             active={activeKey === 'budget'}
             onClick={() => navigate('/budget-tracker')}
           />
           <NavItem
-            icon={<Icon.settings_01 size={18} />}
+            icon={<Settings01 size={18} />}
             label="Workspace Settings"
             collapsed={collapsed}
             active={activeKey === 'settings'}
@@ -194,7 +210,7 @@ export const AppSidebar = () => {
           <div className="border-t border-tertiary my-2" />
 
           <NavItem
-            icon={<Icon.message_chat_square size={18} />}
+            icon={<MessageChatSquare size={18} />}
             label="Recent Chats"
             collapsed={collapsed}
             onClick={openRecentChats}
@@ -203,7 +219,7 @@ export const AppSidebar = () => {
                 {conversations.length > 0 && (
                   <span className="paragraph-xs text-quaternary">{conversations.length}</span>
                 )}
-                <Icon.chevron_right size={16} className="text-quaternary" />
+                <ChevronRight size={16} className="text-quaternary" />
               </span>
             }
           />
@@ -223,7 +239,7 @@ export const AppSidebar = () => {
           )}
 
           <NavItem
-            icon={<Icon.help_circle size={18} />}
+            icon={<HelpCircle size={18} />}
             label="Help"
             collapsed={collapsed}
             onClick={actions.onHelpClick}
@@ -240,7 +256,7 @@ export const AppSidebar = () => {
             }`}
             role="menuitem"
           >
-            <Icon.log_out_01 size={18} />
+            <LogOut01 size={18} />
             {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
@@ -272,10 +288,10 @@ export const AppSidebar = () => {
           }`}
         >
           {collapsed ? (
-            <Icon.chevron_right_double size={18} />
+            <ChevronRightDouble size={18} />
           ) : (
             <>
-              <Icon.chevron_left_double size={16} />
+              <ChevronLeftDouble size={16} />
               <span className="paragraph-xs">Collapse</span>
             </>
           )}

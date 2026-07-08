@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { RefreshCw01 } from '../../../components/icon/refresh-cw-01'
 import { Spinner } from '../../../components/spinner'
 import type { BudgetRecommendation, BudgetSnapshot } from '../types'
 import { formatMoney } from '../budget-format'
@@ -48,7 +48,7 @@ export const BudgetIntelligencePanel = ({ snapshot, recommendation, recLoading, 
             title="Refresh recommendation"
             className="text-tertiary hover:text-primary transition-colors"
           >
-            <Icon.refresh_cw_01 size={16} />
+            <RefreshCw01 size={16} />
           </button>
         )}
       </div>

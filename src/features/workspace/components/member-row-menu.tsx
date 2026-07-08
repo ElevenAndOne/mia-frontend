@@ -1,5 +1,9 @@
 import { useRef, useState, useMemo } from 'react'
-import { Icon } from '../../../components/icon'
+import { Check } from '../../../components/icon/check'
+import { Copy01 } from '../../../components/icon/copy-01'
+import { DotsVertical } from '../../../components/icon/dots-vertical'
+import { Trash01 } from '../../../components/icon/trash-01'
+import { UserEdit } from '../../../components/icon/user-edit'
 import { Dropdown, Modal } from '../../overlay'
 import type { DropdownItem } from '../../overlay/types'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
@@ -43,7 +47,7 @@ export const MemberRowMenu = ({
       items.push({
         id: 'change-role',
         label: 'Change Role',
-        icon: <Icon.user_edit size={16} />,
+        icon: <UserEdit size={16} />,
         onClick: () => {
           setIsOpen(false)
           setTimeout(() => setShowRoleMenu(true), 100)
@@ -58,7 +62,7 @@ export const MemberRowMenu = ({
       items.push({
         id: 'remove',
         label: 'Remove Member',
-        icon: <Icon.trash_01 size={16} />,
+        icon: <Trash01 size={16} />,
         onClick: () => {
           setIsOpen(false)
           setShowConfirmRemove(true)
@@ -75,7 +79,7 @@ export const MemberRowMenu = ({
       {
         id: 'copy-link',
         label: 'Copy Invite Link',
-        icon: <Icon.copy_01 size={16} />,
+        icon: <Copy01 size={16} />,
         onClick: () => {
           if (person.inviteLink) {
             onCopyInvite(person.inviteLink)
@@ -87,7 +91,7 @@ export const MemberRowMenu = ({
       {
         id: 'revoke',
         label: 'Revoke Invite',
-        icon: <Icon.trash_01 size={16} />,
+        icon: <Trash01 size={16} />,
         onClick: () => {
           setIsOpen(false)
           setShowConfirmRevoke(true)
@@ -107,7 +111,7 @@ export const MemberRowMenu = ({
           onUpdateRole(person.id, 'admin')
           setShowRoleMenu(false)
         },
-        icon: person.role === 'admin' ? <Icon.check size={16} /> : undefined,
+        icon: person.role === 'admin' ? <Check size={16} /> : undefined,
       },
       {
         id: 'analyst',
@@ -116,7 +120,7 @@ export const MemberRowMenu = ({
           onUpdateRole(person.id, 'analyst')
           setShowRoleMenu(false)
         },
-        icon: person.role === 'analyst' ? <Icon.check size={16} /> : undefined,
+        icon: person.role === 'analyst' ? <Check size={16} /> : undefined,
       },
       {
         id: 'viewer',
@@ -125,7 +129,7 @@ export const MemberRowMenu = ({
           onUpdateRole(person.id, 'viewer')
           setShowRoleMenu(false)
         },
-        icon: person.role === 'viewer' ? <Icon.check size={16} /> : undefined,
+        icon: person.role === 'viewer' ? <Check size={16} /> : undefined,
       },
     ],
     [person.id, person.role, onUpdateRole]
@@ -146,7 +150,7 @@ export const MemberRowMenu = ({
         className="p-1 text-quaternary hover:text-primary hover:bg-tertiary rounded transition-colors"
         title="More options"
       >
-        <Icon.dots_vertical size={20} />
+        <DotsVertical size={20} />
       </button>
 
       <Dropdown

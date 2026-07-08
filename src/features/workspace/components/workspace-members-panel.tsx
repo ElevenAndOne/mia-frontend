@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { Mail01 } from '../../../components/icon/mail-01'
 import { UserAvatar } from '../../../components/user-avatar'
 import { WorkspaceRoleIcon } from './workspace-role-icon'
 import { MemberRowMenu } from './member-row-menu'
@@ -40,7 +40,7 @@ export const WorkspaceMembersPanel = ({
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-quaternary flex items-center justify-center">
-              <Icon.mail_01 size={20} className="text-tertiary" />
+              <Mail01 size={20} className="text-tertiary" />
             </div>
           )}
 

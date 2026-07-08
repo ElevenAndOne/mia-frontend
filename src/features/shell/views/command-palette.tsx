@@ -2,7 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Icon } from '../../../components/icon'
+import { File02 } from '../../../components/icon/file-02'
+import { Globe01 } from '../../../components/icon/globe-01'
+import { MessageChatCircle } from '../../../components/icon/message-chat-circle'
+import { MessageChatSquare } from '../../../components/icon/message-chat-square'
+import { Plus } from '../../../components/icon/plus'
+import { SearchMd } from '../../../components/icon/search-md'
+import { Settings01 } from '../../../components/icon/settings-01'
+import { Stars01 } from '../../../components/icon/stars-01'
+import { Target01 } from '../../../components/icon/target-01'
+import { Wallet01 } from '../../../components/icon/wallet-01'
 import { useSession } from '../../../contexts/session-context'
 import { usePlugins } from '../../plugins/hooks/use-plugins'
 import { useCommandPalette } from '../context/command-palette-context'
@@ -53,35 +62,35 @@ export const CommandPalette = () => {
         id: 'new-chat',
         label: 'New chat',
         group: 'Quick actions',
-        icon: <Icon.plus size={17} />,
+        icon: <Plus size={17} />,
         run: () => go('/home', { newChat: true }),
       },
       {
         id: 'new-campaign',
         label: 'New campaign',
         group: 'Quick actions',
-        icon: <Icon.target_01 size={17} />,
+        icon: <Target01 size={17} />,
         run: () => go('/campaigns/new'),
       },
       {
         id: 'connect-integration',
         label: 'Connect an integration',
         group: 'Quick actions',
-        icon: <Icon.globe_01 size={17} />,
+        icon: <Globe01 size={17} />,
         run: () => go('/integrations'),
       },
       {
         id: 'jump-home',
         label: 'Home',
         group: 'Jump to',
-        icon: <Icon.message_chat_circle size={17} />,
+        icon: <MessageChatCircle size={17} />,
         run: () => go('/home'),
       },
       {
         id: 'jump-campaigns',
         label: 'Campaigns',
         group: 'Jump to',
-        icon: <Icon.target_01 size={17} />,
+        icon: <Target01 size={17} />,
         run: () => go('/campaigns'),
       },
       ...(isEnabled('mia-creative-studio')
@@ -90,7 +99,7 @@ export const CommandPalette = () => {
               id: 'jump-mia-create',
               label: 'Mia Create',
               group: 'Jump to',
-              icon: <Icon.stars_01 size={17} />,
+              icon: <Stars01 size={17} />,
               run: () => go('/creative-studio'),
             } as PaletteItem,
           ]
@@ -99,28 +108,28 @@ export const CommandPalette = () => {
         id: 'jump-reports',
         label: 'Reports',
         group: 'Jump to',
-        icon: <Icon.file_02 size={17} />,
+        icon: <File02 size={17} />,
         run: () => go('/reports'),
       },
       {
         id: 'jump-budget',
         label: 'Budget Tracker',
         group: 'Jump to',
-        icon: <Icon.wallet_01 size={17} />,
+        icon: <Wallet01 size={17} />,
         run: () => go('/budget-tracker'),
       },
       {
         id: 'jump-integrations',
         label: 'Integrations',
         group: 'Jump to',
-        icon: <Icon.globe_01 size={17} />,
+        icon: <Globe01 size={17} />,
         run: () => go('/integrations'),
       },
       {
         id: 'jump-settings',
         label: 'Workspace Settings',
         group: 'Jump to',
-        icon: <Icon.settings_01 size={17} />,
+        icon: <Settings01 size={17} />,
         run: () => go('/settings/workspace'),
       },
     ]
@@ -129,7 +138,7 @@ export const CommandPalette = () => {
       id: `chat-${c.conversation_id}`,
       label: c.title || 'Chat',
       group: 'Recent chats',
-      icon: <Icon.message_chat_square size={17} />,
+      icon: <MessageChatSquare size={17} />,
       run: () => go('/home', { loadConversationId: c.conversation_id }),
     }))
 
@@ -184,7 +193,7 @@ export const CommandPalette = () => {
         className="w-full max-w-[560px] max-h-[74%] flex flex-col bg-secondary border border-primary rounded-2xl shadow-2xl overflow-hidden"
       >
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-tertiary">
-          <Icon.search_md size={18} className="text-quaternary shrink-0" />
+          <SearchMd size={18} className="text-quaternary shrink-0" />
           <input
             ref={inputRef}
             value={query}

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useTheme } from '../../../contexts/theme-context'
 import { Sheet } from '../../overlay'
-import { Icon } from '../../../components/icon'
+import { Monitor01 } from '../../../components/icon/monitor-01'
+import { Moon01 } from '../../../components/icon/moon-01'
+import { Sun } from '../../../components/icon/sun'
 import type { SegmentedControlOption } from '../../../components/segmented-control'
 import { MobileNavigationMainView } from '../../../components/mobile-navigation-main-view'
 import { MobileNavigationChatsView } from '../../../components/mobile-navigation-chats-view'
@@ -54,9 +56,9 @@ export const MobileNavigation = ({
   }, [isOpen, sessionId])
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
-    { value: 'system', label: 'Auto', icon: <Icon.monitor_01 size={16} /> },
-    { value: 'light', label: 'Light', icon: <Icon.sun size={16} /> },
-    { value: 'dark', label: 'Dark', icon: <Icon.moon_01 size={16} /> },
+    { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },
+    { value: 'light', label: 'Light', icon: <Sun size={16} /> },
+    { value: 'dark', label: 'Dark', icon: <Moon01 size={16} /> },
   ]
 
   const handleIntegrations = () => {

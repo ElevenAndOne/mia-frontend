@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from 'react'
-import { Icon } from '../../../components/icon'
+import { Check } from '../../../components/icon/check'
 import type { Workspace } from '../types'
 import { WorkspaceRoleIcon } from './workspace-role-icon'
 
@@ -97,7 +97,7 @@ export const WorkspaceListItem = ({
     trailing ??
     (showStatusIndicator ? (
       isActive ? (
-        <Icon.check size={20} className="text-utility-info-500 shrink-0" />
+        <Check size={20} className="text-utility-info-500 shrink-0" />
       ) : isSwitching ? (
         <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
       ) : null

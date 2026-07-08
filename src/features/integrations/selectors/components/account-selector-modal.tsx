@@ -2,8 +2,7 @@ import { Modal } from '../../../overlay'
 import { Alert } from '../../../../components/alert'
 import { Spinner } from '../../../../components/spinner'
 import { IconButton } from '../../../../components/icon-button'
-import { Icon } from '../../../../components/icon'
-
+import { XClose } from '../../../../components/icon/x-close'
 type AccentColor = 'blue' | 'green' | 'orange' | 'black'
 
 interface AccountSelectorModalProps {
@@ -96,7 +95,7 @@ export function AccountSelectorModal({
           </div>
         </div>
         <IconButton onClick={onClose} disabled={isSubmitting} aria-label="Close">
-          <Icon.x_close />
+          <XClose />
         </IconButton>
       </div>
 

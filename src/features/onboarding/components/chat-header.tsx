@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { Settings01 } from '../../../components/icon/settings-01'
 import { SegmentedCircularProgress } from './progress-dots'
 
 interface ChatHeaderProps {
@@ -21,7 +21,7 @@ export const ChatHeader = ({ current, total, onManageIntegrations }: ChatHeaderP
         title="Manage Integrations"
         aria-label="Manage Integrations"
       >
-        <Icon.settings_01 size={20} />
+        <Settings01 size={20} />
       </button>
     </div>
   </div>

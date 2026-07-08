@@ -4,8 +4,7 @@ import { Alert } from '../../../components/alert'
 import { Spinner } from '../../../components/spinner'
 import { useBrevoConnection } from '../hooks/use-brevo-connection'
 import { IconButton } from '../../../components/icon-button'
-import { Icon } from '../../../components/icon'
-
+import { XClose } from '../../../components/icon/x-close'
 interface BrevoConnectionModalProps {
   isOpen: boolean
   onClose: () => void
@@ -45,7 +44,7 @@ const BrevoConnectionModal = ({ isOpen, onClose, onSuccess }: BrevoConnectionMod
           <h2 className="title-h6 text-primary">Connect Brevo</h2>
         </div>
         <IconButton onClick={handleClose} disabled={isConnecting} aria-label="Close">
-          <Icon.x_close />
+          <XClose />
         </IconButton>
       </div>
 

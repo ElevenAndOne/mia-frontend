@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Icon } from '../../../components/icon'
+import { ChevronLeft } from '../../../components/icon/chevron-left'
+import { DotsVertical } from '../../../components/icon/dots-vertical'
+import { Edit01 } from '../../../components/icon/edit-01'
+import { MessageChatSquare } from '../../../components/icon/message-chat-square'
+import { Pin01 } from '../../../components/icon/pin-01'
+import { SearchSm } from '../../../components/icon/search-sm'
+import { Trash01 } from '../../../components/icon/trash-01'
+import { XClose } from '../../../components/icon/x-close'
 import type { RecentConversation } from '../../chat/services/chat-service'
 
 function formatRelativeDate(isoDate: string | null): string {
@@ -117,7 +124,7 @@ export const RecentChatsPanel = ({
               className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
               aria-label="Back to menu"
             >
-              <Icon.chevron_left size={20} />
+              <ChevronLeft size={20} />
             </button>
             <h2 className="label-md text-primary">Recent Chats</h2>
           </div>
@@ -127,21 +134,21 @@ export const RecentChatsPanel = ({
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${showSearch ? 'bg-tertiary text-secondary' : 'text-quaternary hover:bg-tertiary hover:text-secondary'}`}
               aria-label="Search chats"
             >
-              <Icon.search_sm size={18} />
+              <SearchSm size={18} />
             </button>
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
               aria-label="Close menu"
             >
-              <Icon.x_close size={20} />
+              <XClose size={20} />
             </button>
           </div>
         </div>
         {showSearch && (
           <div className="px-4 pb-3">
             <div className="relative">
-              <Icon.search_sm
+              <SearchSm
                 size={13}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-quaternary pointer-events-none"
               />
@@ -157,7 +164,7 @@ export const RecentChatsPanel = ({
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-quaternary hover:text-secondary"
                 >
-                  <Icon.x_close size={12} />
+                  <XClose size={12} />
                 </button>
               )}
             </div>
@@ -168,12 +175,12 @@ export const RecentChatsPanel = ({
       <div className="flex-1 min-h-0 overflow-y-auto p-2">
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
-            <Icon.message_chat_square size={28} className="text-quaternary" />
+            <MessageChatSquare size={28} className="text-quaternary" />
             <p className="paragraph-sm text-secondary">No recent chats yet</p>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-center px-4">
-            <Icon.search_sm size={24} className="text-quaternary" />
+            <SearchSm size={24} className="text-quaternary" />
             <p className="paragraph-xs text-secondary">No chats match "{searchQuery}"</p>
           </div>
         ) : (
@@ -194,9 +201,9 @@ export const RecentChatsPanel = ({
                     className="w-full px-3 py-2.5 rounded-lg flex items-start gap-2 text-left hover:bg-secondary transition-colors"
                   >
                     <div className="relative shrink-0 mt-0.5">
-                      <Icon.message_chat_square size={15} className="text-quaternary" />
+                      <MessageChatSquare size={15} className="text-quaternary" />
                       {conv.is_pinned && (
-                        <Icon.pin_01 size={9} className="absolute -top-1.5 -right-1.5 text-error" />
+                        <Pin01 size={9} className="absolute -top-1.5 -right-1.5 text-error" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 pr-16">
@@ -242,7 +249,7 @@ export const RecentChatsPanel = ({
                           }}
                           className="w-5 h-5 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary transition-colors"
                         >
-                          <Icon.x_close size={12} />
+                          <XClose size={12} />
                         </button>
                       </>
                     ) : (
@@ -257,14 +264,14 @@ export const RecentChatsPanel = ({
                           }}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all"
                         >
-                          <Icon.trash_01 size={13} />
+                          <Trash01 size={13} />
                         </button>
                         <div className="relative" data-chat-menu>
                           <button
                             onClick={(e) => handleMenuToggle(e, conv.conversation_id)}
                             className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all"
                           >
-                            <Icon.dots_vertical size={13} />
+                            <DotsVertical size={13} />
                           </button>
                           {isMenuOpen &&
                             menuPos &&
@@ -287,7 +294,7 @@ export const RecentChatsPanel = ({
                                   }}
                                   className="w-full px-3 py-2 text-left paragraph-xs flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
                                 >
-                                  <Icon.pin_01 size={13} className="text-quaternary" />
+                                  <Pin01 size={13} className="text-quaternary" />
                                   <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>
                                 </button>
                                 <button
@@ -299,7 +306,7 @@ export const RecentChatsPanel = ({
                                   }}
                                   className="w-full px-3 py-2 text-left paragraph-xs flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
                                 >
-                                  <Icon.edit_01 size={13} className="text-quaternary" />
+                                  <Edit01 size={13} className="text-quaternary" />
                                   <span>Rename</span>
                                 </button>
                               </div>,

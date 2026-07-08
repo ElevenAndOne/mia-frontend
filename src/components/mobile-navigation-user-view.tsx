@@ -1,6 +1,9 @@
 import type { SegmentedControlOption } from './segmented-control'
 import { SegmentedControl } from './segmented-control'
-import { Icon } from './icon'
+import { ChevronLeft } from './icon/chevron-left'
+import { LogOut01 } from './icon/log-out-01'
+import { Settings01 } from './icon/settings-01'
+import { XClose } from './icon/x-close'
 import { UserAvatar } from './user-avatar'
 
 interface MobileNavigationUserViewProps {
@@ -37,7 +40,7 @@ export const MobileNavigationUserView = ({
             className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
             aria-label="Back to menu"
           >
-            <Icon.chevron_left size={20} />
+            <ChevronLeft size={20} />
           </button>
           <h2 className="label-md text-primary">Account</h2>
         </div>
@@ -46,7 +49,7 @@ export const MobileNavigationUserView = ({
           className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Close menu"
         >
-          <Icon.x_close size={20} />
+          <XClose size={20} />
         </button>
       </div>
 
@@ -66,7 +69,7 @@ export const MobileNavigationUserView = ({
             onClick={onWorkspaceSettings}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.settings_01 size={20} className="text-tertiary" />
+            <Settings01 size={20} className="text-tertiary" />
             <span className="paragraph-sm">Workspace Settings</span>
           </button>
         )}
@@ -83,7 +86,7 @@ export const MobileNavigationUserView = ({
           onClick={onLogout}
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
         >
-          <Icon.log_out_01 size={20} />
+          <LogOut01 size={20} />
           <span className="paragraph-sm">Sign Out</span>
         </button>
       </div>

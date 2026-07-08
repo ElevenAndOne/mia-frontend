@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
-import { Icon } from '../../../components/icon'
+import { Image01 } from '../../../components/icon/image-01'
+import { Plus } from '../../../components/icon/plus'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
@@ -524,7 +525,7 @@ export const WorkspaceSettingsDetail = ({
             onClick={onOpenCreateInviteModal}
             className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
           >
-            <Icon.plus size={20} />
+            <Plus size={20} />
             Invite Member
           </button>
         )}
@@ -649,7 +650,7 @@ export const WorkspaceSettingsDetail = ({
                     {logoUrl ? (
                       <img src={logoUrl} alt="Workspace logo" className="w-full h-full object-contain p-1.5" />
                     ) : (
-                      <Icon.image_01 size={20} className="text-quaternary" />
+                      <Image01 size={20} className="text-quaternary" />
                     )}
                   </div>
                   <div>

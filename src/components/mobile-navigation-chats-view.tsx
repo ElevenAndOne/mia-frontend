@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Icon } from './icon'
+import { ChevronLeft } from './icon/chevron-left'
+import { DotsVertical } from './icon/dots-vertical'
+import { Edit01 } from './icon/edit-01'
+import { MessageChatSquare } from './icon/message-chat-square'
+import { Pin01 } from './icon/pin-01'
+import { SearchSm } from './icon/search-sm'
+import { Trash01 } from './icon/trash-01'
+import { XClose } from './icon/x-close'
 import { useSession } from '../features/shell/../../contexts/session-context'
 import {
   deleteConversation,
@@ -157,7 +164,7 @@ export const MobileNavigationChatsView = ({
               className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
               aria-label="Back to menu"
             >
-              <Icon.chevron_left size={20} />
+              <ChevronLeft size={20} />
             </button>
             <h2 className="label-md text-primary">Recent Chats</h2>
           </div>
@@ -167,21 +174,21 @@ export const MobileNavigationChatsView = ({
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${showSearch ? 'bg-tertiary text-secondary' : 'text-quaternary hover:bg-tertiary hover:text-secondary'}`}
               aria-label="Search chats"
             >
-              <Icon.search_sm size={18} />
+              <SearchSm size={18} />
             </button>
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
               aria-label="Close menu"
             >
-              <Icon.x_close size={20} />
+              <XClose size={20} />
             </button>
           </div>
         </div>
         {showSearch && (
           <div className="px-4 pb-3">
             <div className="relative">
-              <Icon.search_sm
+              <SearchSm
                 size={15}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-quaternary pointer-events-none"
               />
@@ -197,7 +204,7 @@ export const MobileNavigationChatsView = ({
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-quaternary hover:text-secondary"
                 >
-                  <Icon.x_close size={14} />
+                  <XClose size={14} />
                 </button>
               )}
             </div>
@@ -209,13 +216,13 @@ export const MobileNavigationChatsView = ({
       <div className="flex-1 min-h-0 overflow-y-auto p-3">
         {recentConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4">
-            <Icon.message_chat_square size={32} className="text-quaternary" />
+            <MessageChatSquare size={32} className="text-quaternary" />
             <p className="paragraph-sm text-secondary">No recent chats yet</p>
             <p className="paragraph-xs text-quaternary">Your conversations will appear here</p>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4">
-            <Icon.search_sm size={28} className="text-quaternary" />
+            <SearchSm size={28} className="text-quaternary" />
             <p className="paragraph-sm text-secondary">No chats match "{searchQuery}"</p>
           </div>
         ) : (
@@ -233,9 +240,9 @@ export const MobileNavigationChatsView = ({
                     className="w-full px-3 py-3 rounded-lg flex items-start gap-3 text-left hover:bg-secondary transition-colors group"
                   >
                     <div className="relative shrink-0 mt-0.5">
-                      <Icon.message_chat_square size={18} className="text-quaternary" />
+                      <MessageChatSquare size={18} className="text-quaternary" />
                       {conv.is_pinned && (
-                        <Icon.pin_01
+                        <Pin01
                           size={10}
                           className="absolute -top-1.5 -right-1.5 text-error"
                         />
@@ -284,7 +291,7 @@ export const MobileNavigationChatsView = ({
                           }}
                           className="w-6 h-6 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary transition-colors"
                         >
-                          <Icon.x_close size={14} />
+                          <XClose size={14} />
                         </button>
                       </>
                     ) : (
@@ -293,14 +300,14 @@ export const MobileNavigationChatsView = ({
                           onClick={(e) => handleDeleteClick(e, conv.conversation_id)}
                           className="w-7 h-7 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all"
                         >
-                          <Icon.trash_01 size={15} />
+                          <Trash01 size={15} />
                         </button>
                         <div className="relative" data-chat-menu>
                           <button
                             onClick={(e) => handleMenuToggle(e, conv.conversation_id)}
                             className="w-7 h-7 rounded-md flex items-center justify-center text-quaternary hover:bg-tertiary hover:text-secondary transition-all"
                           >
-                            <Icon.dots_vertical size={15} />
+                            <DotsVertical size={15} />
                           </button>
                           {isMenuOpen &&
                             menuPos &&
@@ -318,14 +325,14 @@ export const MobileNavigationChatsView = ({
                                   onClick={(e) => handlePin(e, conv)}
                                   className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
                                 >
-                                  <Icon.pin_01 size={15} className="text-quaternary" />
+                                  <Pin01 size={15} className="text-quaternary" />
                                   <span>{conv.is_pinned ? 'Unpin' : 'Pin'}</span>
                                 </button>
                                 <button
                                   onClick={(e) => handleRenameStart(e, conv)}
                                   className="w-full px-3 py-2.5 text-left paragraph-sm flex items-center gap-2 text-secondary hover:bg-secondary transition-colors"
                                 >
-                                  <Icon.edit_01 size={15} className="text-quaternary" />
+                                  <Edit01 size={15} className="text-quaternary" />
                                   <span>Rename</span>
                                 </button>
                               </div>,

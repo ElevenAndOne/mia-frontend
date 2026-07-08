@@ -1,5 +1,16 @@
 import { useNavigate } from 'react-router-dom'
-import { Icon } from './icon'
+import { Check } from './icon/check'
+import { ChevronRight } from './icon/chevron-right'
+import { File02 } from './icon/file-02'
+import { Globe01 } from './icon/globe-01'
+import { HelpCircle } from './icon/help-circle'
+import { LogOut01 } from './icon/log-out-01'
+import { MessageChatSquare } from './icon/message-chat-square'
+import { Plus } from './icon/plus'
+import { Settings01 } from './icon/settings-01'
+import { Target01 } from './icon/target-01'
+import { Wallet01 } from './icon/wallet-01'
+import { XClose } from './icon/x-close'
 import type { SegmentedControlOption } from './segmented-control'
 import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
@@ -52,7 +63,7 @@ export const MobileNavigationMainView = ({
           className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Close menu"
         >
-          <Icon.x_close size={20} />
+          <XClose size={20} />
         </button>
       </div>
 
@@ -66,7 +77,7 @@ export const MobileNavigationMainView = ({
             }}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.plus size={20} className="text-tertiary" />
+            <Plus size={20} className="text-tertiary" />
             <span className="paragraph-sm">New Workspace</span>
           </button>
         )}
@@ -75,7 +86,7 @@ export const MobileNavigationMainView = ({
           onClick={onIntegrationsClick}
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
         >
-          <Icon.globe_01 size={20} className="text-tertiary" />
+          <Globe01 size={20} className="text-tertiary" />
           <span className="paragraph-sm">Integrations</span>
         </button>
 
@@ -87,7 +98,7 @@ export const MobileNavigationMainView = ({
             }}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.target_01 size={20} className="text-tertiary" />
+            <Target01 size={20} className="text-tertiary" />
             <span className="paragraph-sm">Campaigns</span>
           </button>
         )}
@@ -100,7 +111,7 @@ export const MobileNavigationMainView = ({
             }}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.file_02 size={20} className="text-tertiary" />
+            <File02 size={20} className="text-tertiary" />
             <span className="paragraph-sm">Reports</span>
           </button>
         )}
@@ -112,7 +123,7 @@ export const MobileNavigationMainView = ({
           }}
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
         >
-          <Icon.wallet_01 size={20} className="text-tertiary" />
+          <Wallet01 size={20} className="text-tertiary" />
           <span className="paragraph-sm">Budget Tracker</span>
         </button>
 
@@ -121,7 +132,7 @@ export const MobileNavigationMainView = ({
             onClick={onWorkspaceSettings}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.settings_01 size={20} className="text-tertiary" />
+            <Settings01 size={20} className="text-tertiary" />
             <span className="paragraph-sm">Workspace Settings</span>
           </button>
         )}
@@ -131,7 +142,7 @@ export const MobileNavigationMainView = ({
             onClick={onHelpClick}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
-            <Icon.help_circle size={20} className="text-tertiary" />
+            <HelpCircle size={20} className="text-tertiary" />
             <span className="paragraph-sm">Help</span>
           </button>
         )}
@@ -145,12 +156,12 @@ export const MobileNavigationMainView = ({
           className="w-full px-3 py-2.5 mx-4 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           style={{ width: 'calc(100% - 2rem)' }}
         >
-          <Icon.message_chat_square size={20} className="text-tertiary" />
+          <MessageChatSquare size={20} className="text-tertiary" />
           <span className="paragraph-sm flex-1 text-left">Recent Chats</span>
           {recentConversations.length > 0 && (
             <span className="paragraph-xs text-quaternary">{recentConversations.length}</span>
           )}
-          <Icon.chevron_right size={16} className="text-quaternary" />
+          <ChevronRight size={16} className="text-quaternary" />
         </button>
       )}
 
@@ -174,7 +185,7 @@ export const MobileNavigationMainView = ({
                   platforms
                 </p>
               </div>
-              <Icon.check size={18} className="text-success shrink-0" />
+              <Check size={18} className="text-success shrink-0" />
             </div>
           </div>
         </div>
@@ -196,7 +207,7 @@ export const MobileNavigationMainView = ({
           onClick={onLogout}
           className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-error hover:bg-error-primary transition-colors"
         >
-          <Icon.log_out_01 size={20} />
+          <LogOut01 size={20} />
           <span className="paragraph-sm">Sign Out</span>
         </button>
       </div>

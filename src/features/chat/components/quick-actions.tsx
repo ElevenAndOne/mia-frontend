@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
-import { Icon } from '../../../components/icon'
-
+import { BarChart01 } from '../../../components/icon/bar-chart-01'
+import { BarChartSquare02 } from '../../../components/icon/bar-chart-square-02'
+import { ShieldTick } from '../../../components/icon/shield-tick'
+import { Sliders01 } from '../../../components/icon/sliders-01'
+import { TrendUp01 } from '../../../components/icon/trend-up-01'
 interface QuickAction {
   id: string
   label: string
@@ -15,9 +18,9 @@ interface QuickActionsProps {
 }
 
 const actions: QuickAction[] = [
-  { id: 'grow',     label: 'Grow',     icon: <Icon.trend_up_01 size={18} />,  description: 'Analyse growth opportunities across your connected channels.' },
-  { id: 'optimize', label: 'Optimise', icon: <Icon.sliders_01 size={18} />,   description: 'Identify efficiency gains and reduce wasted spend.' },
-  { id: 'protect',  label: 'Protect',  icon: <Icon.shield_tick size={18} />,  description: 'Monitor risks and protect your campaign performance.' },
+  { id: 'grow',     label: 'Grow',     icon: <TrendUp01 size={18} />,  description: 'Analyse growth opportunities across your connected channels.' },
+  { id: 'optimize', label: 'Optimise', icon: <Sliders01 size={18} />,   description: 'Identify efficiency gains and reduce wasted spend.' },
+  { id: 'protect',  label: 'Protect',  icon: <ShieldTick size={18} />,  description: 'Monitor risks and protect your campaign performance.' },
 ]
 
 export const QuickActions = ({
@@ -90,7 +93,7 @@ export const QuickActions = ({
         }`}
       >
         <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
-          <Icon.bar_chart_square_02 size={18} />
+          <BarChartSquare02 size={18} />
         </span>
         <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
           Strategise
@@ -120,7 +123,7 @@ export const QuickActions = ({
         }`}
       >
         <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-brand-600'}`}>
-          <Icon.bar_chart_01 size={18} />
+          <BarChart01 size={18} />
         </span>
         <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
           Predict

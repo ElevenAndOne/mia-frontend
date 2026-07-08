@@ -1,4 +1,4 @@
-import { Icon } from '../../../components/icon'
+import { Settings01 } from '../../../components/icon/settings-01'
 import { TopBar } from '../../../components/top-bar'
 import CreateWorkspaceModal from '../views/create-workspace-modal'
 import type { WorkspaceOverviewItem } from '../utils/workspace-settings'
@@ -105,7 +105,7 @@ export const WorkspaceSettingsOverview = ({
                       className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
                       aria-label="Workspace settings"
                     >
-                      <Icon.settings_01 size={16} />
+                      <Settings01 size={16} />
                     </button>
                   </div>
                 </div>

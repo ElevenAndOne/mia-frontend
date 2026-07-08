@@ -1,5 +1,7 @@
 import { useState, useRef, type ReactNode } from 'react'
-import { Icon } from '../../../components/icon'
+import { Check } from '../../../components/icon/check'
+import { ChevronDown } from '../../../components/icon/chevron-down'
+import { Menu01 } from '../../../components/icon/menu-01'
 import { BackButton } from '../../../components/back-button'
 import { MobileNavigation } from '../../shell/views/mobile-navigation'
 import { useSession } from '../../../contexts/session-context'
@@ -79,7 +81,7 @@ export const ChatLayout = ({
                 <span className="paragraph-sm text-secondary font-medium truncate max-w-[200px]">
                   {activeWorkspace?.name || 'MIA'}
                 </span>
-                <Icon.chevron_down size={14} className="text-quaternary shrink-0" />
+                <ChevronDown size={14} className="text-quaternary shrink-0" />
               </button>
               <Popover
                 isOpen={isWorkspaceSwitcherOpen}
@@ -107,7 +109,7 @@ export const ChatLayout = ({
                       showRoleIcon={false}
                       trailing={
                         ws.tenant_id === activeWorkspace?.tenant_id ? (
-                          <Icon.check size={18} className="text-white shrink-0" />
+                          <Check size={18} className="text-white shrink-0" />
                         ) : switchingId === ws.tenant_id ? (
                           <div className="w-4 h-4 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
                         ) : null
@@ -126,7 +128,7 @@ export const ChatLayout = ({
           className="w-9 h-9 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
           aria-label="Open menu"
         >
-          <Icon.menu_01 size={20} />
+          <Menu01 size={20} />
         </button>
       </div>
 

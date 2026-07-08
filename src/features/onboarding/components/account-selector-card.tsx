@@ -2,8 +2,7 @@ import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useSession } from '../../../contexts/session-context'
 import { logger } from '../../../utils/logger'
-import { Icon } from '../../../components/icon'
-
+import { Check } from '../../../components/icon/check'
 interface AccountSelectorCardProps {
   onAccountSelected: (accountId: string) => void
 }
@@ -160,7 +159,7 @@ const AccountItem = ({ account, isSelected, isSelecting, onSelect, icon }: Accou
     {isSelecting ? (
       <div className="w-5 h-5 border-2 border-primary border-t-utility-brand-600 rounded-full animate-spin shrink-0" />
     ) : isSelected ? (
-      <Icon.check size={20} className="text-utility-brand-600 shrink-0" />
+      <Check size={20} className="text-utility-brand-600 shrink-0" />
     ) : null}
   </button>
 )
