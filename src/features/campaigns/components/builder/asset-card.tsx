@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
@@ -33,6 +34,8 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
   const patchDetails = (key: string, value: string) =>
     onPatch({ details: { ...details, [key]: value || undefined } })
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
   return (
     <div className="rounded-xl border border-secondary bg-primary p-3.5 space-y-3">
       <div className="flex items-start gap-2">
@@ -53,11 +56,31 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
-        <button onClick={onDelete} className="p-0.5 text-quaternary hover:text-utility-error-500">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        {confirmingDelete ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={onDelete}
+              className="label-xs font-semibold text-utility-error-600 hover:text-utility-error-700"
+              title="Confirm — removes this asset"
+            >
+              Remove
+            </button>
+            <span className="text-quaternary">·</span>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              className="label-xs text-quaternary hover:text-secondary"
+              title="Keep asset"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmingDelete(true)} className="p-0.5 text-quaternary hover:text-utility-error-500" title="Remove asset">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div>
