@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactElement } from 'react'
+import { useToast } from '../../contexts/toast-context'
 import {
   Download, Trash2, Search, Play, Eye, CheckCircle, Clock, XCircle,
   MoreVertical, RefreshCw, Sparkles, Video, Image, X, Frame, ChevronLeft,
@@ -442,6 +443,7 @@ function FigmaImportModal({ tenantId, sessionId, onImported, onClose }: {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Props & { onCreateVariant?: (prompt: string, imageUrl: string) => void }) {
+  const { showToast } = useToast()
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('library')
   const [generatedAssets, setGeneratedAssets] = useState<CreativeAsset[]>([])
   const [referenceAssets, setReferenceAssets] = useState<CreativeAsset[]>([])
@@ -476,7 +478,7 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
       const res = await creativeStudioApi.listAssets(tenantId, sessionId, { asset_type: 'generated', limit: 100 })
       setGeneratedAssets(res.assets ?? [])
     } catch {
-      setGeneratedAssets([])
+      showToast('error', "Couldn't load your creative library. Please try again.")
     } finally {
       setGeneratedLoading(false)
     }
@@ -488,7 +490,7 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
       const res = await creativeStudioApi.listAssets(tenantId, sessionId, { asset_type: 'reference', limit: 100 })
       setReferenceAssets(res.assets ?? [])
     } catch {
-      setReferenceAssets([])
+      showToast('error', "Couldn't load your reference images. Please try again.")
     } finally {
       setReferenceLoading(false)
       setReferenceLoaded(true)

@@ -25,11 +25,11 @@ export function useCampaignGuides(sessionId: string | null, tenantId?: string | 
       const data = await fetchCampaignGuides(sessionId, tenantId)
       setGuides(data)
     } catch {
-      // non-critical
+      showToast('error', "Couldn't load your campaign guides. Please try again.")
     } finally {
       setLoading(false)
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, showToast])
 
   useEffect(() => {
     load()

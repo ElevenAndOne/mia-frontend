@@ -58,11 +58,11 @@ export function useMarketingContext(
       const data = await fetchMarketingContext(sessionId, tenantId)
       setContext(data)
     } catch {
-      // non-critical — context just won't show
+      showToast('error', "Couldn't load your brand context. Please try again.")
     } finally {
       setLoading(false)
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, showToast])
 
   useEffect(() => {
     load()

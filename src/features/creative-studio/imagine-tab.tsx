@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useToast } from '../../contexts/toast-context'
 import { Loader2, Download, Maximize2, Sparkles, Brain, Wand2, ArrowLeft, MessageCircle, Send, History, Edit3, Target, ChevronDown, ChevronUp, Image, X, Layers, CheckCircle, AlertCircle } from 'lucide-react'
 import { IMAGE_MODELS, ImageModelSelector, ProgressBar, AspectRatioSelector } from './creative-studio-shared'
 import { creativeStudioApi, creativeIntelligenceApi, type IntelligenceStatus } from './creative-studio-api'
@@ -111,6 +112,7 @@ function IterativeEditingInterface({
 }
 
 export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVariantSeed }: Props) {
+  const { showToast } = useToast()
   const [imageModel, setImageModel] = useState('imagen-4')
   const [imagePrompt, setImagePrompt] = useState('')
 
@@ -146,8 +148,8 @@ export default function ImagineTab({ tenantId, sessionId, variantSeed, onClearVa
   useEffect(() => {
     creativeStudioApi.listCampaigns(tenantId, sessionId)
       .then(r => setCampaigns(r.campaigns ?? []))
-      .catch(() => {})
-  }, [tenantId, sessionId])
+      .catch(() => showToast('error', "Couldn't load your campaigns. Please try again."))
+  }, [tenantId, sessionId, showToast])
 
   useEffect(() => {
     setIntelligence(null)

@@ -112,7 +112,9 @@ export const creativeStudioApi = {
     const res = await apiFetch(`/api/mia-create/assets?${params.toString()}`, {
       headers: { 'X-Session-ID': sessionId },
     })
-    if (!res.ok) return { assets: [] }
+    // Throw (not empty) so a failed load surfaces as "couldn't load" rather than
+    // an empty library, and a focus-refresh failure keeps the existing assets (#13).
+    if (!res.ok) throw new Error(`Failed to load assets (${res.status})`)
     return res.json()
   },
 
@@ -159,7 +161,7 @@ export const creativeStudioApi = {
   }> => {
     const url = `/api/creative-studio/campaigns?session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`
     const res = await apiFetch(url)
-    if (!res.ok) return { campaigns: [] }
+    if (!res.ok) throw new Error(`Failed to load campaigns (${res.status})`)
     return res.json()
   },
 

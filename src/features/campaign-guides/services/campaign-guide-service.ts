@@ -61,7 +61,9 @@ export async function fetchCampaignGuides(
   const response = await apiFetch(
     `/api/campaign-guides?session_id=${encodeURIComponent(sessionId)}${tenantParam(tenantId)}`
   )
-  if (!response.ok) return []
+  // Throw so a failed load surfaces instead of looking like an empty guides
+  // library, and a focus-refresh failure keeps the existing list (#13).
+  if (!response.ok) throw new Error(`Failed to load campaign guides (${response.status})`)
   const data = await response.json()
   return data.guides ?? []
 }

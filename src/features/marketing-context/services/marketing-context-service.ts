@@ -12,7 +12,9 @@ export async function fetchMarketingContext(
   const response = await apiFetch(
     `/api/marketing-context?session_id=${encodeURIComponent(sessionId)}${tenantParam(tenantId)}`
   )
-  if (!response.ok) return null
+  // Throw so the caller can warn the user instead of silently showing no brand
+  // context (a 200 with an empty body is the real "nothing set yet" case) (#13).
+  if (!response.ok) throw new Error(`Failed to load marketing context (${response.status})`)
   return response.json()
 }
 
