@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Spinner } from '../../../components/spinner'
 import { apiFetch } from '../../../utils/api'
+import { useToast } from '../../../contexts/toast-context'
 
 interface WorkspaceDef {
   id: string
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function SkillLearningPage({ sessionId }: Props) {
+  const { showToast } = useToast()
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [feedbackCounts, setFeedbackCounts] = useState<Record<string, FeedbackCount>>({})
   const [loading, setLoading] = useState(true)
@@ -40,7 +42,10 @@ export function SkillLearningPage({ sessionId }: Props) {
   useEffect(() => {
     if (!sessionId) return
     apiFetch(`/api/marketing-context/skill-notes?session_id=${encodeURIComponent(sessionId)}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load skill notes (${r.status})`)
+        return r.json()
+      })
       .then((data) => {
         if (data) {
           setNotes(data.notes ?? {})
@@ -48,9 +53,9 @@ export function SkillLearningPage({ sessionId }: Props) {
           setDrafts(data.notes ?? {})
         }
       })
-      .catch(() => {})
+      .catch(() => showToast('error', "Couldn't load skill-learning notes. Please try again."))
       .finally(() => setLoading(false))
-  }, [sessionId])
+  }, [sessionId, showToast])
 
   const handleSave = useCallback(async (workspaceId: string) => {
     if (!sessionId) return

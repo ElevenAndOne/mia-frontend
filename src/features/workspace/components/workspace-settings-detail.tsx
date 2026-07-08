@@ -4,6 +4,7 @@ import { Plus } from '../../../components/icon/plus'
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { SkillLearningPage } from './skill-learning-page'
@@ -110,6 +111,7 @@ export const WorkspaceSettingsDetail = ({
     : ['brand', 'campaigns', 'mia']
   const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
   const { sessionId, refreshWorkspaces } = useSession()
+  const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
@@ -135,8 +137,10 @@ export const WorkspaceSettingsDetail = ({
         setWebsiteUrlInput(d.website_url || '')
         setFramework(d.active_framework || 'race')
       })
-      .catch(() => {})
-  }, [sessionId, workspace.tenant_id, isOwner])
+      .catch(() =>
+        showToast('error', "Couldn't load your workspace settings. Please try again."),
+      )
+  }, [sessionId, workspace.tenant_id, isOwner, showToast])
 
   const handleChangeFramework = async (next: 'race' | 'generic') => {
     if (!sessionId || savingFramework || next === framework) return

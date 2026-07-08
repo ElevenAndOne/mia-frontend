@@ -28,6 +28,7 @@ import {
 } from '../utils/session'
 import { StorageKey } from '../constants/storage-keys'
 import { logger } from '../utils/logger'
+import { useToast } from './toast-context'
 
 // Re-export types for backward compatibility
 export type { AccountMapping } from '../features/accounts/types'
@@ -115,6 +116,7 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
+  const { showToast } = useToast()
   const [state, setState] = useState<SessionState>(getInitialState)
 
   // Refs for OAuth timer cleanup on unmount
@@ -291,16 +293,32 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         const storedSessionId = getStoredSessionId()
         if (storedSessionId) {
           try {
+            // Each call degrades independently so a single failure never blocks
+            // login; but if the account/workspace lists fail we warn the user
+            // rather than silently rendering "no accounts / no workspaces" (#13).
+            let listLoadFailed = false
             const [sessionData, accounts, workspaces, currentWorkspace] = await Promise.all([
               sessionService
                 .validateSession(storedSessionId)
                 .catch(() => ({ valid: false, user: null })),
-              accountService.fetchAccounts(storedSessionId).catch(() => []),
-              workspaceService.fetchWorkspaces(storedSessionId).catch(() => []),
+              accountService.fetchAccounts(storedSessionId).catch(() => {
+                listLoadFailed = true
+                return []
+              }),
+              workspaceService.fetchWorkspaces(storedSessionId).catch(() => {
+                listLoadFailed = true
+                return []
+              }),
               workspaceService
                 .fetchCurrentWorkspace(storedSessionId)
                 .catch(() => ({ tenant: null, active_tenant: null })),
             ])
+            if (listLoadFailed) {
+              showToast(
+                'error',
+                "Some of your workspaces or accounts couldn't be loaded. Please refresh.",
+              )
+            }
 
             const sessionUser = sessionData.user
             if (sessionData.valid && sessionUser) {
@@ -383,7 +401,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
 
     initializeSession()
-  }, [])
+    // showToast is stable (memoised in ToastProvider), so this still runs once on mount.
+  }, [showToast])
 
   // Google Login (FEB 2026: Simplified to redirect flow only, popup flow removed)
   const login = useCallback(async (_onPopupClosed?: () => void): Promise<boolean> => {
