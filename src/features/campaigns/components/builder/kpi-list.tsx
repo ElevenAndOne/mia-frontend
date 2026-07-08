@@ -26,6 +26,7 @@ export const KpiList = ({
   const [name, setName] = useState('')
   const [target, setTarget] = useState('')
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
 
   const linkList = async (kpiId: number, field: 'hubspot_list_name' | 'brevo_list_name', value: string | null) => {
     setSavingId(kpiId)
@@ -57,9 +58,29 @@ export const KpiList = ({
                   <div className="shrink-0 w-32 text-right">
                     <EditableText value={kpi.target_value ?? '—'} onSave={(v) => onPatchKpi(kpi.kpi_id, { target_value: v })} className="label-sm text-primary font-medium cw-mono text-right" />
                   </div>
-                  <button onClick={() => onDeleteKpi(kpi.kpi_id)} className="p-0.5 text-quaternary hover:text-utility-error-500 shrink-0">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+                  {confirmingId === kpi.kpi_id ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => onDeleteKpi(kpi.kpi_id)}
+                        className="label-xs font-semibold text-utility-error-600 hover:text-utility-error-700"
+                        title="Confirm — removes this KPI"
+                      >
+                        Remove
+                      </button>
+                      <span className="text-quaternary">·</span>
+                      <button
+                        onClick={() => setConfirmingId(null)}
+                        className="label-xs text-quaternary hover:text-secondary"
+                        title="Keep KPI"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmingId(kpi.kpi_id)} className="p-0.5 text-quaternary hover:text-utility-error-500 shrink-0" title="Remove KPI">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
                 </div>
                 {showHs && (
                   <div className="flex items-center gap-2">
