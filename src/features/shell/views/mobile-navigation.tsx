@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useTheme } from '../../../contexts/theme-context'
+import { useToast } from '../../../contexts/toast-context'
 import { Sheet } from '../../overlay'
 import { Monitor01 } from '../../../components/icon/monitor-01'
 import { Moon01 } from '../../../components/icon/moon-01'
@@ -40,6 +41,7 @@ export const MobileNavigation = ({
 }: MobileNavigationProps) => {
   const { user, activeWorkspace, sessionId } = useSession()
   const { theme, setTheme } = useTheme()
+  const { showToast } = useToast()
   const [view, setView] = useState<NavView>('main')
   const [recentConversations, setRecentConversations] = useState<RecentConversation[]>([])
 
@@ -49,11 +51,11 @@ export const MobileNavigation = ({
       setView('main')
       // Exclude campaign-builder conversations (skill: strategy_planning) — those
       // live under "Past builds" on the Campaigns page, not general chat history.
-      fetchRecentConversations(sessionId, undefined, 'strategy_planning').then(
-        setRecentConversations
-      )
+      fetchRecentConversations(sessionId, undefined, 'strategy_planning')
+        .then(setRecentConversations)
+        .catch(() => showToast('error', "Couldn't load your recent chats. Please try again."))
     }
-  }, [isOpen, sessionId])
+  }, [isOpen, sessionId, showToast])
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
     { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },

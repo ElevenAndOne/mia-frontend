@@ -251,21 +251,19 @@ export const fetchRecentConversations = async (
   skill?: string,
   excludeSkill?: string
 ): Promise<RecentConversation[]> => {
-  try {
-    const qs = new URLSearchParams()
-    if (skill) qs.set('skill', skill)
-    if (excludeSkill) qs.set('exclude_skill', excludeSkill)
-    const query = qs.toString()
-    const url = query ? `/api/chat/v2/conversations?${query}` : '/api/chat/v2/conversations'
-    const response = await apiFetch(url, {
-      headers: { 'X-Session-ID': sessionId },
-    })
-    if (!response.ok) return []
-    const data = await response.json()
-    return data.conversations || []
-  } catch {
-    return []
-  }
+  const qs = new URLSearchParams()
+  if (skill) qs.set('skill', skill)
+  if (excludeSkill) qs.set('exclude_skill', excludeSkill)
+  const query = qs.toString()
+  const url = query ? `/api/chat/v2/conversations?${query}` : '/api/chat/v2/conversations'
+  const response = await apiFetch(url, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  // Throw (rather than swallow to []) so callers can tell a load FAILURE from a
+  // genuinely empty history and surface "couldn't load" instead of "no chats" (#13).
+  if (!response.ok) throw new Error(`Failed to load conversations (${response.status})`)
+  const data = await response.json()
+  return data.conversations || []
 }
 
 export const deleteConversation = async (
@@ -343,14 +341,12 @@ export const fetchConversationMessages = async (
   sessionId: string,
   conversationId: string
 ): Promise<ChatHistoryMessage[]> => {
-  try {
-    const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {
-      headers: { 'X-Session-ID': sessionId },
-    })
-    if (!response.ok) return []
-    const data = await response.json()
-    return data.messages || []
-  } catch {
-    return []
-  }
+  const response = await apiFetch(`/api/chat/v2/conversations/${conversationId}`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  // Throw on failure so opening a past conversation shows "couldn't load"
+  // rather than a blank thread that looks like an empty conversation (#13).
+  if (!response.ok) throw new Error(`Failed to load conversation (${response.status})`)
+  const data = await response.json()
+  return data.messages || []
 }

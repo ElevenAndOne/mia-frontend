@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useToast } from '../../../contexts/toast-context'
 import {
   fetchRecentConversations,
   deleteConversation,
@@ -15,13 +16,18 @@ import type { RecentConversation } from '../../chat/services/chat-service'
  * belong to "Past builds" on the Campaigns page, not the general chat history.
  */
 export const useRecentConversations = (sessionId: string | null) => {
+  const { showToast } = useToast()
   const [conversations, setConversations] = useState<RecentConversation[]>([])
 
   const load = useCallback(async () => {
     if (!sessionId) return
-    const list = await fetchRecentConversations(sessionId, undefined, 'strategy_planning')
-    setConversations(list)
-  }, [sessionId])
+    try {
+      const list = await fetchRecentConversations(sessionId, undefined, 'strategy_planning')
+      setConversations(list)
+    } catch {
+      showToast('error', "Couldn't load your recent chats. Please try again.")
+    }
+  }, [sessionId, showToast])
 
   const remove = useCallback(
     async (conversationId: string) => {

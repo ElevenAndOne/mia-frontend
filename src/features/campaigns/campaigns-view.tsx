@@ -1837,20 +1837,30 @@ export function CampaignsView({ onBack }: CampaignsViewProps) {
     setShowBuildHistory((open) => !open)
     // Campaign builds happen via the builder panel AND via normal chat (the skill
     // router activates strategy_planning in both). List both by skill, not by id.
-    const all = await fetchRecentConversations(sessionId, 'strategy_planning')
-    setPastBuilds(all)
-  }, [sessionId])
+    try {
+      const all = await fetchRecentConversations(sessionId, 'strategy_planning')
+      setPastBuilds(all)
+    } catch {
+      showToast('error', "Couldn't load your past builds. Please try again.")
+    }
+  }, [sessionId, showToast])
 
   const loadPastBuild = useCallback(async (convId: string) => {
     if (!sessionId) return
     setShowBuildHistory(false)
-    const msgs = await fetchConversationMessages(sessionId, convId)
+    let msgs
+    try {
+      msgs = await fetchConversationMessages(sessionId, convId)
+    } catch {
+      showToast('error', "Couldn't load that build. Please try again.")
+      return
+    }
     setChatMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
     setChatConversationId(convId)
     setBuilderSavedCampaign(null)
     setBuilderCampaignId(null)
     setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-  }, [sessionId])
+  }, [sessionId, showToast])
 
   const startFreshBuild = useCallback(() => {
     setShowBuildHistory(false)

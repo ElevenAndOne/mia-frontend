@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
 import { clearCampaignDetailCache } from '../campaign-detail-cache'
 import {
@@ -21,6 +22,7 @@ interface Message { role: 'user' | 'assistant'; content: string }
 // campaign's Builder once one is saved.
 export function useBuilderChat() {
   const { sessionId, activeWorkspace, user } = useSession()
+  const { showToast } = useToast()
   const tenantId = activeWorkspace?.tenant_id
   const navigate = useNavigate()
 
@@ -180,15 +182,25 @@ export function useBuilderChat() {
 
   const openHistory = useCallback(async () => {
     if (!sessionId) return
-    setPastBuilds(await fetchRecentConversations(sessionId, 'strategy_planning'))
-  }, [sessionId])
+    try {
+      setPastBuilds(await fetchRecentConversations(sessionId, 'strategy_planning'))
+    } catch {
+      showToast('error', "Couldn't load your past builds. Please try again.")
+    }
+  }, [sessionId, showToast])
 
   const loadPastBuild = useCallback(async (convId: string) => {
     if (!sessionId) return
-    const msgs = await fetchConversationMessages(sessionId, convId)
+    let msgs
+    try {
+      msgs = await fetchConversationMessages(sessionId, convId)
+    } catch {
+      showToast('error', "Couldn't load that build. Please try again.")
+      return
+    }
     setMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
     conversationId.current = convId
-  }, [sessionId])
+  }, [sessionId, showToast])
 
   const startFresh = useCallback(() => {
     setMessages([])

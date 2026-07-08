@@ -189,20 +189,25 @@ export const useChatView = () => {
     async (convId: string) => {
       if (!sessionId) return
       setIsLoading(true)
-      const msgs = await fetchConversationMessages(sessionId, convId)
-      if (msgs.length > 0) {
-        setMessages(
-          msgs.map((m, i) => ({
-            id: `${m.role}-loaded-${i}`,
-            role: m.role,
-            content: m.content,
-          }))
-        )
-        setConversationId(convId)
+      try {
+        const msgs = await fetchConversationMessages(sessionId, convId)
+        if (msgs.length > 0) {
+          setMessages(
+            msgs.map((m, i) => ({
+              id: `${m.role}-loaded-${i}`,
+              role: m.role,
+              content: m.content,
+            }))
+          )
+          setConversationId(convId)
+        }
+      } catch {
+        showToast('error', "Couldn't open that conversation. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     },
-    [sessionId]
+    [sessionId, showToast]
   )
 
   // Handle "New Chat" / load-conversation navigation state from menu/sidebar
