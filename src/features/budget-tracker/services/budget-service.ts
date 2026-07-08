@@ -51,6 +51,8 @@ export const listCampaigns = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, {
     headers: createSessionHeaders(sessionId),
   })
-  if (!response.ok) return []
+  // Throw (not []) so the caller can tell a load failure from an empty campaign
+  // list and warn the user instead of silently showing an empty picker (#13).
+  if (!response.ok) throw new Error(`Failed to load campaigns (${response.status})`)
   return response.json()
 }

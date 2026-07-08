@@ -15,7 +15,9 @@ export const getActiveCampaign = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/campaigns/tracker`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return null
+  // Throw on failure so the caller distinguishes a load error from a genuine
+  // "no active campaign" (a 200 with campaign: null) and can warn the user (#13).
+  if (!response.ok) throw new Error(`Failed to load active campaign (${response.status})`)
   const data = await response.json()
   return data.campaign ?? null
 }
@@ -51,7 +53,7 @@ export const listOptimizerRuns = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/optimizer/runs`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return []
+  if (!response.ok) throw new Error(`Failed to load optimizer runs (${response.status})`)
   return response.json()
 }
 

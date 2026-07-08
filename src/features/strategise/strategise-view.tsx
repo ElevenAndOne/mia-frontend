@@ -717,6 +717,8 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
   const {
     campaign,
     isLoadingCampaign,
+    loadError,
+    reloadCampaign,
     runs,
     isRunning,
     result,
@@ -839,8 +841,25 @@ const StrategiseView = ({ onBack }: StrategiseViewProps) => {
       <div className="flex-1 bg-primary p-5 safe-bottom overflow-y-auto">
         <div className="max-w-2xl mx-auto w-full space-y-5">
 
+          {/* Load failure — must not look like "no brief" (Audit #13) */}
+          {!campaign && loadError && (
+            <SectionCard className="text-center py-10">
+              <p className="text-4xl mb-4">⚠️</p>
+              <p className="label-bg text-primary mb-2">Couldn't load your campaign</p>
+              <p className="paragraph-sm text-secondary max-w-xs mx-auto mb-4">
+                This is a temporary loading issue — your campaign is safe.
+              </p>
+              <button
+                onClick={() => void reloadCampaign()}
+                className="paragraph-sm text-brand underline hover:opacity-80"
+              >
+                Try again
+              </button>
+            </SectionCard>
+          )}
+
           {/* No campaign */}
-          {!campaign && (
+          {!campaign && !loadError && (
             <SectionCard className="text-center py-10">
               <p className="text-4xl mb-4">📋</p>
               <p className="label-bg text-primary mb-2">No campaign brief found</p>

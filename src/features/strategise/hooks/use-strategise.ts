@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useToast } from '../../../contexts/toast-context'
 import {
   analyzeRun,
   getActiveCampaign,
@@ -16,8 +17,12 @@ import type {
 } from '../types'
 
 export const useStrategise = (sessionId: string | null, tenantId?: string | null) => {
+  const { showToast } = useToast()
   const [campaign, setCampaign] = useState<CampaignInfo | null>(null)
   const [isLoadingCampaign, setIsLoadingCampaign] = useState(true)
+  // Distinguishes a load FAILURE from a genuine "no active campaign" so the view
+  // shows "couldn't load — retry" instead of the empty brief prompt (#13).
+  const [loadError, setLoadError] = useState(false)
   const [runs, setRuns] = useState<OptimizerRunSummary[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState<OptimizerRunResult | null>(null)
@@ -32,26 +37,32 @@ export const useStrategise = (sessionId: string | null, tenantId?: string | null
   const [analysis, setAnalysis] = useState<RunAnalysis | null>(null)
   const [isAnalysing, setIsAnalysing] = useState(false)
 
-  useEffect(() => {
+  const loadCampaign = useCallback(async () => {
     if (!sessionId || !tenantId) {
       setIsLoadingCampaign(false)
       return
     }
-
     setIsLoadingCampaign(true)
-    Promise.all([
-      getActiveCampaign(sessionId, tenantId),
-      listOptimizerRuns(sessionId, tenantId),
-    ])
-      .then(([cam, runList]) => {
-        setCampaign(cam)
-        setRuns(runList)
-      })
-      .catch(() => {
-        setCampaign(null)
-      })
-      .finally(() => setIsLoadingCampaign(false))
-  }, [sessionId, tenantId])
+    setLoadError(false)
+    try {
+      const [cam, runList] = await Promise.all([
+        getActiveCampaign(sessionId, tenantId),
+        listOptimizerRuns(sessionId, tenantId),
+      ])
+      setCampaign(cam)
+      setRuns(runList)
+    } catch {
+      // A failed load must not masquerade as "no campaign brief" (#13).
+      setLoadError(true)
+      showToast('error', "Couldn't load your campaign. Please try again.")
+    } finally {
+      setIsLoadingCampaign(false)
+    }
+  }, [sessionId, tenantId, showToast])
+
+  useEffect(() => {
+    void loadCampaign()
+  }, [loadCampaign])
 
   const parseUserConstraints = useCallback(
     async (freeText: string, totalBudget: number, currency: string) => {
@@ -136,6 +147,8 @@ export const useStrategise = (sessionId: string | null, tenantId?: string | null
   return {
     campaign,
     isLoadingCampaign,
+    loadError,
+    reloadCampaign: loadCampaign,
     runs,
     isRunning,
     result,

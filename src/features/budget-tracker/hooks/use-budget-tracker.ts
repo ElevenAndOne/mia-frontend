@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { fetchBudgetSnapshot, fetchRecommendation, listCampaigns } from '../services/budget-service'
 import type { BudgetRecommendation, BudgetSnapshot, CampaignSummary } from '../types'
 
 export const useBudgetTracker = () => {
   const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
   const tenantId = activeWorkspace?.tenant_id ?? null
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -26,19 +28,24 @@ export const useBudgetTracker = () => {
   useEffect(() => {
     if (!sessionId || !tenantId) return
     let cancelled = false
-    listCampaigns(sessionId, tenantId).then((list) => {
-      if (cancelled) return
-      setCampaigns(list)
-      setCampaignId((current) => {
-        if (current && list.some((c) => c.campaign_id === current)) return current
-        const primary = list.find((c) => c.is_primary) ?? list[0]
-        return primary?.campaign_id ?? null
+    listCampaigns(sessionId, tenantId)
+      .then((list) => {
+        if (cancelled) return
+        setCampaigns(list)
+        setCampaignId((current) => {
+          if (current && list.some((c) => c.campaign_id === current)) return current
+          const primary = list.find((c) => c.is_primary) ?? list[0]
+          return primary?.campaign_id ?? null
+        })
       })
-    })
+      .catch(() => {
+        if (cancelled) return
+        showToast('error', "Couldn't load your campaigns. Please try again.")
+      })
     return () => {
       cancelled = true
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, showToast])
 
   // Cancels the in-flight spend fetch when the campaign/mode changes or the user leaves
   // the page — otherwise a slow (~50s) prod fetch keeps running server-side and piles up.
