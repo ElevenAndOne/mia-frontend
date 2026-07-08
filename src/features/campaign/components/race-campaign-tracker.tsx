@@ -453,7 +453,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
               </div>
             ))}
           </div>
-          <div className="px-3 py-2.5 space-y-2.5 min-h-[116px]">
+          <div className="px-3 py-2.5 space-y-2.5 min-h-[140px]">
             {[0, 1, 2].map((i) => (
               <div key={i} className="space-y-1">
                 <div className="flex justify-between">
@@ -572,8 +572,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
           })}
         </div>
 
-        {/* KPI rows */}
-        <div className="px-3 py-2.5 space-y-2.5 min-h-[116px]">
+        {/* KPI rows — reserve height for 3 rows so 2-KPI tabs don't shift the page */}
+        <div className="px-3 py-2.5 space-y-2.5 min-h-[140px]">
           {actualsLoading && (
             <div className="flex items-center justify-center py-4">
               <div className="flex gap-1">
