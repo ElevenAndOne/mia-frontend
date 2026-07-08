@@ -49,10 +49,6 @@ export const PhaseDetail = ({
     setAddingChannel(false)
   }
 
-  const removeWithConfirm = (actionId: string) => {
-    if (confirm('Remove this channel?')) void removeChannel(actionId)
-  }
-
   return (
     <div className="bg-secondary-alt rounded-2xl border border-secondary p-5 space-y-5">
       <div className="space-y-3">
@@ -100,7 +96,7 @@ export const PhaseDetail = ({
         </div>
         <div className="space-y-2.5">
           {phase.channel_actions.map((ca) => (
-            <ChannelActionCard key={ca.action_id} phaseId={phase.phase_id} phaseName={phase.phase_name} action={ca} currency={currency} onRemove={() => removeWithConfirm(ca.action_id)} onOpenPicker={onOpenPicker} />
+            <ChannelActionCard key={ca.action_id} phaseId={phase.phase_id} phaseName={phase.phase_name} action={ca} currency={currency} onRemove={() => void removeChannel(ca.action_id)} onOpenPicker={onOpenPicker} />
           ))}
         </div>
         {suggestHubspot && (

@@ -28,6 +28,7 @@ interface Props {
 export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemove, onOpenPicker }: Props) => {
   const [expanded, setExpanded] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
+  const [confirmingRemove, setConfirmingRemove] = useState(false)
   const { patchAction, addAsset, patchAsset, deleteAsset } = useChannelEditor(phaseId, action.action_id)
 
   const label = channelLabel(action.channel)
@@ -69,9 +70,29 @@ export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemo
             </div>
           )}
         </div>
-        <button onClick={(e) => { e.stopPropagation(); onRemove() }} className="p-1 mr-1 text-quaternary hover:text-utility-error-500 shrink-0" title="Remove channel">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+        {confirmingRemove ? (
+          <div className="flex items-center gap-1.5 mr-1 shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemove() }}
+              className="label-xs font-semibold text-utility-error-600 hover:text-utility-error-700"
+              title="Confirm — removes this channel and its assets"
+            >
+              Remove
+            </button>
+            <span className="text-quaternary">·</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmingRemove(false) }}
+              className="label-xs text-quaternary hover:text-secondary"
+              title="Keep channel"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button onClick={(e) => { e.stopPropagation(); setConfirmingRemove(true) }} className="p-1 mr-1 text-quaternary hover:text-utility-error-500 shrink-0" title="Remove channel">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
         <div className="pr-3 py-2.5 cursor-pointer shrink-0" onClick={() => setExpanded(!expanded)}>
           <svg className={`w-3.5 h-3.5 text-quaternary transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         </div>
