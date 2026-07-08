@@ -11,6 +11,8 @@ export const useGoldInsights = (sessionId: string | null) => {
   const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Foreground fetch: drives the spinner + the visible error box. Used for the
+  // initial load and explicit "Try Again". A failure here surfaces to the user.
   const refresh = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -31,6 +33,21 @@ export const useGoldInsights = (sessionId: string | null) => {
     }
   }, [sessionId])
 
+  // Background poll: never touches isLoading/error and keeps the last-good
+  // report on failure. A transient network blip during a 30s poll must NOT
+  // wipe an already-rendered report or flash a scary error — the job is still
+  // running server-side and the next poll recovers on its own.
+  const pollOnce = useCallback(async (): Promise<GoldInsightsResponse | null> => {
+    if (!sessionId) return null
+    try {
+      const result = await fetchGoldInsights(sessionId)
+      setData(result)
+      return result
+    } catch {
+      return null
+    }
+  }, [sessionId])
+
   useEffect(() => {
     refresh()
   }, [refresh])
@@ -48,7 +65,8 @@ export const useGoldInsights = (sessionId: string | null) => {
 
     if (inFlight(data)) {
       pollRef.current = setInterval(async () => {
-        const result = await refresh()
+        const result = await pollOnce()
+        // On a failed poll (result null) keep polling — the run is still going.
         if (result && !inFlight(result)) {
           if (pollRef.current) {
             clearInterval(pollRef.current)
@@ -64,7 +82,7 @@ export const useGoldInsights = (sessionId: string | null) => {
         pollRef.current = null
       }
     }
-  }, [data?.status, data?.refresh_in_progress, refresh])
+  }, [data?.status, data?.refresh_in_progress, pollOnce])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
