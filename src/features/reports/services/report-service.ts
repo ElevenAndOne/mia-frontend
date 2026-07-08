@@ -31,7 +31,7 @@ export const listReports = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/reports`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return []
+  if (!response.ok) throw new Error(`Failed to load reports (${response.status})`)
   return response.json()
 }
 
@@ -43,7 +43,7 @@ export const getReport = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/reports/${reportId}`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return null
+  if (!response.ok) throw new Error(`Failed to load report (${response.status})`)
   return response.json()
 }
 
@@ -60,7 +60,7 @@ export const getReportForPrint = async (
   const response = await apiFetch(
     `/api/tenants/${tenantId}/reports/${reportId}/print-data?token=${encodeURIComponent(token)}`,
   )
-  if (!response.ok) return null
+  if (!response.ok) throw new Error(`Failed to load report for printing (${response.status})`)
   return response.json()
 }
 
@@ -97,7 +97,7 @@ export const getClickUpSpaces = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/reports/clickup/spaces`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return []
+  if (!response.ok) throw new Error(`Failed to load ClickUp spaces (${response.status})`)
   const data = await response.json()
   return data.spaces ?? []
 }
@@ -118,7 +118,7 @@ export const listCampaignOptions = async (
   const response = await apiFetch(`/api/tenants/${tenantId}/campaigns/`, {
     headers: { 'X-Session-ID': sessionId },
   })
-  if (!response.ok) return []
+  if (!response.ok) throw new Error(`Failed to load campaigns (${response.status})`)
   return response.json()
 }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSession } from '../../contexts/session-context'
+import { useToast } from '../../contexts/toast-context'
 import { trackEvent } from '../../utils/tracking'
 import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
@@ -31,6 +32,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   const { activeWorkspace, sessionId } = useSession()
+  const { showToast } = useToast()
   const tenantId = activeWorkspace?.tenant_id ?? ''
   const {
     reports,
@@ -39,6 +41,8 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     generating,
     loadingReports,
     error,
+    listError,
+    reloadReports,
     generate,
     openReport,
     saveOverrides,
@@ -74,15 +78,17 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
       setLoadingCampaigns(true)
       listCampaignOptions(sessionId, tenantId)
         .then(setCampaigns)
+        .catch(() => showToast('error', "Couldn't load campaigns. Please try again."))
         .finally(() => setLoadingCampaigns(false))
     }
     if (spaces.length === 0) {
       setLoadingSpaces(true)
       getClickUpSpaces(sessionId, tenantId)
         .then(setSpaces)
+        .catch(() => showToast('error', "Couldn't load ClickUp spaces. Please try again."))
         .finally(() => setLoadingSpaces(false))
     }
-  }, [step, tenantId, sessionId, campaigns.length, spaces.length])
+  }, [step, tenantId, sessionId, campaigns.length, spaces.length, showToast])
 
   // When campaign changes, pre-select its linked ClickUp list if any
   useEffect(() => {
@@ -420,6 +426,20 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 rounded-lg bg-secondary animate-pulse" />
           ))}
+        </div>
+      ) : listError && reports.length === 0 ? (
+        // A failed load must not look like "no reports" (Audit #13).
+        <div className="text-center py-16 space-y-3">
+          <p className="paragraph-md text-secondary">Couldn't load your reports</p>
+          <p className="paragraph-sm text-tertiary">
+            This is a temporary loading issue — your reports are safe.
+          </p>
+          <button
+            onClick={() => reloadReports()}
+            className="mt-2 px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Try again
+          </button>
         </div>
       ) : reports.length === 0 ? (
         <div className="text-center py-16 space-y-3">

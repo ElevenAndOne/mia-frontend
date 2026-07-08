@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import type { ClientReport, GenerateReportParams, ReportSummary } from '../types'
 import {
   deleteReport,
@@ -36,12 +37,17 @@ const summaryFromReport = (r: ClientReport): ReportSummary => ({
 export const useReports = () => {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id ?? ''
+  const { showToast } = useToast()
 
   const [reports, setReports] = useState<ReportSummary[]>([])
   const [activeReport, setActiveReport] = useState<ClientReport | null>(null)
   const [generating, setGenerating] = useState(false)
   const [loadingReports, setLoadingReports] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Distinct from `error` (which is generation-specific): set when the report LIST
+  // itself fails to load, so the view shows "couldn't load — retry" instead of the
+  // misleading "No reports yet" empty state (Audit #13).
+  const [listError, setListError] = useState(false)
 
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollStartedAt = useRef<number>(0)
@@ -67,7 +73,14 @@ export const useReports = () => {
           setError('Report is taking longer than expected — check back in a moment.')
           return
         }
-        const latest = await getReport(sessionId, tenantId, reportId)
+        let latest: ClientReport | null
+        try {
+          latest = await getReport(sessionId, tenantId, reportId)
+        } catch {
+          // Transient failure mid-poll — skip this tick and retry on the next
+          // interval rather than aborting generation or spamming the user.
+          return
+        }
         if (!latest) return
 
         setReports((prev) =>
@@ -98,13 +111,19 @@ export const useReports = () => {
   const loadReports = useCallback(async () => {
     if (!tenantId || !sessionId) return
     setLoadingReports(true)
+    setListError(false)
     try {
       const data = await listReports(sessionId, tenantId)
       setReports(data)
+    } catch {
+      // Don't wipe any reports already on screen; flag the failure so the view
+      // shows a retry affordance instead of "No reports yet".
+      setListError(true)
+      showToast('error', "Couldn't load your reports. Please try again.")
     } finally {
       setLoadingReports(false)
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, showToast])
 
   useEffect(() => {
     loadReports()
@@ -139,7 +158,13 @@ export const useReports = () => {
   const openReport = useCallback(
     async (reportId: string) => {
       if (!tenantId || !sessionId) return
-      const report = await getReport(sessionId, tenantId, reportId)
+      let report: ClientReport | null
+      try {
+        report = await getReport(sessionId, tenantId, reportId)
+      } catch {
+        showToast('error', "Couldn't open that report. Please try again.")
+        return
+      }
       setActiveReport(report)
       // Resume polling if we opened a report that's still generating (e.g. after navigating away).
       if (report?.status === 'generating') {
@@ -148,7 +173,7 @@ export const useReports = () => {
         pollReport(report.report_id)
       }
     },
-    [sessionId, tenantId, pollReport],
+    [sessionId, tenantId, pollReport, showToast],
   )
 
   const saveOverrides = useCallback(
@@ -178,10 +203,12 @@ export const useReports = () => {
     try {
       const spaces = await getClickUpSpaces(sessionId, tenantId)
       setClickupSpaces(spaces)
+    } catch {
+      showToast('error', "Couldn't load ClickUp spaces. Please try again.")
     } finally {
       setLoadingSpaces(false)
     }
-  }, [sessionId, tenantId, loadingSpaces])
+  }, [sessionId, tenantId, loadingSpaces, showToast])
 
   const linkList = useCallback(
     async (campaignId: string, clickupListId: string) => {
@@ -198,6 +225,8 @@ export const useReports = () => {
     generating,
     loadingReports,
     error,
+    listError,
+    reloadReports: loadReports,
     generate,
     openReport,
     saveOverrides,
