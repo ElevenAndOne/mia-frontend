@@ -46,7 +46,7 @@ interface OnboardingChatState {
   handleGoToIntegrations: () => void
   handleMetaAccountLinked: () => void
   handleGoogleAccountLinked: () => void
-  handleAccountSelected: (accountId: string) => void
+  handleAccountSelected: (accountId: string, displayName?: string) => void
   selectedAccountName?: string
 }
 
@@ -246,14 +246,16 @@ export const useOnboardingChat = ({
     skipOnboarding().catch(() => {})
   }, [onConnectPlatform, skipOnboarding])
 
-  // Handle account selection from inline selector
+  // Handle account selection from inline selector. displayName is passed when the
+  // picker attached a freshly-discovered Google Ads account to the workspace row (the
+  // row's own name is the workspace name, not the ad account's).
   const handleAccountSelected = useCallback(
-    async (accountId: string) => {
+    async (accountId: string, displayName?: string) => {
       setAccountSelected(true)
 
       // Find the selected account name from available accounts
       const account = availableAccounts.find((acc) => acc.id === accountId)
-      const accountName = account?.name || 'Selected account'
+      const accountName = displayName || account?.name || 'Selected account'
       addImmediateMessage({ type: 'user', content: accountName })
 
       // Show confirmation and stats intro

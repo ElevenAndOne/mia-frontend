@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { apiFetch } from '../../../utils/api'
+import * as accountService from '../../accounts/services/account-service'
+import {
+  useGoogleAdsDiscovery,
+  useGroupedDiscovery,
+  type DiscoveredGoogleAccount,
+} from '../../accounts/hooks/use-google-ads-discovery'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
-import { logger } from '../../../utils/logger'
 
 interface GoogleAccountSelectorProps {
   isOpen: boolean
@@ -12,76 +16,41 @@ interface GoogleAccountSelectorProps {
   onSuccess?: () => void
 }
 
-interface AdAccount {
-  customer_id: string
-  descriptive_name: string
-  manager: boolean
-  parent_mcc_id?: string | null
-}
-
 const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSelectorProps) => {
   const { user, sessionId, refreshWorkspaces, activeWorkspace } = useSession()
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null)
-  const [accounts, setAccounts] = useState<AdAccount[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const hasLoadedRef = useRef(false)
+  const [search, setSearch] = useState('')
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
     onClose,
   })
 
-  // Fetch ALL Google Ads accounts directly from the discovery endpoint
-  // Same endpoint the onboarding flow uses — returns MCC + sub-accounts
+  // Shared user-level discovery (all accounts across all MCCs, incl. via_mcc).
+  const discovery = useGoogleAdsDiscovery(isOpen, user?.google_user_id)
+  const { mccGroups, standalone } = useGroupedDiscovery(discovery.accounts, search)
+
+  // Reset transient state on close; pre-select the saved account when the list is ready.
   useEffect(() => {
     if (!isOpen) {
-      hasLoadedRef.current = false
       setLocalSelectedId(null)
+      setSearch('')
       return
     }
-    if (hasLoadedRef.current) return
-    hasLoadedRef.current = true
     actions.resetState()
+    if (discovery.status !== 'ready') return
 
-    if (!user?.google_user_id) return
-
-    setIsLoading(true)
-    apiFetch(`/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(user.google_user_id)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Failed to fetch accounts')
-        const data = await response.json()
-
-        // ad_accounts has ALL accounts (MCC parents + sub-accounts + standalone)
-        // Filter OUT MCC parent accounts — users should select sub-accounts
-        const allAccounts: AdAccount[] = data.ad_accounts || []
-        const nonMccAccounts = allAccounts.filter((a) => !a.manager)
-
-        logger.log(
-          `[GOOGLE-SELECTOR] Fetched ${allAccounts.length} total, ${nonMccAccounts.length} non-MCC accounts`
-        )
-        setAccounts(nonMccAccounts)
-
-        // Pre-select the currently saved account.
-        // Priority: workspace TAM field (from backend) → localStorage fallback → auto-select if only one
-        const lsKey = activeWorkspace?.tenant_id ? `gads_${activeWorkspace.tenant_id}` : null
-        const savedId =
-          activeWorkspace?.google_ads_customer_id || (lsKey ? localStorage.getItem(lsKey) : null)
-        if (savedId) {
-          const match = nonMccAccounts.find((a) => a.customer_id === savedId)
-          if (match) {
-            setLocalSelectedId(`google_${match.customer_id}`)
-          }
-        } else if (nonMccAccounts.length === 1) {
-          setLocalSelectedId(`google_${nonMccAccounts[0].customer_id}`)
-        }
-      })
-      .catch((err) => {
-        logger.error('[GOOGLE-SELECTOR] Fetch failed:', err)
-        actions.setError('Failed to load Google Ads accounts')
-      })
-      .finally(() => setIsLoading(false))
+    // Priority: workspace TAM field (backend) → localStorage fallback → auto-select if one
+    const lsKey = activeWorkspace?.tenant_id ? `gads_${activeWorkspace.tenant_id}` : null
+    const savedId =
+      activeWorkspace?.google_ads_customer_id || (lsKey ? localStorage.getItem(lsKey) : null)
+    if (savedId && discovery.accounts.some((a) => a.customer_id === savedId)) {
+      setLocalSelectedId(`google_${savedId}`)
+    } else if (discovery.accounts.length === 1) {
+      setLocalSelectedId(`google_${discovery.accounts[0].customer_id}`)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
+  }, [isOpen, discovery.status])
 
   const handleSelectAccount = async () => {
     if (!localSelectedId) {
@@ -90,33 +59,41 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
     }
 
     await actions.withSubmitting(async () => {
-      // Extract the customer_id from the selected ID (format: google_XXXXXXX)
       const customerId = localSelectedId.replace('google_', '')
+      const selected = discovery.accounts.find((a) => a.customer_id === customerId)
 
-      // Simple endpoint to set google_ads_customer_id on workspace's TenantAccountMapping
-      const response = await apiFetch('/api/accounts/set-google-ads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || '',
-        },
-        body: JSON.stringify({ customer_id: customerId }),
+      // For an MCC-managed sub-account, pass the managing MCC so the backend sets
+      // login_customer_id — otherwise data pulls for that account fail.
+      await accountService.setGoogleAdsAccount(sessionId || '', {
+        customer_id: customerId,
+        google_ads_account_type: selected?.parent_mcc_id ? 'mcc_subaccount' : 'standalone',
+        ...(selected?.parent_mcc_id ? { google_ads_mcc_id: selected.parent_mcc_id } : {}),
       })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Failed to link Google Ads account')
-      }
 
       // Persist to localStorage so picker pre-selects correctly on next open
       if (activeWorkspace?.tenant_id) {
         localStorage.setItem(`gads_${activeWorkspace.tenant_id}`, customerId)
       }
-      // Refresh workspaces so activeWorkspace.google_ads_customer_id also updates (once backend deployed)
       await refreshWorkspaces()
       actions.handleSuccess()
     })
   }
+
+  const renderAccount = (account: DiscoveredGoogleAccount) => (
+    <SelectorItem
+      key={account.customer_id}
+      isSelected={localSelectedId === `google_${account.customer_id}`}
+      onSelect={() => setLocalSelectedId(`google_${account.customer_id}`)}
+      title={account.descriptive_name || `Account ${account.customer_id}`}
+      subtitle={`Ads: ${account.customer_id}`}
+      badge={account.via_mcc ? 'Via MCC' : undefined}
+      badgeColor="gray"
+      accentColor="green"
+    />
+  )
+
+  const noMatches =
+    discovery.accounts.length > 0 && mccGroups.length === 0 && standalone.length === 0
 
   return (
     <AccountSelectorModal
@@ -126,11 +103,14 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       subtitle="Choose which account to use for this workspace"
       icon={<img src="/icons/google-ads.svg" alt="Google Ads" className="w-6 h-6" />}
       iconBgColor="bg-utility-info-200"
-      isLoading={isLoading}
-      error={state.error}
+      isLoading={discovery.status === 'idle' || discovery.status === 'loading'}
+      error={
+        state.error ||
+        (discovery.status === 'error' ? 'Failed to load Google Ads accounts' : null)
+      }
       success={state.success}
       successMessage="Account selected!"
-      isEmpty={accounts.length === 0 && !isLoading}
+      isEmpty={discovery.status === 'ready' && discovery.accounts.length === 0}
       emptyMessage="No Google Ads accounts found"
       emptySubMessage="Please authenticate with Google first"
       isSubmitting={state.isSubmitting}
@@ -142,17 +122,55 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
     >
       <div>
         <label className="block subheading-md text-secondary mb-2">Select Google Ads Account</label>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {accounts.map((account) => (
-            <SelectorItem
-              key={account.customer_id}
-              isSelected={localSelectedId === `google_${account.customer_id}`}
-              onSelect={() => setLocalSelectedId(`google_${account.customer_id}`)}
-              title={account.descriptive_name || `Account ${account.customer_id}`}
-              subtitle={`Ads: ${account.customer_id}`}
-              accentColor="green"
-            />
+
+        {discovery.status === 'error' && (
+          <button
+            type="button"
+            onClick={discovery.retry}
+            className="paragraph-sm text-utility-brand-600 underline mb-3"
+          >
+            Try again
+          </button>
+        )}
+
+        {/* Search — agencies can have hundreds of accounts across MCCs */}
+        {discovery.accounts.length > 5 && (
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or ID…"
+            className="w-full mb-3 px-3 py-2 rounded-lg border-2 border-secondary bg-primary text-primary paragraph-sm placeholder:text-placeholder-subtle focus:outline-none focus:border-utility-success-500"
+          />
+        )}
+
+        <div className="space-y-4 max-h-80 overflow-y-auto">
+          {/* Accounts grouped by their managing MCC */}
+          {mccGroups.map(([mccId, accts]) => (
+            <div key={mccId}>
+              <p className="subheading-sm text-tertiary mb-2">
+                {discovery.mccName(mccId)}{' '}
+                <span className="text-quaternary">({accts.length})</span>
+              </p>
+              <div className="space-y-2">{accts.map(renderAccount)}</div>
+            </div>
           ))}
+
+          {/* Standalone accounts (not under an MCC) */}
+          {standalone.length > 0 && (
+            <div>
+              {mccGroups.length > 0 && (
+                <p className="subheading-sm text-tertiary mb-2">Standalone Accounts</p>
+              )}
+              <div className="space-y-2">{standalone.map(renderAccount)}</div>
+            </div>
+          )}
+
+          {noMatches && (
+            <p className="paragraph-sm text-quaternary text-center py-4">
+              No accounts match “{search}”.
+            </p>
+          )}
         </div>
       </div>
     </AccountSelectorModal>

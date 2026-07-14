@@ -9,7 +9,7 @@ import { InsightCard } from './insight-card'
 interface MessageBubbleProps {
   message: ChatMessage
   onChoiceSelect?: (action: string) => void
-  onAccountSelected?: (accountId: string) => void
+  onAccountSelected?: (accountId: string, displayName?: string) => void
 }
 
 export const MessageBubble = ({

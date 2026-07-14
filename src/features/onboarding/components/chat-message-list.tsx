@@ -9,7 +9,7 @@ interface ChatMessageListProps {
   isTyping: boolean
   isStreaming: boolean
   onChoiceSelect: (action: string) => void
-  onAccountSelected?: (accountId: string) => void
+  onAccountSelected?: (accountId: string, displayName?: string) => void
   endRef: RefObject<HTMLDivElement | null>
 }
 

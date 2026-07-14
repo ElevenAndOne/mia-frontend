@@ -93,11 +93,18 @@ export const AppRoutes = ({
           }
         />
 
-        {/* Protected Routes - require authentication and account */}
+        {/* Onboarding requires authentication + a WORKSPACE — but NOT a selected account.
+            Account selection happens INSIDE the onboarding chat (the in-chat picker), so
+            requiring an account here creates a catch-22 that strands first-time users on
+            /login before onboarding renders (re-applies 471f321). requireWorkspace keeps
+            workspace-less users on the /login → create-workspace flow, where the in-chat
+            picker would otherwise dead-end (it needs a workspace row to attach the account
+            to). use-auth-redirects has no /onboarding branch, so no redirect loop;
+            OnboardingChat renders safely with a null selectedAccount. */}
         <Route
           path="/onboarding"
           element={
-            <ProtectedRoute requireAccount>
+            <ProtectedRoute requireWorkspace>
               <OnboardingPage
                 onComplete={onOnboardingComplete}
                 onConnectPlatform={onConnectPlatform}

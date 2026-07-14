@@ -36,6 +36,35 @@ export const fetchAccounts = async (sessionId: string): Promise<AccountMapping[]
 }
 
 /**
+ * Attach a Google Ads account to the workspace's TenantAccountMapping.
+ * For an account managed THROUGH an MCC, pass google_ads_mcc_id so the backend routes
+ * data pulls through the managing MCC (login_customer_id) — required for agency accounts.
+ */
+export interface SetGoogleAdsBody {
+  customer_id: string
+  google_ads_account_type: 'standalone' | 'mcc_subaccount'
+  google_ads_mcc_id?: string
+}
+
+export const setGoogleAdsAccount = async (
+  sessionId: string,
+  body: SetGoogleAdsBody
+): Promise<void> => {
+  const response = await apiFetch('/api/accounts/set-google-ads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.detail || 'Failed to link Google Ads account')
+  }
+}
+
+/**
  * Select an account for the current session
  */
 export const selectAccount = async (
