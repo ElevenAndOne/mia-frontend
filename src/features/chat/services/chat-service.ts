@@ -94,11 +94,24 @@ export interface MetaPreviewState {
   end_time?: string | null
 }
 
+export interface MetaReachEstimate {
+  available?: boolean
+  estimate_ready?: boolean
+  estimate_mau_lower_bound?: number | null
+  estimate_mau_upper_bound?: number | null
+  estimate_dau?: number | null
+  reason?: string
+}
+
 export interface MetaPreview {
   available: boolean
   level?: string
   before?: MetaPreviewState
   after?: MetaPreviewState
+  // Creation previews (ad set) have no before-state to diff — the backend returns an
+  // audience reach estimate instead.
+  create?: boolean
+  reach_estimate?: MetaReachEstimate
   error?: string
 }
 

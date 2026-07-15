@@ -114,6 +114,17 @@ function fmtMoney(v: number | null | undefined): string | null {
   return `R${v.toLocaleString()}`
 }
 
+/** Compact audience-size label: 24_000_000 → "24M", 1_200_000 → "1.2M", 850_000 → "850K". */
+function fmtReach(v: number | null | undefined): string | null {
+  if (v === null || v === undefined) return null
+  if (v >= 1_000_000) {
+    const m = v / 1_000_000
+    return `${m >= 10 ? Math.round(m) : m.toFixed(1)}M`
+  }
+  if (v >= 1_000) return `${Math.round(v / 1_000)}K`
+  return `${v}`
+}
+
 /**
  * Before→after diff for a proposed Meta write. Fetches live current state from
  * /api/actions/meta/preview and shows only the fields that change. Best-effort:
@@ -143,6 +154,33 @@ function MetaActionPreview({ action }: { action: PendingAction }) {
       <div className="bg-primary/50 rounded-lg p-3 mb-3 flex items-center gap-2 text-quaternary">
         <div className="w-3 h-3 border-2 border-quaternary border-t-transparent rounded-full animate-spin" />
         <span className="label-xs">Checking current state…</span>
+      </div>
+    )
+  }
+
+  // Creation actions have no before-state to diff. For an ad set the backend returns an
+  // audience reach estimate — show that instead. (campaign/ad creates have no preview → the
+  // text summary stays.)
+  if (preview?.create) {
+    const est = preview.reach_estimate
+    const lower = est?.estimate_mau_lower_bound
+    const upper = est?.estimate_mau_upper_bound
+    if (!est?.available || (lower == null && upper == null)) return null
+    const range =
+      lower != null && upper != null
+        ? `${fmtReach(lower)}–${fmtReach(upper)}`
+        : fmtReach(lower ?? upper)
+    return (
+      <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-1.5">
+        <div className="paragraph-xs text-primary font-medium">New ad set</div>
+        <div className="flex items-center gap-2">
+          <span className="label-xs text-quaternary w-24 flex-shrink-0">Est. audience</span>
+          <span className="label-xs text-primary font-semibold">{range} people</span>
+        </div>
+        <span className="label-xs text-quaternary">
+          Monthly reachable Meta users for this targeting — a starting estimate; Advantage+ may
+          expand it.
+        </span>
       </div>
     )
   }
