@@ -17,6 +17,7 @@ import {
   sendTestAlert,
 } from '../../whatsapp-alerts/whatsapp-alert-service'
 import type { WorkspaceAlertSettings } from '../../whatsapp-alerts/types'
+import { normalizeWhatsAppNumber } from '../../whatsapp-alerts/normalize-number'
 import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
@@ -225,8 +226,11 @@ export const WorkspaceSettingsDetail = ({
     setSavingSubscription(true)
     setSubscriptionSaved(false)
     try {
+      // Normalize to E.164 (e.g. 0711644526 / +0711644526 -> +27711644526) so Twilio accepts it.
+      const normalized = myWaNumber ? normalizeWhatsAppNumber(myWaNumber) : ''
+      if (normalized !== myWaNumber) setMyWaNumber(normalized)
       await updateMySubscription(sessionId, {
-        whatsapp_number: myWaNumber || undefined,
+        whatsapp_number: normalized || undefined,
         subscribed: mySubscribed,
         all_workspaces: saveToAll,
       })
@@ -413,7 +417,7 @@ export const WorkspaceSettingsDetail = ({
                         onChange={(e) => setMySubscribed(e.target.checked)}
                         className="w-4 h-4 rounded accent-brand-solid"
                       />
-                      <span className="paragraph-sm text-primary">Receive KPI alert messages</span>
+                      <span className="paragraph-sm text-primary">Receive WhatsApp alerts</span>
                     </label>
 
                     <label className="flex items-center gap-3 cursor-pointer">
