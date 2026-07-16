@@ -7,6 +7,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { logger } from '../../../utils/logger'
+import type { SetGoogleAdsBody } from '../services/account-service'
 
 export interface DiscoveredGoogleAccount {
   customer_id: string
@@ -23,6 +24,23 @@ export interface DiscoveredMcc {
   descriptive_name: string
   account_count?: number
 }
+
+/** Response shape of GET /api/oauth/google/ad-accounts. */
+interface DiscoveredAccountsResponse {
+  success?: boolean
+  regular_accounts?: DiscoveredGoogleAccount[]
+  mcc_accounts?: DiscoveredMcc[]
+  /** Legacy combined list (older backend responses). */
+  ad_accounts?: DiscoveredGoogleAccount[]
+}
+
+/** Build the /api/accounts/set-google-ads payload for a discovered account — the single
+ *  source of the "has a parent MCC ⇒ mcc_subaccount + route via that MCC" rule. */
+export const setGoogleAdsBodyFor = (account: DiscoveredGoogleAccount): SetGoogleAdsBody => ({
+  customer_id: account.customer_id,
+  google_ads_account_type: account.parent_mcc_id ? 'mcc_subaccount' : 'standalone',
+  ...(account.parent_mcc_id ? { google_ads_mcc_id: account.parent_mcc_id } : {}),
+})
 
 export type DiscoveryStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -52,13 +70,11 @@ export const useGoogleAdsDiscovery = (
         `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(googleUserId)}`
       )
       if (!response.ok) throw new Error(`Discovery failed: ${response.status}`)
-      const data = await response.json()
+      const data: DiscoveredAccountsResponse = await response.json()
       // regular_accounts is the SELECTABLE set (standalone + direct sub-accounts +
       // via_mcc). Fall back to filtering ad_accounts for older backend responses.
       const regular: DiscoveredGoogleAccount[] =
-        data.regular_accounts ||
-        (data.ad_accounts || []).filter((a: DiscoveredGoogleAccount) => !a.manager) ||
-        []
+        data.regular_accounts || (data.ad_accounts || []).filter((a) => !a.manager)
       setAccounts(regular)
       setMccs(data.mcc_accounts || [])
       setStatus('ready')

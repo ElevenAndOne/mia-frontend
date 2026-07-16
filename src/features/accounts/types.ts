@@ -24,6 +24,18 @@ export interface AccountMapping {
   selected_mcc_id?: string
 }
 
+/** True if a workspace account row already has ANY platform linked. */
+export const hasLinkedPlatform = (a: AccountMapping): boolean =>
+  !!(
+    a.google_ads_id ||
+    a.ga4_property_id ||
+    a.meta_ads_id ||
+    a.facebook_page_id ||
+    a.hubspot_portal_id ||
+    a.brevo_api_key ||
+    a.mailchimp_id
+  )
+
 export interface AccountSelectionItem {
   id: string
   name: string
