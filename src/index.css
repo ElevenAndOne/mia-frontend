@@ -9,6 +9,7 @@
 @import './styles/tokens.css';
 @import './styles/dark-theme.css';
 @import './features/campaigns/styles/campaign-workspace.css';
+@import './features/creative-studio/creative-studio.css';
 
 /* Tailwind v4 Theme Extensions */
 @theme {

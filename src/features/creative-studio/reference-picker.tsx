@@ -137,12 +137,16 @@ export function ReferencePicker({ tenantId, sessionId, value, onChange, disabled
   return (
     <>
       {showModal && createPortal(
-        <LibraryModal
-          tenantId={tenantId} sessionId={sessionId}
-          selected={value} onToggle={toggle}
-          onUpload={handleUpload} onClose={() => setShowModal(false)}
-          uploading={uploading}
-        />,
+        // Carrier div re-applies the .creative-studio scope: the portal renders
+        // to document.body, outside the page's scoped subtree.
+        <div className="creative-studio">
+          <LibraryModal
+            tenantId={tenantId} sessionId={sessionId}
+            selected={value} onToggle={toggle}
+            onUpload={handleUpload} onClose={() => setShowModal(false)}
+            uploading={uploading}
+          />
+        </div>,
         document.body,
       )}
 

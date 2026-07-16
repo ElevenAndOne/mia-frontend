@@ -1,0 +1,74 @@
+/* ===========================================================================
+   Creative Studio — light-mode scoped remap
+   ---------------------------------------------------------------------------
+   Creative Studio was ported from a pre-Mia project and paints its UI with raw
+   Tailwind `slate-*` / `white` classes baked straight into the JSX, so it was
+   permanently dark and ignored the app theme. Rather than rewrite every
+   component to semantic tokens, we lean on Tailwind v4: utilities like
+   `bg-slate-800` compile to `background-color: var(--color-slate-800)`, so we
+   can re-point those palette variables inside a `.creative-studio` subtree.
+
+   DARK MODE is left untouched — no overrides apply, so the original ported dark
+   design renders exactly as before. In LIGHT MODE (`:root:not(.dark)`) we invert
+   the neutral `slate` scale (dark surfaces → light, light text → dark) and
+   deepen the light accent text shades so colored labels stay legible on white.
+
+   `--color-black` is deliberately NOT remapped: every `black` usage here is a
+   translucent overlay/scrim (`bg-black/80`, lightboxes) that must stay dark in
+   both themes.
+
+   `text-white` is conflated — it's the primary text color on dark surfaces (must
+   go dark in light mode, handled by remapping `--color-white`) AND the label
+   color on solid accent buttons (must stay white). The button case is restored
+   by the higher-specificity rule at the bottom, which outranks `.text-white`.
+   =========================================================================== */
+
+:root:not(.dark) .creative-studio {
+  color-scheme: light;
+
+  /* ---- Neutral scale, inverted -----------------------------------------
+     High slate shades were dark surfaces → light; white/low shades were light
+     text → dark. Shades used as BOTH text and surface (600) take a legible
+     middle value. */
+  --color-white: #0f172a;      /* primary text (buttons overridden below) */
+  --color-slate-950: #f1f5f9;  /* deepest bg / gradient stops */
+  --color-slate-900: #f8fafc;  /* page background */
+  --color-slate-800: #ffffff;  /* cards / panels */
+  --color-slate-700: #e2e8f0;  /* borders + hover / input surfaces */
+  --color-slate-600: #94a3b8;  /* border / surface + muted text (compromise) */
+  --color-slate-500: #64748b;  /* muted text / placeholder */
+  --color-slate-400: #64748b;  /* secondary text */
+  --color-slate-300: #334155;  /* text */
+  --color-slate-200: #1e293b;  /* text */
+  --color-slate-100: #0f172a;  /* text */
+
+  /* ---- Accent TEXT shades: deepen the light (300/400) tints so colored
+     labels/icons keep contrast on a white surface. Solid accent BACKGROUNDS
+     (purple-500/600, blue-500/600, pink-500, orange-500, yellow-500) are left
+     untouched so buttons stay vivid. */
+  --color-purple-200: #9333ea; /* purple-600 */
+  --color-purple-300: #9333ea;
+  --color-purple-400: #9333ea;
+  --color-blue-300: #2563eb;   /* blue-600 */
+  --color-blue-400: #2563eb;
+  --color-red-300: #dc2626;    /* red-600 */
+  --color-red-400: #dc2626;
+  --color-green-300: #16a34a;  /* green-600 */
+  --color-green-400: #16a34a;
+  --color-emerald-300: #059669; /* emerald-600 */
+  --color-emerald-400: #059669;
+  --color-teal-300: #0d9488;   /* teal-600 */
+  --color-orange-300: #ea580c; /* orange-600 */
+  --color-amber-400: #d97706;  /* amber-600 */
+  --color-pink-400: #db2777;   /* pink-600 */
+}
+
+/* Keep white label/icon color on SOLID accent buttons. This selector's
+   specificity (four classes) beats `.text-white` (one class), so it wins
+   regardless of source order — no per-button edits needed. Translucent accent
+   tints (`bg-purple-500/20`, …) are a different generated class and are NOT
+   matched, so their text correctly falls through to the dark `--color-white`. */
+:root:not(.dark) .creative-studio
+  :is(.bg-purple-500, .bg-purple-600, .bg-blue-500, .bg-blue-600, .from-purple-500, .from-yellow-500) {
+  color: #fff;
+}

@@ -28,7 +28,7 @@ const CreativeStudioPage = () => {
     >
       <div className="w-full h-full flex flex-col min-h-0">
         <TopBar title="Mia Create" />
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="creative-studio flex-1 min-h-0 overflow-y-auto">
           <CreativeStudioView />
         </div>
       </div>

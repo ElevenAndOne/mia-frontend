@@ -1,23 +1,26 @@
 /* ===========================================================================
-   Campaign Workspace — scoped dark theme
+   Campaign Workspace — theme-aware scoped surface
    ---------------------------------------------------------------------------
-   The /campaigns redesign is a deliberate dark surface that matches the design
+   The /campaigns redesign has a signature dark surface that matches the design
    artifacts exactly (campaign_builder/*.dc.html). Rather than hardcoding hex in
    every component, we REMAP the app's semantic color tokens inside
    `.campaign-workspace`. Any element in this subtree — including reused
    primitives (SegmentedControl, inputs, EditableText, ChatMarkdown) — renders
-   in the artifact palette automatically, regardless of the app's light/dark
-   mode. A light variant can later be added as `.campaign-workspace.light`
-   without touching component code.
+   in the artifact palette automatically.
 
-   Custom properties set here win for the subtree because they are declared on
-   the workspace element itself (they don't fight `:root.dark`, which targets a
-   different element — the html root).
+   IMPORTANT: the dark artifact palette is applied ONLY in dark mode
+   (`:root.dark .campaign-workspace`). In light mode the subtree inherits the
+   app's normal light tokens, so /campaigns looks like every other page instead
+   of forcing a black surface. The theme-agnostic bits — accent purple, channel
+   / asset / phase hues, fonts — live on the base `.campaign-workspace` rule and
+   apply in both themes.
+
+   The dark overrides are scoped under `:root.dark` (the html root) AND the
+   workspace element, so they win over the app's own `:root.dark` tokens for the
+   subtree via higher specificity.
    =========================================================================== */
 
 .campaign-workspace {
-  color-scheme: dark;
-
   /* ---- Fonts (loaded in index.css) ------------------------------------- */
   --cw-font-sans: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
   --cw-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
@@ -63,9 +66,26 @@
   --cw-phase-2: #2bd4a4;
   --cw-phase-3: #e879c9;
 
-  /* =====================================================================
-     Remap app semantic tokens → artifact palette (the signature look)
-     ===================================================================== */
+  /* Workspace base — resolves to the active theme's tokens (light or dark) */
+  font-family: var(--cw-font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+/* Mono numerics helper */
+.campaign-workspace .cw-mono {
+  font-family: var(--cw-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   Dark mode only — the signature dark artifact palette.
+   Remaps the app's semantic color tokens to the artifact hex inside the
+   workspace subtree. In light mode none of this applies, so the subtree uses
+   the app's normal light tokens.
+   =========================================================================== */
+:root.dark .campaign-workspace {
+  color-scheme: dark;
 
   /* Backgrounds */
   --color-background-primary: #0b0b0e;
@@ -118,8 +138,8 @@
   --color-utility-brand-700: #b59bff;
 
   /* =====================================================================
-     Re-assert dark values for status utilities so banners/badges look right
-     even when the surrounding app is in LIGHT mode. Mirrors dark-theme.css.
+     Dark values for status utilities so banners/badges look right on the
+     artifact dark surface. Mirrors dark-theme.css.
      ===================================================================== */
 
   --color-text-error: var(--color-red-400);
@@ -159,21 +179,11 @@
   --color-utility-info-100: color-mix(in srgb, #4f8cff 14%, transparent);
   --color-utility-info-500: var(--color-blue-500);
   --color-utility-info-700: #6ea8ff;
-
-  /* Workspace base */
-  font-family: var(--cw-font-sans);
-  background: var(--color-background-primary);
-  color: var(--color-text-primary);
 }
 
-/* Mono numerics helper */
-.campaign-workspace .cw-mono {
-  font-family: var(--cw-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Native date/number inputs: invert the picker glyph so it's visible on dark */
-.campaign-workspace input[type='date']::-webkit-calendar-picker-indicator {
+/* Native date/number inputs: invert the picker glyph so it's visible on the
+   dark surface. Light mode keeps the default (dark) glyph. */
+:root.dark .campaign-workspace input[type='date']::-webkit-calendar-picker-indicator {
   filter: invert(0.6);
   cursor: pointer;
 }
