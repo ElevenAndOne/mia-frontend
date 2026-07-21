@@ -1,12 +1,20 @@
 import { useCallback, useState } from 'react'
-import { fetchClickupSync, invokeClickup } from '../services/campaign-api'
+import { fetchClickupSync, invokeClickup, patchAsset } from '../services/campaign-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
-import type { ClickUpPushResult, ClickUpUpdateResult, SyncResult } from '../types'
+import type {
+  ClickUpAdsPushResult,
+  ClickUpPullResult,
+  ClickUpPushResult,
+  ClickUpUpdateResult,
+  ReadyAd,
+  SyncResult,
+} from '../types'
 
-// ClickUp campaign operations: sync-check, update, and push-summary. Browsing
+// ClickUp campaign operations: sync-check, update, push-summary, and the ad
+// round-trip (push each ad as a task, pull approved ads back). Browsing
 // spaces/folders/lists (for the push target) lives in use-clickup-browse.
 export function useClickUp() {
-  const { tenantId, sessionId, campaign } = useCampaignWorkspace()
+  const { tenantId, sessionId, campaign, reloadDetail } = useCampaignWorkspace()
   const id = campaign.campaign_id
 
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
@@ -48,10 +56,78 @@ export function useClickUp() {
 
   const resetPush = useCallback(() => { setPushResult(null); setPushError('') }, [])
 
+  // ── Ad round-trip ──────────────────────────────────────────────────────────
+
+  const [adsResult, setAdsResult] = useState<ClickUpAdsPushResult | null>(null)
+  const [pushingAds, setPushingAds] = useState(false)
+  const [adsError, setAdsError] = useState('')
+
+  const pushAds = useCallback(
+    async (listId: string) => {
+      if (!listId) { setAdsError('Please select a list first'); return }
+      setPushingAds(true); setAdsError(''); setAdsResult(null)
+      try { setAdsResult((await invokeClickup(sessionId, tenantId, 'push_campaign_ads', { campaign_id: id, list_id: listId })) as ClickUpAdsPushResult) }
+      catch (e) { setAdsError(e instanceof Error ? e.message : 'Push ads to ClickUp failed') }
+      finally { setPushingAds(false) }
+    },
+    [sessionId, tenantId, id],
+  )
+
+  const resetAds = useCallback(() => { setAdsResult(null); setAdsError('') }, [])
+
+  const [pullResult, setPullResult] = useState<ClickUpPullResult | null>(null)
+  const [pulling, setPulling] = useState(false)
+  const [pullError, setPullError] = useState('')
+  const [applying, setApplying] = useState(false)
+
+  const runPull = useCallback(async () => {
+    setPulling(true); setPullError(''); setPullResult(null)
+    try { setPullResult((await invokeClickup(sessionId, tenantId, 'pull_ready_ads', { campaign_id: id })) as unknown as ClickUpPullResult) }
+    catch (e) { setPullError(e instanceof Error ? e.message : 'Pull from ClickUp failed') }
+    finally { setPulling(false) }
+  }, [sessionId, tenantId, id])
+
+  // Apply the studio's approved ads back onto the campaign: creative link, final
+  // URL (if edited in ClickUp), and mark the asset ready. Returns true only if every
+  // PATCH succeeded — apiFetch doesn't throw on HTTP errors, so we check res.ok and
+  // surface failures rather than falsely reporting success.
+  const applyPulled = useCallback(
+    async (ads: ReadyAd[]): Promise<boolean> => {
+      setApplying(true)
+      setPullError('')
+      try {
+        const failed: string[] = []
+        for (const ad of ads) {
+          const fields: Record<string, string> = { status: 'ready' }
+          if (ad.deliverable_url) fields.deliverable_url = ad.deliverable_url
+          if (ad.final_url) fields.final_url = ad.final_url
+          const res = await patchAsset(sessionId, tenantId, id, ad.asset_id, fields)
+          if (!res.ok) failed.push(ad.asset_id)
+        }
+        await reloadDetail()
+        if (failed.length) {
+          setPullError(`Couldn't apply ${failed.length} of ${ads.length} ad${ads.length === 1 ? '' : 's'} — check your permissions and try again.`)
+          return false
+        }
+        return true
+      } catch (e) {
+        setPullError(e instanceof Error ? e.message : 'Failed to apply changes')
+        return false
+      } finally {
+        setApplying(false)
+      }
+    },
+    [sessionId, tenantId, id, reloadDetail],
+  )
+
+  const resetPull = useCallback(() => { setPullResult(null); setPullError('') }, [])
+
   return {
     clickupListId: campaign.clickup_list_id,
     syncResult, syncLoading, syncError, runSync,
     updateResult, updating, updateError, runUpdate,
     pushResult, pushing, pushError, pushSummary, resetPush,
+    adsResult, pushingAds, adsError, pushAds, resetAds,
+    pullResult, pulling, pullError, runPull, applyPulled, applying, resetPull,
   }
 }

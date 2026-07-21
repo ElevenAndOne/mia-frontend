@@ -48,6 +48,11 @@ export function useChannelEditor(phaseId: string, actionId: string) {
       budget_period: null,
       start_date: null,
       end_date: null,
+      status: 'draft',
+      destination_type: null,
+      final_url: null,
+      deliverable_url: null,
+      meta_ad_id: null,
     }
     applyAction((a) => ({ ...a, assets: [...a.assets, { ...asset, sort_order: a.assets.length }] }))
   }, [sessionId, tenantId, id, actionId, applyAction])

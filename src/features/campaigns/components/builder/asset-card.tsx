@@ -2,12 +2,21 @@ import { useState } from 'react'
 import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
-import type { Asset } from '../../types'
+import type { Asset, AssetStatus } from '../../types'
 
 const ASSET_TYPES = [
   'static', 'carousel', 'reel', 'animation', 'email', 'video', 'post_series',
   'single_image', 'story', 'search_ad', 'responsive_search_ad', 'display_ad',
   'pmax', 'pdf', 'text_ad',
+]
+
+// Ad lifecycle → ClickUp status. Colour keys the pipeline stage at a glance.
+const ASSET_STATUSES: { value: AssetStatus; label: string; cls: string }[] = [
+  { value: 'draft', label: 'Draft', cls: 'text-quaternary' },
+  { value: 'in_production', label: 'In production', cls: 'text-utility-warning-600' },
+  { value: 'ready', label: 'Ready to launch', cls: 'text-utility-brand-600' },
+  { value: 'scheduled', label: 'Scheduled', cls: 'text-utility-brand-600' },
+  { value: 'live', label: 'Live', cls: 'text-utility-success-600' },
 ]
 
 const inputCls =
@@ -46,6 +55,18 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             className="paragraph-sm text-primary font-semibold"
           />
         </div>
+        <select
+          value={asset.status ?? 'draft'}
+          onChange={(e) => onPatch({ status: e.target.value as AssetStatus })}
+          title="Ad status — syncs to the ClickUp task"
+          className={`text-xs font-semibold border border-tertiary rounded-md px-1.5 py-0.5 bg-secondary-subtle ${
+            ASSET_STATUSES.find((s) => s.value === (asset.status ?? 'draft'))?.cls ?? 'text-tertiary'
+          }`}
+        >
+          {ASSET_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
         <select
           value={asset.asset_type ?? ''}
           onChange={(e) => onPatch({ asset_type: e.target.value || null })}
@@ -144,6 +165,27 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           <span className={fieldLabel}>Best time to post</span>
           <input type="text" defaultValue={bestTime} onBlur={(e) => patchDetails('optimal_post_time', e.target.value)}
             placeholder="e.g. Tuesday 09:30" className={inputCls} />
+        </div>
+      </div>
+
+      <div className="space-y-2 pt-3 border-t border-secondary">
+        <div>
+          <span className={fieldLabel}>Final URL (destination + tracking)</span>
+          <EditableText
+            value={asset.final_url ?? ''}
+            onSave={(v) => onPatch({ final_url: v || null })}
+            placeholder="https://… (UTMs included)"
+            className="paragraph-xs text-secondary break-all"
+          />
+        </div>
+        <div>
+          <span className={fieldLabel}>Final asset (approved creative)</span>
+          <EditableText
+            value={asset.deliverable_url ?? ''}
+            onSave={(v) => onPatch({ deliverable_url: v || null })}
+            placeholder="Google Drive link to the final file"
+            className="paragraph-xs text-secondary break-all"
+          />
         </div>
       </div>
     </div>

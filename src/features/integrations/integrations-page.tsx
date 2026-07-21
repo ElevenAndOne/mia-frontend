@@ -21,6 +21,7 @@ import TikTokAccountSelector from './selectors/tiktok-account-selector'
 import TikTokOrganicAccountSelector from './selectors/tiktok-organic-account-selector'
 import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
+import CsvDatasetsCard from './views/csv-datasets-card'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
 import { ConfirmDialog } from '../../components/confirm-dialog'
@@ -1598,6 +1599,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     )}
                   </div>
                 </div>
+
+                {/* Uploaded Data (CSV) — CSV / Uploaded Datasets integration */}
+                <CsvDatasetsCard />
               </div>
             </div>
           )}

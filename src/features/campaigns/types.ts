@@ -19,6 +19,14 @@ export interface LinkedCampaign {
   status?: string
 }
 
+// Ad lifecycle, mirrors the ClickUp task status pipeline (backend AssetStatus).
+export type AssetStatus =
+  | 'draft'
+  | 'in_production'
+  | 'ready'
+  | 'scheduled'
+  | 'live'
+
 export interface Asset {
   asset_id: string
   asset_name: string
@@ -33,6 +41,12 @@ export interface Asset {
   budget_period: string | null
   start_date: string | null
   end_date: string | null
+  // Campaign-builder → ClickUp → Meta round-trip.
+  status?: AssetStatus | null
+  destination_type?: string | null // 'website' | 'lead_form'
+  final_url?: string | null // UTM'd destination (mirrors ClickUp Tracking Link UTM)
+  deliverable_url?: string | null // approved creative Drive link (mirrors ClickUp Final Asset)
+  meta_ad_id?: string | null // set after push-to-Meta
 }
 
 export interface ChannelAction {
@@ -148,6 +162,47 @@ export interface ClickUpUpdateResult {
   tasks_created?: number
   tasks_deleted?: number
   errors?: ClickUpError[]
+}
+
+// push_campaign_ads — one ClickUp task per ad.
+export interface ClickUpAdsPushResult {
+  ads_created?: number
+  ads_updated?: number
+  tasks?: { asset_id?: string; task_id?: string; task_url?: string }[]
+}
+
+// pull_ready_ads — ads the studio marked Ready to Launch, with what they filled in.
+export interface ReadyAd {
+  asset_id: string
+  task_id: string
+  clickup_status: string
+  deliverable_url: string | null
+  final_url: string | null
+}
+
+export interface ClickUpPullResult {
+  campaign_id: string
+  ready: ReadyAd[]
+  count: number
+}
+
+// ── Meta push ────────────────────────────────────────────────────────────────
+
+interface MetaStageResult {
+  success?: boolean
+  message?: string
+  error?: string
+  data?: { id?: string }
+  asset_id?: string
+}
+
+export interface MetaPushResult {
+  success: boolean
+  stage?: string // set on failure: 'campaign' | 'adset'
+  campaign?: MetaStageResult
+  adset?: MetaStageResult
+  ads?: MetaStageResult[]
+  ads_created?: number
 }
 
 export interface ClickUpNode { id: string; name: string }

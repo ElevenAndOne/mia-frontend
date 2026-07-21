@@ -9,6 +9,7 @@ import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
 import { usePlatformPreferences } from '../../integrations/hooks/use-platform-preferences'
+import { listDatasets } from '../../integrations/services/dataset-service'
 import { trackEvent } from '../../../utils/tracking'
 import {
   sendChatMessageStreaming,
@@ -129,14 +130,41 @@ export const useChatView = () => {
     activeWorkspace?.tenant_id
   )
 
-  const connectedPlatforms = useMemo(() => {
-    if (!platformStatus) return []
+  // Uploaded CSV datasets are "connected" for the picker when the workspace has ≥1.
+  // Resolved here (not via platformStatus) since datasets are workspace-level, not
+  // account-selectable. Flipping this true auto-enables the 'csv' toggle via
+  // usePlatformPreferences' newly-connected detection — same as any real platform.
+  const [hasDatasets, setHasDatasets] = useState(false)
+  useEffect(() => {
+    const tenantId = activeWorkspace?.tenant_id
+    if (!sessionId || !tenantId) {
+      setHasDatasets(false)
+      return
+    }
+    let cancelled = false
+    listDatasets(sessionId)
+      .then((ds) => {
+        if (!cancelled) setHasDatasets(ds.length > 0)
+      })
+      .catch(() => {
+        if (!cancelled) setHasDatasets(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, activeWorkspace?.tenant_id])
 
-    return CHAT_PLATFORM_CONFIG.filter((platform) => {
-      const status = platformStatus[platform.statusKey as keyof typeof platformStatus]
-      return status?.connected
-    }).map((platform) => platform.id)
-  }, [platformStatus])
+  const connectedPlatforms = useMemo(() => {
+    const base = platformStatus
+      ? CHAT_PLATFORM_CONFIG.filter((platform) => {
+          if (platform.id === 'csv') return false // resolved via hasDatasets below
+          const status = platformStatus[platform.statusKey as keyof typeof platformStatus]
+          return status?.connected
+        }).map((platform) => platform.id)
+      : []
+    if (hasDatasets) base.push('csv')
+    return base
+  }, [platformStatus, hasDatasets])
 
   const integrationPrompt = useIntegrationPrompt({
     connectedPlatforms,

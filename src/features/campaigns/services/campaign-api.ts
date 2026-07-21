@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -213,4 +213,24 @@ export async function invokeClickup(
   }
   const body = await res.json()
   return body.result
+}
+
+// ── Meta push ──────────────────────────────────────────────────────────────
+
+// Pushes a Meta Ads channel action's READY assets to Meta as a PAUSED
+// campaign → ad set → ads. Runs synchronously server-side (a few Meta calls),
+// so this can take a while; on success the assets flip to 'scheduled'.
+export async function pushChannelActionToMeta(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<MetaPushResult> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/push-to-meta`,
+    { method: 'POST', headers: authJson(s), body: JSON.stringify({}) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Push to Meta failed (${res.status})`)
+  return body.result as MetaPushResult
 }
