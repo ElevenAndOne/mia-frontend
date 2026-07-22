@@ -4,6 +4,7 @@ import { BackButton } from '../../../components/back-button'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
+import { CanvasPane } from '../components/canvas-pane'
 import QuickActions from '../components/quick-actions'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
@@ -82,6 +83,7 @@ export const ChatView = ({
     removeDocument,
     activeCampaign,
     handleCampaignChange,
+    canvas,
   } = useChatView()
 
   // When a campaign is active, the date picker shows campaign dates and is non-interactive
@@ -150,7 +152,8 @@ export const ChatView = ({
       onNewWorkspace={onNewWorkspace}
       onLoadConversation={loadConversation}
     >
-      <div className="flex-1 flex flex-col h-full min-h-0 pt-14 md:pt-0">
+      <div className="flex-1 flex h-full min-h-0 pt-14 md:pt-0">
+       <div className="flex-1 flex flex-col h-full min-h-0 min-w-0">
         {!hasMessages ? (
           <>
             <ChatEmptyState userName={userName}>
@@ -291,6 +294,26 @@ export const ChatView = ({
             />
           </>
         )}
+       </div>
+
+       {canvas.isOpen && canvas.document && (
+         <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
+           <CanvasPane
+             document={canvas.document}
+             documents={canvas.documentList}
+             activeId={canvas.activeId}
+             onSelect={canvas.select}
+             isSaving={canvas.isSaving}
+             onClose={canvas.close}
+             onRequestEdit={canvas.requestEdit}
+             onSaveUserEdit={canvas.saveUserEdit}
+             onUndo={canvas.undo}
+             canUndo={canvas.canUndo}
+             onFetchVersions={canvas.fetchVersions}
+             onSelectVersion={canvas.viewVersion}
+           />
+         </div>
+       )}
       </div>
 
       {integrationPrompt && (

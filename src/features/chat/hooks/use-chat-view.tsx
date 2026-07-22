@@ -19,7 +19,13 @@ import {
   transcribeAudio,
   uploadChatFile,
 } from '../services/chat-service'
-import type { PendingAction, AttachedDocument } from '../services/chat-service'
+import type {
+  PendingAction,
+  AttachedDocument,
+  CanvasDocument,
+  DocumentContext,
+} from '../services/chat-service'
+import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
 import { StorageKey } from '../../../constants/storage-keys'
 import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
@@ -74,6 +80,9 @@ export const useChatView = () => {
   const actionPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
+  // Canvas document-event sink. Held in a ref because handleSubmit's onChunk (defined
+  // below) needs it, but the canvas hook is instantiated after handleSubmit.
+  const canvasDocEventRef = useRef<((doc: CanvasDocument) => void) | null>(null)
 
   // Interval-based streaming reveal — same mechanism as Quick Insights.
   // Text accumulates in receivedRef instantly; a fixed setInterval drip-feeds it to
@@ -287,7 +296,10 @@ export const useChatView = () => {
   }, [])
 
   const handleSubmit = useCallback(
-    async (message: string, options?: { hidden?: boolean }) => {
+    async (
+      message: string,
+      options?: { hidden?: boolean; documentContext?: DocumentContext }
+    ) => {
       const pendingImages = images.slice()
       const pendingDocuments = documents.slice()
       const activeConvId =
@@ -392,6 +404,9 @@ export const useChatView = () => {
                   end_date: activeCampaign.endDate ?? undefined,
                 }
               : {}),
+            ...(options?.documentContext
+              ? { document_context: options.documentContext }
+              : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -409,6 +424,8 @@ export const useChatView = () => {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
               skillWorkspaces = chunk.skill_workspaces
+            } else if (chunk.document) {
+              canvasDocEventRef.current?.(chunk.document)
             }
           },
           abortController.signal
@@ -508,6 +525,18 @@ export const useChatView = () => {
   useEffect(() => {
     handleSubmitRef.current = handleSubmit
   }, [handleSubmit])
+
+  // Canvas (highlight-to-edit). An edit goes through the normal send path with
+  // document_context attached; Mia's `document` SSE event then updates the pane.
+  const sendCanvasEdit = useCallback((message: string, documentContext: DocumentContext) => {
+    // hidden: true keeps the internal edit instruction ("Rewrite only the highlighted
+    // text…") out of the visible chat thread; Mia's short confirmation still shows.
+    handleSubmitRef.current(message, { documentContext, hidden: true })
+  }, [])
+  const canvas = useCanvas({ sessionId, conversationId, onSendEdit: sendCanvasEdit })
+  useEffect(() => {
+    canvasDocEventRef.current = canvas.handleDocumentEvent
+  }, [canvas.handleDocumentEvent])
 
   const handleConfirmAction = useCallback(
     async (messageId: string, overrideParams?: Record<string, unknown>) => {
@@ -748,5 +777,6 @@ export const useChatView = () => {
     removeDocument,
     activeCampaign,
     handleCampaignChange,
+    canvas,
   }
 }
