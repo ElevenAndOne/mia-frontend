@@ -218,8 +218,13 @@ export async function invokeClickup(
 // ── Meta push ──────────────────────────────────────────────────────────────
 
 // Pushes a Meta Ads channel action's READY assets to Meta as a PAUSED
-// campaign → ad set → ads. Runs synchronously server-side (a few Meta calls),
-// so this can take a while; on success the assets flip to 'scheduled'.
+// campaign → ad set → ads. The backend starts a durable workflow and returns
+// its id immediately (the push can outlive any single HTTP request — Meta ids
+// are written back server-side even if we stop polling); we poll the generic
+// workflow-status endpoint until it settles.
+const PUSH_POLL_MS = 3000
+const PUSH_POLL_MAX = 100 // ~5 min — the workflow keeps going server-side regardless
+
 export async function pushChannelActionToMeta(
   s: string,
   t: string,
@@ -232,5 +237,19 @@ export async function pushChannelActionToMeta(
   )
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Push to Meta failed (${res.status})`)
-  return body.result as MetaPushResult
+
+  const workflowId: string = body.workflow_id
+  for (let i = 0; i < PUSH_POLL_MAX; i++) {
+    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
+    const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
+    const st = await poll.json().catch(() => null)
+    if (!st) continue
+    if (st.status === 'completed') return st.result as MetaPushResult
+    if (st.status && st.status !== 'running') {
+      throw new Error(`Push to Meta ${st.status} — check the workflow logs (${workflowId})`)
+    }
+  }
+  throw new Error(
+    'Still pushing — Meta is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
+  )
 }

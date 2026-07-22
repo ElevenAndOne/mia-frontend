@@ -114,7 +114,7 @@ export const PushToMetaButton = ({ actionId, assets }: Props) => {
                   className="flex-1 px-4 py-3 text-white rounded-lg subheading-md disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: META }}
                 >
-                  {pushing ? 'Pushing…' : `Push ${readyCount} to Meta`}
+                  {pushing ? 'Pushing… (continues even if you close)' : `Push ${readyCount} to Meta`}
                 </button>
               )}
             </div>
