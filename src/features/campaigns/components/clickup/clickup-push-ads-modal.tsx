@@ -28,12 +28,12 @@ export const ClickUpPushAdsModal = ({ browse, result, pushing, error, clickupLis
           <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#7B68EE]/15 shrink-0">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </div>
-          <h2 className="title-h6 text-primary">Push ads to ClickUp</h2>
+          <h2 className="title-h6 text-primary">Push campaign to ClickUp</h2>
         </div>
         <p className="paragraph-sm text-tertiary mb-4">
           {result
             ? `${created} ad${created !== 1 ? 's' : ''} created${updated > 0 ? `, ${updated} updated` : ''}.`
-            : 'Create one ClickUp task per ad, with its brief and tracking URL, for the studio to build.'}
+            : 'Push the campaign to ClickUp: an overview task, a parent per phase, and each ad nested as a subtask with its brief and tracking URL.'}
         </p>
 
         {result ? (

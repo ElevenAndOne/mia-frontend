@@ -168,7 +168,29 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
         </div>
       </div>
 
+      {asset.clickup_task_url && (
+        <a
+          href={asset.clickup_task_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 label-xs font-semibold hover:underline"
+          style={{ color: '#7B68EE' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Open in ClickUp ↗
+        </a>
+      )}
+
       <div className="space-y-2 pt-3 border-t border-secondary">
+        <div>
+          <span className={fieldLabel}>Ad headline</span>
+          <EditableText
+            value={asset.headline ?? ''}
+            onSave={(v) => onPatch({ headline: v || null })}
+            placeholder="Shown next to the CTA (defaults to the asset name)"
+            className="paragraph-xs text-secondary"
+          />
+        </div>
         <div>
           <span className={fieldLabel}>Final URL (destination + tracking)</span>
           <EditableText
@@ -183,7 +205,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           <EditableText
             value={asset.deliverable_url ?? ''}
             onSave={(v) => onPatch({ deliverable_url: v || null })}
-            placeholder="Google Drive link to the final file"
+            placeholder="Drive link — carousels: one image URL per line"
             className="paragraph-xs text-secondary break-all"
           />
         </div>

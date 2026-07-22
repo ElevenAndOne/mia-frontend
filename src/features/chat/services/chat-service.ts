@@ -11,6 +11,36 @@ export interface AttachedDocument {
   b64?: string      // PDFs (sent as native Claude document block)
 }
 
+// --- Canvas (highlight-to-edit) ---------------------------------------------
+
+/** A deliverable Mia rendered in the canvas pane (post copy, brief, ad copy…). */
+export interface CanvasDocument {
+  id: string          // stable document_id across versions
+  title: string
+  content: string     // markdown
+  doc_type: string    // social_post | ad_copy | email | campaign_brief | content_calendar | generic
+  version: number
+  created_by?: 'mia' | 'user'
+  created_at?: string | null
+}
+
+/** A highlighted span the user wants Mia to change. */
+export interface DocumentSelection {
+  text: string
+  start?: number
+  end?: number
+}
+
+/** Sent on an edit turn so Mia edits the right document (span-patch or full rewrite). */
+export interface DocumentContext {
+  document_id: string
+  title?: string
+  doc_type?: string
+  current_content: string
+  version: number
+  selection?: DocumentSelection
+}
+
 interface ChatRequestPayload {
   message: string
   session_id: string | null
@@ -27,6 +57,7 @@ interface ChatRequestPayload {
   start_date?: string
   end_date?: string
   workspace_hint?: string
+  document_context?: DocumentContext  // set when the user is editing a canvas document
 }
 
 export interface RecentConversation {
@@ -182,6 +213,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
       ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
+    ...(payload.document_context ? { document_context: payload.document_context } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2', {
@@ -203,7 +235,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
 
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
@@ -219,6 +251,7 @@ export const sendChatMessageStreaming = async (
       ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
+    ...(payload.document_context ? { document_context: payload.document_context } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {
@@ -362,4 +395,53 @@ export const fetchConversationMessages = async (
   if (!response.ok) throw new Error(`Failed to load conversation (${response.status})`)
   const data = await response.json()
   return data.messages || []
+}
+
+// --- Canvas documents -------------------------------------------------------
+
+/** Latest version of each canvas document in a conversation (loads the pane on open). */
+export const fetchCanvasDocuments = async (
+  sessionId: string,
+  conversationId: string
+): Promise<CanvasDocument[]> => {
+  const response = await apiFetch(`/api/chat/v2/documents/${conversationId}`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) throw new Error(`Failed to load canvas documents (${response.status})`)
+  const data = await response.json()
+  return (data.documents || []) as CanvasDocument[]
+}
+
+/** Full version history for one document (newest first) — undo / diff view. */
+export const fetchDocumentVersions = async (
+  sessionId: string,
+  conversationId: string,
+  documentId: string
+): Promise<CanvasDocument[]> => {
+  const response = await apiFetch(
+    `/api/chat/v2/documents/${conversationId}/${documentId}/versions`,
+    { headers: { 'X-Session-ID': sessionId } }
+  )
+  if (!response.ok) throw new Error(`Failed to load versions (${response.status})`)
+  const data = await response.json()
+  // Backend returns rows without `id`; fold the documentId back in for a uniform shape.
+  return ((data.versions || []) as Omit<CanvasDocument, 'id'>[]).map((v) => ({
+    ...v,
+    id: documentId,
+  }))
+}
+
+/** Persist the user's own edit to a canvas document as a new version. */
+export const saveDocumentEdit = async (
+  sessionId: string,
+  documentId: string,
+  payload: { conversation_id: string; content: string; title?: string; doc_type?: string }
+): Promise<{ success: boolean; version?: number; error?: string }> => {
+  const response = await apiFetch(`/api/chat/v2/documents/${documentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error(`Failed to save document (${response.status})`)
+  return response.json()
 }

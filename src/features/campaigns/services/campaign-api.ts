@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -217,9 +217,60 @@ export async function invokeClickup(
 
 // ── Meta push ──────────────────────────────────────────────────────────────
 
+// Preflight: everything push-to-meta WOULD do, without doing it — derived
+// objective/budget/flight/audience/ads + capabilities + blocking errors.
+export async function fetchMetaPushPreview(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<MetaPushPreview> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/push-preview`,
+    { headers: auth(s) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Preview failed (${res.status})`)
+  return body as MetaPushPreview
+}
+
+// The ad account's saved custom audiences (for the preflight include/exclude pickers).
+export async function fetchMetaCustomAudiences(
+  s: string,
+  t: string,
+  campaignId: string,
+): Promise<{ name: string; subtype: string; approx_size: number | null }[]> {
+  const res = await apiFetch(`${base(t)}/${campaignId}/meta-custom-audiences`, { headers: auth(s) })
+  if (!res.ok) return []
+  const body = await res.json().catch(() => null)
+  return body?.audiences ?? []
+}
+
+// Mia proposes Advantage+ starting signals (interest/behavior seed names + demo
+// range) from the campaign context. Nothing persists until the PM applies + pushes.
+export async function suggestMetaAudience(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<MetaAudienceSuggestion> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/suggest-audience`,
+    { method: 'POST', headers: authJson(s), body: '{}' },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || 'Suggestion failed')
+  return body as MetaAudienceSuggestion
+}
+
 // Pushes a Meta Ads channel action's READY assets to Meta as a PAUSED
-// campaign → ad set → ads. Runs synchronously server-side (a few Meta calls),
-// so this can take a while; on success the assets flip to 'scheduled'.
+// campaign → ad set → ads. The backend starts a durable workflow and returns
+// its id immediately (the push can outlive any single HTTP request — Meta ids
+// are written back server-side even if we stop polling); we poll the generic
+// workflow-status endpoint until it settles.
+const PUSH_POLL_MS = 3000
+const PUSH_POLL_MAX = 100 // ~5 min — the workflow keeps going server-side regardless
+
 export async function pushChannelActionToMeta(
   s: string,
   t: string,
@@ -232,5 +283,19 @@ export async function pushChannelActionToMeta(
   )
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Push to Meta failed (${res.status})`)
-  return body.result as MetaPushResult
+
+  const workflowId: string = body.workflow_id
+  for (let i = 0; i < PUSH_POLL_MAX; i++) {
+    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
+    const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
+    const st = await poll.json().catch(() => null)
+    if (!st) continue
+    if (st.status === 'completed') return st.result as MetaPushResult
+    if (st.status && st.status !== 'running') {
+      throw new Error(`Push to Meta ${st.status} — check the workflow logs (${workflowId})`)
+    }
+  }
+  throw new Error(
+    'Still pushing — Meta is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
+  )
 }
