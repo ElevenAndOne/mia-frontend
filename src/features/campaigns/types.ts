@@ -45,7 +45,8 @@ export interface Asset {
   status?: AssetStatus | null
   destination_type?: string | null // 'website' | 'lead_form'
   final_url?: string | null // UTM'd destination (mirrors ClickUp Tracking Link UTM)
-  deliverable_url?: string | null // approved creative Drive link (mirrors ClickUp Final Asset)
+  deliverable_url?: string | null // approved creative Drive link (mirrors ClickUp Final Asset; carousels: one URL per line)
+  headline?: string | null // ad headline next to the CTA (defaults to asset name)
   meta_ad_id?: string | null // set after push-to-Meta
 }
 

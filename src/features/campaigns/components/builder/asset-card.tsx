@@ -170,6 +170,15 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
 
       <div className="space-y-2 pt-3 border-t border-secondary">
         <div>
+          <span className={fieldLabel}>Ad headline</span>
+          <EditableText
+            value={asset.headline ?? ''}
+            onSave={(v) => onPatch({ headline: v || null })}
+            placeholder="Shown next to the CTA (defaults to the asset name)"
+            className="paragraph-xs text-secondary"
+          />
+        </div>
+        <div>
           <span className={fieldLabel}>Final URL (destination + tracking)</span>
           <EditableText
             value={asset.final_url ?? ''}
@@ -183,7 +192,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           <EditableText
             value={asset.deliverable_url ?? ''}
             onSave={(v) => onPatch({ deliverable_url: v || null })}
-            placeholder="Google Drive link to the final file"
+            placeholder="Drive link — carousels: one image URL per line"
             className="paragraph-xs text-secondary break-all"
           />
         </div>
