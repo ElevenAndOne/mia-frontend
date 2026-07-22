@@ -168,6 +168,19 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
         </div>
       </div>
 
+      {asset.clickup_task_url && (
+        <a
+          href={asset.clickup_task_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 label-xs font-semibold hover:underline"
+          style={{ color: '#7B68EE' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          Open in ClickUp ↗
+        </a>
+      )}
+
       <div className="space-y-2 pt-3 border-t border-secondary">
         <div>
           <span className={fieldLabel}>Ad headline</span>
