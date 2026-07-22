@@ -3,19 +3,18 @@ import { usePlugins } from '../../../plugins/hooks/use-plugins'
 import { useClickUp } from '../../hooks/use-clickup'
 import { useClickUpBrowse } from '../../hooks/use-clickup-browse'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
-import { ClickUpPushModal } from './clickup-push-modal'
 import { ClickUpPushAdsModal } from './clickup-push-ads-modal'
 import { ClickUpPullModal } from './clickup-pull-modal'
 import { ClickUpSyncModal } from './clickup-sync-modal'
 import { ClickUpUpdateModal } from './clickup-update-modal'
 
-type Modal = 'sync' | 'update' | 'push' | 'push-ads' | 'pull' | null
+type Modal = 'sync' | 'update' | 'push-ads' | 'pull' | null
 
 const iconBtn = 'p-1 transition-colors disabled:opacity-50'
 
-// ClickUp controls for the Builder header: sync-check, update, push-summary,
-// plus the ad round-trip (push each ad as a task, pull approved ads back).
-// Only rendered when the ClickUp plugin is enabled for the workspace.
+// ClickUp controls for the Builder header: sync-check, update, the campaign push
+// (0.4.0 — full structure: overview task + phase parents + nested ad subtasks),
+// and the pull (approved ads back). Only rendered when the plugin is enabled.
 export const ClickUpActions = () => {
   const { isEnabled } = usePlugins()
   const { campaign } = useCampaignWorkspace()
@@ -26,7 +25,6 @@ export const ClickUpActions = () => {
 
   if (!isEnabled('clickup')) return null
 
-  const openPush = () => { cu.resetPush(); void browse.loadSpaces(); setModal('push') }
   const openPushAds = () => { cu.resetAds(); void browse.loadSpaces(); setModal('push-ads') }
   const openPull = () => { setApplied(false); cu.resetPull(); void cu.runPull(); setModal('pull') }
 
@@ -44,19 +42,13 @@ export const ClickUpActions = () => {
       <button onClick={() => { void cu.runUpdate(); setModal('update') }} disabled={cu.updating} title="Update ClickUp tasks" className={iconBtn}>
         <svg className={`w-4 h-4 ${cu.updating ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9" /></svg>
       </button>
-      <button onClick={openPush} title="Push summary to ClickUp" className={iconBtn}>
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </button>
-      <button onClick={openPushAds} title="Push ads to ClickUp (one task per ad)" className={iconBtn}>
+      <button onClick={openPushAds} title="Push campaign to ClickUp (overview + phases + ad subtasks)" className={iconBtn}>
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="5" rx="1" /><rect x="3" y="13" width="18" height="5" rx="1" /><path d="M8 21h8" stroke="#00C4FF" /></svg>
       </button>
       <button onClick={openPull} disabled={cu.pulling} title="Sync from ClickUp (pull approved ads)" className={iconBtn}>
         <svg className={`w-4 h-4 ${cu.pulling ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" stroke="#00C4FF" /><path d="M7 10l5 5 5-5" stroke="#00C4FF" /><path d="M4 21h16" /></svg>
       </button>
 
-      {modal === 'push' && (
-        <ClickUpPushModal browse={browse} result={cu.pushResult} pushing={cu.pushing} error={cu.pushError} clickupListId={cu.clickupListId} onPush={cu.pushSummary} onClose={() => setModal(null)} />
-      )}
       {modal === 'push-ads' && (
         <ClickUpPushAdsModal browse={browse} result={cu.adsResult} pushing={cu.pushingAds} error={cu.adsError} clickupListId={cu.clickupListId} onPush={cu.pushAds} onClose={() => setModal(null)} />
       )}
@@ -64,7 +56,7 @@ export const ClickUpActions = () => {
         <ClickUpPullModal result={cu.pullResult} loading={cu.pulling} applying={cu.applying} error={cu.pullError} applied={applied} onApply={() => void applyPull()} onClose={() => setModal(null)} />
       )}
       {modal === 'sync' && (
-        <ClickUpSyncModal result={cu.syncResult} loading={cu.syncLoading} error={cu.syncError} campaignName={campaign.campaign_name} onClose={() => setModal(null)} onPushMissing={openPush} />
+        <ClickUpSyncModal result={cu.syncResult} loading={cu.syncLoading} error={cu.syncError} campaignName={campaign.campaign_name} onClose={() => setModal(null)} onPushMissing={openPushAds} />
       )}
       {modal === 'update' && (
         <ClickUpUpdateModal result={cu.updateResult} updating={cu.updating} error={cu.updateError} onClose={() => setModal(null)} />
