@@ -206,6 +206,56 @@ export interface MetaPushResult {
   ads_created?: number
 }
 
+export interface MetaPushAudience {
+  advantage_plus: boolean
+  countries: string[] | null
+  age_min: number | null
+  age_max: number | null
+  genders: number[] | null // [1] male, [2] female, null all
+  interest_seeds: string[]
+  behavior_seeds: string[]
+  include_custom_audiences: string[]
+  exclude_custom_audiences: string[]
+}
+
+export interface MetaPushPreview {
+  errors: { code: string; message: string }[]
+  warnings: string[]
+  capabilities: {
+    has_pixel: boolean
+    pixel_name: string | null
+    custom_conversions: { id: string; name: string }[]
+  }
+  objective: string
+  optimization_goal: string
+  custom_conversion_id: string | null
+  custom_conversion_name: string | null
+  lifetime_budget: number | null
+  flight_start: string | null
+  flight_end: string | null
+  campaign_name: string
+  reuses_existing: boolean
+  audience: MetaPushAudience
+  ads: {
+    asset_id: string
+    name: string
+    headline: string
+    creative_type: string
+    link_url: string
+    cards: number | null
+  }[]
+  meta_push_config: Record<string, unknown> | null
+}
+
+export interface MetaAudienceSuggestion {
+  interest_seeds: string[]
+  behavior_seeds: string[]
+  age_min: number
+  age_max: number
+  genders: number[] | null
+  rationale: string
+}
+
 export interface ClickUpNode { id: string; name: string }
 
 export interface ChannelConfig {

@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -216,6 +216,40 @@ export async function invokeClickup(
 }
 
 // ── Meta push ──────────────────────────────────────────────────────────────
+
+// Preflight: everything push-to-meta WOULD do, without doing it — derived
+// objective/budget/flight/audience/ads + capabilities + blocking errors.
+export async function fetchMetaPushPreview(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<MetaPushPreview> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/push-preview`,
+    { headers: auth(s) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Preview failed (${res.status})`)
+  return body as MetaPushPreview
+}
+
+// Mia proposes Advantage+ starting signals (interest/behavior seed names + demo
+// range) from the campaign context. Nothing persists until the PM applies + pushes.
+export async function suggestMetaAudience(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<MetaAudienceSuggestion> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/suggest-audience`,
+    { method: 'POST', headers: authJson(s), body: '{}' },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || 'Suggestion failed')
+  return body as MetaAudienceSuggestion
+}
 
 // Pushes a Meta Ads channel action's READY assets to Meta as a PAUSED
 // campaign → ad set → ads. The backend starts a durable workflow and returns
