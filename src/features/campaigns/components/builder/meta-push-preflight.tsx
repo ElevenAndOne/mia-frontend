@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  fetchMetaCustomAudiences,
   fetchMetaPushPreview,
   patchChannelAction,
   pushChannelActionToMeta,
@@ -39,6 +40,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
   const [ageMin, setAgeMin] = useState(18)
   const [ageMax, setAgeMax] = useState(65)
   const [gender, setGender] = useState<'all' | 'women' | 'men'>('all')
+  const [savedAudiences, setSavedAudiences] = useState<{ name: string; subtype: string }[]>([])
 
   useEffect(() => {
     fetchMetaPushPreview(sessionId, tenantId, campaign.campaign_id, actionId)
@@ -54,8 +56,15 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load preview'))
       .finally(() => setLoading(false))
+    // Saved custom audiences feed the include/exclude pickers (best-effort).
+    fetchMetaCustomAudiences(sessionId, tenantId, campaign.campaign_id)
+      .then(setSavedAudiences)
+      .catch(() => setSavedAudiences([]))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionId])
+
+  const appendName = (setter: (fn: (v: string) => string) => void, name: string) =>
+    setter((v) => (v.split(',').map((x) => x.trim()).includes(name) ? v : v ? `${v}, ${name}` : name))
 
   const splitNames = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean)
 
@@ -231,6 +240,26 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
                     <input value={excludeAud} onChange={(e) => setExcludeAud(e.target.value)} placeholder="e.g. All lead submitters 365d" className={inputCls} />
                   </div>
                 </div>
+                {savedAudiences.length > 0 && (
+                  <div>
+                    <span className={fieldLabel}>Saved audiences on this ad account — click to include, ⌥-click to exclude</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {savedAudiences.slice(0, 16).map((a) => (
+                        <button
+                          key={a.name}
+                          type="button"
+                          onClick={(e) =>
+                            e.altKey ? appendName(setExcludeAud, a.name) : appendName(setIncludeAud, a.name)
+                          }
+                          title={`${a.subtype} — click to include, alt/option-click to exclude`}
+                          className="px-2 py-0.5 rounded-full border border-secondary label-xs text-secondary hover:bg-tertiary"
+                        >
+                          {a.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="paragraph-xs text-tertiary">
                   Location, minimum age and exclusions are hard rules; the rest steer Meta's AI.
                   Unrecognised names are skipped, never guessed.

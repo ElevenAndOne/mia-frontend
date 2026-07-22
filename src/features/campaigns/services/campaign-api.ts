@@ -234,6 +234,18 @@ export async function fetchMetaPushPreview(
   return body as MetaPushPreview
 }
 
+// The ad account's saved custom audiences (for the preflight include/exclude pickers).
+export async function fetchMetaCustomAudiences(
+  s: string,
+  t: string,
+  campaignId: string,
+): Promise<{ name: string; subtype: string; approx_size: number | null }[]> {
+  const res = await apiFetch(`${base(t)}/${campaignId}/meta-custom-audiences`, { headers: auth(s) })
+  if (!res.ok) return []
+  const body = await res.json().catch(() => null)
+  return body?.audiences ?? []
+}
+
 // Mia proposes Advantage+ starting signals (interest/behavior seed names + demo
 // range) from the campaign context. Nothing persists until the PM applies + pushes.
 export async function suggestMetaAudience(
