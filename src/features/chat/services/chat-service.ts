@@ -58,6 +58,7 @@ interface ChatRequestPayload {
   end_date?: string
   workspace_hint?: string
   document_context?: DocumentContext  // set when the user is editing a canvas document
+  asset_context?: AssetContext // set when the user is editing a campaign asset (builder canvas)
 }
 
 export interface RecentConversation {
@@ -240,9 +241,31 @@ export interface CampaignSavedEvent {
   phases_saved?: string[]
 }
 
+/** Highlighted selection on a SAVED campaign asset's preview (builder canvas edit). */
+export interface AssetContext {
+  asset_id: string
+  campaign_id: string
+  asset_name?: string
+  /** Current values of the editable fields — Mia picks the one containing the selection. */
+  fields: {
+    key_message?: string | null
+    cta?: string | null
+    headline?: string | null
+  }
+  selection: { text: string }
+}
+
+/** Emitted after edit_asset_field splices a span into an asset field. */
+export interface AssetUpdatedEvent {
+  asset_id: string
+  campaign_id?: string
+  field: string
+  value: string
+}
+
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
@@ -259,6 +282,7 @@ export const sendChatMessageStreaming = async (
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
+    ...(payload.asset_context ? { asset_context: payload.asset_context } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {

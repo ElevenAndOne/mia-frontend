@@ -8,6 +8,7 @@ import {
   fetchRecentConversations,
   sendChatMessageStreaming,
   uploadChatFile,
+  type AssetContext,
   type AttachedDocument,
   type RecentConversation,
 } from '../../chat/services/chat-service'
@@ -93,7 +94,7 @@ export function useBuilderChat() {
   }, [sessionId, tenantId, handleCampaignSaved])
 
   const runStream = useCallback(
-    async (content: string, documents?: AttachedDocument[]) => {
+    async (content: string, documents?: AttachedDocument[], assetContext?: AssetContext) => {
       if (!sessionId) return
       const convId = ensureConversation()
       const history = [...messages, { role: 'user' as const, content }]
@@ -129,6 +130,7 @@ export function useBuilderChat() {
             workspace_hint: 'strategy_planning',
             conversation_id: convId,
             ...(documents ? { documents } : {}),
+            ...(assetContext ? { asset_context: assetContext } : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -140,6 +142,11 @@ export function useBuilderChat() {
               }
             } else if (chunk.campaign_saved?.campaign_id) {
               handleCampaignSaved(chunk.campaign_saved.campaign_id)
+            } else if (chunk.asset_updated) {
+              // Span-patch landed on the Asset row — refresh the canvas (and any
+              // campaign views) so the edited field shows immediately.
+              clearCampaignDetailCache()
+              setCanvasRefresh((n) => n + 1)
             } else if (chunk.status && chunk.status !== 'thinking') setThinking(chunk.status)
           },
         )
@@ -171,6 +178,17 @@ export function useBuilderChat() {
       void runStream(value)
     },
     [input, loading, runStream],
+  )
+
+  // Highlight-to-edit from the builder canvas: sends the instruction as a normal
+  // builder turn with the asset context attached; Mia calls edit_asset_field and
+  // the asset_updated event above refreshes the canvas.
+  const sendAssetEdit = useCallback(
+    (instruction: string, assetContext: AssetContext) => {
+      if (!instruction.trim() || loading) return
+      void runStream(instruction.trim(), undefined, assetContext)
+    },
+    [loading, runStream],
   )
 
   const handlePdf = useCallback(
@@ -239,6 +257,6 @@ export function useBuilderChat() {
   return {
     messages, input, setInput, loading, thinking: thinking || thinkingPhrase, streaming, pdfUploading,
     pastBuilds, send, handlePdf, openHistory, loadPastBuild, startFresh,
-    builtCampaignId, canvasRefresh,
+    builtCampaignId, canvasRefresh, sendAssetEdit,
   }
 }

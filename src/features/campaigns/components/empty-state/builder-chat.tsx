@@ -148,7 +148,12 @@ export const BuilderChat = () => {
         (draft previews), then swaps to real saved assets once the user confirms. */}
     {showCanvas && (
       <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
-        <BuilderCanvas campaignId={c.builtCampaignId} refreshKey={c.canvasRefresh} draft={draft} />
+        <BuilderCanvas
+          campaignId={c.builtCampaignId}
+          refreshKey={c.canvasRefresh}
+          draft={draft}
+          onRequestEdit={c.sendAssetEdit}
+        />
       </div>
     )}
     </div>

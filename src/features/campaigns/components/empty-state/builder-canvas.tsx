@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../../contexts/session-context'
 import { CreativePreview } from '../../../chat/components/previews/creative-preview'
+import { HighlightToolbar } from '../../../chat/components/highlight-toolbar'
+import type { AssetContext } from '../../../chat/services/chat-service'
 import { channelLabel } from '../../utils/channel-colors'
 import { assetToCreativeSpec } from '../../utils/asset-preview'
 import type { DraftPhase } from '../../utils/plan-draft'
@@ -16,6 +18,8 @@ interface BuilderCanvasProps {
   refreshKey: number
   /** Parsed from Mia's plan-proposal text — previews before the user confirms the save. */
   draft?: DraftPhase[] | null
+  /** Highlight-to-edit: sends the instruction + asset context through the builder chat. */
+  onRequestEdit?: (instruction: string, assetContext: AssetContext) => void
 }
 
 interface CanvasAsset {
@@ -36,7 +40,12 @@ interface CanvasPhase {
  * straight onto saved previews (→ deliverable_url, ClickUp-mirrored); text
  * editing goes through chat (highlight-to-edit lands next).
  */
-export const BuilderCanvas = ({ campaignId, refreshKey, draft }: BuilderCanvasProps) => {
+export const BuilderCanvas = ({
+  campaignId,
+  refreshKey,
+  draft,
+  onRequestEdit,
+}: BuilderCanvasProps) => {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const navigate = useNavigate()
@@ -47,6 +56,9 @@ export const BuilderCanvas = ({ campaignId, refreshKey, draft }: BuilderCanvasPr
   // Bumped after our own writes (media upload/remove) — refetch without a save event.
   const [localRefresh, setLocalRefresh] = useState(0)
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  // Highlight-to-edit over the preview (saved assets only — drafts have no row to edit).
+  const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
 
   const saved = Boolean(campaignId)
 
@@ -95,6 +107,54 @@ export const BuilderCanvas = ({ campaignId, refreshKey, draft }: BuilderCanvasPr
   const assets = activePhase?.assets ?? []
   const current = assets[Math.min(assetIdx, Math.max(0, assets.length - 1))]
   const spec = current ? assetToCreativeSpec(current.asset, current.channel) : null
+
+  // Clear a lingering highlight when the displayed asset changes.
+  useEffect(() => {
+    setSelection(null)
+  }, [activePhaseKey, assetIdx, refreshKey, localRefresh])
+
+  const canEditText = saved && Boolean(onRequestEdit) && Boolean(current)
+
+  const handleMouseUp = useCallback(() => {
+    if (!canEditText) return
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      setSelection(null)
+      return
+    }
+    const text = sel.toString().trim()
+    if (!text) {
+      setSelection(null)
+      return
+    }
+    const range = sel.getRangeAt(0)
+    if (!previewRef.current?.contains(range.commonAncestorContainer)) return
+    setSelection({ rect: range.getBoundingClientRect(), text })
+  }, [canEditText])
+
+  const closeToolbar = useCallback(() => {
+    setSelection(null)
+    window.getSelection()?.removeAllRanges()
+  }, [])
+
+  const submitEdit = useCallback(
+    (instruction: string) => {
+      if (!selection || !current || !campaignId || !onRequestEdit) return
+      onRequestEdit(instruction, {
+        asset_id: current.asset.asset_id,
+        campaign_id: campaignId,
+        asset_name: current.asset.asset_name,
+        fields: {
+          key_message: current.asset.key_message,
+          cta: current.asset.cta,
+          headline: current.asset.headline ?? null,
+        },
+        selection: { text: selection.text },
+      })
+      closeToolbar()
+    },
+    [selection, current, campaignId, onRequestEdit, closeToolbar]
+  )
 
   // Media uploads land on the asset's deliverable_url (approved-creative field) —
   // ClickUp "Final Asset" mirrors and the campaign page stay in step automatically.
@@ -247,14 +307,16 @@ export const BuilderCanvas = ({ campaignId, refreshKey, draft }: BuilderCanvasPr
             </div>
 
             {spec ? (
-              <CreativePreview
-                spec={spec}
-                brandName={activeWorkspace?.name}
-                // Uploads need a real asset row — drafts become uploadable once saved.
-                onUploadMedia={saved ? uploadMedia : undefined}
-                onRemoveMedia={saved ? removeMedia : undefined}
-                isUploadingMedia={isUploadingMedia}
-              />
+              <div ref={previewRef} onMouseUp={handleMouseUp}>
+                <CreativePreview
+                  spec={spec}
+                  brandName={activeWorkspace?.name}
+                  // Uploads need a real asset row — drafts become uploadable once saved.
+                  onUploadMedia={saved ? uploadMedia : undefined}
+                  onRemoveMedia={saved ? removeMedia : undefined}
+                  isUploadingMedia={isUploadingMedia}
+                />
+              </div>
             ) : (
               /* Channels without a faithful mock yet (email, display) — plain card. */
               <div className="rounded-xl border border-tertiary bg-secondary/40 px-4 py-3 flex flex-col gap-1.5">
@@ -274,6 +336,16 @@ export const BuilderCanvas = ({ campaignId, refreshKey, draft }: BuilderCanvasPr
           </div>
         )}
       </div>
+
+      {/* Highlight → ask Mia (saved assets only) */}
+      {selection && canEditText && (
+        <HighlightToolbar
+          anchorRect={selection.rect}
+          selectionText={selection.text}
+          onSubmit={submitEdit}
+          onClose={closeToolbar}
+        />
+      )}
     </aside>
   )
 }
