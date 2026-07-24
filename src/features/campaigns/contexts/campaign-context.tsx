@@ -16,6 +16,8 @@ export interface CampaignWorkspaceValue {
   list: CampaignSummary[]
   setList: React.Dispatch<React.SetStateAction<CampaignSummary[]>>
   reloadList: () => Promise<void>
+  /** Open the asset canvas slide-over (platform preview + role-gated editing). */
+  openAssetPreview: (assetId: string) => void
 }
 
 const CampaignWorkspaceContext = createContext<CampaignWorkspaceValue | null>(null)

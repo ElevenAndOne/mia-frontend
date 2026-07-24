@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { useState, type FC } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../components/app-shell'
 import { TopBar } from '../components/top-bar'
@@ -11,6 +11,7 @@ import { useCampaignDetail } from '../features/campaigns/hooks/use-campaign-deta
 import { OverviewView } from '../features/campaigns/views/overview-view'
 import { CalendarView } from '../features/campaigns/views/calendar-view'
 import { BuilderView } from '../features/campaigns/views/builder-view'
+import { AssetPreviewPanel } from '../features/campaigns/components/asset-preview-panel'
 import type { CampaignView } from '../features/campaigns/types'
 
 const VIEWS: Record<CampaignView, FC> = {
@@ -36,6 +37,8 @@ const CampaignWorkspacePage = () => {
   } = useAppShellActions()
   const { list, setList, reload: reloadList } = useCampaignList()
   const { campaign, setCampaign, loading, error, reload: reloadDetail } = useCampaignDetail(campaignId)
+  // Asset canvas slide-over — openable from any view (asset cards, calendar events).
+  const [previewAssetId, setPreviewAssetId] = useState<string | null>(null)
 
   const ViewComponent = view && view in VIEWS ? VIEWS[view as CampaignView] : null
 
@@ -51,9 +54,12 @@ const CampaignWorkspacePage = () => {
     if (!ViewComponent || !sessionId || !tenantId) return null
     return (
       <CampaignWorkspaceProvider
-        value={{ tenantId, sessionId, campaign, setCampaign, reloadDetail, list, setList, reloadList }}
+        value={{ tenantId, sessionId, campaign, setCampaign, reloadDetail, list, setList, reloadList, openAssetPreview: setPreviewAssetId }}
       >
         <ViewComponent />
+        {previewAssetId && (
+          <AssetPreviewPanel assetId={previewAssetId} onClose={() => setPreviewAssetId(null)} />
+        )}
       </CampaignWorkspaceProvider>
     )
   }

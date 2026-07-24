@@ -11,7 +11,7 @@ const todayIso = () => {
 }
 
 export const CalendarView = () => {
-  const { campaign } = useCampaignWorkspace()
+  const { campaign, openAssetPreview } = useCampaignWorkspace()
   const events = useMemo(() => buildCalendarEvents(campaign), [campaign])
   const channels = useMemo(() => eventChannels(events), [events])
   const months = useMemo(() => eventMonths(events), [events])
@@ -68,7 +68,7 @@ export const CalendarView = () => {
             prevDisabled={idx <= 0}
             nextDisabled={idx >= months.length - 1}
           />
-          <CalendarGrid cells={grid} />
+          <CalendarGrid cells={grid} onOpenAsset={openAssetPreview} />
           <div className="flex items-center justify-between px-1 flex-wrap gap-2">
             <p className="paragraph-xs text-quaternary">Toggle channels above to filter what shows on each date. Hover a post for details.</p>
             <p className="paragraph-xs text-quaternary cw-mono">{visibleTotal} posts visible</p>

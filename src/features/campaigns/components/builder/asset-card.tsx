@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
+import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import type { Asset, AssetStatus } from '../../types'
 
 const ASSET_TYPES = [
@@ -44,6 +45,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     onPatch({ details: { ...details, [key]: value || undefined } })
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const { openAssetPreview } = useCampaignWorkspace()
 
   return (
     <div className="rounded-xl border border-secondary bg-primary p-3.5 space-y-3">
@@ -55,6 +57,14 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             className="paragraph-sm text-primary font-semibold"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => openAssetPreview(asset.asset_id)}
+          className="px-2 py-1 border border-tertiary rounded-lg text-xs text-secondary hover:bg-tertiary transition-colors"
+          title="Open the platform preview canvas"
+        >
+          Preview
+        </button>
         <select
           value={asset.status ?? 'draft'}
           onChange={(e) => onPatch({ status: e.target.value as AssetStatus })}

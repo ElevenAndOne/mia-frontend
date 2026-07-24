@@ -14,6 +14,8 @@ export interface CalendarEvent {
   type: string | null
   typeColor: string
   name: string
+  /** Opens the asset canvas slide-over from the calendar. */
+  assetId: string
 }
 
 export function buildCalendarEvents(campaign: CampaignDetail): CalendarEvent[] {
@@ -34,6 +36,7 @@ export function buildCalendarEvents(campaign: CampaignDetail): CalendarEvent[] {
           type: a.asset_type,
           typeColor: assetTypeColor(a.asset_type),
           name: a.asset_name,
+          assetId: a.asset_id,
         })
       }
     }

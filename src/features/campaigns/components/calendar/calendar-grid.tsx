@@ -29,7 +29,14 @@ const EventChip = ({
   </div>
 )
 
-export const CalendarGrid = ({ cells }: { cells: DayCell[] }) => {
+export const CalendarGrid = ({
+  cells,
+  onOpenAsset,
+}: {
+  cells: DayCell[]
+  /** Open the asset canvas slide-over for a clicked event. */
+  onOpenAsset?: (assetId: string) => void
+}) => {
   const scheduled = cells.filter((c) => c.inMonth && c.events.length > 0)
 
   return (
@@ -138,9 +145,11 @@ export const CalendarGrid = ({ cells }: { cells: DayCell[] }) => {
               </div>
               <div className="flex flex-col gap-1">
                 {cell.events.map((e, i) => (
-                  <div
+                  <button
                     key={i}
-                    className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1"
+                    type="button"
+                    onClick={() => onOpenAsset?.(e.assetId)}
+                    className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left w-full cursor-pointer"
                     style={{ background: softColor(e.color, 13), border: `1px solid ${softColor(e.color, 38)}` }}
                   >
                     <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: e.color }} />
@@ -151,8 +160,9 @@ export const CalendarGrid = ({ cells }: { cells: DayCell[] }) => {
                         {e.type ? ` · ${e.type}` : ''}
                       </span>
                       <span className="block paragraph-xs font-semibold text-primary mt-0.5">{e.name}</span>
+                      <span className="block paragraph-xs text-quaternary mt-0.5">Click to preview & edit</span>
                     </span>
-                  </div>
+                  </button>
                 ))}
                 {cell.moreCount > 0 && (
                   <span className="paragraph-xs text-quaternary pl-1">+{cell.moreCount} more</span>
