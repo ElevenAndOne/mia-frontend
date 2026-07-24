@@ -155,6 +155,39 @@ export const patchAsset = (s: string, t: string, id: string, assetId: string, fi
 export const deleteAsset = (s: string, t: string, id: string, assetId: string) =>
   apiFetch(`${base(t)}/${id}/assets/${assetId}`, { method: 'DELETE', headers: auth(s) })
 
+/** Campaign built by a builder-chat conversation (canvas restore for past builds). */
+export const fetchCampaignByConversation = async (
+  s: string,
+  t: string,
+  conversationId: string,
+): Promise<string | null> => {
+  const res = await apiFetch(`${base(t)}/by-conversation/${conversationId}`, {
+    headers: auth(s),
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.campaign_id ?? null
+}
+
+/** Upload a creative image for an asset — appended to deliverable_url (ClickUp "Final Asset"). */
+export const uploadAssetMedia = async (
+  s: string,
+  t: string,
+  id: string,
+  assetId: string,
+  file: File,
+): Promise<{ url: string; deliverable_url: string }> => {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch(`${base(t)}/${id}/assets/${assetId}/media`, {
+    method: 'POST',
+    headers: auth(s),
+    body: form,
+  })
+  if (!res.ok) throw new Error('Failed to upload image')
+  return res.json()
+}
+
 // ── Ask Mia (inline field suggestion) ─────────────────────────────────────
 
 export interface SuggestFieldBody {

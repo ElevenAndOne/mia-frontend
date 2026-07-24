@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { Copy01 } from '../../../components/icon/copy-01'
@@ -9,6 +9,8 @@ import { XClose } from '../../../components/icon/x-close'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import type { CanvasDocument, DocumentSelection } from '../services/chat-service'
 import { HighlightToolbar } from './highlight-toolbar'
+import { CreativePreview } from './previews/creative-preview'
+import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
 
 interface CanvasPaneProps {
   document: CanvasDocument
@@ -31,6 +33,13 @@ interface CanvasPaneProps {
   onSelectVersion: (version: CanvasDocument) => void
   /** Optional voice-to-edit passthrough for the toolbar. */
   onDictateEdit?: () => void
+  /** Workspace/brand name shown in the platform-native previews. */
+  brandName?: string
+  /** Upload image(s) into the active document's media slot. */
+  onUploadMedia?: (files: File[]) => void
+  /** Remove an uploaded image (by URL) from the active document. */
+  onRemoveMedia?: (url: string) => void
+  isUploadingMedia?: boolean
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -58,11 +67,18 @@ export const CanvasPane = ({
   onFetchVersions,
   onSelectVersion,
   onDictateEdit,
+  brandName,
+  onUploadMedia,
+  onRemoveMedia,
+  isUploadingMedia = false,
 }: CanvasPaneProps) => {
   const [mode, setMode] = useState<Mode>('view')
   const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const [showVersions, setShowVersions] = useState(false)
   const [versions, setVersions] = useState<CanvasDocument[]>([])
+  /** Platform preview ↔ raw text, for docs that parse into a CreativeSpec. */
+  const [rawView, setRawView] = useState(false)
+  const spec = useMemo(() => parseCreativeSpec(doc), [doc])
   const bodyRef = useRef<HTMLDivElement>(null)
   const versionMenuRef = useRef<HTMLDivElement>(null)
   const { copied, copy } = useClipboard()
@@ -128,9 +144,11 @@ export const CanvasPane = ({
     setMode('view')
     setSelection(null)
     setShowVersions(false)
+    setRawView(false)
   }, [activeId])
 
-  const typeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
+  const baseTypeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
+  const typeLabel = spec ? `${baseTypeLabel} · ${PLATFORM_LABELS[spec.platform]}` : baseTypeLabel
   // The tab list holds the LATEST version per document; if what we're showing is behind it,
   // the user has checked out an older version.
   const latestVersion = documents.find((d) => d.id === activeId)?.version ?? doc.version
@@ -182,6 +200,28 @@ export const CanvasPane = ({
                 v{doc.version}
                 <ChevronDown size={12} />
               </button>
+              {spec && mode === 'view' && (
+                <div className="flex items-center rounded-full bg-tertiary p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setRawView(false)}
+                    className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
+                      !rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                    }`}
+                  >
+                    {spec.isPaid ? 'Ad' : 'Post'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRawView(true)}
+                    className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
+                      rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                    }`}
+                  >
+                    Text
+                  </button>
+                </div>
+              )}
               {isSaving && <span className="paragraph-sm text-quaternary">Saving…</span>}
             </div>
           </div>
@@ -288,7 +328,17 @@ export const CanvasPane = ({
       <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6">
         {mode === 'view' ? (
           <div ref={bodyRef} onMouseUp={handleMouseUp} className="max-w-[640px] mx-auto">
-            <ChatMarkdown content={doc.content} />
+            {spec && !rawView ? (
+              <CreativePreview
+                spec={spec}
+                brandName={brandName}
+                onUploadMedia={onUploadMedia}
+                onRemoveMedia={onRemoveMedia}
+                isUploadingMedia={isUploadingMedia}
+              />
+            ) : (
+              <ChatMarkdown content={doc.content} />
+            )}
           </div>
         ) : (
           <textarea

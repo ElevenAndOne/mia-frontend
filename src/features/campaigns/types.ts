@@ -49,6 +49,7 @@ export interface Asset {
   headline?: string | null // ad headline next to the CTA (defaults to asset name)
   clickup_task_url?: string | null // set once the ad has been pushed to ClickUp
   meta_ad_id?: string | null // set after push-to-Meta
+  source_conversation_id?: string | null // builder chat that created this asset ("open original chat")
 }
 
 export interface ChannelAction {

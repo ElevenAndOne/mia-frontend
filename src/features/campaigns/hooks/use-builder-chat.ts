@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
@@ -13,20 +12,23 @@ import {
   type RecentConversation,
 } from '../../chat/services/chat-service'
 import { useThinkingPhrase } from '../../chat/hooks/use-thinking-phrase'
-import { fetchCampaignList } from '../services/campaign-api'
+import { fetchCampaignByConversation, fetchCampaignList } from '../services/campaign-api'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
 // Drives the empty-state "Build a campaign" chat. Streams Mia's reply, supports
-// PDF/Markdown brief upload, lists past builds, and navigates into the new
-// campaign's Builder once one is saved.
+// PDF/Markdown brief upload, lists past builds, and opens the builder canvas
+// beside the chat as phases are saved (the user stays in the conversation).
 export function useBuilderChat() {
   const { sessionId, activeWorkspace, user } = useSession()
   const { showToast } = useToast()
   const tenantId = activeWorkspace?.tenant_id
-  const navigate = useNavigate()
 
   const [messages, setMessages] = useState<Message[]>([])
+  // The campaign being built this conversation — set by the campaign_saved stream
+  // event (or the poll fallback); drives the canvas pane beside the chat.
+  const [builtCampaignId, setBuiltCampaignId] = useState<string | null>(null)
+  const [canvasRefresh, setCanvasRefresh] = useState(0)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   // Empty → rotating whimsical phrase; a real backend status (e.g. "Building your
@@ -70,17 +72,25 @@ export function useBuilderChat() {
     return conversationId.current
   }
 
+  // A phase (or whole campaign) was saved — open/refresh the canvas pane. The user
+  // stays in the chat; "Open in builder" in the canvas header navigates when ready.
+  const handleCampaignSaved = useCallback((campaignId: string) => {
+    knownIds.current.add(campaignId)
+    clearTrackerCache()
+    clearCampaignDetailCache()
+    setBuiltCampaignId(campaignId)
+    setCanvasRefresh((n) => n + 1)
+  }, [])
+
+  // Fallback for the rare turn where the stream event is missed (e.g. disconnect
+  // mid-save): diff the campaign list and populate the canvas the same way.
   const pollForSavedCampaign = useCallback(async () => {
     if (!sessionId || !tenantId) return
     const list = await fetchCampaignList(sessionId, tenantId).catch(() => null)
     if (!list) return
     const created = list.find((c) => !knownIds.current.has(c.campaign_id))
-    if (created) {
-      clearTrackerCache()
-      clearCampaignDetailCache()
-      navigate(`/campaigns/${created.campaign_id}/builder`)
-    }
-  }, [sessionId, tenantId, navigate])
+    if (created) handleCampaignSaved(created.campaign_id)
+  }, [sessionId, tenantId, handleCampaignSaved])
 
   const runStream = useCallback(
     async (content: string, documents?: AttachedDocument[]) => {
@@ -128,6 +138,8 @@ export function useBuilderChat() {
                 displayIndexRef.current = receivedRef.current.length
                 setStreaming(receivedRef.current)
               }
+            } else if (chunk.campaign_saved?.campaign_id) {
+              handleCampaignSaved(chunk.campaign_saved.campaign_id)
             } else if (chunk.status && chunk.status !== 'thinking') setThinking(chunk.status)
           },
         )
@@ -148,7 +160,7 @@ export function useBuilderChat() {
         setStreaming('')
       }
     },
-    [sessionId, user, messages, pollForSavedCampaign],
+    [sessionId, user, messages, pollForSavedCampaign, handleCampaignSaved],
   )
 
   const send = useCallback(
@@ -200,12 +212,26 @@ export function useBuilderChat() {
     }
     setMessages(msgs.map((m) => ({ role: m.role, content: m.content })))
     conversationId.current = convId
-  }, [sessionId, showToast])
+    // Restore the canvas: assets record the conversation that built them, so a
+    // saved past build reopens with its campaign canvas beside the chat.
+    setBuiltCampaignId(null)
+    if (tenantId) {
+      const campaignId = await fetchCampaignByConversation(sessionId, tenantId, convId).catch(
+        () => null,
+      )
+      if (campaignId) {
+        knownIds.current.add(campaignId)
+        setBuiltCampaignId(campaignId)
+        setCanvasRefresh((n) => n + 1)
+      }
+    }
+  }, [sessionId, tenantId, showToast])
 
   const startFresh = useCallback(() => {
     setMessages([])
     setStreaming('')
     conversationId.current = null
+    setBuiltCampaignId(null)
   }, [])
 
   const thinkingPhrase = useThinkingPhrase(loading && !thinking)
@@ -213,5 +239,6 @@ export function useBuilderChat() {
   return {
     messages, input, setInput, loading, thinking: thinking || thinkingPhrase, streaming, pdfUploading,
     pastBuilds, send, handlePdf, openHistory, loadPastBuild, startFresh,
+    builtCampaignId, canvasRefresh,
   }
 }

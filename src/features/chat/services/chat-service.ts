@@ -233,9 +233,16 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
   return response.json() as Promise<ChatResponse>
 }
 
+/** Emitted by the campaign builder each time Mia saves a phase (builder canvas). */
+export interface CampaignSavedEvent {
+  campaign_id: string
+  campaign_name?: string
+  phases_saved?: string[]
+}
+
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
@@ -429,6 +436,26 @@ export const fetchDocumentVersions = async (
     ...v,
     id: documentId,
   }))
+}
+
+/** Upload an image into a canvas document's media slot → its public URL. */
+export const uploadCanvasDocumentMedia = async (
+  sessionId: string,
+  documentId: string,
+  conversationId: string,
+  file: File
+): Promise<string> => {
+  const form = new FormData()
+  form.append('conversation_id', conversationId)
+  form.append('file', file)
+  const response = await apiFetch(`/api/chat/v2/documents/${documentId}/media`, {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+    body: form,
+  })
+  if (!response.ok) throw new Error(`Failed to upload image (${response.status})`)
+  const data = await response.json()
+  return data.url as string
 }
 
 /** Persist the user's own edit to a canvas document as a new version. */
