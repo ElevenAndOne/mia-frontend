@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
-import type { Asset, AssetStatus } from '../../types'
+import { useCampaignWorkspace } from '../../contexts/campaign-context'
+import { DrivePickerModal } from './drive-picker-modal'
+import { creativeThumbnail, isDriveFolderUrl, splitCreativeUrls } from '../../utils/drive'
+import type { Asset, AssetStatus, DriveFile } from '../../types'
 
 const ASSET_TYPES = [
   'static', 'carousel', 'reel', 'animation', 'email', 'video', 'post_series',
@@ -44,6 +47,39 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     onPatch({ details: { ...details, [key]: value || undefined } })
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const { openAssetPreview } = useCampaignWorkspace()
+
+  // ── Drive creative picker ──────────────────────────────────────────────
+  // deliverable_url either holds a Drive *folder* link (from ClickUp sync or
+  // hand-paste → offer the picker) or the picked direct-download URLs, one per
+  // line in carousel-card order. The folder link survives in details so the
+  // picker can be reopened after a selection replaces it.
+  const creativeUrls = splitCreativeUrls(asset.deliverable_url)
+  const mediaUrls = creativeUrls.filter((u) => !isDriveFolderUrl(u))
+  const driveFolder =
+    creativeUrls.find(isDriveFolderUrl) ??
+    (typeof details.drive_folder_url === 'string' ? details.drive_folder_url : undefined)
+  const maxSelect = asset.asset_type === 'carousel' ? 10 : 1
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [dragFrom, setDragFrom] = useState<number | null>(null)
+
+  const savePicked = (files: DriveFile[]) => {
+    setPickerOpen(false)
+    if (!files.length) return
+    onPatch({
+      deliverable_url: files.map((f) => f.download_url).join('\n'),
+      details: { ...details, drive_folder_url: driveFolder },
+    })
+  }
+
+  const reorderMedia = (to: number) => {
+    if (dragFrom == null || dragFrom === to) return
+    const next = [...mediaUrls]
+    const [moved] = next.splice(dragFrom, 1)
+    next.splice(to, 0, moved)
+    setDragFrom(to)
+    onPatch({ deliverable_url: next.join('\n') })
+  }
 
   return (
     <div className="rounded-xl border border-secondary bg-primary p-3.5 space-y-3">
@@ -55,6 +91,14 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             className="paragraph-sm text-primary font-semibold"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => openAssetPreview(asset.asset_id)}
+          className="px-2 py-1 border border-tertiary rounded-lg text-xs text-secondary hover:bg-tertiary transition-colors"
+          title="Open the platform preview canvas"
+        >
+          Preview
+        </button>
         <select
           value={asset.status ?? 'draft'}
           onChange={(e) => onPatch({ status: e.target.value as AssetStatus })}
@@ -205,11 +249,55 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           <EditableText
             value={asset.deliverable_url ?? ''}
             onSave={(v) => onPatch({ deliverable_url: v || null })}
-            placeholder="Drive link — carousels: one image URL per line"
+            placeholder="Drive folder link — or one image URL per line"
             className="paragraph-xs text-secondary break-all"
           />
+          {mediaUrls.length > 0 && (
+            <div className="flex gap-1.5 mt-1.5 overflow-x-auto pb-1" onDragOver={(e) => e.preventDefault()}>
+              {mediaUrls.map((u, i) => (
+                <div
+                  key={u}
+                  draggable={mediaUrls.length > 1}
+                  onDragStart={() => setDragFrom(i)}
+                  onDragEnter={() => reorderMedia(i)}
+                  onDragEnd={() => setDragFrom(null)}
+                  title={mediaUrls.length > 1 ? `Card ${i + 1} — drag to reorder` : undefined}
+                  className={`relative shrink-0 w-12 h-12 rounded-md overflow-hidden border border-secondary ${
+                    mediaUrls.length > 1 ? 'cursor-grab' : ''
+                  } ${dragFrom === i ? 'opacity-50' : ''}`}
+                >
+                  <img src={creativeThumbnail(u, 120)} alt="" loading="lazy" className="w-full h-full object-cover bg-tertiary" />
+                  {mediaUrls.length > 1 && (
+                    <span className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white label-xs font-bold">
+                      {i + 1}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {driveFolder && (
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="mt-1.5 inline-flex items-center gap-1 label-xs font-semibold text-utility-brand-600 hover:underline"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+              </svg>
+              {mediaUrls.length > 0 ? 'Change Drive selection' : 'Choose creatives from Drive'}
+            </button>
+          )}
         </div>
       </div>
+
+      {pickerOpen && driveFolder && (
+        <DrivePickerModal
+          folderUrl={driveFolder}
+          maxSelect={maxSelect}
+          onSave={savePicked}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -311,6 +311,10 @@ export const ChatView = ({
              canUndo={canvas.canUndo}
              onFetchVersions={canvas.fetchVersions}
              onSelectVersion={canvas.viewVersion}
+             brandName={activeWorkspace?.name}
+             onUploadMedia={canvas.uploadMedia}
+             onRemoveMedia={canvas.removeMedia}
+             isUploadingMedia={canvas.isUploadingMedia}
            />
          </div>
        )}

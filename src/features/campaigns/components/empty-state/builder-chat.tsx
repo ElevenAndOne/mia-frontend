@@ -1,17 +1,38 @@
-import { useEffect, useRef, type WheelEvent } from 'react'
+import { useEffect, useMemo, useRef, type WheelEvent } from 'react'
 import { ChatMarkdown } from '../../../../components/chat-markdown'
 import { ChatComposer } from './chat-composer'
 import { BuildHistoryMenu } from './build-history-menu'
+import { BuilderCanvas } from './builder-canvas'
 import { useBuilderChat } from '../../hooks/use-builder-chat'
+import { parsePlanDraft, type DraftPhase } from '../../utils/plan-draft'
 
-// Empty-state "Build a campaign" surface: chat with Mia or upload a brief. On a
-// successful save the hook navigates into the new campaign's Builder.
+// Empty-state "Build a campaign" surface: chat with Mia or upload a brief. As
+// Mia saves phases, the builder canvas opens beside the chat and fills with
+// platform-native previews of the saved assets (the user stays in the chat).
 export const BuilderChat = () => {
   const c = useBuilderChat()
   const fileInput = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const started = c.messages.length > 0 || c.loading
+
+  // Draft canvas: parse the plan proposal (live stream first, else the newest
+  // assistant message that contains asset bullets) until the campaign is saved.
+  const draft: DraftPhase[] | null = useMemo(() => {
+    if (c.builtCampaignId) return null
+    if (c.streaming) {
+      const live = parsePlanDraft(c.streaming)
+      if (live.length > 0) return live
+    }
+    for (let i = c.messages.length - 1; i >= 0; i--) {
+      const m = c.messages[i]
+      if (m.role !== 'assistant') continue
+      const parsed = parsePlanDraft(m.content)
+      if (parsed.length > 0) return parsed
+    }
+    return null
+  }, [c.builtCampaignId, c.streaming, c.messages])
+  const showCanvas = Boolean(c.builtCampaignId || (draft && draft.length > 0))
 
   // Follow the stream ONLY while the user is parked at the bottom. Any upward intent
   // (wheel-up or an upward scroll delta) pauses following so they can read back while
@@ -50,7 +71,8 @@ export const BuilderChat = () => {
   }, [c.messages, c.streaming])
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 flex-1 min-w-0">
       <input ref={fileInput} type="file" accept="application/pdf,text/markdown,.md,.markdown" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void c.handlePdf(f); e.target.value = '' }} />
 
@@ -120,6 +142,20 @@ export const BuilderChat = () => {
       {!c.pdfUploading && (
         <ChatComposer value={c.input} onChange={c.setInput} onSend={() => c.send()} disabled={c.loading} />
       )}
+    </div>
+
+    {/* Builder canvas — opens as soon as the plan proposal streams asset bullets
+        (draft previews), then swaps to real saved assets once the user confirms. */}
+    {showCanvas && (
+      <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
+        <BuilderCanvas
+          campaignId={c.builtCampaignId}
+          refreshKey={c.canvasRefresh}
+          draft={draft}
+          onRequestEdit={c.sendAssetEdit}
+        />
+      </div>
+    )}
     </div>
   )
 }

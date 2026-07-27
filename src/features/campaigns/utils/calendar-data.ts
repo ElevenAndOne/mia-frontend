@@ -14,6 +14,8 @@ export interface CalendarEvent {
   type: string | null
   typeColor: string
   name: string
+  /** Opens the asset canvas slide-over from the calendar. */
+  assetId: string
 }
 
 export function buildCalendarEvents(campaign: CampaignDetail): CalendarEvent[] {
@@ -34,6 +36,7 @@ export function buildCalendarEvents(campaign: CampaignDetail): CalendarEvent[] {
           type: a.asset_type,
           typeColor: assetTypeColor(a.asset_type),
           name: a.asset_name,
+          assetId: a.asset_id,
         })
       }
     }
@@ -100,7 +103,10 @@ export function buildMonthGrid(
     cur.setDate(gridStart.getDate() + i)
     const iso = ymd(cur)
     const inMonth = cur.getMonth() === mo - 1
-    const all = inMonth ? byDate.get(iso) ?? [] : []
+    // Out-of-month leading/trailing days still show their events (dimmed with the
+    // cell) — otherwise a post dragged onto e.g. "31 Jul" in the August view
+    // vanishes even though the move succeeded.
+    const all = byDate.get(iso) ?? []
     cells.push({
       iso,
       day: cur.getDate(),

@@ -49,6 +49,7 @@ export interface Asset {
   headline?: string | null // ad headline next to the CTA (defaults to asset name)
   clickup_task_url?: string | null // set once the ad has been pushed to ClickUp
   meta_ad_id?: string | null // set after push-to-Meta
+  source_conversation_id?: string | null // builder chat that created this asset ("open original chat")
 }
 
 export interface ChannelAction {
@@ -258,6 +259,27 @@ export interface MetaAudienceSuggestion {
 }
 
 export interface ClickUpNode { id: string; name: string }
+
+// ── Google Drive creative picker ─────────────────────────────────────────
+
+export interface DriveFile {
+  id: string
+  name: string
+  mime_type: string
+  thumbnail_url: string
+  download_url: string
+  width?: number | null
+  height?: number | null
+}
+
+export interface DriveFolderListing {
+  folder_id: string
+  folder_name: string
+  folders: { id: string; name: string; mime_type: string }[]
+  images: DriveFile[]
+  videos: DriveFile[]
+  other_count: number
+}
 
 export interface ChannelConfig {
   hidden: string[]

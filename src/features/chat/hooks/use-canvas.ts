@@ -3,6 +3,7 @@ import {
   fetchCanvasDocuments,
   fetchDocumentVersions,
   saveDocumentEdit,
+  uploadCanvasDocumentMedia,
   type CanvasDocument,
   type DocumentContext,
   type DocumentSelection,
@@ -43,6 +44,11 @@ export interface CanvasController {
   /** Revert Mia's last rewrite of the active document. */
   undo: () => void
   canUndo: boolean
+  /** Upload image(s) into the active document's media slot (recorded as `Media:` lines). */
+  uploadMedia: (files: File[]) => void
+  /** Remove an uploaded image (its `Media:` line) from the active document. */
+  removeMedia: (url: string) => void
+  isUploadingMedia: boolean
 }
 
 const EDIT_SAVE_DEBOUNCE_MS = 800
@@ -221,6 +227,50 @@ export function useCanvas({
       .finally(() => setIsSaving(false))
   }, [sessionId, conversationId])
 
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+
+  // Upload → store the image(s), then record their URLs as `Media:` lines at the end of the
+  // document. One saveUserEdit per batch (a 3-file drop = one new version, slides in drop order).
+  const uploadMedia = useCallback(
+    async (files: File[]) => {
+      const id = activeIdRef.current
+      const doc = id ? documentsRef.current[id] : null
+      if (!doc || !sessionId || !conversationId || isUploadingMedia || files.length === 0) return
+      setIsUploadingMedia(true)
+      try {
+        const results = await Promise.allSettled(
+          files.map((f) => uploadCanvasDocumentMedia(sessionId, doc.id, conversationId, f))
+        )
+        const urls = results
+          .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+          .map((r) => r.value)
+        if (urls.length === 0) return
+        const current = documentsRef.current[doc.id] ?? doc
+        const mediaLines = urls.map((u) => `Media: ${u}`).join('\n')
+        saveUserEdit(`${current.content.trimEnd()}\n${mediaLines}`)
+      } catch {
+        /* upload failed — slot just stays as it was */
+      } finally {
+        setIsUploadingMedia(false)
+      }
+    },
+    [sessionId, conversationId, isUploadingMedia, saveUserEdit]
+  )
+
+  const removeMedia = useCallback(
+    (url: string) => {
+      const id = activeIdRef.current
+      const doc = id ? documentsRef.current[id] : null
+      if (!doc) return
+      const next = doc.content
+        .split('\n')
+        .filter((line) => !line.includes(url))
+        .join('\n')
+      if (next !== doc.content) saveUserEdit(next)
+    },
+    [saveUserEdit]
+  )
+
   const fetchVersions = useCallback(async (): Promise<CanvasDocument[]> => {
     const id = activeIdRef.current
     if (!id || !sessionId || !conversationId) return []
@@ -268,5 +318,8 @@ export function useCanvas({
     isSaving,
     undo,
     canUndo,
+    uploadMedia,
+    removeMedia,
+    isUploadingMedia,
   }
 }

@@ -1,0 +1,315 @@
+import { useEffect, useRef, useState } from 'react'
+import type { CharCheck, CreativeSpec } from './creative-spec'
+
+export interface MediaHandlers {
+  /** Upload image(s) into this document's media slot — multi-drop = one slide each, in order. */
+  onUploadMedia?: (files: File[]) => void
+  /** Remove an uploaded image (by URL). */
+  onRemoveMedia?: (url: string) => void
+  isUploadingMedia?: boolean
+}
+
+/**
+ * Shared pieces for the platform previews. Platform components use each
+ * platform's real light/dark palette (hardcoded hexes behind the `dark:`
+ * variant); everything Mia-chrome (notes, chips) uses the semantic tokens.
+ */
+
+export const BrandAvatar = ({ name, size = 38 }: { name?: string; size?: number }) => (
+  <div
+    aria-hidden="true"
+    className="rounded-full bg-utility-brand-600 flex items-center justify-center shrink-0 text-white font-semibold"
+    style={{ width: size, height: size, fontSize: size * 0.42 }}
+  >
+    {(name?.trim()[0] ?? 'M').toUpperCase()}
+  </div>
+)
+
+interface MediaSlotProps extends MediaHandlers {
+  visuals: string[]
+  /** Uploaded creative URLs — when present, rendered instead of the placeholder. */
+  media: string[]
+  /** Platform-appropriate frame colors, e.g. FB grey vs IG near-white. */
+  className?: string
+  /** Tailwind aspect class used for the empty placeholder (and cover mode). */
+  aspect?: string
+  carousel?: boolean
+  /** Fill the parent frame (Reel/Story): absolute-positioned, object-cover images. */
+  cover?: boolean
+}
+
+/**
+ * The media slot: renders uploaded creative at its natural ratio (multiple
+ * images = swipeable slides), or Mia's suggested-visual brief until one
+ * exists. Upload = click the + button or drop an image file onto the slot.
+ */
+export const MediaSlot = ({
+  visuals,
+  media,
+  className = '',
+  aspect = 'aspect-[1.91/1]',
+  carousel = false,
+  cover = false,
+  onUploadMedia,
+  onRemoveMedia,
+  isUploadingMedia = false,
+}: MediaSlotProps) => {
+  const [slide, setSlide] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const count = media.length
+
+  useEffect(() => {
+    if (slide >= count) setSlide(Math.max(0, count - 1))
+  }, [count, slide])
+
+  const pickFiles = (files: FileList | null) => {
+    const images = Array.from(files ?? []).filter((f) => f.type.startsWith('image/'))
+    if (images.length > 0) onUploadMedia?.(images)
+  }
+
+  const hasImage = count > 0
+  const frame = cover ? 'absolute inset-0' : hasImage ? '' : aspect
+
+  return (
+    <div
+      className={`${frame} ${className} group/media relative overflow-hidden ${
+        dragging ? 'ring-2 ring-inset ring-utility-brand-600' : ''
+      }`}
+      onDragOver={(e) => {
+        if (!onUploadMedia) return
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        if (!onUploadMedia) return
+        e.preventDefault()
+        setDragging(false)
+        pickFiles(e.dataTransfer.files)
+      }}
+    >
+      {hasImage ? (
+        <img
+          src={media[slide]}
+          alt={`Creative slide ${slide + 1} of ${count}`}
+          className={`${cover ? 'w-full h-full object-cover' : 'w-full h-auto block'} ${
+            count > 1 ? 'cursor-pointer' : ''
+          }`}
+          draggable={false}
+          // Instagram behavior: tapping the creative advances the carousel.
+          onClick={() => count > 1 && setSlide((s) => (s + 1) % count)}
+        />
+      ) : (
+        <div
+          className={`${cover ? 'h-full' : aspect} flex flex-col items-center justify-center gap-1.5 px-8 text-center`}
+        >
+          <span className="text-[10px] uppercase tracking-[0.12em] opacity-60">
+            Suggested visual
+          </span>
+          {visuals.length > 0 ? (
+            <span className="text-[12.5px] italic opacity-90 max-w-[36ch] leading-snug">
+              {visuals[0]}
+              {visuals.length > 1 && (
+                <span className="opacity-60"> +{visuals.length - 1} more slides</span>
+              )}
+            </span>
+          ) : (
+            <span className="text-[12.5px] italic opacity-60">No visual brief yet</span>
+          )}
+          {onUploadMedia && (
+            <span className="text-[10.5px] opacity-50">Drop an image here or click +</span>
+          )}
+        </div>
+      )}
+
+      {/* Slide arrows + dots (only with multiple images) */}
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous slide"
+            onClick={(e) => {
+              e.stopPropagation()
+              setSlide((s) => (s - 1 + count) % count)
+            }}
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center opacity-60 hover:opacity-100 group-hover/media:opacity-100 transition-opacity"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Next slide"
+            onClick={(e) => {
+              e.stopPropagation()
+              setSlide((s) => (s + 1) % count)
+            }}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center opacity-60 hover:opacity-100 group-hover/media:opacity-100 transition-opacity"
+          >
+            ›
+          </button>
+        </>
+      )}
+      {count > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex">
+          {media.map((url, i) => (
+            <button
+              key={`${url}-${i}`}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                setSlide(i)
+              }}
+              className="p-1"
+            >
+              <span
+                className={`block w-1.5 h-1.5 rounded-full bg-white drop-shadow transition-opacity ${
+                  i === slide ? 'opacity-95' : 'opacity-40'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+      {carousel && !hasImage && (
+        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <span
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full bg-current ${i === 0 ? 'opacity-90' : 'opacity-30'}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Upload / remove controls */}
+      {onUploadMedia && (
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            pickFiles(e.target.files)
+            e.target.value = ''
+          }}
+        />
+      )}
+      {onUploadMedia && (
+        <button
+          type="button"
+          aria-label="Upload image"
+          disabled={isUploadingMedia}
+          onClick={(e) => {
+            e.stopPropagation()
+            fileRef.current?.click()
+          }}
+          className={`absolute bottom-2 right-2 h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
+            hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
+          }`}
+        >
+          {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Image'}
+        </button>
+      )}
+      {onRemoveMedia && hasImage && (
+        <button
+          type="button"
+          aria-label="Remove this image"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemoveMedia(media[slide])
+          }}
+          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/45 text-white text-[12px] flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Character-limit chips (Mia chrome — semantic tokens). */
+export const CharCountChips = ({ checks }: { checks: CharCheck[] }) => {
+  if (checks.length === 0) return null
+  return (
+    <div className="flex flex-wrap justify-center gap-1.5">
+      {checks.map((c) => (
+        <span
+          key={c.label}
+          className={`paragraph-sm px-2 py-0.5 rounded-md border tabular-nums ${
+            c.over
+              ? 'border-utility-warning-300 text-utility-warning-600'
+              : 'border-tertiary text-quaternary'
+          }`}
+          title={c.over ? `Over the ${c.limit}-character limit` : undefined}
+        >
+          {c.label} · {c.count}/{c.limit}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Visual-brief notes — redundant once real creative is uploaded (they still show in Text view). */
+const VISUAL_BRIEF_NOTE = /text on (the )?image|on-image text|suggested visual/i
+
+/** Production notes strip below the preview (Format, Best time, Why this works…). */
+export const ProductionNotes = ({ spec }: { spec: CreativeSpec }) => {
+  const hasMedia = spec.media.length > 0
+  const notes = hasMedia ? spec.notes.filter((n) => !VISUAL_BRIEF_NOTE.test(n.label)) : spec.notes
+  const showVisuals = !hasMedia && spec.visuals.length > 1
+  if (notes.length === 0 && !showVisuals) return null
+  return (
+    <div className="w-full max-w-[420px] rounded-xl border border-tertiary bg-secondary/40 px-4 py-3 flex flex-col gap-1.5">
+      {notes.map((n, i) => (
+        <p key={`${n.label}-${i}`} className="paragraph-sm text-tertiary">
+          <span className="font-semibold text-secondary">{n.label}:</span> {n.value}
+        </p>
+      ))}
+      {showVisuals && (
+        <div className="paragraph-sm text-tertiary">
+          <span className="font-semibold text-secondary">Suggested visuals:</span>
+          <ul className="mt-0.5 list-disc pl-4 flex flex-col gap-0.5">
+            {spec.visuals.map((v) => (
+              <li key={v}>{v}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* --- tiny inline platform-look icons (kept local so previews don't depend on the app icon set) --- */
+
+const icon = (path: string, filled = false) =>
+  function PreviewIcon({ size = 20 }: { size?: number }) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth={filled ? 0 : 1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d={path} />
+      </svg>
+    )
+  }
+
+export const HeartIcon = icon(
+  'M20.4 4.6a5.5 5.5 0 0 0-7.8 0L12 5.2l-.6-.6a5.5 5.5 0 0 0-7.8 7.8l.6.6L12 20.8 19.8 13l.6-.6a5.5 5.5 0 0 0 0-7.8Z'
+)
+export const CommentIcon = icon('M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5Z')
+export const SendIcon = icon('M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z')
+export const BookmarkIcon = icon('M19 21 12 16 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z')
+export const ThumbsUpIcon = icon(
+  'M7 10v12M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 7A2 2 0 0 1 17.5 21H7V10l4.4-7.2A2 2 0 0 1 15 5.9Z'
+)
+export const ShareIcon = icon('M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13')

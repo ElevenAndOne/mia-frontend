@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -154,6 +154,56 @@ export const patchAsset = (s: string, t: string, id: string, assetId: string, fi
 
 export const deleteAsset = (s: string, t: string, id: string, assetId: string) =>
   apiFetch(`${base(t)}/${id}/assets/${assetId}`, { method: 'DELETE', headers: auth(s) })
+
+/** Campaign built by a builder-chat conversation (canvas restore for past builds). */
+export const fetchCampaignByConversation = async (
+  s: string,
+  t: string,
+  conversationId: string,
+): Promise<string | null> => {
+  const res = await apiFetch(`${base(t)}/by-conversation/${conversationId}`, {
+    headers: auth(s),
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.campaign_id ?? null
+}
+
+/** Upload a creative image for an asset — appended to deliverable_url (ClickUp "Final Asset"). */
+export const uploadAssetMedia = async (
+  s: string,
+  t: string,
+  id: string,
+  assetId: string,
+  file: File,
+): Promise<{ url: string; deliverable_url: string }> => {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch(`${base(t)}/${id}/assets/${assetId}/media`, {
+    method: 'POST',
+    headers: auth(s),
+    body: form,
+  })
+  if (!res.ok) throw new Error('Failed to upload image')
+  return res.json()
+}
+
+// ── Google Drive creative picker ──────────────────────────────────────────
+
+// Lists a link-shared Drive folder (subfolders + images/videos, natural-sorted).
+// 422s carry a human fix ("share the folder as Anyone with the link…").
+export async function browseDriveFolder(
+  s: string,
+  t: string,
+  folderUrlOrId: string,
+): Promise<DriveFolderListing> {
+  const res = await apiFetch(`${base(t)}/drive/browse?url=${encodeURIComponent(folderUrlOrId)}`, {
+    headers: auth(s),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Drive browse failed (${res.status})`)
+  return body as DriveFolderListing
+}
 
 // ── Ask Mia (inline field suggestion) ─────────────────────────────────────
 
