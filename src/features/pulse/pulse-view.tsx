@@ -145,8 +145,16 @@ function QuestionsChart({ points }: { points: TimeseriesPoint[] }) {
 }
 
 // ---------- detail pane ----------
-function DetailPane({ sessionId, googleUserId }: { sessionId: string | null; googleUserId: string | null }) {
-  const { data, isLoading, error } = useTesterDetail(sessionId, googleUserId)
+function DetailPane({
+  sessionId,
+  googleUserId,
+  filter,
+}: {
+  sessionId: string | null
+  googleUserId: string | null
+  filter: PulseFilter
+}) {
+  const { data, isLoading, error } = useTesterDetail(sessionId, googleUserId, filter)
 
   if (!googleUserId) return <div className="plz-card plz-empty">Select a tester to see their activity.</div>
   if (isLoading) return <div className="plz-card"><Spinner /></div>
@@ -580,7 +588,7 @@ export function PulseView() {
           </div>
 
           {/* detail */}
-          <DetailPane sessionId={sessionId} googleUserId={selectedId} />
+          <DetailPane sessionId={sessionId} googleUserId={selectedId} filter={filter} />
         </div>
 
         {/* topics */}
