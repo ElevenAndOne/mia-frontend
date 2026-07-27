@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { softColor } from '../../utils/channel-colors'
 import type { DayCell } from '../../utils/calendar-data'
 
@@ -32,12 +33,17 @@ const EventChip = ({
 export const CalendarGrid = ({
   cells,
   onOpenAsset,
+  onMoveAsset,
 }: {
   cells: DayCell[]
   /** Open the asset canvas slide-over for a clicked event. */
   onOpenAsset?: (assetId: string) => void
+  /** Drag-to-reschedule: move an asset's date to the dropped day (analyst+). */
+  onMoveAsset?: (assetId: string, newIso: string) => void
 }) => {
   const scheduled = cells.filter((c) => c.inMonth && c.events.length > 0)
+  // Day the dragged event is hovering over (drop-target ring).
+  const [dragOverIso, setDragOverIso] = useState<string | null>(null)
 
   return (
     <div className="bg-secondary-alt border border-secondary rounded-2xl p-4 md:p-5">
@@ -111,6 +117,19 @@ export const CalendarGrid = ({
             <div
               key={cell.iso}
               className="relative min-h-[112px] rounded-xl border p-2 flex flex-col"
+              onDragOver={(e) => {
+                if (!onMoveAsset) return
+                e.preventDefault()
+                setDragOverIso(cell.iso)
+              }}
+              onDragLeave={() => setDragOverIso((d) => (d === cell.iso ? null : d))}
+              onDrop={(e) => {
+                if (!onMoveAsset) return
+                e.preventDefault()
+                setDragOverIso(null)
+                const assetId = e.dataTransfer.getData('text/asset-id')
+                if (assetId) onMoveAsset(assetId, cell.iso)
+              }}
               style={{
                 opacity: cell.inMonth ? 1 : 0.32,
                 background: cell.isToday
@@ -120,7 +139,12 @@ export const CalendarGrid = ({
                       ? 'var(--color-background-secondary-subtle)'
                       : 'var(--color-background-secondary)'
                     : 'var(--color-background-secondary-subtle)',
-                borderColor: cell.isToday ? softColor('#8b6dff', 65) : 'var(--color-border-tertiary)',
+                borderColor:
+                  dragOverIso === cell.iso
+                    ? 'var(--cw-accent, #8b6dff)'
+                    : cell.isToday
+                      ? softColor('#8b6dff', 65)
+                      : 'var(--color-border-tertiary)',
               }}
             >
               <div className="flex items-center justify-between mb-1.5">
@@ -149,6 +173,11 @@ export const CalendarGrid = ({
                     key={i}
                     type="button"
                     onClick={() => onOpenAsset?.(e.assetId)}
+                    draggable={Boolean(onMoveAsset)}
+                    onDragStart={(ev) => {
+                      ev.dataTransfer.setData('text/asset-id', e.assetId)
+                      ev.dataTransfer.effectAllowed = 'move'
+                    }}
                     className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left w-full cursor-pointer"
                     style={{ background: softColor(e.color, 13), border: `1px solid ${softColor(e.color, 38)}` }}
                   >
@@ -160,7 +189,10 @@ export const CalendarGrid = ({
                         {e.type ? ` · ${e.type}` : ''}
                       </span>
                       <span className="block paragraph-xs font-semibold text-primary mt-0.5">{e.name}</span>
-                      <span className="block paragraph-xs text-quaternary mt-0.5">Click to preview & edit</span>
+                      <span className="block paragraph-xs text-quaternary mt-0.5">
+                        Click to preview & edit
+                        {onMoveAsset ? ' · drag to reschedule' : ''}
+                      </span>
                     </span>
                   </button>
                 ))}
