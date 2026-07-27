@@ -28,6 +28,7 @@ const ReportPrintPage = lazy(() => import('../features/reports/report-print-page
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
+const InternalPulsePage = lazy(() => import('../pages/internal-pulse-page'))
 
 const LazyLoadSpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -305,6 +306,20 @@ export const AppRoutes = ({
             <ProtectedRoute requireAccount>
               <ErrorBoundary>
                 <CreativeStudioPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Internal-only beta-usage dashboard ("Mia Pulse"). Auth-gated here; the
+            backend PULSE_ADMIN_EMAILS allowlist is the real access control. No account
+            selection needed — it's a cross-tenant admin view. */}
+        <Route
+          path="/internal/pulse"
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <InternalPulsePage />
               </ErrorBoundary>
             </ProtectedRoute>
           }
