@@ -62,6 +62,19 @@ function formatDuration(seconds: number): string {
   return `${m}m ${s}s`
 }
 
+function formatMoney(usd: number): string {
+  if (!usd) return '$0.00'
+  if (usd >= 100) return `$${Math.round(usd).toLocaleString()}`
+  return `$${usd.toFixed(2)}`
+}
+
+function formatTokens(n: number): string {
+  if (!n) return '0'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
+
 const STATUS_LABEL: Record<TesterStatus, string> = {
   active: 'Active',
   idle: 'Idle',
@@ -106,7 +119,8 @@ function DeltaLine({ metric, unit }: { metric: Metric | { value: number; delta: 
   if (d === 0) return <div className="plz-delta plz-flat">no change</div>
   const up = d > 0
   const abs = Math.abs(d)
-  const val = unit === 'sec' ? formatDuration(abs) : `${abs}${unit === 'pct' ? '%' : ''}`
+  const val =
+    unit === 'sec' ? formatDuration(abs) : unit === 'usd' ? formatMoney(abs) : `${abs}${unit === 'pct' ? '%' : ''}`
   return (
     <div className={`plz-delta ${up ? 'plz-up' : 'plz-down'}`}>
       {up ? '▲' : '▼'} {val} vs prev
@@ -192,6 +206,10 @@ function DetailPane({
         <div>
           <div className="v plz-num">{data.days_on_beta ?? '—'}d</div>
           <div className="l">On beta</div>
+        </div>
+        <div title={`${formatTokens(data.counters.tokens)} tokens (tracked turns)`}>
+          <div className="v plz-num">{formatMoney(data.counters.est_cost_usd)}</div>
+          <div className="l">Est. cost</div>
         </div>
       </div>
 
@@ -515,6 +533,17 @@ export function PulseView() {
             <div className="plz-val plz-num">{ov ? formatDuration(ov.median_session_seconds.value) : '—'}</div>
             {ov && <DeltaLine metric={ov.median_session_seconds} unit="sec" />}
           </div>
+          <div
+            className="plz-card plz-kpi"
+            title="Estimated Anthropic API spend for chat turns. Token usage is recorded from 27 Jul 2026 — earlier questions aren't counted."
+          >
+            <div className="plz-lab">Est. LLM cost</div>
+            <div className="plz-val plz-num">
+              {ov ? formatMoney(ov.est_cost_usd.value) : '—'}
+              {ov && <small> {formatTokens(ov.tokens.value)} tok</small>}
+            </div>
+            {ov && <DeltaLine metric={ov.est_cost_usd} unit="usd" />}
+          </div>
         </div>
 
         {/* main columns */}
@@ -547,6 +576,7 @@ export function PulseView() {
                     <tr>
                       <th>Tester</th>
                       <th className="r">Questions</th>
+                      <th className="r">Cost</th>
                       <th className="r">Last active</th>
                       <th>Status</th>
                     </tr>
@@ -573,6 +603,12 @@ export function PulseView() {
                           </div>
                         </td>
                         <td className="r plz-big plz-num">{r.questions_in_range}</td>
+                        <td
+                          className="r plz-muted plz-num"
+                          title={`${formatTokens(r.tokens_in_range)} tokens (tracked turns)`}
+                        >
+                          {formatMoney(r.cost_in_range)}
+                        </td>
                         <td className="r plz-muted">{timeAgo(r.last_active)}</td>
                         <td>
                           <StatusPill status={r.status} />
