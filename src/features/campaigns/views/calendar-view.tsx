@@ -15,6 +15,13 @@ const EDIT_ROLES = new Set(['owner', 'admin', 'analyst'])
 const shiftIso = (iso: string, deltaMs: number) =>
   new Date(Date.parse(iso.slice(0, 10)) + deltaMs).toISOString().slice(0, 10)
 
+/** 'YYYY-MM' ± n calendar months — free month navigation (any month, not just event months). */
+const shiftMonth = (month: string, delta: number) => {
+  const [y, mo] = month.split('-').map(Number)
+  const d = new Date(y, mo - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 const todayIso = () => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -95,7 +102,6 @@ export const CalendarView = () => {
 
   const [month, setMonth] = useState<string | null>(null)
   const effectiveMonth = month ?? (months.includes(todayMonth) ? todayMonth : months[0] ?? todayMonth)
-  const idx = months.indexOf(effectiveMonth)
 
   const grid = useMemo(
     () => buildMonthGrid(effectiveMonth, events, effectiveActive, 4, today),
@@ -128,10 +134,10 @@ export const CalendarView = () => {
             onToggle={toggle}
             monthLabel={monthLabel}
             monthPostCount={monthPostCount}
-            onPrev={() => idx > 0 && setMonth(months[idx - 1])}
-            onNext={() => idx < months.length - 1 && setMonth(months[idx + 1])}
-            prevDisabled={idx <= 0}
-            nextDisabled={idx >= months.length - 1}
+            onPrev={() => setMonth(shiftMonth(effectiveMonth, -1))}
+            onNext={() => setMonth(shiftMonth(effectiveMonth, 1))}
+            prevDisabled={false}
+            nextDisabled={false}
           />
           <CalendarGrid cells={grid} onOpenAsset={openAssetPreview} onMoveAsset={canEdit ? moveAsset : undefined} />
           <div className="flex items-center justify-between px-1 flex-wrap gap-2">

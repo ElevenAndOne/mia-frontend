@@ -103,7 +103,10 @@ export function buildMonthGrid(
     cur.setDate(gridStart.getDate() + i)
     const iso = ymd(cur)
     const inMonth = cur.getMonth() === mo - 1
-    const all = inMonth ? byDate.get(iso) ?? [] : []
+    // Out-of-month leading/trailing days still show their events (dimmed with the
+    // cell) — otherwise a post dragged onto e.g. "31 Jul" in the August view
+    // vanishes even though the move succeeded.
+    const all = byDate.get(iso) ?? []
     cells.push({
       iso,
       day: cur.getDate(),

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { softColor } from '../../utils/channel-colors'
 
 interface ChannelChip { channel: string; label: string; color: string }
@@ -17,7 +18,19 @@ interface Props {
 
 export const CalendarControls = ({
   channels, active, monthCounts, onToggle, monthLabel, monthPostCount, onPrev, onNext, prevDisabled, nextDisabled,
-}: Props) => (
+}: Props) => {
+  // Cross-month drag-to-reschedule: hovering a dragged post over ‹ / › flips the
+  // month (throttled so it pages, not races). Drop then lands on the new grid.
+  const lastFlip = useRef(0)
+  const dragFlip = (fn: () => void) => (e: React.DragEvent) => {
+    e.preventDefault()
+    const now = Date.now()
+    if (now - lastFlip.current > 650) {
+      lastFlip.current = now
+      fn()
+    }
+  }
+  return (
   <div className="flex items-center justify-between gap-5 flex-wrap">
     <div className="flex items-center gap-2 flex-wrap">
       <span className="label-xs text-quaternary uppercase tracking-[0.13em] mr-1">Channels</span>
@@ -43,12 +56,13 @@ export const CalendarControls = ({
     </div>
 
     <div className="flex items-center gap-2.5">
-      <button onClick={onPrev} disabled={prevDisabled} className="w-8 h-8 rounded-lg border border-secondary flex items-center justify-center text-tertiary hover:bg-secondary disabled:opacity-35">‹</button>
+      <button onClick={onPrev} onDragOver={dragFlip(onPrev)} disabled={prevDisabled} title="Previous month — hover here while dragging a post to move it across months" className="w-8 h-8 rounded-lg border border-secondary flex items-center justify-center text-tertiary hover:bg-secondary disabled:opacity-35">‹</button>
       <div className="min-w-[150px] text-center">
         <div className="title-h6 text-primary">{monthLabel}</div>
         <div className="paragraph-xs text-quaternary">{monthPostCount} posts scheduled</div>
       </div>
-      <button onClick={onNext} disabled={nextDisabled} className="w-8 h-8 rounded-lg border border-secondary flex items-center justify-center text-tertiary hover:bg-secondary disabled:opacity-35">›</button>
+      <button onClick={onNext} onDragOver={dragFlip(onNext)} disabled={nextDisabled} title="Next month — hover here while dragging a post to move it across months" className="w-8 h-8 rounded-lg border border-secondary flex items-center justify-center text-tertiary hover:bg-secondary disabled:opacity-35">›</button>
     </div>
   </div>
 )
+}
