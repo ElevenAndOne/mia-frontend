@@ -260,6 +260,27 @@ export interface MetaAudienceSuggestion {
 
 export interface ClickUpNode { id: string; name: string }
 
+// ── Google Drive creative picker ─────────────────────────────────────────
+
+export interface DriveFile {
+  id: string
+  name: string
+  mime_type: string
+  thumbnail_url: string
+  download_url: string
+  width?: number | null
+  height?: number | null
+}
+
+export interface DriveFolderListing {
+  folder_id: string
+  folder_name: string
+  folders: { id: string; name: string; mime_type: string }[]
+  images: DriveFile[]
+  videos: DriveFile[]
+  other_count: number
+}
+
 export interface ChannelConfig {
   hidden: string[]
   custom: { key: string; label: string }[]

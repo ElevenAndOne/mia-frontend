@@ -4,6 +4,7 @@ import type {
   PreviewPlatform,
 } from '../../chat/components/previews/creative-spec'
 import type { Asset } from '../types'
+import { creativeThumbnail, driveFileId } from './drive'
 
 /**
  * Campaign Asset → CreativeSpec adapter: the second data source for the shared
@@ -26,12 +27,14 @@ const FORMAT_BY_TYPE: Record<string, PreviewFormat> = {
 
 const IMAGE_URL = /^https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i
 
-/** Direct image URLs from deliverable_url (one per line/comma) — Drive folder links are skipped. */
+/** Renderable image URLs from deliverable_url (one per line/comma) — Drive file
+ * links become their thumbnail form (extension-less), folder links are skipped. */
 const deliverableImages = (deliverableUrl?: string | null): string[] =>
   (deliverableUrl ?? '')
     .split(/[\n,]+/)
     .map((s) => s.trim())
-    .filter((s) => IMAGE_URL.test(s))
+    .filter((s) => IMAGE_URL.test(s) || driveFileId(s))
+    .map((s) => (driveFileId(s) ? creativeThumbnail(s, 1200) : s))
 
 export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec | null => {
   const type = asset.asset_type ?? ''

@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -186,6 +186,23 @@ export const uploadAssetMedia = async (
   })
   if (!res.ok) throw new Error('Failed to upload image')
   return res.json()
+}
+
+// ── Google Drive creative picker ──────────────────────────────────────────
+
+// Lists a link-shared Drive folder (subfolders + images/videos, natural-sorted).
+// 422s carry a human fix ("share the folder as Anyone with the link…").
+export async function browseDriveFolder(
+  s: string,
+  t: string,
+  folderUrlOrId: string,
+): Promise<DriveFolderListing> {
+  const res = await apiFetch(`${base(t)}/drive/browse?url=${encodeURIComponent(folderUrlOrId)}`, {
+    headers: auth(s),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Drive browse failed (${res.status})`)
+  return body as DriveFolderListing
 }
 
 // ── Ask Mia (inline field suggestion) ─────────────────────────────────────
