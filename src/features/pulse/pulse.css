@@ -751,3 +751,137 @@
   padding-left: 8px;
   border-left: 2px solid var(--color-text-warning);
 }
+
+/* ---------- Ask Mia Pulse ---------- */
+.plz-ask {
+  margin-bottom: 18px;
+}
+.plz-ask-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.plz-ask-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.plz-ask-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-quaternary);
+}
+.plz-ask-chev {
+  color: var(--color-text-quaternary);
+  transition: transform 0.15s ease;
+}
+.plz-ask-chev.open {
+  transform: rotate(180deg);
+}
+.plz-ask-body {
+  padding: 0 16px;
+}
+.plz-ask-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+.plz-ask-chip {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.plz-ask-chip:hover {
+  background: var(--color-background-tertiary);
+}
+.plz-ask-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+.plz-ask-q {
+  align-self: flex-end;
+  max-width: 80%;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-background-tertiary);
+  border-radius: 14px;
+  padding: 8px 13px;
+}
+.plz-ask-a {
+  align-self: flex-start;
+  max-width: 95%;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+.plz-ask-a table {
+  font-size: 12.5px;
+}
+.plz-ask-status {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--color-text-quaternary);
+  animation: plz-ask-pulse 1.2s ease-in-out infinite;
+}
+@keyframes plz-ask-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plz-ask-status {
+    animation: none;
+  }
+}
+.plz-ask-inputrow {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+.plz-ask-inputrow input {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 10px;
+  padding: 9px 13px;
+  outline: none;
+}
+.plz-ask-inputrow input:focus {
+  border-color: var(--color-foreground-brand-primary);
+}
+.plz-ask-inputrow button {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--color-foreground-brand-primary);
+  border: none;
+  border-radius: 10px;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+.plz-ask-inputrow button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

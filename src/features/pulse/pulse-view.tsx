@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../contexts/session-context'
+import { AskPulse } from './ask-pulse'
 import { usePulseDashboard, useTesterDetail, useWorkspaces } from './hooks/use-pulse'
 import { PulseError } from './services/pulse-service'
 import type {
@@ -645,6 +646,9 @@ export function PulseView() {
               : ''}
           </span>
         </div>
+
+        {/* Ask Mia Pulse — LLM Q&A grounded in the same analytics as the dashboard */}
+        <AskPulse sessionId={sessionId} range={range} filter={filter} workspaces={wsList} />
 
         {/* KPI strip */}
         <div className="plz-kpis">

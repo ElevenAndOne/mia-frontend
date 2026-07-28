@@ -84,6 +84,64 @@ export const fetchFeedbackSummary = (sessionId: string | null, range: string, fi
     sessionId
   )
 
+// --- Ask Mia Pulse (LLM Q&A over the analytics) ------------------------------
+
+export interface AskChunk {
+  text?: string
+  status?: string
+  done?: boolean
+  error?: string
+}
+
+export interface AskPayload {
+  question: string
+  history?: { role: 'user' | 'assistant'; content: string }[]
+  range?: string
+  tenant_ids?: string[]
+  user_ids?: string[]
+  tenant_names?: string[]
+  user_name?: string
+}
+
+/** Stream an answer from POST /ask. Calls onChunk per SSE event until done/error. */
+export async function askPulse(
+  sessionId: string | null,
+  payload: AskPayload,
+  onChunk: (chunk: AskChunk) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  if (!sessionId) throw new PulseError(401, 'No active session')
+  const resp = await apiFetch(`${BASE}/ask`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json', ...createSessionHeaders(sessionId) },
+    body: JSON.stringify(payload),
+  })
+  if (!resp.ok) {
+    if (resp.status === 403) throw new PulseError(403, 'Not on the Mia Pulse allowlist.')
+    throw new PulseError(resp.status, `Ask failed (${resp.status})`)
+  }
+  const reader = resp.body?.getReader()
+  if (!reader) throw new PulseError(500, 'No response body')
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const events = buffer.split('\n\n')
+    buffer = events.pop() ?? ''
+    for (const evt of events) {
+      if (!evt.startsWith('data: ')) continue
+      try {
+        onChunk(JSON.parse(evt.slice(6)))
+      } catch {
+        // malformed SSE chunk — ignore
+      }
+    }
+  }
+}
+
 export const fetchFeedbackRecent = (
   sessionId: string | null,
   range: string,
