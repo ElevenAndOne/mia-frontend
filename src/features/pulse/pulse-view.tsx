@@ -335,23 +335,29 @@ function FeedbackSection({
                   ))}
                 </>
               )}
-              {summary!.skills.length > 0 && (
+              {summary!.skills.some((s) => s.down > 0) && (
                 <>
-                  <div className="plz-seclab">Feedback by skill</div>
-                  {summary!.skills.slice(0, 8).map((s) => (
-                    <div className="plz-topic" key={s.key}>
-                      <span className="plz-tlabel">{s.label}</span>
-                      <span className="plz-track">
+                  <div className="plz-seclab">Skills getting thumbs down</div>
+                  {summary!.skills
+                    .filter((s) => s.down > 0)
+                    .slice(0, 8)
+                    .map((s) => (
+                      <div className="plz-topic" key={s.key}>
+                        <span className="plz-tlabel">{s.label}</span>
+                        <span className="plz-track">
+                          <span
+                            className="plz-fill down"
+                            style={{ width: `${Math.max(3, s.negative_pct)}%` }}
+                          />
+                        </span>
                         <span
-                          className="plz-fill down"
-                          style={{ width: `${Math.max(3, s.negative_pct)}%` }}
-                        />
-                      </span>
-                      <span className="plz-tn2 plz-num" title={`${s.down}👎 of ${s.up + s.down} votes`}>
-                        {s.negative_pct}% 👎
-                      </span>
-                    </div>
-                  ))}
+                          className="plz-tn2 plz-num"
+                          title={`${s.negative_pct}% of votes on this skill are negative`}
+                        >
+                          {s.down}👎 · {s.up}👍
+                        </span>
+                      </div>
+                    ))}
                 </>
               )}
             </div>
