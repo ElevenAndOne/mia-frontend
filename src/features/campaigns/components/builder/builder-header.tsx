@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiFetch } from '../../../../utils/api'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
 import { ClickUpActions } from '../clickup/clickup-actions'
@@ -13,10 +15,40 @@ interface Guide { id: string; filename: string; campaign_name: string | null }
 const dateCls = 'paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer'
 const numCls = 'w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cw-mono [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden'
 
+interface GA4Option { property_id: string; display_name: string }
+
 export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuildNew: () => void }) => {
-  const { campaign } = useCampaignWorkspace()
+  const { campaign, sessionId } = useCampaignWorkspace()
   const { patchCampaign, cycleStatus, linkGuide, removeCampaign } = useCampaignMutations()
   const navigate = useNavigate()
+
+  // Per-campaign GA4 override — Website-visits KPIs read this property instead of
+  // the workspace primary (multi-brand clients whose campaigns land on different
+  // sites). Options load lazily on first hover/focus: /api/accounts/available does
+  // real platform discovery, too heavy to call on every builder open.
+  const [ga4Options, setGa4Options] = useState<GA4Option[] | null>(null)
+  const [ga4Loading, setGa4Loading] = useState(false)
+  const loadGa4Options = async () => {
+    if (ga4Options || ga4Loading) return
+    setGa4Loading(true)
+    try {
+      const res = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
+      const data = await res.json()
+      const props: GA4Option[] = (data.ga4_properties ?? []).sort((a: GA4Option, b: GA4Option) =>
+        a.display_name.localeCompare(b.display_name),
+      )
+      setGa4Options(props)
+    } catch {
+      setGa4Options([]) // keeps the current value + default usable
+    } finally {
+      setGa4Loading(false)
+    }
+  }
+  const setGa4Override = (propertyId: string) => {
+    const id = propertyId || null
+    const name = id ? (ga4Options?.find((p) => p.property_id === id)?.display_name ?? null) : null
+    patchCampaign({ ga4_property_id: id, ga4_property_name: name })
+  }
   const initials = (campaign.client_name || campaign.campaign_name).slice(0, 2).toUpperCase()
   const total = formatBudget(campaign.budget_total, campaign.budget_currency)
 
@@ -86,6 +118,37 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
           ))}
         </div>
       )}
+
+      <div className="flex items-center gap-2" onPointerEnter={loadGa4Options}>
+        <span className="label-xs text-quaternary shrink-0">GA4 property (website visits):</span>
+        <select
+          value={campaign.ga4_property_id ?? ''}
+          onFocus={loadGa4Options}
+          onChange={(e) => setGa4Override(e.target.value)}
+          className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[260px]"
+        >
+          <option value="">Workspace default</option>
+          {/* keep the stored override selectable before (or if) the option list loads */}
+          {campaign.ga4_property_id && !ga4Options?.some((p) => p.property_id === campaign.ga4_property_id) && (
+            <option value={campaign.ga4_property_id}>
+              {campaign.ga4_property_name ?? campaign.ga4_property_id}
+            </option>
+          )}
+          {ga4Options?.map((p) => (
+            <option key={p.property_id} value={p.property_id}>
+              {/* Google allows several properties with identical names (e.g. two
+                  "Remax Bay - GA4") — show the ID when the name alone is ambiguous */}
+              {ga4Options.filter((o) => o.display_name === p.display_name).length > 1
+                ? `${p.display_name} · ${p.property_id}`
+                : p.display_name}
+            </option>
+          ))}
+        </select>
+        {ga4Loading && <span className="label-xs text-quaternary shrink-0">loading properties…</span>}
+        {campaign.ga4_property_id && (
+          <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">override</span>
+        )}
+      </div>
 
       {guides.length > 0 && (
         <div className="flex items-center gap-2">

@@ -16,6 +16,10 @@ export interface Overview {
   campaigns_built: Metric
   new_signups: Metric
   median_session_seconds: Metric
+  /** Total tokens (input+output+cache) across tracked turns in range. */
+  tokens: Metric
+  /** Estimated LLM spend (USD) for tracked turns — rows before tracking count 0. */
+  est_cost_usd: Metric
 }
 
 export interface TimeseriesPoint {
@@ -36,6 +40,8 @@ export interface TesterRow {
   tenant: string | null
   role: string | null
   questions_in_range: number
+  tokens_in_range: number
+  cost_in_range: number
   last_active: string | null
   status: TesterStatus
 }
@@ -72,7 +78,13 @@ export interface TesterDetail {
   last_active: string | null
   days_on_beta: number | null
   connected_platforms: string[]
-  counters: { questions: number; sessions: number; campaigns_built: number }
+  counters: {
+    questions: number
+    sessions: number
+    campaigns_built: number
+    tokens: number
+    est_cost_usd: number
+  }
   recent_questions: RecentQuestion[]
   timeline: TimelineEvent[]
 }

@@ -64,8 +64,14 @@ export const fetchTimeseries = (
 export const fetchTesters = (sessionId: string | null, range: string, filter?: PulseFilter) =>
   get<TesterList>(`${BASE}/testers?range=${encodeURIComponent(range)}${scopeParams(filter)}`, sessionId)
 
-export const fetchTesterDetail = (sessionId: string | null, googleUserId: string) =>
-  get<TesterDetail>(`${BASE}/testers/${encodeURIComponent(googleUserId)}`, sessionId)
+export const fetchTesterDetail = (sessionId: string | null, googleUserId: string, filter?: PulseFilter) => {
+  // Only the workspace part of the filter applies — the detail is already one user.
+  const params = (filter?.tenantIds ?? []).map((t) => `tenant_id=${encodeURIComponent(t)}`).join('&')
+  return get<TesterDetail>(
+    `${BASE}/testers/${encodeURIComponent(googleUserId)}${params ? `?${params}` : ''}`,
+    sessionId
+  )
+}
 
 export const fetchTopics = (sessionId: string | null, range: string, filter?: PulseFilter) =>
   get<Topics>(`${BASE}/topics?range=${encodeURIComponent(range)}${scopeParams(filter)}`, sessionId)

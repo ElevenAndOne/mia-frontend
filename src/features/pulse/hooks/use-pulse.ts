@@ -56,10 +56,12 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
   return { overview, timeseries, testers, topics }
 }
 
-export function useTesterDetail(sessionId: string | null, googleUserId: string | null) {
+export function useTesterDetail(sessionId: string | null, googleUserId: string | null, filter?: PulseFilter) {
+  // Workspace filter scopes the drill-down too (questions/timeline/platforms).
+  const tenantKey = [...(filter?.tenantIds ?? [])].sort().join('|')
   return useQuery({
-    queryKey: ['pulse', 'tester-detail', googleUserId, sessionId],
-    queryFn: () => fetchTesterDetail(sessionId, googleUserId as string),
+    queryKey: ['pulse', 'tester-detail', googleUserId, tenantKey, sessionId],
+    queryFn: () => fetchTesterDetail(sessionId, googleUserId as string, filter),
     enabled: !!sessionId && !!googleUserId,
     staleTime: STALE,
   })
