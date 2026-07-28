@@ -103,6 +103,58 @@ export interface Topics {
   topics: TopicItem[]
 }
 
+export interface FeedbackCategory {
+  key: string
+  label: string
+  count: number
+}
+
+export interface FeedbackSkill {
+  key: string
+  label: string
+  up: number
+  down: number
+  negative_pct: number
+}
+
+export interface FeedbackSummary {
+  range: string
+  up: number
+  down: number
+  total: number
+  /** % of votes that are thumbs up; null when there are no votes in range. */
+  satisfaction_pct: number | null
+  satisfaction_delta: number | null
+  down_with_details: number
+  categories: FeedbackCategory[]
+  skills: FeedbackSkill[]
+}
+
+export interface FeedbackItem {
+  feedback_id: number
+  created_at: string | null
+  rating: 1 | -1
+  category: string | null
+  category_label: string | null
+  details: string | null
+  user_email: string | null
+  google_user_id: string | null
+  tenant_id: string | null
+  conversation_id: string | null
+  chat_history_id: number
+  question: string
+  response: string
+  skills: string[]
+  model: string | null
+}
+
+export interface FeedbackRecent {
+  range: string
+  rating: 'down' | 'up' | 'all'
+  count: number
+  items: FeedbackItem[]
+}
+
 export type PulseRange = '7d' | '30d' | 'all'
 
 export interface WorkspaceMember {

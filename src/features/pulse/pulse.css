@@ -674,3 +674,80 @@
   font-size: 13px;
   color: var(--color-text-tertiary);
 }
+
+/* ---------- message feedback (thumbs up/down) ---------- */
+.plz-fbstats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--color-border-tertiary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.plz-fbstat {
+  background: var(--color-background-primary);
+  padding: 12px 14px;
+}
+.plz-fbstat .v {
+  font-size: 18px;
+  font-weight: 700;
+}
+.plz-fbstat .v.up {
+  color: var(--color-text-success);
+}
+.plz-fbstat .v.down {
+  color: var(--color-text-error);
+}
+.plz-fbstat .l {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-tertiary);
+}
+.plz-fbstat .plz-delta {
+  margin-top: 3px;
+}
+.plz-fbgrid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .plz-fbgrid {
+    grid-template-columns: 1fr;
+  }
+  .plz-fbstats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.plz-fill.down {
+  background: var(--color-text-error);
+}
+.plz-fbitem {
+  cursor: pointer;
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: background 0.12s ease;
+}
+.plz-fbitem:hover {
+  background: var(--color-background-secondary);
+}
+.plz-fbresp {
+  font-size: 12.5px;
+  color: var(--color-text-tertiary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.plz-fbdetails {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--color-text-warning);
+  margin-top: 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--color-text-warning);
+}

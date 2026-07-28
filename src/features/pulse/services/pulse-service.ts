@@ -2,6 +2,8 @@
 
 import { apiFetch, createSessionHeaders } from '../../../utils/api'
 import type {
+  FeedbackRecent,
+  FeedbackSummary,
   Overview,
   PulseFilter,
   TesterDetail,
@@ -75,3 +77,20 @@ export const fetchTesterDetail = (sessionId: string | null, googleUserId: string
 
 export const fetchTopics = (sessionId: string | null, range: string, filter?: PulseFilter) =>
   get<Topics>(`${BASE}/topics?range=${encodeURIComponent(range)}${scopeParams(filter)}`, sessionId)
+
+export const fetchFeedbackSummary = (sessionId: string | null, range: string, filter?: PulseFilter) =>
+  get<FeedbackSummary>(
+    `${BASE}/feedback/summary?range=${encodeURIComponent(range)}${scopeParams(filter)}`,
+    sessionId
+  )
+
+export const fetchFeedbackRecent = (
+  sessionId: string | null,
+  range: string,
+  rating: 'down' | 'up' | 'all',
+  filter?: PulseFilter
+) =>
+  get<FeedbackRecent>(
+    `${BASE}/feedback/recent?range=${encodeURIComponent(range)}&rating=${rating}${scopeParams(filter)}`,
+    sessionId
+  )

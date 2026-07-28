@@ -3,6 +3,10 @@ import { apiFetch } from '../../../utils/api'
 interface ChatHistoryMessage {
   role: 'user' | 'assistant'
   content: string
+  /** chat_history row id (assistant messages loaded from history) — feedback target. */
+  history_id?: number
+  /** This user's existing vote on the message: 1 / -1 / null. */
+  feedback?: 1 | -1 | null
 }
 
 export interface AttachedDocument {
@@ -82,6 +86,8 @@ export interface ChatResponse {
   claude_response?: string
   pending_action?: PendingAction
   skill_workspaces?: string[]
+  /** Saved chat_history row id — attach to the message so thumbs feedback can target it. */
+  history_id?: number
   error?: string
 }
 
@@ -265,7 +271,7 @@ export interface AssetUpdatedEvent {
 
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; history_id?: number; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
@@ -412,6 +418,43 @@ export const transcribeAudio = async (
   if (!response.ok) throw new Error(`Transcription failed: ${response.status}`)
   const data = await response.json()
   return data.transcript as string
+}
+
+// --- Message feedback (thumbs up/down) --------------------------------------
+
+/** Issue categories for the thumbs-down modal — keys mirror FEEDBACK_CATEGORIES in
+ *  the backend (routes/chat.py); labels are what the user sees. */
+export const FEEDBACK_CATEGORIES: { key: string; label: string }[] = [
+  { key: 'wrong_data', label: 'Wrong or missing data' },
+  { key: 'wrong_account', label: 'Wrong account or platform' },
+  { key: 'didnt_follow', label: "Didn't do what I asked" },
+  { key: 'bad_recommendation', label: 'Bad recommendation' },
+  { key: 'formatting', label: 'Formatting or too long' },
+  { key: 'slow_or_error', label: 'Slow, stuck, or errored' },
+  { key: 'other', label: 'Other' },
+]
+
+/** Record (or update) a thumbs vote on one assistant message. Called twice on a
+ *  thumbs-down: immediately with the rating, then again with category/details if
+ *  the user fills in the modal — the backend upserts onto the same row. */
+export const submitChatFeedback = async (
+  sessionId: string,
+  chatHistoryId: number,
+  rating: 1 | -1,
+  category?: string,
+  details?: string
+): Promise<void> => {
+  const response = await apiFetch('/api/chat/v2/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({
+      chat_history_id: chatHistoryId,
+      rating,
+      ...(category ? { category } : {}),
+      ...(details ? { details } : {}),
+    }),
+  })
+  if (!response.ok) throw new Error(`Feedback failed (${response.status})`)
 }
 
 export const fetchConversationMessages = async (

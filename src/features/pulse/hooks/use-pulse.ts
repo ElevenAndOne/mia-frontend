@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  fetchFeedbackRecent,
+  fetchFeedbackSummary,
   fetchOverview,
   fetchTesterDetail,
   fetchTesters,
@@ -53,7 +55,21 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
     staleTime: STALE,
   })
 
-  return { overview, timeseries, testers, topics }
+  const feedbackSummary = useQuery({
+    queryKey: ['pulse', 'feedback-summary', range, filterKey, sessionId],
+    queryFn: () => fetchFeedbackSummary(sessionId, range, filter),
+    enabled,
+    staleTime: STALE,
+  })
+
+  const feedbackRecent = useQuery({
+    queryKey: ['pulse', 'feedback-recent', range, filterKey, sessionId],
+    queryFn: () => fetchFeedbackRecent(sessionId, range, 'down', filter),
+    enabled,
+    staleTime: STALE,
+  })
+
+  return { overview, timeseries, testers, topics, feedbackSummary, feedbackRecent }
 }
 
 export function useTesterDetail(sessionId: string | null, googleUserId: string | null, filter?: PulseFilter) {

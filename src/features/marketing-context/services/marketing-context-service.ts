@@ -118,20 +118,6 @@ export async function findCompetitors(
   return data.competitors ?? []
 }
 
-export async function submitSkillFeedback(
-  sessionId: string,
-  workspaceIds: string[],
-  message: string,
-  feedback: 1 | -1
-): Promise<void> {
-  await apiFetch('/api/marketing-context/feedback', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: sessionId,
-      workspace_ids: workspaceIds,
-      message,
-      feedback,
-    }),
-  })
-}
+// Message feedback moved to submitChatFeedback in features/chat/services/chat-service.ts
+// (per-message chat_feedback rows, Jul 2026). The old /api/marketing-context/feedback
+// endpoint remains for legacy skill_feedback_log data, which skill-notes counts still read.

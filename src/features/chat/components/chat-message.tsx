@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { Check } from '../../../components/icon/check'
 import { Copy01 } from '../../../components/icon/copy-01'
@@ -16,8 +15,10 @@ interface ChatMessageProps {
   actionResult?: Record<string, unknown>
   onConfirmAction?: (overrideParams?: Record<string, unknown>) => void
   onCancelAction?: () => void
-  skillWorkspaces?: string[]
-  onFeedback?: (feedback: 1 | -1, skillWorkspaces: string[]) => void
+  /** This user's recorded vote (from state or a reloaded conversation). */
+  feedback?: 1 | -1 | null
+  /** Present only when the message has a persisted chat_history row to vote on. */
+  onFeedback?: (feedback: 1 | -1) => void
   images?: string[]
 }
 
@@ -30,17 +31,16 @@ export const ChatMessage = ({
   actionResult,
   onConfirmAction,
   onCancelAction,
-  skillWorkspaces = [],
+  feedback = null,
   onFeedback,
   images = [],
 }: ChatMessageProps) => {
   const { copied, copy } = useClipboard()
-  const [feedbackGiven, setFeedbackGiven] = useState<1 | -1 | null>(null)
 
   const handleFeedback = (value: 1 | -1) => {
-    if (feedbackGiven !== null) return
-    setFeedbackGiven(value)
-    onFeedback?.(value, skillWorkspaces)
+    // Same-thumb re-clicks are no-ops; switching to the other thumb updates the vote.
+    if (feedback === value) return
+    onFeedback?.(value)
   }
 
   if (role === 'user') {
@@ -115,10 +115,9 @@ export const ChatMessage = ({
             <>
               <button
                 onClick={() => handleFeedback(1)}
-                disabled={feedbackGiven !== null}
                 className={[
                   'p-2 rounded-lg transition-colors',
-                  feedbackGiven === 1
+                  feedback === 1
                     ? 'text-success bg-success-subtle'
                     : 'hover:bg-tertiary text-quaternary hover:text-secondary',
                 ].join(' ')}
@@ -131,10 +130,9 @@ export const ChatMessage = ({
 
               <button
                 onClick={() => handleFeedback(-1)}
-                disabled={feedbackGiven !== null}
                 className={[
                   'p-2 rounded-lg transition-colors',
-                  feedbackGiven === -1
+                  feedback === -1
                     ? 'text-error bg-error-primary'
                     : 'hover:bg-tertiary text-quaternary hover:text-secondary',
                 ].join(' ')}

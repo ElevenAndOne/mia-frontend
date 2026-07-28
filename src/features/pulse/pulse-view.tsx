@@ -4,6 +4,8 @@ import { useSession } from '../../contexts/session-context'
 import { usePulseDashboard, useTesterDetail, useWorkspaces } from './hooks/use-pulse'
 import { PulseError } from './services/pulse-service'
 import type {
+  FeedbackItem,
+  FeedbackSummary,
   Metric,
   PulseFilter,
   PulseRange,
@@ -256,6 +258,135 @@ function DetailPane({
   )
 }
 
+// ---------- feedback (thumbs up/down) ----------
+function FeedbackSection({
+  summary,
+  items,
+  isLoading,
+  onSelectUser,
+}: {
+  summary: FeedbackSummary | undefined
+  items: FeedbackItem[]
+  isLoading: boolean
+  onSelectUser: (googleUserId: string | null) => void
+}) {
+  const hasVotes = !!summary && summary.total > 0
+  return (
+    <div className="plz-card plz-topics">
+      <div className="plz-card-h" style={{ paddingLeft: 0, paddingRight: 0 }}>
+        <h2>Message feedback</h2>
+        <span className="plz-hint">
+          {summary
+            ? summary.total
+              ? `${summary.total} votes · ${summary.satisfaction_pct}% positive`
+              : 'no votes in range'
+            : ''}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <Spinner />
+      ) : !hasVotes ? (
+        <div className="plz-empty">
+          No thumbs up/down in this range yet. Votes land here the moment a tester rates a
+          response in chat.
+        </div>
+      ) : (
+        <>
+          <div className="plz-fbstats">
+            <div className="plz-fbstat">
+              <div className="v plz-num up">👍 {summary!.up}</div>
+              <div className="l">Thumbs up</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num down">👎 {summary!.down}</div>
+              <div className="l">Thumbs down</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{summary!.satisfaction_pct ?? '—'}%</div>
+              <div className="l">Positive</div>
+              <DeltaLine
+                metric={{ value: summary!.satisfaction_pct ?? 0, delta: summary!.satisfaction_delta }}
+                unit="pct"
+              />
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{summary!.down_with_details}</div>
+              <div className="l">With comments</div>
+            </div>
+          </div>
+
+          <div className="plz-fbgrid">
+            <div>
+              {summary!.categories.length > 0 && (
+                <>
+                  <div className="plz-seclab">Issue types (thumbs down)</div>
+                  {summary!.categories.map((c) => (
+                    <div className="plz-topic" key={c.key}>
+                      <span className="plz-tlabel">{c.label}</span>
+                      <span className="plz-track">
+                        <span
+                          className="plz-fill down"
+                          style={{ width: `${Math.max(3, (c.count / summary!.down) * 100)}%` }}
+                        />
+                      </span>
+                      <span className="plz-tn2 plz-num">{c.count}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {summary!.skills.length > 0 && (
+                <>
+                  <div className="plz-seclab">Feedback by skill</div>
+                  {summary!.skills.slice(0, 8).map((s) => (
+                    <div className="plz-topic" key={s.key}>
+                      <span className="plz-tlabel">{s.label}</span>
+                      <span className="plz-track">
+                        <span
+                          className="plz-fill down"
+                          style={{ width: `${Math.max(3, s.negative_pct)}%` }}
+                        />
+                      </span>
+                      <span className="plz-tn2 plz-num" title={`${s.down}👎 of ${s.up + s.down} votes`}>
+                        {s.negative_pct}% 👎
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            <div>
+              <div className="plz-seclab">Recent thumbs down</div>
+              {items.length ? (
+                items.map((f) => (
+                  <div
+                    className="plz-conv plz-fbitem"
+                    key={f.feedback_id}
+                    onClick={() => onSelectUser(f.google_user_id)}
+                    title="Show this tester in the drill-down"
+                  >
+                    <div className="plz-q">“{f.question}”</div>
+                    {f.response && <div className="plz-fbresp">{f.response.slice(0, 260)}{f.response.length > 260 ? '…' : ''}</div>}
+                    {f.details && <div className="plz-fbdetails">“{f.details}”</div>}
+                    <div className="plz-qmeta">
+                      {f.category_label && <span className="plz-tag">{f.category_label}</span>}
+                      <span>{f.user_email || 'unknown'}</span>
+                      <span>{timeAgo(f.created_at)}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="plz-empty">No thumbs-down votes in this range. 🎉</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ---------- filter bar ----------
 function useOutsideClose(ref: RefObject<HTMLElement | null>, onClose: () => void, open: boolean) {
   useEffect(() => {
@@ -411,7 +542,8 @@ export function PulseView() {
   )
   const filtered = selectedTenants.length > 0 || userFilter !== null
 
-  const { overview, timeseries, testers, topics } = usePulseDashboard(sessionId, range, filter)
+  const { overview, timeseries, testers, topics, feedbackSummary, feedbackRecent } =
+    usePulseDashboard(sessionId, range, filter)
 
   // Keep the detail pane in sync: follow the user filter, else auto-select the top
   // tester, and never leave a selection that's no longer in the (filtered) list.
@@ -654,8 +786,17 @@ export function PulseView() {
           )}
         </div>
 
+        {/* message feedback — thumbs up/down + issue reports from chat */}
+        <FeedbackSection
+          summary={feedbackSummary.data}
+          items={feedbackRecent.data?.items ?? []}
+          isLoading={feedbackSummary.isLoading || feedbackRecent.isLoading}
+          onSelectUser={(id) => id && setSelectedId(id)}
+        />
+
         <div className="plz-foot">
-          Mia Pulse · internal beta-usage view · reads chat history, activity &amp; quick-insights data.
+          Mia Pulse · internal beta-usage view · reads chat history, activity, quick-insights &amp;
+          message-feedback data.
         </div>
       </div>
     </div>

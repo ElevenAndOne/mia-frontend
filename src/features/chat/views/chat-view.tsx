@@ -8,6 +8,7 @@ import { CanvasPane } from '../components/canvas-pane'
 import QuickActions from '../components/quick-actions'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
+import { FeedbackModal } from '../components/feedback-modal'
 import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 import { useChatView } from '../hooks/use-chat-view.tsx'
@@ -72,6 +73,9 @@ export const ChatView = ({
     handleCancel,
     handleBack,
     handleFeedback,
+    feedbackModalOpen,
+    handleFeedbackModalSubmit,
+    closeFeedbackModal,
     handleTranscribeAudio,
     integrationPrompt,
     loadConversation,
@@ -227,11 +231,10 @@ export const ChatView = ({
                             ? () => handleCancelAction(message.id)
                             : undefined
                         }
-                        skillWorkspaces={message.skillWorkspaces}
+                        feedback={message.feedback}
                         onFeedback={
-                          message.role === 'assistant'
-                            ? (feedback, workspaces) =>
-                                handleFeedback(feedback, workspaces, message.content)
+                          message.role === 'assistant' && message.historyId != null
+                            ? (rating) => handleFeedback(message.id, message.historyId!, rating)
                             : undefined
                         }
                       />
@@ -319,6 +322,12 @@ export const ChatView = ({
          </div>
        )}
       </div>
+
+      <FeedbackModal
+        isOpen={feedbackModalOpen}
+        onClose={closeFeedbackModal}
+        onSubmit={handleFeedbackModalSubmit}
+      />
 
       {integrationPrompt && (
         <IntegrationPromptModal

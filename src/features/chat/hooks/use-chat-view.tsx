@@ -18,6 +18,7 @@ import {
   fetchConversationMessages,
   transcribeAudio,
   uploadChatFile,
+  submitChatFeedback,
 } from '../services/chat-service'
 import type {
   PendingAction,
@@ -28,7 +29,6 @@ import type {
 import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
 import { StorageKey } from '../../../constants/storage-keys'
-import { submitSkillFeedback } from '../../marketing-context/services/marketing-context-service'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 
 export interface ChatMessageItem {
@@ -41,6 +41,10 @@ export interface ChatMessageItem {
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
   actionResult?: Record<string, unknown>
   skillWorkspaces?: string[]
+  /** chat_history row id — present once the turn is persisted; thumbs target this. */
+  historyId?: number | null
+  /** This user's recorded vote on the message (1 / -1), if any. */
+  feedback?: 1 | -1 | null
   images?: string[]
 }
 
@@ -57,6 +61,8 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  // chat_history id awaiting thumbs-down details (null = modal closed)
+  const [feedbackModalTarget, setFeedbackModalTarget] = useState<number | null>(null)
   // Empty by default → the whimsical rotating phrase shows; a real tool status
   // ("Checking your Google Ads performance…") overrides it when one arrives.
   const [thinkingText, setThinkingText] = useState('')
@@ -234,6 +240,10 @@ export const useChatView = () => {
               id: `${m.role}-loaded-${i}`,
               role: m.role,
               content: m.content,
+              // Assistant rows carry their chat_history id + this user's existing vote,
+              // so thumbs keep working (and show voted state) on reopened conversations.
+              historyId: m.history_id ?? null,
+              feedback: m.feedback ?? null,
             }))
           )
           setConversationId(convId)
@@ -383,6 +393,7 @@ export const useChatView = () => {
         let accumulated = ''
         let pendingAction: PendingAction | undefined
         let skillWorkspaces: string[] = []
+        let historyId: number | null = null
 
         await sendChatMessageStreaming(
           {
@@ -424,6 +435,9 @@ export const useChatView = () => {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
               skillWorkspaces = chunk.skill_workspaces
+            } else if (chunk.history_id !== undefined) {
+              // Final event: the persisted chat_history row id — thumbs feedback target.
+              historyId = chunk.history_id
             } else if (chunk.document) {
               canvasDocEventRef.current?.(chunk.document)
             }
@@ -452,6 +466,7 @@ export const useChatView = () => {
           pendingAction,
           actionStatus: pendingAction ? 'pending' : undefined,
           skillWorkspaces,
+          historyId,
         }
         setMessages((prev) => [...prev, assistantMessage])
       } catch (error) {
@@ -710,16 +725,41 @@ export const useChatView = () => {
   }, [])
 
   const handleFeedback = useCallback(
-    async (feedback: 1 | -1, workspaceIds: string[], messageContent: string) => {
-      if (!sessionId || workspaceIds.length === 0) return
+    async (messageId: string, historyId: number, rating: 1 | -1) => {
+      if (!sessionId) return
+      // Optimistic — the thumb lights up immediately; a failed POST is non-critical.
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m))
+      )
+      if (rating === -1) {
+        // Claude-style detail dialog. The -1 below is recorded regardless — dismissing
+        // the modal loses nothing; submitting upserts category/details onto the row.
+        setFeedbackModalTarget(historyId)
+      }
       try {
-        await submitSkillFeedback(sessionId, workspaceIds, messageContent, feedback)
+        await submitChatFeedback(sessionId, historyId, rating)
       } catch {
         // fire-and-forget — feedback errors are non-critical
       }
     },
     [sessionId]
   )
+
+  const handleFeedbackModalSubmit = useCallback(
+    async (category: string | undefined, details: string | undefined) => {
+      const target = feedbackModalTarget
+      setFeedbackModalTarget(null)
+      if (!sessionId || target === null || (!category && !details)) return
+      try {
+        await submitChatFeedback(sessionId, target, -1, category, details)
+      } catch {
+        // fire-and-forget — feedback errors are non-critical
+      }
+    },
+    [sessionId, feedbackModalTarget]
+  )
+
+  const closeFeedbackModal = useCallback(() => setFeedbackModalTarget(null), [])
 
   const handleTranscribeAudio = useCallback(
     async (audioBlob: Blob, mimeType: string): Promise<string> => {
@@ -766,6 +806,9 @@ export const useChatView = () => {
     handleCancel,
     handleBack,
     handleFeedback,
+    feedbackModalOpen: feedbackModalTarget !== null,
+    handleFeedbackModalSubmit,
+    closeFeedbackModal,
     handleTranscribeAudio,
     integrationPrompt,
     loadConversation,
