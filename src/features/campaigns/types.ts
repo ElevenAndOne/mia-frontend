@@ -97,6 +97,8 @@ export interface CampaignDetail {
   brevo_filter: string | null
   clickup_list_id: string | null
   campaign_guide_id: string | null
+  ga4_property_id?: string | null // per-campaign override; null = workspace primary property
+  ga4_property_name?: string | null
   objectives: string[]
   phases: Phase[]
 }

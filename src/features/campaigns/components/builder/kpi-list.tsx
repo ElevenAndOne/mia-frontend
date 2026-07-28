@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EditableText } from '../../../../components/editable-text'
+import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import type { KPI } from '../../types'
 
 interface ListOption { list_id: number; name: string; size: number }
@@ -27,6 +28,7 @@ export const KpiList = ({
   const [target, setTarget] = useState('')
   const [savingId, setSavingId] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const { campaign } = useCampaignWorkspace()
 
   const linkList = async (kpiId: number, field: 'hubspot_list_name' | 'brevo_list_name', value: string | null) => {
     setSavingId(kpiId)
@@ -49,11 +51,22 @@ export const KpiList = ({
             const showHs = phaseHasHubspot && hubspotLists.length > 0 && !isTotal
             const isBrevoKpi = /competition|entr|giveaway|contest|subscriber|sign.?up|member/i.test(kpi.kpi_name)
             const showBrevo = phaseHasBrevo && brevoLists.length > 0 && isBrevoKpi
+            // Same name patterns the backend resolver maps to GA4 sessions — when the
+            // campaign overrides the GA4 property, say which site this number reads from.
+            const isGa4Kpi = /session|visit|website/i.test(kpi.kpi_name)
+            const ga4Hint = isGa4Kpi && campaign.ga4_property_id
+              ? (campaign.ga4_property_name ?? campaign.ga4_property_id)
+              : null
             return (
               <div key={kpi.kpi_id} className={`px-3 py-2.5 space-y-1.5 ${i < kpis.length - 1 ? 'border-b border-tertiary' : ''}`}>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <EditableText value={kpi.kpi_name} onSave={(v) => onPatchKpi(kpi.kpi_id, { kpi_name: v })} className="paragraph-sm text-secondary" />
+                    {ga4Hint && (
+                      <span className="label-xs text-quaternary" title="This KPI reads sessions from the campaign's GA4 property override">
+                        GA4: {ga4Hint}
+                      </span>
+                    )}
                   </div>
                   <div className="shrink-0 w-32 text-right">
                     <EditableText value={kpi.target_value ?? '—'} onSave={(v) => onPatchKpi(kpi.kpi_id, { target_value: v })} className="label-sm text-primary font-medium cw-mono text-right" />
