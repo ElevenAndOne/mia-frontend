@@ -34,7 +34,14 @@ export function AskPulse({
   const [streaming, setStreaming] = useState('')
   const [status, setStatus] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const threadRef = useRef<HTMLDivElement>(null)
+
+  // Scroll ONLY the thread box (scrollTop can't move ancestors) — scrollIntoView
+  // would drag the whole dashboard down on every streamed chunk.
+  const scrollThread = () => {
+    const el = threadRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }
 
   const ask = async (question: string) => {
     if (!question.trim() || isLoading) return
@@ -76,7 +83,7 @@ export function AskPulse({
           } else if (chunk.error) {
             answer = answer || chunk.error
           }
-          bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+          scrollThread()
         }
       )
     } catch {
@@ -111,7 +118,7 @@ export function AskPulse({
           )}
 
           {(messages.length > 0 || isLoading) && (
-            <div className="plz-ask-thread">
+            <div className="plz-ask-thread" ref={threadRef}>
               {messages.map((m, i) =>
                 m.role === 'user' ? (
                   <div className="plz-ask-q" key={i}>
@@ -129,7 +136,6 @@ export function AskPulse({
                   {status && <div className="plz-ask-status">{status}</div>}
                 </div>
               )}
-              <div ref={bottomRef} />
             </div>
           )}
         </div>
