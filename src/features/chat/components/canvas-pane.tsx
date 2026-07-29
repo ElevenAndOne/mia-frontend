@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { Copy01 } from '../../../components/icon/copy-01'
@@ -12,6 +12,13 @@ import { AddToCampaign } from './add-to-campaign'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
 import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
+
+// TipTap only loads when a long-form doc enters Edit mode (keeps the chat bundle lean).
+const RichEditor = lazy(() => import('./rich-editor'))
+
+/** Long-form doc types get the WYSIWYG editor; ad/social keep raw markdown +
+ * in-preview editing (span-patch `find` must match raw source). */
+const WYSIWYG_TYPES = new Set(['campaign_brief', 'email', 'content_calendar', 'generic'])
 
 interface CanvasPaneProps {
   document: CanvasDocument
@@ -344,6 +351,19 @@ export const CanvasPane = ({
             ) : (
               <ChatMarkdown content={doc.content} />
             )}
+          </div>
+        ) : WYSIWYG_TYPES.has(doc.doc_type) ? (
+          <div className="max-w-[640px] mx-auto">
+            <Suspense
+              fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}
+            >
+              {/* Keyed like the textarea: remount when the doc changes externally. */}
+              <RichEditor
+                key={`${doc.id}-${doc.version}`}
+                content={doc.content}
+                onChange={onSaveUserEdit}
+              />
+            </Suspense>
           </div>
         ) : (
           <textarea
