@@ -6,7 +6,7 @@ import { sendChatMessageStreaming, type AssetContext } from '../../chat/services
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import { assetToCreativeSpec } from '../utils/asset-preview'
 import { channelLabel } from '../utils/channel-colors'
-import { patchAsset, uploadAssetMedia } from '../services/campaign-api'
+import { fetchAssetVersions, patchAsset, restoreAssetVersion, uploadAssetMedia, type AssetVersionRow } from '../services/campaign-api'
 import { clearCampaignDetailCache } from '../campaign-detail-cache'
 
 /** Roles that may edit assets from the canvas (matches backend require_analyst). */
@@ -42,6 +42,8 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
   const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const [editStatus, setEditStatus] = useState<string | null>(null)
+  const [versions, setVersions] = useState<AssetVersionRow[]>([])
+  const [showHistory, setShowHistory] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
   // One throwaway conversation per panel session — the edit turns are self-contained.
   const convRef = useRef<string>(crypto.randomUUID())
@@ -51,6 +53,30 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Shared edit timeline (refreshed after every write via refresh()).
+  useEffect(() => {
+    let cancelled = false
+    fetchAssetVersions(sessionId, tenantId, campaign.campaign_id, assetId)
+      .then((v) => !cancelled && setVersions(v))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, tenantId, campaign, assetId])
+
+  const restore = useCallback(
+    async (version: number) => {
+      await restoreAssetVersion(sessionId, tenantId, campaign.campaign_id, assetId, version).catch(() => {})
+      setShowHistory(false)
+      clearCampaignDetailCache()
+      void reloadDetail()
+    },
+    [sessionId, tenantId, campaign.campaign_id, assetId, reloadDetail]
+  )
+  // Per-user undo: instant only while YOUR edit is the newest version (locked design —
+  // otherwise you restore from history, so you can't blindly wipe someone else's work).
+  const canUndoMine = canEdit && versions.length > 1 && versions[0].is_me
 
   const refresh = useCallback(() => {
     clearCampaignDetailCache()
@@ -141,6 +167,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
             date_range: '30_days',
             conversation_id: convRef.current,
             asset_context: assetContext,
+            no_track: true,
           },
           (chunk) => {
             if (chunk.text) reply += chunk.text
@@ -177,14 +204,61 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
               {canEdit ? ' · highlight text to edit with Mia' : ' · preview'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
-          >
-            ✕
-          </button>
+          <div className="ml-auto flex items-center gap-1.5 relative">
+            {canUndoMine && (
+              <button
+                type="button"
+                onClick={() => void restore(versions[1].version)}
+                className="paragraph-sm text-secondary border border-tertiary rounded-full px-2.5 py-0.5 hover:bg-tertiary transition-colors"
+                title="Revert your latest edit"
+              >
+                Undo my edit
+              </button>
+            )}
+            {versions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowHistory((o) => !o)}
+                aria-expanded={showHistory}
+                className="paragraph-sm text-secondary rounded-full bg-tertiary px-2 py-0.5 hover:text-primary transition-colors"
+              >
+                v{versions[0].version} ▾
+              </button>
+            )}
+            {showHistory && (
+              <div className="absolute z-40 top-full right-0 mt-1 w-72 max-h-72 overflow-y-auto rounded-xl border border-tertiary bg-primary shadow-lg py-1">
+                {versions.map((v, i) => (
+                  <div key={v.version} className="px-3 py-2 flex items-center gap-2">
+                    <span className="paragraph-sm font-medium text-primary">v{v.version}</span>
+                    <span className="paragraph-sm text-quaternary truncate">
+                      {v.edited_by === 'origin' ? 'original' : v.is_me ? 'You' : (v.edited_by_email ?? 'teammate')}
+                    </span>
+                    {i === 0 ? (
+                      <span className="paragraph-xs text-quaternary ml-auto">current</span>
+                    ) : (
+                      canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => void restore(v.version)}
+                          className="paragraph-xs text-utility-brand-600 ml-auto hover:underline"
+                        >
+                          restore
+                        </button>
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">

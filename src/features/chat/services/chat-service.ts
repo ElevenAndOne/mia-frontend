@@ -63,6 +63,7 @@ interface ChatRequestPayload {
   workspace_hint?: string
   document_context?: DocumentContext  // set when the user is editing a canvas document
   asset_context?: AssetContext // set when the user is editing a campaign asset (builder canvas)
+  no_track?: boolean // throwaway turn (campaign slide-over edits) — skip Recent Chats
 }
 
 export interface RecentConversation {
@@ -289,6 +290,7 @@ export const sendChatMessageStreaming = async (
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
     ...(payload.asset_context ? { asset_context: payload.asset_context } : {}),
+    ...(payload.no_track ? { no_track: true } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {

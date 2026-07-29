@@ -169,6 +169,38 @@ export const fetchCampaignByConversation = async (
   return data.campaign_id ?? null
 }
 
+export interface AssetVersionRow {
+  version: number
+  asset_name: string | null
+  key_message: string | null
+  cta: string | null
+  headline: string | null
+  deliverable_url: string | null
+  edited_by: string | null
+  edited_by_email: string | null
+  created_at: string | null
+  is_me: boolean
+}
+
+/** Shared edit timeline for an asset (newest first). */
+export const fetchAssetVersions = async (
+  s: string,
+  t: string,
+  id: string,
+  assetId: string,
+): Promise<AssetVersionRow[]> => {
+  const res = await apiFetch(`${base(t)}/${id}/assets/${assetId}/versions`, { headers: auth(s) })
+  if (!res.ok) return []
+  return (await res.json()).versions ?? []
+}
+
+/** Apply a past version's snapshot (appends a new version — history is never rewritten). */
+export const restoreAssetVersion = (s: string, t: string, id: string, assetId: string, version: number) =>
+  apiFetch(`${base(t)}/${id}/assets/${assetId}/versions/${version}/restore`, {
+    method: 'POST',
+    headers: auth(s),
+  })
+
 /** Upload a creative image for an asset — appended to deliverable_url (ClickUp "Final Asset"). */
 export const uploadAssetMedia = async (
   s: string,
