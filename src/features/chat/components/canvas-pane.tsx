@@ -266,11 +266,11 @@ export const CanvasPane = ({
                 if (mode === 'edit') flushPendingEdit()
                 setMode(mode === 'view' ? 'edit' : 'view')
               }}
-              aria-label={mode === 'view' ? 'Edit document' : 'Preview document'}
+              aria-label={mode === 'view' ? 'Edit document' : 'Save changes'}
               className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-secondary hover:bg-tertiary transition-colors paragraph-sm"
             >
               {mode === 'view' ? <Pencil01 size={15} /> : <Type01 size={15} />}
-              {mode === 'view' ? 'Edit' : 'Preview'}
+              {mode === 'view' ? 'Edit' : 'Save'}
             </button>
             {onUndo && canUndo && (
               <button
