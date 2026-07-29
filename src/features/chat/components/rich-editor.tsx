@@ -30,6 +30,10 @@ const RichEditor = ({ content, onChange }: RichEditorProps) => {
     ],
     // The Markdown extension makes TipTap parse `content` as markdown directly.
     content,
+    // Focus on mount: an unfocused editor keeps its selection anchor at the doc
+    // start, so the user's FIRST drag-select extends from the top of the document
+    // to the pointer instead of starting where they clicked.
+    autofocus: 'start',
     onUpdate: ({ editor: e }) => {
       // tiptap-markdown registers untyped storage — cast once here.
       const md = (e.storage as unknown as { markdown: { getMarkdown: () => string } }).markdown
