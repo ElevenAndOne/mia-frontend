@@ -38,7 +38,12 @@ export function useClickUp() {
 
   const runUpdate = useCallback(async () => {
     setUpdating(true); setUpdateError(''); setUpdateResult(null)
-    try { setUpdateResult((await invokeClickup(sessionId, tenantId, 'update_campaign_summary', { campaign_id: id })) as ClickUpUpdateResult) }
+    // push_campaign_ads updates linked tasks' names + descriptions in place on
+    // repeat pushes — the 0.4.0 replacement for the removed update_campaign_summary.
+    try {
+      const r = (await invokeClickup(sessionId, tenantId, 'push_campaign_ads', { campaign_id: id })) as ClickUpAdsPushResult
+      setUpdateResult({ tasks_updated: r.ads_updated, tasks_created: r.ads_created })
+    }
     catch (e) { setUpdateError(e instanceof Error ? e.message : 'Update failed') }
     finally { setUpdating(false) }
   }, [sessionId, tenantId, id])

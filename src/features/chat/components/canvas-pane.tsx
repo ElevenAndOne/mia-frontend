@@ -94,6 +94,25 @@ export const CanvasPane = ({
   const versionMenuRef = useRef<HTMLDivElement>(null)
   const { copied, copy } = useClipboard()
 
+  // Edit-mode changes buffer here and become ONE version when the user leaves
+  // Edit mode (toggle / tab switch / close) — not one per keystroke-save.
+  const pendingEditRef = useRef<string | null>(null)
+  const saveRef = useRef(onSaveUserEdit)
+  const docContentRef = useRef(doc.content)
+  useEffect(() => {
+    saveRef.current = onSaveUserEdit
+  }, [onSaveUserEdit])
+  useEffect(() => {
+    docContentRef.current = doc.content
+  }, [doc.content])
+  const flushPendingEdit = useCallback(() => {
+    const pending = pendingEditRef.current
+    pendingEditRef.current = null
+    if (pending != null && pending !== docContentRef.current) saveRef.current(pending)
+  }, [])
+  // Closing the canvas unmounts the pane — don't lose an in-flight edit.
+  useEffect(() => () => flushPendingEdit(), [flushPendingEdit])
+
   const hasTabs = documents.length > 1
 
   // Capture a highlight inside the rendered document → anchor the toolbar to it.
@@ -168,7 +187,7 @@ export const CanvasPane = ({
   return (
     <aside className="flex flex-col h-full w-full bg-primary border-l border-tertiary min-w-0">
       {/* Header */}
-      <div className="border-b border-tertiary px-5 py-3 relative">
+      <div className="border-b border-tertiary px-5 py-3 relative select-none">
         {/* Tab strip — one tab per deliverable */}
         {hasTabs && (
           <div className="flex items-center gap-1 overflow-x-auto mb-2 -mx-1 px-1">
@@ -178,7 +197,10 @@ export const CanvasPane = ({
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => onSelect(d.id)}
+                  onClick={() => {
+                    flushPendingEdit()
+                    onSelect(d.id)
+                  }}
                   className={`shrink-0 max-w-[160px] truncate rounded-lg px-2.5 py-1 paragraph-sm transition-colors ${
                     active
                       ? 'bg-tertiary text-primary font-medium'
@@ -240,7 +262,10 @@ export const CanvasPane = ({
           <div className="flex items-center gap-1 ml-auto shrink-0">
             <button
               type="button"
-              onClick={() => setMode((m) => (m === 'view' ? 'edit' : 'view'))}
+              onClick={() => {
+                if (mode === 'edit') flushPendingEdit()
+                setMode(mode === 'view' ? 'edit' : 'view')
+              }}
               aria-label={mode === 'view' ? 'Edit document' : 'Preview document'}
               className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-secondary hover:bg-tertiary transition-colors paragraph-sm"
             >
@@ -362,7 +387,9 @@ export const CanvasPane = ({
               <RichEditor
                 key={doc.id}
                 content={doc.content}
-                onChange={onSaveUserEdit}
+                onChange={(md) => {
+                  pendingEditRef.current = md
+                }}
               />
             </Suspense>
           </div>
@@ -370,7 +397,9 @@ export const CanvasPane = ({
           <textarea
             key={`${doc.id}-${doc.version}`}
             defaultValue={doc.content}
-            onChange={(e) => onSaveUserEdit(e.target.value)}
+            onChange={(e) => {
+              pendingEditRef.current = e.target.value
+            }}
             spellCheck
             className="w-full max-w-[640px] mx-auto block h-full min-h-[60vh] resize-none bg-transparent paragraph-md text-primary outline-none font-mono"
           />
