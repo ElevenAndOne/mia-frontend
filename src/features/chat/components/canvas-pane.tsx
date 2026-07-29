@@ -8,6 +8,7 @@ import { Type01 } from '../../../components/icon/type-01'
 import { XClose } from '../../../components/icon/x-close'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import type { CanvasDocument, DocumentSelection } from '../services/chat-service'
+import { AddToCampaign } from './add-to-campaign'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
 import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
@@ -35,6 +36,8 @@ interface CanvasPaneProps {
   onDictateEdit?: () => void
   /** Workspace/brand name shown in the platform-native previews. */
   brandName?: string
+  /** Conversation id — provenance for "Add to campaign". */
+  conversationId?: string | null
   /** Upload image(s) into the active document's media slot. */
   onUploadMedia?: (files: File[]) => void
   /** Remove an uploaded image (by URL) from the active document. */
@@ -68,6 +71,7 @@ export const CanvasPane = ({
   onSelectVersion,
   onDictateEdit,
   brandName,
+  conversationId = null,
   onUploadMedia,
   onRemoveMedia,
   isUploadingMedia = false,
@@ -246,6 +250,7 @@ export const CanvasPane = ({
                 <ReverseLeft size={16} />
               </button>
             )}
+            <AddToCampaign doc={doc} spec={spec} conversationId={conversationId} />
             <button
               type="button"
               onClick={() => copy(doc.content)}

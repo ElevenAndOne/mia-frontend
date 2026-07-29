@@ -315,6 +315,7 @@ export const ChatView = ({
              onFetchVersions={canvas.fetchVersions}
              onSelectVersion={canvas.viewVersion}
              brandName={activeWorkspace?.name}
+             conversationId={canvas.conversationId}
              onUploadMedia={canvas.uploadMedia}
              onRemoveMedia={canvas.removeMedia}
              isUploadingMedia={canvas.isUploadingMedia}

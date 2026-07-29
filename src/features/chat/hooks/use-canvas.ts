@@ -44,6 +44,8 @@ export interface CanvasController {
   /** Revert Mia's last rewrite of the active document. */
   undo: () => void
   canUndo: boolean
+  /** Conversation the canvas belongs to (provenance for "Add to campaign"). */
+  conversationId: string | null
   /** Upload image(s) into the active document's media slot (recorded as `Media:` lines). */
   uploadMedia: (files: File[]) => void
   /** Remove an uploaded image (its `Media:` line) from the active document. */
@@ -318,6 +320,7 @@ export function useCanvas({
     isSaving,
     undo,
     canUndo,
+    conversationId,
     uploadMedia,
     removeMedia,
     isUploadingMedia,
