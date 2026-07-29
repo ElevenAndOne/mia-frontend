@@ -106,7 +106,11 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
           channel_actions: [
             {
               channel: specChannel(spec),
-              action_notes: 'Added from the chat canvas',
+              objective: `Publish "${doc.title || 'chat canvas post'}"`,
+              strategy: spec?.primaryText
+                ? `${spec.primaryText.split('\n')[0].slice(0, 180)}`
+                : 'Deliverable drafted in the chat canvas.',
+              action_notes: 'Added from the chat canvas — copy and creative live on the asset.',
               assets: [asset],
             },
           ],

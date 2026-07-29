@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
@@ -17,6 +18,11 @@ interface RichEditorProps {
  * Lazy-loaded (see canvas-pane) so TipTap stays out of the main chat bundle.
  */
 const RichEditor = ({ content, onChange }: RichEditorProps) => {
+  // Last markdown WE emitted — lets the sync effect below distinguish our own
+  // (optimistic-save) content echoes from genuine external changes (Mia edits),
+  // and suppresses normalize-only onUpdate noise. Without this the editor
+  // remounts/loops on every keystroke, spawning phantom versions.
+  const lastEmitted = useRef(content)
   const editor = useEditor({
     extensions: [
       StarterKit, // includes history → native Cmd+Z keeps working
@@ -27,7 +33,10 @@ const RichEditor = ({ content, onChange }: RichEditorProps) => {
     onUpdate: ({ editor: e }) => {
       // tiptap-markdown registers untyped storage — cast once here.
       const md = (e.storage as unknown as { markdown: { getMarkdown: () => string } }).markdown
-      onChange(md.getMarkdown())
+      const next = md.getMarkdown()
+      if (next === lastEmitted.current) return
+      lastEmitted.current = next
+      onChange(next)
     },
     editorProps: {
       attributes: {
@@ -41,6 +50,13 @@ const RichEditor = ({ content, onChange }: RichEditorProps) => {
       },
     },
   })
+
+  // External content change (Mia edit / version restore) → replace in place.
+  useEffect(() => {
+    if (!editor || content === lastEmitted.current) return
+    lastEmitted.current = content
+    editor.commands.setContent(content)
+  }, [editor, content])
 
   return <EditorContent editor={editor} />
 }

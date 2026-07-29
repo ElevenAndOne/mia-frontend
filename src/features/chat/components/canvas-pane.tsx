@@ -357,9 +357,10 @@ export const CanvasPane = ({
             <Suspense
               fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}
             >
-              {/* Keyed like the textarea: remount when the doc changes externally. */}
+              {/* Keyed by doc ONLY — self-saves bump version and must NOT remount;
+                  external changes sync inside RichEditor. */}
               <RichEditor
-                key={`${doc.id}-${doc.version}`}
+                key={doc.id}
                 content={doc.content}
                 onChange={onSaveUserEdit}
               />
