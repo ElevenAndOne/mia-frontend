@@ -1,10 +1,12 @@
 import type { CreativeSpec } from './creative-spec'
 import { charChecks } from './creative-spec'
 import {
+  DocumentPreview,
   FacebookPreview,
   GoogleSearchPreview,
   InstagramPreview,
   InstagramReelPreview,
+  PostSeriesPreview,
 } from './platform-previews'
 import { CharCountChips, ProductionNotes, type MediaHandlers } from './preview-bits'
 
@@ -25,6 +27,10 @@ export const CreativePreview = ({ spec, brandName, ...media }: CreativePreviewPr
       <GoogleSearchPreview spec={spec} brandName={brandName} />
     ) : spec.format === 'reel' || spec.format === 'story' ? (
       <InstagramReelPreview spec={spec} brandName={brandName} {...media} />
+    ) : spec.format === 'document' ? (
+      <DocumentPreview spec={spec} brandName={brandName} {...media} />
+    ) : spec.format === 'post_series' ? (
+      <PostSeriesPreview spec={spec} brandName={brandName} {...media} />
     ) : spec.platform === 'instagram' ? (
       <InstagramPreview spec={spec} brandName={brandName} {...media} />
     ) : (

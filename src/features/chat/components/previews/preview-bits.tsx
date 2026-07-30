@@ -36,6 +36,10 @@ interface MediaSlotProps extends MediaHandlers {
   carousel?: boolean
   /** Fill the parent frame (Reel/Story): absolute-positioned, object-cover images. */
   cover?: boolean
+  /** Video/animation formats: centered play-button overlay. */
+  play?: boolean
+  /** Small corner chip over the media, e.g. "Animation". */
+  badge?: string
 }
 
 /**
@@ -50,6 +54,8 @@ export const MediaSlot = ({
   aspect = 'aspect-[1.91/1]',
   carousel = false,
   cover = false,
+  play = false,
+  badge,
   onUploadMedia,
   onRemoveMedia,
   isUploadingMedia = false,
@@ -69,11 +75,14 @@ export const MediaSlot = ({
   }
 
   const hasImage = count > 0
-  const frame = cover ? 'absolute inset-0' : hasImage ? '' : aspect
+  // Cover mode must stay position:absolute — adding `relative` alongside it lets
+  // `position:relative` win in the emitted CSS and collapses the slot to the top
+  // of the 9:16 frame (visual brief overlapping the story/reel chrome).
+  const frame = cover ? 'absolute inset-0' : `relative ${hasImage ? '' : aspect}`
 
   return (
     <div
-      className={`${frame} ${className} group/media relative overflow-hidden ${
+      className={`${frame} ${className} group/media overflow-hidden ${
         dragging ? 'ring-2 ring-inset ring-utility-brand-600' : ''
       }`}
       onDragOver={(e) => {
@@ -121,6 +130,21 @@ export const MediaSlot = ({
             <span className="text-[10.5px] opacity-50">Drop an image here or click +</span>
           )}
         </div>
+      )}
+
+      {play && hasImage && (
+        <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="w-12 h-12 rounded-full bg-black/45 backdrop-blur-[2px] flex items-center justify-center">
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="white" aria-hidden="true">
+              <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+            </svg>
+          </span>
+        </span>
+      )}
+      {badge && (
+        <span className="absolute top-2 left-2 rounded bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 uppercase tracking-[0.08em] pointer-events-none">
+          {badge}
+        </span>
       )}
 
       {/* Slide arrows + dots (only with multiple images) */}
@@ -206,7 +230,12 @@ export const MediaSlot = ({
             e.stopPropagation()
             fileRef.current?.click()
           }}
-          className={`absolute bottom-2 right-2 h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
+          className={`absolute ${
+            // Cover frames (reel/story) keep their bottom edge for captions,
+            // reply bar and CTAs — park the controls top-right, below the
+            // story progress bars.
+            cover ? 'top-8 right-2' : 'bottom-2 right-2'
+          } h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
             hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
           }`}
         >
@@ -221,7 +250,9 @@ export const MediaSlot = ({
             e.stopPropagation()
             onRemoveMedia(media[slide])
           }}
-          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/45 text-white text-[12px] flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity"
+          className={`absolute ${
+            cover ? 'top-[68px] right-2' : 'top-2 right-2'
+          } w-6 h-6 rounded-full bg-black/45 text-white text-[12px] flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity`}
         >
           ✕
         </button>

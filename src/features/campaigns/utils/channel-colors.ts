@@ -52,11 +52,22 @@ const CHANNEL_HEX: Record<string, string> = {
 
 const TYPE_HEX: Record<string, string> = {
   carousel: '#8b6dff',
+  post_series: '#8b6dff',
   animation: '#4f8cff',
   reel: '#4f8cff',
   video: '#4f8cff',
+  story: '#4f8cff',
+  spark_ad: '#ff4d67',
   static: '#f0a82e',
   single_image: '#f0a82e',
+  search_ad: '#f0a82e',
+  responsive_search_ad: '#f0a82e',
+  pmax: '#f0a82e',
+  display_ad: '#f0a82e',
+  text_ad: '#3b82f6',
+  document: '#c084fc',
+  pdf: '#c084fc',
+  article: '#60a5fa',
   email: '#2bd4a4',
 }
 

@@ -11,8 +11,17 @@ import type { CanvasDocument } from '../../services/chat-service'
  * rows (`details.creative`).
  */
 
-export type PreviewPlatform = 'facebook' | 'instagram' | 'google'
-export type PreviewFormat = 'static' | 'carousel' | 'reel' | 'story' | 'video' | 'search_ad'
+export type PreviewPlatform = 'facebook' | 'instagram' | 'linkedin' | 'google'
+export type PreviewFormat =
+  | 'static'
+  | 'carousel'
+  | 'reel'
+  | 'story'
+  | 'video'
+  | 'animation'
+  | 'document'
+  | 'post_series'
+  | 'search_ad'
 
 export interface CreativeNote {
   label: string
@@ -109,6 +118,7 @@ const cleanValue = (value: string): string =>
 const detectPlatform = (hint: string): PreviewPlatform | null => {
   const h = hint.toLowerCase()
   if (/google|search ad|responsive search|\brsa\b|pmax/.test(h)) return 'google'
+  if (/linkedin/.test(h)) return 'linkedin'
   if (/instagram|\big\b|reel|story|stories/.test(h)) return 'instagram'
   if (/facebook|\bfb\b|meta/.test(h)) return 'facebook'
   return null
@@ -120,6 +130,9 @@ const detectFormat = (hint: string): PreviewFormat | null => {
   if (/carousel/.test(h)) return 'carousel'
   if (/reel/.test(h)) return 'reel'
   if (/story|stories/.test(h)) return 'story'
+  if (/animat|\bgif\b/.test(h)) return 'animation'
+  if (/document|\bpdf\b|slide deck|\bdeck\b/.test(h)) return 'document'
+  if (/post[ _-]?series|\bthread\b/.test(h)) return 'post_series'
   if (/video/.test(h)) return 'video'
   if (/static|single|image|photo/.test(h)) return 'static'
   return null
@@ -297,6 +310,7 @@ export const charChecks = (spec: CreativeSpec): CharCheck[] => {
 export const PLATFORM_LABELS: Record<PreviewPlatform, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
+  linkedin: 'LinkedIn',
   google: 'Google',
 }
 

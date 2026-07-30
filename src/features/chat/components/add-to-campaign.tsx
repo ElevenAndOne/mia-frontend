@@ -19,6 +19,7 @@ interface AddToCampaignProps {
 const specChannel = (spec: CreativeSpec | null): string => {
   if (!spec) return 'organic_social'
   if (spec.platform === 'google') return 'google_ads'
+  if (spec.platform === 'linkedin') return spec.isPaid ? 'linkedin_ads' : 'linkedin_organic'
   return spec.isPaid ? 'meta_ads' : 'organic_social'
 }
 

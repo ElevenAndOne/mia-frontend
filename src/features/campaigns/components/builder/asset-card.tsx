@@ -7,12 +7,7 @@ import { buildAssetFinalUrl } from '../../services/campaign-api'
 import { DrivePickerModal } from './drive-picker-modal'
 import { creativeThumbnail, isDriveFolderUrl, onThumbError, splitCreativeUrls } from '../../utils/drive'
 import type { Asset, AssetStatus, DriveFile } from '../../types'
-
-const ASSET_TYPES = [
-  'static', 'carousel', 'reel', 'animation', 'email', 'video', 'post_series',
-  'single_image', 'story', 'search_ad', 'responsive_search_ad', 'display_ad',
-  'pmax', 'pdf', 'text_ad',
-]
+import { ASSET_TYPES, ASSET_TYPE_GROUPS } from '../../constants/asset-types'
 
 // Ad lifecycle → ClickUp status. Colour keys the pipeline stage at a glance.
 const ASSET_STATUSES: { value: AssetStatus; label: string; cls: string }[] = [
@@ -147,8 +142,16 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           className="text-xs border border-tertiary rounded-md px-1.5 py-0.5 bg-secondary-subtle text-tertiary capitalize"
         >
           <option value="">type</option>
-          {ASSET_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
+          {/* Free-text legacy value not in the vocabulary — keep it selectable. */}
+          {asset.asset_type && !ASSET_TYPES.includes(asset.asset_type) && (
+            <option value={asset.asset_type}>{asset.asset_type}</option>
+          )}
+          {ASSET_TYPE_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.types.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
         {confirmingDelete ? (
