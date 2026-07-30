@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { browseDriveFolder } from '../../services/campaign-api'
+import { onThumbError } from '../../utils/drive'
 import type { DriveFile, DriveFolderListing } from '../../types'
 
 interface Props {
@@ -131,7 +132,7 @@ export const DrivePickerModal = ({ folderUrl, maxSelect, onSave, onClose }: Prop
                         order >= 0 ? 'border-utility-brand-500' : 'border-transparent hover:border-tertiary'
                       }`}
                     >
-                      <img src={f.thumbnail_url} alt={f.name} loading="lazy" className="w-full h-28 object-cover bg-tertiary" />
+                      <img src={f.thumbnail_url} onError={(e) => onThumbError(e, f.thumbnail_url)} alt={f.name} loading="lazy" className="w-full h-28 object-cover bg-tertiary" />
                       {f.mime_type.startsWith('video/') && (
                         <span className="absolute bottom-6 right-1.5 label-xs font-semibold text-white bg-black/60 rounded px-1">▶</span>
                       )}
@@ -165,7 +166,7 @@ export const DrivePickerModal = ({ folderUrl, maxSelect, onSave, onClose }: Prop
                 title={`${i + 1}. ${f.name} — drag to reorder`}
                 className={`relative shrink-0 w-14 h-14 rounded-md overflow-hidden border cursor-grab ${dragFrom === i ? 'opacity-50' : ''} border-secondary`}
               >
-                <img src={f.thumbnail_url} alt={f.name} className="w-full h-full object-cover" />
+                <img src={f.thumbnail_url} onError={(e) => onThumbError(e, f.thumbnail_url)} alt={f.name} className="w-full h-full object-cover" />
                 <span className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white label-xs font-bold">
                   {i + 1}
                 </span>

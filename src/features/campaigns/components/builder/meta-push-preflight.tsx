@@ -11,6 +11,23 @@ import type { MetaPushPreview, MetaPushResult } from '../../types'
 
 const META = '#0866FF'
 
+// Meta's supported CTA buttons (backend-validated set), applied to every ad in the push.
+const CTA_OPTIONS: { value: string; label: string }[] = [
+  { value: 'LEARN_MORE', label: 'Learn more' },
+  { value: 'SHOP_NOW', label: 'Shop now' },
+  { value: 'SIGN_UP', label: 'Sign up' },
+  { value: 'APPLY_NOW', label: 'Apply now' },
+  { value: 'GET_OFFER', label: 'Get offer' },
+  { value: 'ORDER_NOW', label: 'Order now' },
+  { value: 'CONTACT_US', label: 'Contact us' },
+  { value: 'SUBSCRIBE', label: 'Subscribe' },
+  { value: 'DOWNLOAD', label: 'Download' },
+  { value: 'GET_QUOTE', label: 'Get quote' },
+  { value: 'BOOK_TRAVEL', label: 'Book now' },
+  { value: 'SEE_MORE', label: 'See more' },
+  { value: 'NO_BUTTON', label: 'No button' },
+]
+
 interface Props {
   actionId: string
   onClose: () => void
@@ -41,6 +58,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
   const [ageMax, setAgeMax] = useState(65)
   const [gender, setGender] = useState<'all' | 'women' | 'men'>('all')
   const [savedAudiences, setSavedAudiences] = useState<{ name: string; subtype: string }[]>([])
+  const [cta, setCta] = useState('LEARN_MORE')
 
   useEffect(() => {
     fetchMetaPushPreview(sessionId, tenantId, campaign.campaign_id, actionId)
@@ -53,6 +71,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
         setAgeMin(p.audience.age_min ?? 18)
         setAgeMax(p.audience.age_max ?? 65)
         setGender(p.audience.genders?.[0] === 2 ? 'women' : p.audience.genders?.[0] === 1 ? 'men' : 'all')
+        setCta(p.default_cta || 'LEARN_MORE')
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load preview'))
       .finally(() => setLoading(false))
@@ -103,9 +122,11 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
       }
       const existing = (preview?.meta_push_config as Record<string, unknown>) || {}
       await patchChannelAction(sessionId, tenantId, campaign.campaign_id, actionId, {
-        meta_push_config: { ...existing, audience },
+        meta_push_config: { ...existing, audience, default_cta: cta },
       })
-      const r = await pushChannelActionToMeta(sessionId, tenantId, campaign.campaign_id, actionId)
+      const r = await pushChannelActionToMeta(sessionId, tenantId, campaign.campaign_id, actionId, {
+        default_cta: cta,
+      })
       setResult(r)
       if (r.success) await reloadDetail()
     } catch (e) {
@@ -170,6 +191,14 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
                 {!preview.capabilities.has_pixel && (
                   <p className="paragraph-xs text-tertiary mt-0.5">No pixel on this account — link clicks only</p>
                 )}
+                <div className="mt-2">
+                  <span className={fieldLabel}>CTA button (all ads)</span>
+                  <select value={cta} onChange={(e) => setCta(e.target.value)} className={inputCls}>
+                    {CTA_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="bg-primary border border-secondary rounded-lg p-3">
                 <span className={fieldLabel}>Budget & flight</span>

@@ -201,6 +201,25 @@ export const restoreAssetVersion = (s: string, t: string, id: string, assetId: s
     headers: auth(s),
   })
 
+/** Build the UTM'd Final URL for an asset (utm_source=meta, utm_medium=paid_social,
+ * campaign/asset auto). persist=false — the caller saves via the normal patch path. */
+export const buildAssetFinalUrl = async (
+  s: string,
+  t: string,
+  id: string,
+  assetId: string,
+  baseUrl: string,
+): Promise<string> => {
+  const res = await apiFetch(`${base(t)}/${id}/assets/${assetId}/final-url`, {
+    method: 'POST',
+    headers: authJson(s),
+    body: JSON.stringify({ base_url: baseUrl, persist: false }),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || 'Failed to build UTM URL')
+  return body.final_url as string
+}
+
 /** Upload a creative image for an asset — appended to deliverable_url (ClickUp "Final Asset"). */
 export const uploadAssetMedia = async (
   s: string,
@@ -358,10 +377,11 @@ export async function pushChannelActionToMeta(
   t: string,
   campaignId: string,
   actionId: string,
+  overrides: { default_cta?: string } = {},
 ): Promise<MetaPushResult> {
   const res = await apiFetch(
     `${base(t)}/${campaignId}/channel_actions/${actionId}/push-to-meta`,
-    { method: 'POST', headers: authJson(s), body: JSON.stringify({}) },
+    { method: 'POST', headers: authJson(s), body: JSON.stringify(overrides) },
   )
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Push to Meta failed (${res.status})`)

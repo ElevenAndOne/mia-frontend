@@ -3,8 +3,9 @@ import { EditableText } from '../../../../components/editable-text'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
+import { buildAssetFinalUrl } from '../../services/campaign-api'
 import { DrivePickerModal } from './drive-picker-modal'
-import { creativeThumbnail, isDriveFolderUrl, splitCreativeUrls } from '../../utils/drive'
+import { creativeThumbnail, isDriveFolderUrl, onThumbError, splitCreativeUrls } from '../../utils/drive'
 import type { Asset, AssetStatus, DriveFile } from '../../types'
 
 const ASSET_TYPES = [
@@ -47,7 +48,29 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     onPatch({ details: { ...details, [key]: value || undefined } })
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const { openAssetPreview } = useCampaignWorkspace()
+  const { openAssetPreview, sessionId, tenantId, campaign } = useCampaignWorkspace()
+
+  // ── UTM builder ────────────────────────────────────────────────────────
+  // Appends the team convention (utm_source=meta, utm_medium=paid_social,
+  // campaign/asset auto) to the current Final URL. Opt-in per asset — a bare
+  // URL is correct when the destination has no analytics (e.g. Google Forms).
+  const [buildingUtm, setBuildingUtm] = useState(false)
+  const [utmError, setUtmError] = useState('')
+  const addUtms = async () => {
+    if (!asset.final_url || buildingUtm) return
+    setBuildingUtm(true)
+    setUtmError('')
+    try {
+      const url = await buildAssetFinalUrl(
+        sessionId, tenantId, campaign.campaign_id, asset.asset_id, asset.final_url,
+      )
+      onPatch({ final_url: url })
+    } catch (e) {
+      setUtmError(e instanceof Error ? e.message : 'Failed to build UTM URL')
+    } finally {
+      setBuildingUtm(false)
+    }
+  }
 
   // ── Drive creative picker ──────────────────────────────────────────────
   // deliverable_url either holds a Drive *folder* link (from ClickUp sync or
@@ -79,6 +102,13 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     next.splice(to, 0, moved)
     setDragFrom(to)
     onPatch({ deliverable_url: next.join('\n') })
+  }
+
+  const removeMedia = (i: number) => {
+    const next = mediaUrls.filter((_, idx) => idx !== i)
+    // Removing the last picked file falls back to the Drive folder link (if any)
+    // so the picker stays reachable and the field isn't silently emptied.
+    onPatch({ deliverable_url: next.length ? next.join('\n') : driveFolder ?? null })
   }
 
   return (
@@ -236,13 +266,29 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           />
         </div>
         <div>
-          <span className={fieldLabel}>Final URL (destination + tracking)</span>
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
+              Final URL (destination + tracking)
+            </span>
+            {asset.final_url && (
+              <button
+                type="button"
+                onClick={addUtms}
+                disabled={buildingUtm}
+                title="Append the UTM convention (source=meta, medium=paid_social, campaign + asset auto). Skip for destinations with no analytics, e.g. Google Forms."
+                className="label-xs font-semibold text-utility-brand-600 hover:underline disabled:opacity-50"
+              >
+                {buildingUtm ? 'Building…' : asset.final_url.includes('utm_') ? '↻ UTMs' : '+ UTMs'}
+              </button>
+            )}
+          </div>
           <EditableText
             value={asset.final_url ?? ''}
             onSave={(v) => onPatch({ final_url: v || null })}
             placeholder="https://… (UTMs included)"
             className="paragraph-xs text-secondary break-all"
           />
+          {utmError && <p className="label-xs text-utility-error-600 mt-0.5">{utmError}</p>}
         </div>
         <div>
           <span className={fieldLabel}>Final asset (approved creative)</span>
@@ -266,12 +312,22 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
                     mediaUrls.length > 1 ? 'cursor-grab' : ''
                   } ${dragFrom === i ? 'opacity-50' : ''}`}
                 >
-                  <img src={creativeThumbnail(u, 120)} alt="" loading="lazy" className="w-full h-full object-cover bg-tertiary" />
+                  <img src={creativeThumbnail(u, 120)} onError={(e) => onThumbError(e, u, 120)} alt="" loading="lazy" className="w-full h-full object-cover bg-tertiary" />
                   {mediaUrls.length > 1 && (
                     <span className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white label-xs font-bold">
                       {i + 1}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeMedia(i) }}
+                    title="Remove this creative"
+                    className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-utility-error-600 hover:text-white"
+                  >
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>

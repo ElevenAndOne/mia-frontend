@@ -232,6 +232,7 @@ export interface MetaPushPreview {
   }
   objective: string
   optimization_goal: string
+  default_cta: string
   custom_conversion_id: string | null
   custom_conversion_name: string | null
   lifetime_budget: number | null
