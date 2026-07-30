@@ -1325,6 +1325,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                   setShowLinkedInAccountSelector(true)
                                 else if (integration.id === 'tiktok_ads')
                                   setShowTikTokAccountSelector(true)
+                                else if (integration.id === 'tiktok_organic')
+                                  setShowTikTokOrganicAccountSelector(true)
                                 else if (integration.id === 'airtable')
                                   setShowAirtableBaseSelector(true)
                               }}
@@ -1338,6 +1340,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                                   'mailchimp',
                                   'linkedin_ads',
                                   'tiktok_ads',
+                                  'tiktok_organic',
                                   'airtable',
                                 ].includes(integration.id)
                                   ? () => handleConnect(integration.id)

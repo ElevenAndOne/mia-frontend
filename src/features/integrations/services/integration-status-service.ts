@@ -134,6 +134,7 @@ export const fetchTenantIntegrationStatus = async (
     mailchimp: data.platform_status?.mailchimp,
     linkedin_ads: data.platform_status?.linkedin_ads,
     tiktok_ads: data.platform_status?.tiktok_ads,
+    tiktok_organic: data.platform_status?.tiktok_organic,
     airtable: data.platform_status?.airtable,
     smartlead: data.platform_status?.smartlead,
   }
@@ -193,6 +194,7 @@ export const fetchAccountIntegrationStatus = async (
     mailchimp: Boolean(currentAccountData?.mailchimp_account_id),
     linkedin_ads: Boolean(currentAccountData?.linkedin_ads_account_id),
     tiktok_ads: Boolean(currentAccountData?.tiktok_advertiser_id),
+    tiktok_organic: Boolean(currentAccountData?.tiktok_business_id),
     airtable: Boolean(currentAccountData?.airtable_base_id),
     smartlead: false,
   })
