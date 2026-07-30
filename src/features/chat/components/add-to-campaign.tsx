@@ -18,8 +18,10 @@ interface AddToCampaignProps {
 /** CreativeSpec → campaign channel key. */
 const specChannel = (spec: CreativeSpec | null): string => {
   if (!spec) return 'organic_social'
-  if (spec.platform === 'google') return 'google_ads'
+  if (spec.platform === 'google') return spec.format === 'display_ad' ? 'google_display' : 'google_ads'
   if (spec.platform === 'linkedin') return spec.isPaid ? 'linkedin_ads' : 'linkedin_organic'
+  if (spec.platform === 'tiktok') return 'tiktok_ads'
+  if (spec.platform === 'email') return 'email'
   return spec.isPaid ? 'meta_ads' : 'organic_social'
 }
 
@@ -86,12 +88,19 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     const bestTime = spec?.notes.find((n) => /best time/i.test(n.label))?.value
     const asset: Record<string, unknown> = {
       asset_name: doc.title || 'Chat canvas post',
-      asset_type: spec ? (spec.platform === 'google' ? 'responsive_search_ad' : spec.format) : 'static',
+      asset_type: spec
+        ? spec.platform === 'google' && spec.format === 'search_ad'
+          ? 'responsive_search_ad'
+          : spec.format
+        : 'static',
       key_message: spec
         ? [spec.primaryText, spec.hashtags].filter(Boolean).join('\n\n')
         : doc.content,
       ...(spec?.cta ? { cta: spec.cta } : {}),
       ...(spec?.headline ? { headline: spec.headline } : {}),
+      // RSA/PMax variant pools — the executor stores these in asset.details.
+      ...(spec && spec.headlines.length > 1 ? { headlines: spec.headlines } : {}),
+      ...(spec && spec.descriptions.length > 1 ? { descriptions: spec.descriptions } : {}),
       ...(spec?.media.length ? { deliverable_url: spec.media.join('\n') } : {}),
       ...(bestTime ? { optimal_post_time: bestTime } : {}),
     }

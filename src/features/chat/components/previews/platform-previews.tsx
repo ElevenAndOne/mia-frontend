@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CreativeSpec } from './creative-spec'
 import { displayDomain } from './creative-spec'
 import {
@@ -235,6 +236,235 @@ export const InstagramReelPreview = ({ spec, brandName, ...media }: PreviewProps
   )
 }
 
+/* ---------------------------------- LinkedIn feed ---------------------------------- */
+
+export const LinkedInPreview = ({ spec, brandName, ...media }: PreviewProps) => {
+  const showCtaBar = spec.isPaid && (spec.headline || spec.cta)
+  return (
+    <div className="w-full max-w-[400px] rounded-xl overflow-hidden bg-white text-[#191919] border border-[#E8E8E8] shadow-sm dark:bg-[#1B1F23] dark:text-[#E9E9EA] dark:border-transparent">
+      <div className="flex items-center gap-2.5 px-3.5 pt-3">
+        <BrandAvatar name={brandName} size={40} />
+        <div className="leading-tight">
+          <p className="text-[14px] font-semibold">{brandName || 'Your Company'}</p>
+          <p className="text-[12px] text-[#666666] dark:text-[#B0B3B8]">
+            {spec.isPaid ? 'Promoted' : 'Just now · 🌐'}
+          </p>
+        </div>
+      </div>
+
+      {spec.primaryText && (
+        <p className="px-3.5 py-2.5 text-[13.5px] leading-[1.45] whitespace-pre-line">
+          {spec.primaryText}
+          <Hashtags tags={spec.hashtags} className="text-[#0A66C2] dark:text-[#70B5F9]" />
+        </p>
+      )}
+
+      <MediaSlot
+        visuals={spec.visuals}
+        media={spec.media}
+        aspect={spec.format === 'carousel' ? 'aspect-square' : 'aspect-[1.91/1]'}
+        carousel={spec.format === 'carousel'}
+        play={isMotion(spec)}
+        badge={motionBadge(spec)}
+        className="bg-[#F3F2EF] text-[#666666] dark:bg-[#111417] dark:text-[#B0B3B8]"
+        {...media}
+      />
+
+      {showCtaBar && (
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-[#EDF3F8] dark:bg-[#293138]">
+          <p className="text-[13px] font-semibold truncate">{spec.headline ?? spec.linkUrl}</p>
+          {spec.cta && (
+            <span className="shrink-0 rounded-full border border-[#0A66C2] text-[#0A66C2] dark:border-[#70B5F9] dark:text-[#70B5F9] px-3 py-1 text-[13px] font-semibold">
+              {spec.cta}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mx-3.5 flex justify-around border-t border-[#E8E8E8] dark:border-[#2C3237] py-1.5 text-[12.5px] font-medium text-[#666666] dark:text-[#B0B3B8]">
+        <span className="flex items-center gap-1.5">
+          <ThumbsUpIcon size={15} /> Like
+        </span>
+        <span className="flex items-center gap-1.5">
+          <CommentIcon size={15} /> Comment
+        </span>
+        <span className="flex items-center gap-1.5">
+          <ShareIcon size={15} /> Repost
+        </span>
+        <span className="flex items-center gap-1.5">
+          <SendIcon size={15} /> Send
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------------------- TikTok ---------------------------------- */
+
+export const TikTokPreview = ({ spec, brandName, ...media }: PreviewProps) => (
+  <div className="w-[250px] max-w-full aspect-[9/16] rounded-2xl overflow-hidden relative text-white bg-gradient-to-b from-[#2A2A2E] via-[#1B1B1E] to-[#0F0F10] ring-1 ring-[#DBDBDB] dark:ring-[#262626]">
+    <MediaSlot
+      visuals={spec.visuals}
+      media={spec.media}
+      cover
+      className="text-white/80"
+      {...media}
+    />
+
+    <span className="absolute top-3 left-3 text-[10px] uppercase tracking-[0.12em] text-white/70 [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">
+      TikTok{spec.isPaid ? ' · Sponsored' : ''}
+    </span>
+
+    {/* Right rail: follow avatar + reactions */}
+    <div className="absolute right-2.5 bottom-24 flex flex-col items-center gap-4 text-white pointer-events-none">
+      <span className="relative">
+        <BrandAvatar name={brandName} size={30} />
+        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#FE2C55] text-white text-[10px] leading-[13px] text-center font-bold">
+          +
+        </span>
+      </span>
+      <HeartIcon size={22} />
+      <CommentIcon size={21} />
+      <BookmarkIcon size={20} />
+      <SendIcon size={20} />
+    </div>
+
+    <div className="absolute left-3 right-14 bottom-3.5 [text-shadow:0_1px_6px_rgba(0,0,0,0.7)]">
+      <p className="text-[12.5px] font-semibold mb-1">@{igHandle(brandName)}</p>
+      {spec.primaryText && (
+        <p className="text-[12px] leading-[1.4] whitespace-pre-line line-clamp-3">
+          {spec.primaryText}
+          <Hashtags tags={spec.hashtags} className="text-white/80" />
+        </p>
+      )}
+      {spec.isPaid && spec.cta ? (
+        <p className="mt-2 rounded-md bg-[#FE2C55] text-white text-center text-[12.5px] font-semibold py-1.5">
+          {spec.cta}
+        </p>
+      ) : (
+        <p className="mt-1.5 text-[11.5px] text-white/80 truncate">
+          ♫ Original sound — {brandName || 'your brand'}
+        </p>
+      )}
+    </div>
+  </div>
+)
+
+/* ---------------------------------- Email / inbox ---------------------------------- */
+
+export const EmailPreview = ({ spec, brandName, ...media }: PreviewProps) => {
+  const subject = spec.headline ?? spec.primaryText.split('\n')[0]
+  return (
+    <div className="w-full max-w-[400px] rounded-xl overflow-hidden bg-white text-[#1F1F1F] border border-[#E0E0E0] shadow-sm dark:bg-[#1E1F21] dark:text-[#E8EAED] dark:border-[#3C4043]">
+      {/* Inbox row — how it lands before the open */}
+      <div className="flex items-start gap-2.5 px-3.5 py-3 border-b border-[#E0E0E0] dark:border-[#3C4043]">
+        <BrandAvatar name={brandName} size={34} />
+        <div className="min-w-0 leading-tight flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[13.5px] font-semibold truncate">{brandName || 'Your Brand'}</p>
+            <span className="shrink-0 text-[11px] text-[#5F6368] dark:text-[#9AA0A6]">09:41</span>
+          </div>
+          <p className="text-[13px] font-medium truncate">{subject}</p>
+          {spec.description && (
+            <p className="text-[12px] text-[#5F6368] dark:text-[#9AA0A6] truncate">
+              {spec.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Opened email body */}
+      <MediaSlot
+        visuals={spec.visuals}
+        media={spec.media}
+        aspect="aspect-[1.91/1]"
+        className="bg-[#F5F5F5] text-[#5F6368] dark:bg-[#17181A] dark:text-[#9AA0A6]"
+        {...media}
+      />
+      {spec.primaryText && (
+        <p className="px-4 py-3 text-[13px] leading-[1.55] whitespace-pre-line">
+          {spec.primaryText}
+        </p>
+      )}
+      {spec.cta && (
+        <div className="px-4 pb-3">
+          <span className="inline-block rounded-md bg-[#1F1F1F] text-white dark:bg-[#E8EAED] dark:text-[#1F1F1F] px-4 py-2 text-[13px] font-semibold">
+            {spec.cta}
+          </span>
+        </div>
+      )}
+      <p className="px-4 pb-3 text-[11px] text-[#9AA0A6]">
+        Unsubscribe · Preferences · {displayDomain(spec.linkUrl)}
+      </p>
+    </div>
+  )
+}
+
+/* ---------------------------------- Google display banner ---------------------------------- */
+
+/** 300×250 MPU — the most common Google Display placement. */
+export const DisplayAdPreview = ({ spec, brandName, ...media }: PreviewProps) => (
+  <div className="w-[300px] max-w-full rounded-md overflow-hidden bg-white text-[#202124] border border-[#DADCE0] dark:bg-[#202124] dark:text-[#E8EAED] dark:border-[#3C4043]">
+    <div className="relative">
+      <MediaSlot
+        visuals={spec.visuals}
+        media={spec.media}
+        aspect="aspect-[300/157]"
+        className="bg-[#F1F3F4] text-[#5F6368] dark:bg-[#17181A] dark:text-[#9AA0A6]"
+        {...media}
+      />
+      <span className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[10px] text-[#5F6368] dark:text-[#9AA0A6] bg-white/90 dark:bg-black/60 rounded px-1 pointer-events-none">
+        ⓘ ✕
+      </span>
+    </div>
+    <div className="px-3 py-2.5">
+      <p className="text-[14px] font-semibold leading-snug line-clamp-2">
+        {spec.headline ?? spec.primaryText.split('\n')[0]}
+      </p>
+      {spec.description && (
+        <p className="mt-0.5 text-[12px] text-[#5F6368] dark:text-[#9AA0A6] line-clamp-2">
+          {spec.description}
+        </p>
+      )}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="shrink-0 text-[9px] font-bold uppercase border border-[#5F6368] dark:border-[#9AA0A6] text-[#5F6368] dark:text-[#9AA0A6] rounded-sm px-1 leading-[14px]">
+            Ad
+          </span>
+          <span className="text-[11px] text-[#5F6368] dark:text-[#9AA0A6] truncate">
+            {brandName || displayDomain(spec.linkUrl)}
+          </span>
+        </span>
+        <span className="shrink-0 rounded bg-[#1A73E8] text-white px-2.5 py-1 text-[12px] font-medium">
+          {spec.cta ?? 'Learn more'}
+        </span>
+      </div>
+    </div>
+  </div>
+)
+
+/* ---------------------------------- LinkedIn text ad ---------------------------------- */
+
+/** Right-rail text ad: tiny logo + blue headline + one-line description. */
+export const TextAdPreview = ({ spec, brandName }: PreviewProps) => (
+  <div className="w-full max-w-[320px] rounded-lg bg-white text-[#191919] border border-[#E8E8E8] px-3 py-2.5 dark:bg-[#1B1F23] dark:text-[#E9E9EA] dark:border-[#2C3237]">
+    <p className="text-[10px] uppercase tracking-[0.08em] text-[#666666] dark:text-[#B0B3B8] mb-1.5">
+      Promoted
+    </p>
+    <div className="flex items-start gap-2.5">
+      <BrandAvatar name={brandName} size={40} />
+      <div className="min-w-0 leading-snug">
+        <p className="text-[13px] font-semibold text-[#0A66C2] dark:text-[#70B5F9]">
+          {spec.headline ?? spec.primaryText.split('\n')[0]}
+        </p>
+        <p className="text-[12px] text-[#666666] dark:text-[#B0B3B8] line-clamp-2">
+          {spec.description ?? spec.primaryText}
+        </p>
+      </div>
+    </div>
+  </div>
+)
+
 /* ---------------------------------- Document / PDF post ---------------------------------- */
 
 /** LinkedIn-style document post (document ads / PDF carousels / lead magnets). */
@@ -309,7 +539,12 @@ export const DocumentPreview = ({ spec, brandName, ...media }: PreviewProps) => 
 /** A series of connected posts: the lead post on a stacked deck + series count. */
 export const PostSeriesPreview = ({ spec, brandName, ...media }: PreviewProps) => {
   const count = Math.max(spec.visuals.length, spec.media.length, 3)
-  const Card = spec.platform === 'instagram' ? InstagramPreview : FacebookPreview
+  const Card =
+    spec.platform === 'instagram'
+      ? InstagramPreview
+      : spec.platform === 'linkedin'
+        ? LinkedInPreview
+        : FacebookPreview
   return (
     <div className="flex flex-col items-center">
       <div className="relative w-fit max-w-full">
@@ -332,30 +567,105 @@ export const PostSeriesPreview = ({ spec, brandName, ...media }: PreviewProps) =
   )
 }
 
-/* ---------------------------------- Google search ad ---------------------------------- */
+/* ---------------------------------- Google search ad / RSA ---------------------------------- */
 
-export const GoogleSearchPreview = ({ spec, brandName }: PreviewProps) => (
-  <div
-    className="w-full max-w-[400px] rounded-xl border bg-white border-[#DADCE0] text-[#202124] px-4 py-3.5 dark:bg-[#202124] dark:border-[#3C4043] dark:text-[#E8EAED]"
-    style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-  >
-    <p className="text-[12px] font-bold mb-1.5">Sponsored</p>
-    <div className="flex items-center gap-2">
-      <div className="w-[26px] h-[26px] rounded-full bg-[#E8F0FE] dark:bg-[#3C4043] flex items-center justify-center text-[11px] font-bold text-[#1A73E8] dark:text-[#8AB4F8]">
-        {(brandName?.trim()[0] ?? 'M').toUpperCase()}
-      </div>
-      <div className="leading-tight">
-        <p className="text-[13px]">{brandName || 'Your Business'}</p>
-        <p className="text-[12px] text-[#4D5156] dark:text-[#BDC1C6]">
-          {displayDomain(spec.linkUrl)}
+/** N items starting at a rotating offset — how the preview cycles RSA combinations. */
+const rotatePick = (arr: string[], offset: number, n: number): string[] =>
+  Array.from({ length: Math.min(n, arr.length) }, (_, i) => arr[(offset + i) % arr.length])
+
+/** One variant row in the RSA pool list, with its own char count. */
+const VariantRow = ({ text, limit }: { text: string; limit: number }) => (
+  <li className="flex items-baseline justify-between gap-3">
+    <span className="paragraph-sm text-secondary">{text}</span>
+    <span
+      className={`shrink-0 paragraph-sm tabular-nums ${
+        text.length > limit ? 'text-utility-warning-600 font-semibold' : 'text-quaternary'
+      }`}
+    >
+      {text.length}/{limit}
+    </span>
+  </li>
+)
+
+export const GoogleSearchPreview = ({ spec, brandName }: PreviewProps) => {
+  const [combo, setCombo] = useState(0)
+  const headlinePool = spec.headlines.length
+    ? spec.headlines
+    : [spec.headline ?? spec.primaryText.split('\n')[0]]
+  const descriptionPool = spec.descriptions.length
+    ? spec.descriptions
+    : [spec.description ?? spec.primaryText]
+  const isRsa = headlinePool.length > 1 || descriptionPool.length > 1
+
+  return (
+    <div className="w-full max-w-[400px] flex flex-col gap-2.5">
+      <div
+        className="rounded-xl border bg-white border-[#DADCE0] text-[#202124] px-4 py-3.5 dark:bg-[#202124] dark:border-[#3C4043] dark:text-[#E8EAED]"
+        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+      >
+        <p className="text-[12px] font-bold mb-1.5">Sponsored</p>
+        <div className="flex items-center gap-2">
+          <div className="w-[26px] h-[26px] rounded-full bg-[#E8F0FE] dark:bg-[#3C4043] flex items-center justify-center text-[11px] font-bold text-[#1A73E8] dark:text-[#8AB4F8]">
+            {(brandName?.trim()[0] ?? 'M').toUpperCase()}
+          </div>
+          <div className="leading-tight">
+            <p className="text-[13px]">{brandName || 'Your Business'}</p>
+            <p className="text-[12px] text-[#4D5156] dark:text-[#BDC1C6]">
+              {displayDomain(spec.linkUrl)}
+            </p>
+          </div>
+        </div>
+        <h4 className="mt-2 mb-1 text-[17px] leading-[1.3] font-normal text-[#1A0DAB] dark:text-[#8AB4F8]">
+          {rotatePick(headlinePool, combo, 3).join(' | ')}
+        </h4>
+        <p className="text-[13px] leading-[1.5] text-[#4D5156] dark:text-[#BDC1C6] whitespace-pre-line">
+          {rotatePick(descriptionPool, combo, 2).join(' ')}
         </p>
       </div>
+
+      {isRsa && (
+        <>
+          <button
+            type="button"
+            onClick={() => setCombo((c) => c + 1)}
+            className="self-center paragraph-sm text-quaternary hover:text-secondary transition-colors"
+            title="Google mixes headlines & descriptions — preview another combination"
+          >
+            ↻ Shuffle combination
+          </button>
+          <div className="rounded-xl border border-tertiary bg-secondary/40 px-4 py-3 flex flex-col gap-2">
+            <p className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
+              Headlines · {headlinePool.length}/15
+            </p>
+            <ul className="flex flex-col gap-1">
+              {headlinePool.map((h, i) => (
+                <VariantRow key={`h-${i}`} text={h} limit={30} />
+              ))}
+            </ul>
+            <p className="mt-1 text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
+              Descriptions · {descriptionPool.length}/4
+            </p>
+            <ul className="flex flex-col gap-1">
+              {descriptionPool.map((d, i) => (
+                <VariantRow key={`d-${i}`} text={d} limit={90} />
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
-    <h4 className="mt-2 mb-1 text-[17px] leading-[1.3] font-normal text-[#1A0DAB] dark:text-[#8AB4F8]">
-      {spec.headline ?? spec.primaryText.split('\n')[0]}
-    </h4>
-    <p className="text-[13px] leading-[1.5] text-[#4D5156] dark:text-[#BDC1C6] whitespace-pre-line">
-      {spec.description ?? spec.primaryText}
+  )
+}
+
+/* ---------------------------------- Performance Max ---------------------------------- */
+
+/** One asset group, previewed on two of its surfaces (Search + Display). */
+export const PMaxPreview = ({ spec, brandName, ...media }: PreviewProps) => (
+  <div className="w-full max-w-[400px] flex flex-col items-center gap-3">
+    <p className="text-[10.5px] uppercase tracking-[0.12em] text-quaternary text-center">
+      Performance Max · one asset group across Search, Display, YouTube, Gmail & Discover
     </p>
+    <GoogleSearchPreview spec={spec} brandName={brandName} />
+    <DisplayAdPreview spec={spec} brandName={brandName} {...media} />
   </div>
 )

@@ -178,7 +178,12 @@ export const CanvasPane = ({
   }, [activeId])
 
   const baseTypeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
-  const typeLabel = spec ? `${baseTypeLabel} · ${PLATFORM_LABELS[spec.platform]}` : baseTypeLabel
+  const platformLabel = spec ? PLATFORM_LABELS[spec.platform] : null
+  // Skip the platform suffix when it just repeats the doc type ("EMAIL · EMAIL").
+  const typeLabel =
+    platformLabel && platformLabel.toLowerCase() !== baseTypeLabel.toLowerCase()
+      ? `${baseTypeLabel} · ${platformLabel}`
+      : baseTypeLabel
   // The tab list holds the LATEST version per document; if what we're showing is behind it,
   // the user has checked out an older version.
   const latestVersion = documents.find((d) => d.id === activeId)?.version ?? doc.version

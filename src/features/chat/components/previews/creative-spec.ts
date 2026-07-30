@@ -11,7 +11,7 @@ import type { CanvasDocument } from '../../services/chat-service'
  * rows (`details.creative`).
  */
 
-export type PreviewPlatform = 'facebook' | 'instagram' | 'linkedin' | 'google'
+export type PreviewPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'google' | 'email'
 export type PreviewFormat =
   | 'static'
   | 'carousel'
@@ -22,6 +22,10 @@ export type PreviewFormat =
   | 'document'
   | 'post_series'
   | 'search_ad'
+  | 'pmax'
+  | 'display_ad'
+  | 'text_ad'
+  | 'email'
 
 export interface CreativeNote {
   label: string
@@ -39,6 +43,9 @@ export interface CreativeSpec {
   hashtags: string
   headline?: string
   description?: string
+  /** RSA/PMax variant pools (Google mixes them) — empty for single-headline formats. */
+  headlines: string[]
+  descriptions: string[]
   cta?: string
   linkUrl?: string
   /** "Suggested visual" descriptions — one per media slot/slide. */
@@ -67,6 +74,12 @@ const FIELD_ALIASES: Record<string, string> = {
   'primary text': 'caption',
   headline: 'headline',
   'ad headline': 'headline',
+  // Email deliverables: subject line renders as the headline slot, preheader as
+  // the description slot (the inbox mock reads both).
+  subject: 'headline',
+  'subject line': 'headline',
+  preheader: 'description',
+  'preview text': 'description',
   description: 'description',
   'link description': 'description',
   cta: 'cta',
@@ -117,8 +130,11 @@ const cleanValue = (value: string): string =>
 
 const detectPlatform = (hint: string): PreviewPlatform | null => {
   const h = hint.toLowerCase()
-  if (/google|search ad|responsive search|\brsa\b|pmax/.test(h)) return 'google'
+  if (/google|search ad|responsive search|\brsa\b|pmax|display ad|display network/.test(h))
+    return 'google'
   if (/linkedin/.test(h)) return 'linkedin'
+  if (/tiktok/.test(h)) return 'tiktok'
+  if (/\bemail\b|newsletter/.test(h)) return 'email'
   if (/instagram|\big\b|reel|story|stories/.test(h)) return 'instagram'
   if (/facebook|\bfb\b|meta/.test(h)) return 'facebook'
   return null
@@ -126,6 +142,10 @@ const detectPlatform = (hint: string): PreviewPlatform | null => {
 
 const detectFormat = (hint: string): PreviewFormat | null => {
   const h = hint.toLowerCase()
+  if (/pmax|performance max/.test(h)) return 'pmax'
+  if (/display/.test(h)) return 'display_ad'
+  if (/text ad|text_ad/.test(h)) return 'text_ad'
+  if (/\bemail\b|newsletter/.test(h)) return 'email'
   if (/search/.test(h)) return 'search_ad'
   if (/carousel/.test(h)) return 'carousel'
   if (/reel/.test(h)) return 'reel'
@@ -147,12 +167,15 @@ const titleCase = (label: string): string =>
  * the markdown renderer.
  */
 export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
-  if (doc.doc_type !== 'social_post' && doc.doc_type !== 'ad_copy') return null
+  if (doc.doc_type !== 'social_post' && doc.doc_type !== 'ad_copy' && doc.doc_type !== 'email')
+    return null
 
   const lines = doc.content.split('\n')
   const fields: Record<string, string> = {}
   const visuals: string[] = []
   const media: string[] = []
+  const headlines: string[] = []
+  const descriptions: string[] = []
   const notes: CreativeNote[] = []
   const copyLines: string[] = []
   const hashtagLines: string[] = []
@@ -194,6 +217,12 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
       } else if (field === 'caption') {
         if (value) copyLines.push(value)
         captionOpen = true
+      } else if (field === 'headline' || field === 'description') {
+        // RSA/PMax deliverables repeat these labels — collect every variant.
+        // Strip any "(22)"-style char-count suffix the model appends.
+        const variant = value.replace(/\s*\(\d+\)\s*$/, '')
+        if (variant) (field === 'headline' ? headlines : descriptions).push(variant)
+        if (!fields[field]) fields[field] = variant
       } else if (!fields[field]) {
         fields[field] = value
       }
@@ -221,7 +250,18 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
 
     if (inNotes) {
       // Unrecognized labelled lines in the notes section become production notes.
-      if (labelMatch && labelMatch[2].trim()) {
+      // Bullet lines under a label fold into that note's value ("Recommended
+      // sizes:" followed by one bullet per size) instead of being dropped.
+      const noteBullet = rawLine.match(BULLET_LINE)
+      if (noteBullet && !labelMatch && notes.length > 0) {
+        const item = cleanValue(noteBullet[1])
+        if (item) {
+          const parent = notes[notes.length - 1]
+          parent.value = parent.value ? `${parent.value} · ${item}` : item
+        }
+        continue
+      }
+      if (labelMatch) {
         notes.push({ label: titleCase(labelMatch[1].trim()), value: cleanValue(labelMatch[2]) })
       }
       continue
@@ -238,15 +278,48 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     }
   }
 
-  const primaryText = copyLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  let primaryText = copyLines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 
   const hint = `${fields.platform ?? ''} ${doc.title} ${fields.format ?? ''} ${doc.content.slice(0, 400)}`
-  const platform =
-    detectPlatform(fields.platform ?? '') ?? detectPlatform(hint) ?? 'facebook'
+  const platform: PreviewPlatform =
+    doc.doc_type === 'email'
+      ? 'email'
+      : (detectPlatform(fields.platform ?? '') ?? detectPlatform(hint) ?? 'facebook')
+  const detected = detectFormat(fields.format ?? '') ?? detectFormat(hint)
   const format: PreviewFormat =
-    platform === 'google'
-      ? 'search_ad'
-      : (detectFormat(fields.format ?? '') ?? detectFormat(hint) ?? 'static')
+    platform === 'email'
+      ? 'email'
+      : platform === 'google'
+        ? detected === 'display_ad'
+          ? 'display_ad'
+          : detected === 'pmax'
+            ? 'pmax'
+            : 'search_ad'
+        : (detected ?? 'static')
+
+  // Resilience: despite the prompt, the model often writes RSA/PMax variants as
+  // a numbered list in the copy instead of repeated 'Headline:' labels. For
+  // Google docs with no labelled pool, lift numbered items out of the copy:
+  // short ones are headlines, long ones descriptions/long-headlines.
+  if (platform === 'google' && headlines.length === 0 && descriptions.length === 0) {
+    const lifted: { short: string[]; long: string[] } = { short: [], long: [] }
+    const kept: string[] = []
+    for (const line of primaryText.split('\n')) {
+      const numbered = line.match(/^\s*\d+[.)]\s+(.+)$/)
+      if (numbered) {
+        const item = numbered[1].trim().replace(/\s*\(\d+\)\s*$/, '')
+        if (item) (item.length <= 30 ? lifted.short : lifted.long).push(item)
+        continue
+      }
+      kept.push(line)
+    }
+    // Only treat it as a variant pool when it plausibly is one.
+    if (lifted.short.length >= 3) {
+      headlines.push(...lifted.short)
+      descriptions.push(...lifted.long)
+      primaryText = kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+    }
+  }
 
   const spec: CreativeSpec = {
     platform,
@@ -254,17 +327,21 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     isPaid: doc.doc_type === 'ad_copy',
     primaryText,
     hashtags: hashtagLines.join(' '),
-    headline: fields.headline || undefined,
-    description: fields.description || undefined,
+    headline: fields.headline || headlines[0] || undefined,
+    description: fields.description || descriptions[0] || undefined,
+    headlines,
+    descriptions,
     cta: fields.cta || undefined,
     linkUrl: fields.link || undefined,
     visuals,
     media,
-    notes,
+    // A label whose bullets never arrived renders as a dangling "Label:" — drop it.
+    notes: notes.filter((n) => n.value),
   }
 
   // Not enough to draw anything faithful → let the markdown renderer handle it.
-  if (!spec.primaryText && !(platform === 'google' && spec.headline)) return null
+  if (!spec.primaryText && !(platform === 'google' && (spec.headline || spec.headlines.length)))
+    return null
 
   return spec
 }
@@ -274,7 +351,55 @@ export const charChecks = (spec: CreativeSpec): CharCheck[] => {
   const checks: CharCheck[] = []
   const caption = spec.primaryText
 
+  if (spec.platform === 'email') {
+    if (spec.headline) {
+      // ~60 chars is where most inbox clients truncate the subject.
+      checks.push({ label: 'Subject', count: spec.headline.length, limit: 60, over: spec.headline.length > 60 })
+    }
+    if (spec.description) {
+      checks.push({
+        label: 'Preheader',
+        count: spec.description.length,
+        limit: 90,
+        over: spec.description.length > 90,
+      })
+    }
+    return checks
+  }
+
+  if (spec.format === 'text_ad') {
+    // LinkedIn text ads: headline 25, description 75.
+    if (spec.headline) {
+      checks.push({ label: 'Headline', count: spec.headline.length, limit: 25, over: spec.headline.length > 25 })
+    }
+    if (spec.description) {
+      checks.push({
+        label: 'Description',
+        count: spec.description.length,
+        limit: 75,
+        over: spec.description.length > 75,
+      })
+    }
+    return checks
+  }
+
   if (spec.platform === 'google') {
+    // RSA/PMax pools: count chips here, per-variant limits shown in the preview list.
+    if (spec.headlines.length > 1) {
+      checks.push({
+        label: 'Headlines',
+        count: spec.headlines.length,
+        limit: 15,
+        over: spec.headlines.length > 15,
+      })
+      checks.push({
+        label: 'Descriptions',
+        count: spec.descriptions.length,
+        limit: 4,
+        over: spec.descriptions.length > 4,
+      })
+      return checks
+    }
     if (spec.headline) {
       checks.push({ label: 'Headline', count: spec.headline.length, limit: 30, over: spec.headline.length > 30 })
     }
@@ -311,7 +436,9 @@ export const PLATFORM_LABELS: Record<PreviewPlatform, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
   google: 'Google',
+  email: 'Email',
 }
 
 /** `dutoit.com` from a full URL, for the FB link card / Google source line. */

@@ -42,6 +42,22 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
   const patchDetails = (key: string, value: string) =>
     onPatch({ details: { ...details, [key]: value || undefined } })
 
+  // RSA / PMax variant pools — stored as string arrays in details, edited as
+  // one-per-line text.
+  const isRsa = asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'pmax'
+  const detailLines = (key: string): string =>
+    Array.isArray(details[key])
+      ? (details[key] as unknown[]).filter((s) => typeof s === 'string').join('\n')
+      : ''
+  const patchDetailList = (key: string, raw: string, cap: number) => {
+    const list = raw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, cap)
+    onPatch({ details: { ...details, [key]: list.length ? list : undefined } })
+  }
+
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const { openAssetPreview, sessionId, tenantId, campaign } = useCampaignWorkspace()
 
@@ -268,6 +284,32 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             className="paragraph-xs text-secondary"
           />
         </div>
+        {isRsa && (
+          <>
+            <div>
+              <span className={fieldLabel}>Headlines — one per line (≤30 chars, max 15)</span>
+              <textarea
+                key={`${asset.asset_id}-rsah-${detailLines('headlines')}`}
+                defaultValue={detailLines('headlines')}
+                onBlur={(e) => patchDetailList('headlines', e.target.value, 15)}
+                rows={4}
+                placeholder={'Sell at KersieFees 2026\nReach 15,000+ Visitors\n…'}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <span className={fieldLabel}>Descriptions — one per line (≤90 chars, max 4)</span>
+              <textarea
+                key={`${asset.asset_id}-rsad-${detailLines('descriptions')}`}
+                defaultValue={detailLines('descriptions')}
+                onBlur={(e) => patchDetailList('descriptions', e.target.value, 4)}
+                rows={3}
+                placeholder="One description per line…"
+                className={inputCls}
+              />
+            </div>
+          </>
+        )}
         <div>
           <div className="flex items-center justify-between mb-0.5">
             <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">

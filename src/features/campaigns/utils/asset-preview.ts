@@ -13,7 +13,13 @@ import { creativeThumbnail, driveFileId } from './drive'
  * (email, display) — callers fall back to a plain card.
  */
 
-const PAID_CHANNELS = new Set(['meta_ads', 'google_ads', 'linkedin_ads'])
+const PAID_CHANNELS = new Set([
+  'meta_ads',
+  'google_ads',
+  'google_display',
+  'linkedin_ads',
+  'tiktok_ads',
+])
 const GOOGLE_SEARCH_TYPES = new Set(['search_ad', 'responsive_search_ad', 'pmax'])
 
 const FORMAT_BY_TYPE: Record<string, PreviewFormat> = {
@@ -29,6 +35,9 @@ const FORMAT_BY_TYPE: Record<string, PreviewFormat> = {
   document: 'document',
   article: 'static',
   spark_ad: 'video',
+  email: 'email',
+  display_ad: 'display_ad',
+  text_ad: 'text_ad',
 }
 
 const IMAGE_URL = /^https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?\S*)?$/i
@@ -51,29 +60,41 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
   if (GOOGLE_SEARCH_TYPES.has(type)) {
     // Search-ad types read as the Google SERP mock whatever channel they sit on.
     platform = 'google'
-    format = 'search_ad'
-  } else if (channel === 'google_ads') {
-    return null // non-search types on google_ads (display etc.) → plain card
-  } else if (channel === 'email') {
-    return null
+    format = type === 'pmax' ? 'pmax' : 'search_ad'
+  } else if (type === 'display_ad') {
+    platform = 'google'
+    format = 'display_ad'
+  } else if (type === 'email' || channel === 'email') {
+    platform = 'email'
+    format = 'email'
+  } else if (type === 'text_ad') {
+    platform = 'linkedin'
+    format = 'text_ad'
+  } else if (channel === 'google_ads' || channel === 'google_display') {
+    return null // untyped / mismatched assets on Google channels → plain card
   } else {
     const mapped = FORMAT_BY_TYPE[type]
-    // Types with no faithful mock yet (email, display banners, offline print
-    // work, search ads off google_ads) fall to the plain card — never dress
-    // them up as a Facebook post. Untyped assets keep the static feed default.
+    // Types with no faithful mock (offline print work etc.) fall to the plain
+    // card — never dress them up as a Facebook post. Untyped assets keep the
+    // static feed default.
     if (!mapped && type !== '') return null
     format = mapped ?? 'static'
     // organic_social covers IG + FB; reels/stories/carousels read as Instagram.
-    // LinkedIn channels keep their platform identity (labels, doc chrome); their
-    // feed posts still render in the Facebook-style frame until a native one exists.
-    platform = channel.startsWith('linkedin')
-      ? 'linkedin'
-      : channel === 'organic_social' || format === 'reel' || format === 'story'
-        ? 'instagram'
-        : 'facebook'
+    platform = channel.startsWith('tiktok')
+      ? 'tiktok'
+      : channel.startsWith('linkedin')
+        ? 'linkedin'
+        : channel === 'organic_social' || format === 'reel' || format === 'story'
+          ? 'instagram'
+          : 'facebook'
   }
 
   const details = (asset.details ?? {}) as Record<string, unknown>
+  // RSA / PMax variant pools (details.headlines / details.descriptions).
+  const strList = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string' && !!s.trim()) : []
+  const headlinePool = strList(details.headlines)
+  const descriptionPool = strList(details.descriptions)
   const notes: CreativeSpec['notes'] = []
   if (asset.asset_type) notes.push({ label: 'Format', value: asset.asset_type })
   if (typeof details.launch_date === 'string' && details.launch_date) {
@@ -92,12 +113,13 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
   }
 
   const primaryText = asset.key_message ?? ''
-  // Google mocks and the document title bar read better with the asset name
-  // than with nothing when no explicit headline is set.
+  // Headline-led mocks (Google, document title bar, email subject, text ads)
+  // read better with the asset name than with nothing when no headline is set.
+  const headlineDriven =
+    platform === 'google' || platform === 'email' || format === 'document' || format === 'text_ad'
   const headline =
-    asset.headline ??
-    (platform === 'google' || format === 'document' ? asset.asset_name : undefined)
-  if (!primaryText && !(platform === 'google' && headline)) return null
+    asset.headline ?? headlinePool[0] ?? (headlineDriven ? asset.asset_name : undefined)
+  if (!primaryText && !(headlineDriven && headline)) return null
 
   return {
     platform,
@@ -106,7 +128,9 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
     primaryText,
     hashtags: '',
     headline: headline || undefined,
-    description: undefined,
+    description: descriptionPool[0],
+    headlines: headlinePool,
+    descriptions: descriptionPool,
     cta: asset.cta || undefined,
     linkUrl: asset.final_url || undefined,
     visuals: [],

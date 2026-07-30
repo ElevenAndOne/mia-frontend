@@ -1,12 +1,18 @@
 import type { CreativeSpec } from './creative-spec'
 import { charChecks } from './creative-spec'
 import {
+  DisplayAdPreview,
   DocumentPreview,
+  EmailPreview,
   FacebookPreview,
   GoogleSearchPreview,
   InstagramPreview,
   InstagramReelPreview,
+  LinkedInPreview,
+  PMaxPreview,
   PostSeriesPreview,
+  TextAdPreview,
+  TikTokPreview,
 } from './platform-previews'
 import { CharCountChips, ProductionNotes, type MediaHandlers } from './preview-bits'
 
@@ -23,14 +29,28 @@ interface CreativePreviewProps extends MediaHandlers {
  */
 export const CreativePreview = ({ spec, brandName, ...media }: CreativePreviewProps) => {
   const mock =
-    spec.platform === 'google' ? (
-      <GoogleSearchPreview spec={spec} brandName={brandName} />
+    spec.platform === 'email' || spec.format === 'email' ? (
+      <EmailPreview spec={spec} brandName={brandName} {...media} />
+    ) : spec.platform === 'google' ? (
+      spec.format === 'display_ad' ? (
+        <DisplayAdPreview spec={spec} brandName={brandName} {...media} />
+      ) : spec.format === 'pmax' ? (
+        <PMaxPreview spec={spec} brandName={brandName} {...media} />
+      ) : (
+        <GoogleSearchPreview spec={spec} brandName={brandName} />
+      )
+    ) : spec.format === 'text_ad' ? (
+      <TextAdPreview spec={spec} brandName={brandName} />
+    ) : spec.platform === 'tiktok' ? (
+      <TikTokPreview spec={spec} brandName={brandName} {...media} />
     ) : spec.format === 'reel' || spec.format === 'story' ? (
       <InstagramReelPreview spec={spec} brandName={brandName} {...media} />
     ) : spec.format === 'document' ? (
       <DocumentPreview spec={spec} brandName={brandName} {...media} />
     ) : spec.format === 'post_series' ? (
       <PostSeriesPreview spec={spec} brandName={brandName} {...media} />
+    ) : spec.platform === 'linkedin' ? (
+      <LinkedInPreview spec={spec} brandName={brandName} {...media} />
     ) : spec.platform === 'instagram' ? (
       <InstagramPreview spec={spec} brandName={brandName} {...media} />
     ) : (
