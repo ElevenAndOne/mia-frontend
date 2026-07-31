@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -399,5 +399,75 @@ export async function pushChannelActionToMeta(
   }
   throw new Error(
     'Still pushing — Meta is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
+  )
+}
+
+// ── Google Ads push (mirrors the Meta push above; Search/RSA only) ──────────
+
+// Preflight: everything push-to-google WOULD do — derived daily budget/bidding/
+// flight + per-asset ad groups (keywords + RSA copy w/ inline problems) + capabilities.
+export async function fetchGooglePushPreview(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<GooglePushPreview> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/google-push-preview`,
+    { headers: auth(s) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Preview failed (${res.status})`)
+  return body as GooglePushPreview
+}
+
+// Mia drafts keywords + RSA copy per READY asset from the campaign context.
+// Nothing persists — the modal saves the PM-approved copy via patchAsset.
+export async function suggestGoogleSearch(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<GoogleSearchSuggestion> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/suggest-google-search`,
+    { method: 'POST', headers: authJson(s), body: '{}' },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || 'Suggestion failed')
+  return body as GoogleSearchSuggestion
+}
+
+// Pushes a Google Ads channel action's READY assets as ONE atomic mutate:
+// PAUSED Search campaign → one ad group (keyword theme + RSA) per asset.
+// All-or-nothing — a failed push creates nothing. Same start-then-poll shape
+// as pushChannelActionToMeta (deterministic workflow id server-side).
+export async function pushChannelActionToGoogle(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+  overrides: { daily_budget?: number | null } = {},
+): Promise<GooglePushResult> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/push-to-google`,
+    { method: 'POST', headers: authJson(s), body: JSON.stringify(overrides) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Push to Google failed (${res.status})`)
+
+  const workflowId: string = body.workflow_id
+  for (let i = 0; i < PUSH_POLL_MAX; i++) {
+    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
+    const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
+    const st = await poll.json().catch(() => null)
+    if (!st) continue
+    if (st.status === 'completed') return st.result as GooglePushResult
+    if (st.status && st.status !== 'running') {
+      throw new Error(`Push to Google ${st.status} — check the workflow logs (${workflowId})`)
+    }
+  }
+  throw new Error(
+    'Still pushing — Google is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
   )
 }

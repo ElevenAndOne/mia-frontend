@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AssetCard } from './asset-card'
 import { PushToMetaButton } from './push-to-meta-button'
+import { PushToGoogleButton } from './push-to-google-button'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import { useChannelEditor } from '../../hooks/use-channel-editor'
 import { channelLabel } from '../../utils/channel-colors'
@@ -161,6 +162,13 @@ export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemo
             <div className="pt-1 flex items-center justify-between gap-2">
               <span className="paragraph-xs text-quaternary">Ready ads publish to Meta as paused campaigns.</span>
               <PushToMetaButton actionId={action.action_id} assets={action.assets} />
+            </div>
+          )}
+
+          {action.channel === 'google_ads' && (
+            <div className="pt-1 flex items-center justify-between gap-2">
+              <span className="paragraph-xs text-quaternary">Ready ads publish to Google as a paused Search campaign.</span>
+              <PushToGoogleButton actionId={action.action_id} assets={action.assets} />
             </div>
           )}
         </div>

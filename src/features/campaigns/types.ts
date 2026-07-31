@@ -49,7 +49,25 @@ export interface Asset {
   headline?: string | null // ad headline next to the CTA (defaults to asset name)
   clickup_task_url?: string | null // set once the ad has been pushed to ClickUp
   meta_ad_id?: string | null // set after push-to-Meta
+  // Google Search: asset = one ad group (keyword theme) with its own RSA.
+  google_ad_group_id?: string | null // set after push-to-Google
+  google_ad_id?: string | null
+  rsa_headlines?: RsaText[] | null // 3-15, each ≤30 chars
+  rsa_descriptions?: RsaText[] | null // 2-4, each ≤90 chars
+  rsa_path1?: string | null // ≤15 chars display path
+  rsa_path2?: string | null
+  keywords?: KeywordSpec[] | null
   source_conversation_id?: string | null // builder chat that created this asset ("open original chat")
+}
+
+export interface RsaText {
+  text: string
+  pinned_field?: string // HEADLINE_1 | HEADLINE_2 | HEADLINE_3
+}
+
+export interface KeywordSpec {
+  text: string
+  match: 'BROAD' | 'PHRASE' | 'EXACT'
 }
 
 export interface ChannelAction {
@@ -259,6 +277,68 @@ export interface MetaAudienceSuggestion {
   age_max: number
   genders: number[] | null
   rationale: string
+}
+
+// ---- Google Ads push (mirrors the Meta shapes above; docs/GOOGLE_PUSH_PLAN.md) ----
+
+export interface GooglePushAdGroup {
+  asset_id: string
+  name: string
+  keywords: KeywordSpec[]
+  headlines: RsaText[]
+  descriptions: RsaText[]
+  path1: string | null
+  path2: string | null
+  final_url: string | null
+  problems: string[] // per-ad-group validation problems, incl. "no keywords"
+}
+
+export interface GooglePushPreview {
+  errors: { code: string; message: string }[]
+  warnings: string[]
+  capabilities: {
+    conversion_actions: { name: string; primary: boolean }[]
+    shared_negative_lists: { name: string; member_count: number }[]
+    auto_tagging: boolean | null
+    tracking_url_template: string | null
+  }
+  campaign_name: string
+  daily_budget: number | null
+  bidding_strategy: string // MAXIMIZE_CONVERSIONS | TARGET_SPEND | MANUAL_CPC
+  target_cpa: number | null
+  countries: string[]
+  networks: { search_partners: boolean }
+  negative_keywords: string[]
+  shared_negative_lists: string[]
+  flight_start: string | null
+  flight_end: string | null // null = always-on (daily budget, no stop)
+  reuses_existing: boolean
+  ad_groups: GooglePushAdGroup[]
+  google_push_config: Record<string, unknown> | null
+}
+
+// The Google push is ONE atomic mutate — all-or-nothing, no per-stage failures.
+export interface GooglePushResult {
+  success: boolean
+  message?: string
+  error?: string
+  data?: {
+    campaign_id?: string
+    operations?: number
+    ad_groups?: { asset_id: string; ad_group_id: string; ad_id: string }[]
+  }
+  writeback?: { assets_scheduled?: string[] }
+}
+
+export interface GoogleSearchSuggestion {
+  assets: {
+    asset_id: string
+    keywords: KeywordSpec[]
+    headlines: RsaText[]
+    descriptions: RsaText[]
+    path1: string | null
+    path2: string | null
+  }[]
 }
 
 export interface ClickUpNode { id: string; name: string }

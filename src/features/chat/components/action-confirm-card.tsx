@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { fetchMetaPreview, type MetaPreview, type PendingAction } from '../services/chat-service'
+import { fetchGooglePreview, fetchMetaPreview, type GooglePreview, type MetaPreview, type PendingAction } from '../services/chat-service'
 import { CampaignActionEditor } from './campaign-action-editor'
 
 interface ActionConfirmCardProps {
@@ -16,7 +16,9 @@ const platformIcons: Record<string, string> = {
   hubspot: '/icons/hubspot.svg',
   linkedin: '/icons/linkedin.svg',
   meta: '/icons/meta-color.svg',
+  meta_ads: '/icons/meta-color.svg',
   google: '/icons/google-ads.svg',
+  google_ads: '/icons/google-ads.svg',
   smartlead: '/icons/smartlead.svg',
   campaign: '/icons/settings.svg',
 }
@@ -240,6 +242,89 @@ function MetaActionPreview({ action }: { action: PendingAction }) {
   )
 }
 
+/**
+ * Before→after diff for a proposed Google Ads write (campaign / ad group).
+ * Same contract as MetaActionPreview via /api/actions/google/preview; also
+ * surfaces the backend's shared-budget warning before the user confirms.
+ */
+function GoogleActionPreview({ action }: { action: PendingAction }) {
+  const { sessionId } = useSession()
+  const [preview, setPreview] = useState<GooglePreview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    if (!sessionId) {
+      setLoading(false)
+      return
+    }
+    fetchGooglePreview(sessionId, action)
+      .then((p) => active && setPreview(p))
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [sessionId, action])
+
+  if (loading) {
+    return (
+      <div className="bg-primary/50 rounded-lg p-3 mb-3 flex items-center gap-2 text-quaternary">
+        <div className="w-3 h-3 border-2 border-quaternary border-t-transparent rounded-full animate-spin" />
+        <span className="label-xs">Checking current state…</span>
+      </div>
+    )
+  }
+
+  if (!preview?.available || !preview.before || !preview.after) return null
+
+  const { before, after } = preview
+  const rows: Array<{ label: string; from: string; to: string }> = []
+  if (before.status !== after.status && (before.status || after.status)) {
+    rows.push({ label: 'Status', from: before.status || '—', to: after.status || '—' })
+  }
+  if (before.daily_budget !== after.daily_budget) {
+    rows.push({
+      label: 'Daily budget',
+      from: fmtMoney(before.daily_budget) || '—',
+      to: fmtMoney(after.daily_budget) || '—',
+    })
+  }
+  if (before.name !== after.name && (before.name || after.name)) {
+    rows.push({ label: 'Name', from: before.name || '—', to: after.name || '—' })
+  }
+
+  return (
+    <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-1.5">
+      {(after.name || before.name) && (
+        <div className="paragraph-xs text-primary font-medium truncate">
+          {before.name || after.name}
+          {preview.level && (
+            <span className="text-quaternary font-normal"> ({preview.level.replace('_', ' ')})</span>
+          )}
+        </div>
+      )}
+      {before.campaign_name && (
+        <span className="label-xs text-quaternary">in campaign {before.campaign_name}</span>
+      )}
+      {rows.length > 0 ? (
+        rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="label-xs text-quaternary w-24 flex-shrink-0">{r.label}</span>
+            <span className="label-xs text-tertiary line-through">{r.from}</span>
+            <span className="text-quaternary">→</span>
+            <span className="label-xs text-primary font-semibold">{r.to}</span>
+          </div>
+        ))
+      ) : (
+        <span className="label-xs text-quaternary">No change detected from current state.</span>
+      )}
+      {preview.warning && (
+        <span className="label-xs text-utility-warning-700 block">{preview.warning}</span>
+      )}
+    </div>
+  )
+}
+
 const statusConfig = {
   pending: {
     label: 'Review Action',
@@ -278,6 +363,10 @@ export const ActionConfirmCard = ({
   // are what gets sent. Other action types pass through unchanged.
   const [editedParams, setEditedParams] = useState<Record<string, unknown>>(action.params)
   const icon = isCampaignAction ? null : (platformIcons[action.platform] || null)
+  // Google manage actions get a live diff; google_ads_create_* only resolve a
+  // PARENT object (which would diff to "no change") so they keep the params dump.
+  const isGoogleDiff = !!action.action_type?.startsWith('google_ads_')
+    && !action.action_type?.startsWith('google_ads_create_')
   const platformLabel = isCampaignAction ? 'Campaign' : action.platform
   // Block confirming a campaign action the user has emptied out (all channels removed).
   const emptyCampaign = isCampaignAction
@@ -311,9 +400,14 @@ export const ActionConfirmCard = ({
             <MetaActionPreview action={action} />
           )}
 
-          {/* Show params preview (non-Meta) */}
+          {/* Google Ads writes: same diff (creates have no before-state — the
+              parent would diff to "no change", so they keep the params dump) */}
+          {status === 'pending' && isGoogleDiff && <GoogleActionPreview action={action} />}
+
+          {/* Show params preview (non-Meta, non-Google-diff) */}
           {status === 'pending'
             && !action.action_type?.startsWith('meta_')
+            && !isGoogleDiff
             && action.params && Object.keys(action.params).length > 0 && (
             action.action_type === 'campaign_add_channel_action'
               ? <CampaignActionEditor params={editedParams} onChange={setEditedParams} />

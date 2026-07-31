@@ -176,6 +176,50 @@ export const fetchMetaPreview = async (
   }
 }
 
+export interface GooglePreviewState {
+  id?: string
+  name?: string
+  status?: string // ENABLED | PAUSED | REMOVED
+  serving_status?: string
+  bidding_strategy?: string
+  daily_budget?: number | null
+  budget_is_shared?: boolean
+  start_date?: string | null
+  end_date?: string | null
+  campaign_name?: string // ad_group level: the parent campaign
+}
+
+export interface GooglePreview {
+  available: boolean
+  level?: string // 'campaign' | 'ad_group'
+  before?: GooglePreviewState
+  after?: GooglePreviewState
+  warning?: string // e.g. shared-budget refusal heads-up
+  error?: string
+}
+
+/**
+ * Fetch the current vs projected state for a proposed Google Ads write, for the
+ * confirm card's before→after diff. Best-effort: returns {available:false} on
+ * any error so the card silently falls back to the text summary.
+ */
+export const fetchGooglePreview = async (
+  sessionId: string,
+  action: PendingAction
+): Promise<GooglePreview> => {
+  try {
+    const response = await apiFetch('/api/actions/google/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+      body: JSON.stringify({ action_type: action.action_type, params: action.params }),
+    })
+    if (!response.ok) return { available: false }
+    return response.json()
+  } catch {
+    return { available: false }
+  }
+}
+
 export const pollActionStatus = async (
   sessionId: string,
   workflowId: string
