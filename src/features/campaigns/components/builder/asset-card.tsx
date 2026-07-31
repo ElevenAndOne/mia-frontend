@@ -6,7 +6,7 @@ import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { buildAssetFinalUrl } from '../../services/campaign-api'
 import { DrivePickerModal } from './drive-picker-modal'
 import { creativeThumbnail, isDriveFolderUrl, onThumbError, splitCreativeUrls } from '../../utils/drive'
-import type { Asset, AssetStatus, DriveFile } from '../../types'
+import type { Asset, AssetStatus, DriveFile, KeywordSpec } from '../../types'
 import { ASSET_TYPES, ASSET_TYPE_GROUPS } from '../../constants/asset-types'
 
 // Ad lifecycle → ClickUp status. Colour keys the pipeline stage at a glance.
@@ -45,6 +45,9 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
   // RSA / PMax variant pools — stored as string arrays in details, edited as
   // one-per-line text.
   const isRsa = asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'pmax'
+  // Text-only Google Search ads: no creative to attach (hide Final Asset), no
+  // single Meta-style headline (the pool replaces it) — but they DO need keywords.
+  const isSearchText = asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'search_ad'
   const detailLines = (key: string): string =>
     Array.isArray(details[key])
       ? (details[key] as unknown[]).filter((s) => typeof s === 'string').join('\n')
@@ -56,6 +59,25 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
       .filter(Boolean)
       .slice(0, cap)
     onPatch({ details: { ...details, [key]: list.length ? list : undefined } })
+  }
+
+  // Keywords (Search ads): stored structured on the asset, edited one per line
+  // in the same "text | EXACT" format as the push preflight.
+  const keywordLines = (asset.keywords ?? [])
+    .map((k) => (k.match && k.match !== 'BROAD' ? `${k.text} | ${k.match}` : k.text))
+    .join('\n')
+  const patchKeywords = (raw: string) => {
+    const list = raw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^(.*?)\s*\|\s*(BROAD|PHRASE|EXACT)\s*$/i)
+        return m
+          ? { text: m[1].trim(), match: m[2].toUpperCase() as KeywordSpec['match'] }
+          : { text: line, match: 'BROAD' as KeywordSpec['match'] }
+      })
+    onPatch({ keywords: list.length ? list : null })
   }
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -275,15 +297,17 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
       )}
 
       <div className="space-y-2 pt-3 border-t border-secondary">
-        <div>
-          <span className={fieldLabel}>Ad headline</span>
-          <EditableText
-            value={asset.headline ?? ''}
-            onSave={(v) => onPatch({ headline: v || null })}
-            placeholder="Shown next to the CTA (defaults to the asset name)"
-            className="paragraph-xs text-secondary"
-          />
-        </div>
+        {!isRsa && (
+          <div>
+            <span className={fieldLabel}>Ad headline</span>
+            <EditableText
+              value={asset.headline ?? ''}
+              onSave={(v) => onPatch({ headline: v || null })}
+              placeholder="Shown next to the CTA (defaults to the asset name)"
+              className="paragraph-xs text-secondary"
+            />
+          </div>
+        )}
         {isRsa && (
           <>
             <div>
@@ -310,6 +334,19 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             </div>
           </>
         )}
+        {isSearchText && (
+          <div>
+            <span className={fieldLabel}>Keywords — one per line (add "| EXACT" or "| PHRASE")</span>
+            <textarea
+              key={`${asset.asset_id}-kw-${keywordLines}`}
+              defaultValue={keywordLines}
+              onBlur={(e) => patchKeywords(e.target.value)}
+              rows={4}
+              placeholder={'buy apples online | EXACT\nfresh apples delivered'}
+              className={inputCls}
+            />
+          </div>
+        )}
         <div>
           <div className="flex items-center justify-between mb-0.5">
             <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
@@ -320,7 +357,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
                 type="button"
                 onClick={addUtms}
                 disabled={buildingUtm}
-                title="Append the UTM convention (source=meta, medium=paid_social, campaign + asset auto). Skip for destinations with no analytics, e.g. Google Forms."
+                title="Append the channel's UTM convention (meta/paid_social or google/cpc, campaign + asset auto). Skip for destinations with no analytics, e.g. Google Forms."
                 className="label-xs font-semibold text-utility-brand-600 hover:underline disabled:opacity-50"
               >
                 {buildingUtm ? 'Building…' : asset.final_url.includes('utm_') ? '↻ UTMs' : '+ UTMs'}
@@ -335,6 +372,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           />
           {utmError && <p className="label-xs text-utility-error-600 mt-0.5">{utmError}</p>}
         </div>
+        {!isSearchText && (
         <div>
           <span className={fieldLabel}>Final asset (approved creative)</span>
           <EditableText
@@ -389,6 +427,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             </button>
           )}
         </div>
+        )}
       </div>
 
       {pickerOpen && driveFolder && (
