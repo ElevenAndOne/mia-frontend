@@ -203,12 +203,19 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
     'w-full bg-primary border border-secondary rounded-lg px-2.5 py-1.5 paragraph-xs text-primary focus:outline-none focus:border-brand'
   const textareaCls = `${inputCls} font-mono leading-relaxed`
 
-  // Copy/keyword errors are fixable in this modal — validate them client-side so
-  // edits unblock the button; every other server error stays blocking.
+  // Errors fixable IN this modal must not permanently block the button:
+  // copy/keyword problems are re-validated client-side as you type, and the
+  // budget errors clear once a daily budget is entered (it's sent as the push
+  // override). Every other server error stays blocking.
   const FIXABLE = new Set(['invalid_rsa_copy', 'missing_keywords'])
-  const hardErrors = preview?.errors?.filter((e) => !FIXABLE.has(e.code)) ?? []
+  const BUDGET_ERRORS = new Set(['no_budget', 'budget_needs_end'])
+  const hardErrors =
+    preview?.errors?.filter(
+      (e) => !FIXABLE.has(e.code) && !(BUDGET_ERRORS.has(e.code) && dailyBudget),
+    ) ?? []
   const draftIssues = drafts.some((d) => draftProblems(d).length > 0)
-  const blocked = hardErrors.length > 0 || draftIssues
+  const missingBudget = !dailyBudget && (preview?.errors ?? []).some((e) => BUDGET_ERRORS.has(e.code))
+  const blocked = hardErrors.length > 0 || draftIssues || missingBudget
 
   const trackingTemplateWarning = !!preview?.capabilities?.tracking_url_template?.includes('utm_')
 
