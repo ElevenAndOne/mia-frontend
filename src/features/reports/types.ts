@@ -74,7 +74,14 @@ export interface KpiItem {
   target: string
   current: string
   unit: string
-  status: 'on_track' | 'close' | 'behind' | 'no_target' | 'unknown'
+  // 'not_graded': the report window is shorter than the campaign this target belongs to,
+  // so target attainment is not a meaningful question. Render neutral — never as a miss.
+  status: 'on_track' | 'close' | 'behind' | 'no_target' | 'unknown' | 'not_graded'
+  // Scope of `target`, so it can be labelled rather than implied to be this period's goal.
+  target_scope?: 'campaign'
+  target_period?: string
+  window_covers_campaign?: boolean
+  window_exceeds_campaign?: boolean
 }
 
 export interface ReportKpiPerformance {

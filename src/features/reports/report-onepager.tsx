@@ -586,10 +586,17 @@ const Delta = ({
   )
 }
 
+// 'Not Graded' / 'Unknown' are absences of a verdict, not bad verdicts. They must read
+// neutral: the backend returns 'Not Graded' whenever the report window is shorter than the
+// campaign its KPI targets belong to, which is most reports, and the old `else` branch
+// painted every one of them in the same red as 'Needs Attention'.
+const HEALTH_UNGRADED = new Set(['Not Graded', 'Unknown'])
+
 const HealthCard = ({ status, description }: { status: string; description: string }) => {
   const onTrack = status === 'On Track'
   const mixed = status === 'Mixed'
-  const accent = onTrack ? C.green : mixed ? '#E0A93B' : C.red
+  const ungraded = HEALTH_UNGRADED.has(status)
+  const accent = ungraded ? C.slate2 : onTrack ? C.green : mixed ? '#E0A93B' : C.red
   return (
     <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.border}` }}>
       <div
@@ -909,7 +916,16 @@ const KpiStatus = ({ status }: { status: KpiItem['status'] }) => {
   return <span style={{ color: C.slate2 }}>—</span>
 }
 
-const KPI_STATUSES: KpiItem['status'][] = ['on_track', 'close', 'behind', 'no_target', 'unknown']
+const KPI_STATUSES: KpiItem['status'][] = [
+  'on_track',
+  'close',
+  'behind',
+  'no_target',
+  'unknown',
+  // Must be listed, or the editor's <select> has no option matching an ungraded KPI and
+  // renders blank — leaving no way to see or restore the real status.
+  'not_graded',
+]
 
 const KpiPanel = ({ data }: { data: ReportData }) => {
   const { editing, setField } = useEdit()
