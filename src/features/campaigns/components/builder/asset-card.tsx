@@ -245,14 +245,14 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
               onBlur={(e) => {
                 const v = e.target.value ? parseFloat(e.target.value) : null
                 if (v !== asset.budget) {
-                  onPatch(v != null && !asset.budget_period ? { budget: v, budget_period: 'monthly' } : { budget: v })
+                  onPatch(v != null && !asset.budget_period ? { budget: v, budget_period: 'total' } : { budget: v })
                 }
               }}
               placeholder="—"
               className={numCls}
             />
             <select
-              value={asset.budget_period ?? 'monthly'}
+              value={asset.budget_period ?? 'total'}
               onChange={(e) => onPatch({ budget_period: e.target.value })}
               className="shrink-0 px-1 py-1.5 border border-tertiary rounded-md text-xs bg-secondary-subtle text-secondary outline-none"
             >

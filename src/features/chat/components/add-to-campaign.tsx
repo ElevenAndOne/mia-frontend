@@ -101,6 +101,8 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
       // RSA/PMax variant pools — the executor stores these in asset.details.
       ...(spec && spec.headlines.length > 1 ? { headlines: spec.headlines } : {}),
       ...(spec && spec.descriptions.length > 1 ? { descriptions: spec.descriptions } : {}),
+      // Search keyword theme ("text" / "text | EXACT") → structured keywords on the asset.
+      ...(spec && spec.keywords.length ? { keywords: spec.keywords } : {}),
       ...(spec?.media.length ? { deliverable_url: spec.media.join('\n') } : {}),
       ...(bestTime ? { optimal_post_time: bestTime } : {}),
     }

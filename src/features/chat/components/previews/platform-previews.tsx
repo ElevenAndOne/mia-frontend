@@ -650,6 +650,23 @@ export const GoogleSearchPreview = ({ spec, brandName }: PreviewProps) => {
                 <VariantRow key={`d-${i}`} text={d} limit={90} />
               ))}
             </ul>
+            {(spec.keywords ?? []).length > 0 && (
+              <>
+                <p className="mt-1 text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
+                  Keywords · {spec.keywords.length}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {spec.keywords.map((k, i) => (
+                    <span
+                      key={`k-${i}`}
+                      className="px-1.5 py-0.5 rounded-full border border-tertiary text-[10.5px] text-secondary"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

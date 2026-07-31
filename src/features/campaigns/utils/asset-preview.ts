@@ -121,6 +121,11 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
     asset.headline ?? headlinePool[0] ?? (headlineDriven ? asset.asset_name : undefined)
   if (!primaryText && !(headlineDriven && headline)) return null
 
+  // Search keyword theme (structured column) → the preview's "text | MATCH" chips.
+  const keywords = (asset.keywords ?? []).map((k) =>
+    k.match && k.match !== 'BROAD' ? `${k.text} | ${k.match}` : k.text,
+  )
+
   return {
     platform,
     format,
@@ -131,6 +136,7 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
     description: descriptionPool[0],
     headlines: headlinePool,
     descriptions: descriptionPool,
+    keywords,
     cta: asset.cta || undefined,
     linkUrl: asset.final_url || undefined,
     visuals: [],

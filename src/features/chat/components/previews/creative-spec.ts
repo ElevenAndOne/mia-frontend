@@ -46,6 +46,8 @@ export interface CreativeSpec {
   /** RSA/PMax variant pools (Google mixes them) — empty for single-headline formats. */
   headlines: string[]
   descriptions: string[]
+  /** Search keyword theme ("text" or "text | EXACT"/"| PHRASE") — Google Search ads only. */
+  keywords: string[]
   cta?: string
   linkUrl?: string
   /** "Suggested visual" descriptions — one per media slot/slide. */
@@ -97,6 +99,9 @@ const FIELD_ALIASES: Record<string, string> = {
   media: 'media',
   image: 'media',
   images: 'media',
+  keyword: 'keyword',
+  keywords: 'keyword',
+  'target keywords': 'keyword',
 }
 
 /** Pull the URL out of a `Media:` value (handles bare URLs and `![alt](url)` / `[text](url)`). */
@@ -176,6 +181,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
   const media: string[] = []
   const headlines: string[] = []
   const descriptions: string[] = []
+  const keywords: string[] = []
   const notes: CreativeNote[] = []
   const copyLines: string[] = []
   const hashtagLines: string[] = []
@@ -183,6 +189,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
   let inNotes = false
   let collectingVisuals = false
   let collectingMedia = false
+  let collectingKeywords = false
   /** Set once a `Caption:` label is seen — following unlabelled copy-section lines append to it. */
   let captionOpen = false
 
@@ -191,6 +198,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
       inNotes = true
       collectingVisuals = false
       collectingMedia = false
+      collectingKeywords = false
       captionOpen = false
       continue
     }
@@ -202,6 +210,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     if (field) {
       collectingVisuals = false
       collectingMedia = false
+      collectingKeywords = false
       captionOpen = false
       if (field === 'media') {
         // Raw value, not cleanValue — markdown-link stripping would eat the URL.
@@ -211,6 +220,12 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
         continue
       }
       const value = cleanValue(labelMatch![2])
+      if (field === 'keyword') {
+        // Search keyword theme — one 'Keyword:' per line, or 'Keywords:' + bullets.
+        if (value) keywords.push(value)
+        collectingKeywords = true
+        continue
+      }
       if (field === 'visuals') {
         if (value) visuals.push(value)
         collectingVisuals = true
@@ -246,6 +261,16 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
         continue
       }
       if (rawLine.trim()) collectingMedia = false
+    }
+
+    if (collectingKeywords) {
+      const bullet = rawLine.match(BULLET_LINE)
+      if (bullet) {
+        const kw = cleanValue(bullet[1])
+        if (kw) keywords.push(kw)
+        continue
+      }
+      if (rawLine.trim()) collectingKeywords = false
     }
 
     if (inNotes) {
@@ -331,6 +356,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     description: fields.description || descriptions[0] || undefined,
     headlines,
     descriptions,
+    keywords,
     cta: fields.cta || undefined,
     linkUrl: fields.link || undefined,
     visuals,
