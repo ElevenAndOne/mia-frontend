@@ -117,7 +117,11 @@ export function createSessionHeaders(
  * @returns Promise<Response>
  */
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
-  const response = await fetch(createApiUrl(path), options)
+  // Free-plan ngrok domains (*.ngrok-free.dev) answer browser XHR with an HTML
+  // interstitial unless this header is present; harmless on every other host.
+  const headers = new Headers(options?.headers)
+  headers.set('ngrok-skip-browser-warning', 'any')
+  const response = await fetch(createApiUrl(path), { ...options, headers })
 
   // Handle authentication errors (validates Mia session before any logout)
   if (response.status === 401 || response.status === 403) {
