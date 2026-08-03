@@ -186,8 +186,8 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
         onClick={onClose}
         className="absolute inset-0 bg-black/50 cursor-default"
       />
-      <aside className="absolute top-0 right-0 bottom-0 w-[480px] max-w-[94vw] bg-primary border-l border-tertiary shadow-2xl flex flex-col">
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-tertiary">
+      <aside className="absolute top-0 right-0 bottom-0 w-full md:w-[480px] bg-primary md:border-l border-tertiary shadow-2xl flex flex-col">
+        <div className="flex items-center gap-3 px-4 md:px-5 py-3 border-b border-tertiary">
           <div className="min-w-0">
             <h2 className="paragraph-md font-semibold text-primary truncate">
               {found?.asset.asset_name ?? 'Asset'}
@@ -199,10 +199,11 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
           </div>
           <div className="ml-auto flex items-center gap-1.5 relative">
             {canUndoMine && (
+              /* Mobile hides this — restore lives in the version history menu there */
               <button
                 type="button"
                 onClick={() => void restore(versions[1].version)}
-                className="paragraph-sm text-secondary border border-tertiary rounded-full px-2.5 py-0.5 hover:bg-tertiary transition-colors"
+                className="hidden md:inline-flex paragraph-sm text-secondary border border-tertiary rounded-full px-2.5 py-0.5 hover:bg-tertiary transition-colors"
                 title="Revert your latest edit"
               >
                 Undo my edit
@@ -247,14 +248,14 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+              className="w-8 h-8 max-md:w-10 max-md:h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
             >
               ✕
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
           {!found ? (
             <p className="paragraph-sm text-quaternary text-center pt-16">
               This asset is no longer in the campaign.
@@ -301,7 +302,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
             <span className="min-w-0">{editStatus}</span>
           </div>
         )}
-        <div className="px-5 py-2.5 border-t border-tertiary paragraph-sm text-quaternary">
+        <div className="px-5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] border-t border-tertiary paragraph-sm text-quaternary">
           Edits update the builder, calendar and the linked ClickUp task automatically.
         </div>
       </aside>
