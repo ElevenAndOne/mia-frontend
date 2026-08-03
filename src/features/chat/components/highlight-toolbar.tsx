@@ -79,6 +79,19 @@ export const HighlightToolbar = ({
     }
   }, [docked])
 
+  // While the native selection is live, Chrome Android overlays a "tap to see
+  // search results" chip along the bottom edge — hold the bar above it. The lift
+  // drops once the selection collapses (e.g. the user taps our input).
+  const [nativeSelActive, setNativeSelActive] = useState(
+    () => !(window.getSelection()?.isCollapsed ?? true)
+  )
+  useEffect(() => {
+    if (!docked) return
+    const onSel = () => setNativeSelActive(!(window.getSelection()?.isCollapsed ?? true))
+    document.addEventListener('selectionchange', onSel)
+    return () => document.removeEventListener('selectionchange', onSel)
+  }, [docked])
+
   const submit = (text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return
@@ -119,7 +132,7 @@ export const HighlightToolbar = ({
           ? {
               left: 8,
               right: 8,
-              bottom: keyboardOffset + 8,
+              bottom: keyboardOffset + (keyboardOffset === 0 && nativeSelActive ? 72 : 8),
               paddingBottom: keyboardOffset > 0 ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
             }
           : { top: pos.top, left: pos.left, width }

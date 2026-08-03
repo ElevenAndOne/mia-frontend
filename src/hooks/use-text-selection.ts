@@ -81,5 +81,23 @@ export function useTextSelection(containerRef: RefObject<HTMLElement | null>, en
     [containerRef]
   )
 
-  return { selection, onMouseUp, clear, selectAll }
+  /**
+   * Tap-to-select (mobile pick mode): capture the text of the line the user
+   * tapped — no long-press needed. Returns false when the tap didn't land on a
+   * specific piece of text (so callers can keep pick mode armed).
+   */
+  const pickFromEvent = useCallback((e: { target: EventTarget | null }): boolean => {
+    const el =
+      e.target instanceof Element
+        ? e.target.closest('p, span, h1, h2, h3, h4, h5, h6, li, td, blockquote, a, em, strong')
+        : null
+    const text = el?.textContent?.trim()
+    if (!el || !text) return false
+    // A container-sized hit means the tap was between lines, not on one.
+    if (text.length > 400) return false
+    setSelection({ rect: el.getBoundingClientRect(), text })
+    return true
+  }, [])
+
+  return { selection, onMouseUp, clear, selectAll, pickFromEvent }
 }

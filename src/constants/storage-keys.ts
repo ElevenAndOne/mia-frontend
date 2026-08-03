@@ -28,6 +28,10 @@ export const StorageKey = {
   // Date range
   DATE_RANGE: 'mia_date_range',
 
+  // Last open conversation { id, tenantId, ts } — lets a phone tab that the OS
+  // killed in the background resume the chat it was in (30-min window)
+  LAST_CONVERSATION: 'mia_last_conversation',
+
   // UI state
   INTEGRATION_PROMPT_VISIT_COUNT: 'mia_integration_prompt_visit_count',
   CONFIG_GUIDANCE_VISIT_COUNT: 'mia_config_guidance_visit_count',

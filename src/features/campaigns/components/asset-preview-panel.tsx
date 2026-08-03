@@ -129,7 +129,11 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
     onMouseUp: handleMouseUp,
     clear: closeToolbar,
     selectAll,
+    pickFromEvent,
   } = useTextSelection(previewRef, canEdit)
+
+  // Mobile "Edit copy with Mia" arms tap-to-select pick mode.
+  const [pickMode, setPickMode] = useState(false)
 
   // Highlight-to-edit without a visible chat: fire a self-contained edit turn with
   // asset_context; Mia calls edit_asset_field, asset_updated triggers the refetch,
@@ -262,7 +266,18 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
             </p>
           ) : spec ? (
             // select-text: mobile disables selection globally — re-enable for highlight-to-edit
-            <div ref={previewRef} onMouseUp={handleMouseUp} className="select-text">
+            <div
+              ref={previewRef}
+              onMouseUp={handleMouseUp}
+              onClick={
+                pickMode
+                  ? (e) => {
+                      if (pickFromEvent(e)) setPickMode(false)
+                    }
+                  : undefined
+              }
+              className="select-text"
+            >
               <CreativePreview
                 spec={spec}
                 brandName={activeWorkspace?.name}
@@ -284,16 +299,44 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
             </div>
           )}
 
-          {/* Mobile: explicit entry into Mia-editing — targets the asset's main copy. */}
+          {/* Mobile: explicit entry into Mia-editing — arms tap-to-select pick mode. */}
           {canEdit && found && !selection && (found.asset.key_message ?? '').trim() && (
-            <button
-              type="button"
-              onClick={() => selectAll(found.asset.key_message ?? '')}
-              className="md:hidden w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
-            >
-              <MagicWand02 size={15} className="text-utility-brand-600" />
-              Edit copy with Mia
-            </button>
+            <div className="md:hidden mt-4">
+              {pickMode ? (
+                <div className="flex items-center gap-2">
+                  <p className="flex-1 min-w-0 paragraph-sm text-secondary">
+                    <MagicWand02 size={14} className="inline mr-1.5 text-utility-brand-600" />
+                    Tap any line of text to edit it
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPickMode(false)
+                      selectAll(found.asset.key_message ?? '')
+                    }}
+                    className="shrink-0 paragraph-sm text-secondary rounded-full border border-tertiary px-3 py-1.5 active:bg-tertiary transition-colors"
+                  >
+                    Whole copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPickMode(false)}
+                    className="shrink-0 paragraph-sm text-quaternary rounded-full px-2 py-1.5 active:bg-tertiary transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPickMode(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+                >
+                  <MagicWand02 size={15} className="text-utility-brand-600" />
+                  Edit copy with Mia
+                </button>
+              )}
+            </div>
           )}
         </div>
 

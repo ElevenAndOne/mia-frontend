@@ -128,7 +128,12 @@ export const CanvasPane = ({
     onMouseUp: handleMouseUp,
     clear: closeToolbar,
     selectAll,
+    pickFromEvent,
   } = useTextSelection(bodyRef, mode === 'view')
+
+  // Mobile "Edit with Mia" arms pick mode: the next tap on a line of text
+  // selects that line and opens the toolbar (long-press stays available).
+  const [pickMode, setPickMode] = useState(false)
 
   const submitEdit = useCallback(
     (instruction: string) => {
@@ -189,6 +194,7 @@ export const CanvasPane = ({
     setShowVersions(false)
     setShowMore(false)
     setRawView(false)
+    setPickMode(false)
   }, [activeId, closeToolbar])
 
   const baseTypeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
@@ -341,7 +347,7 @@ export const CanvasPane = ({
             <ChevronDown size={12} />
           </button>
           {spec && mode === 'view' && (
-            <div className="flex items-center rounded-full bg-tertiary p-0.5">
+            <div className="flex items-center rounded-full bg-tertiary p-0.5 ml-1.5">
               <button
                 type="button"
                 onClick={() => setRawView(false)}
@@ -429,7 +435,18 @@ export const CanvasPane = ({
         {mode === 'view' ? (
           // select-text: index.css disables selection globally on mobile — re-enable
           // here or touch highlight-to-edit has nothing to work with
-          <div ref={bodyRef} onMouseUp={handleMouseUp} className="max-w-[640px] mx-auto select-text">
+          <div
+            ref={bodyRef}
+            onMouseUp={handleMouseUp}
+            onClick={
+              pickMode
+                ? (e) => {
+                    if (pickFromEvent(e)) setPickMode(false)
+                  }
+                : undefined
+            }
+            className="max-w-[640px] mx-auto select-text"
+          >
             {spec && !rawView ? (
               <CreativePreview
                 spec={spec}
@@ -472,20 +489,48 @@ export const CanvasPane = ({
       </div>
 
       {/* Mobile: explicit way into Mia-editing — long-press selection isn't discoverable
-          and doesn't work in every mobile browser. Targets the whole document. */}
+          and doesn't work in every mobile browser. Arms tap-to-select pick mode. */}
       {mode === 'view' && !selection && doc.content.trim() && (
         <div className="md:hidden shrink-0 border-t border-tertiary px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={() => selectAll(doc.content)}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
-          >
-            <MagicWand02 size={15} className="text-utility-brand-600" />
-            Edit with Mia
-          </button>
-          <p className="paragraph-xs text-quaternary text-center mt-1.5">
-            or select text in the preview to change just that part
-          </p>
+          {pickMode ? (
+            <div className="flex items-center gap-2">
+              <p className="flex-1 min-w-0 paragraph-sm text-secondary">
+                <MagicWand02 size={14} className="inline mr-1.5 text-utility-brand-600" />
+                Tap any line of text to edit it
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickMode(false)
+                  selectAll(doc.content)
+                }}
+                className="shrink-0 paragraph-sm text-secondary rounded-full border border-tertiary px-3 py-1.5 active:bg-tertiary transition-colors"
+              >
+                Whole doc
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickMode(false)}
+                className="shrink-0 paragraph-sm text-quaternary rounded-full px-2 py-1.5 active:bg-tertiary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setPickMode(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+              >
+                <MagicWand02 size={15} className="text-utility-brand-600" />
+                Edit with Mia
+              </button>
+              <p className="paragraph-xs text-quaternary text-center mt-1.5">
+                or long-press text in the preview to pick a spot yourself
+              </p>
+            </>
+          )}
         </div>
       )}
 

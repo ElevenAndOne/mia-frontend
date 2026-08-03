@@ -47,13 +47,24 @@ export const MobileNavigation = ({
 
   // Fetch recent conversations when menu opens; reset to main view
   useEffect(() => {
-    if (isOpen && sessionId) {
-      setView('main')
-      // Exclude campaign-builder conversations (skill: strategy_planning) — those
-      // live under "Past builds" on the Campaigns page, not general chat history.
-      fetchRecentConversations(sessionId, undefined, 'strategy_planning')
-        .then(setRecentConversations)
-        .catch(() => showToast('error', "Couldn't load your recent chats. Please try again."))
+    if (!isOpen || !sessionId) return
+    setView('main')
+    let cancelled = false
+    // Exclude campaign-builder conversations (skill: strategy_planning) — those
+    // live under "Past builds" on the Campaigns page, not general chat history.
+    const fetched = fetchRecentConversations(sessionId, undefined, 'strategy_planning')
+    // Hold the list re-render until the slide-in settles — populating it
+    // mid-animation is what made the sheet stutter on Android.
+    const settle = new Promise((r) => setTimeout(r, 320))
+    Promise.all([fetched, settle])
+      .then(([convs]) => {
+        if (!cancelled) setRecentConversations(convs)
+      })
+      .catch(() => {
+        if (!cancelled) showToast('error', "Couldn't load your recent chats. Please try again.")
+      })
+    return () => {
+      cancelled = true
     }
   }, [isOpen, sessionId, showToast])
 

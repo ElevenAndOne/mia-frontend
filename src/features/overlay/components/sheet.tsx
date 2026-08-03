@@ -103,7 +103,9 @@ export function Sheet({
             initial={variant.initial}
             animate={variant.animate}
             exit={variant.exit}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            // Tween, not spring: springs run long low-velocity tails that read as
+            // jank on low-end Android GPUs; a short ease-out feels snappier.
+            transition={{ type: 'tween', duration: 0.28, ease: [0.22, 0.61, 0.36, 1] }}
             className={`${panelClassName} bg-primary shadow-xl overflow-hidden ${className}`.trim()}
             style={{ zIndex: zIndex + 1 }}
             role="dialog"

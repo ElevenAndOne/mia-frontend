@@ -226,6 +226,7 @@ export const useChatView = () => {
     setMessages([])
     setStreamingContent('')
     setConversationId(null)
+    localStorage.removeItem(StorageKey.LAST_CONVERSATION)
   }, [])
 
   const loadConversation = useCallback(
@@ -264,6 +265,7 @@ export const useChatView = () => {
       setMessages([])
       setStreamingContent('')
       setConversationId(null)
+      localStorage.removeItem(StorageKey.LAST_CONVERSATION)
       navigate(location.pathname, { replace: true, state: {} })
     } else if (state?.loadConversationId) {
       const convId = state.loadConversationId
@@ -271,6 +273,51 @@ export const useChatView = () => {
       loadConversation(convId)
     }
   }, [location.state, location.pathname, navigate, loadConversation])
+
+  // Remember the open conversation (refreshed as messages arrive) so a phone tab
+  // the OS killed in the background can pick up where the user left off.
+  useEffect(() => {
+    const tenantId = activeWorkspace?.tenant_id
+    if (!conversationId || !tenantId) return
+    localStorage.setItem(
+      StorageKey.LAST_CONVERSATION,
+      JSON.stringify({ id: conversationId, tenantId, ts: Date.now() })
+    )
+  }, [conversationId, messages.length, activeWorkspace?.tenant_id])
+
+  // Resume that conversation on a cold start — mobile only (desktop opens fresh
+  // by habit; phones lose the tab to memory pressure mid-task), same workspace,
+  // and only within 30 minutes so tomorrow's session still starts clean.
+  const resumeAttemptedRef = useRef(false)
+  useEffect(() => {
+    if (resumeAttemptedRef.current) return
+    const tenantId = activeWorkspace?.tenant_id
+    if (!sessionId || !tenantId) return
+    const state = location.state as LocationState | null
+    if (conversationId || messages.length > 0 || state?.newChat || state?.loadConversationId) {
+      resumeAttemptedRef.current = true
+      return
+    }
+    resumeAttemptedRef.current = true
+    if (!window.matchMedia('(max-width: 767px)').matches) return
+    try {
+      const raw = localStorage.getItem(StorageKey.LAST_CONVERSATION)
+      if (!raw) return
+      const saved = JSON.parse(raw) as { id?: string; tenantId?: string; ts?: number }
+      if (!saved.id || saved.tenantId !== tenantId) return
+      if (!saved.ts || Date.now() - saved.ts > 30 * 60 * 1000) return
+      void loadConversation(saved.id)
+    } catch {
+      /* corrupted key — start fresh */
+    }
+  }, [
+    sessionId,
+    activeWorkspace?.tenant_id,
+    conversationId,
+    messages.length,
+    location.state,
+    loadConversation,
+  ])
 
   const handleCampaignChange = useCallback((info: CampaignInfo | null) => {
     setActiveCampaign(info)
