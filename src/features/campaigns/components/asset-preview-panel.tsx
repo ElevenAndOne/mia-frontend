@@ -3,6 +3,8 @@ import { useSession } from '../../../contexts/session-context'
 import { CreativePreview } from '../../chat/components/previews/creative-preview'
 import { HighlightToolbar } from '../../chat/components/highlight-toolbar'
 import { sendChatMessageStreaming, type AssetContext } from '../../chat/services/chat-service'
+import { MagicWand02 } from '../../../components/icon/magic-wand-02'
+import { useTextSelection } from '../../../hooks/use-text-selection'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import { assetToCreativeSpec } from '../utils/asset-preview'
 import { channelLabel } from '../utils/channel-colors'
@@ -40,7 +42,6 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
   }, [campaign, assetId])
 
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
-  const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const [editStatus, setEditStatus] = useState<string | null>(null)
   const [versions, setVersions] = useState<AssetVersionRow[]>([])
   const [showHistory, setShowHistory] = useState(false)
@@ -122,21 +123,13 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
     [found, sessionId, tenantId, campaign.campaign_id, assetId, refresh]
   )
 
-  const handleMouseUp = useCallback(() => {
-    if (!canEdit) return
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) return setSelection(null)
-    const text = sel.toString().trim()
-    if (!text) return setSelection(null)
-    const range = sel.getRangeAt(0)
-    if (!previewRef.current?.contains(range.commonAncestorContainer)) return
-    setSelection({ rect: range.getBoundingClientRect(), text })
-  }, [canEdit])
-
-  const closeToolbar = useCallback(() => {
-    setSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [])
+  // Mouseup on desktop, selectionchange on touch.
+  const {
+    selection,
+    onMouseUp: handleMouseUp,
+    clear: closeToolbar,
+    selectAll,
+  } = useTextSelection(previewRef, canEdit)
 
   // Highlight-to-edit without a visible chat: fire a self-contained edit turn with
   // asset_context; Mia calls edit_asset_field, asset_updated triggers the refetch,
@@ -287,6 +280,18 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
                 <p className="paragraph-sm text-tertiary">CTA: {found.asset.cta}</p>
               )}
             </div>
+          )}
+
+          {/* Mobile: explicit entry into Mia-editing — targets the asset's main copy. */}
+          {canEdit && found && !selection && (found.asset.key_message ?? '').trim() && (
+            <button
+              type="button"
+              onClick={() => selectAll(found.asset.key_message ?? '')}
+              className="md:hidden w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+            >
+              <MagicWand02 size={15} className="text-utility-brand-600" />
+              Edit copy with Mia
+            </button>
           )}
         </div>
 

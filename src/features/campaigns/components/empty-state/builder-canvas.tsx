@@ -7,6 +7,8 @@ import type { AssetContext } from '../../../chat/services/chat-service'
 import { channelLabel } from '../../utils/channel-colors'
 import { assetToCreativeSpec } from '../../utils/asset-preview'
 import type { DraftPhase } from '../../utils/plan-draft'
+import { MagicWand02 } from '../../../../components/icon/magic-wand-02'
+import { useTextSelection } from '../../../../hooks/use-text-selection'
 import { fetchCampaignDetail, patchAsset, uploadAssetMedia } from '../../services/campaign-api'
 import { clearCampaignDetailCache } from '../../campaign-detail-cache'
 import type { Asset, CampaignDetail } from '../../types'
@@ -56,8 +58,6 @@ export const BuilderCanvas = ({
   // Bumped after our own writes (media upload/remove) — refetch without a save event.
   const [localRefresh, setLocalRefresh] = useState(0)
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
-  // Highlight-to-edit over the preview (saved assets only — drafts have no row to edit).
-  const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
   const saved = Boolean(campaignId)
@@ -108,34 +108,21 @@ export const BuilderCanvas = ({
   const current = assets[Math.min(assetIdx, Math.max(0, assets.length - 1))]
   const spec = current ? assetToCreativeSpec(current.asset, current.channel) : null
 
-  // Clear a lingering highlight when the displayed asset changes.
-  useEffect(() => {
-    setSelection(null)
-  }, [activePhaseKey, assetIdx, refreshKey, localRefresh])
-
   const canEditText = saved && Boolean(onRequestEdit) && Boolean(current)
 
-  const handleMouseUp = useCallback(() => {
-    if (!canEditText) return
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
-      setSelection(null)
-      return
-    }
-    const text = sel.toString().trim()
-    if (!text) {
-      setSelection(null)
-      return
-    }
-    const range = sel.getRangeAt(0)
-    if (!previewRef.current?.contains(range.commonAncestorContainer)) return
-    setSelection({ rect: range.getBoundingClientRect(), text })
-  }, [canEditText])
+  // Highlight-to-edit over the preview (saved assets only — drafts have no row to edit).
+  // Mouseup on desktop, selectionchange on touch.
+  const {
+    selection,
+    onMouseUp: handleMouseUp,
+    clear: closeToolbar,
+    selectAll,
+  } = useTextSelection(previewRef, canEditText)
 
-  const closeToolbar = useCallback(() => {
-    setSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [])
+  // Clear a lingering highlight when the displayed asset changes.
+  useEffect(() => {
+    closeToolbar()
+  }, [activePhaseKey, assetIdx, refreshKey, localRefresh, closeToolbar])
 
   const submitEdit = useCallback(
     (instruction: string) => {
@@ -332,6 +319,18 @@ export const BuilderCanvas = ({
                   <p className="paragraph-sm text-quaternary">{current.asset.asset_type}</p>
                 )}
               </div>
+            )}
+
+            {/* Mobile: explicit entry into Mia-editing — targets the asset's main copy. */}
+            {canEditText && !selection && (current.asset.key_message ?? '').trim() && (
+              <button
+                type="button"
+                onClick={() => selectAll(current.asset.key_message ?? '')}
+                className="md:hidden w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+              >
+                <MagicWand02 size={15} className="text-utility-brand-600" />
+                Edit copy with Mia
+              </button>
             )}
           </div>
         )}

@@ -3,11 +3,13 @@ import { ChatMarkdown } from '../../../components/chat-markdown'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { Copy01 } from '../../../components/icon/copy-01'
 import { DotsHorizontal } from '../../../components/icon/dots-horizontal'
+import { MagicWand02 } from '../../../components/icon/magic-wand-02'
 import { Pencil01 } from '../../../components/icon/pencil-01'
 import { ReverseLeft } from '../../../components/icon/reverse-left'
 import { Type01 } from '../../../components/icon/type-01'
 import { XClose } from '../../../components/icon/x-close'
 import { useClipboard } from '../../../hooks/use-clipboard'
+import { useTextSelection } from '../../../hooks/use-text-selection'
 import type { CanvasDocument, DocumentSelection } from '../services/chat-service'
 import { AddToCampaign } from './add-to-campaign'
 import { HighlightToolbar } from './highlight-toolbar'
@@ -85,7 +87,6 @@ export const CanvasPane = ({
   isUploadingMedia = false,
 }: CanvasPaneProps) => {
   const [mode, setMode] = useState<Mode>('view')
-  const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const [showVersions, setShowVersions] = useState(false)
   // Mobile-only "⋯" menu holding the actions that don't fit a phone-width header.
   const [showMore, setShowMore] = useState(false)
@@ -119,27 +120,14 @@ export const CanvasPane = ({
 
   const hasTabs = documents.length > 1
 
-  // Capture a highlight inside the rendered document → anchor the toolbar to it.
-  const handleMouseUp = useCallback(() => {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
-      setSelection(null)
-      return
-    }
-    const text = sel.toString().trim()
-    if (!text) {
-      setSelection(null)
-      return
-    }
-    const range = sel.getRangeAt(0)
-    if (!bodyRef.current?.contains(range.commonAncestorContainer)) return
-    setSelection({ rect: range.getBoundingClientRect(), text })
-  }, [])
-
-  const closeToolbar = useCallback(() => {
-    setSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [])
+  // Capture a highlight inside the rendered document → anchor the toolbar to it
+  // (mouseup on desktop, selectionchange on touch).
+  const {
+    selection,
+    onMouseUp: handleMouseUp,
+    clear: closeToolbar,
+    selectAll,
+  } = useTextSelection(bodyRef, mode === 'view')
 
   const submitEdit = useCallback(
     (instruction: string) => {
@@ -193,11 +181,11 @@ export const CanvasPane = ({
   // Reset transient UI when switching tabs.
   useEffect(() => {
     setMode('view')
-    setSelection(null)
+    closeToolbar()
     setShowVersions(false)
     setShowMore(false)
     setRawView(false)
-  }, [activeId])
+  }, [activeId, closeToolbar])
 
   const baseTypeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
   const platformLabel = spec ? PLATFORM_LABELS[spec.platform] : null
@@ -472,6 +460,24 @@ export const CanvasPane = ({
           />
         )}
       </div>
+
+      {/* Mobile: explicit way into Mia-editing — long-press selection isn't discoverable
+          and doesn't work in every mobile browser. Targets the whole document. */}
+      {mode === 'view' && !selection && doc.content.trim() && (
+        <div className="md:hidden shrink-0 border-t border-tertiary px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={() => selectAll(doc.content)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+          >
+            <MagicWand02 size={15} className="text-utility-brand-600" />
+            Edit with Mia
+          </button>
+          <p className="paragraph-xs text-quaternary text-center mt-1.5">
+            or select text in the preview to change just that part
+          </p>
+        </div>
+      )}
 
       {/* Highlight → ask Mia (view mode only) */}
       {mode === 'view' && selection && (

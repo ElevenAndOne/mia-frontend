@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MagicWand02 } from '../../../components/icon/magic-wand-02'
 import { Microphone01 } from '../../../components/icon/microphone-01'
 import { Send02 } from '../../../components/icon/send-02'
+import { useIsMobile } from '../../../hooks/use-is-mobile'
 
 interface HighlightToolbarProps {
   /** Bounding rect of the highlighted selection, in viewport coordinates. */
@@ -35,25 +36,48 @@ export const HighlightToolbar = ({
   const [instruction, setInstruction] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  // Below md the toolbar docks to the bottom edge instead of anchoring to the
+  // selection — anchored popovers fight the on-screen keyboard and iOS's callout.
+  const docked = useIsMobile()
 
   useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+    // Autofocus opens the phone keyboard and wipes the visible selection — desktop only.
+    if (!docked) inputRef.current?.focus()
+  }, [docked])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    const onClickOutside = (e: MouseEvent) => {
+    const onPressOutside = (e: MouseEvent | TouchEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClickOutside)
+    document.addEventListener('mousedown', onPressOutside)
+    document.addEventListener('touchstart', onPressOutside)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('mousedown', onPressOutside)
+      document.removeEventListener('touchstart', onPressOutside)
     }
   }, [onClose])
+
+  // Docked mode rides above the on-screen keyboard via the visual viewport.
+  const [keyboardOffset, setKeyboardOffset] = useState(0)
+  useEffect(() => {
+    if (!docked) return
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () =>
+      setKeyboardOffset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [docked])
 
   const submit = (text: string) => {
     const trimmed = text.trim()
@@ -72,6 +96,7 @@ export const HighlightToolbar = ({
   }))
 
   useLayoutEffect(() => {
+    if (docked) return
     const margin = 12
     const height = rootRef.current?.offsetHeight ?? 160
     const left = Math.max(margin, Math.min(anchorRect.left, window.innerWidth - width - margin))
@@ -81,7 +106,7 @@ export const HighlightToolbar = ({
     }
     top = Math.max(margin, Math.min(top, window.innerHeight - height - margin))
     setPos({ top, left })
-  }, [anchorRect])
+  }, [anchorRect, docked])
 
   return (
     <div
@@ -89,7 +114,16 @@ export const HighlightToolbar = ({
       role="dialog"
       aria-label="Ask Mia to change this"
       className="fixed z-50 rounded-2xl border border-tertiary bg-primary shadow-lg p-3"
-      style={{ top: pos.top, left: pos.left, width }}
+      style={
+        docked
+          ? {
+              left: 8,
+              right: 8,
+              bottom: keyboardOffset + 8,
+              paddingBottom: keyboardOffset > 0 ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
+            }
+          : { top: pos.top, left: pos.left, width }
+      }
     >
       <div className="flex items-center gap-2 mb-2">
         <MagicWand02 size={14} className="text-utility-brand-600 shrink-0" />
