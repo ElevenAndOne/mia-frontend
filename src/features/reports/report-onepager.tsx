@@ -418,7 +418,14 @@ export const ReportOnePager = ({
             variant="teal"
             icon={<MousePointerClick size={18} />}
             label="CTR (All)"
-            value={`${data.dashboard.metrics?.ctr.value ?? 0}%`}
+            // null means unmeasurable (no impressions in the period), not 0% — `?? 0`
+            // printed "CTR 0%" for periods with no paid delivery, which reads as ads
+            // nobody clicked. Matches the Cost Per Lead treatment below.
+            value={
+              data.dashboard.metrics?.ctr.value != null
+                ? `${data.dashboard.metrics.ctr.value}%`
+                : '—'
+            }
             deltaPct={data.dashboard.metrics?.ctr.change_pct ?? null}
           />
           <KpiCard
@@ -426,8 +433,8 @@ export const ReportOnePager = ({
             icon={<DollarSign size={18} />}
             label="Cost Per Lead"
             value={
-              (data.dashboard.metrics?.cost_per_lead.value ?? 0) > 0
-                ? fmtMoney(cur, data.dashboard.metrics!.cost_per_lead.value)
+              data.dashboard.metrics?.cost_per_lead.value
+                ? fmtMoney(cur, data.dashboard.metrics.cost_per_lead.value)
                 : '—'
             }
             deltaPct={data.dashboard.metrics?.cost_per_lead.change_pct ?? null}

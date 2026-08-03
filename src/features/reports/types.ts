@@ -201,7 +201,9 @@ export interface NextStep {
 }
 
 export interface DashboardMetricValue {
-  value: number
+  // null when the metric is unmeasurable for the period (no conversions to divide by, no
+  // impressions) — distinct from a real 0. Render as "—", never as 0.
+  value: number | null
   change_pct: number | null
 }
 
