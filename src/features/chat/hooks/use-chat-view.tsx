@@ -227,6 +227,7 @@ export const useChatView = () => {
     setStreamingContent('')
     setConversationId(null)
     localStorage.removeItem(StorageKey.LAST_CONVERSATION)
+    localStorage.removeItem(StorageKey.LAST_CANVAS_OPEN)
   }, [])
 
   const loadConversation = useCallback(

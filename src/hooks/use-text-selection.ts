@@ -95,6 +95,16 @@ export function useTextSelection(containerRef: RefObject<HTMLElement | null>, en
     if (!el || !text) return false
     // A container-sized hit means the tap was between lines, not on one.
     if (text.length > 400) return false
+    // Select the line for real so the user sees the same native highlight a
+    // long-press gives (the selectionchange listener ignores this — it only
+    // ever re-captures, and we set state ourselves right after).
+    const sel = window.getSelection()
+    if (sel) {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    }
     setSelection({ rect: el.getBoundingClientRect(), text })
     return true
   }, [])

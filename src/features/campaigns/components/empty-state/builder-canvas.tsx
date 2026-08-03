@@ -124,8 +124,13 @@ export const BuilderCanvas = ({
     pickFromEvent,
   } = useTextSelection(previewRef, canEditText)
 
-  // Mobile "Edit copy with Mia" arms tap-to-select pick mode.
+  // Mobile "Edit copy with Mia" arms tap-to-select pick mode; taps keep swapping
+  // the target line until the toolbar closes.
   const [pickMode, setPickMode] = useState(false)
+  const closeToolbarAndPick = useCallback(() => {
+    closeToolbar()
+    setPickMode(false)
+  }, [closeToolbar])
 
   // Clear a lingering highlight when the displayed asset changes.
   useEffect(() => {
@@ -317,13 +322,7 @@ export const BuilderCanvas = ({
               <div
                 ref={previewRef}
                 onMouseUp={handleMouseUp}
-                onClick={
-                  pickMode
-                    ? (e) => {
-                        if (pickFromEvent(e)) setPickMode(false)
-                      }
-                    : undefined
-                }
+                onClick={pickMode ? pickFromEvent : undefined}
                 className="select-text"
               >
                 <CreativePreview
@@ -363,10 +362,7 @@ export const BuilderCanvas = ({
                     </p>
                     <button
                       type="button"
-                      onClick={() => {
-                        setPickMode(false)
-                        selectAll(current.asset.key_message ?? '')
-                      }}
+                      onClick={() => selectAll(current.asset.key_message ?? '')}
                       className="shrink-0 paragraph-sm text-secondary rounded-full border border-tertiary px-3 py-1.5 active:bg-tertiary transition-colors"
                     >
                       Whole copy
@@ -401,7 +397,8 @@ export const BuilderCanvas = ({
           anchorRect={selection.rect}
           selectionText={selection.text}
           onSubmit={submitEdit}
-          onClose={closeToolbar}
+          onClose={closeToolbarAndPick}
+          ignoreOutsideRef={pickMode ? previewRef : undefined}
         />
       )}
     </aside>

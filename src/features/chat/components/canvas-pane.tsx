@@ -131,9 +131,14 @@ export const CanvasPane = ({
     pickFromEvent,
   } = useTextSelection(bodyRef, mode === 'view')
 
-  // Mobile "Edit with Mia" arms pick mode: the next tap on a line of text
-  // selects that line and opens the toolbar (long-press stays available).
+  // Mobile "Edit with Mia" arms pick mode: a tap on a line of text selects it
+  // and opens the toolbar; further taps SWAP the target line (pick mode stays
+  // armed until the toolbar closes). Long-press stays available throughout.
   const [pickMode, setPickMode] = useState(false)
+  const closeToolbarAndPick = useCallback(() => {
+    closeToolbar()
+    setPickMode(false)
+  }, [closeToolbar])
 
   const submitEdit = useCallback(
     (instruction: string) => {
@@ -438,13 +443,7 @@ export const CanvasPane = ({
           <div
             ref={bodyRef}
             onMouseUp={handleMouseUp}
-            onClick={
-              pickMode
-                ? (e) => {
-                    if (pickFromEvent(e)) setPickMode(false)
-                  }
-                : undefined
-            }
+            onClick={pickMode ? pickFromEvent : undefined}
             className="max-w-[640px] mx-auto select-text"
           >
             {spec && !rawView ? (
@@ -500,10 +499,7 @@ export const CanvasPane = ({
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setPickMode(false)
-                  selectAll(doc.content)
-                }}
+                onClick={() => selectAll(doc.content)}
                 className="shrink-0 paragraph-sm text-secondary rounded-full border border-tertiary px-3 py-1.5 active:bg-tertiary transition-colors"
               >
                 Whole doc
@@ -540,8 +536,9 @@ export const CanvasPane = ({
           anchorRect={selection.rect}
           selectionText={selection.text}
           onSubmit={submitEdit}
-          onClose={closeToolbar}
+          onClose={closeToolbarAndPick}
           onDictate={onDictateEdit}
+          ignoreOutsideRef={pickMode ? bodyRef : undefined}
         />
       )}
     </aside>

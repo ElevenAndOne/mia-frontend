@@ -31,6 +31,8 @@ export const StorageKey = {
   // Last open conversation { id, tenantId, ts } — lets a phone tab that the OS
   // killed in the background resume the chat it was in (30-min window)
   LAST_CONVERSATION: 'mia_last_conversation',
+  // Conversation id whose mobile canvas sheet was open — restored with the chat
+  LAST_CANVAS_OPEN: 'mia_last_canvas_open',
 
   // UI state
   INTEGRATION_PROMPT_VISIT_COUNT: 'mia_integration_prompt_visit_count',

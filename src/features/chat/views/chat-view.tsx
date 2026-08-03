@@ -131,6 +131,28 @@ export const ChatView = ({
     prevDocCountRef.current = docCount
   }, [docCount, mobileCanvasOpen])
 
+  // If the OS killed the tab while the canvas sheet was open, reopen it once the
+  // resumed conversation's documents arrive. Read the flag before the persist
+  // effect below can overwrite it with this mount's closed state.
+  const savedCanvasConvRef = useRef(localStorage.getItem(StorageKey.LAST_CANVAS_OPEN))
+  useEffect(() => {
+    if (!isMobile || !savedCanvasConvRef.current) return
+    if (savedCanvasConvRef.current === canvas.conversationId && docCount > 0) {
+      savedCanvasConvRef.current = null
+      setMobileCanvasOpen(true)
+      setCanvasUnseen(false)
+    }
+  }, [isMobile, canvas.conversationId, docCount])
+  useEffect(() => {
+    if (!isMobile) return
+    if (mobileCanvasOpen && canvas.conversationId) {
+      savedCanvasConvRef.current = null // an explicit open supersedes the saved flag
+      localStorage.setItem(StorageKey.LAST_CANVAS_OPEN, canvas.conversationId)
+    } else if (!savedCanvasConvRef.current) {
+      localStorage.removeItem(StorageKey.LAST_CANVAS_OPEN)
+    }
+  }, [isMobile, mobileCanvasOpen, canvas.conversationId])
+
   // Throttle: only show the integration prompt every 5th chat page visit
   const [shouldShowPromptThisVisit] = useState(() => {
     const count =

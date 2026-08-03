@@ -14,6 +14,9 @@ interface HighlightToolbarProps {
   onClose: () => void
   /** Optional voice-to-edit — reuse the existing transcribe flow. */
   onDictate?: () => void
+  /** Presses inside this element don't close the toolbar — lets pick mode swap
+   *  the target line with another tap instead of dismissing. */
+  ignoreOutsideRef?: React.RefObject<HTMLElement | null>
 }
 
 // Each chip is an explicit, selection-scoped instruction so Mia changes only the
@@ -32,6 +35,7 @@ export const HighlightToolbar = ({
   onSubmit,
   onClose,
   onDictate,
+  ignoreOutsideRef,
 }: HighlightToolbarProps) => {
   const [instruction, setInstruction] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -50,7 +54,9 @@ export const HighlightToolbar = ({
       if (e.key === 'Escape') onClose()
     }
     const onPressOutside = (e: MouseEvent | TouchEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose()
+      const target = e.target as Node
+      if (ignoreOutsideRef?.current?.contains(target)) return
+      if (rootRef.current && !rootRef.current.contains(target)) onClose()
     }
     document.addEventListener('keydown', onKey)
     document.addEventListener('mousedown', onPressOutside)
@@ -60,7 +66,7 @@ export const HighlightToolbar = ({
       document.removeEventListener('mousedown', onPressOutside)
       document.removeEventListener('touchstart', onPressOutside)
     }
-  }, [onClose])
+  }, [onClose, ignoreOutsideRef])
 
   // Docked mode rides above the on-screen keyboard via the visual viewport.
   const [keyboardOffset, setKeyboardOffset] = useState(0)

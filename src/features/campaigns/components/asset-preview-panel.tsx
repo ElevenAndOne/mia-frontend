@@ -132,8 +132,13 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
     pickFromEvent,
   } = useTextSelection(previewRef, canEdit)
 
-  // Mobile "Edit copy with Mia" arms tap-to-select pick mode.
+  // Mobile "Edit copy with Mia" arms tap-to-select pick mode; taps keep swapping
+  // the target line until the toolbar closes.
   const [pickMode, setPickMode] = useState(false)
+  const closeToolbarAndPick = useCallback(() => {
+    closeToolbar()
+    setPickMode(false)
+  }, [closeToolbar])
 
   // Highlight-to-edit without a visible chat: fire a self-contained edit turn with
   // asset_context; Mia calls edit_asset_field, asset_updated triggers the refetch,
@@ -269,13 +274,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
             <div
               ref={previewRef}
               onMouseUp={handleMouseUp}
-              onClick={
-                pickMode
-                  ? (e) => {
-                      if (pickFromEvent(e)) setPickMode(false)
-                    }
-                  : undefined
-              }
+              onClick={pickMode ? pickFromEvent : undefined}
               className="select-text"
             >
               <CreativePreview
@@ -310,10 +309,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      setPickMode(false)
-                      selectAll(found.asset.key_message ?? '')
-                    }}
+                    onClick={() => selectAll(found.asset.key_message ?? '')}
                     className="shrink-0 paragraph-sm text-secondary rounded-full border border-tertiary px-3 py-1.5 active:bg-tertiary transition-colors"
                   >
                     Whole copy
@@ -356,7 +352,8 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
           anchorRect={selection.rect}
           selectionText={selection.text}
           onSubmit={(instruction) => void submitEdit(instruction)}
-          onClose={closeToolbar}
+          onClose={closeToolbarAndPick}
+          ignoreOutsideRef={pickMode ? previewRef : undefined}
         />
       )}
     </div>
