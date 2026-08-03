@@ -96,6 +96,7 @@ export const CanvasPane = ({
   const spec = useMemo(() => parseCreativeSpec(doc), [doc])
   const bodyRef = useRef<HTMLDivElement>(null)
   const versionMenuRef = useRef<HTMLDivElement>(null)
+  const versionChipRef = useRef<HTMLButtonElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const { copied, copy } = useClipboard()
 
@@ -144,11 +145,14 @@ export const CanvasPane = ({
     })
   }, [onFetchVersions])
 
-  // Close the version menu on outside click / Escape.
+  // Close the version menu on outside click / Escape. The chip itself is excluded:
+  // its own onClick toggles, and closing here first would make that tap re-open.
   useEffect(() => {
     if (!showVersions) return
     const onDown = (e: MouseEvent) => {
-      if (versionMenuRef.current && !versionMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (versionChipRef.current?.contains(target)) return
+      if (versionMenuRef.current && !versionMenuRef.current.contains(target)) {
         setShowVersions(false)
       }
     }
@@ -202,7 +206,7 @@ export const CanvasPane = ({
   return (
     <aside className="flex flex-col h-full w-full bg-primary md:border-l md:border-tertiary min-w-0">
       {/* Header */}
-      <div className="border-b border-tertiary px-5 py-3 relative select-none">
+      <div className="border-b border-tertiary px-4 md:px-5 py-3 relative select-none">
         {/* Tab strip — one tab per deliverable */}
         {hasTabs && (
           <div className="flex items-center gap-1 overflow-x-auto mb-2 -mx-1 px-1">
@@ -231,48 +235,9 @@ export const CanvasPane = ({
         )}
 
         <div className="flex items-center gap-3">
-          <div className="min-w-0">
-            <h2 className="paragraph-md font-semibold text-primary truncate">{doc.title}</h2>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="paragraph-sm text-quaternary uppercase tracking-wide">
-                {typeLabel}
-              </span>
-              {/* Version chip → history dropdown */}
-              <button
-                type="button"
-                onClick={toggleVersions}
-                aria-label="Version history"
-                aria-expanded={showVersions}
-                className="flex items-center gap-0.5 paragraph-sm text-secondary rounded-full bg-tertiary px-2 py-0.5 hover:text-primary transition-colors"
-              >
-                v{doc.version}
-                <ChevronDown size={12} />
-              </button>
-              {spec && mode === 'view' && (
-                <div className="flex items-center rounded-full bg-tertiary p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setRawView(false)}
-                    className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
-                      !rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
-                    }`}
-                  >
-                    {spec.isPaid ? 'Ad' : 'Post'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRawView(true)}
-                    className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
-                      rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
-                    }`}
-                  >
-                    Text
-                  </button>
-                </div>
-              )}
-              {isSaving && <span className="paragraph-sm text-quaternary">Saving…</span>}
-            </div>
-          </div>
+          <h2 className="min-w-0 flex-1 paragraph-md font-semibold text-primary truncate">
+            {doc.title}
+          </h2>
 
           <div className="flex items-center gap-1 ml-auto shrink-0">
             <button
@@ -357,6 +322,49 @@ export const CanvasPane = ({
           </div>
         </div>
 
+        {/* Meta row — full header width so chips wrap instead of colliding with the
+            action buttons on narrow screens */}
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1">
+          <span className="paragraph-sm text-quaternary uppercase tracking-wide">
+            {typeLabel}
+          </span>
+          {/* Version chip → history dropdown */}
+          <button
+            ref={versionChipRef}
+            type="button"
+            onClick={toggleVersions}
+            aria-label="Version history"
+            aria-expanded={showVersions}
+            className="flex items-center gap-0.5 paragraph-sm text-secondary rounded-full bg-tertiary px-2 py-0.5 hover:text-primary transition-colors"
+          >
+            v{doc.version}
+            <ChevronDown size={12} />
+          </button>
+          {spec && mode === 'view' && (
+            <div className="flex items-center rounded-full bg-tertiary p-0.5">
+              <button
+                type="button"
+                onClick={() => setRawView(false)}
+                className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
+                  !rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                }`}
+              >
+                {spec.isPaid ? 'Ad' : 'Post'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRawView(true)}
+                className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
+                  rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                }`}
+              >
+                Text
+              </button>
+            </div>
+          )}
+          {isSaving && <span className="paragraph-sm text-quaternary">Saving…</span>}
+        </div>
+
         {/* Version history dropdown */}
         {showVersions && (
           <div
@@ -419,7 +427,9 @@ export const CanvasPane = ({
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6">
         {mode === 'view' ? (
-          <div ref={bodyRef} onMouseUp={handleMouseUp} className="max-w-[640px] mx-auto">
+          // select-text: index.css disables selection globally on mobile — re-enable
+          // here or touch highlight-to-edit has nothing to work with
+          <div ref={bodyRef} onMouseUp={handleMouseUp} className="max-w-[640px] mx-auto select-text">
             {spec && !rawView ? (
               <CreativePreview
                 spec={spec}

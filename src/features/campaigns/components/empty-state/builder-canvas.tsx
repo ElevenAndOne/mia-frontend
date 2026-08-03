@@ -308,7 +308,8 @@ export const BuilderCanvas = ({
             </div>
 
             {spec ? (
-              <div ref={previewRef} onMouseUp={handleMouseUp}>
+              // select-text: mobile disables selection globally — re-enable for highlight-to-edit
+              <div ref={previewRef} onMouseUp={handleMouseUp} className="select-text">
                 <CreativePreview
                   spec={spec}
                   brandName={activeWorkspace?.name}

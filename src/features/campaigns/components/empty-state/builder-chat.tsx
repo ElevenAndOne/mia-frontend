@@ -159,7 +159,7 @@ export const BuilderChat = () => {
 
       {/* Mobile: the campaign canvas lives behind this pill (no side pane below md) */}
       {showCanvas && !mobileCanvasOpen && (
-        <div className="md:hidden flex justify-center pb-1.5 shrink-0">
+        <div className="md:hidden flex justify-end px-3 pb-1.5 shrink-0">
           <button
             type="button"
             onClick={() => {

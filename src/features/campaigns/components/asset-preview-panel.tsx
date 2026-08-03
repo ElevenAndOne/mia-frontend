@@ -261,7 +261,8 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
               This asset is no longer in the campaign.
             </p>
           ) : spec ? (
-            <div ref={previewRef} onMouseUp={handleMouseUp}>
+            // select-text: mobile disables selection globally — re-enable for highlight-to-edit
+            <div ref={previewRef} onMouseUp={handleMouseUp} className="select-text">
               <CreativePreview
                 spec={spec}
                 brandName={activeWorkspace?.name}

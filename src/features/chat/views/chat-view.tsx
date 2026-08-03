@@ -318,7 +318,7 @@ export const ChatView = ({
 
             {/* Mobile: the canvas lives behind this pill (no side pane below md) */}
             {docCount > 0 && !mobileCanvasOpen && (
-              <div className="md:hidden flex justify-center pb-1.5 shrink-0">
+              <div className="md:hidden flex justify-end px-3 pb-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -330,7 +330,7 @@ export const ChatView = ({
                   {canvasUnseen && (
                     <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
                   )}
-                  Canvas · {docCount}
+                  Open in Canvas{docCount > 1 ? ` · ${docCount}` : ''}
                 </button>
               </div>
             )}
