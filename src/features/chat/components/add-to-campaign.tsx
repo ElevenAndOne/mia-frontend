@@ -154,7 +154,7 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
         aria-label="Add to campaign"
         aria-expanded={open}
         title="Add this post to a campaign"
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+        className="w-8 h-8 max-md:w-10 max-md:h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
       >
         <FilePlus02 size={16} />
       </button>

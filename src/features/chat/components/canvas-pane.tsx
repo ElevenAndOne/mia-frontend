@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { Copy01 } from '../../../components/icon/copy-01'
+import { DotsHorizontal } from '../../../components/icon/dots-horizontal'
 import { Pencil01 } from '../../../components/icon/pencil-01'
 import { ReverseLeft } from '../../../components/icon/reverse-left'
 import { Type01 } from '../../../components/icon/type-01'
@@ -86,12 +87,15 @@ export const CanvasPane = ({
   const [mode, setMode] = useState<Mode>('view')
   const [selection, setSelection] = useState<{ rect: DOMRect; text: string } | null>(null)
   const [showVersions, setShowVersions] = useState(false)
+  // Mobile-only "⋯" menu holding the actions that don't fit a phone-width header.
+  const [showMore, setShowMore] = useState(false)
   const [versions, setVersions] = useState<CanvasDocument[]>([])
   /** Platform preview ↔ raw text, for docs that parse into a CreativeSpec. */
   const [rawView, setRawView] = useState(false)
   const spec = useMemo(() => parseCreativeSpec(doc), [doc])
   const bodyRef = useRef<HTMLDivElement>(null)
   const versionMenuRef = useRef<HTMLDivElement>(null)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
   const { copied, copy } = useClipboard()
 
   // Edit-mode changes buffer here and become ONE version when the user leaves
@@ -169,11 +173,29 @@ export const CanvasPane = ({
     }
   }, [showVersions])
 
+  // Close the mobile "⋯" menu on outside tap / Escape.
+  useEffect(() => {
+    if (!showMore) return
+    const onDown = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMore(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setShowMore(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [showMore])
+
   // Reset transient UI when switching tabs.
   useEffect(() => {
     setMode('view')
     setSelection(null)
     setShowVersions(false)
+    setShowMore(false)
     setRawView(false)
   }, [activeId])
 
@@ -190,7 +212,7 @@ export const CanvasPane = ({
   const viewingOlder = doc.version < latestVersion
 
   return (
-    <aside className="flex flex-col h-full w-full bg-primary border-l border-tertiary min-w-0">
+    <aside className="flex flex-col h-full w-full bg-primary md:border-l md:border-tertiary min-w-0">
       {/* Header */}
       <div className="border-b border-tertiary px-5 py-3 relative select-none">
         {/* Tab strip — one tab per deliverable */}
@@ -272,7 +294,7 @@ export const CanvasPane = ({
                 setMode(mode === 'view' ? 'edit' : 'view')
               }}
               aria-label={mode === 'view' ? 'Edit document' : 'Save changes'}
-              className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-secondary hover:bg-tertiary transition-colors paragraph-sm"
+              className="h-8 max-md:h-10 px-2.5 rounded-lg flex items-center gap-1.5 text-secondary hover:bg-tertiary transition-colors paragraph-sm"
             >
               {mode === 'view' ? <Pencil01 size={15} /> : <Type01 size={15} />}
               {mode === 'view' ? 'Edit' : 'Save'}
@@ -282,7 +304,7 @@ export const CanvasPane = ({
                 type="button"
                 onClick={onUndo}
                 aria-label="Undo Mia's last change"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+                className="hidden md:flex w-8 h-8 rounded-lg items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
               >
                 <ReverseLeft size={16} />
               </button>
@@ -292,15 +314,55 @@ export const CanvasPane = ({
               type="button"
               onClick={() => copy(doc.content)}
               aria-label="Copy document"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+              className="hidden md:flex w-8 h-8 rounded-lg items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
             >
               <Copy01 size={16} className={copied ? 'text-utility-brand-600' : ''} />
             </button>
+            {/* Mobile: Undo + Copy live behind "⋯" — a phone-width header can't hold 5 buttons */}
+            <div className="relative md:hidden" ref={moreMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMore((o) => !o)}
+                aria-label="More actions"
+                aria-expanded={showMore}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+              >
+                <DotsHorizontal size={16} />
+              </button>
+              {showMore && (
+                <div className="absolute z-40 top-full right-0 mt-1 w-48 rounded-xl border border-tertiary bg-primary shadow-lg py-1">
+                  {onUndo && canUndo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUndo()
+                        setShowMore(false)
+                      }}
+                      className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                    >
+                      <ReverseLeft size={15} />
+                      Undo Mia's change
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      copy(doc.content)
+                      setShowMore(false)
+                    }}
+                    className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                  >
+                    <Copy01 size={15} />
+                    Copy text
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close canvas"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+              className="w-8 h-8 max-md:w-10 max-md:h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
             >
               <XClose size={16} />
             </button>
@@ -367,7 +429,7 @@ export const CanvasPane = ({
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6">
         {mode === 'view' ? (
           <div ref={bodyRef} onMouseUp={handleMouseUp} className="max-w-[640px] mx-auto">
             {spec && !rawView ? (

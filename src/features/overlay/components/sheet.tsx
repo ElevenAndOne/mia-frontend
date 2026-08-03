@@ -49,6 +49,7 @@ export function Sheet({
   title,
   position = 'bottom',
   showHandle = true,
+  fullScreen = false,
   closeOnEscape = true,
   closeOnOutsideClick = true,
   className = '',
@@ -73,6 +74,11 @@ export function Sheet({
   useEscapeKey(onClose, isOpen && closeOnEscape)
 
   const variant = POSITION_VARIANTS[position]
+  // Full-screen: same slide-in motion, but the panel covers the viewport and the
+  // children own their scroll (max-h/rounded/overflow-y would fight a full-height pane).
+  const panelClassName = fullScreen
+    ? 'fixed inset-0 flex flex-col'
+    : variant.className
   const zIndex = getZIndex(overlayId)
 
   return (
@@ -98,7 +104,7 @@ export function Sheet({
             animate={variant.animate}
             exit={variant.exit}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`${variant.className} bg-primary shadow-xl overflow-hidden ${className}`.trim()}
+            className={`${panelClassName} bg-primary shadow-xl overflow-hidden ${className}`.trim()}
             style={{ zIndex: zIndex + 1 }}
             role="dialog"
             aria-modal="true"
@@ -106,7 +112,7 @@ export function Sheet({
             tabIndex={-1}
           >
             {/* Handle indicator (bottom sheets only) */}
-            {showHandle && position === 'bottom' && (
+            {showHandle && position === 'bottom' && !fullScreen && (
               <div className="flex justify-center py-3">
                 <div className="w-10 h-1 bg-tertiary rounded-full" />
               </div>
@@ -122,7 +128,11 @@ export function Sheet({
             )}
 
             {/* Content */}
-            <div className="overflow-y-auto">{children}</div>
+            {fullScreen ? (
+              <div className="flex-1 min-h-0 pb-[env(safe-area-inset-bottom)]">{children}</div>
+            ) : (
+              <div className="overflow-y-auto">{children}</div>
+            )}
           </motion.div>
         </OverlayPortal>
       )}

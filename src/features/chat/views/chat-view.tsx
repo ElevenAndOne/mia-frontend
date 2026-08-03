@@ -5,6 +5,8 @@ import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
 import { CanvasPane } from '../components/canvas-pane'
+import { Sheet } from '../../overlay'
+import { useIsMobile } from '../../../hooks/use-is-mobile'
 import QuickActions from '../components/quick-actions'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
@@ -112,6 +114,23 @@ export const ChatView = ({
 
   const [promptDismissed, setPromptDismissed] = useState(false)
 
+  // Mobile canvas: the side pane doesn't exist below md, so the canvas becomes a
+  // full-screen sheet the user opens from a pill above the input. New documents
+  // never take over the screen mid-conversation — they light the pill up instead.
+  const isMobile = useIsMobile()
+  const [mobileCanvasOpen, setMobileCanvasOpen] = useState(false)
+  const [canvasUnseen, setCanvasUnseen] = useState(false)
+  const prevDocCountRef = useRef(0)
+  const docCount = canvas.documentList.length
+  useEffect(() => {
+    if (docCount > prevDocCountRef.current && !mobileCanvasOpen) setCanvasUnseen(true)
+    if (docCount === 0) {
+      setMobileCanvasOpen(false)
+      setCanvasUnseen(false)
+    }
+    prevDocCountRef.current = docCount
+  }, [docCount, mobileCanvasOpen])
+
   // Throttle: only show the integration prompt every 5th chat page visit
   const [shouldShowPromptThisVisit] = useState(() => {
     const count =
@@ -141,6 +160,29 @@ export const ChatView = ({
   const handleIntegrationPromptClose = () => {
     setPromptDismissed(true)
   }
+
+  // One prop set for both canvas hosts (desktop side pane / mobile sheet) — only
+  // onClose differs: the sheet closes itself, the pane closes the canvas state.
+  const canvasPaneProps = canvas.document
+    ? {
+        document: canvas.document,
+        documents: canvas.documentList,
+        activeId: canvas.activeId,
+        onSelect: canvas.select,
+        isSaving: canvas.isSaving,
+        onRequestEdit: canvas.requestEdit,
+        onSaveUserEdit: canvas.saveUserEdit,
+        onUndo: canvas.undo,
+        canUndo: canvas.canUndo,
+        onFetchVersions: canvas.fetchVersions,
+        onSelectVersion: canvas.viewVersion,
+        brandName: activeWorkspace?.name,
+        conversationId: canvas.conversationId,
+        onUploadMedia: canvas.uploadMedia,
+        onRemoveMedia: canvas.removeMedia,
+        isUploadingMedia: canvas.isUploadingMedia,
+      }
+    : null
 
   return (
     <ChatLayout
@@ -274,6 +316,25 @@ export const ChatView = ({
               </div>
             </div>
 
+            {/* Mobile: the canvas lives behind this pill (no side pane below md) */}
+            {docCount > 0 && !mobileCanvasOpen && (
+              <div className="md:hidden flex justify-center pb-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileCanvasOpen(true)
+                    setCanvasUnseen(false)
+                  }}
+                  className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+                >
+                  {canvasUnseen && (
+                    <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
+                  )}
+                  Canvas · {docCount}
+                </button>
+              </div>
+            )}
+
             <ChatInput
               onSubmit={handleSubmit}
               onCancel={handleCancel}
@@ -299,30 +360,24 @@ export const ChatView = ({
         )}
        </div>
 
-       {canvas.isOpen && canvas.document && (
+       {canvas.isOpen && canvasPaneProps && (
          <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
-           <CanvasPane
-             document={canvas.document}
-             documents={canvas.documentList}
-             activeId={canvas.activeId}
-             onSelect={canvas.select}
-             isSaving={canvas.isSaving}
-             onClose={canvas.close}
-             onRequestEdit={canvas.requestEdit}
-             onSaveUserEdit={canvas.saveUserEdit}
-             onUndo={canvas.undo}
-             canUndo={canvas.canUndo}
-             onFetchVersions={canvas.fetchVersions}
-             onSelectVersion={canvas.viewVersion}
-             brandName={activeWorkspace?.name}
-             conversationId={canvas.conversationId}
-             onUploadMedia={canvas.uploadMedia}
-             onRemoveMedia={canvas.removeMedia}
-             isUploadingMedia={canvas.isUploadingMedia}
-           />
+           <CanvasPane {...canvasPaneProps} onClose={canvas.close} />
          </div>
        )}
       </div>
+
+      {/* Mobile canvas — full-screen sheet over the chat */}
+      {isMobile && canvasPaneProps && (
+        <Sheet
+          isOpen={mobileCanvasOpen}
+          onClose={() => setMobileCanvasOpen(false)}
+          fullScreen
+          showHandle={false}
+        >
+          <CanvasPane {...canvasPaneProps} onClose={() => setMobileCanvasOpen(false)} />
+        </Sheet>
+      )}
 
       <FeedbackModal
         isOpen={feedbackModalOpen}

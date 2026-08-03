@@ -69,6 +69,8 @@ export interface SheetProps extends BaseOverlayConfig {
   title?: string
   position?: SheetPosition
   showHandle?: boolean
+  /** Take over the whole viewport (mobile canvas et al.) — children own their scroll. */
+  fullScreen?: boolean
   className?: string
 }
 
