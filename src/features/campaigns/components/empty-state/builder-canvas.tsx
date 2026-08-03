@@ -8,6 +8,7 @@ import { channelLabel } from '../../utils/channel-colors'
 import { assetToCreativeSpec } from '../../utils/asset-preview'
 import type { DraftPhase } from '../../utils/plan-draft'
 import { MagicWand02 } from '../../../../components/icon/magic-wand-02'
+import { XClose } from '../../../../components/icon/x-close'
 import { useTextSelection } from '../../../../hooks/use-text-selection'
 import { fetchCampaignDetail, patchAsset, uploadAssetMedia } from '../../services/campaign-api'
 import { clearCampaignDetailCache } from '../../campaign-detail-cache'
@@ -22,6 +23,8 @@ interface BuilderCanvasProps {
   draft?: DraftPhase[] | null
   /** Highlight-to-edit: sends the instruction + asset context through the builder chat. */
   onRequestEdit?: (instruction: string, assetContext: AssetContext) => void
+  /** Present when hosted in the mobile full-screen sheet — renders a close button. */
+  onClose?: () => void
 }
 
 interface CanvasAsset {
@@ -47,6 +50,7 @@ export const BuilderCanvas = ({
   refreshKey,
   draft,
   onRequestEdit,
+  onClose,
 }: BuilderCanvasProps) => {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
@@ -188,7 +192,7 @@ export const BuilderCanvas = ({
 
   if (saved && !detail) {
     return (
-      <aside className="flex flex-col h-full w-full bg-primary border-l border-tertiary min-w-0 items-center justify-center gap-2">
+      <aside className="flex flex-col h-full w-full bg-primary md:border-l md:border-tertiary min-w-0 items-center justify-center gap-2">
         <div className="w-5 h-5 border-2 border-quaternary border-t-transparent rounded-full animate-spin" />
         <p className="paragraph-sm text-quaternary">Loading campaign…</p>
       </aside>
@@ -196,9 +200,9 @@ export const BuilderCanvas = ({
   }
 
   return (
-    <aside className="flex flex-col h-full w-full bg-primary border-l border-tertiary min-w-0">
+    <aside className="flex flex-col h-full w-full bg-primary md:border-l md:border-tertiary min-w-0">
       {/* Header */}
-      <div className="border-b border-tertiary px-5 py-3">
+      <div className="border-b border-tertiary px-4 md:px-5 py-3">
         <div className="flex items-center gap-3">
           <div className="min-w-0">
             <h2 className="paragraph-md font-semibold text-primary truncate">
@@ -220,6 +224,16 @@ export const BuilderCanvas = ({
             <span className="ml-auto shrink-0 paragraph-sm text-utility-warning-600 border border-utility-warning-300 rounded-full px-2.5 py-0.5">
               Draft — type yes to save
             </span>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close canvas"
+              className="shrink-0 w-10 h-10 -mr-1.5 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+            >
+              <XClose size={16} />
+            </button>
           )}
         </div>
 
@@ -252,7 +266,7 @@ export const BuilderCanvas = ({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
         {assets.length === 0 ? (
           <p className="paragraph-sm text-quaternary text-center pt-16">
             No assets in {activePhase?.name ?? 'this phase'} yet — they'll appear here as Mia{' '}

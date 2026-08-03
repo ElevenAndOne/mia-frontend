@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, type WheelEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type WheelEvent } from 'react'
 import { ChatMarkdown } from '../../../../components/chat-markdown'
+import { useIsMobile } from '../../../../hooks/use-is-mobile'
+import { Sheet } from '../../../overlay'
 import { ChatComposer } from './chat-composer'
 import { BuildHistoryMenu } from './build-history-menu'
 import { BuilderCanvas } from './builder-canvas'
@@ -33,6 +35,22 @@ export const BuilderChat = () => {
     return null
   }, [c.builtCampaignId, c.streaming, c.messages])
   const showCanvas = Boolean(c.builtCampaignId || (draft && draft.length > 0))
+
+  // Mobile: the canvas has no side-pane room below md — it lives behind a pill
+  // that opens a full-screen sheet. New plan/asset activity pulses the pill; it
+  // never takes the screen over while Mia is still streaming.
+  const isMobile = useIsMobile()
+  const [mobileCanvasOpen, setMobileCanvasOpen] = useState(false)
+  const [canvasUnseen, setCanvasUnseen] = useState(false)
+  const draftAssetCount = draft?.reduce((n, p) => n + p.assets.length, 0) ?? 0
+  const canvasSignal = `${c.builtCampaignId ?? ''}:${c.canvasRefresh}:${draftAssetCount}`
+  const prevSignalRef = useRef(canvasSignal)
+  useEffect(() => {
+    if (canvasSignal !== prevSignalRef.current && showCanvas && !mobileCanvasOpen) {
+      setCanvasUnseen(true)
+    }
+    prevSignalRef.current = canvasSignal
+  }, [canvasSignal, showCanvas, mobileCanvasOpen])
 
   // Follow the stream ONLY while the user is parked at the bottom. Any upward intent
   // (wheel-up or an upward scroll delta) pauses following so they can read back while
@@ -139,6 +157,25 @@ export const BuilderChat = () => {
         </div>
       )}
 
+      {/* Mobile: the campaign canvas lives behind this pill (no side pane below md) */}
+      {showCanvas && !mobileCanvasOpen && (
+        <div className="md:hidden flex justify-center pb-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileCanvasOpen(true)
+              setCanvasUnseen(false)
+            }}
+            className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+          >
+            {canvasUnseen && (
+              <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
+            )}
+            {c.builtCampaignId ? 'Campaign canvas' : `Plan draft · ${draftAssetCount}`}
+          </button>
+        </div>
+      )}
+
       {!c.pdfUploading && (
         <ChatComposer value={c.input} onChange={c.setInput} onSend={() => c.send()} disabled={c.loading} />
       )}
@@ -155,6 +192,24 @@ export const BuilderChat = () => {
           onRequestEdit={c.sendAssetEdit}
         />
       </div>
+    )}
+
+    {/* Mobile canvas — full-screen sheet over the builder chat */}
+    {isMobile && showCanvas && (
+      <Sheet
+        isOpen={mobileCanvasOpen}
+        onClose={() => setMobileCanvasOpen(false)}
+        fullScreen
+        showHandle={false}
+      >
+        <BuilderCanvas
+          campaignId={c.builtCampaignId}
+          refreshKey={c.canvasRefresh}
+          draft={draft}
+          onRequestEdit={c.sendAssetEdit}
+          onClose={() => setMobileCanvasOpen(false)}
+        />
+      </Sheet>
     )}
     </div>
   )
