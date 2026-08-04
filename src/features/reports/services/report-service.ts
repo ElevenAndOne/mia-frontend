@@ -3,6 +3,7 @@ import type {
   ClientReport,
   ClickUpSpace,
   GenerateReportParams,
+  KpiTargetOption,
   ReportSummary,
 } from '../types'
 
@@ -120,6 +121,30 @@ export const listCampaignOptions = async (
   })
   if (!response.ok) throw new Error(`Failed to load campaigns (${response.status})`)
   return response.json()
+}
+
+export interface KpiTargetOptions {
+  campaign_start: string | null
+  campaign_end: string | null
+  kpis: KpiTargetOption[]
+}
+
+export const listKpiTargetOptions = async (
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+): Promise<KpiTargetOptions> => {
+  const response = await apiFetch(
+    `/api/tenants/${tenantId}/reports/kpi-options?campaign_id=${encodeURIComponent(campaignId)}`,
+    { headers: { 'X-Session-ID': sessionId } },
+  )
+  if (!response.ok) throw new Error(`Failed to load KPIs (${response.status})`)
+  const data = await response.json()
+  return {
+    campaign_start: data.campaign_start ?? null,
+    campaign_end: data.campaign_end ?? null,
+    kpis: data.kpis ?? [],
+  }
 }
 
 export const linkClickUpList = async (

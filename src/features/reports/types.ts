@@ -278,4 +278,22 @@ export interface GenerateReportParams {
   top_ad_metric: TopAdMetric
   top_organic_metric: TopOrganicMetric
   clickup_list_id?: string
+  /**
+   * Targets set for THIS report's window, keyed "phase::kpi". A KPI with an entry
+   * grades against it; one without stays ungraded rather than being compared to a
+   * whole-campaign target it doesn't cover.
+   */
+  window_targets?: Record<string, number>
+}
+
+/** One KPI on the campaign, offered a window target on the New Report page. */
+export interface KpiTargetOption {
+  key: string
+  phase: string
+  kpi_name: string
+  unit: string
+  campaign_target: string | null
+  campaign_target_numeric: number | null
+  /** What this KPI was last graded against on a previous report, if any. */
+  suggested: number | null
 }
