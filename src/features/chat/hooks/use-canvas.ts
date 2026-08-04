@@ -30,6 +30,9 @@ export interface CanvasController {
   isOpen: boolean
   /** Handle a `document` chunk arriving on the chat stream. */
   handleDocumentEvent: (doc: CanvasDocument) => void
+  /** Refetch the conversation's documents in place (disconnect recovery) —
+   *  merges new docs/versions without touching the open/active state. */
+  reloadDocuments: () => void
   open: (documentId: string) => void
   close: () => void
   /** Fetch the full version history of the active document. */
@@ -130,6 +133,29 @@ export function useCanvas({
     setIsOpen(true)
     setCanUndo(changed)
   }, [])
+
+  // Refetch after a disconnect recovery: documents Mia created while the client
+  // was away merge in (pill count updates), without stealing focus or open state.
+  const reloadDocuments = useCallback(() => {
+    if (!sessionId || !conversationId) return
+    fetchCanvasDocuments(sessionId, conversationId)
+      .then((docs) => {
+        if (docs.length === 0) return
+        setDocuments((prev) => {
+          const next = { ...prev }
+          for (const d of docs) next[d.id] = d
+          return next
+        })
+        setOrder((o) => {
+          const known = new Set(o)
+          return [...o, ...docs.map((d) => d.id).filter((id) => !known.has(id))]
+        })
+        setActiveId((current) => current ?? docs[0].id)
+      })
+      .catch(() => {
+        /* non-critical — the pill just doesn't update */
+      })
+  }, [sessionId, conversationId])
 
   const open = useCallback((documentId: string) => {
     setActiveId(documentId)
@@ -311,6 +337,7 @@ export function useCanvas({
     select: open,
     isOpen,
     handleDocumentEvent,
+    reloadDocuments,
     open,
     close,
     fetchVersions,

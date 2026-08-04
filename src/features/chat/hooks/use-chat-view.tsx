@@ -89,6 +89,8 @@ export const useChatView = () => {
   // Canvas document-event sink. Held in a ref because handleSubmit's onChunk (defined
   // below) needs it, but the canvas hook is instantiated after handleSubmit.
   const canvasDocEventRef = useRef<((doc: CanvasDocument) => void) | null>(null)
+  // Same deal for the canvas refetch used by disconnect recovery.
+  const canvasReloadRef = useRef<(() => void) | null>(null)
 
   // Interval-based streaming reveal — same mechanism as Quick Insights.
   // Text accumulates in receivedRef instantly; a fixed setInterval drip-feeds it to
@@ -353,6 +355,50 @@ export const useChatView = () => {
     setDocuments((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  // A dropped stream usually means the phone backgrounded the tab (mobile
+  // browsers kill in-flight fetches on screen lock / app switch). The backend
+  // finishes the turn regardless and saves it to history — so wait until the
+  // tab is visible again, then poll history for the reply to this turn.
+  const recoverInterruptedTurn = useCallback(
+    async (
+      convId: string,
+      userMessage: string
+    ): Promise<{ content: string; historyId: number | null } | null> => {
+      if (!sessionId) return null
+      if (document.visibilityState !== 'visible') {
+        await new Promise<void>((resolve) => {
+          const onVisible = () => {
+            if (document.visibilityState === 'visible') {
+              document.removeEventListener('visibilitychange', onVisible)
+              resolve()
+            }
+          }
+          document.addEventListener('visibilitychange', onVisible)
+        })
+      }
+      const deadline = Date.now() + 150_000
+      while (Date.now() < deadline) {
+        try {
+          const msgs = await fetchConversationMessages(sessionId, convId)
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === 'user' && msgs[i].content === userMessage) {
+              const reply = msgs[i + 1]
+              if (reply && reply.role === 'assistant' && reply.content) {
+                return { content: reply.content, historyId: reply.history_id ?? null }
+              }
+              break // turn found but Mia hasn't finished — poll again
+            }
+          }
+        } catch {
+          // backend unreachable (device still regaining network) — keep trying
+        }
+        await new Promise((r) => setTimeout(r, 3000))
+      }
+      return null
+    },
+    [sessionId]
+  )
+
   const handleSubmit = useCallback(
     async (
       message: string,
@@ -526,12 +572,30 @@ export const useChatView = () => {
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
         } else {
           logger.error('[CHAT] Error:', error)
-          const errorMessage: ChatMessageItem = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: 'Connection error. Please check your connection and try again.',
+          // Mia keeps working server-side through a disconnect — try to pick the
+          // finished reply out of history before showing an error.
+          setThinkingText('Reconnecting…')
+          const recovered = await recoverInterruptedTurn(activeConvId, message)
+          if (recovered) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: recovered.content,
+                historyId: recovered.historyId,
+              },
+            ])
+            // Canvas documents created while we were away were persisted too.
+            canvasReloadRef.current?.()
+          } else {
+            const errorMessage: ChatMessageItem = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: 'Connection error. Please check your connection and try again.',
+            }
+            setMessages((prev) => [...prev, errorMessage])
           }
-          setMessages((prev) => [...prev, errorMessage])
         }
       } finally {
         abortControllerRef.current = null
@@ -551,6 +615,7 @@ export const useChatView = () => {
       images,
       documents,
       activeCampaign,
+      recoverInterruptedTurn,
     ]
   )
 
@@ -599,7 +664,8 @@ export const useChatView = () => {
   const canvas = useCanvas({ sessionId, conversationId, onSendEdit: sendCanvasEdit })
   useEffect(() => {
     canvasDocEventRef.current = canvas.handleDocumentEvent
-  }, [canvas.handleDocumentEvent])
+    canvasReloadRef.current = canvas.reloadDocuments
+  }, [canvas.handleDocumentEvent, canvas.reloadDocuments])
 
   const handleConfirmAction = useCallback(
     async (messageId: string, overrideParams?: Record<string, unknown>) => {
