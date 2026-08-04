@@ -121,6 +121,14 @@ export async function apiFetch(path: string, options?: RequestInit): Promise<Res
   // interstitial unless this header is present; harmless on every other host.
   const headers = new Headers(options?.headers)
   headers.set('ngrok-skip-browser-warning', 'any')
+  // Attach the session unless the caller set one explicitly. Callers had to remember to
+  // pass createSessionHeaders(), and several didn't — which is how endpoints that should
+  // have required a session ended up accepting a user id as a plain query parameter
+  // instead. Doing it here means a new call site cannot forget.
+  if (!headers.has('X-Session-ID')) {
+    const storedSessionId = getStoredSessionId()
+    if (storedSessionId) headers.set('X-Session-ID', storedSessionId)
+  }
   const response = await fetch(createApiUrl(path), { ...options, headers })
 
   // Handle authentication errors (validates Mia session before any logout)
