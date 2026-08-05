@@ -23,6 +23,7 @@ const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const NewCampaignPage = lazy(() => import('../pages/new-campaign-page'))
 const CampaignWorkspacePage = lazy(() => import('../pages/campaign-workspace-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
+const SchedulerPage = lazy(() => import('../pages/scheduler-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
 const ReportPrintPage = lazy(() => import('../features/reports/report-print-page'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
@@ -208,6 +209,17 @@ export const AppRoutes = ({
         />
         {/* backward-compat redirect */}
         <Route path="/strategise" element={<Navigate to="/predict" replace />} />
+
+        <Route
+          path="/scheduler"
+          element={
+            <ProtectedRoute requireAccount>
+              <ErrorBoundary>
+                <SchedulerPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/reports"
