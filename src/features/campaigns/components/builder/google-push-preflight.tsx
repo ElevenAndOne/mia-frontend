@@ -72,6 +72,20 @@ const draftProblems = (d: AdGroupDraft): string[] => {
   if (ds.length < 2 || ds.length > 4) problems.push(`needs 2-4 descriptions (has ${ds.length})`)
   hs.filter((h) => h.text.length > H_MAX).forEach((h) => problems.push(`headline over ${H_MAX} chars: "${h.text.slice(0, 34)}…"`))
   ds.filter((x) => x.text.length > D_MAX).forEach(() => problems.push(`a description is over ${D_MAX} chars`))
+  // Mirrors the backend validators so the button state matches the real push:
+  // a pipe trips Google's SYMBOLS policy (PROHIBITED) and repeated text is
+  // rejected as DUPLICATE_ASSET — either one kills the whole atomic push.
+  ;([['headline', hs], ['description', ds]] as const).forEach(([label, items]) => {
+    items
+      .filter((x) => x.text.includes('|'))
+      .forEach((x) => problems.push(`${label} contains "|" — Google rejects it (SYMBOLS policy): "${x.text.slice(0, 34)}"`))
+    const seen = new Set<string>()
+    items.forEach((x) => {
+      const key = x.text.trim().toLowerCase()
+      if (seen.has(key)) problems.push(`duplicate ${label} — each must be unique: "${x.text.slice(0, 34)}"`)
+      seen.add(key)
+    })
+  })
   if (parseKeywords(d.keywords).length === 0) problems.push('no keywords')
   if (d.path1.length > PATH_MAX) problems.push(`path1 over ${PATH_MAX} chars`)
   if (d.path2.length > PATH_MAX) problems.push(`path2 over ${PATH_MAX} chars`)
