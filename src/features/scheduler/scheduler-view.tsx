@@ -94,12 +94,13 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
   const horizonStart = result.horizon_start ?? ''
   const horizonDays = result.horizon_days ?? 1
 
-  // People come back on prep tasks — index them by action for the flight rows.
+  // People come back on the production task — index them by action so the
+  // flight row can name who builds it.
   const peopleByAction = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const a of result.assignments ?? []) {
-      if (a.is_prep && a.scheduled) {
-        map[a.task_id.replace(/^prep_/, '')] = a.assigned_people
+      if (a.kind === 'prep' && a.scheduled && a.action_id) {
+        map[a.action_id] = a.assigned_people
       }
     }
     return map
@@ -107,7 +108,7 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
 
   const assignments = result.assignments ?? []
 
-  const flights = assignments.filter((a) => !a.is_prep)
+  const flights = assignments.filter((a) => a.kind === 'flight')
   const scheduled = flights.filter((f) => f.scheduled && f.start_date)
   const dropped = flights.filter((f) => !f.scheduled)
   const overdue = new Set(result.production_overdue ?? [])
@@ -141,7 +142,7 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
                     {peopleByAction[f.action_id ?? '']?.length
                       ? ` · ${peopleByAction[f.action_id ?? ''].join(', ')}`
                       : ''}
-                    {f.value > 1 ? ` · ${fmtCurrency(f.value, currency)}` : ''}
+                    {f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}
                   </span>
                 </div>
               </div>
@@ -192,16 +193,27 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
 }
 
 function ProductionList({ result }: { result: SchedulerRunResult }) {
-  const preps = (result.assignments ?? []).filter((a) => a.is_prep && a.scheduled)
+  const preps = (result.assignments ?? []).filter(
+    (a) => (a.kind === 'prep' || a.kind === 'qc') && a.scheduled
+  )
   if (preps.length === 0) return null
   return (
     <SectionCard>
-      <h3 className="text-md font-semibold text-primary mb-1">Production work</h3>
-      <p className="text-sm text-tertiary mb-3">Who builds what, before each flight goes live.</p>
+      <h3 className="text-md font-semibold text-primary mb-1">Production &amp; sign-off</h3>
+      <p className="text-sm text-tertiary mb-3">
+        Who builds what, and who signs it off, before each flight goes live.
+      </p>
       <div className="space-y-2">
         {preps.map((p) => (
           <div key={p.task_id} className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-primary truncate">{p.name.replace(/^Produce: /, '')}</span>
+            <span className="text-primary truncate">
+              {p.kind === 'qc' && (
+                <span className="mr-2 px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 text-xs">
+                  QC
+                </span>
+              )}
+              {p.name.replace(/^(Produce|QC): /, '')}
+            </span>
             <span className="text-secondary whitespace-nowrap">
               {p.assigned_people.join(', ') || '—'}
               <span className="text-tertiary">
@@ -420,6 +432,21 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                       : 'Budgets from campaign'
                   }
                 />
+                {result.pod && (
+                  <StatChip
+                    tone="neutral"
+                    label={`Pod ${result.pod} · ${result.intensity ?? 'medium'} intensity`}
+                  />
+                )}
+                {result.client_mapped === false && (
+                  <StatChip tone="warn" label="Client not assigned to a pod — using whole team" />
+                )}
+                {result.campaign_ended && (
+                  <StatChip
+                    tone="bad"
+                    label={`Campaign ended ${fmtDate(result.campaign_end_date)} — planning past its end date`}
+                  />
+                )}
               </div>
 
               <FlightList result={result} currency={currency} />

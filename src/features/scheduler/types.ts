@@ -16,10 +16,12 @@ export interface SchedulerAssignment {
   task_id: string
   name: string
   action_id: string | null
+  kind: 'prep' | 'qc' | 'flight'
   is_prep: boolean
   scheduled: boolean
   reason: string | null
   value: number
+  budget: number
   assigned_people: string[]
   start_date?: string
   end_date?: string
@@ -79,6 +81,12 @@ export interface SchedulerRunResult {
   production_overdue?: string[]
   value_sources?: Record<string, string>
   optimizer_allocations_used?: boolean
+  pod?: string | null
+  intensity?: string
+  client_mapped?: boolean
+  qc_enabled?: boolean
+  campaign_ended?: boolean
+  campaign_end_date?: string | null
 }
 
 export interface SchedulerRunSummary {
