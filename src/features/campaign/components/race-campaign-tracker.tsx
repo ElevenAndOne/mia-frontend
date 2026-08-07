@@ -5,6 +5,7 @@ import { apiFetch } from '../../../utils/api'
 import {
   fetchCampaignTracker,
   fetchPhaseActuals,
+  isAbort,
   getCachedTracker,
   getCachedActuals,
   refreshCampaignActuals,
@@ -203,6 +204,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   // Holds the last-known good data for each phase during a manual refresh so we
   // can keep showing stale numbers instead of loading dots while re-fetching.
   const staleActualsRef = useRef<Record<string, KPIActual[]>>({})
+  // Aborts every in-flight actuals request for the current campaign/phase/date-range.
+  const actualsAbortRef = useRef<AbortController | null>(null)
 
   const handleRefresh = useCallback(async () => {
     if (!sessionId || !tenantId || !campaign || refreshing) return
@@ -347,26 +350,58 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
       if (!staleActualsRef.current[phaseName]) {
         setActualsMap((prev) => ({ ...prev, [phaseName]: 'loading' }))
       }
-      const actuals = await fetchPhaseActuals(sessionId, tenantId, campaign.campaign_id, phaseName, startDate, endDate)
-      // Clear stale for this phase — fresh data is ready
-      delete staleActualsRef.current[phaseName]
-      setActualsMap((prev) => ({
-        ...prev,
-        [phaseName]: actuals ?? 'error',
-      }))
+      try {
+        const actuals = await fetchPhaseActuals(
+          sessionId,
+          tenantId,
+          campaign.campaign_id,
+          phaseName,
+          startDate,
+          endDate,
+          actualsAbortRef.current?.signal
+        )
+        // Clear stale for this phase — fresh data is ready
+        delete staleActualsRef.current[phaseName]
+        setActualsMap((prev) => ({
+          ...prev,
+          [phaseName]: actuals ?? 'error',
+        }))
+      } catch (err) {
+        // Aborted because the user left or changed the query. Leave the phase as it was
+        // — painting 'error' on a request we ourselves cancelled would be a lie.
+        if (!isAbort(err)) {
+          setActualsMap((prev) => ({ ...prev, [phaseName]: 'error' }))
+        }
+      }
     },
     [sessionId, tenantId, campaign, startDate, endDate, refreshKey]
   )
 
-  // Pre-fetch ALL phases on load
+  // Pre-fetch ALL phases on load.
+  //
+  // Every phase fans out to all connected platforms, so a four-phase campaign can have
+  // four minute-long requests in flight. Browsers cap concurrent connections per host, so
+  // those pending requests block everything else the app wants to do — which is why the
+  // whole UI crawled while actuals loaded. Navigating away, switching campaign or moving
+  // the date range now aborts them, freeing the connections immediately.
   useEffect(() => {
     if (!campaign) return
+    const controller = new AbortController()
+    actualsAbortRef.current = controller
     const phaseNames = campaign.phases.map((p) => p.phase_name)
     const ordered = selectedPhase
       ? [selectedPhase, ...phaseNames.filter((n) => n !== selectedPhase)]
       : phaseNames
     for (const phaseName of ordered) {
       loadActuals(phaseName)
+    }
+    return () => {
+      controller.abort()
+      // Any phase still showing the loading dots was cancelled, not answered. Drop it
+      // back to unloaded so a remount refetches instead of spinning forever.
+      for (const [name, value] of Object.entries(actualsMapRef.current)) {
+        if (value === 'loading') delete actualsMapRef.current[name]
+      }
     }
   }, [selectedPhase, loadActuals, campaign])
 

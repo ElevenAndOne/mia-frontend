@@ -38,14 +38,28 @@ export function useWorkspaceLists() {
 
   useEffect(() => {
     if (!sessionId || !tenantId) return
-    const load = () => {
+    // Refetching on window focus keeps the guide list current after someone uploads one
+    // in another tab. But focus fires on every click back into the window, so the bare
+    // listener sent a burst of identical requests whenever the user interacted during a
+    // slow page load. Throttle it, and never run two at once.
+    let inFlight = false
+    let lastLoad = 0
+    const MIN_GAP_MS = 30_000
+
+    const load = (force = false) => {
+      if (inFlight) return
+      if (!force && Date.now() - lastLoad < MIN_GAP_MS) return
+      inFlight = true
+      lastLoad = Date.now()
       fetchCampaignGuides(sessionId, tenantId)
         .then((gs) => setGuides(gs.map((g) => ({ id: g.id, filename: g.filename, campaign_name: g.extracted_data?.campaign_name ?? null }))))
         .catch(() => {})
+        .finally(() => { inFlight = false })
     }
-    load()
-    window.addEventListener('focus', load)
-    return () => window.removeEventListener('focus', load)
+    const onFocus = () => load()
+    load(true)
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [sessionId, tenantId])
 
   const saveChannelConfig = useCallback(

@@ -19,6 +19,63 @@ export interface LinkedCampaign {
   status?: string
 }
 
+// ── Linked content ─────────────────────────────────────────────────────────
+// One review surface for the whole campaign: every phase × channel with what is
+// already linked and what the phase dates suggest adding.
+
+export interface LinkedContentCandidate extends LinkedCampaign {
+  linked: boolean
+  suggested: boolean
+  dismissed: boolean
+  reason: string | null
+  starts_at?: string | null
+  ends_at?: string | null
+  published_at?: string | null
+  impressions?: number
+  engagements?: number
+  // LinkedIn returns no statistics for posts outside its rolling 12-month window,
+  // which looks identical to a post that genuinely got nothing.
+  has_stats?: boolean
+}
+
+export interface LinkedContentChannel {
+  action_id: string
+  channel: string
+  window_start: string | null
+  window_end: string | null
+  supports_auto_suggest: boolean
+  linked_count: number
+  unreviewed_count: number
+  message: string | null
+  candidates: LinkedContentCandidate[]
+  // How many the platform returned vs how many are in this payload. Suggested and
+  // already-linked items are never trimmed; a busy Page's back catalogue is.
+  candidates_available: number
+  candidates_truncated: boolean
+}
+
+export interface LinkedContentPhase {
+  phase_id: string
+  phase_name: string
+  start_date: string | null
+  end_date: string | null
+  channels: LinkedContentChannel[]
+}
+
+export interface LinkedContent {
+  campaign_id: string
+  campaign_name: string
+  phases: LinkedContentPhase[]
+  summary: { linked_total: number; unreviewed_total: number }
+  notes: string[]
+}
+
+export interface LinkedContentSave {
+  action_id: string
+  linked: LinkedCampaign[]
+  dismissed: LinkedCampaign[]
+}
+
 // Ad lifecycle, mirrors the ClickUp task status pipeline (backend AssetStatus).
 export type AssetStatus =
   | 'draft'

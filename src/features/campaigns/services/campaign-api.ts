@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LinkedCampaign, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LinkedCampaign, LinkedContent, LinkedContentSave, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -40,6 +40,32 @@ export async function fetchPlatformCampaigns(
   if (!res.ok) throw new Error('Failed to load platform campaigns')
   return res.json()
 }
+
+// Everything linkable across the whole campaign, grouped phase → channel, with the
+// date-window suggestions already worked out server-side.
+export async function fetchLinkedContent(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+): Promise<LinkedContent> {
+  const res = await apiFetch(`${base(tenantId)}/${campaignId}/linked-content`, {
+    headers: auth(sessionId),
+  })
+  if (!res.ok) throw new Error('Failed to load linked content')
+  return res.json()
+}
+
+export const saveLinkedContent = (
+  s: string,
+  t: string,
+  id: string,
+  channels: LinkedContentSave[],
+) =>
+  apiFetch(`${base(t)}/${id}/linked-content`, {
+    method: 'PUT',
+    headers: authJson(s),
+    body: JSON.stringify({ channels }),
+  })
 
 export async function fetchHubspotLists(sessionId: string, tenantId: string) {
   const res = await apiFetch(`${base(tenantId)}/hubspot-lists`, { headers: auth(sessionId) })

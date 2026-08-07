@@ -342,7 +342,7 @@ function PhaseTabs({ phases, selectedId, onSelect }: { phases: Phase[]; selected
 }
 
 // Channels that have platform campaign pickers
-const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'hubspot'])
+const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'linkedin_organic', 'organic_social', 'facebook_organic', 'instagram_organic', 'tiktok_ads', 'google_display', 'hubspot'])
 
 function CampaignPickerModal({
   channel, tenantId, sessionId, current, onSave, onClose,

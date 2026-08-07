@@ -177,13 +177,22 @@ export const fetchCampaignTracker = async (
   }
 }
 
+/** Thrown by fetch when the caller aborts. Not an error worth reporting or caching. */
+export const isAbort = (err: unknown) =>
+  err instanceof DOMException ? err.name === 'AbortError' : (err as Error)?.name === 'AbortError'
+
 export const fetchPhaseActuals = async (
   sessionId: string,
   tenantId: string,
   campaignId: string,
   phaseName: string,
   startDate?: string | null,
-  endDate?: string | null
+  endDate?: string | null,
+  // Actuals fan out to every connected platform and can run for a minute. When the user
+  // navigates away the answer is worthless, but the browser still holds the connection
+  // open and every other request on the page queues behind it — which is why the whole
+  // app felt stuck. Aborting frees the socket immediately.
+  signal?: AbortSignal
 ): Promise<KPIActual[] | null> => {
   const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
   const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
@@ -197,7 +206,7 @@ export const fetchPhaseActuals = async (
     let url = `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`
     if (startDate) url += `&start_date=${startDate}`
     if (endDate) url += `&end_date=${endDate}`
-    const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId } })
+    const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId }, signal })
     if (!res.ok) {
       console.warn('[RACE] actuals: API error', res.status, phaseName)
       return cached?.data ?? null
@@ -215,6 +224,9 @@ export const fetchPhaseActuals = async (
     })
     return result
   } catch (err) {
+    // An abort is the caller saying it no longer wants this — not a failure, and it must
+    // not overwrite good cached values with the stale fallback.
+    if (isAbort(err)) throw err
     console.warn('[RACE] actuals: fetch failed', { phaseName, err })
     return cached?.data ?? null
   }

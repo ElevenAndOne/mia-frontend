@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../../../utils/api'
+import { fetchLinkedContent } from '../../services/campaign-api'
+import { LinkedContentPanel } from './linked-content-panel'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
 import { ClickUpActions } from '../clickup/clickup-actions'
@@ -18,7 +20,7 @@ const numCls = 'w-20 paragraph-xs text-tertiary bg-transparent border-b border-t
 interface GA4Option { property_id: string; display_name: string }
 
 export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuildNew: () => void }) => {
-  const { campaign, sessionId } = useCampaignWorkspace()
+  const { campaign, sessionId, tenantId } = useCampaignWorkspace()
   const { patchCampaign, cycleStatus, linkGuide, removeCampaign } = useCampaignMutations()
   const navigate = useNavigate()
 
@@ -49,6 +51,35 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
     const name = id ? (ga4Options?.find((p) => p.property_id === id)?.display_name ?? null) : null
     patchCampaign({ ga4_property_id: id, ga4_property_name: name })
   }
+  // Linked-content entry point. The linked count is free — it is already on the campaign
+  // detail. The "N to review" count is not: working it out means asking every connected
+  // platform what exists, so it loads on hover/focus rather than on every builder open,
+  // the same deal as the GA4 property list above.
+  const [linkedOpen, setLinkedOpen] = useState(false)
+  const [unreviewed, setUnreviewed] = useState<number | null>(null)
+  const [unreviewedLoading, setUnreviewedLoading] = useState(false)
+  const linkedCount = (campaign.phases ?? []).reduce(
+    (n, p) =>
+      n +
+      (p.channel_actions ?? []).reduce(
+        (m, a) => m + (a.linked_platform_campaigns?.length ?? 0),
+        0,
+      ),
+    0,
+  )
+  const loadUnreviewed = async () => {
+    if (unreviewed !== null || unreviewedLoading || !tenantId) return
+    setUnreviewedLoading(true)
+    try {
+      const d = await fetchLinkedContent(sessionId, tenantId, campaign.campaign_id)
+      setUnreviewed(d.summary.unreviewed_total)
+    } catch {
+      setUnreviewed(0) // a platform hiccup must not stick a badge on the header
+    } finally {
+      setUnreviewedLoading(false)
+    }
+  }
+
   const initials = (campaign.client_name || campaign.campaign_name).slice(0, 2).toUpperCase()
   const total = formatBudget(campaign.budget_total, campaign.budget_currency)
 
@@ -59,6 +90,33 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
 
   return (
     <div className="space-y-4">
+      {/* Push, not pull: if things were published inside the phase dates and nobody has
+          linked them, say so here rather than waiting to be looked for. Same shape as
+          the DRAFT banner so it reads as the page telling you something needs doing. */}
+      {unreviewed !== null && unreviewed > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-utility-brand-400 bg-utility-brand-100 px-4 py-3">
+          <p className="paragraph-sm text-utility-brand-700">
+            {unreviewed} item{unreviewed === 1 ? '' : 's'} published inside your phase dates
+            {unreviewed === 1 ? " isn't" : " aren't"} linked to this campaign yet — so
+            {unreviewed === 1 ? " it isn't" : " they aren't"} counted in the KPIs.
+          </p>
+          <button
+            onClick={() => setLinkedOpen(true)}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-utility-brand-600 label-sm text-white hover:bg-utility-brand-700"
+          >
+            Review
+          </button>
+        </div>
+      )}
+
+      {linkedOpen && (
+        <LinkedContentPanel
+          campaignId={campaign.campaign_id}
+          onClose={() => setLinkedOpen(false)}
+          onSaved={() => setUnreviewed(null)}
+        />
+      )}
+
       {/* Nav card — same compact shape as the Overview / Calendar header */}
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -147,6 +205,25 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
         {ga4Loading && <span className="label-xs text-quaternary shrink-0">loading properties…</span>}
         {campaign.ga4_property_id && (
           <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">override</span>
+        )}
+      </div>
+
+      {/* Linked content — which platform campaigns, sends and posts count towards this
+          campaign's KPIs. Sits with the other per-campaign measurement settings because
+          it is the same kind of decision as the GA4 property override. */}
+      <div className="flex items-center gap-2" onPointerEnter={loadUnreviewed}>
+        <span className="label-xs text-quaternary shrink-0">Linked content:</span>
+        <button
+          onClick={() => setLinkedOpen(true)}
+          onFocus={loadUnreviewed}
+          className="paragraph-xs text-tertiary border-b border-tertiary hover:border-utility-brand-400 hover:text-secondary transition-colors"
+        >
+          {linkedCount > 0 ? `${linkedCount} linked` : 'nothing linked yet'}
+        </button>
+        {unreviewed !== null && unreviewed > 0 && (
+          <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">
+            {unreviewed} to review
+          </span>
         )}
       </div>
 

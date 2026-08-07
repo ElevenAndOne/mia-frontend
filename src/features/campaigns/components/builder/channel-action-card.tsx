@@ -10,7 +10,7 @@ import { formatBudget, formatDate } from '../../utils/campaign-dates'
 import { channelDisplayBudget } from '../../utils/budget-math'
 import type { ChannelAction, LinkedCampaign } from '../../types'
 
-const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'hubspot'])
+const PICKER_CHANNELS = new Set(['meta_ads', 'google_ads', 'brevo', 'email', 'linkedin_ads', 'linkedin_organic', 'organic_social', 'facebook_organic', 'instagram_organic', 'tiktok_ads', 'google_display', 'hubspot'])
 const OSA: Array<{ field: 'objective' | 'strategy' | 'action_notes'; label: string; ask: string; placeholder: string }> = [
   { field: 'objective', label: 'Objective', ask: 'channel objective', placeholder: 'Add objective…' },
   { field: 'strategy', label: 'Strategy', ask: 'channel strategy', placeholder: 'Add strategy…' },
