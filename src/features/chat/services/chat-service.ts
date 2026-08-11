@@ -566,7 +566,17 @@ export const uploadCanvasDocumentMedia = async (
     headers: { 'X-Session-ID': sessionId },
     body: form,
   })
-  if (!response.ok) throw new Error(`Failed to upload image (${response.status})`)
+  if (!response.ok) {
+    // Surface the backend's reason ("Video too large (max 100 MB)", "Only image or
+    // video uploads are supported") — the caller shows it in a toast.
+    let detail = ''
+    try {
+      detail = ((await response.json()) as { detail?: string })?.detail ?? ''
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail || `Failed to upload media (${response.status})`)
+  }
   const data = await response.json()
   return data.url as string
 }

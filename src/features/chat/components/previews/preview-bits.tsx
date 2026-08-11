@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import type { CharCheck, CreativeSpec } from './creative-spec'
 
 export interface MediaHandlers {
-  /** Upload image(s) into this document's media slot — multi-drop = one slide each, in order. */
+  /** Upload image/video files into this document's media slot — multi-drop = one slide each, in order. */
   onUploadMedia?: (files: File[]) => void
-  /** Remove an uploaded image (by URL). */
+  /** Remove an uploaded media item (by URL). */
   onRemoveMedia?: (url: string) => void
   isUploadingMedia?: boolean
 }
+
+/** `Media:` URLs keep their uploaded filename, so the extension tells image from video. */
+const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|webm|avi|mkv)([?#]|$)/i.test(url)
 
 /**
  * Shared pieces for the platform previews. Platform components use each
@@ -70,8 +73,12 @@ export const MediaSlot = ({
   }, [count, slide])
 
   const pickFiles = (files: FileList | null) => {
-    const images = Array.from(files ?? []).filter((f) => f.type.startsWith('image/'))
-    if (images.length > 0) onUploadMedia?.(images)
+    // Videos are first-class here (reel/video/story deliverables) — silently
+    // filtering them out was exactly the "I added it but nothing loads" bug.
+    const accepted = Array.from(files ?? []).filter(
+      (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+    )
+    if (accepted.length > 0) onUploadMedia?.(accepted)
   }
 
   const hasImage = count > 0
@@ -99,16 +106,33 @@ export const MediaSlot = ({
       }}
     >
       {hasImage ? (
-        <img
-          src={media[slide]}
-          alt={`Creative slide ${slide + 1} of ${count}`}
-          className={`${cover ? 'w-full h-full object-cover' : 'w-full h-auto block'} ${
-            count > 1 ? 'cursor-pointer' : ''
-          }`}
-          draggable={false}
-          // Instagram behavior: tapping the creative advances the carousel.
-          onClick={() => count > 1 && setSlide((s) => (s + 1) % count)}
-        />
+        isVideoUrl(media[slide]) ? (
+          <video
+            key={media[slide]}
+            src={media[slide]}
+            controls
+            muted
+            playsInline
+            preload="metadata"
+            // contain, not cover: a non-9:16 video (e.g. a landscape clip in the reel
+            // frame) letterboxes on black so the WHOLE frame is reviewable — cover
+            // crops it to a middle strip. A true vertical reel still fills edge-to-edge.
+            className={
+              cover ? 'w-full h-full object-contain bg-black' : 'w-full h-auto block bg-black'
+            }
+          />
+        ) : (
+          <img
+            src={media[slide]}
+            alt={`Creative slide ${slide + 1} of ${count}`}
+            className={`${cover ? 'w-full h-full object-cover' : 'w-full h-auto block'} ${
+              count > 1 ? 'cursor-pointer' : ''
+            }`}
+            draggable={false}
+            // Instagram behavior: tapping the creative advances the carousel.
+            onClick={() => count > 1 && setSlide((s) => (s + 1) % count)}
+          />
+        )
       ) : (
         <div
           className={`${cover ? 'h-full' : aspect} flex flex-col items-center justify-center gap-1.5 px-8 text-center`}
@@ -127,12 +151,12 @@ export const MediaSlot = ({
             <span className="text-[12.5px] italic opacity-60">No visual brief yet</span>
           )}
           {onUploadMedia && (
-            <span className="text-[10.5px] opacity-50">Drop an image here or click +</span>
+            <span className="text-[10.5px] opacity-50">Drop an image or video here or click +</span>
           )}
         </div>
       )}
 
-      {play && hasImage && (
+      {play && hasImage && !isVideoUrl(media[slide]) && (
         <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="w-12 h-12 rounded-full bg-black/45 backdrop-blur-[2px] flex items-center justify-center">
             <svg width={20} height={20} viewBox="0 0 24 24" fill="white" aria-hidden="true">
@@ -212,7 +236,7 @@ export const MediaSlot = ({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -224,7 +248,7 @@ export const MediaSlot = ({
       {onUploadMedia && (
         <button
           type="button"
-          aria-label="Upload image"
+          aria-label="Upload image or video"
           disabled={isUploadingMedia}
           onClick={(e) => {
             e.stopPropagation()
@@ -239,7 +263,7 @@ export const MediaSlot = ({
             hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
           }`}
         >
-          {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Image'}
+          {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Media'}
         </button>
       )}
       {onRemoveMedia && hasImage && (

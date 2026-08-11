@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useToast } from '../../../contexts/toast-context'
 import {
   fetchCanvasDocuments,
   fetchDocumentVersions,
@@ -256,8 +257,9 @@ export function useCanvas({
   }, [sessionId, conversationId])
 
   const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const { showToast } = useToast()
 
-  // Upload → store the image(s), then record their URLs as `Media:` lines at the end of the
+  // Upload → store the file(s), then record their URLs as `Media:` lines at the end of the
   // document. One saveUserEdit per batch (a 3-file drop = one new version, slides in drop order).
   const uploadMedia = useCallback(
     async (files: File[]) => {
@@ -269,6 +271,16 @@ export function useCanvas({
         const results = await Promise.allSettled(
           files.map((f) => uploadCanvasDocumentMedia(sessionId, doc.id, conversationId, f))
         )
+        // Failures were previously swallowed — the media just never appeared, with no
+        // feedback ("it allows me to add it, but it never actually loads"). Say why.
+        const firstError = results.find(
+          (r): r is PromiseRejectedResult => r.status === 'rejected'
+        )
+        if (firstError) {
+          const reason =
+            firstError.reason instanceof Error ? firstError.reason.message : 'Upload failed'
+          showToast('error', reason)
+        }
         const urls = results
           .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
           .map((r) => r.value)
@@ -282,7 +294,7 @@ export function useCanvas({
         setIsUploadingMedia(false)
       }
     },
-    [sessionId, conversationId, isUploadingMedia, saveUserEdit]
+    [sessionId, conversationId, isUploadingMedia, saveUserEdit, showToast]
   )
 
   const removeMedia = useCallback(

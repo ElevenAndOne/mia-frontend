@@ -338,16 +338,24 @@ export const ChatView = ({
               </div>
             </div>
 
-            {/* Mobile: the canvas lives behind this pill (no side pane below md) */}
-            {docCount > 0 && !mobileCanvasOpen && (
-              <div className="md:hidden flex justify-end px-3 pb-1.5 shrink-0">
+            {/* The canvas lives behind this pill whenever it's not on screen: on mobile the
+                side pane doesn't exist (full-screen sheet instead), and on desktop closing
+                the pane previously left NO way to reopen it (the only affordance was this
+                mobile-only pill) — the user had to ask Mia, who can't reopen it either. */}
+            {docCount > 0 && (isMobile ? !mobileCanvasOpen : !canvas.isOpen) && (
+              <div className="flex justify-end px-3 pb-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
-                    setMobileCanvasOpen(true)
+                    if (isMobile) {
+                      setMobileCanvasOpen(true)
+                    } else {
+                      const target = canvas.activeId ?? canvas.documentList[0]?.id
+                      if (target) canvas.open(target)
+                    }
                     setCanvasUnseen(false)
                   }}
-                  className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
+                  className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary hover:bg-secondary active:bg-tertiary transition-colors"
                 >
                   {canvasUnseen && (
                     <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
