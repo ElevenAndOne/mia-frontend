@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useSession } from '../../contexts/session-context'
 import { TopBar } from '../../components/top-bar'
 import { Spinner } from '../../components/spinner'
+import { Skeleton, SkeletonCard } from '../../components/skeleton'
 import { Button } from '../../components/button'
 import { useScheduler } from './hooks/use-scheduler'
 import type { ResourceUtilization, SchedulerRunResult } from './types'
@@ -418,10 +419,33 @@ function DroppedList({ result }: { result: SchedulerRunResult }) {
         </SectionCard>
       )}
 
-      {(result.skipped_actions?.length ?? 0) > 0 && (
+      {(result.stale_dated_actions ?? 0) > 0 && (
+        <SectionCard className="border-l-2 border-l-warning">
+          <h3 className="text-md font-semibold text-primary mb-1">
+            {result.stale_dated_actions} piece
+            {result.stale_dated_actions === 1 ? '' : 's'} of this campaign couldn&rsquo;t be
+            scheduled
+          </h3>
+          <p className="text-sm text-tertiary mb-2">
+            Their dates have already passed, so there is nothing left to plan. Nobody was assigned
+            and no time was set aside for them. Update the dates on the campaign and run this again.
+          </p>
+          <p className="text-xs text-tertiary">
+            {result
+              .skipped_actions!.filter((s) => s.kind === 'stale_dates')
+              .map((s) => s.channel.replace(/_/g, ' '))
+              .join(', ')}
+          </p>
+        </SectionCard>
+      )}
+
+      {result.skipped_actions?.some((s) => s.kind !== 'stale_dates') && (
         <p className="text-xs text-tertiary px-1">
           Not sent to the scheduler:{' '}
-          {result.skipped_actions!.map((s) => `${s.channel} (${s.reason})`).join('; ')}
+          {result
+            .skipped_actions!.filter((s) => s.kind !== 'stale_dates')
+            .map((s) => `${s.channel.replace(/_/g, ' ')} (${s.reason})`)
+            .join('; ')}
         </p>
       )}
     </>
@@ -518,8 +542,18 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
     return (
       <div className="flex flex-col h-full">
         <TopBar title="Scheduler" onBack={onBack} className="border-b border-tertiary" />
-        <div className="flex-1 flex items-center justify-center">
-          <Spinner size="lg" variant="primary" />
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto px-4 py-6 space-y-4 animate-pulse">
+            <SkeletonCard />
+            <div className="rounded-xl border border-secondary bg-primary p-4">
+              <Skeleton className="h-4 w-32 mb-3" />
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

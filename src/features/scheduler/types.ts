@@ -60,6 +60,7 @@ export interface SkippedAction {
   action_id: string
   channel: string
   reason: string
+  kind?: 'stale_dates' | 'not_scheduled_work' | 'no_skill'
 }
 
 export interface SchedulerRunResult {
@@ -87,6 +88,7 @@ export interface SchedulerRunResult {
   client_mapped?: boolean
   qc_enabled?: boolean
   pins_relaxed?: boolean
+  stale_dated_actions?: number
   campaign_ended?: boolean
   campaign_end_date?: string | null
   resource_calendar?: ResourceCalendarEntry[]
