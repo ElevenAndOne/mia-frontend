@@ -516,6 +516,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
     loadError,
     reload,
     runs,
+    health,
     isRunning,
     result,
     error,
@@ -749,6 +750,39 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                 </div>
               )}
               {availability && <CapacityGrid resources={availability.resources} />}
+            </SectionCard>
+          )}
+
+          {health.length > 0 && (
+            <SectionCard>
+              <h3 className="text-md font-semibold text-primary mb-1">Needs a date check</h3>
+              <p className="text-sm text-tertiary mb-3">
+                These campaigns have work the scheduler can&rsquo;t plan, because its dates have
+                already passed. Nobody is assigned to it and no time is set aside — updating the
+                dates on the campaign is the fix.
+              </p>
+              <div className="space-y-1.5">
+                {health.map((h) => {
+                  const bits = [
+                    h.stale_actions
+                      ? `${h.stale_actions} of ${h.total_actions} pieces past-dated`
+                      : null,
+                    h.campaign_ended ? `campaign ended ${fmtDate(h.end_date)}` : null,
+                    h.client_unmapped ? 'client not assigned to a pod' : null,
+                  ].filter(Boolean)
+                  return (
+                    <div
+                      key={h.campaign_id}
+                      className="flex items-start justify-between gap-3 text-sm py-1 border-b border-secondary/40 last:border-0"
+                    >
+                      <span className="text-primary truncate">{h.campaign_name}</span>
+                      <span className="text-xs text-warning whitespace-nowrap">
+                        {bits.join(' · ')}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </SectionCard>
           )}
 

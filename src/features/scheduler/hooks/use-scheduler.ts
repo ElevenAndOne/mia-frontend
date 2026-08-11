@@ -4,6 +4,7 @@ import { useToast } from '../../../contexts/toast-context'
 import {
   applySchedulerRun,
   getAvailability,
+  getCampaignHealth,
   listCampaigns,
   listSchedulerRuns,
   runScheduler,
@@ -37,17 +38,26 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
     queryFn: () => listSchedulerRuns(sessionId!, tenantId!),
     enabled,
   })
+  // Campaigns whose dates make them unplannable — a pure data check, so it can
+  // load with the page rather than making someone solve each one to find out.
+  const healthQuery = useQuery({
+    queryKey: ['scheduler-health', tenantId],
+    queryFn: () => getCampaignHealth(sessionId!, tenantId!),
+    enabled,
+  })
 
   const campaigns = campaignsQuery.data ?? []
   const runs = runsQuery.data ?? []
+  const health = healthQuery.data ?? []
   const isLoading = enabled && (campaignsQuery.isPending || runsQuery.isPending)
   const loadError = campaignsQuery.isError || runsQuery.isError
 
   const { refetch: refetchCampaigns } = campaignsQuery
   const { refetch: refetchRuns } = runsQuery
+  const { refetch: refetchHealth } = healthQuery
   const load = useCallback(async () => {
-    await Promise.all([refetchCampaigns(), refetchRuns()])
-  }, [refetchCampaigns, refetchRuns])
+    await Promise.all([refetchCampaigns(), refetchRuns(), refetchHealth()])
+  }, [refetchCampaigns, refetchRuns, refetchHealth])
 
   const refreshRuns = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['scheduler-runs', tenantId] })
@@ -131,6 +141,7 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
     loadError,
     reload: load,
     runs,
+    health,
     isRunning,
     result,
     error,

@@ -1,6 +1,7 @@
 import { apiFetch } from '../../../utils/api'
 import type {
   ApplyResult,
+  CampaignHealth,
   AvailabilityResult,
   SchedulerCampaign,
   SchedulerRunResult,
@@ -82,4 +83,16 @@ export const applySchedulerRun = async (
   })
   await orThrow(response, 'Failed to apply schedule')
   return response.json()
+}
+
+export const getCampaignHealth = async (
+  sessionId: string,
+  tenantId: string
+): Promise<CampaignHealth[]> => {
+  const response = await apiFetch(`${base(tenantId)}/campaign-health`, {
+    headers: auth(sessionId),
+  })
+  await orThrow(response, 'Failed to check campaigns')
+  const data = await response.json()
+  return data.campaigns ?? []
 }

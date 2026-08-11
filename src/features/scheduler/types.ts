@@ -130,3 +130,14 @@ export interface ApplyResult {
   applied: Array<{ action_id: string; name: string; old: string[]; new: string[] }>
   skipped: Array<{ action_id: string; reason: string }>
 }
+
+export interface CampaignHealth {
+  campaign_id: string
+  campaign_name: string
+  status: string
+  total_actions: number
+  stale_actions: number
+  campaign_ended: boolean
+  end_date: string | null
+  client_unmapped: boolean
+}
