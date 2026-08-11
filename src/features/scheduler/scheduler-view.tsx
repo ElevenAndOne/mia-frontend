@@ -589,6 +589,12 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                 {result.client_mapped === false && (
                   <StatChip tone="warn" label="Client not assigned to a pod — using whole team" />
                 )}
+                {result.pins_relaxed && (
+                  <StatChip
+                    tone="warn"
+                    label="Account owner was full — the pod covered some work"
+                  />
+                )}
                 {result.campaign_ended && (
                   <StatChip
                     tone="bad"

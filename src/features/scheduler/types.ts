@@ -85,6 +85,7 @@ export interface SchedulerRunResult {
   intensity?: string
   client_mapped?: boolean
   qc_enabled?: boolean
+  pins_relaxed?: boolean
   campaign_ended?: boolean
   campaign_end_date?: string | null
   resource_calendar?: ResourceCalendarEntry[]
