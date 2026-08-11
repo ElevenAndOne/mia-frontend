@@ -169,10 +169,19 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
 
   return (
     <SectionCard className="overflow-hidden">
-      <h3 className="text-md font-semibold text-primary mb-1">The plan</h3>
-      <p className="text-sm text-tertiary mb-3">
-        What runs when, and who is building it. Hover anything for detail.
-      </p>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <h3 className="text-md font-semibold text-primary">The plan</h3>
+        <span className="text-xs text-tertiary font-mono">
+          {flights.length} flight{flights.length === 1 ? '' : 's'} ·{' '}
+          {Object.values(workByPerson).flat().filter((w) => w.kind === 'prep').length} build
+          {Object.values(workByPerson).flat().filter((w) => w.kind === 'prep').length === 1
+            ? ''
+            : 's'}{' '}
+          · {Object.values(workByPerson).flat().filter((w) => w.kind === 'qc').length} sign-off
+          {Object.values(workByPerson).flat().filter((w) => w.kind === 'qc').length === 1 ? '' : 's'}{' '}
+          · {fmtDate(windowStart.toISOString())} – {fmtDate(new Date(windowStart.getTime() + (span - 1) * 86_400_000).toISOString())}
+        </span>
+      </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
         <div className="relative" style={{ minWidth: `${Math.max(span * DAY_PX + 206, 640)}px` }}>
@@ -267,21 +276,55 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
             )
           })}
 
-          {/* band 2 — the team */}
+          {/* band 2 — the team, as a day grid.
+              Whole-day cells rather than positioned bars: a job can never
+              render as an unreadable sliver, and every cell lines up with the
+              date above it. */}
           {calendar.length > 0 && (
             <div className="mt-5 pt-3 border-t border-secondary">
-              <div className="flex mb-1">
+              <div className="flex mb-1.5">
                 <div className={`${LABEL_W} shrink-0`} />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
                   Who&rsquo;s doing it
                 </span>
               </div>
+
+              {/* day-letter header */}
+              <div className="flex">
+                <div className={`${LABEL_W} shrink-0`} />
+                <div
+                  className="flex-1 grid gap-px"
+                  style={{ gridTemplateColumns: `repeat(${span}, minmax(0,1fr))` }}
+                >
+                  {Array.from({ length: span }, (_, i) => {
+                    const d = new Date(windowStart.getTime() + i * 86_400_000)
+                    const we = d.getDay() === 0 || d.getDay() === 6
+                    return (
+                      <span
+                        key={i}
+                        className={`text-center text-[8px] leading-3 ${we ? 'text-tertiary/40' : 'text-tertiary'}`}
+                      >
+                        {'MTWTFSS'[(d.getDay() + 6) % 7]}
+                      </span>
+                    )
+                  })}
+                </div>
+                <div className={`${TAIL_W} shrink-0`} />
+              </div>
+
               {calendar.map((person) => {
                 const work = workByPerson[person.name] ?? []
+                // Flatten each job onto the days it occupies.
+                const jobByDay: Record<number, (typeof work)[number]> = {}
+                for (const w of work) {
+                  const s0 = dayIndex(w.start_date!, horizonStart) - from
+                  const e0 = dayIndex(w.end_date!, horizonStart) - from
+                  for (let i = s0; i <= e0; i++) jobByDay[i] = w
+                }
                 return (
                   <div
                     key={person.resource_id}
-                    className="flex items-center min-h-[34px] border-t border-secondary/40"
+                    className="flex items-center border-t border-secondary/40 py-0.5"
                   >
                     <div className={`${LABEL_W} shrink-0 pr-2`}>
                       <span className="block text-xs font-medium text-primary truncate">
@@ -291,74 +334,68 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                         {person.role ?? ''}
                       </span>
                     </div>
-                    <div className="relative flex-1 h-[30px]">
-                      {/* existing commitments */}
-                      <div
-                        className="absolute inset-x-0 top-[3px] h-[4px] rounded-sm overflow-hidden grid opacity-80"
-                        style={{ gridTemplateColumns: `repeat(${span}, 1fr)` }}
-                      >
-                        {Array.from({ length: span }, (_, i) => {
-                          const state = person.days[from + i]
-                          const cls =
-                            state === 'booked'
-                              ? 'bg-red-500/55'
-                              : state === 'leave'
-                                ? 'bg-amber-400/70'
-                                : state === 'holiday'
-                                  ? 'bg-sky-400/50'
-                                  : state === 'off'
-                                    ? 'bg-transparent'
-                                    : 'bg-emerald-500/20'
-                          const label =
-                            state === 'booked'
-                              ? 'already booked in ClickUp'
-                              : state === 'leave'
-                                ? 'on leave'
-                                : state === 'holiday'
-                                  ? 'public holiday'
-                                  : state === 'off'
-                                    ? 'weekend or not in'
-                                    : 'free'
+                    <div
+                      className="flex-1 grid gap-px"
+                      style={{ gridTemplateColumns: `repeat(${span}, minmax(0,1fr))` }}
+                    >
+                      {Array.from({ length: span }, (_, i) => {
+                        const state = person.days[from + i]
+                        const job = jobByDay[i]
+                        const day = new Date(windowStart.getTime() + i * 86_400_000)
+                        const when = day.toLocaleDateString('en-ZA', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                        })
+                        if (job) {
+                          const { phase, label } = splitName(job.name)
+                          const isQc = job.kind === 'qc'
                           return (
                             <span
                               key={i}
-                              className={cls}
-                              title={`${person.name} · ${new Date(windowStart.getTime() + i * 86_400_000).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })} — ${label}`}
-                            />
+                              className="h-5 rounded-[2px] flex items-center justify-center text-[7px] font-semibold text-white"
+                              style={{ background: isQc ? QC_COLOUR : colourOf(phase) }}
+                              title={`${person.name} — ${isQc ? 'signs off on' : 'builds'} ${label}${
+                                isQc || !fmtEffort(job.points) ? '' : ` (${fmtEffort(job.points)})`
+                              } · ${when}`}
+                            >
+                              {isQc ? 'QC' : ''}
+                            </span>
                           )
-                        })}
-                      </div>
-                      {/* what we're adding */}
-                      {work.map((w) => {
-                        const p = posOf(w)
-                        const { phase, label } = splitName(w.name)
-                        const isQc = w.kind === 'qc'
+                        }
+                        const cls =
+                          state === 'booked'
+                            ? 'bg-red-500/45'
+                            : state === 'leave'
+                              ? 'bg-amber-400/60'
+                              : state === 'holiday'
+                                ? 'bg-sky-400/40'
+                                : state === 'off'
+                                  ? 'bg-transparent'
+                                  : 'bg-emerald-500/15'
+                        const label =
+                          state === 'booked'
+                            ? 'already booked in ClickUp'
+                            : state === 'leave'
+                              ? 'on leave'
+                              : state === 'holiday'
+                                ? 'public holiday'
+                                : state === 'off'
+                                  ? 'weekend or not in the office'
+                                  : 'free'
                         return (
                           <span
-                            key={w.task_id}
-                            className="absolute top-[11px] h-[18px] rounded flex items-center px-1 text-[9px] font-medium text-white overflow-hidden whitespace-nowrap shadow-sm"
-                            style={{
-                              left: `${p.left}%`,
-                              width: `${p.width}%`,
-                              background: isQc ? QC_COLOUR : colourOf(phase),
-                            }}
-                            title={`${person.name} — ${isQc ? 'signs off' : 'builds'} ${label}${
-                              isQc ? '' : fmtEffort(w.points) ? ` (${fmtEffort(w.points)})` : ''
-                            } · ${fmtDate(w.start_date)}${w.start_date !== w.end_date ? ` – ${fmtDate(w.end_date)}` : ''}`}
-                          >
-                            {isQc
-                              ? 'QC'
-                              : p.width > 10 && w.points
-                                ? `${label} · ${w.points}pt`
-                                : p.width > 6
-                                  ? label
-                                  : ''}
-                          </span>
+                            key={i}
+                            className={`h-5 rounded-[2px] ${cls}`}
+                            title={`${person.name} · ${when} — ${label}`}
+                          />
                         )
                       })}
                     </div>
-                    <span className={`${TAIL_W} shrink-0 text-right text-[10px] text-tertiary`}>
-                      {work.length ? `${work.length} job${work.length === 1 ? '' : 's'}` : 'free'}
+                    <span
+                      className={`${TAIL_W} shrink-0 text-right text-[10px] ${work.length ? 'text-secondary' : 'text-tertiary'}`}
+                    >
+                      {work.length ? `${work.length} job${work.length === 1 ? '' : 's'}` : '—'}
                     </span>
                   </div>
                 )
