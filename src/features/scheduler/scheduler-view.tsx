@@ -69,7 +69,7 @@ function StatChip({
 
 const PHASE_COLOURS = ['#4f6d9a', '#6b5b9a', '#3f7a63', '#96602f', '#8a4f6d']
 const QC_COLOUR = 'var(--brand-600, #6366f1)'
-const DAY_PX = 16
+const DAY_PX = 30
 const LABEL_W = 'w-[150px]'
 const TAIL_W = 'w-14'
 
@@ -302,9 +302,10 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                     return (
                       <span
                         key={i}
-                        className={`text-center text-[8px] leading-3 ${we ? 'text-tertiary/40' : 'text-tertiary'}`}
+                        className={`text-center leading-tight ${we ? 'text-tertiary/35' : 'text-tertiary'}`}
                       >
-                        {'MTWTFSS'[(d.getDay() + 6) % 7]}
+                        <span className="block text-[9px]">{'MTWTFSS'[(d.getDay() + 6) % 7]}</span>
+                        <span className="block text-[10px] tabular-nums">{d.getDate()}</span>
                       </span>
                     )
                   })}
@@ -330,7 +331,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                       <span className="block text-xs font-medium text-primary truncate">
                         {person.name}
                       </span>
-                      <span className="block text-[10px] text-tertiary truncate">
+                      <span className="block text-[9px] uppercase tracking-wide text-tertiary truncate">
                         {person.role ?? ''}
                       </span>
                     </div>
@@ -359,7 +360,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                                 isQc || !fmtEffort(job.points) ? '' : ` (${fmtEffort(job.points)})`
                               } · ${when}`}
                             >
-                              {isQc ? 'QC' : ''}
+                              {isQc ? 'QC' : '•'}
                             </span>
                           )
                         }
@@ -581,7 +582,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
       <div className="flex flex-col h-full">
         <TopBar title="Scheduler" onBack={onBack} className="border-b border-tertiary" />
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-4 animate-pulse">
+          <div className="max-w-6xl mx-auto px-4 py-6 space-y-4 animate-pulse">
             <SkeletonCard />
             <div className="rounded-xl border border-secondary bg-primary p-4">
               <Skeleton className="h-4 w-32 mb-3" />
@@ -601,7 +602,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
     <div className="flex flex-col h-full">
       <TopBar title="Scheduler" onBack={onBack} className="border-b border-tertiary" />
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
           {loadError && (
             <SectionCard>
               <p className="text-sm text-secondary mb-3">
