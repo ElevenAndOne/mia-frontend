@@ -105,7 +105,7 @@ export interface SchedulerRunSummary {
   applied_at: string | null
 }
 
-export type DayState = 'free' | 'free2' | 'booked' | 'leave' | 'off'
+export type DayState = 'free' | 'free2' | 'booked' | 'leave' | 'holiday' | 'off'
 
 export interface ResourceCalendarEntry {
   resource_id: string

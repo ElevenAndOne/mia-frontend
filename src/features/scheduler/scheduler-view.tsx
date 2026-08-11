@@ -259,17 +259,21 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                               ? 'bg-red-500/55'
                               : state === 'leave'
                                 ? 'bg-amber-400/70'
-                                : state === 'off'
-                                  ? 'bg-transparent'
-                                  : 'bg-emerald-500/20'
+                                : state === 'holiday'
+                                  ? 'bg-sky-400/50'
+                                  : state === 'off'
+                                    ? 'bg-transparent'
+                                    : 'bg-emerald-500/20'
                           const label =
                             state === 'booked'
                               ? 'already booked in ClickUp'
                               : state === 'leave'
                                 ? 'on leave'
-                                : state === 'off'
-                                  ? 'weekend or not in'
-                                  : 'free'
+                                : state === 'holiday'
+                                  ? 'public holiday'
+                                  : state === 'off'
+                                    ? 'weekend or not in'
+                                    : 'free'
                           return (
                             <span
                               key={i}
@@ -317,6 +321,9 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
         </span>
         <span className="flex items-center gap-1.5">
           <i className="w-3 h-1.5 rounded-sm bg-amber-400/70" /> on leave
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-3 h-1.5 rounded-sm bg-sky-400/50" /> public holiday
         </span>
         <span className="flex items-center gap-1.5">
           <i className="w-3 h-1.5 rounded-sm bg-emerald-500/20" /> free
