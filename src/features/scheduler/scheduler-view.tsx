@@ -23,10 +23,6 @@ function fmtCurrency(amount: number | null | undefined, currency = 'ZAR'): strin
   return `${sym}${amount.toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
 }
 
-function dayDiff(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000)
-}
-
 function SectionCard({
   children,
   className = '',
@@ -63,103 +59,282 @@ function StatChip({
   )
 }
 
-// ── Timeline bar (pure CSS — one row per flight) ─────────────────────────────
+// ── Result sections ───────────────────────────────────────────────────────────
 
-function TimelineBar({
-  start,
-  end,
-  horizonStart,
-  horizonDays,
-}: {
-  start: string
-  end: string
-  horizonStart: string
-  horizonDays: number
-}) {
-  const left = Math.max(0, (dayDiff(horizonStart, start) / horizonDays) * 100)
-  const width = Math.max(1.5, ((dayDiff(start, end) + 1) / horizonDays) * 100)
+// ── Plan timeline ─────────────────────────────────────────────────────────────
+// One shared date axis, two bands: what the campaign runs, and who is doing the
+// work behind it. Read a flight in the top band and its build sits directly
+// below in someone's lane.
+
+const PHASE_COLOURS = ['#4f6d9a', '#6b5b9a', '#3f7a63', '#96602f', '#8a4f6d']
+const QC_COLOUR = 'var(--brand-600, #6366f1)'
+const DAY_PX = 15
+
+/** "Campaign — Reach: meta_ads" → { phase: 'Reach', label: 'Meta ads' } */
+function splitName(name: string): { phase: string; label: string } {
+  const body = name.replace(/^(Produce|QC): /, '')
+  const m = body.match(/—\s*([^:]+?):\s*(.+)$/)
+  if (!m) return { phase: '', label: body }
+  const label = m[2].replace(/_/g, ' ')
+  return { phase: m[1].trim(), label: label.charAt(0).toUpperCase() + label.slice(1) }
+}
+
+const dayIndex = (iso: string, from: string) =>
+  Math.round((new Date(iso).getTime() - new Date(from).getTime()) / 86_400_000)
+
+function PlanTimeline({ result, currency }: { result: SchedulerRunResult; currency: string }) {
+  const horizonStart = result.horizon_start ?? ''
+  const assignments = useMemo(() => result.assignments ?? [], [result.assignments])
+
+  const model = useMemo(() => {
+    const scheduled = assignments.filter((a) => a.scheduled && a.start_date && a.end_date)
+    if (!horizonStart || scheduled.length === 0) return null
+
+    // Show only the span that actually has something in it, not the whole horizon.
+    const starts = scheduled.map((a) => dayIndex(a.start_date!, horizonStart))
+    const ends = scheduled.map((a) => dayIndex(a.end_date!, horizonStart))
+    const from = Math.max(0, Math.min(...starts))
+    const to = Math.max(...ends)
+    const span = Math.max(1, to - from + 1)
+    const windowStart = new Date(new Date(horizonStart).getTime() + from * 86_400_000)
+
+    const phases: string[] = []
+    for (const f of assignments.filter((a) => a.kind === 'flight')) {
+      const { phase } = splitName(f.name)
+      if (phase && !phases.includes(phase)) phases.push(phase)
+    }
+    const colourOf = (phase: string) =>
+      PHASE_COLOURS[Math.max(0, phases.indexOf(phase)) % PHASE_COLOURS.length]
+
+    // Build/sign-off work, grouped by the person doing it.
+    const workByPerson: Record<string, typeof assignments> = {}
+    for (const a of scheduled) {
+      if (a.kind === 'flight') continue
+      for (const who of a.assigned_people.length ? a.assigned_people : ['Unassigned']) {
+        ;(workByPerson[who] ||= []).push(a)
+      }
+    }
+
+    return { from, span, windowStart, phases, colourOf, workByPerson }
+  }, [assignments, horizonStart])
+
+  if (!model) return null
+  const { from, span, windowStart, phases, colourOf, workByPerson } = model
+  const pct = (n: number) => (n / span) * 100
+  const posOf = (a: (typeof assignments)[number]) => {
+    const s = dayIndex(a.start_date!, horizonStart) - from
+    const e = dayIndex(a.end_date!, horizonStart) - from
+    return { left: pct(s), width: Math.max(pct(e - s + 1), 1.2) }
+  }
+
+  const flights = assignments.filter((a) => a.kind === 'flight' && a.scheduled && a.start_date)
+  const overdue = new Set(result.production_overdue ?? [])
+  // Everyone in the pod, busy first — seeing who sat free while someone else
+  // was buried is half the point of this view.
+  const calendar = [...(result.resource_calendar ?? [])].sort(
+    (a, b) => (workByPerson[b.name]?.length ?? 0) - (workByPerson[a.name]?.length ?? 0)
+  )
+
+  const ticks: number[] = []
+  for (let i = 0; i < span; i += 7) ticks.push(i)
+  const todayOffset = dayIndex(new Date().toISOString().slice(0, 10), horizonStart) - from
+
   return (
-    <div className="relative h-2 rounded-full bg-tertiary/30 overflow-hidden">
-      <div
-        className="absolute h-2 rounded-full bg-utility-brand-600"
-        style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }}
-      />
-    </div>
+    <SectionCard className="overflow-hidden">
+      <h3 className="text-md font-semibold text-primary mb-1">The plan</h3>
+      <p className="text-sm text-tertiary mb-3">
+        What runs when, and who is building it. Hover anything for detail.
+      </p>
+
+      <div className="overflow-x-auto -mx-1 px-1">
+        <div style={{ minWidth: `${Math.max(span * DAY_PX + 150, 600)}px` }}>
+          {/* date ruler */}
+          <div className="flex">
+            <div className="w-[150px] shrink-0" />
+            <div className="relative flex-1 h-5 border-b border-secondary">
+              {ticks.map((t) => (
+                <span
+                  key={t}
+                  className="absolute top-0 h-full pl-1 text-[10px] leading-5 text-tertiary border-l border-secondary"
+                  style={{ left: `${pct(t)}%` }}
+                >
+                  {new Date(windowStart.getTime() + t * 86_400_000).toLocaleDateString('en-ZA', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </span>
+              ))}
+              {todayOffset >= 0 && todayOffset < span && (
+                <span
+                  className="absolute top-0 bottom-0 w-px bg-red-400/80 z-10"
+                  style={{ left: `${pct(todayOffset)}%` }}
+                  title="Today"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* band 1 — the campaign */}
+          {phases.map((phase) => {
+            const rows = flights.filter((f) => splitName(f.name).phase === phase)
+            if (rows.length === 0) return null
+            const spend = rows.reduce((s, f) => s + (f.budget || 0), 0)
+            return (
+              <div key={phase} className="mt-3">
+                <div className="flex">
+                  <div className="w-[150px] shrink-0" />
+                  <div className="flex-1 flex items-baseline gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                      {phase}
+                    </span>
+                    <span className="text-[10px] text-tertiary">
+                      {rows.length} flight{rows.length === 1 ? '' : 's'}
+                      {spend > 0 ? ` · ${fmtCurrency(spend, currency)}` : ''}
+                    </span>
+                  </div>
+                </div>
+                {rows.map((f) => {
+                  const p = posOf(f)
+                  return (
+                    <div key={f.task_id} className="flex items-center min-h-[26px]">
+                      <div className="w-[150px] shrink-0 pr-2 text-xs text-primary truncate">
+                        {splitName(f.name).label}
+                        {overdue.has(f.action_id ?? '') && (
+                          <span className="ml-1 text-[10px] text-warning">overdue</span>
+                        )}
+                      </div>
+                      <div className="relative flex-1 h-[22px]">
+                        <span className="absolute inset-x-0 top-1/2 h-px bg-tertiary/30" />
+                        <span
+                          className="absolute top-1/2 -translate-y-1/2 h-[9px] rounded-sm"
+                          style={{
+                            left: `${p.left}%`,
+                            width: `${p.width}%`,
+                            background: colourOf(phase),
+                          }}
+                          title={`${splitName(f.name).label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+
+          {/* band 2 — the team */}
+          {calendar.length > 0 && (
+            <div className="mt-5 pt-3 border-t border-secondary">
+              <div className="flex mb-1">
+                <div className="w-[150px] shrink-0" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                  Who&rsquo;s doing it
+                </span>
+              </div>
+              {calendar.map((person) => {
+                const work = workByPerson[person.name] ?? []
+                return (
+                  <div
+                    key={person.resource_id}
+                    className="flex items-center min-h-[34px] border-t border-secondary/40"
+                  >
+                    <div className="w-[150px] shrink-0 pr-2">
+                      <span className="block text-xs font-medium text-primary truncate">
+                        {person.name}
+                      </span>
+                      <span className="block text-[10px] text-tertiary truncate">
+                        {person.role ?? ''}
+                      </span>
+                    </div>
+                    <div className="relative flex-1 h-[30px]">
+                      {/* existing commitments */}
+                      <div
+                        className="absolute inset-x-0 top-1 h-[5px] rounded-sm overflow-hidden grid"
+                        style={{ gridTemplateColumns: `repeat(${span}, 1fr)` }}
+                      >
+                        {Array.from({ length: span }, (_, i) => {
+                          const state = person.days[from + i]
+                          const cls =
+                            state === 'booked'
+                              ? 'bg-red-500/55'
+                              : state === 'leave'
+                                ? 'bg-amber-400/70'
+                                : state === 'off'
+                                  ? 'bg-transparent'
+                                  : 'bg-emerald-500/20'
+                          const label =
+                            state === 'booked'
+                              ? 'already booked in ClickUp'
+                              : state === 'leave'
+                                ? 'on leave'
+                                : state === 'off'
+                                  ? 'weekend or not in'
+                                  : 'free'
+                          return (
+                            <span
+                              key={i}
+                              className={cls}
+                              title={`${person.name} · ${new Date(windowStart.getTime() + i * 86_400_000).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })} — ${label}`}
+                            />
+                          )
+                        })}
+                      </div>
+                      {/* what we're adding */}
+                      {work.map((w) => {
+                        const p = posOf(w)
+                        const { phase, label } = splitName(w.name)
+                        const isQc = w.kind === 'qc'
+                        return (
+                          <span
+                            key={w.task_id}
+                            className="absolute top-[10px] h-[17px] rounded-sm flex items-center px-1 text-[9px] text-white overflow-hidden whitespace-nowrap"
+                            style={{
+                              left: `${p.left}%`,
+                              width: `${p.width}%`,
+                              background: isQc ? QC_COLOUR : colourOf(phase),
+                            }}
+                            title={`${person.name} · ${isQc ? 'signs off' : 'builds'} ${label} · ${fmtDate(w.start_date)}${w.start_date !== w.end_date ? ` – ${fmtDate(w.end_date)}` : ''}`}
+                          >
+                            {isQc ? 'QC' : p.width > 6 ? label : ''}
+                          </span>
+                        )
+                      })}
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-[10px] text-tertiary">
+                      {work.length ? `${work.length} job${work.length === 1 ? '' : 's'}` : 'free'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] text-tertiary">
+        <span className="flex items-center gap-1.5">
+          <i className="w-3 h-1.5 rounded-sm bg-red-500/55" /> already booked
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-3 h-1.5 rounded-sm bg-amber-400/70" /> on leave
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-3 h-1.5 rounded-sm bg-emerald-500/20" /> free
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-3 h-2 rounded-sm" style={{ background: QC_COLOUR }} /> sign-off
+        </span>
+      </div>
+    </SectionCard>
   )
 }
 
-// ── Result sections ───────────────────────────────────────────────────────────
-
-function FlightList({ result, currency }: { result: SchedulerRunResult; currency: string }) {
-  const horizonStart = result.horizon_start ?? ''
-  const horizonDays = result.horizon_days ?? 1
-
-  // People come back on the production task — index them by action so the
-  // flight row can name who builds it.
-  const peopleByAction = useMemo(() => {
-    const map: Record<string, string[]> = {}
-    for (const a of result.assignments ?? []) {
-      if (a.kind === 'prep' && a.scheduled && a.action_id) {
-        map[a.action_id] = a.assigned_people
-      }
-    }
-    return map
-  }, [result.assignments])
-
-  const assignments = result.assignments ?? []
-
-  const flights = assignments.filter((a) => a.kind === 'flight')
-  const scheduled = flights.filter((f) => f.scheduled && f.start_date)
+function DroppedList({ result }: { result: SchedulerRunResult }) {
+  const flights = (result.assignments ?? []).filter((a) => a.kind === 'flight')
   const dropped = flights.filter((f) => !f.scheduled)
-  const overdue = new Set(result.production_overdue ?? [])
 
   return (
     <>
-      <SectionCard>
-        <h3 className="text-md font-semibold text-primary mb-1">Campaign timeline</h3>
-        <p className="text-sm text-tertiary mb-4">
-          {fmtDate(horizonStart)} –{' '}
-          {fmtDate(
-            new Date(
-              new Date(horizonStart).getTime() + (horizonDays - 1) * 86_400_000
-            ).toISOString()
-          )}{' '}
-          · {scheduled.length} of {flights.length} flights placed
-        </p>
-        <div className="space-y-4">
-          {scheduled.map((f) => (
-            <div key={f.task_id}>
-              <div className="flex items-center justify-between gap-3 mb-1.5">
-                <div className="min-w-0">
-                  <span className="text-sm font-medium text-primary truncate block">
-                    {f.name}
-                    {overdue.has(f.action_id ?? '') && (
-                      <span className="ml-2 text-xs text-warning">production overdue</span>
-                    )}
-                  </span>
-                  <span className="text-xs text-tertiary">
-                    {fmtDate(f.start_date)} → {fmtDate(f.end_date)}
-                    {peopleByAction[f.action_id ?? '']?.length
-                      ? ` · ${peopleByAction[f.action_id ?? ''].join(', ')}`
-                      : ''}
-                    {f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}
-                  </span>
-                </div>
-              </div>
-              <TimelineBar
-                start={f.start_date!}
-                end={f.end_date!}
-                horizonStart={horizonStart}
-                horizonDays={horizonDays}
-              />
-            </div>
-          ))}
-          {scheduled.length === 0 && (
-            <p className="text-sm text-tertiary">No flights could be placed.</p>
-          )}
-        </div>
-      </SectionCard>
-
       {dropped.length > 0 && (
         <SectionCard>
           <h3 className="text-md font-semibold text-primary mb-1">
@@ -173,7 +348,9 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
               <div key={f.task_id} className="flex items-start gap-2 text-sm">
                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
                 <div>
-                  <span className="text-primary font-medium">{f.name}</span>
+                  <span className="text-primary font-medium">
+                    {splitName(f.name).phase} · {splitName(f.name).label}
+                  </span>
                   <span className="text-tertiary"> — {f.reason ?? 'no reason returned'}</span>
                 </div>
               </div>
@@ -189,42 +366,6 @@ function FlightList({ result, currency }: { result: SchedulerRunResult; currency
         </p>
       )}
     </>
-  )
-}
-
-function ProductionList({ result }: { result: SchedulerRunResult }) {
-  const preps = (result.assignments ?? []).filter(
-    (a) => (a.kind === 'prep' || a.kind === 'qc') && a.scheduled
-  )
-  if (preps.length === 0) return null
-  return (
-    <SectionCard>
-      <h3 className="text-md font-semibold text-primary mb-1">Production &amp; sign-off</h3>
-      <p className="text-sm text-tertiary mb-3">
-        Who builds what, and who signs it off, before each flight goes live.
-      </p>
-      <div className="space-y-2">
-        {preps.map((p) => (
-          <div key={p.task_id} className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-primary truncate">
-              {p.kind === 'qc' && (
-                <span className="mr-2 px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 text-xs">
-                  QC
-                </span>
-              )}
-              {p.name.replace(/^(Produce|QC): /, '')}
-            </span>
-            <span className="text-secondary whitespace-nowrap">
-              {p.assigned_people.join(', ') || '—'}
-              <span className="text-tertiary">
-                {' '}
-                · {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </SectionCard>
   )
 }
 
@@ -449,8 +590,8 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                 )}
               </div>
 
-              <FlightList result={result} currency={currency} />
-              <ProductionList result={result} />
+              <PlanTimeline result={result} currency={currency} />
+              <DroppedList result={result} />
 
               <SectionCard>
                 <div className="flex items-center justify-between gap-3">

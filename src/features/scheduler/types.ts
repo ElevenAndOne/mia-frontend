@@ -87,6 +87,7 @@ export interface SchedulerRunResult {
   qc_enabled?: boolean
   campaign_ended?: boolean
   campaign_end_date?: string | null
+  resource_calendar?: ResourceCalendarEntry[]
 }
 
 export interface SchedulerRunSummary {
@@ -102,6 +103,16 @@ export interface SchedulerRunSummary {
   dropped_tasks: number | null
   error: string | null
   applied_at: string | null
+}
+
+export type DayState = 'free' | 'free2' | 'booked' | 'leave' | 'off'
+
+export interface ResourceCalendarEntry {
+  resource_id: string
+  name: string
+  role: string | null
+  pod: string | null
+  days: DayState[]
 }
 
 export interface AvailabilityResult {
