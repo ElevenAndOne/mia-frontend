@@ -68,7 +68,25 @@ function StatChip({
 
 const PHASE_COLOURS = ['#4f6d9a', '#6b5b9a', '#3f7a63', '#96602f', '#8a4f6d']
 const QC_COLOUR = 'var(--brand-600, #6366f1)'
-const DAY_PX = 15
+const DAY_PX = 16
+const LABEL_W = 'w-[150px]'
+const TAIL_W = 'w-14'
+
+/** Short, still-readable channel names — 'OS' would be jargon to a new PM. */
+const CHANNEL_SHORT: Record<string, string> = {
+  'Meta ads': 'Meta',
+  'Google ads': 'Google',
+  'Google display': 'Display',
+  'Organic social': 'Organic',
+  'Linkedin ads': 'LinkedIn',
+  'Linkedin organic': 'LinkedIn organic',
+  'Tiktok ads': 'TikTok',
+  Website: 'Website',
+  Email: 'Email',
+  Brevo: 'Email',
+  Mailchimp: 'Email',
+}
+const shortLabel = (l: string) => CHANNEL_SHORT[l] ?? l
 
 /** "Campaign — Reach: meta_ads" → { phase: 'Reach', label: 'Meta ads' } */
 function splitName(name: string): { phase: string; label: string } {
@@ -156,10 +174,26 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
       </p>
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <div style={{ minWidth: `${Math.max(span * DAY_PX + 150, 600)}px` }}>
+        <div className="relative" style={{ minWidth: `${Math.max(span * DAY_PX + 206, 640)}px` }}>
+          {/* week gridlines — drawn once behind both bands so a bar can be read
+              against a date without counting pixels */}
+          <div
+            className="absolute inset-y-0 pointer-events-none"
+            style={{ left: '150px', right: '56px' }}
+            aria-hidden="true"
+          >
+            {ticks.map((t) => (
+              <span
+                key={`grid-${t}`}
+                className="absolute top-0 bottom-0 w-px bg-tertiary/15"
+                style={{ left: `${pct(t)}%` }}
+              />
+            ))}
+          </div>
+
           {/* date ruler */}
           <div className="flex">
-            <div className="w-[150px] shrink-0" />
+            <div className={`${LABEL_W} shrink-0`} />
             <div className="relative flex-1 h-5 border-b border-secondary">
               {ticks.map((t) => (
                 <span
@@ -181,24 +215,23 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                 />
               )}
             </div>
+            <div className={`${TAIL_W} shrink-0`} />
           </div>
 
           {/* band 1 — the campaign */}
           {phases.map((phase) => {
             const rows = flights.filter((f) => splitName(f.name).phase === phase)
             if (rows.length === 0) return null
-            const spend = rows.reduce((s, f) => s + (f.budget || 0), 0)
             return (
               <div key={phase} className="mt-3">
                 <div className="flex">
-                  <div className="w-[150px] shrink-0" />
+                  <div className={`${LABEL_W} shrink-0`} />
                   <div className="flex-1 flex items-baseline gap-2">
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
                       {phase}
                     </span>
                     <span className="text-[10px] text-tertiary">
                       {rows.length} flight{rows.length === 1 ? '' : 's'}
-                      {spend > 0 ? ` · ${fmtCurrency(spend, currency)}` : ''}
                     </span>
                   </div>
                 </div>
@@ -206,8 +239,8 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                   const p = posOf(f)
                   return (
                     <div key={f.task_id} className="flex items-center min-h-[26px]">
-                      <div className="w-[150px] shrink-0 pr-2 text-xs text-primary truncate">
-                        {splitName(f.name).label}
+                      <div className={`${LABEL_W} shrink-0 pr-2 text-xs text-primary truncate`}>
+                        {shortLabel(splitName(f.name).label)}
                         {overdue.has(f.action_id ?? '') && (
                           <span className="ml-1 text-[10px] text-warning">overdue</span>
                         )}
@@ -225,6 +258,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                           aria-label={splitName(f.name).label}
                         />
                       </div>
+                      <div className={`${TAIL_W} shrink-0`} />
                     </div>
                   )
                 })}
@@ -236,7 +270,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
           {calendar.length > 0 && (
             <div className="mt-5 pt-3 border-t border-secondary">
               <div className="flex mb-1">
-                <div className="w-[150px] shrink-0" />
+                <div className={`${LABEL_W} shrink-0`} />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
                   Who&rsquo;s doing it
                 </span>
@@ -248,7 +282,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                     key={person.resource_id}
                     className="flex items-center min-h-[34px] border-t border-secondary/40"
                   >
-                    <div className="w-[150px] shrink-0 pr-2">
+                    <div className={`${LABEL_W} shrink-0 pr-2`}>
                       <span className="block text-xs font-medium text-primary truncate">
                         {person.name}
                       </span>
@@ -259,7 +293,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                     <div className="relative flex-1 h-[30px]">
                       {/* existing commitments */}
                       <div
-                        className="absolute inset-x-0 top-1 h-[5px] rounded-sm overflow-hidden grid"
+                        className="absolute inset-x-0 top-[3px] h-[4px] rounded-sm overflow-hidden grid opacity-80"
                         style={{ gridTemplateColumns: `repeat(${span}, 1fr)` }}
                       >
                         {Array.from({ length: span }, (_, i) => {
@@ -301,7 +335,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                         return (
                           <span
                             key={w.task_id}
-                            className="absolute top-[10px] h-[17px] rounded-sm flex items-center px-1 text-[9px] text-white overflow-hidden whitespace-nowrap"
+                            className="absolute top-[11px] h-[18px] rounded flex items-center px-1 text-[9px] font-medium text-white overflow-hidden whitespace-nowrap shadow-sm"
                             style={{
                               left: `${p.left}%`,
                               width: `${p.width}%`,
@@ -322,7 +356,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                         )
                       })}
                     </div>
-                    <span className="w-14 shrink-0 text-right text-[10px] text-tertiary">
+                    <span className={`${TAIL_W} shrink-0 text-right text-[10px] text-tertiary`}>
                       {work.length ? `${work.length} job${work.length === 1 ? '' : 's'}` : 'free'}
                     </span>
                   </div>
@@ -472,6 +506,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
   } = useScheduler(sessionId, tenantId)
 
   const [campaignId, setCampaignId] = useState('')
+  const [showRuns, setShowRuns] = useState(false)
   const selected = campaigns.find((c) => c.campaign_id === campaignId) ?? campaigns[0]
   const currency = selected?.budget_currency ?? 'ZAR'
 
@@ -576,7 +611,10 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
               <div className="flex flex-wrap gap-2">
                 <StatChip
                   tone="good"
-                  label={`${result.diagnostics?.scheduled_tasks ?? 0}/${result.diagnostics?.requested_tasks ?? 0} tasks placed`}
+                  label={(() => {
+                    const f = (result.assignments ?? []).filter((a) => a.kind === 'flight')
+                    return `${f.filter((x) => x.scheduled).length} of ${f.length} flights placed`
+                  })()}
                 />
                 {(result.diagnostics?.dropped_tasks.length ?? 0) > 0 && (
                   <StatChip
@@ -654,7 +692,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
             </>
           )}
 
-          {!loadError && (
+          {!loadError && !result?.success && (
             <SectionCard>
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div>
@@ -682,8 +720,19 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
 
           {runs.length > 0 && (
             <SectionCard>
-              <h3 className="text-md font-semibold text-primary mb-3">Previous runs</h3>
-              <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setShowRuns((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 text-left"
+                aria-expanded={showRuns}
+              >
+                <h3 className="text-md font-semibold text-primary">
+                  Previous runs{' '}
+                  <span className="text-sm font-normal text-tertiary">({runs.length})</span>
+                </h3>
+                <span className="text-xs text-tertiary">{showRuns ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className={`space-y-1.5 ${showRuns ? 'mt-3' : 'hidden'}`}>
                 {runs.slice(0, 8).map((r) => (
                   <div
                     key={r.run_id}
