@@ -7,6 +7,7 @@ import type { WorkspacePersonRow } from '../utils/workspace-settings'
 interface WorkspaceMembersPanelProps {
   people: WorkspacePersonRow[]
   onUpdateRole: (userId: string, role: string) => void
+  onTransferOwnership: (userId: string) => void
   onRemoveMember: (userId: string) => void
   onCopyInvite: (link: string) => void
   onRevokeInvite: (inviteId: string) => void
@@ -15,6 +16,7 @@ interface WorkspaceMembersPanelProps {
 export const WorkspaceMembersPanel = ({
   people,
   onUpdateRole,
+  onTransferOwnership,
   onRemoveMember,
   onCopyInvite,
   onRevokeInvite,
@@ -68,6 +70,7 @@ export const WorkspaceMembersPanel = ({
             <MemberRowMenu
               person={person}
               onUpdateRole={onUpdateRole}
+              onTransferOwnership={onTransferOwnership}
               onRemoveMember={onRemoveMember}
               onCopyInvite={onCopyInvite}
               onRevokeInvite={onRevokeInvite}

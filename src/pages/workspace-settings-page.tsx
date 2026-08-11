@@ -37,6 +37,7 @@ const WorkspaceSettingsPage = () => {
     handleRevokeInvite,
     handleRemoveMember,
     handleUpdateRole,
+    handleTransferOwnership,
     handleCopyInvite,
     openCreateInviteModal,
     closeCreateInviteModal,
@@ -111,6 +112,7 @@ const WorkspaceSettingsPage = () => {
           onCompleteInviteFlow={completeInviteFlow}
           onRevokeInvite={handleRevokeInvite}
           onUpdateRole={handleUpdateRole}
+          onTransferOwnership={handleTransferOwnership}
           onRemoveMember={handleRemoveMember}
           showRenameModal={showRenameModal}
           onOpenRenameModal={openRenameModal}

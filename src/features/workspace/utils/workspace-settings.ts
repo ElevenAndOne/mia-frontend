@@ -21,6 +21,7 @@ export interface WorkspaceMemberRow {
   imageUrl?: string | null
   canEditRole: boolean
   canRemove: boolean
+  canTransferOwnership: boolean
 }
 
 export interface WorkspaceInviteRow {
@@ -40,6 +41,7 @@ export interface WorkspacePersonRow {
   imageUrl?: string | null
   canEditRole: boolean
   canRemove: boolean
+  canTransferOwnership: boolean
   inviteLink?: string
 }
 
@@ -75,6 +77,11 @@ export const buildWorkspaceMemberRows = (
       imageUrl: member.picture_url,
       canEditRole: Boolean(options.isOwner && member.role !== 'owner' && !isCurrentUser),
       canRemove: Boolean(options.canManage && member.role !== 'owner' && !isCurrentUser),
+      // Only an owner can hand the workspace over, and only to someone else who is
+      // already a member (the backend enforces both).
+      canTransferOwnership: Boolean(
+        options.isOwner && member.role !== 'owner' && !isCurrentUser
+      ),
     }
   })
 }
@@ -107,6 +114,7 @@ export const buildUnifiedPersonRows = (
     imageUrl: member.imageUrl,
     canEditRole: member.canEditRole,
     canRemove: member.canRemove,
+    canTransferOwnership: member.canTransferOwnership,
   }))
 
   const invites: WorkspacePersonRow[] = inviteRows.map((invite) => ({
@@ -118,6 +126,7 @@ export const buildUnifiedPersonRows = (
     roleBadgeClass: getWorkspaceRoleBadgeClass(invite.role),
     canEditRole: false,
     canRemove: true,
+    canTransferOwnership: false,
     inviteLink: invite.link,
   }))
 

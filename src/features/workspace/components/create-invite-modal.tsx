@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { CheckCircle } from '../../../components/icon/check-circle'
 import { Modal } from '../../overlay'
 
@@ -12,6 +13,8 @@ interface CreateInviteModalProps {
   createdInviteEmail: string | null
   copySuccess: boolean
   isCreateInviteDisabled: boolean
+  /** Only an owner may grant admin, and never via a shareable link (backend enforces both). */
+  canInviteAdmins: boolean
   onInviteTypeChange: (isLinkInvite: boolean) => void
   onInviteEmailChange: (value: string) => void
   onInviteRoleChange: (role: string) => void
@@ -19,6 +22,9 @@ interface CreateInviteModalProps {
   onCopyInvite: (inviteLink: string) => void
   onComplete: () => void
 }
+
+const ROLES_WITH_ADMIN = ['admin', 'analyst', 'viewer']
+const ROLES_WITHOUT_ADMIN = ['analyst', 'viewer']
 
 export const CreateInviteModal = ({
   isOpen,
@@ -31,6 +37,7 @@ export const CreateInviteModal = ({
   createdInviteEmail,
   copySuccess,
   isCreateInviteDisabled,
+  canInviteAdmins,
   onInviteTypeChange,
   onInviteEmailChange,
   onInviteRoleChange,
@@ -38,6 +45,21 @@ export const CreateInviteModal = ({
   onCopyInvite,
   onComplete,
 }: CreateInviteModalProps) => {
+  // Admin can only be granted by an owner, and never on a shareable link — a link
+  // invite skips the email check when redeemed, so an admin link would hand workspace
+  // control to whoever the URL reached. The backend rejects both; this keeps the option
+  // from being offered in the first place.
+  const availableRoles =
+    canInviteAdmins && !isLinkInvite ? ROLES_WITH_ADMIN : ROLES_WITHOUT_ADMIN
+
+  // Switching to a link invite while 'admin' is selected would submit a role the
+  // backend refuses — fall back to viewer instead of surfacing an avoidable error.
+  useEffect(() => {
+    if (!availableRoles.includes(inviteRole)) {
+      onInviteRoleChange('viewer')
+    }
+  }, [availableRoles, inviteRole, onInviteRoleChange])
+
   const handleClose = () => {
     if (createdInviteLink) {
       onComplete()
@@ -101,8 +123,13 @@ export const CreateInviteModal = ({
 
             <fieldset>
               <legend className="block subheading-md text-secondary mb-2">Role</legend>
-              <div className="grid grid-cols-3 gap-2" role="group">
-                {['admin', 'analyst', 'viewer'].map((role) => (
+              <div
+                className={`grid gap-2 ${
+                  availableRoles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+                }`}
+                role="group"
+              >
+                {availableRoles.map((role) => (
                   <button
                     key={role}
                     type="button"

@@ -57,6 +57,7 @@ export const useWorkspaceSettingsPage = () => {
     revokeInvite,
     removeMember,
     updateMemberRole,
+    transferOwnership,
   } = useWorkspaceSettings({
     sessionId,
     workspaceId: selectedWorkspaceId,
@@ -176,6 +177,22 @@ export const useWorkspaceSettingsPage = () => {
       }
     },
     [selectedWorkspaceId, sessionId, updateMemberRole, setError]
+  )
+
+  const handleTransferOwnership = useCallback(
+    async (userId: string) => {
+      if (!selectedWorkspaceId || !sessionId) return
+      try {
+        await transferOwnership(userId)
+        // The caller is now an admin here, so re-read the workspace list — its `role`
+        // is what hides the owner-only controls (transfer, role changes, delete).
+        await refreshWorkspaces?.()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to transfer ownership'
+        setError(message)
+      }
+    },
+    [selectedWorkspaceId, sessionId, transferOwnership, refreshWorkspaces, setError]
   )
 
   const handleCopyInvite = useCallback(
@@ -309,6 +326,7 @@ export const useWorkspaceSettingsPage = () => {
     handleRevokeInvite,
     handleRemoveMember,
     handleUpdateRole,
+    handleTransferOwnership,
     handleCopyInvite,
     openCreateInviteModal,
     closeCreateInviteModal,

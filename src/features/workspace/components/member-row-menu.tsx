@@ -2,6 +2,7 @@ import { useRef, useState, useMemo } from 'react'
 import { Check } from '../../../components/icon/check'
 import { Copy01 } from '../../../components/icon/copy-01'
 import { DotsVertical } from '../../../components/icon/dots-vertical'
+import { Key01 } from '../../../components/icon/key-01'
 import { Trash01 } from '../../../components/icon/trash-01'
 import { UserEdit } from '../../../components/icon/user-edit'
 import { Dropdown, Modal } from '../../overlay'
@@ -11,6 +12,7 @@ import type { WorkspacePersonRow } from '../utils/workspace-settings'
 interface MemberRowMenuProps {
   person: WorkspacePersonRow
   onUpdateRole: (userId: string, role: string) => void
+  onTransferOwnership: (userId: string) => void
   onRemoveMember: (userId: string) => void
   onCopyInvite: (link: string) => void
   onRevokeInvite: (inviteId: string) => void
@@ -19,6 +21,7 @@ interface MemberRowMenuProps {
 export const MemberRowMenu = ({
   person,
   onUpdateRole,
+  onTransferOwnership,
   onRemoveMember,
   onCopyInvite,
   onRevokeInvite,
@@ -26,9 +29,15 @@ export const MemberRowMenu = ({
   const [isOpen, setIsOpen] = useState(false)
   const [showRoleMenu, setShowRoleMenu] = useState(false)
   const [showConfirmRemove, setShowConfirmRemove] = useState(false)
+  const [showConfirmTransfer, setShowConfirmTransfer] = useState(false)
   const [showConfirmRevoke, setShowConfirmRevoke] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const roleButtonRef = useRef<HTMLButtonElement>(null)
+
+  const handleTransferConfirm = () => {
+    onTransferOwnership(person.id)
+    setShowConfirmTransfer(false)
+  }
 
   const handleRemoveConfirm = () => {
     onRemoveMember(person.id)
@@ -55,6 +64,21 @@ export const MemberRowMenu = ({
       })
     }
 
+    if (person.canTransferOwnership) {
+      if (items.length > 0) {
+        items.push({ id: 'divider-transfer', label: '', onClick: () => {}, divider: true })
+      }
+      items.push({
+        id: 'transfer-ownership',
+        label: 'Transfer Ownership',
+        icon: <Key01 size={16} />,
+        onClick: () => {
+          setIsOpen(false)
+          setTimeout(() => setShowConfirmTransfer(true), 100)
+        },
+      })
+    }
+
     if (person.canRemove) {
       if (items.length > 0) {
         items.push({ id: 'divider', label: '', onClick: () => {}, divider: true })
@@ -72,7 +96,7 @@ export const MemberRowMenu = ({
     }
 
     return items
-  }, [person.canEditRole, person.canRemove])
+  }, [person.canEditRole, person.canRemove, person.canTransferOwnership])
 
   const inviteItems: DropdownItem[] = useMemo(
     () => [
@@ -170,6 +194,37 @@ export const MemberRowMenu = ({
         items={roleItems}
         placement="bottom-end"
       />
+
+      {/* Confirm Transfer Ownership Modal */}
+      <Modal
+        isOpen={showConfirmTransfer}
+        onClose={() => setShowConfirmTransfer(false)}
+        size="sm"
+        showCloseButton={false}
+        panelClassName="p-6"
+      >
+        <h3 className="label-lg text-primary mb-2">Make {person.name} the owner?</h3>
+        <p className="paragraph-sm text-tertiary mb-4">
+          {person.name} will take full control of this workspace, including billing-level
+          settings and the ability to delete it. You will become an <strong>admin</strong> — you
+          keep working access, but you will no longer be able to transfer ownership back
+          yourself. Only the new owner can do that.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowConfirmTransfer(false)}
+            className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleTransferConfirm}
+            className="flex-1 px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
+          >
+            Transfer
+          </button>
+        </div>
+      </Modal>
 
       {/* Confirm Remove Member Modal */}
       <Modal

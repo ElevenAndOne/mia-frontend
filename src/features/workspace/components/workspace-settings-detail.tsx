@@ -54,6 +54,7 @@ interface WorkspaceSettingsDetailProps {
   onCompleteInviteFlow: () => void
   onRevokeInvite: (inviteId: string) => void
   onUpdateRole: (userId: string, role: string) => void
+  onTransferOwnership: (userId: string) => void
   onRemoveMember: (userId: string) => void
   showRenameModal: boolean
   onOpenRenameModal: () => void
@@ -94,6 +95,7 @@ export const WorkspaceSettingsDetail = ({
   onCompleteInviteFlow,
   onRevokeInvite,
   onUpdateRole,
+  onTransferOwnership,
   onRemoveMember,
   showRenameModal,
   onOpenRenameModal,
@@ -546,6 +548,7 @@ export const WorkspaceSettingsDetail = ({
           <WorkspaceMembersPanel
             people={people}
             onUpdateRole={onUpdateRole}
+            onTransferOwnership={onTransferOwnership}
             onRemoveMember={onRemoveMember}
             onCopyInvite={onCopyInvite}
             onRevokeInvite={onRevokeInvite}
@@ -749,6 +752,7 @@ export const WorkspaceSettingsDetail = ({
         createdInviteEmail={createdInviteEmail}
         copySuccess={copySuccess}
         isCreateInviteDisabled={isCreateInviteDisabled}
+        canInviteAdmins={isOwner}
         onInviteTypeChange={onInviteTypeChange}
         onInviteEmailChange={onInviteEmailChange}
         onInviteRoleChange={onInviteRoleChange}

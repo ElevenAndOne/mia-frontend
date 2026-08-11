@@ -104,6 +104,31 @@ export const removeWorkspaceMember = async (
   }
 }
 
+/**
+ * Hand the workspace to another member. The outgoing owner becomes an admin, so they
+ * keep working access but no longer control the workspace. Owner-only, and the target
+ * must already be a member.
+ */
+export const transferWorkspaceOwnership = async (
+  sessionId: string,
+  workspaceId: string,
+  newOwnerUserId: string
+) => {
+  const response = await apiFetch(`/api/tenants/${workspaceId}/transfer-ownership`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-ID': sessionId,
+    },
+    body: JSON.stringify({ new_owner_user_id: newOwnerUserId }),
+  })
+
+  if (!response.ok) {
+    const data = await response.json()
+    throw new Error(data.detail || 'Failed to transfer ownership')
+  }
+}
+
 export const updateWorkspaceMemberRole = async (
   sessionId: string,
   workspaceId: string,

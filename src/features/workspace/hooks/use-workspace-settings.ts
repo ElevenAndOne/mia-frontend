@@ -5,6 +5,7 @@ import {
   fetchWorkspaceMembers,
   removeWorkspaceMember,
   revokeWorkspaceInvite,
+  transferWorkspaceOwnership,
   updateWorkspaceMemberRole,
   type WorkspaceInvite,
   type WorkspaceMember,
@@ -92,6 +93,18 @@ export const useWorkspaceSettings = ({
     [sessionId, workspaceId]
   )
 
+  const transferOwnership = useCallback(
+    async (newOwnerUserId: string) => {
+      if (!sessionId || !workspaceId) return
+      await transferWorkspaceOwnership(sessionId, workspaceId, newOwnerUserId)
+      // Both rows change: the new owner gains 'owner', the caller drops to 'admin'.
+      // Refresh rather than patch locally — the caller's own permissions change too,
+      // which drives whether the transfer/role controls stay visible at all.
+      await refresh()
+    },
+    [sessionId, workspaceId, refresh]
+  )
+
   return {
     members,
     invites,
@@ -103,6 +116,7 @@ export const useWorkspaceSettings = ({
     revokeInvite,
     removeMember,
     updateMemberRole,
+    transferOwnership,
     setMembers,
     setInvites,
   }
