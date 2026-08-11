@@ -23,6 +23,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     sessionId,
     user,
     login,
+    logout,
   } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
 
@@ -36,6 +37,16 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     'path:',
     window.location.pathname
   )
+
+  // The signed-in MIA account is the only identity the server can verify — clicking the
+  // link from the right inbox tells it nothing. So when the wrong account is signed in,
+  // the only way forward is to sign out and back in as the invited one.
+  const handleSwitchAccount = async () => {
+    localStorage.setItem(StorageKey.PENDING_INVITE, inviteId || '')
+    localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId || '')
+    await logout()
+    login()
+  }
 
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
@@ -82,6 +93,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
 
   // Don't auto-navigate away - let React Router handle invalid routes
   // The early return below is sufficient to prevent rendering with missing inviteId
+
+  const wrongAccount = inviteDetails?.email_matches === false
 
   if (!inviteId) {
     return null
@@ -198,8 +211,22 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           </div>
         </div>
 
+        {/* Wrong account signed in — say so before they click Accept, and say why. */}
+        {wrongAccount && (
+          <div className="bg-warning-primary border border-warning-subtle rounded-xl p-4 mb-6">
+            <p className="subheading-bg text-warning mb-1">You're signed in as someone else</p>
+            <p className="paragraph-sm text-warning">
+              This invite is for{' '}
+              <span className="font-semibold">{inviteDetails?.invited_email}</span>, but MIA is
+              signed in as <span className="font-semibold">{user?.email}</span>. Opening the email
+              in that inbox isn't enough — you have to be signed in to MIA with the invited
+              account.
+            </p>
+          </div>
+        )}
+
         {/* User info (if logged in) */}
-        {isAnyAuthenticated && user && (
+        {isAnyAuthenticated && user && !wrongAccount && (
           <div className="border border-secondary rounded-xl p-4 mb-6">
             <p className="paragraph-sm text-quaternary mb-2">Joining as</p>
             <div className="flex items-center gap-3">
@@ -226,10 +253,23 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
 
         {/* Actions */}
         <div className="space-y-3">
+          {wrongAccount && (
+            <button
+              onClick={handleSwitchAccount}
+              className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors"
+            >
+              Sign in as {inviteDetails?.invited_email}
+            </button>
+          )}
+
           <button
             onClick={handleAccept}
-            disabled={accepting || sessionLoading}
-            className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={accepting || sessionLoading || wrongAccount}
+            className={`w-full px-6 py-3 rounded-xl subheading-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              wrongAccount
+                ? 'border border-primary text-secondary'
+                : 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+            }`}
           >
             {accepting ? (
               <span className="flex items-center justify-center gap-2">

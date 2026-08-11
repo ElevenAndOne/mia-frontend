@@ -23,8 +23,13 @@ const detailToMessage = (detail: unknown, fallback: string): string => {
   return fallback
 }
 
-export const fetchInviteDetails = async (inviteId: string) => {
-  const response = await apiFetch(`/api/tenants/invites/${inviteId}/details`)
+export const fetchInviteDetails = async (inviteId: string, sessionId?: string | null) => {
+  // Sending the session is optional (the endpoint is public), but when we do the
+  // backend tells us whether the signed-in account matches the invited email — so the
+  // page can warn up front instead of only failing on Accept.
+  const response = await apiFetch(`/api/tenants/invites/${inviteId}/details`, {
+    headers: sessionId ? { 'X-Session-ID': sessionId } : undefined,
+  })
   if (!response.ok) {
     if (response.status === 404) {
       throw new Error('This invite link is invalid or has expired.')

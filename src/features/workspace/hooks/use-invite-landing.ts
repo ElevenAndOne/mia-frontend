@@ -11,6 +11,10 @@ export interface InviteDetails {
   is_link_invite: boolean
   status: string
   expires_at: string | null
+  /** Only present when the request carried a valid session. */
+  invited_email?: string | null
+  /** null when unknown (no session, or a link invite with no email). */
+  email_matches?: boolean | null
 }
 
 interface UseInviteLandingParams {
@@ -49,6 +53,7 @@ export const useInviteLanding = ({
     if (autoAccept !== inviteId) return
     if (!isAuthenticated || !sessionId || accepting) return
     if (!inviteDetails || !inviteDetails.is_valid) return
+    if (inviteDetails.email_matches === false) return
 
     logger.log('[INVITE-LANDING] Auto-accepting invite after OAuth:', inviteId)
     localStorage.removeItem(StorageKey.AUTO_ACCEPT_INVITE)
@@ -72,7 +77,7 @@ export const useInviteLanding = ({
       try {
         setLoading(true)
         setError(null)
-        const data = await fetchInviteDetails(inviteId)
+        const data = await fetchInviteDetails(inviteId, sessionId)
         setInviteDetails(data)
 
         if (!data.is_valid) {
@@ -96,7 +101,9 @@ export const useInviteLanding = ({
     }
 
     loadInvite()
-  }, [inviteId])
+    // sessionId is a dependency: it arrives asynchronously, and the mismatch warning
+    // depends on the backend seeing it.
+  }, [inviteId, sessionId])
 
   const handleAccept = async () => {
     if (!isAuthenticated) {
