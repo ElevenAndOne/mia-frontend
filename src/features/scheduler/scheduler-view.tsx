@@ -79,6 +79,15 @@ function splitName(name: string): { phase: string; label: string } {
   return { phase: m[1].trim(), label: label.charAt(0).toUpperCase() + label.slice(1) }
 }
 
+/** 6 sprint points is a working day, so 3 pt reads as "half a day". */
+function fmtEffort(points?: number | null): string {
+  if (!points) return ''
+  const days = points / 6
+  const rough =
+    days <= 0.4 ? 'a few hours' : days <= 0.6 ? 'half a day' : `${Math.round(days * 2) / 2} days`
+  return `${points} pt · ${rough}`
+}
+
 const dayIndex = (iso: string, from: string) =>
   Math.round((new Date(iso).getTime() - new Date(from).getTime()) / 86_400_000)
 
@@ -213,6 +222,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                             background: colourOf(phase),
                           }}
                           title={`${splitName(f.name).label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`}
+                          aria-label={splitName(f.name).label}
                         />
                       </div>
                     </div>
@@ -297,9 +307,17 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                               width: `${p.width}%`,
                               background: isQc ? QC_COLOUR : colourOf(phase),
                             }}
-                            title={`${person.name} · ${isQc ? 'signs off' : 'builds'} ${label} · ${fmtDate(w.start_date)}${w.start_date !== w.end_date ? ` – ${fmtDate(w.end_date)}` : ''}`}
+                            title={`${person.name} — ${isQc ? 'signs off' : 'builds'} ${label}${
+                              isQc ? '' : fmtEffort(w.points) ? ` (${fmtEffort(w.points)})` : ''
+                            } · ${fmtDate(w.start_date)}${w.start_date !== w.end_date ? ` – ${fmtDate(w.end_date)}` : ''}`}
                           >
-                            {isQc ? 'QC' : p.width > 6 ? label : ''}
+                            {isQc
+                              ? 'QC'
+                              : p.width > 10 && w.points
+                                ? `${label} · ${w.points}pt`
+                                : p.width > 6
+                                  ? label
+                                  : ''}
                           </span>
                         )
                       })}

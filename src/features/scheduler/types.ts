@@ -22,6 +22,7 @@ export interface SchedulerAssignment {
   reason: string | null
   value: number
   budget: number
+  points?: number | null
   assigned_people: string[]
   start_date?: string
   end_date?: string
