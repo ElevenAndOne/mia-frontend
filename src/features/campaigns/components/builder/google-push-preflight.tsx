@@ -322,7 +322,10 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
               <input value={negatives} onChange={(e) => setNegatives(e.target.value)} placeholder="e.g. free, jobs, diy" className={inputCls} />
               {preview.capabilities.shared_negative_lists.length > 0 && (
                 <div className="mt-1.5">
-                  <span className={fieldLabel}>Shared negative lists — click to attach</span>
+                  <span className={fieldLabel}>
+                    Shared negative lists — click to attach or detach (the account's list is
+                    attached by default)
+                  </span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {preview.capabilities.shared_negative_lists.map((l) => {
                       const active = sharedLists.includes(l.name)
