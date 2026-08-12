@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { CampaignIdentityHeader } from '../components/campaign-identity-header'
 import { CalendarControls } from '../components/calendar/calendar-controls'
 import { CalendarGrid } from '../components/calendar/calendar-grid'
@@ -30,6 +31,7 @@ const todayIso = () => {
 export const CalendarView = () => {
   const { campaign, setCampaign, openAssetPreview, sessionId, tenantId } = useCampaignWorkspace()
   const { activeWorkspace } = useSession()
+  const { showToast } = useToast()
   const canEdit = EDIT_ROLES.has(activeWorkspace?.role ?? '')
 
   // Drag-to-reschedule: organic posts move their launch_date; paid flights shift
@@ -78,10 +80,14 @@ export const CalendarView = () => {
       try {
         await patchAsset(sessionId, tenantId, campaign.campaign_id, assetId, patch)
       } catch {
-        /* PATCH failed — next detail load reconciles to the server state */
+        // PATCH failed — snap the chip back to where it was and say so.
+        // Leaving it in the new spot silently lied: the user thought the
+        // reschedule stuck, and it vanished on the next load.
+        setCampaign(() => campaign)
+        showToast('error', "Couldn't reschedule that item — it's back on its original date.")
       }
     },
-    [campaign, setCampaign, sessionId, tenantId]
+    [campaign, setCampaign, sessionId, tenantId, showToast]
   )
 
   const events = useMemo(() => buildCalendarEvents(campaign), [campaign])

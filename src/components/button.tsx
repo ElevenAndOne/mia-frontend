@@ -23,6 +23,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   leftIcon?: ReactNode
   rightIcon?: ReactNode
   fullWidth?: boolean
+  /** Pending state: shows a spinner in place of the left icon and disables the
+   *  button, so an in-flight action can't be double-fired. */
+  loading?: boolean
 }
 
 export function Button({
@@ -31,8 +34,10 @@ export function Button({
   leftIcon,
   rightIcon,
   fullWidth = false,
+  loading = false,
   className = '',
   type = 'button',
+  disabled,
   children,
   ...props
 }: ButtonProps) {
@@ -48,8 +53,15 @@ export function Button({
     .join(' ')
 
   return (
-    <button className={classes} type={type} {...props}>
-      {leftIcon}
+    <button className={classes} type={type} disabled={disabled || loading} {...props}>
+      {loading ? (
+        <span
+          aria-hidden="true"
+          className="inline-block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"
+        />
+      ) : (
+        leftIcon
+      )}
       {children}
       {rightIcon}
     </button>

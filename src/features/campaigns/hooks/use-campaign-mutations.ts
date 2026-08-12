@@ -47,10 +47,13 @@ export function useCampaignMutations() {
 
   const linkGuide = useCallback(
     async (guideId: string | null) => {
-      const res = await api.linkCampaignGuide(sessionId, tenantId, id, guideId)
-      if (res.ok) setCampaign((prev) => (prev ? { ...prev, campaign_guide_id: guideId } : prev))
+      await commitPatch(
+        () => api.linkCampaignGuide(sessionId, tenantId, id, guideId),
+        () => setCampaign((prev) => (prev ? { ...prev, campaign_guide_id: guideId } : prev)),
+        showToast,
+      )
     },
-    [sessionId, tenantId, id, setCampaign],
+    [sessionId, tenantId, id, setCampaign, showToast],
   )
 
   const saveObjectives = useCallback(
@@ -65,27 +68,33 @@ export function useCampaignMutations() {
 
   const savePickerLinks = useCallback(
     async (actionId: string, selected: LinkedCampaign[]) => {
-      const res = await api.patchChannelAction(sessionId, tenantId, id, actionId, {
-        linked_platform_campaigns: selected,
-      })
-      if (!res.ok) return
-      setCampaign((prev) =>
-        prev
-          ? {
-              ...prev,
-              phases: prev.phases.map((ph) => ({
-                ...ph,
-                channel_actions: ph.channel_actions.map((ca) =>
-                  ca.action_id === actionId
-                    ? { ...ca, linked_platform_campaigns: selected }
-                    : ca,
-                ),
-              })),
-            }
-          : prev,
+      // The picker modal closes before this resolves — a failure MUST toast,
+      // or the links silently revert on the next load.
+      await commitPatch(
+        () =>
+          api.patchChannelAction(sessionId, tenantId, id, actionId, {
+            linked_platform_campaigns: selected,
+          }),
+        () =>
+          setCampaign((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  phases: prev.phases.map((ph) => ({
+                    ...ph,
+                    channel_actions: ph.channel_actions.map((ca) =>
+                      ca.action_id === actionId
+                        ? { ...ca, linked_platform_campaigns: selected }
+                        : ca,
+                    ),
+                  })),
+                }
+              : prev,
+          ),
+        showToast,
       )
     },
-    [sessionId, tenantId, id, setCampaign],
+    [sessionId, tenantId, id, setCampaign, showToast],
   )
 
   const removeCampaign = useCallback(async (): Promise<boolean> => {
