@@ -1,68 +1,47 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
-import { getCachedDetail, setCachedDetail } from '../campaign-detail-cache'
 import { fetchCampaignDetail } from '../services/campaign-api'
 import type { CampaignDetail } from '../types'
 
-// Loads one campaign's full detail (cached so view switches are instant). The
-// returned setCampaign lets mutation hooks apply optimistic updates; it keeps
-// the shared detail cache in sync so chat / budget-tracker see fresh data.
+export const campaignDetailKey = (tenantId: string | undefined, campaignId: string | undefined) =>
+  ['campaign-detail', tenantId, campaignId]
+
+// Loads one campaign's full detail. Backed by React Query (shared cache), so
+// view switches and back-navigation render instantly and chat's
+// clearCampaignDetailCache() invalidation triggers a background refetch. The
+// returned setCampaign lets mutation hooks apply confirmed updates — it writes
+// straight into the shared cache so every consumer sees fresh data.
 export function useCampaignDetail(campaignId: string | undefined) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
-  const [campaign, setCampaignState] = useState<CampaignDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const { data, isPending, error, refetch } = useQuery({
+    queryKey: campaignDetailKey(tenantId, campaignId),
+    queryFn: () => fetchCampaignDetail(sessionId!, tenantId!, campaignId!),
+    enabled: !!sessionId && !!tenantId && !!campaignId,
+  })
 
   const setCampaign = useCallback(
     (next: CampaignDetail | null | ((prev: CampaignDetail | null) => CampaignDetail | null)) => {
-      setCampaignState((prev) => {
-        const resolved = typeof next === 'function' ? next(prev) : next
-        if (resolved) setCachedDetail(resolved.campaign_id, resolved)
-        return resolved
-      })
+      queryClient.setQueryData<CampaignDetail | null>(
+        campaignDetailKey(tenantId, campaignId),
+        (prev) => (typeof next === 'function' ? next(prev ?? null) : next)
+      )
     },
-    [],
+    [queryClient, tenantId, campaignId]
   )
 
-  const load = useCallback(
-    async (id: string, opts?: { bust?: boolean }) => {
-      if (!sessionId || !tenantId) return
-      if (!opts?.bust) {
-        const cached = getCachedDetail<CampaignDetail>(id)
-        if (cached) {
-          setCampaignState(cached)
-          setLoading(false)
-          return
-        }
-      }
-      setLoading(true)
-      setError(null)
-      try {
-        const detail = await fetchCampaignDetail(sessionId, tenantId, id)
-        setCachedDetail(id, detail)
-        setCampaignState(detail)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Something went wrong')
-      } finally {
-        setLoading(false)
-      }
-    },
-    [sessionId, tenantId],
-  )
+  const reload = useCallback(async () => {
+    if (campaignId) await refetch()
+  }, [campaignId, refetch])
 
-  useEffect(() => {
-    if (campaignId) void load(campaignId)
-    else {
-      setCampaignState(null)
-      setLoading(false)
-    }
-  }, [campaignId, load])
-
-  const reload = useCallback(() => {
-    if (campaignId) return load(campaignId, { bust: true })
-    return Promise.resolve()
-  }, [campaignId, load])
-
-  return { campaign, setCampaign, loading, error, reload }
+  return {
+    campaign: data ?? null,
+    setCampaign,
+    loading: campaignId ? isPending : false,
+    error: error ? (error instanceof Error ? error.message : 'Something went wrong') : null,
+    reload,
+  }
 }

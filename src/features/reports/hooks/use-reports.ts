@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import type { ClientReport, GenerateReportParams, ReportSummary } from '../types'
@@ -39,15 +40,40 @@ export const useReports = () => {
   const tenantId = activeWorkspace?.tenant_id ?? ''
   const { showToast } = useToast()
 
-  const [reports, setReports] = useState<ReportSummary[]>([])
+  const queryClient = useQueryClient()
+  const listEnabled = !!sessionId && !!tenantId
+
+  // The report list lives in the React Query cache — revisits render instantly
+  // and a background refetch keeps it fresh.
+  const {
+    data: reportsData,
+    isPending: listPending,
+    isError: listError,
+    refetch: refetchReports,
+  } = useQuery({
+    queryKey: ['reports', tenantId],
+    queryFn: () => listReports(sessionId!, tenantId),
+    enabled: listEnabled,
+  })
+  const reports = reportsData ?? []
+  const loadingReports = listEnabled && listPending
+
+  // Polling / generation patch the cached list rows in place.
+  const setReports = useCallback(
+    (updater: (prev: ReportSummary[]) => ReportSummary[]) => {
+      queryClient.setQueryData<ReportSummary[]>(['reports', tenantId], (prev) =>
+        updater(prev ?? [])
+      )
+    },
+    [queryClient, tenantId]
+  )
+
   const [activeReport, setActiveReport] = useState<ClientReport | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [loadingReports, setLoadingReports] = useState(true)
+  // `error` is generation-specific; `listError` (above, from the query) is set when
+  // the report LIST itself fails to load, so the view shows "couldn't load — retry"
+  // instead of the misleading "No reports yet" empty state (Audit #13).
   const [error, setError] = useState<string | null>(null)
-  // Distinct from `error` (which is generation-specific): set when the report LIST
-  // itself fails to load, so the view shows "couldn't load — retry" instead of the
-  // misleading "No reports yet" empty state (Audit #13).
-  const [listError, setListError] = useState(false)
 
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollStartedAt = useRef<number>(0)
@@ -98,7 +124,7 @@ export const useReports = () => {
         }
       }, POLL_INTERVAL_MS)
     },
-    [sessionId, tenantId, stopPolling],
+    [sessionId, tenantId, stopPolling, setReports],
   )
 
   // Stop any in-flight polling when the component unmounts.
@@ -109,25 +135,8 @@ export const useReports = () => {
   const [loadingSpaces, setLoadingSpaces] = useState(false)
 
   const loadReports = useCallback(async () => {
-    if (!tenantId || !sessionId) return
-    setLoadingReports(true)
-    setListError(false)
-    try {
-      const data = await listReports(sessionId, tenantId)
-      setReports(data)
-    } catch {
-      // Don't wipe any reports already on screen; flag the failure so the view
-      // shows a retry affordance instead of "No reports yet".
-      setListError(true)
-      showToast('error', "Couldn't load your reports. Please try again.")
-    } finally {
-      setLoadingReports(false)
-    }
-  }, [sessionId, tenantId, showToast])
-
-  useEffect(() => {
-    loadReports()
-  }, [loadReports])
+    await refetchReports()
+  }, [refetchReports])
 
   const generate = useCallback(
     async (params: GenerateReportParams): Promise<ClientReport | null> => {
@@ -152,7 +161,7 @@ export const useReports = () => {
         return null
       }
     },
-    [sessionId, tenantId, pollReport],
+    [sessionId, tenantId, pollReport, setReports],
   )
 
   const openReport = useCallback(
@@ -194,7 +203,7 @@ export const useReports = () => {
       setReports((prev) => prev.filter((r) => r.report_id !== reportId))
       if (activeReport?.report_id === reportId) setActiveReport(null)
     },
-    [sessionId, tenantId, activeReport, stopPolling],
+    [sessionId, tenantId, activeReport, stopPolling, setReports],
   )
 
   const loadClickUpSpaces = useCallback(async () => {

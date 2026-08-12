@@ -27,6 +27,7 @@ import {
   getStoredSessionId,
 } from '../utils/session'
 import { StorageKey } from '../constants/storage-keys'
+import { queryClient } from '../lib/query-client'
 import { logger } from '../utils/logger'
 import { useToast } from './toast-context'
 
@@ -601,6 +602,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     try {
       await googleAuthService.logoutGoogle(state.sessionId || '')
       clearSessionStorage()
+      // Drop all cached queries — the next user on this browser must not see
+      // the previous user's workspaces/campaigns/reports out of the cache.
+      queryClient.clear()
 
       const newSessionId = generateSessionId()
       storeSessionId(newSessionId)

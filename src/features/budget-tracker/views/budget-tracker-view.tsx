@@ -107,7 +107,13 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
           </div>
         ) : error ? (
           <div className="rounded-xl border border-tertiary bg-secondary/40 p-8 text-center">
-            <p className="paragraph-sm text-secondary">{error}</p>
+            <p className="paragraph-sm text-secondary mb-3">{error}</p>
+            <button
+              onClick={() => void reload()}
+              className="px-3 py-1.5 rounded-lg bg-secondary border border-tertiary paragraph-sm text-primary hover:bg-tertiary transition-colors"
+            >
+              Try again
+            </button>
           </div>
         ) : snapshot ? (
           <div className={`space-y-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>

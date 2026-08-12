@@ -1,120 +1,105 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { fetchBudgetSnapshot, fetchRecommendation, listCampaigns } from '../services/budget-service'
-import type { BudgetRecommendation, BudgetSnapshot, CampaignSummary } from '../types'
+import type { BudgetRecommendation, BudgetSnapshot } from '../types'
 
 export const useBudgetTracker = () => {
   const { sessionId, activeWorkspace } = useSession()
   const { showToast } = useToast()
   const tenantId = activeWorkspace?.tenant_id ?? null
 
-  const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const [mode, setMode] = useState<'monthly' | 'campaign'>('monthly')
   // null = let the backend pick (current/clamped month); "YYYY-MM" = a specific month.
   const [month, setMonth] = useState<string | null>(null)
 
-  const [snapshot, setSnapshot] = useState<BudgetSnapshot | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [spendError, setSpendError] = useState(false)
+  // Campaign list via React Query — shared cache, instant on revisit.
+  const { data: campaignsData, isError: campaignsError } = useQuery({
+    queryKey: ['budget-campaigns', tenantId],
+    queryFn: () => listCampaigns(sessionId!, tenantId!),
+    enabled: !!sessionId && !!tenantId,
+  })
+  const campaigns = campaignsData ?? []
 
-  // Recommendation is expensive (optimizer + Claude, ~15-30s) → lazy, on demand.
-  const [recommendation, setRecommendation] = useState<BudgetRecommendation | null>(null)
-  const [recLoading, setRecLoading] = useState(false)
-
-  // Load campaign list and default to the primary (or first) campaign.
+  // Default to the primary (or first) campaign once the list arrives.
   useEffect(() => {
-    if (!sessionId || !tenantId) return
-    let cancelled = false
-    listCampaigns(sessionId, tenantId)
-      .then((list) => {
-        if (cancelled) return
-        setCampaigns(list)
-        setCampaignId((current) => {
-          if (current && list.some((c) => c.campaign_id === current)) return current
-          const primary = list.find((c) => c.is_primary) ?? list[0]
-          return primary?.campaign_id ?? null
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        showToast('error', "Couldn't load your campaigns. Please try again.")
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [sessionId, tenantId, showToast])
+    if (!campaignsData) return
+    setCampaignId((current) => {
+      if (current && campaignsData.some((c) => c.campaign_id === current)) return current
+      const primary = campaignsData.find((c) => c.is_primary) ?? campaignsData[0]
+      return primary?.campaign_id ?? null
+    })
+  }, [campaignsData])
 
-  // Cancels the in-flight spend fetch when the campaign/mode changes or the user leaves
-  // the page — otherwise a slow (~50s) prod fetch keeps running server-side and piles up.
-  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => {
+    if (campaignsError) showToast('error', "Couldn't load your campaigns. Please try again.")
+  }, [campaignsError, showToast])
 
-  const load = useCallback(async () => {
-    if (!sessionId || !tenantId || !campaignId) return
-    abortRef.current?.abort()
-    const ctrl = new AbortController()
-    abortRef.current = ctrl
-    const { signal } = ctrl
-    setLoading(true)
-    setError(null)
-    setSpendError(false)
+  // Snapshot via React Query, still two-phase for progressive render:
+  // Phase A (fast) — allocations/committed/flexible from the DB, paints immediately.
+  // Phase B (full) — the slow (~50s prod) live-spend fetch fills in after.
+  // Both phases cache, so a revisit shows the complete snapshot instantly.
+  // React Query aborts the queryFn's signal when the key changes or the page
+  // unmounts — same cancel-the-slow-prod-fetch behavior the old AbortController
+  // provided.
+  const monthArg = mode === 'monthly' && month ? month : undefined
+  const snapshotEnabled = !!sessionId && !!tenantId && !!campaignId
 
-    // Phase A — instant: allocations/committed/flexible from the DB (skips the slow
-    // spend fetch) so the page paints immediately.
-    const monthArg = mode === 'monthly' && month ? month : undefined
-    let fast: BudgetSnapshot | null = null
-    try {
-      fast = await fetchBudgetSnapshot(
-        sessionId, tenantId, campaignId,
+  const fastQuery = useQuery({
+    queryKey: ['budget-snapshot', tenantId, campaignId, mode, monthArg ?? null, 'fast'],
+    queryFn: async ({ signal }) => {
+      const snap = await fetchBudgetSnapshot(
+        sessionId!, tenantId!, campaignId!,
         { mode, month: monthArg, display_currency: 'USD', include_spend: false }, signal,
       )
-    } catch {
-      fast = null
-    }
-    if (signal.aborted) return
-    if (fast) setSnapshot(fast)
-    else {
-      setError('Could not load budget data for this campaign.')
-      setLoading(false)
-      return
-    }
-    setLoading(false)
+      if (!snap) throw new Error('Could not load budget data for this campaign.')
+      return snap
+    },
+    enabled: snapshotEnabled,
+  })
 
-    // Phase B — fill in live spend. On failure/timeout, clear the pending state so spend
-    // shows "—" with a retry, rather than spinning on "…" forever.
-    try {
-      const full = await fetchBudgetSnapshot(
-        sessionId, tenantId, campaignId, { mode, month: monthArg, display_currency: 'USD' }, signal,
+  const fullQuery = useQuery({
+    queryKey: ['budget-snapshot', tenantId, campaignId, mode, monthArg ?? null, 'full'],
+    queryFn: async ({ signal }) => {
+      const snap = await fetchBudgetSnapshot(
+        sessionId!, tenantId!, campaignId!,
+        { mode, month: monthArg, display_currency: 'USD' }, signal,
       )
-      if (signal.aborted) return
-      if (full) setSnapshot(full)
-      else {
-        setSpendError(true)
-        setSnapshot((prev) =>
-          prev
-            ? {
-                ...prev,
-                spend_pending: false,
-                // Clear per-row pending too — otherwise the platform rows pulse "…"
-                // forever even though the summary recovers and shows the retry.
-                platforms: prev.platforms.map((p) => ({ ...p, spend_pending: false })),
-              }
-            : prev,
-        )
-      }
-    } catch {
-      if (signal.aborted) return
-      setSpendError(true)
-      setSnapshot((prev) => (prev ? { ...prev, spend_pending: false } : prev))
-    }
-  }, [sessionId, tenantId, campaignId, mode, month])
+      if (!snap) throw new Error('Spend fetch failed.')
+      return snap
+    },
+    enabled: snapshotEnabled,
+    // The spend fetch is expensive — surface the failure (spendError + retry
+    // button) instead of silently re-running a ~50s request.
+    retry: false,
+  })
 
-  useEffect(() => {
-    void load()
-    return () => abortRef.current?.abort()
-  }, [load])
+  const spendError = fullQuery.isError
+  const snapshot: BudgetSnapshot | null = useMemo(() => {
+    if (fullQuery.data) return fullQuery.data
+    const fast = fastQuery.data
+    if (!fast) return null
+    if (!spendError) return fast
+    // Spend failed: clear the pending flags so spend shows "—" with a retry,
+    // rather than the platform rows pulsing "…" forever.
+    return {
+      ...fast,
+      spend_pending: false,
+      platforms: fast.platforms.map((p) => ({ ...p, spend_pending: false })),
+    }
+  }, [fastQuery.data, fullQuery.data, spendError])
+
+  const loading = snapshotEnabled && (fastQuery.isPending || fastQuery.isFetching) && !fullQuery.data
+  const error =
+    fastQuery.isError && !snapshot ? 'Could not load budget data for this campaign.' : null
+
+  const { refetch: refetchFast } = fastQuery
+  const { refetch: refetchFull } = fullQuery
+  const load = useCallback(async () => {
+    await Promise.all([refetchFast(), refetchFull()])
+  }, [refetchFast, refetchFull])
 
   // Exposed campaign setter: reset `month` in the SAME update as the campaign change.
   // A specific month doesn't carry across campaigns (different date ranges); doing this
@@ -125,39 +110,34 @@ export const useBudgetTracker = () => {
     setCampaignId(id)
   }, [])
 
-  // Cache the recommendation per view (campaign + mode) so flipping between Monthly /
-  // Whole-campaign restores the already-generated one instantly instead of re-running the
-  // expensive optimizer. Only the manual refresh button re-fetches. Scoped to mode (not
-  // month) since the optimizer works on the monthly/total budget, identical across months.
-  const recCacheRef = useRef<Record<string, BudgetRecommendation>>({})
-  const recKey = campaignId ? `${campaignId}:${mode}` : null
-  // Track the live view so a slow fetch that resolves after a view-flip doesn't land on
-  // the wrong view (it still gets cached for when the user flips back).
-  const recKeyRef = useRef(recKey)
-  recKeyRef.current = recKey
+  // Recommendation is expensive (optimizer + Claude, ~15-30s) → lazy, on demand.
+  // enabled:false = never auto-fetches; loadRecommendation (the button) triggers it.
+  // Cached per campaign+mode so flipping Monthly/Whole-campaign restores the
+  // already-generated one instantly — and, unlike the old per-mount ref cache,
+  // it now survives leaving and revisiting the page. Scoped to mode (not month)
+  // since the optimizer works on the monthly/total budget, identical across months.
+  const recQuery = useQuery({
+    queryKey: ['budget-recommendation', tenantId, campaignId, mode],
+    queryFn: async () =>
+      (await fetchRecommendation(sessionId!, tenantId!, campaignId!, mode)) ??
+      ({ available: false, reason: 'Could not generate a recommendation.' } as BudgetRecommendation),
+    enabled: false,
+    staleTime: Infinity,
+    retry: false,
+  })
 
-  // On view change, show the cached recommendation for this view (or nothing if none yet).
-  useEffect(() => {
-    setRecommendation(recKey ? (recCacheRef.current[recKey] ?? null) : null)
-  }, [recKey])
+  const recommendation: BudgetRecommendation | null =
+    recQuery.data ??
+    (recQuery.isError
+      ? { available: false, reason: 'Could not generate a recommendation.' }
+      : null)
+  const recLoading = recQuery.isFetching
 
+  const { refetch: refetchRec } = recQuery
   const loadRecommendation = useCallback(async () => {
     if (!sessionId || !tenantId || !campaignId) return
-    const key = `${campaignId}:${mode}`
-    setRecLoading(true)
-    try {
-      const rec =
-        (await fetchRecommendation(sessionId, tenantId, campaignId, mode)) ??
-        ({ available: false, reason: 'Could not generate a recommendation.' } as BudgetRecommendation)
-      recCacheRef.current[key] = rec
-      if (recKeyRef.current === key) setRecommendation(rec)
-    } catch {
-      if (recKeyRef.current === key)
-        setRecommendation({ available: false, reason: 'Could not generate a recommendation.' })
-    } finally {
-      setRecLoading(false)
-    }
-  }, [sessionId, tenantId, campaignId, mode])
+    await refetchRec()
+  }, [sessionId, tenantId, campaignId, refetchRec])
 
   return {
     campaigns,
