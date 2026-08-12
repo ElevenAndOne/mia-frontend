@@ -149,11 +149,6 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
   if (!model) return null
   const { from, span, windowStart, phases, colourOf, workByPerson } = model
   const pct = (n: number) => (n / span) * 100
-  const posOf = (a: (typeof assignments)[number]) => {
-    const s = dayIndex(a.start_date!, horizonStart) - from
-    const e = dayIndex(a.end_date!, horizonStart) - from
-    return { left: pct(s), width: Math.max(pct(e - s + 1), 1.2) }
-  }
 
   const flights = assignments.filter((a) => a.kind === 'flight' && a.scheduled && a.start_date)
   const overdue = new Set(result.production_overdue ?? [])
@@ -165,8 +160,31 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
     (a, b) => (workByPerson[b.name]?.length ?? 0) - (workByPerson[a.name]?.length ?? 0)
   )
 
-  const ticks: number[] = []
-  for (let i = 0; i < span; i += 7) ticks.push(i)
+  const dayHeader = (
+    <div className="flex">
+      <div className={`${LABEL_W} shrink-0`} />
+      <div
+        className="flex-1 grid gap-px"
+        style={{ gridTemplateColumns: `repeat(${span}, minmax(0,1fr))` }}
+      >
+        {Array.from({ length: span }, (_, i) => {
+          const d = new Date(windowStart.getTime() + i * 86_400_000)
+          const we = d.getDay() === 0 || d.getDay() === 6
+          return (
+            <span
+              key={i}
+              className={`text-center leading-tight ${we ? 'text-tertiary/35' : 'text-tertiary'}`}
+            >
+              <span className="block text-[9px]">{'MTWTFSS'[(d.getDay() + 6) % 7]}</span>
+              <span className="block text-[10px] tabular-nums">{d.getDate()}</span>
+            </span>
+          )
+        })}
+      </div>
+      <div className={`${TAIL_W} shrink-0`} />
+    </div>
+  )
+
   const todayOffset = dayIndex(new Date().toISOString().slice(0, 10), horizonStart) - from
 
   return (
@@ -187,20 +205,13 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
 
       <div className="overflow-x-auto -mx-1 px-1">
         <div className="relative" style={{ minWidth: `${Math.max(span * DAY_PX + 206, 640)}px` }}>
-          {/* week gridlines — drawn once behind both bands so a bar can be read
-              against a date without counting pixels */}
+          {/* the day cells carry the grid now; this is just the today line,
+              drawn behind both bands */}
           <div
             className="absolute inset-y-0 pointer-events-none"
             style={{ left: '150px', right: '56px' }}
             aria-hidden="true"
           >
-            {ticks.map((t) => (
-              <span
-                key={`grid-${t}`}
-                className="absolute top-0 bottom-0 w-px bg-tertiary/25"
-                style={{ left: `${pct(t)}%` }}
-              />
-            ))}
             {todayOffset >= 0 && todayOffset < span && (
               <span
                 className="absolute top-0 bottom-0 w-px bg-red-400/70"
@@ -233,29 +244,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                 </p>
               )}
 
-              {/* day-letter header */}
-              <div className="flex">
-                <div className={`${LABEL_W} shrink-0`} />
-                <div
-                  className="flex-1 grid gap-px"
-                  style={{ gridTemplateColumns: `repeat(${span}, minmax(0,1fr))` }}
-                >
-                  {Array.from({ length: span }, (_, i) => {
-                    const d = new Date(windowStart.getTime() + i * 86_400_000)
-                    const we = d.getDay() === 0 || d.getDay() === 6
-                    return (
-                      <span
-                        key={i}
-                        className={`text-center leading-tight ${we ? 'text-tertiary/35' : 'text-tertiary'}`}
-                      >
-                        <span className="block text-[9px]">{'MTWTFSS'[(d.getDay() + 6) % 7]}</span>
-                        <span className="block text-[10px] tabular-nums">{d.getDate()}</span>
-                      </span>
-                    )
-                  })}
-                </div>
-                <div className={`${TAIL_W} shrink-0`} />
-              </div>
+              {dayHeader}
 
               {calendar.map((person) => {
                 const work = workByPerson[person.name] ?? []
@@ -360,6 +349,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                 </span>
               )}
             </div>
+            {dayHeader}
           </div>
           {phases.map((phase) => {
             const rows = flights.filter((f) => splitName(f.name).phase === phase)
@@ -378,24 +368,38 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                   </div>
                 </div>
                 {rows.map((f) => {
-                  const p = posOf(f)
+                  const s0 = dayIndex(f.start_date!, horizonStart) - from
+                  const e0 = dayIndex(f.end_date!, horizonStart) - from
+                  const label = shortLabel(splitName(f.name).label)
                   return (
-                    <div key={f.task_id} className="flex items-center min-h-[26px]">
+                    <div key={f.task_id} className="flex items-center py-0.5">
                       <div className={`${LABEL_W} shrink-0 pr-2 text-xs text-primary truncate`}>
-                        {shortLabel(splitName(f.name).label)}
+                        {label}
                       </div>
-                      <div className="relative flex-1 h-[22px]">
-                        <span className="absolute inset-x-0 top-1/2 h-px bg-tertiary/30" />
-                        <span
-                          className="absolute top-1/2 -translate-y-1/2 h-[9px] rounded-sm"
-                          style={{
-                            left: `${p.left}%`,
-                            width: `${p.width}%`,
-                            background: colourOf(phase),
-                          }}
-                          title={`${splitName(f.name).label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`}
-                          aria-label={splitName(f.name).label}
-                        />
+                      <div
+                        className="flex-1 grid gap-px"
+                        style={{ gridTemplateColumns: `repeat(${span}, minmax(0,1fr))` }}
+                      >
+                        {Array.from({ length: span }, (_, i) => {
+                          const live = i >= s0 && i <= e0
+                          const day = new Date(windowStart.getTime() + i * 86_400_000)
+                          return (
+                            <span
+                              key={i}
+                              className={`h-[14px] rounded-[2px] ${live ? '' : 'bg-tertiary/[0.07]'}`}
+                              style={live ? { background: colourOf(phase) } : undefined}
+                              title={
+                                live
+                                  ? `${label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`
+                                  : day.toLocaleDateString('en-ZA', {
+                                      weekday: 'short',
+                                      day: 'numeric',
+                                      month: 'short',
+                                    })
+                              }
+                            />
+                          )
+                        })}
                       </div>
                       <div className={`${TAIL_W} shrink-0`} />
                     </div>
