@@ -69,6 +69,10 @@ function StatChip({
 
 const PHASE_COLOURS = ['#4f6d9a', '#6b5b9a', '#3f7a63', '#96602f', '#8a4f6d']
 const QC_COLOUR = 'var(--brand-600, #6366f1)'
+// Scheduled work reads as one thing in the team grid. Phase colours live in
+// the flight band only — reusing them here collided with the availability
+// palette (phase blue vs public-holiday blue) and made the grid unreadable.
+const WORK_COLOUR = '#7c6cf0'
 const DAY_PX = 30
 const LABEL_W = 'w-[150px]'
 const TAIL_W = 'w-14'
@@ -283,15 +287,18 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                         })
                         if (job) {
                           const { phase, label } = splitName(job.name)
+                          const forPhase = phase ? ` · ${phase}` : ''
                           const isQc = job.kind === 'qc'
                           return (
                             <span
                               key={i}
-                              className="h-5 rounded-[2px] flex items-center justify-center text-[7px] font-semibold text-white"
-                              style={{ background: isQc ? QC_COLOUR : colourOf(phase) }}
+                              className={`h-5 rounded-[2px] flex items-center justify-center text-[7px] font-semibold text-white ${
+                                isQc ? 'ring-1 ring-inset ring-white/40' : ''
+                              }`}
+                              style={{ background: isQc ? QC_COLOUR : WORK_COLOUR }}
                               title={`${person.name} — ${isQc ? 'signs off on' : 'builds'} ${label}${
                                 isQc || !fmtEffort(job.points) ? '' : ` (${fmtEffort(job.points)})`
-                              } · ${when}`}
+                              }${forPhase} · ${when}`}
                             >
                               {isQc ? 'QC' : '•'}
                             </span>
@@ -412,21 +419,23 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[10px] text-tertiary">
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 text-[10px] text-tertiary">
         <span className="flex items-center gap-1.5">
-          <i className="w-3 h-1.5 rounded-sm bg-red-500/55" /> already booked
+          <span className="uppercase tracking-wide text-tertiary/70">This campaign</span>
+          <i className="w-3 h-3 rounded-[2px]" style={{ background: WORK_COLOUR }} /> build
+          <i
+            className="w-3 h-3 rounded-[2px] ring-1 ring-inset ring-white/40"
+            style={{ background: QC_COLOUR }}
+          />{' '}
+          sign-off
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="w-3 h-1.5 rounded-sm bg-amber-400/70" /> on leave
-        </span>
-        <span className="flex items-center gap-1.5">
-          <i className="w-3 h-1.5 rounded-sm bg-sky-400/50" /> public holiday
-        </span>
-        <span className="flex items-center gap-1.5">
-          <i className="w-3 h-1.5 rounded-sm bg-emerald-500/20" /> free
-        </span>
-        <span className="flex items-center gap-1.5">
-          <i className="w-3 h-2 rounded-sm" style={{ background: QC_COLOUR }} /> sign-off
+          <span className="uppercase tracking-wide text-tertiary/70">Everything else</span>
+          <i className="w-3 h-3 rounded-[2px] bg-emerald-500/15" /> free
+          <i className="w-3 h-3 rounded-[2px] bg-red-500/45" /> booked in ClickUp
+          <i className="w-3 h-3 rounded-[2px] bg-amber-400/60" /> on leave
+          <i className="w-3 h-3 rounded-[2px] bg-sky-400/40" /> public holiday
+          <i className="w-3 h-3 rounded-[2px] border border-tertiary/25" /> weekend / not in
         </span>
       </div>
     </SectionCard>
