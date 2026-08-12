@@ -1,14 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { AppShell } from '../components/app-shell'
 import { WorkspaceSettingsDetail } from '../features/workspace/components/workspace-settings-detail'
 import { WorkspaceSettingsOverview } from '../features/workspace/components/workspace-settings-overview'
 import { useWorkspaceSettingsPage } from '../features/workspace/hooks/use-workspace-settings-page'
-import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const WorkspaceSettingsPage = () => {
   const navigate = useNavigate()
-  const { onNewWorkspace, onIntegrationsClick, onCampaignsClick, onReportsClick, onCreativeStudioClick, onHelpClick, onLogout, onWorkspaceSettings } =
-    useAppShellActions()
   const {
     selectedWorkspaceId,
     selectedWorkspace,
@@ -60,16 +56,7 @@ const WorkspaceSettingsPage = () => {
   const handleBack = () => navigate(-1)
 
   return (
-    <AppShell
-      onNewWorkspace={onNewWorkspace}
-      onIntegrationsClick={onIntegrationsClick}
-      onCampaignsClick={onCampaignsClick}
-      onReportsClick={onReportsClick}
-      onCreativeStudioClick={onCreativeStudioClick}
-      onHelpClick={onHelpClick}
-      onLogout={onLogout}
-      onWorkspaceSettings={onWorkspaceSettings}
-    >
+    <>
       {!selectedWorkspaceId ? (
         <WorkspaceSettingsOverview
           items={overviewItems}
@@ -126,7 +113,7 @@ const WorkspaceSettingsPage = () => {
           onLeaveWorkspace={handleLeaveWorkspace}
         />
       )}
-    </AppShell>
+    </>
   )
 }
 

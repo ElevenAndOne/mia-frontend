@@ -1,4 +1,3 @@
-import { AppShell } from '../components/app-shell'
 import { ChatView } from '../features/chat/views/chat-view'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
@@ -8,23 +7,13 @@ const ChatPage = () => {
     onIntegrationsClick,
     onCampaignsClick,
     onReportsClick,
-    onCreativeStudioClick,
     onHelpClick,
     onLogout,
     onWorkspaceSettings,
   } = useAppShellActions()
 
   return (
-    <AppShell
-      onNewWorkspace={onNewWorkspace}
-      onIntegrationsClick={onIntegrationsClick}
-      onCampaignsClick={onCampaignsClick}
-      onReportsClick={onReportsClick}
-      onCreativeStudioClick={onCreativeStudioClick}
-      onHelpClick={onHelpClick}
-      onLogout={onLogout}
-      onWorkspaceSettings={onWorkspaceSettings}
-    >
+    <>
       <div className="w-full h-full">
         <ChatView
           onIntegrationsClick={onIntegrationsClick}
@@ -36,7 +25,7 @@ const ChatPage = () => {
           onNewWorkspace={onNewWorkspace}
         />
       </div>
-    </AppShell>
+    </>
   )
 }
 

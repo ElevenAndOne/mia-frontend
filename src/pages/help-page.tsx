@@ -1,30 +1,17 @@
 import { useNavigate } from 'react-router-dom'
-import { AppShell } from '../components/app-shell'
 import { TopBar } from '../components/top-bar'
 import { useToast } from '../contexts/toast-context'
-import { useAppShellActions } from '../hooks/use-app-shell-actions'
 
 const HelpPage = () => {
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const { onNewWorkspace, onIntegrationsClick, onCampaignsClick, onReportsClick, onCreativeStudioClick, onHelpClick, onLogout, onWorkspaceSettings } =
-    useAppShellActions()
 
   const handleComingSoon = (feature: string) => {
     showToast('info', `${feature} coming soon!`)
   }
 
   return (
-    <AppShell
-      onNewWorkspace={onNewWorkspace}
-      onIntegrationsClick={onIntegrationsClick}
-      onCampaignsClick={onCampaignsClick}
-      onReportsClick={onReportsClick}
-      onCreativeStudioClick={onCreativeStudioClick}
-      onHelpClick={onHelpClick}
-      onLogout={onLogout}
-      onWorkspaceSettings={onWorkspaceSettings}
-    >
+    <>
       <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
         <TopBar title="Help" onBack={() => navigate(-1)} className="border-b border-tertiary" />
 
@@ -129,7 +116,7 @@ const HelpPage = () => {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   )
 }
 

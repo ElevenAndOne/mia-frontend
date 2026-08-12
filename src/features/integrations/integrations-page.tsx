@@ -23,7 +23,7 @@ import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import CsvDatasetsCard from './views/csv-datasets-card'
 import { TopBar } from '../../components/top-bar'
-import { Spinner } from '../../components/spinner'
+import { Skeleton, SkeletonRows } from '../../components/skeleton'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { logger } from '../../utils/logger'
 import { trackEvent } from '../../utils/tracking'
@@ -1223,8 +1223,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
           {/* Loading State */}
           {loading && integrations.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <Spinner size="lg" />
+            <div className="max-w-3xl mx-auto w-full animate-pulse space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-20 rounded-lg" />
+                <Skeleton className="h-20 rounded-lg" />
+              </div>
+              <SkeletonRows rows={5} />
             </div>
           )}
 
