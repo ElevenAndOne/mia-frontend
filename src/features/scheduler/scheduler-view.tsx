@@ -158,6 +158,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
   const flights = assignments.filter((a) => a.kind === 'flight' && a.scheduled && a.start_date)
   const overdue = new Set(result.production_overdue ?? [])
   const overdueCount = flights.filter((f) => overdue.has(f.action_id ?? '')).length
+  const totalWork = Object.values(workByPerson).flat().length
   // Everyone in the pod, busy first — seeing who sat free while someone else
   // was buried is half the point of this view.
   const calendar = [...(result.resource_calendar ?? [])].sort(
@@ -223,6 +224,14 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                   Who&rsquo;s doing it
                 </span>
               </div>
+              {/* An empty grid is a real answer, not a failure — say which one. */}
+              {totalWork === 0 && (
+                <p className="text-xs text-tertiary mb-2 max-w-2xl">
+                  {overdueCount > 0
+                    ? `Nobody is building anything for this campaign — all ${overdueCount} flight${overdueCount === 1 ? '' : 's'} ${overdueCount === 1 ? 'was' : 'were'} already due before today, so there was nothing left to plan. Below is the team's availability.`
+                    : 'Nobody is building anything for this campaign — everything here is already live. Below is the team’s availability.'}
+                </p>
+              )}
 
               {/* day-letter header */}
               <div className="flex">
