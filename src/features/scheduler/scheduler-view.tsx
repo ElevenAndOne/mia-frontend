@@ -157,6 +157,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
 
   const flights = assignments.filter((a) => a.kind === 'flight' && a.scheduled && a.start_date)
   const overdue = new Set(result.production_overdue ?? [])
+  const overdueCount = flights.filter((f) => overdue.has(f.action_id ?? '')).length
   // Everyone in the pod, busy first — seeing who sat free while someone else
   // was buried is half the point of this view.
   const calendar = [...(result.resource_calendar ?? [])].sort(
@@ -170,7 +171,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
   return (
     <SectionCard className="overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
-        <h3 className="text-md font-semibold text-primary">The plan</h3>
+        <h3 className="text-md font-semibold text-primary">Delivery plan</h3>
         <span className="text-xs text-tertiary font-mono">
           {flights.length} flight{flights.length === 1 ? '' : 's'} ·{' '}
           {Object.values(workByPerson).flat().filter((w) => w.kind === 'prep').length} build
@@ -195,93 +196,27 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
             {ticks.map((t) => (
               <span
                 key={`grid-${t}`}
-                className="absolute top-0 bottom-0 w-px bg-tertiary/15"
+                className="absolute top-0 bottom-0 w-px bg-tertiary/25"
                 style={{ left: `${pct(t)}%` }}
               />
             ))}
+            {todayOffset >= 0 && todayOffset < span && (
+              <span
+                className="absolute top-0 bottom-0 w-px bg-red-400/70"
+                style={{ left: `${pct(todayOffset)}%` }}
+                title="Today"
+              />
+            )}
           </div>
 
-          {/* date ruler */}
-          <div className="flex">
-            <div className={`${LABEL_W} shrink-0`} />
-            <div className="relative flex-1 h-5 border-b border-secondary">
-              {ticks.map((t) => (
-                <span
-                  key={t}
-                  className="absolute top-0 h-full pl-1 text-[10px] leading-5 text-tertiary border-l border-secondary"
-                  style={{ left: `${pct(t)}%` }}
-                >
-                  {new Date(windowStart.getTime() + t * 86_400_000).toLocaleDateString('en-ZA', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
-                </span>
-              ))}
-              {todayOffset >= 0 && todayOffset < span && (
-                <span
-                  className="absolute top-0 bottom-0 w-px bg-red-400/80 z-10"
-                  style={{ left: `${pct(todayOffset)}%` }}
-                  title="Today"
-                />
-              )}
-            </div>
-            <div className={`${TAIL_W} shrink-0`} />
-          </div>
-
-          {/* band 1 — the campaign */}
-          {phases.map((phase) => {
-            const rows = flights.filter((f) => splitName(f.name).phase === phase)
-            if (rows.length === 0) return null
-            return (
-              <div key={phase} className="mt-3">
-                <div className="flex">
-                  <div className={`${LABEL_W} shrink-0`} />
-                  <div className="flex-1 flex items-baseline gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                      {phase}
-                    </span>
-                    <span className="text-[10px] text-tertiary">
-                      {rows.length} flight{rows.length === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                </div>
-                {rows.map((f) => {
-                  const p = posOf(f)
-                  return (
-                    <div key={f.task_id} className="flex items-center min-h-[26px]">
-                      <div className={`${LABEL_W} shrink-0 pr-2 text-xs text-primary truncate`}>
-                        {shortLabel(splitName(f.name).label)}
-                        {overdue.has(f.action_id ?? '') && (
-                          <span className="ml-1 text-[10px] text-warning">overdue</span>
-                        )}
-                      </div>
-                      <div className="relative flex-1 h-[22px]">
-                        <span className="absolute inset-x-0 top-1/2 h-px bg-tertiary/30" />
-                        <span
-                          className="absolute top-1/2 -translate-y-1/2 h-[9px] rounded-sm"
-                          style={{
-                            left: `${p.left}%`,
-                            width: `${p.width}%`,
-                            background: colourOf(phase),
-                          }}
-                          title={`${splitName(f.name).label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`}
-                          aria-label={splitName(f.name).label}
-                        />
-                      </div>
-                      <div className={`${TAIL_W} shrink-0`} />
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-
-          {/* band 2 — the team, as a day grid.
+          {/* band 1 — who's doing it. Leads, because it is the answer the
+              page exists to give; the campaign's own dates are already known.
+              Its day header doubles as the shared axis for the band below.
               Whole-day cells rather than positioned bars: a job can never
               render as an unreadable sliver, and every cell lines up with the
               date above it. */}
           {calendar.length > 0 && (
-            <div className="mt-5 pt-3 border-t border-secondary">
+            <div>
               <div className="flex mb-1.5">
                 <div className={`${LABEL_W} shrink-0`} />
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
@@ -403,6 +338,64 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
               })}
             </div>
           )}
+          {/* band 2 — when it runs */}
+          <div className="mt-5 pt-3 border-t border-secondary">
+            <div className="flex mb-1">
+              <div className={`${LABEL_W} shrink-0`} />
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                When it runs
+              </span>
+              {overdueCount > 0 && (
+                <span className="ml-2 text-[11px] text-warning">
+                  · {overdueCount} started before today, so nothing was built for them
+                </span>
+              )}
+            </div>
+          </div>
+          {phases.map((phase) => {
+            const rows = flights.filter((f) => splitName(f.name).phase === phase)
+            if (rows.length === 0) return null
+            return (
+              <div key={phase} className="mt-3 pt-2 border-t border-secondary/30">
+                <div className="flex">
+                  <div className={`${LABEL_W} shrink-0`} />
+                  <div className="flex-1 flex items-baseline gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                      {phase}
+                    </span>
+                    <span className="text-[10px] text-tertiary">
+                      {rows.length} flight{rows.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                </div>
+                {rows.map((f) => {
+                  const p = posOf(f)
+                  return (
+                    <div key={f.task_id} className="flex items-center min-h-[26px]">
+                      <div className={`${LABEL_W} shrink-0 pr-2 text-xs text-primary truncate`}>
+                        {shortLabel(splitName(f.name).label)}
+                      </div>
+                      <div className="relative flex-1 h-[22px]">
+                        <span className="absolute inset-x-0 top-1/2 h-px bg-tertiary/30" />
+                        <span
+                          className="absolute top-1/2 -translate-y-1/2 h-[9px] rounded-sm"
+                          style={{
+                            left: `${p.left}%`,
+                            width: `${p.width}%`,
+                            background: colourOf(phase),
+                          }}
+                          title={`${splitName(f.name).label} runs ${fmtDate(f.start_date)} – ${fmtDate(f.end_date)}${f.budget > 0 ? ` · ${fmtCurrency(f.budget, currency)}` : ''}`}
+                          aria-label={splitName(f.name).label}
+                        />
+                      </div>
+                      <div className={`${TAIL_W} shrink-0`} />
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+
         </div>
       </div>
 
