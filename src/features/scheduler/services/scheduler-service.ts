@@ -33,7 +33,12 @@ export const listCampaigns = async (
 export const runScheduler = async (
   sessionId: string,
   tenantId: string,
-  params: { campaign_id: string; horizon_start?: string; horizon_days?: number }
+  params: {
+    campaign_id: string
+    horizon_start?: string
+    horizon_days?: number
+    include_open_hires?: boolean
+  }
 ): Promise<SchedulerRunResult> => {
   const response = await apiFetch(`${base(tenantId)}/run`, {
     method: 'POST',

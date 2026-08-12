@@ -429,6 +429,71 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
   )
 }
 
+function HiringCase({
+  base,
+  withHires,
+}: {
+  base: SchedulerRunResult
+  withHires: SchedulerRunResult
+}) {
+  const placed = (r: SchedulerRunResult) =>
+    (r.assignments ?? []).filter((a) => a.kind === 'flight' && a.scheduled)
+  const before = placed(base)
+  const after = placed(withHires)
+  const gained = after.length - before.length
+
+  // Which of the extra hands actually picked anything up.
+  const hires = new Set(
+    (withHires.assignments ?? [])
+      .filter((a) => a.kind !== 'flight' && a.scheduled)
+      .flatMap((a) => a.assigned_people)
+      .filter((n) => /^Open /.test(n))
+  )
+  const wonBack = after.filter((a) => !before.some((b) => b.task_id === a.task_id))
+  const extraBudget = wonBack.reduce((sum, f) => sum + (f.budget || 0), 0)
+
+  return (
+    <SectionCard className="border-l-2 border-l-utility-brand-600">
+      <h3 className="text-md font-semibold text-primary mb-1">
+        {gained > 0
+          ? `Filling the open seats would place ${gained} more flight${gained === 1 ? '' : 's'}`
+          : 'Filling the open seats wouldn’t change this campaign'}
+      </h3>
+      {gained > 0 ? (
+        <>
+          <p className="text-sm text-tertiary mb-3">
+            Same campaign, same dates, solved as if the unfilled junior seats were filled:{' '}
+            <strong className="text-primary">{after.length}</strong> flights placed instead of{' '}
+            {before.length}
+            {extraBudget > 0 ? `, covering a further ${fmtCurrency(extraBudget, 'ZAR')}` : ''}.
+          </p>
+          <div className="space-y-1">
+            {wonBack.map((f) => (
+              <div key={f.task_id} className="text-sm">
+                <span className="text-primary">
+                  {splitName(f.name).phase} · {shortLabel(splitName(f.name).label)}
+                </span>
+                <span className="text-tertiary"> — would go ahead</span>
+              </div>
+            ))}
+          </div>
+          {hires.size > 0 && (
+            <p className="text-xs text-tertiary mt-2">
+              Work picked up by: {[...hires].join(', ')}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-tertiary">
+          The same {before.length} flights get placed either way, so more juniors wouldn’t unblock
+          this one — the limit here is something else, usually the dates or a skill nobody in the
+          pod has. Try it on a busier campaign.
+        </p>
+      )}
+    </SectionCard>
+  )
+}
+
 function DroppedList({ result }: { result: SchedulerRunResult }) {
   const flights = (result.assignments ?? []).filter((a) => a.kind === 'flight')
   const dropped = flights.filter((f) => !f.scheduled)
@@ -561,6 +626,9 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
     result,
     error,
     run,
+    whatIf,
+    isWhatIfRunning,
+    runWhatIf,
     availability,
     isLoadingAvailability,
     loadAvailability,
@@ -641,6 +709,14 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                 </select>
                 <Button variant="primary" onClick={handleRun} disabled={!selected || isRunning}>
                   {isRunning ? 'Scheduling…' : 'Build schedule'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => selected && void runWhatIf(selected.campaign_id)}
+                  disabled={!selected || isRunning || isWhatIfRunning}
+                  title="Solve this campaign again as if the unfilled junior seats were filled"
+                >
+                  {isWhatIfRunning ? 'Comparing…' : 'What if we hired?'}
                 </Button>
               </div>
               {selected && (
@@ -734,6 +810,7 @@ const SchedulerView = ({ onBack }: SchedulerViewProps) => {
                 )}
               </div>
 
+              {whatIf && <HiringCase base={result} withHires={whatIf} />}
               <PlanTimeline result={result} currency={currency} />
               <DroppedList result={result} />
 

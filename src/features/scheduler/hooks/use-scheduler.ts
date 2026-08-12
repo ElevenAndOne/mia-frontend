@@ -70,6 +70,10 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
   const [availability, setAvailability] = useState<AvailabilityResult | null>(null)
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false)
 
+  // The hiring case: same campaign solved as if the unfilled seats were filled.
+  const [whatIf, setWhatIf] = useState<SchedulerRunResult | null>(null)
+  const [isWhatIfRunning, setIsWhatIfRunning] = useState(false)
+
   const [isApplying, setIsApplying] = useState(false)
   const [applyResult, setApplyResult] = useState<ApplyResult | null>(null)
 
@@ -85,6 +89,7 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
           horizon_days: horizonDays,
         })
         setResult(res)
+        setWhatIf(null)
         refreshRuns()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Scheduling failed')
@@ -93,6 +98,34 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
       }
     },
     [sessionId, tenantId, refreshRuns]
+  )
+
+  const runWhatIf = useCallback(
+    async (campaignId: string) => {
+      if (!sessionId || !tenantId) return
+      try {
+        setIsWhatIfRunning(true)
+        setError(null)
+        // Needs a baseline to compare against, so solve normally first if the
+        // page hasn't already.
+        let base = result
+        if (!base?.success) {
+          base = await runScheduler(sessionId, tenantId, { campaign_id: campaignId })
+          setResult(base)
+        }
+        const withHires = await runScheduler(sessionId, tenantId, {
+          campaign_id: campaignId,
+          include_open_hires: true,
+        })
+        setWhatIf(withHires)
+        refreshRuns()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not run the hiring comparison')
+      } finally {
+        setIsWhatIfRunning(false)
+      }
+    },
+    [sessionId, tenantId, result, refreshRuns]
   )
 
   const loadAvailability = useCallback(
@@ -131,6 +164,7 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
 
   const reset = useCallback(() => {
     setResult(null)
+    setWhatIf(null)
     setError(null)
     setApplyResult(null)
   }, [])
@@ -146,6 +180,9 @@ export const useScheduler = (sessionId: string | null, tenantId?: string | null)
     result,
     error,
     run,
+    whatIf,
+    isWhatIfRunning,
+    runWhatIf,
     availability,
     isLoadingAvailability,
     loadAvailability,
