@@ -2,8 +2,11 @@ import { Suspense, lazy } from 'react'
 import { AppRoutes } from './routes'
 import LoadingScreen from './components/loading-screen'
 import { ToastContainer } from './components/toast'
-import CreateWorkspaceModal from './features/workspace/views/create-workspace-modal'
 import { useAppController } from './hooks/use-app-controller'
+
+// Lazy: keeps the modal (and the overlay/framer-motion graph behind it) out of
+// the entry chunk — it only loads the first time a user actually opens it.
+const CreateWorkspaceModal = lazy(() => import('./features/workspace/views/create-workspace-modal'))
 
 const InsightsDatePickerModal = lazy(
   () => import('./features/insights/views/insights-date-picker-modal')
@@ -57,12 +60,16 @@ function App() {
         />
       </Suspense>
 
-      <CreateWorkspaceModal
-        isOpen={createWorkspaceModal.isOpen}
-        required={createWorkspaceModal.required}
-        onClose={createWorkspaceModal.onClose}
-        onSuccess={createWorkspaceModal.onSuccess}
-      />
+      {createWorkspaceModal.isOpen && (
+        <Suspense fallback={null}>
+          <CreateWorkspaceModal
+            isOpen={createWorkspaceModal.isOpen}
+            required={createWorkspaceModal.required}
+            onClose={createWorkspaceModal.onClose}
+            onSuccess={createWorkspaceModal.onSuccess}
+          />
+        </Suspense>
+      )}
 
       {waAlertData && (
         <Suspense fallback={null}>

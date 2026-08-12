@@ -21,26 +21,8 @@ Sentry.init({
         return !sensitiveRoutes.some((route) => url.includes(route))
       },
     }),
-    Sentry.replayIntegration({
-      // Maximum privacy protection
-      maskAllText: true, // Mask ALL text content
-      maskAllInputs: true, // Mask all input fields
-      blockAllMedia: true, // Block all images/videos
-      // Additional privacy: Block specific elements
-      block: [
-        '.sentry-block', // Elements with this class
-        '[data-sensitive]', // Elements with this attribute
-        '.user-email',
-        '.account-name',
-        '.workspace-name',
-      ],
-      // Don't record network requests/responses (may contain API data)
-      networkDetailAllowUrls: [],
-      // Mask specific network request/response headers
-      networkCaptureBodies: false,
-      networkRequestHeaders: [],
-      networkResponseHeaders: [],
-    }),
+    // Session Replay is added post-init via a dynamic import (see below) so the
+    // rrweb recorder ships as its own chunk instead of inflating the entry.
   ],
   // Performance Monitoring - Lower rates for privacy and cost
   tracesSampleRate: tracesRate,
@@ -97,17 +79,24 @@ Sentry.init({
     return breadcrumb
   },
 })
+
+// Attach Session Replay after first paint — its own chunk, same sample rates
+// as before (they're set in Sentry.init above, not on the integration).
+void import('./sentry-replay').then((m) => m.installReplay()).catch(() => {})
 // =============================================================================
 
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/query-client'
 import App from './App'
 import { SessionProvider } from './contexts/session-context'
 import { ThemeProvider } from './contexts/theme-context'
 import { ToastProvider } from './contexts/toast-context'
 import { OnboardingProvider } from './features/onboarding/onboarding-context'
-import { OverlayProvider } from './features/overlay'
+// Direct import (not the ./features/overlay barrel): the barrel re-exports all
+// five overlay components, which would drag framer-motion into the entry chunk.
+import { OverlayProvider } from './features/overlay/overlay-context'
 import './index.css'
 
 // iPhone 16 Pro viewport optimization
@@ -118,24 +107,6 @@ if (viewport) {
     'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no'
   )
 }
-
-// Create React Query client with smart defaults
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Data is fresh for 5 minutes - won't refetch if already cached
-      staleTime: 5 * 60 * 1000,
-      // Keep unused data in cache for 10 minutes
-      gcTime: 10 * 60 * 1000,
-      // Don't refetch on window focus (annoying for users)
-      refetchOnWindowFocus: false,
-      // Retry failed requests once
-      retry: 1,
-      // Don't refetch when component remounts if data exists
-      refetchOnMount: false,
-    },
-  },
-})
 
 // NOTE: /report-print authenticates via a signed, report-scoped print token in the
 // URL (Audit #4 Phase 5) and is not behind ProtectedRoute, so — unlike the old ?sid=

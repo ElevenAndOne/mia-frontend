@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Figtree:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Fonts are loaded from index.html (<link rel="preconnect"> + stylesheet) —
+   an @import here chained the font request behind the bundled CSS download. */
 @import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
 @import './styles/color-primitives.css';
@@ -386,5 +387,20 @@ body.full-bleed #root {
      padding instead — see report-view's print padding. */
   @page {
     margin: 0;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────
+   Users with "reduce motion" set at the OS level get near-instant transitions
+   instead of bounces/pulses/slides. 0.01ms (not 0) keeps transition/animation
+   end events firing so JS that waits on them doesn't hang. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
