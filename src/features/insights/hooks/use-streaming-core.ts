@@ -90,22 +90,25 @@ export function useStreamingCore(config?: StreamingConfig): UseStreamingCoreRetu
       const target = receivedRef.current.length
       const current = displayIndexRef.current
 
-      if (current < target) {
-        // Fixed step per tick for consistent, smooth text flow
-        displayIndexRef.current = Math.min(current + CHARS_PER_TICK, target)
-
-        setState((prev) => ({
-          ...prev,
-          text: receivedRef.current.slice(0, displayIndexRef.current),
-        }))
-      } else if (streamDoneRef.current) {
-        // All text revealed and stream is done — signal completion
+      if (streamDoneRef.current) {
+        // Stream is done — flush whatever is still buffered in one paint and
+        // signal completion. Dripping out the tail at the steady pace kept
+        // long answers "typing" for many seconds after the model finished.
+        displayIndexRef.current = target
         clearRevealInterval()
         setState((prev) => ({
           ...prev,
           text: receivedRef.current,
           isStreaming: false,
           isComplete: true,
+        }))
+      } else if (current < target) {
+        // Fixed step per tick for consistent, smooth text flow
+        displayIndexRef.current = Math.min(current + CHARS_PER_TICK, target)
+
+        setState((prev) => ({
+          ...prev,
+          text: receivedRef.current.slice(0, displayIndexRef.current),
         }))
       }
       // If current === target but stream not done, interval keeps running

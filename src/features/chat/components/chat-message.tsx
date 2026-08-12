@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { Check } from '../../../components/icon/check'
 import { Copy01 } from '../../../components/icon/copy-01'
@@ -22,7 +23,7 @@ interface ChatMessageProps {
   images?: string[]
 }
 
-export const ChatMessage = ({
+export const ChatMessage = memo(function ChatMessage({
   role,
   content,
   isStreaming = false,
@@ -34,7 +35,7 @@ export const ChatMessage = ({
   feedback = null,
   onFeedback,
   images = [],
-}: ChatMessageProps) => {
+}: ChatMessageProps) {
   const { copied, copy } = useClipboard()
 
   const handleFeedback = (value: 1 | -1) => {
@@ -148,6 +149,6 @@ export const ChatMessage = ({
       )}
     </div>
   )
-}
+})
 
 export default ChatMessage

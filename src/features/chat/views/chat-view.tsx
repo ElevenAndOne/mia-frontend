@@ -4,6 +4,7 @@ import { BackButton } from '../../../components/back-button'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
+import ChatMessageList from '../components/chat-message-list'
 import { CanvasPane } from '../components/canvas-pane'
 import { Sheet } from '../../overlay'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
@@ -270,41 +271,13 @@ export const ChatView = ({
 
             <div ref={scrollContainerRef} onScroll={handleScroll} onWheel={handleWheel} className="flex-1 overflow-y-auto min-h-0">
               <div className="max-w-3xl mx-auto px-4 py-6">
-                {(() => {
-                  const visible = messages.filter((m) => !m.hidden)
-                  const lastUserIdx = visible.reduce(
-                    (acc, m, i) => (m.role === 'user' ? i : acc),
-                    -1
-                  )
-                  return visible.map((message, idx) => (
-                    <div key={message.id} ref={idx === lastUserIdx ? lastUserMsgRef : undefined}>
-                      <ChatMessage
-                        role={message.role}
-                        content={message.content}
-                        images={message.images}
-                        pendingAction={message.pendingAction}
-                        actionStatus={message.actionStatus}
-                        actionResult={message.actionResult}
-                        onConfirmAction={
-                          message.pendingAction
-                            ? (override) => handleConfirmAction(message.id, override)
-                            : undefined
-                        }
-                        onCancelAction={
-                          message.pendingAction
-                            ? () => handleCancelAction(message.id)
-                            : undefined
-                        }
-                        feedback={message.feedback}
-                        onFeedback={
-                          message.role === 'assistant' && message.historyId != null
-                            ? (rating) => handleFeedback(message.id, message.historyId!, rating)
-                            : undefined
-                        }
-                      />
-                    </div>
-                  ))
-                })()}
+                <ChatMessageList
+                  messages={messages}
+                  lastUserMsgRef={lastUserMsgRef}
+                  onConfirmAction={handleConfirmAction}
+                  onCancelAction={handleCancelAction}
+                  onFeedback={handleFeedback}
+                />
 
                 {/* Dots while Claude is thinking (tools running, no text yet) */}
                 {isLoading && !streamingContent && (

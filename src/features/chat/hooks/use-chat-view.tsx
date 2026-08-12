@@ -100,6 +100,14 @@ export const useChatView = () => {
   const displayIndexRef = useRef(0)
   const streamDoneRef = useRef(false)
   const revealIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Resolves handleSubmit's "wait for the final flush" promise the moment the
+  // reveal interval stops — replaces the old 40ms polling loop that watched
+  // revealIntervalRef go null.
+  const revealDoneRef = useRef<(() => void) | null>(null)
+  const resolveRevealDone = useCallback(() => {
+    revealDoneRef.current?.()
+    revealDoneRef.current = null
+  }, [])
   const REVEAL_INTERVAL_MS = 40  // ~25 ticks/sec (same as Quick Insights)
   const CHARS_PER_TICK = 5       // 125 chars/sec
   // Auto-scroll only when the user is already near the bottom — don't yank them
@@ -138,6 +146,7 @@ export const useChatView = () => {
       if (actionPollIntervalRef.current) clearInterval(actionPollIntervalRef.current)
       if (actionPollTimeoutRef.current) clearTimeout(actionPollTimeoutRef.current)
       if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+      resolveRevealDone()
     }
   }, [])
 
@@ -427,6 +436,7 @@ export const useChatView = () => {
       displayIndexRef.current = 0
       streamDoneRef.current = false
       if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+      resolveRevealDone()
 
       trackEvent(sessionId, 'chat_message_sent', 'home', {
         has_images: pendingImages.length > 0,
@@ -447,14 +457,26 @@ export const useChatView = () => {
       // Start reveal interval — fires every 40ms INDEPENDENT of chunk arrival.
       // Each tick reveals CHARS_PER_TICK chars from the accumulated buffer.
       // When streaming is done, flushes all remaining text immediately so there
-      // is zero trailing lag after Claude finishes generating.
+      // is zero trailing lag after Claude finishes generating. (At 125 chars/sec
+      // a steady drip kept "typing" a long answer for 15s+ after the model was
+      // already done — flush-on-done is what the original design intended.)
       revealIntervalRef.current = setInterval(() => {
         const target = receivedRef.current.length
         const current = displayIndexRef.current
         const remaining = target - current
 
-        if (remaining > 0) {
-          // Always drip at steady pace — even after streaming ends, keep the consistent reveal
+        if (streamDoneRef.current) {
+          // Stream finished — flush whatever is left in one go, then stop.
+          if (remaining > 0 && isMountedRef.current) {
+            displayIndexRef.current = target
+            setStreamingContent(receivedRef.current)
+            if (shouldAutoScrollRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+          }
+          if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
+          revealIntervalRef.current = null
+          resolveRevealDone()
+        } else if (remaining > 0) {
+          // Drip at a steady pace while the model is still generating.
           displayIndexRef.current = current + Math.min(CHARS_PER_TICK, remaining)
           if (isMountedRef.current) {
             setStreamingContent(receivedRef.current.slice(0, displayIndexRef.current))
@@ -463,10 +485,6 @@ export const useChatView = () => {
             // what fought the user when they tried to scroll up.
             if (shouldAutoScrollRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
           }
-        } else if (streamDoneRef.current) {
-          // Buffer fully caught up and streaming is done — stop
-          if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
-          revealIntervalRef.current = null
         }
       }, REVEAL_INTERVAL_MS)
 
@@ -539,17 +557,12 @@ export const useChatView = () => {
           abortController.signal
         )
 
-        // Signal done — interval will flush remaining text and stop itself
+        // Signal done — the next interval tick flushes remaining text and stops.
+        // Wait for that flush before snapping to the final markdown message.
         streamDoneRef.current = true
-
-        // Wait for interval to finish flushing before snapping to final markdown
         await new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (revealIntervalRef.current === null) {
-              clearInterval(check)
-              resolve()
-            }
-          }, REVEAL_INTERVAL_MS)
+          if (revealIntervalRef.current === null) resolve()
+          else revealDoneRef.current = resolve
         })
 
         const finalContent = accumulated || 'Sorry, I had trouble processing your question. Please try again.'
@@ -568,6 +581,7 @@ export const useChatView = () => {
           clearInterval(revealIntervalRef.current)
           revealIntervalRef.current = null
         }
+        resolveRevealDone()
         if (error instanceof Error && error.name === 'AbortError') {
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
         } else {

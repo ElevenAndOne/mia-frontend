@@ -110,12 +110,17 @@ export function useBuilderChat() {
       if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
       revealIntervalRef.current = setInterval(() => {
         const remaining = receivedRef.current.length - displayIndexRef.current
-        if (remaining > 0) {
-          displayIndexRef.current += Math.min(CHARS_PER_TICK, remaining)
-          if (isMountedRef.current) setStreaming(receivedRef.current.slice(0, displayIndexRef.current))
-        } else if (streamDoneRef.current) {
+        if (streamDoneRef.current) {
+          // Stream finished — flush the tail in one paint instead of dripping it out.
+          if (remaining > 0 && isMountedRef.current) {
+            displayIndexRef.current = receivedRef.current.length
+            setStreaming(receivedRef.current)
+          }
           if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
           revealIntervalRef.current = null
+        } else if (remaining > 0) {
+          displayIndexRef.current += Math.min(CHARS_PER_TICK, remaining)
+          if (isMountedRef.current) setStreaming(receivedRef.current.slice(0, displayIndexRef.current))
         }
       }, REVEAL_INTERVAL_MS)
 
