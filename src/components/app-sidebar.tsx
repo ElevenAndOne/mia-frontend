@@ -12,6 +12,7 @@ import { SidebarWorkspaceButton } from '../features/shell/views/sidebar-workspac
 import { ChevronLeftDouble } from './icon/chevron-left-double'
 import { ChevronRight } from './icon/chevron-right'
 import { ChevronRightDouble } from './icon/chevron-right-double'
+import { Calendar } from './icon/calendar'
 import { Edit03 } from './icon/edit-03'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
@@ -25,8 +26,13 @@ import { Settings01 } from './icon/settings-01'
 import { Stars01 } from './icon/stars-01'
 import { Sun } from './icon/sun'
 import { Target01 } from './icon/target-01'
+import { Users01 } from './icon/users-01'
 import { Wallet01 } from './icon/wallet-01'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
+
+// Mia Create is hidden from the nav for now (2026-08-12). The page, its route
+// and its feature flag are untouched — flip this back to show it again.
+const SHOW_MIA_CREATE = false
 import { UserAvatar } from './user-avatar'
 
 const COLLAPSE_KEY = 'mia:sidebar-collapsed'
@@ -98,10 +104,14 @@ export const AppSidebar = () => {
   const path = location.pathname
   const activeKey = path.startsWith('/integrations')
     ? 'integrations'
-    : path.startsWith('/campaigns')
+    : path.startsWith('/posts')
+      ? 'posts'
+      : path.startsWith('/campaigns')
       ? 'campaigns'
-      : path.startsWith('/creative-studio')
-        ? 'mia-create'
+      : path.startsWith('/scheduler')
+        ? 'scheduler'
+        : path.startsWith('/creative-studio')
+          ? 'mia-create'
         : path.startsWith('/reports')
           ? 'reports'
           : path.startsWith('/budget-tracker')
@@ -176,7 +186,21 @@ export const AppSidebar = () => {
             active={activeKey === 'campaigns'}
             onClick={actions.onCampaignsClick}
           />
-          {isEnabled('mia-creative-studio') && (
+          <NavItem
+            icon={<Calendar size={18} />}
+            label="Posts"
+            collapsed={collapsed}
+            active={activeKey === 'posts'}
+            onClick={actions.onPostsClick}
+          />
+          <NavItem
+            icon={<Users01 size={18} />}
+            label="Scheduler"
+            collapsed={collapsed}
+            active={activeKey === 'scheduler'}
+            onClick={() => navigate('/scheduler')}
+          />
+          {SHOW_MIA_CREATE && isEnabled('mia-creative-studio') && (
             <NavItem
               icon={<Stars01 size={18} />}
               label="Mia Create"
