@@ -9,9 +9,12 @@ export interface TextSelection {
  * Capture a text highlight inside a container, for highlight-to-edit.
  *
  * Two capture paths feed the same state:
- * - `onMouseUp` (attach to the container) — the instant desktop path.
+ * - mouse release (the container's `onMouseUp`, plus a document-level mouseup for
+ *   drags that end outside it) — the desktop path. Capture waits for release so
+ *   the native highlight stays visible for the whole drag.
  * - a debounced document `selectionchange` listener — the only reliable signal on
- *   touch, where long-press selection never dispatches mouseup.
+ *   touch, where long-press selection never dispatches mouseup. Suppressed while
+ *   a mouse button is held, so it can't open the toolbar mid-drag.
  *
  * selectionchange only ever sets/updates a selection, never clears one: focusing
  * the edit toolbar's input collapses the document selection, and that must not
@@ -21,6 +24,9 @@ export interface TextSelection {
 export function useTextSelection(containerRef: RefObject<HTMLElement | null>, enabled = true) {
   const [selection, setSelection] = useState<TextSelection | null>(null)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // True while a mouse button is held: the selectionchange path must not capture
+  // mid-drag (the toolbar would open — and steal focus — before the user releases).
+  const mouseIsDown = useRef(false)
 
   const readSelection = useCallback((): TextSelection | null => {
     const sel = window.getSelection()
@@ -49,6 +55,8 @@ export function useTextSelection(containerRef: RefObject<HTMLElement | null>, en
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
       // Debounced past the drag-handle churn of a touch selection.
       debounceTimer.current = setTimeout(() => {
+        // Mid-drag on desktop: keep the native highlight, capture on release.
+        if (mouseIsDown.current) return
         const next = readSelection()
         if (next) setSelection(next)
       }, 300)
@@ -57,6 +65,30 @@ export function useTextSelection(containerRef: RefObject<HTMLElement | null>, en
     return () => {
       document.removeEventListener('selectionchange', onChange)
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    }
+  }, [enabled, readSelection])
+
+  // Track the mouse button document-wide, and capture on release — a drag that
+  // starts in the container but ends outside it never fires the container's
+  // own mouseup. Touch long-press never dispatches these, so it keeps the
+  // selectionchange path above. readSelection() already scopes to the container,
+  // so unrelated mouseups (menus, buttons) are no-ops.
+  useEffect(() => {
+    if (!enabled) return
+    const onDown = () => {
+      mouseIsDown.current = true
+    }
+    const onUp = () => {
+      mouseIsDown.current = false
+      const next = readSelection()
+      if (next) setSelection(next)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('mouseup', onUp)
+      mouseIsDown.current = false
     }
   }, [enabled, readSelection])
 

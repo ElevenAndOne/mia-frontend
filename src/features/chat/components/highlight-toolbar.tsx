@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Copy01 } from '../../../components/icon/copy-01'
 import { MagicWand02 } from '../../../components/icon/magic-wand-02'
 import { Microphone01 } from '../../../components/icon/microphone-01'
 import { Send02 } from '../../../components/icon/send-02'
+import { useClipboard } from '../../../hooks/use-clipboard'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
 
 interface HighlightToolbarProps {
@@ -40,6 +42,9 @@ export const HighlightToolbar = ({
   const [instruction, setInstruction] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  // Copy the highlighted span (e.g. to paste into Figma). Needed here because the
+  // input autofocus collapses the native selection, so ⌘C no longer has it.
+  const { copied, copy } = useClipboard()
   // Below md the toolbar docks to the bottom edge instead of anchoring to the
   // selection — anchored popovers fight the on-screen keyboard and iOS's callout.
   const docked = useIsMobile()
@@ -150,6 +155,15 @@ export const HighlightToolbar = ({
         <span className="paragraph-sm text-quaternary italic ml-auto truncate max-w-[150px]">
           “{selectionText}”
         </span>
+        <button
+          type="button"
+          onClick={() => copy(selectionText)}
+          aria-label="Copy highlighted text"
+          title={copied ? 'Copied' : 'Copy highlighted text'}
+          className="w-7 h-7 -my-1 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors shrink-0"
+        >
+          <Copy01 size={14} className={copied ? 'text-utility-brand-600' : ''} />
+        </button>
       </div>
 
       <div className="flex items-center gap-2 rounded-xl border border-tertiary bg-secondary focus-within:border-utility-brand-600 pl-3 pr-1.5 py-1.5">
