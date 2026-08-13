@@ -52,25 +52,47 @@ export const useGoldInsights = (sessionId: string | null) => {
     refresh()
   }, [refresh])
 
-  // Poll every 30s while a run is in flight ('triggered', 'running', or a
-  // background re-analysis behind an already-completed report)
+  // The structured report is built server-side in the background on first
+  // fetch; poll briefly for it, but capped so a permanently-failing build
+  // doesn't poll (and re-trigger) forever.
+  const reportPollsRef = useRef(0)
+
+  // Poll every 30s while a run is in flight ('triggered', 'running', a
+  // background re-analysis behind an already-completed report, or a completed
+  // report whose structured rendition is still being built)
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current)
       pollRef.current = null
     }
 
+    const awaitingReport = (d: GoldInsightsResponse | null) =>
+      d?.status === 'completed' &&
+      d.summary != null &&
+      d.report == null &&
+      reportPollsRef.current < 5
+
     const inFlight = (d: GoldInsightsResponse | null) =>
-      d?.status === 'triggered' || d?.status === 'running' || d?.refresh_in_progress === true
+      d?.status === 'triggered' ||
+      d?.status === 'running' ||
+      d?.refresh_in_progress === true ||
+      awaitingReport(d)
 
     if (inFlight(data)) {
       pollRef.current = setInterval(async () => {
         const result = await pollOnce()
         // On a failed poll (result null) keep polling — the run is still going.
-        if (result && !inFlight(result)) {
-          if (pollRef.current) {
-            clearInterval(pollRef.current)
-            pollRef.current = null
+        if (result) {
+          if (result.report != null) {
+            reportPollsRef.current = 0
+          } else if (awaitingReport(result)) {
+            reportPollsRef.current += 1
+          }
+          if (!inFlight(result)) {
+            if (pollRef.current) {
+              clearInterval(pollRef.current)
+              pollRef.current = null
+            }
           }
         }
       }, 30000)
@@ -82,7 +104,7 @@ export const useGoldInsights = (sessionId: string | null) => {
         pollRef.current = null
       }
     }
-  }, [data?.status, data?.refresh_in_progress, pollOnce])
+  }, [data?.status, data?.refresh_in_progress, data?.report, pollOnce])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 

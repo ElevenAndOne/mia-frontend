@@ -1,0 +1,84 @@
+/* Design tokens for the gold ML report, extracted from the Figma file
+   "MIA Gold Data" (LATNzuudiGa53V8HzcNiZL): light values from the
+   "Data Breakdown" page frame, dark values from the
+   "ML Prediction Report — Components" section. Scoped so the rest of the
+   app keeps its own token system. */
+
+.gold-report {
+  --gr-surface: #f0f0f0; /* cards */
+  --gr-surface-2: #e7e7e7; /* chips, code, stat/impact blocks */
+  --gr-line: rgb(0 0 0 / 0.08); /* hairline borders & dividers */
+  --gr-heading: #000000;
+  --gr-body: #000000;
+  --gr-muted: #68686f; /* same in both themes, per the file */
+  --gr-subtle: #9a9aa5; /* page subtitle; dark body */
+
+  --gr-purple: #7c6cf0;
+  --gr-purple-text: #8f80f5;
+  --gr-purple-tint: rgb(124 108 240 / 0.14);
+  --gr-purple-border: rgb(124 108 240 / 0.4);
+
+  --gr-green: #3ddc97;
+  --gr-green-tint: rgb(61 220 151 / 0.1);
+  --gr-green-border: rgb(61 220 151 / 0.35);
+
+  --gr-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+:root.dark .gold-report {
+  --gr-surface: #16171d;
+  --gr-surface-2: #1c1d24;
+  --gr-line: rgb(255 255 255 / 0.08);
+  --gr-heading: #f2f2f4;
+  --gr-body: #9a9aa5;
+}
+
+/* Card surfaces — radius 14 everywhere in the design. */
+.gr-card {
+  background: var(--gr-surface);
+  border: 1px solid var(--gr-line);
+  border-radius: 14px;
+}
+
+/* Inner blocks: KPI chips, inline code, stat & impact blocks. */
+.gr-inner {
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-line);
+}
+
+/* KPI chip / inline code text treatment. */
+.gr-chip {
+  font-family: var(--gr-mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: var(--gr-muted);
+  border-radius: 5px;
+  padding: 3px 7px;
+}
+
+.gr-code {
+  font-family: var(--gr-mono);
+  font-size: 11.5px;
+  line-height: 17px;
+  color: var(--gr-muted);
+  border-radius: 5px;
+  padding: 0 6px;
+}
+
+/* Section eyebrow — Hanken Grotesk 800 11px, +1px tracking, in the design. */
+.gr-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gr-muted);
+}
+
+/* Prediction box (green) — bg 10%, border 35%, radius 9. */
+.gr-predict {
+  background: var(--gr-green-tint);
+  border: 1px solid var(--gr-green-border);
+  border-radius: 9px;
+}

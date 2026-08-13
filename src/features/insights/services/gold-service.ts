@@ -1,9 +1,13 @@
 import { apiFetch } from '../../../utils/api'
+import type { StructuredGoldReport } from '../components/gold-report/types'
 
 export interface GoldInsightsResponse {
   success: boolean
   status: 'no_data' | 'triggered' | 'running' | 'completed' | 'failed'
   summary: string | null
+  // Structured rendition for the designed report page; null while the backend
+  // builds it in the background (fall back to the markdown summary).
+  report?: StructuredGoldReport | null
   created_at: string | null
   job_status: string | null
   failure_reason: string | null

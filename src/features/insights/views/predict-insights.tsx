@@ -4,6 +4,7 @@ import { TopBar } from '../../../components/top-bar'
 import { Spinner } from '../../../components/spinner'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { useGoldInsights } from '../hooks/use-gold-insights'
+import { StructuredReport } from '../components/gold-report/structured-report'
 import { StorageKey } from '../../../constants/storage-keys'
 import { trackEvent } from '../../../utils/tracking'
 
@@ -68,7 +69,11 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
         )}
 
         {!isLoading && !error && data && (
-          <div className="space-y-6 max-w-3xl mx-auto w-full">
+          <div
+            className={`space-y-6 mx-auto w-full ${
+              data.status === 'completed' && data.report ? 'max-w-5xl' : 'max-w-3xl'
+            }`}
+          >
             {data.status === 'triggered' && (
               <div className="bg-secondary border border-utility-warning-300 rounded-lg p-6 flex items-center gap-4">
                 <Spinner size="md" variant="primary" />
@@ -106,18 +111,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
             )}
 
             {data.status === 'completed' && (
-              <div className="bg-secondary border border-secondary rounded-lg p-6">
-                <h2 className="label-bg text-primary mb-4 flex items-center gap-2">
-                  <svg
-                    className="w-5 h-5 text-utility-warning-600"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
-                  </svg>
-                  ML Prediction Report
-                </h2>
+              <div>
                 {data.refresh_in_progress && (
                   <div className="flex items-center gap-2 mb-4">
                     <Spinner size="sm" variant="primary" />
@@ -126,11 +120,32 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                     </p>
                   </div>
                 )}
-                <ChatMarkdown
-                  content={data.summary ?? ''}
-                  className="paragraph-md text-secondary leading-relaxed"
-                />
-                <div className="flex items-center justify-between mt-4">
+
+                {data.report ? (
+                  <StructuredReport report={data.report} />
+                ) : (
+                  // Fallback: structured rendition is still being built server-side
+                  // (or this report predates it) — show the raw markdown report.
+                  <div className="bg-secondary border border-secondary rounded-lg p-6">
+                    <h2 className="label-bg text-primary mb-4 flex items-center gap-2">
+                      <svg
+                        className="w-5 h-5 text-utility-warning-600"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
+                      </svg>
+                      ML Prediction Report
+                    </h2>
+                    <ChatMarkdown
+                      content={data.summary ?? ''}
+                      className="paragraph-md text-secondary leading-relaxed"
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-tertiary">
                   {data.created_at && (
                     <p className="paragraph-xs text-tertiary">
                       Last analysed: {formatDaysAgo(data.created_at)}

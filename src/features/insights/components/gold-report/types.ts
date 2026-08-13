@@ -1,0 +1,47 @@
+// Mirrors REPORT_SCHEMA in mia-backend services/gold_report_structuring.py
+
+export interface GoldStatCallout {
+  label: string
+  stats: { value: string; comparison: string | null }[]
+}
+
+export interface GoldInsight {
+  category: string
+  /** 1-based rank among the model's ranked drivers; null for exceptions/caveats. */
+  driver_rank: number | null
+  title: string
+  body: string
+  kpis: string[]
+  aside: string | null
+  stat_callout: GoldStatCallout | null
+}
+
+export interface GoldRecommendation {
+  id: string
+  tag: string
+  title: string
+  body: string
+  prediction: string
+}
+
+export interface GoldDeliverable {
+  name: string
+  title: string
+  objective: string
+  creative_direction: string[]
+  strategy: string
+  expected_impact: { kpi: string; direction: 'up' | 'down'; explanation: string }[]
+}
+
+export interface StructuredGoldReport {
+  intro: string | null
+  executive_summary: {
+    headline: string
+    narrative: string
+    highlighted_campaigns: string[]
+    next_steps: string[]
+  }
+  insights: GoldInsight[]
+  recommendations: GoldRecommendation[]
+  deliverables: GoldDeliverable[]
+}
