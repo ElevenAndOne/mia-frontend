@@ -68,6 +68,7 @@ export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => 
         carousel={spec.format === 'carousel'}
         play={isMotion(spec)}
         badge={motionBadge(spec)}
+        clampPortrait={4 / 5}
         className="bg-[#F0F2F5] text-[#65676B] dark:bg-[#18191A] dark:text-[#B0B3B8]"
         {...media}
       />
@@ -127,6 +128,7 @@ export const InstagramPreview = ({ spec, brandName, ...media }: PreviewProps) =>
       carousel={spec.format === 'carousel'}
       play={isMotion(spec)}
       badge={motionBadge(spec)}
+      clampPortrait={4 / 5}
       className="bg-[#FAFAFA] text-[#737373] border-y border-[#EFEFEF] dark:bg-[#111111] dark:text-[#A8A8A8] dark:border-[#1C1C1C]"
       {...media}
     />

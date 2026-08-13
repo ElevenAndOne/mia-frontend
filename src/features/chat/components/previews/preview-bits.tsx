@@ -45,6 +45,13 @@ interface MediaSlotProps extends MediaHandlers {
   play?: boolean
   /** Small corner chip over the media, e.g. "Animation". */
   badge?: string
+  /**
+   * Honest-feed clamp: images taller (narrower) than this width/height ratio are
+   * shown center-cropped AT this ratio — matching how the platform's feed actually
+   * displays them (FB/IG cap portrait display around 4:5). Without it a tall poster
+   * stretches the whole preview, which the real feed would never do.
+   */
+  clampPortrait?: number
 }
 
 /**
@@ -61,6 +68,7 @@ export const MediaSlot = ({
   cover = false,
   play = false,
   badge,
+  clampPortrait,
   onUploadMedia,
   onRemoveMedia,
   isUploadingMedia = false,
@@ -68,6 +76,7 @@ export const MediaSlot = ({
 }: MediaSlotProps) => {
   const [slide, setSlide] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const [ratios, setRatios] = useState<Record<string, number>>({})
   const fileRef = useRef<HTMLInputElement>(null)
   const count = media.length
 
@@ -125,16 +134,38 @@ export const MediaSlot = ({
             }
           />
         ) : (
-          <img
-            src={media[slide]}
-            alt={`Creative slide ${slide + 1} of ${count}`}
-            className={`${cover ? 'w-full h-full object-cover' : 'w-full h-auto block'} ${
-              count > 1 ? 'cursor-pointer' : ''
-            }`}
-            draggable={false}
-            // Instagram behavior: tapping the creative advances the carousel.
-            onClick={() => count > 1 && setSlide((s) => (s + 1) % count)}
-          />
+          (() => {
+            const naturalRatio = ratios[media[slide]]
+            const clamped =
+              !cover &&
+              clampPortrait != null &&
+              naturalRatio != null &&
+              naturalRatio < clampPortrait
+            return (
+              <img
+                src={media[slide]}
+                alt={`Creative slide ${slide + 1} of ${count}`}
+                title={clamped ? 'Shown as the feed will crop it — the full image is kept' : undefined}
+                onLoad={(e) => {
+                  const el = e.currentTarget
+                  if (el.naturalWidth && el.naturalHeight) {
+                    setRatios((r) => ({ ...r, [el.src]: el.naturalWidth / el.naturalHeight }))
+                  }
+                }}
+                className={`${
+                  cover
+                    ? 'w-full h-full object-cover'
+                    : clamped
+                      ? 'w-full block object-cover'
+                      : 'w-full h-auto block'
+                } ${count > 1 ? 'cursor-pointer' : ''}`}
+                style={clamped ? { aspectRatio: String(clampPortrait) } : undefined}
+                draggable={false}
+                // Instagram behavior: tapping the creative advances the carousel.
+                onClick={() => count > 1 && setSlide((s) => (s + 1) % count)}
+              />
+            )
+          })()
         )
       ) : (
         <div

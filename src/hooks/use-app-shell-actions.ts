@@ -14,6 +14,7 @@ export const useAppShellActions = () => {
     onNewChat: () => navigate('/home', { state: { newChat: true } }),
     onIntegrationsClick: () => navigate('/integrations'),
     onCampaignsClick: () => navigate('/campaigns'),
+    onPostsClick: () => navigate('/posts'),
     onCreativeStudioClick: () => navigate('/creative-studio'),
     onPredictClick: () => navigate('/predict'),
     onReportsClick: () => navigate('/reports'),

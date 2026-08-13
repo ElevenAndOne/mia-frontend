@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Calendar } from './icon/calendar'
 import { Check } from './icon/check'
 import { ChevronRight } from './icon/chevron-right'
 import { File02 } from './icon/file-02'
@@ -102,6 +103,17 @@ export const MobileNavigationMainView = ({
             <span className="paragraph-sm">Campaigns</span>
           </button>
         )}
+
+        <button
+          onClick={() => {
+            onClose()
+            navigate('/posts')
+          }}
+          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+        >
+          <Calendar size={20} className="text-tertiary" />
+          <span className="paragraph-sm">Posts</span>
+        </button>
 
         {onReportsClick && (
           <button

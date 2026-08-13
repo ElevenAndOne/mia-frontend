@@ -15,6 +15,7 @@ import type { CanvasDocument, DocumentSelection } from '../services/chat-service
 import { canvaApi } from '../services/canva-api'
 import { AddToCampaign } from './add-to-campaign'
 import { CanvaPicker } from './canva-picker'
+import { SchedulePost } from './schedule-post'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
 import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
@@ -299,6 +300,7 @@ export const CanvasPane = ({
                 <ReverseLeft size={16} />
               </button>
             )}
+            <SchedulePost doc={doc} spec={spec} conversationId={conversationId} />
             <AddToCampaign doc={doc} spec={spec} conversationId={conversationId} />
             <button
               type="button"
