@@ -400,6 +400,24 @@ export const miaCreateApi = {
     return res.json()
   },
 
+  // Assets produced by ONE job — how a chat image card resolves its images (with
+  // vision scores) once the job it is watching completes.
+  listJobAssets: async (sessionId: string, tenantId: string, jobId: string): Promise<{ assets: MiaAsset[] }> => {
+    const url = `${miaBase()}/assets?tenant_id=${encodeURIComponent(tenantId)}&job_id=${encodeURIComponent(jobId)}&limit=12`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { assets: [] }
+    return res.json()
+  },
+
+  // Everything generated in ONE chat conversation — restores a reopened
+  // conversation's image cards (image_job events aren't persisted in chat history).
+  listConversationAssets: async (sessionId: string, tenantId: string, conversationId: string): Promise<{ assets: MiaAsset[] }> => {
+    const url = `${miaBase()}/assets?tenant_id=${encodeURIComponent(tenantId)}&conversation_id=${encodeURIComponent(conversationId)}&limit=60`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { assets: [] }
+    return res.json()
+  },
+
   makePlacementSet: async (
     sessionId: string,
     tenantId: string,

@@ -7,6 +7,8 @@ interface ChatHistoryMessage {
   history_id?: number
   /** This user's existing vote on the message: 1 / -1 / null. */
   feedback?: 1 | -1 | null
+  /** Turn timestamp (ISO) — used to re-anchor generated images to their turns. */
+  at?: string | null
 }
 
 export interface AttachedDocument {
@@ -63,6 +65,7 @@ interface ChatRequestPayload {
   workspace_hint?: string
   document_context?: DocumentContext  // set when the user is editing a canvas document
   asset_context?: AssetContext // set when the user is editing a campaign asset (builder canvas)
+  edit_target_asset_id?: string // image pinned in chat — the next generation edits THIS one
   no_track?: boolean // throwaway turn (campaign slide-over edits) — skip Recent Chats
 }
 
@@ -314,9 +317,26 @@ export interface AssetUpdatedEvent {
   value: string
 }
 
+/**
+ * Emitted when Mia starts (or finishes) generating creative in chat — anchors an image
+ * card in the message. `generating` jobs are polled via the Mia Create job/set endpoints;
+ * `done` tools (composite / placement set) already carry their finished images.
+ */
+export interface ImageJobEvent {
+  tool: 'generate_creative' | 'composite_creative' | 'make_placement_set'
+  status: 'generating' | 'done'
+  job_id?: string | null
+  job_ids?: string[] | null
+  variant_group?: string | null
+  num_images?: number
+  aspect_ratio?: string | null
+  destination?: string | null
+  cdn_urls?: string[] | null
+}
+
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; history_id?: number; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; error?: string }) => void,
+  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; history_id?: number; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; image_job?: ImageJobEvent; error?: string }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
@@ -334,6 +354,7 @@ export const sendChatMessageStreaming = async (
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
     ...(payload.asset_context ? { asset_context: payload.asset_context } : {}),
+    ...(payload.edit_target_asset_id ? { edit_target_asset_id: payload.edit_target_asset_id } : {}),
     ...(payload.no_track ? { no_track: true } : {}),
   }
 

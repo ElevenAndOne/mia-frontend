@@ -12,6 +12,7 @@ import QuickActions from '../components/quick-actions'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { FeedbackModal } from '../components/feedback-modal'
+import { XClose } from '../../../components/icon/x-close'
 import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
 import { useChatView } from '../hooks/use-chat-view.tsx'
@@ -91,6 +92,8 @@ export const ChatView = ({
     activeCampaign,
     handleCampaignChange,
     canvas,
+    editTarget,
+    setEditTarget,
   } = useChatView()
 
   // When a campaign is active, the date picker shows campaign dates and is non-interactive
@@ -278,6 +281,12 @@ export const ChatView = ({
                   onConfirmAction={handleConfirmAction}
                   onCancelAction={handleCancelAction}
                   onFeedback={handleFeedback}
+                  pinnedAssetId={editTarget?.asset_id ?? null}
+                  onPinAsset={(asset) =>
+                    setEditTarget(
+                      asset ? { asset_id: asset.asset_id, cdn_url: asset.cdn_url } : null
+                    )
+                  }
                 />
 
                 {/* Dots while Claude is thinking (tools running, no text yet) */}
@@ -336,6 +345,31 @@ export const ChatView = ({
                   )}
                   Open in Canvas{docCount > 1 ? ` · ${docCount}` : ''}
                 </button>
+              </div>
+            )}
+
+            {/* Pinned image: the next message edits THIS one rather than the newest.
+                Shown here because the pin outlives the message it was set from. */}
+            {editTarget && (
+              <div className="flex justify-center px-3 pb-1.5 shrink-0">
+                <div className="flex items-center gap-2 rounded-full border border-brand bg-brand-primary pl-2 pr-3 py-1.5">
+                  <img
+                    src={editTarget.cdn_url}
+                    alt=""
+                    className="w-6 h-6 rounded object-cover"
+                  />
+                  <span className="paragraph-xs text-brand-secondary font-medium">
+                    Editing this image
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditTarget(null)}
+                    className="text-brand-secondary hover:text-primary"
+                    aria-label="Stop editing this image"
+                  >
+                    <XClose size={14} />
+                  </button>
+                </div>
               </div>
             )}
 

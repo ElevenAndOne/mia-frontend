@@ -5,7 +5,9 @@ import { Copy01 } from '../../../components/icon/copy-01'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
 import ActionConfirmCard from './action-confirm-card'
+import ChatImageCard, { type ChatImageJob } from './chat-image-card'
 import type { PendingAction } from '../services/chat-service'
+import type { MiaAsset } from '../../creative-studio/creative-studio-api'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
@@ -21,6 +23,11 @@ interface ChatMessageProps {
   /** Present only when the message has a persisted chat_history row to vote on. */
   onFeedback?: (feedback: 1 | -1) => void
   images?: string[]
+  /** Creative generated during this turn — rendered as polling image cards. */
+  imageJobs?: ChatImageJob[]
+  /** Asset pinned thread-wide as the edit target. */
+  pinnedAssetId?: string | null
+  onPinAsset?: (asset: MiaAsset | null) => void
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -35,6 +42,9 @@ export const ChatMessage = memo(function ChatMessage({
   feedback = null,
   onFeedback,
   images = [],
+  imageJobs,
+  pinnedAssetId,
+  onPinAsset,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
 
@@ -76,6 +86,18 @@ export const ChatMessage = memo(function ChatMessage({
           <ChatMarkdown content={content} className="text-secondary" />
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse mt-1" />
+          )}
+          {imageJobs && imageJobs.length > 0 && (
+            <div className="flex flex-wrap items-start gap-x-3">
+              {imageJobs.map((job, i) => (
+                <ChatImageCard
+                  key={`${job.job_id || job.variant_group || job.tool}-${i}`}
+                  event={job}
+                  pinnedAssetId={pinnedAssetId}
+                  onPin={onPinAsset}
+                />
+              ))}
+            </div>
           )}
         </div>
 

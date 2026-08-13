@@ -25,9 +25,12 @@ import type {
   AttachedDocument,
   CanvasDocument,
   DocumentContext,
+  ImageJobEvent,
 } from '../services/chat-service'
 import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
+import type { ChatImageJob } from '../components/chat-image-card'
+import { miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 
@@ -46,6 +49,8 @@ export interface ChatMessageItem {
   /** This user's recorded vote on the message (1 / -1), if any. */
   feedback?: 1 | -1 | null
   images?: string[]
+  /** Creative generated during this turn — each renders as a polling image card. */
+  imageJobs?: ChatImageJob[]
 }
 
 interface LocationState {
@@ -69,6 +74,9 @@ export const useChatView = () => {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
+  // Image pinned as the edit target: the next generation edits THIS image instead of
+  // the conversation's most recent one. {asset_id, cdn_url} — see CHAT_IMAGE_GEN_SCOPE.md.
+  const [editTarget, setEditTarget] = useState<{ asset_id: string; cdn_url: string } | null>(null)
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
@@ -237,9 +245,67 @@ export const useChatView = () => {
     setMessages([])
     setStreamingContent('')
     setConversationId(null)
+    // The pin belongs to the thread it was set in — a new chat starts unpinned.
+    setEditTarget(null)
     localStorage.removeItem(StorageKey.LAST_CONVERSATION)
     localStorage.removeItem(StorageKey.LAST_CANVAS_OPEN)
   }, [])
+
+  // Image cards aren't persisted in chat history — every generated asset carries
+  // conversation_id, so on reopen we fetch the conversation's assets, group them back
+  // into cards (a set shares a variant_group; single jobs by job_id), and anchor each
+  // card to the last assistant turn at/before its first asset was created.
+  const restoreImageCards = useCallback(
+    async (convId: string, msgs: Awaited<ReturnType<typeof fetchConversationMessages>>) => {
+      const tenantId = activeWorkspace?.tenant_id
+      if (!sessionId || !tenantId) return
+      try {
+        const { assets } = await miaCreateApi.listConversationAssets(sessionId, tenantId, convId)
+        if (!assets.length) return
+
+        const groups = new Map<string, MiaAsset[]>()
+        for (const a of assets) {
+          const key = a.variant_group || a.job_id || a.asset_id
+          groups.set(key, [...(groups.get(key) ?? []), a])
+        }
+
+        const assistants = msgs
+          .map((m, i) => ({ m, id: `${m.role}-loaded-${i}` }))
+          .filter((x) => x.m.role === 'assistant')
+        if (!assistants.length) return
+
+        const jobsByMsgId = new Map<string, ChatImageJob[]>()
+        for (const group of groups.values()) {
+          group.sort((x, y) => (x.created_at || '').localeCompare(y.created_at || ''))
+          const t0 = group[0].created_at || ''
+          // Last assistant turn that predates the first asset (ISO strings compare
+          // lexicographically). Falls back to the first turn if none do.
+          let anchor = assistants[0]
+          for (const x of assistants) {
+            if (!x.m.at || !t0 || x.m.at <= t0) anchor = x
+          }
+          const card: ChatImageJob = {
+            tool: group.length > 1 && group.every((a) => a.ratio)
+              ? 'make_placement_set'
+              : 'generate_creative',
+            status: 'done',
+            job_id: group[0].job_id ?? null,
+            variant_group: group[0].variant_group ?? null,
+            num_images: group.length,
+            assets: group,
+          }
+          jobsByMsgId.set(anchor.id, [...(jobsByMsgId.get(anchor.id) ?? []), card])
+        }
+
+        setMessages((prev) =>
+          prev.map((m) => (jobsByMsgId.has(m.id) ? { ...m, imageJobs: jobsByMsgId.get(m.id) } : m))
+        )
+      } catch {
+        // Best-effort — a reopened thread without its images is still usable.
+      }
+    },
+    [sessionId, activeWorkspace?.tenant_id]
+  )
 
   const loadConversation = useCallback(
     async (convId: string) => {
@@ -260,6 +326,9 @@ export const useChatView = () => {
             }))
           )
           setConversationId(convId)
+          // A reopened thread starts unpinned; its image cards restore just below.
+          setEditTarget(null)
+          void restoreImageCards(convId, msgs)
         }
       } catch {
         showToast('error', "Couldn't open that conversation. Please try again.")
@@ -267,7 +336,7 @@ export const useChatView = () => {
         setIsLoading(false)
       }
     },
-    [sessionId, showToast]
+    [sessionId, showToast, restoreImageCards]
   )
 
   // Handle "New Chat" / load-conversation navigation state from menu/sidebar
@@ -277,6 +346,7 @@ export const useChatView = () => {
       setMessages([])
       setStreamingContent('')
       setConversationId(null)
+      setEditTarget(null)
       localStorage.removeItem(StorageKey.LAST_CONVERSATION)
       navigate(location.pathname, { replace: true, state: {} })
     } else if (state?.loadConversationId) {
@@ -506,6 +576,7 @@ export const useChatView = () => {
         let pendingAction: PendingAction | undefined
         let skillWorkspaces: string[] = []
         let historyId: number | null = null
+        const imageJobs: ImageJobEvent[] = []
 
         await sendChatMessageStreaming(
           {
@@ -530,6 +601,7 @@ export const useChatView = () => {
             ...(options?.documentContext
               ? { document_context: options.documentContext }
               : {}),
+            ...(editTarget ? { edit_target_asset_id: editTarget.asset_id } : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -552,6 +624,9 @@ export const useChatView = () => {
               historyId = chunk.history_id
             } else if (chunk.document) {
               canvasDocEventRef.current?.(chunk.document)
+            } else if (chunk.image_job) {
+              // Creative started (or finished) this turn — the card polls for the images.
+              imageJobs.push(chunk.image_job)
             }
           },
           abortController.signal
@@ -574,8 +649,13 @@ export const useChatView = () => {
           actionStatus: pendingAction ? 'pending' : undefined,
           skillWorkspaces,
           historyId,
+          imageJobs: imageJobs.length > 0 ? imageJobs : undefined,
         }
         setMessages((prev) => [...prev, assistantMessage])
+        // A pin is consumed by the generation it produced: once the edit exists, follow-up
+        // instructions should chain on the newest image (the edit result), not keep
+        // re-editing the original. Turns with no generation leave the pin in place.
+        if (imageJobs.length > 0 && editTarget) setEditTarget(null)
       } catch (error) {
         if (revealIntervalRef.current) {
           clearInterval(revealIntervalRef.current)
@@ -629,6 +709,7 @@ export const useChatView = () => {
       images,
       documents,
       activeCampaign,
+      editTarget,
       recoverInterruptedTurn,
     ]
   )
@@ -949,5 +1030,7 @@ export const useChatView = () => {
     activeCampaign,
     handleCampaignChange,
     canvas,
+    editTarget,
+    setEditTarget,
   }
 }

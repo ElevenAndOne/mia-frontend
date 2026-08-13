@@ -1,6 +1,7 @@
 import { memo, type RefObject } from 'react'
 import ChatMessage from './chat-message'
 import type { ChatMessageItem } from '../hooks/use-chat-view.tsx'
+import type { MiaAsset } from '../../creative-studio/creative-studio-api'
 
 interface ChatMessageListProps {
   messages: ChatMessageItem[]
@@ -8,6 +9,9 @@ interface ChatMessageListProps {
   onConfirmAction: (messageId: string, overrideParams?: Record<string, unknown>) => void
   onCancelAction: (messageId: string) => void
   onFeedback: (messageId: string, historyId: number, rating: 1 | -1) => void
+  /** Asset pinned as the edit target — one per thread, so it lives above the list. */
+  pinnedAssetId?: string | null
+  onPinAsset?: (asset: MiaAsset | null) => void
 }
 
 /**
@@ -25,6 +29,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   onConfirmAction,
   onCancelAction,
   onFeedback,
+  pinnedAssetId,
+  onPinAsset,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
@@ -52,6 +58,9 @@ export const ChatMessageList = memo(function ChatMessageList({
                 ? (rating) => onFeedback(message.id, message.historyId!, rating)
                 : undefined
             }
+            imageJobs={message.imageJobs}
+            pinnedAssetId={pinnedAssetId}
+            onPinAsset={onPinAsset}
           />
         </div>
       ))}
