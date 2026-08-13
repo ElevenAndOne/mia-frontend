@@ -351,7 +351,11 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     format,
     isPaid: doc.doc_type === 'ad_copy',
     primaryText,
-    hashtags: hashtagLines.join(' '),
+    // Bare `#tag` lines in the copy section win, since that's where the author put
+    // them. Falling back to a labelled `Hashtags:` value matters because the model
+    // often lists them in the notes block instead — that value was being parsed into
+    // fields.hashtags and then dropped, silently losing them from the caption.
+    hashtags: hashtagLines.join(' ') || fields.hashtags || '',
     headline: fields.headline || headlines[0] || undefined,
     description: fields.description || descriptions[0] || undefined,
     headlines,

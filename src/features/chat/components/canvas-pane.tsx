@@ -10,8 +10,11 @@ import { Type01 } from '../../../components/icon/type-01'
 import { XClose } from '../../../components/icon/x-close'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { useTextSelection } from '../../../hooks/use-text-selection'
+import { useSession } from '../../../contexts/session-context'
 import type { CanvasDocument, DocumentSelection } from '../services/chat-service'
+import { canvaApi } from '../services/canva-api'
 import { AddToCampaign } from './add-to-campaign'
+import { CanvaPicker } from './canva-picker'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
 import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
@@ -50,6 +53,8 @@ interface CanvasPaneProps {
   conversationId?: string | null
   /** Upload image(s) into the active document's media slot. */
   onUploadMedia?: (files: File[]) => void
+  /** Append already-hosted URLs (Canva import) as `Media:` lines. */
+  onAppendMediaUrls?: (urls: string[]) => void
   /** Remove an uploaded image (by URL) from the active document. */
   onRemoveMedia?: (url: string) => void
   isUploadingMedia?: boolean
@@ -83,6 +88,7 @@ export const CanvasPane = ({
   brandName,
   conversationId = null,
   onUploadMedia,
+  onAppendMediaUrls,
   onRemoveMedia,
   isUploadingMedia = false,
 }: CanvasPaneProps) => {
@@ -94,6 +100,26 @@ export const CanvasPane = ({
   /** Platform preview ↔ raw text, for docs that parse into a CreativeSpec. */
   const [rawView, setRawView] = useState(false)
   const spec = useMemo(() => parseCreativeSpec(doc), [doc])
+
+  // "From Canva" media source — shown only when the workspace has Canva
+  // connected (one status check per workspace, not per document).
+  const { sessionId, activeWorkspace } = useSession()
+  const [canvaConnected, setCanvaConnected] = useState(false)
+  const [showCanvaPicker, setShowCanvaPicker] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    setCanvaConnected(false)
+    if (!sessionId || !activeWorkspace?.tenant_id) return
+    canvaApi
+      .status(sessionId, activeWorkspace.tenant_id)
+      .then((s) => {
+        if (!cancelled) setCanvaConnected(Boolean(s.connected && !s.needs_reconnect))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, activeWorkspace?.tenant_id])
   const bodyRef = useRef<HTMLDivElement>(null)
   const versionMenuRef = useRef<HTMLDivElement>(null)
   const versionChipRef = useRef<HTMLButtonElement>(null)
@@ -453,6 +479,11 @@ export const CanvasPane = ({
                 onUploadMedia={onUploadMedia}
                 onRemoveMedia={onRemoveMedia}
                 isUploadingMedia={isUploadingMedia}
+                onOpenCanvaPicker={
+                  canvaConnected && onAppendMediaUrls
+                    ? () => setShowCanvaPicker(true)
+                    : undefined
+                }
               />
             ) : (
               <ChatMarkdown content={doc.content} />
@@ -539,6 +570,14 @@ export const CanvasPane = ({
           onClose={closeToolbarAndPick}
           onDictate={onDictateEdit}
           ignoreOutsideRef={pickMode ? bodyRef : undefined}
+        />
+      )}
+
+      {/* "From Canva" design browser — imported pages land as Media: lines */}
+      {showCanvaPicker && onAppendMediaUrls && (
+        <CanvaPicker
+          onClose={() => setShowCanvaPicker(false)}
+          onImported={(assets) => onAppendMediaUrls(assets.map((a) => a.cdn_url))}
         />
       )}
     </aside>

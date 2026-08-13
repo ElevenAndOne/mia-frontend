@@ -7,6 +7,8 @@ export interface MediaHandlers {
   /** Remove an uploaded media item (by URL). */
   onRemoveMedia?: (url: string) => void
   isUploadingMedia?: boolean
+  /** Open the "From Canva" design browser (present only when the workspace has Canva connected). */
+  onOpenCanvaPicker?: () => void
 }
 
 /** `Media:` URLs keep their uploaded filename, so the extension tells image from video. */
@@ -62,6 +64,7 @@ export const MediaSlot = ({
   onUploadMedia,
   onRemoveMedia,
   isUploadingMedia = false,
+  onOpenCanvaPicker,
 }: MediaSlotProps) => {
   const [slide, setSlide] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -245,26 +248,55 @@ export const MediaSlot = ({
           }}
         />
       )}
-      {onUploadMedia && (
-        <button
-          type="button"
-          aria-label="Upload image or video"
-          disabled={isUploadingMedia}
-          onClick={(e) => {
-            e.stopPropagation()
-            fileRef.current?.click()
-          }}
+      {(onUploadMedia || onOpenCanvaPicker) && (
+        <div
           className={`absolute ${
             // Cover frames (reel/story) keep their bottom edge for captions,
             // reply bar and CTAs — park the controls top-right, below the
             // story progress bars.
             cover ? 'top-8 right-2' : 'bottom-2 right-2'
-          } h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
-            hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
-          }`}
+          } flex gap-1.5`}
         >
-          {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Media'}
-        </button>
+          {onOpenCanvaPicker && (
+            <button
+              type="button"
+              aria-label="Import a design from Canva"
+              disabled={isUploadingMedia}
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenCanvaPicker()
+              }}
+              className={`h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center gap-1 px-2.5 transition-opacity ${
+                hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center text-[9px] font-bold font-serif"
+                style={{ background: 'linear-gradient(135deg,#00C4CC,#7D2AE8)' }}
+              >
+                C
+              </span>
+              Canva
+            </button>
+          )}
+          {onUploadMedia && (
+            <button
+              type="button"
+              aria-label="Upload image or video"
+              disabled={isUploadingMedia}
+              onClick={(e) => {
+                e.stopPropagation()
+                fileRef.current?.click()
+              }}
+              className={`h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
+                hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
+              }`}
+            >
+              {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Media'}
+            </button>
+          )}
+        </div>
       )}
       {onRemoveMedia && hasImage && (
         <button

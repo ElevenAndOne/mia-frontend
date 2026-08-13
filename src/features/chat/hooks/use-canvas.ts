@@ -52,6 +52,8 @@ export interface CanvasController {
   conversationId: string | null
   /** Upload image(s) into the active document's media slot (recorded as `Media:` lines). */
   uploadMedia: (files: File[]) => void
+  /** Append already-hosted media URLs (e.g. a Canva import) as `Media:` lines — no upload step. */
+  appendMediaUrls: (urls: string[]) => void
   /** Remove an uploaded image (its `Media:` line) from the active document. */
   removeMedia: (url: string) => void
   isUploadingMedia: boolean
@@ -297,6 +299,20 @@ export function useCanvas({
     [sessionId, conversationId, isUploadingMedia, saveUserEdit, showToast]
   )
 
+  // Already-hosted URLs (Canva import re-hosts server-side) — just record the
+  // `Media:` lines; same one-version-per-batch behaviour as uploadMedia.
+  const appendMediaUrls = useCallback(
+    (urls: string[]) => {
+      const id = activeIdRef.current
+      const doc = id ? documentsRef.current[id] : null
+      if (!doc || urls.length === 0) return
+      const current = documentsRef.current[doc.id] ?? doc
+      const mediaLines = urls.map((u) => `Media: ${u}`).join('\n')
+      saveUserEdit(`${current.content.trimEnd()}\n${mediaLines}`)
+    },
+    [saveUserEdit]
+  )
+
   const removeMedia = useCallback(
     (url: string) => {
       const id = activeIdRef.current
@@ -361,6 +377,7 @@ export function useCanvas({
     canUndo,
     conversationId,
     uploadMedia,
+    appendMediaUrls,
     removeMedia,
     isUploadingMedia,
   }

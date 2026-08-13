@@ -202,6 +202,7 @@ export const ChatView = ({
         brandName: activeWorkspace?.name,
         conversationId: canvas.conversationId,
         onUploadMedia: canvas.uploadMedia,
+        onAppendMediaUrls: canvas.appendMediaUrls,
         onRemoveMedia: canvas.removeMedia,
         isUploadingMedia: canvas.isUploadingMedia,
       }

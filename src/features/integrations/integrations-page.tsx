@@ -73,9 +73,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     }
   }, [integrationStatusError, showToast])
 
-  // Load Figma OAuth status when workspace is ready
+  // Load Figma + Canva OAuth status when workspace is ready
   useEffect(() => {
-    if (activeWorkspace) loadFigmaOAuthStatus()
+    if (activeWorkspace) {
+      loadFigmaOAuthStatus()
+      loadCanvaStatus()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspace?.tenant_id])
 
@@ -111,6 +114,14 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     figma_handle?: string
   } | null>(null)
   const [figmaOAuthLoading, setFigmaOAuthLoading] = useState(false)
+
+  // Canva OAuth (account connect) state
+  const [canvaStatus, setCanvaStatus] = useState<{
+    connected: boolean
+    display_name?: string
+    needs_reconnect?: boolean
+  } | null>(null)
+  const [canvaLoading, setCanvaLoading] = useState(false)
 
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -824,6 +835,63 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       showToast('error', err instanceof Error ? err.message : 'Failed to disconnect Figma')
     } finally {
       setFigmaOAuthLoading(false)
+    }
+  }
+
+  // Canva OAuth handlers (same shape as Figma above; status additionally carries
+  // needs_reconnect — a revoked grant that must be re-authorized, not disconnected)
+  const loadCanvaStatus = async () => {
+    if (!activeWorkspace) return
+    try {
+      const res = await apiFetch(`/api/oauth/canva/status?tenant_id=${activeWorkspace.tenant_id}`, {
+        headers: { 'X-Session-ID': sessionId || '' },
+      })
+      if (!res.ok) return
+      setCanvaStatus(await res.json())
+    } catch { /* best-effort */ }
+  }
+
+  const handleCanvaConnect = async () => {
+    if (!activeWorkspace) return
+    setCanvaLoading(true)
+    try {
+      const res = await apiFetch(`/api/oauth/canva/auth-url?tenant_id=${activeWorkspace.tenant_id}`, {
+        headers: { 'X-Session-ID': sessionId || '' },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to get Canva auth URL')
+      }
+      const { auth_url } = await res.json()
+      const popup = window.open(auth_url, 'canva-oauth', 'width=600,height=700')
+      const poll = setInterval(async () => {
+        if (popup?.closed) {
+          clearInterval(poll)
+          await loadCanvaStatus()
+          setCanvaLoading(false)
+        }
+      }, 1000)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to connect Canva')
+      setCanvaLoading(false)
+    }
+  }
+
+  const handleCanvaDisconnect = async () => {
+    if (!activeWorkspace) return
+    setCanvaLoading(true)
+    try {
+      const res = await apiFetch(
+        `/api/oauth/canva/disconnect?tenant_id=${activeWorkspace.tenant_id}`,
+        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } },
+      )
+      if (!res.ok) throw new Error('Failed to disconnect Canva')
+      setCanvaStatus({ connected: false })
+      showToast('success', 'Canva account disconnected')
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to disconnect Canva')
+    } finally {
+      setCanvaLoading(false)
     }
   }
 
@@ -1609,6 +1677,71 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Canva Account (OAuth — design import into chat & Mia Create) */}
+                <div className="bg-primary border border-secondary rounded-xl p-3 overflow-hidden">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                      <div
+                        className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg text-white font-bold font-serif text-lg"
+                        style={{ background: 'linear-gradient(135deg,#00C4CC,#7D2AE8)' }}
+                      >
+                        C
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <h3 className="subheading-md text-primary truncate">Canva Account</h3>
+                          {canvaStatus?.connected && !canvaStatus.needs_reconnect && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-success-100 text-utility-success-700 border border-utility-success-200 shrink-0">
+                              Connected
+                            </span>
+                          )}
+                          {canvaStatus?.needs_reconnect && (
+                            <span className="px-1.5 py-0.5 rounded-full label-xs bg-utility-warning-100 text-utility-warning-700 border border-utility-warning-200 shrink-0">
+                              Reconnect needed
+                            </span>
+                          )}
+                        </div>
+                        <p className="paragraph-xs text-quaternary truncate">
+                          {canvaStatus?.needs_reconnect
+                            ? 'Canva access expired — reconnect to keep importing designs'
+                            : canvaStatus?.connected
+                              ? `Connected as ${canvaStatus.display_name || 'Canva user'}`
+                              : 'Import your Canva designs into posts, right from chat'}
+                        </p>
+                      </div>
+                    </div>
+                    {canvaStatus?.connected && !canvaStatus.needs_reconnect ? (
+                      <button
+                        onClick={handleCanvaDisconnect}
+                        disabled={canvaLoading}
+                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover disabled:opacity-50"
+                      >
+                        {canvaLoading ? 'Disconnecting…' : 'Disconnect'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleCanvaConnect}
+                        disabled={canvaLoading}
+                        className="px-4 py-2 rounded-lg subheading-sm shrink-0 bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover disabled:opacity-50"
+                      >
+                        {canvaLoading
+                          ? 'Connecting…'
+                          : canvaStatus?.needs_reconnect
+                            ? 'Reconnect'
+                            : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                  {/* Canva authorizes whichever account the browser is already signed
+                      into and gives us no way to force a chooser — so say how to change it. */}
+                  {canvaStatus?.connected && !canvaStatus.needs_reconnect && (
+                    <p className="paragraph-xs text-quaternary mt-2 pl-[52px]">
+                      Wrong account? Disconnect, then use “Switch accounts” on Canva’s
+                      approval screen to pick a different one.
+                    </p>
+                  )}
                 </div>
 
                 {/* Uploaded Data (CSV) — CSV / Uploaded Datasets integration */}

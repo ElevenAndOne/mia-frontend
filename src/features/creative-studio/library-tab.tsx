@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { creativeStudioApi, figmaApi, type CreativeAsset, type FigmaFile, type FigmaFrame } from './creative-studio-api'
 import { apiFetch, createSessionHeaders } from '../../utils/api'
+import { CanvaPicker } from '../chat/components/canva-picker'
 
 interface Props {
   tenantId: string
@@ -456,6 +457,7 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [lightboxAsset, setLightboxAsset] = useState<CreativeAsset | null>(null)
   const [showFigmaModal, setShowFigmaModal] = useState(false)
+  const [showCanvaModal, setShowCanvaModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -552,6 +554,22 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
         />
       )}
 
+      {showCanvaModal && (
+        <CanvaPicker
+          onClose={() => setShowCanvaModal(false)}
+          onImported={imported =>
+            setReferenceAssets(prev => [
+              ...imported.map(a => ({
+                ...a,
+                tenant_id: tenantId,
+                created_at: new Date().toISOString(),
+              }) as CreativeAsset),
+              ...prev,
+            ])
+          }
+        />
+      )}
+
       {lightboxAsset && (
         <LightboxModal asset={lightboxAsset} tenantId={tenantId} sessionId={sessionId} onClose={() => setLightboxAsset(null)} />
       )}
@@ -633,6 +651,13 @@ export default function LibraryTab({ tenantId, sessionId, onCreateVariant }: Pro
             >
               <Frame className="w-4 h-4" />
               Import from Figma
+            </button>
+            <button
+              onClick={() => setShowCanvaModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <FileImage className="w-4 h-4" />
+              Import from Canva
             </button>
             <button onClick={loadReference} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors">
               <RefreshCw className="w-4 h-4" />
