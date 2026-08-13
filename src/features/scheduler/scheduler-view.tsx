@@ -164,6 +164,11 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
     (a, b) => (workByPerson[b.name]?.length ?? 0) - (workByPerson[a.name]?.length ?? 0)
   )
 
+  const isWeekend = (i: number) => {
+    const d = new Date(windowStart.getTime() + i * 86_400_000).getDay()
+    return d === 0 || d === 6
+  }
+
   const dayHeader = (
     <div className="flex">
       <div className={`${LABEL_W} shrink-0`} />
@@ -173,7 +178,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
       >
         {Array.from({ length: span }, (_, i) => {
           const d = new Date(windowStart.getTime() + i * 86_400_000)
-          const we = d.getDay() === 0 || d.getDay() === 6
+          const we = isWeekend(i)
           return (
             <span
               key={i}
@@ -312,7 +317,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                               : state === 'holiday'
                                 ? 'bg-sky-400/40'
                                 : state === 'off'
-                                  ? 'bg-transparent'
+                                  ? 'bg-tertiary/10'
                                   : 'bg-emerald-500/15'
                         const label =
                           state === 'booked'
@@ -393,7 +398,9 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                           return (
                             <span
                               key={i}
-                              className={`h-[14px] rounded-[2px] ${live ? '' : 'bg-tertiary/[0.07]'}`}
+                              className={`h-[14px] rounded-[2px] ${
+                                live ? '' : isWeekend(i) ? 'bg-tertiary/10' : 'bg-tertiary/[0.05]'
+                              }`}
                               style={live ? { background: colourOf(phase) } : undefined}
                               title={
                                 live
