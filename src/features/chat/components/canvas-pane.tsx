@@ -58,6 +58,8 @@ interface CanvasPaneProps {
   onAppendMediaUrls?: (urls: string[]) => void
   /** Remove an uploaded image (by URL) from the active document. */
   onRemoveMedia?: (url: string) => void
+  /** Swap one media URL for another in place (drag-drop "Replace" from chat). */
+  onReplaceMediaUrl?: (oldUrl: string, newUrl: string) => void
   isUploadingMedia?: boolean
 }
 
@@ -91,6 +93,7 @@ export const CanvasPane = ({
   onUploadMedia,
   onAppendMediaUrls,
   onRemoveMedia,
+  onReplaceMediaUrl,
   isUploadingMedia = false,
 }: CanvasPaneProps) => {
   const [mode, setMode] = useState<Mode>('view')
@@ -481,6 +484,10 @@ export const CanvasPane = ({
                 onUploadMedia={onUploadMedia}
                 onRemoveMedia={onRemoveMedia}
                 isUploadingMedia={isUploadingMedia}
+                onAddMediaUrl={
+                  onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined
+                }
+                onReplaceMediaUrl={onReplaceMediaUrl}
                 onOpenCanvaPicker={
                   canvaConnected && onAppendMediaUrls
                     ? () => setShowCanvaPicker(true)

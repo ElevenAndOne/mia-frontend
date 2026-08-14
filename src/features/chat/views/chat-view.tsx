@@ -207,6 +207,7 @@ export const ChatView = ({
         onUploadMedia: canvas.uploadMedia,
         onAppendMediaUrls: canvas.appendMediaUrls,
         onRemoveMedia: canvas.removeMedia,
+        onReplaceMediaUrl: canvas.replaceMediaUrl,
         isUploadingMedia: canvas.isUploadingMedia,
       }
     : null
@@ -287,6 +288,12 @@ export const ChatView = ({
                       asset ? { asset_id: asset.asset_id, cdn_url: asset.cdn_url } : null
                     )
                   }
+                  onUseAssetInPost={(asset) => {
+                    // Pin first so the request carries the asset id — the pinned block
+                    // tells Mia to create_document with `Media: asset:{id}`.
+                    setEditTarget({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
+                    handleSubmit('Use this image in the post')
+                  }}
                 />
 
                 {/* Dots while Claude is thinking (tools running, no text yet) */}

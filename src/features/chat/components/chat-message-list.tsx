@@ -12,6 +12,7 @@ interface ChatMessageListProps {
   /** Asset pinned as the edit target — one per thread, so it lives above the list. */
   pinnedAssetId?: string | null
   onPinAsset?: (asset: MiaAsset | null) => void
+  onUseAssetInPost?: (asset: MiaAsset) => void
 }
 
 /**
@@ -31,6 +32,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onFeedback,
   pinnedAssetId,
   onPinAsset,
+  onUseAssetInPost,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
@@ -61,6 +63,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             imageJobs={message.imageJobs}
             pinnedAssetId={pinnedAssetId}
             onPinAsset={onPinAsset}
+            onUseAssetInPost={onUseAssetInPost}
           />
         </div>
       ))}

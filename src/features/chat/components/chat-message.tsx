@@ -28,6 +28,7 @@ interface ChatMessageProps {
   /** Asset pinned thread-wide as the edit target. */
   pinnedAssetId?: string | null
   onPinAsset?: (asset: MiaAsset | null) => void
+  onUseAssetInPost?: (asset: MiaAsset) => void
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -45,6 +46,7 @@ export const ChatMessage = memo(function ChatMessage({
   imageJobs,
   pinnedAssetId,
   onPinAsset,
+  onUseAssetInPost,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
 
@@ -95,6 +97,7 @@ export const ChatMessage = memo(function ChatMessage({
                   event={job}
                   pinnedAssetId={pinnedAssetId}
                   onPin={onPinAsset}
+                  onUseInPost={onUseAssetInPost}
                 />
               ))}
             </div>

@@ -5,7 +5,9 @@ import { Pencil01 } from '../../../components/icon/pencil-01'
 import { Maximize01 } from '../../../components/icon/maximize-01'
 import { XClose } from '../../../components/icon/x-close'
 import { Stars01 } from '../../../components/icon/stars-01'
+import { ImagePlus } from '../../../components/icon/image-plus'
 import { Skeleton } from '../../../components/skeleton'
+import { MIA_ASSET_DRAG_TYPE } from './previews/preview-bits'
 import type { ImageJobEvent } from '../services/chat-service'
 
 const POLL_MS = 3000
@@ -23,6 +25,8 @@ interface Props {
   /** Asset currently pinned as the edit target (across the whole thread). */
   pinnedAssetId?: string | null
   onPin?: (asset: MiaAsset | null) => void
+  /** "Use in post": pin the asset and ask Mia to put it in a post document. */
+  onUseInPost?: (asset: MiaAsset) => void
 }
 
 /**
@@ -33,7 +37,7 @@ interface Props {
  * Polling (rather than streaming the images) reuses the endpoints the Mia Create page
  * already depends on — see docs/CHAT_IMAGE_GEN_SCOPE.md D2.
  */
-export function ChatImageCard({ event, pinnedAssetId, onPin }: Props) {
+export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Props) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id || ''
   const [assets, setAssets] = useState<MiaAsset[]>(event.assets ?? [])
@@ -175,6 +179,9 @@ export function ChatImageCard({ event, pinnedAssetId, onPin }: Props) {
             canPin={!!onPin && !asset.asset_id.startsWith('inline-')}
             onPin={onPin}
             onZoom={setZoom}
+            onUseInPost={
+              onUseInPost && !asset.asset_id.startsWith('inline-') ? onUseInPost : undefined
+            }
           />
         ))}
         {!settled &&
@@ -221,17 +228,29 @@ function ImageTile({
   canPin,
   onPin,
   onZoom,
+  onUseInPost,
 }: {
   asset: MiaAsset
   isPinned: boolean
   canPin: boolean
   onPin?: (asset: MiaAsset | null) => void
   onZoom: (url: string) => void
+  onUseInPost?: (asset: MiaAsset) => void
 }) {
   return (
     <div
+      draggable
+      onDragStart={(e) => {
+        // Draggable into the canvas media slot (preview-bits MediaSlot reads this).
+        e.dataTransfer.setData(
+          MIA_ASSET_DRAG_TYPE,
+          JSON.stringify({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
+        )
+        e.dataTransfer.setData('text/plain', asset.cdn_url)
+        e.dataTransfer.effectAllowed = 'copy'
+      }}
       className={[
-        'relative rounded-lg overflow-hidden border bg-secondary group',
+        'relative rounded-lg overflow-hidden border bg-secondary group cursor-grab active:cursor-grabbing',
         isPinned ? 'border-brand-solid ring-2 ring-brand-solid/50' : 'border-secondary',
       ].join(' ')}
     >
@@ -271,6 +290,15 @@ function ImageTile({
             ].join(' ')}
           >
             <Pencil01 size={14} />
+          </button>
+        )}
+        {onUseInPost && (
+          <button
+            onClick={() => onUseInPost(asset)}
+            title="Use in post — Mia drafts the post with this image in the canvas"
+            className="p-1.5 rounded bg-black/60 text-white hover:bg-brand-solid"
+          >
+            <ImagePlus size={14} />
           </button>
         )}
         <button

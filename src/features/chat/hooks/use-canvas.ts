@@ -56,6 +56,8 @@ export interface CanvasController {
   appendMediaUrls: (urls: string[]) => void
   /** Remove an uploaded image (its `Media:` line) from the active document. */
   removeMedia: (url: string) => void
+  /** Swap one media URL for another in place (drag-drop "Replace" from chat). */
+  replaceMediaUrl: (oldUrl: string, newUrl: string) => void
   isUploadingMedia: boolean
 }
 
@@ -327,6 +329,22 @@ export function useCanvas({
     [saveUserEdit]
   )
 
+  // In-place swap keeps the slide's position in a carousel (remove+append would
+  // send the replacement to the end).
+  const replaceMediaUrl = useCallback(
+    (oldUrl: string, newUrl: string) => {
+      const id = activeIdRef.current
+      const doc = id ? documentsRef.current[id] : null
+      if (!doc || !oldUrl || !newUrl) return
+      const next = doc.content
+        .split('\n')
+        .map((line) => (line.includes(oldUrl) ? `Media: ${newUrl}` : line))
+        .join('\n')
+      if (next !== doc.content) saveUserEdit(next)
+    },
+    [saveUserEdit]
+  )
+
   const fetchVersions = useCallback(async (): Promise<CanvasDocument[]> => {
     const id = activeIdRef.current
     if (!id || !sessionId || !conversationId) return []
@@ -379,6 +397,7 @@ export function useCanvas({
     uploadMedia,
     appendMediaUrls,
     removeMedia,
+    replaceMediaUrl,
     isUploadingMedia,
   }
 }

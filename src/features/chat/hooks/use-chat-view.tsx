@@ -76,7 +76,17 @@ export const useChatView = () => {
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
   // Image pinned as the edit target: the next generation edits THIS image instead of
   // the conversation's most recent one. {asset_id, cdn_url} — see CHAT_IMAGE_GEN_SCOPE.md.
-  const [editTarget, setEditTarget] = useState<{ asset_id: string; cdn_url: string } | null>(null)
+  // The ref mirrors the state SYNCHRONOUSLY so "pin then submit in the same tick"
+  // (the Use-in-post button) sends the fresh pin, not the stale closure value.
+  const [editTarget, setEditTargetState] = useState<{ asset_id: string; cdn_url: string } | null>(null)
+  const editTargetRef = useRef<{ asset_id: string; cdn_url: string } | null>(null)
+  const setEditTarget = useCallback(
+    (t: { asset_id: string; cdn_url: string } | null) => {
+      editTargetRef.current = t
+      setEditTargetState(t)
+    },
+    []
+  )
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
@@ -336,7 +346,7 @@ export const useChatView = () => {
         setIsLoading(false)
       }
     },
-    [sessionId, showToast, restoreImageCards]
+    [sessionId, showToast, restoreImageCards, setEditTarget]
   )
 
   // Handle "New Chat" / load-conversation navigation state from menu/sidebar
@@ -354,7 +364,7 @@ export const useChatView = () => {
       navigate(location.pathname, { replace: true, state: {} })
       loadConversation(convId)
     }
-  }, [location.state, location.pathname, navigate, loadConversation])
+  }, [location.state, location.pathname, navigate, loadConversation, setEditTarget])
 
   // Remember the open conversation (refreshed as messages arrive) so a phone tab
   // the OS killed in the background can pick up where the user left off.
@@ -601,7 +611,9 @@ export const useChatView = () => {
             ...(options?.documentContext
               ? { document_context: options.documentContext }
               : {}),
-            ...(editTarget ? { edit_target_asset_id: editTarget.asset_id } : {}),
+            ...(editTargetRef.current
+              ? { edit_target_asset_id: editTargetRef.current.asset_id }
+              : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -655,7 +667,7 @@ export const useChatView = () => {
         // A pin is consumed by the generation it produced: once the edit exists, follow-up
         // instructions should chain on the newest image (the edit result), not keep
         // re-editing the original. Turns with no generation leave the pin in place.
-        if (imageJobs.length > 0 && editTarget) setEditTarget(null)
+        if (imageJobs.length > 0 && editTargetRef.current) setEditTarget(null)
       } catch (error) {
         if (revealIntervalRef.current) {
           clearInterval(revealIntervalRef.current)
@@ -710,6 +722,7 @@ export const useChatView = () => {
       documents,
       activeCampaign,
       editTarget,
+      setEditTarget,
       recoverInterruptedTurn,
     ]
   )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import type { CharCheck, CreativeSpec } from './creative-spec'
 
 export interface MediaHandlers {
@@ -9,7 +9,14 @@ export interface MediaHandlers {
   isUploadingMedia?: boolean
   /** Open the "From Canva" design browser (present only when the workspace has Canva connected). */
   onOpenCanvaPicker?: () => void
+  /** Add an already-hosted image URL as a new slide (e.g. an image dragged in from chat). */
+  onAddMediaUrl?: (url: string) => void
+  /** Swap one existing media URL for another (drag-drop "Replace" on an occupied slot). */
+  onReplaceMediaUrl?: (oldUrl: string, newUrl: string) => void
 }
+
+/** Drag payload type set by chat image tiles (see chat-image-card.tsx). */
+export const MIA_ASSET_DRAG_TYPE = 'application/x-mia-asset'
 
 /** `Media:` URLs keep their uploaded filename, so the extension tells image from video. */
 const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|webm|avi|mkv)([?#]|$)/i.test(url)
@@ -73,12 +80,31 @@ export const MediaSlot = ({
   onRemoveMedia,
   isUploadingMedia = false,
   onOpenCanvaPicker,
+  onAddMediaUrl,
+  onReplaceMediaUrl,
 }: MediaSlotProps) => {
   const [slide, setSlide] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [ratios, setRatios] = useState<Record<string, number>>({})
+  // An image dragged in from chat while the slot already has media — the user
+  // chooses Replace (swap the current slide) or Add (new carousel slide).
+  const [pendingDropUrl, setPendingDropUrl] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const count = media.length
+
+  const readAssetDrop = (e: DragEvent): string | null => {
+    try {
+      const raw = e.dataTransfer.getData(MIA_ASSET_DRAG_TYPE)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { cdn_url?: string }
+        if (parsed.cdn_url) return parsed.cdn_url
+      }
+    } catch {
+      /* fall through to plain text */
+    }
+    const text = e.dataTransfer.getData('text/plain')
+    return text && /^https?:\/\//.test(text) ? text : null
+  }
 
   useEffect(() => {
     if (slide >= count) setSlide(Math.max(0, count - 1))
@@ -105,18 +131,62 @@ export const MediaSlot = ({
         dragging ? 'ring-2 ring-inset ring-utility-brand-600' : ''
       }`}
       onDragOver={(e) => {
-        if (!onUploadMedia) return
+        const isAssetDrag = e.dataTransfer.types.includes(MIA_ASSET_DRAG_TYPE)
+        if (!onUploadMedia && !(isAssetDrag && onAddMediaUrl)) return
         e.preventDefault()
         setDragging(true)
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
+        const assetUrl = readAssetDrop(e)
+        if (assetUrl && onAddMediaUrl) {
+          // Image dragged in from the chat thread — already hosted, no upload.
+          e.preventDefault()
+          setDragging(false)
+          if (count === 0 || !onReplaceMediaUrl) onAddMediaUrl(assetUrl)
+          else setPendingDropUrl(assetUrl) // occupied slot → user picks Replace/Add
+          return
+        }
         if (!onUploadMedia) return
         e.preventDefault()
         setDragging(false)
         pickFiles(e.dataTransfer.files)
       }}
     >
+      {pendingDropUrl && (
+        <div className="absolute inset-0 z-20 bg-black/60 flex flex-col items-center justify-center gap-2">
+          <span className="paragraph-xs text-white font-medium">Use dragged image how?</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onReplaceMediaUrl?.(media[slide], pendingDropUrl)
+                setPendingDropUrl(null)
+              }}
+              className="px-3 py-1.5 rounded-lg bg-white text-black paragraph-xs font-semibold"
+            >
+              Replace this slide
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onAddMediaUrl?.(pendingDropUrl)
+                setPendingDropUrl(null)
+              }}
+              className="px-3 py-1.5 rounded-lg bg-utility-brand-600 text-white paragraph-xs font-semibold"
+            >
+              Add as slide
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPendingDropUrl(null)}
+            className="paragraph-xs text-white/70 hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
       {hasImage ? (
         isVideoUrl(media[slide]) ? (
           <video
