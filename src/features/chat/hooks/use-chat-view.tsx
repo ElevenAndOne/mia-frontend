@@ -25,7 +25,6 @@ import type {
   AttachedDocument,
   CanvasDocument,
   DocumentContext,
-  ImageJobEvent,
 } from '../services/chat-service'
 import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
@@ -586,7 +585,9 @@ export const useChatView = () => {
         let pendingAction: PendingAction | undefined
         let skillWorkspaces: string[] = []
         let historyId: number | null = null
-        const imageJobs: ImageJobEvent[] = []
+        // ChatImageJob, not ImageJobEvent: the raw SSE assets (nullable, no media_type)
+        // are normalized on push into renderable MiaAssets.
+        const imageJobs: ChatImageJob[] = []
 
         await sendChatMessageStreaming(
           {
