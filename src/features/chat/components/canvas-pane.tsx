@@ -60,6 +60,8 @@ interface CanvasPaneProps {
   onRemoveMedia?: (url: string) => void
   /** Swap one media URL for another in place (drag-drop "Replace" from chat). */
   onReplaceMediaUrl?: (oldUrl: string, newUrl: string) => void
+  /** Dropped image's format doesn't fit this post — ask Mia for a matching post. */
+  onDraftSeparatePost?: (asset: { asset_id?: string; cdn_url: string }) => void
   isUploadingMedia?: boolean
 }
 
@@ -94,6 +96,7 @@ export const CanvasPane = ({
   onAppendMediaUrls,
   onRemoveMedia,
   onReplaceMediaUrl,
+  onDraftSeparatePost,
   isUploadingMedia = false,
 }: CanvasPaneProps) => {
   const [mode, setMode] = useState<Mode>('view')
@@ -488,6 +491,7 @@ export const CanvasPane = ({
                   onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined
                 }
                 onReplaceMediaUrl={onReplaceMediaUrl}
+                onDraftSeparatePost={onDraftSeparatePost}
                 onOpenCanvaPicker={
                   canvaConnected && onAppendMediaUrls
                     ? () => setShowCanvaPicker(true)

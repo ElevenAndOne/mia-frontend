@@ -638,7 +638,14 @@ export const useChatView = () => {
               canvasDocEventRef.current?.(chunk.document)
             } else if (chunk.image_job) {
               // Creative started (or finished) this turn — the card polls for the images.
-              imageJobs.push(chunk.image_job)
+              // Sync results carry stored assets; normalize them to renderable MiaAssets.
+              imageJobs.push({
+                ...chunk.image_job,
+                assets: chunk.image_job.assets?.map((a) => ({
+                  media_type: 'image' as const,
+                  ...a,
+                })),
+              })
             }
           },
           abortController.signal

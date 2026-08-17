@@ -208,6 +208,14 @@ export const ChatView = ({
         onAppendMediaUrls: canvas.appendMediaUrls,
         onRemoveMedia: canvas.removeMedia,
         onReplaceMediaUrl: canvas.replaceMediaUrl,
+        onDraftSeparatePost: (asset: { asset_id?: string; cdn_url: string }) => {
+          // Pin the dropped image so Mia drafts a NEW post matching its format
+          // (the pinned block carries the asset's ratio → story/feed template).
+          if (asset.asset_id) {
+            setEditTarget({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
+          }
+          handleSubmit('Draft a separate post using this image — match its format')
+        },
         isUploadingMedia: canvas.isUploadingMedia,
       }
     : null

@@ -170,7 +170,11 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Prop
         )}
       </div>
 
-      <div className={single ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2'}>
+      <div
+        className={`items-start ${
+          single ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2'
+        }`}
+      >
         {assets.map((asset) => (
           <ImageTile
             key={asset.asset_id}
@@ -244,7 +248,11 @@ function ImageTile({
         // Draggable into the canvas media slot (preview-bits MediaSlot reads this).
         e.dataTransfer.setData(
           MIA_ASSET_DRAG_TYPE,
-          JSON.stringify({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
+          JSON.stringify({
+            asset_id: asset.asset_id,
+            cdn_url: asset.cdn_url,
+            ratio: asset.ratio ?? null,
+          })
         )
         e.dataTransfer.setData('text/plain', asset.cdn_url)
         e.dataTransfer.effectAllowed = 'copy'
@@ -270,11 +278,14 @@ function ImageTile({
         </span>
       )}
 
+      {/* Full image, its own aspect — a fixed square crop clipped the composited
+          headline on every non-square placement (4:5, 9:16, 16:9), which read as a
+          broken render even though the stored asset was correct. */}
       <img
         src={asset.cdn_url}
         alt={asset.prompt || 'Generated creative'}
         loading="lazy"
-        className="w-full aspect-square object-cover"
+        className="w-full h-auto block"
       />
 
       <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">

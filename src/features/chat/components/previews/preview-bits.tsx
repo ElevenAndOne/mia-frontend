@@ -13,6 +13,8 @@ export interface MediaHandlers {
   onAddMediaUrl?: (url: string) => void
   /** Swap one existing media URL for another (drag-drop "Replace" on an occupied slot). */
   onReplaceMediaUrl?: (oldUrl: string, newUrl: string) => void
+  /** Dropped image's format doesn't fit this post — pin it and ask Mia for a matching post. */
+  onDraftSeparatePost?: (asset: { asset_id?: string; cdn_url: string }) => void
 }
 
 /** Drag payload type set by chat image tiles (see chat-image-card.tsx). */
@@ -82,28 +84,50 @@ export const MediaSlot = ({
   onOpenCanvaPicker,
   onAddMediaUrl,
   onReplaceMediaUrl,
+  onDraftSeparatePost,
 }: MediaSlotProps) => {
   const [slide, setSlide] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [ratios, setRatios] = useState<Record<string, number>>({})
   // An image dragged in from chat while the slot already has media — the user
-  // chooses Replace (swap the current slide) or Add (new carousel slide).
-  const [pendingDropUrl, setPendingDropUrl] = useState<string | null>(null)
+  // chooses Replace (swap the current slide) or Add (new carousel slide). `warn`
+  // carries a format-mismatch caution (e.g. a square image onto a Story post).
+  const [pendingDrop, setPendingDrop] = useState<{
+    url: string
+    assetId?: string
+    warn?: string
+  } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const count = media.length
 
-  const readAssetDrop = (e: DragEvent): string | null => {
+  const readAssetDrop = (
+    e: DragEvent
+  ): { url: string; assetId?: string; ratio?: string | null } | null => {
     try {
       const raw = e.dataTransfer.getData(MIA_ASSET_DRAG_TYPE)
       if (raw) {
-        const parsed = JSON.parse(raw) as { cdn_url?: string }
-        if (parsed.cdn_url) return parsed.cdn_url
+        const parsed = JSON.parse(raw) as {
+          cdn_url?: string
+          asset_id?: string
+          ratio?: string | null
+        }
+        if (parsed.cdn_url)
+          return { url: parsed.cdn_url, assetId: parsed.asset_id, ratio: parsed.ratio }
       }
     } catch {
       /* fall through to plain text */
     }
     const text = e.dataTransfer.getData('text/plain')
-    return text && /^https?:\/\//.test(text) ? text : null
+    return text && /^https?:\/\//.test(text) ? { url: text } : null
+  }
+
+  /** Story slots (cover mode) want ~9:16; feed slots don't. Known-ratio drops that
+   * conflict get a caution in the chooser — never a hard block. */
+  const formatWarning = (ratio: string | null | undefined): string | undefined => {
+    if (!ratio) return undefined
+    if (cover && ratio !== '9:16') return `This is a ${ratio} image — this post is a Story/Reel (9:16).`
+    if (!cover && ratio === '9:16') return `This is a 9:16 Story image — this post is a feed format.`
+    return undefined
   }
 
   useEffect(() => {
@@ -138,13 +162,18 @@ export const MediaSlot = ({
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
-        const assetUrl = readAssetDrop(e)
-        if (assetUrl && onAddMediaUrl) {
+        const dropped = readAssetDrop(e)
+        if (dropped && onAddMediaUrl) {
           // Image dragged in from the chat thread — already hosted, no upload.
           e.preventDefault()
           setDragging(false)
-          if (count === 0 || !onReplaceMediaUrl) onAddMediaUrl(assetUrl)
-          else setPendingDropUrl(assetUrl) // occupied slot → user picks Replace/Add
+          const warn = formatWarning(dropped.ratio)
+          if ((count === 0 || !onReplaceMediaUrl) && !warn) {
+            onAddMediaUrl(dropped.url)
+          } else {
+            // Occupied slot OR format mismatch → the user picks what happens.
+            setPendingDrop({ url: dropped.url, assetId: dropped.assetId, warn })
+          }
           return
         }
         if (!onUploadMedia) return
@@ -153,34 +182,50 @@ export const MediaSlot = ({
         pickFiles(e.dataTransfer.files)
       }}
     >
-      {pendingDropUrl && (
-        <div className="absolute inset-0 z-20 bg-black/60 flex flex-col items-center justify-center gap-2">
-          <span className="paragraph-xs text-white font-medium">Use dragged image how?</span>
-          <div className="flex gap-2">
+      {pendingDrop && (
+        <div className="absolute inset-0 z-20 bg-black/60 flex flex-col items-center justify-center gap-2 px-3 text-center">
+          <span className="paragraph-xs text-white font-medium">
+            {pendingDrop.warn ?? 'Use dragged image how?'}
+          </span>
+          <div className="flex flex-wrap justify-center gap-2">
+            {count > 0 && onReplaceMediaUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  onReplaceMediaUrl(media[slide], pendingDrop.url)
+                  setPendingDrop(null)
+                }}
+                className="px-3 py-1.5 rounded-lg bg-white text-black paragraph-xs font-semibold"
+              >
+                Replace this slide
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
-                onReplaceMediaUrl?.(media[slide], pendingDropUrl)
-                setPendingDropUrl(null)
-              }}
-              className="px-3 py-1.5 rounded-lg bg-white text-black paragraph-xs font-semibold"
-            >
-              Replace this slide
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onAddMediaUrl?.(pendingDropUrl)
-                setPendingDropUrl(null)
+                onAddMediaUrl?.(pendingDrop.url)
+                setPendingDrop(null)
               }}
               className="px-3 py-1.5 rounded-lg bg-utility-brand-600 text-white paragraph-xs font-semibold"
             >
-              Add as slide
+              {count > 0 ? 'Add as slide' : 'Use anyway'}
             </button>
+            {pendingDrop.warn && pendingDrop.assetId && onDraftSeparatePost && (
+              <button
+                type="button"
+                onClick={() => {
+                  onDraftSeparatePost({ asset_id: pendingDrop.assetId, cdn_url: pendingDrop.url })
+                  setPendingDrop(null)
+                }}
+                className="px-3 py-1.5 rounded-lg bg-black/70 border border-white/40 text-white paragraph-xs font-semibold"
+              >
+                New post for this size
+              </button>
+            )}
           </div>
           <button
             type="button"
-            onClick={() => setPendingDropUrl(null)}
+            onClick={() => setPendingDrop(null)}
             className="paragraph-xs text-white/70 hover:text-white"
           >
             Cancel
@@ -211,6 +256,12 @@ export const MediaSlot = ({
               clampPortrait != null &&
               naturalRatio != null &&
               naturalRatio < clampPortrait
+            // Story/Reel frames are 9:16 (0.5625). A squarer or wider image cover-cropped
+            // into them is scaled ~1.8× and sliced at both edges — which mangles any
+            // composited headline (it reads as a rendering bug, and is how a 1:1 dropped
+            // into a Story looked). Letterbox it instead, same as the video branch above,
+            // which also matches what Instagram itself does with a square Story upload.
+            const containInStory = cover && naturalRatio != null && naturalRatio > 0.62
             return (
               <img
                 src={media[slide]}
@@ -224,7 +275,9 @@ export const MediaSlot = ({
                 }}
                 className={`${
                   cover
-                    ? 'w-full h-full object-cover'
+                    ? containInStory
+                      ? 'w-full h-full object-contain bg-black'
+                      : 'w-full h-full object-cover'
                     : clamped
                       ? 'w-full block object-cover'
                       : 'w-full h-auto block'

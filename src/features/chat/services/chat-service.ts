@@ -332,6 +332,8 @@ export interface ImageJobEvent {
   aspect_ratio?: string | null
   destination?: string | null
   cdn_urls?: string[] | null
+  /** Sync tools return their stored assets — real ids make tiles pinnable immediately. */
+  assets?: { asset_id: string; cdn_url: string; ratio?: string | null }[] | null
 }
 
 export const sendChatMessageStreaming = async (
