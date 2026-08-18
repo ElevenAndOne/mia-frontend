@@ -7,6 +7,7 @@ import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-page'
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
+import { BrandKitTab } from './brand-kit-tab'
 import { SkillLearningPage } from './skill-learning-page'
 import { MiaStyleTab } from './mia-style-tab'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl, updateWorkspaceFramework } from '../services/workspace-service'
@@ -25,7 +26,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'campaigns' | 'whatsapp' | 'skills' | 'mia'
+type SettingsTab = 'members' | 'brand' | 'brandkit' | 'campaigns' | 'whatsapp' | 'skills' | 'mia'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -110,8 +111,8 @@ export const WorkspaceSettingsDetail = ({
 }: WorkspaceSettingsDetailProps) => {
   // Non-managers (analyst/viewer) get a read-only view limited to the guide tabs.
   const visibleTabs: SettingsTab[] = canManage
-    ? ['members', 'brand', 'campaigns', 'skills', 'whatsapp', 'mia']
-    : ['brand', 'campaigns', 'mia']
+    ? ['members', 'brand', 'brandkit', 'campaigns', 'skills', 'whatsapp', 'mia']
+    : ['brand', 'brandkit', 'campaigns', 'mia']
   const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
   const { sessionId, refreshWorkspaces } = useSession()
   const { showToast } = useToast()
@@ -327,6 +328,8 @@ export const WorkspaceSettingsDetail = ({
               ? 'Members'
               : tab === 'brand'
               ? 'Brand Guide'
+              : tab === 'brandkit'
+              ? 'Brand Kit'
               : tab === 'campaigns'
               ? 'Campaign Guides'
               : tab === 'skills'
@@ -504,6 +507,11 @@ export const WorkspaceSettingsDetail = ({
         {/* Brand Guide tab */}
         {activeTab === 'brand' && (
           <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        )}
+
+        {/* Brand Kit tab */}
+        {activeTab === 'brandkit' && (
+          <BrandKitTab sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
         )}
 
         {/* Campaign Guides tab */}
