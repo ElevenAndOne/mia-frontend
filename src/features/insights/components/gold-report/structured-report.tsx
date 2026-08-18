@@ -8,7 +8,14 @@ import './gold-report.css'
 
 // The designed rendition of the gold ML report (Figma: MIA-Gold-Data).
 // Sections tolerate partial payloads — anything empty is simply omitted.
-export const StructuredReport = ({ report }: { report: StructuredGoldReport }) => {
+// `title` swaps the heading for the organic tier (same layout, same schema).
+export const StructuredReport = ({
+  report,
+  title = 'ML Prediction Report',
+}: {
+  report: StructuredGoldReport
+  title?: string
+}) => {
   const { executive_summary, insights, recommendations, deliverables } = report
   return (
     <div className="gold-report space-y-8">
@@ -26,7 +33,7 @@ export const StructuredReport = ({ report }: { report: StructuredGoldReport }) =
           >
             <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
           </svg>
-          ML Prediction Report
+          {title}
         </h1>
         {report.intro && (
           <p className="text-base leading-[22px]" style={{ color: 'var(--gr-subtle)' }}>

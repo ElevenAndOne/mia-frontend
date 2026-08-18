@@ -8,6 +8,9 @@ export interface GoldInsightsResponse {
   // Structured rendition for the designed report page; null while the backend
   // builds it in the background (fall back to the markdown summary).
   report?: StructuredGoldReport | null
+  // Which tier produced the report: paid ML analysis, or the organic
+  // performance pipeline for workspaces with no usable paid data.
+  report_type?: 'ml' | 'organic'
   created_at: string | null
   job_status: string | null
   failure_reason: string | null

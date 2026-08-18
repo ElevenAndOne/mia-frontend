@@ -26,6 +26,9 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { sessionId } = useSession()
   const { data, isLoading, error, refresh, triggerRefresh, isRefreshing } =
     useGoldInsights(sessionId)
+  // Same page, same schema — the organic tier just names itself honestly.
+  const reportTitle =
+    data?.report_type === 'organic' ? 'Organic Performance Report' : 'ML Prediction Report'
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
   useEffect(() => {
@@ -122,7 +125,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                 )}
 
                 {data.report ? (
-                  <StructuredReport report={data.report} />
+                  <StructuredReport report={data.report} title={reportTitle} />
                 ) : (
                   // Fallback: structured rendition is still being built server-side
                   // (or this report predates it) — show the raw markdown report.
@@ -136,7 +139,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                       >
                         <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
                       </svg>
-                      ML Prediction Report
+                      {reportTitle}
                     </h2>
                     <ChatMarkdown
                       content={data.summary ?? ''}
