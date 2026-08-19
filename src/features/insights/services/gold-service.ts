@@ -1,5 +1,9 @@
 import { apiFetch } from '../../../utils/api'
-import type { GoldTopPost, StructuredGoldReport } from '../components/gold-report/types'
+import type {
+  GoldCampaignEvidence,
+  GoldTopPost,
+  StructuredGoldReport,
+} from '../components/gold-report/types'
 
 export interface GoldInsightsResponse {
   success: boolean
@@ -13,6 +17,9 @@ export interface GoldInsightsResponse {
   report_type?: 'ml' | 'organic'
   // Organic tier: the real posts behind the report's numbers, with permalinks.
   top_posts?: GoldTopPost[]
+  // Paid tier: real campaign metrics from the ad platforms (24h cache, so null
+  // on the very first view while the background refresh runs).
+  campaign_evidence?: GoldCampaignEvidence | null
   created_at: string | null
   job_status: string | null
   failure_reason: string | null

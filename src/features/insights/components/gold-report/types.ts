@@ -55,6 +55,34 @@ export interface GoldTopPost {
   permalink: string | null
 }
 
+/** Paid tier: real campaign metrics fetched from the ad platforms, not restated
+ *  from the report. Blended figures are aggregate-first (spend ÷ clicks). */
+export interface GoldCampaignEvidence {
+  window: { since: string; until: string; days: number }
+  portfolio: {
+    currency: string
+    campaigns: number
+    impressions: number
+    clicks: number
+    spend: number
+    blended_ctr_pct: number | null
+    blended_cpc: number | null
+    blended_cpm: number | null
+    basis: string
+  }
+  campaigns: {
+    name: string
+    platform: string
+    impressions: number
+    clicks: number
+    spend: number
+    ctr_pct: number | null
+    cpc: number | null
+    cpm: number | null
+  }[]
+  shown_of: number
+}
+
 export interface StructuredGoldReport {
   intro: string | null
   executive_summary: {

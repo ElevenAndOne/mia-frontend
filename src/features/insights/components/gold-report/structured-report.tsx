@@ -1,37 +1,71 @@
+import { useState } from 'react'
 import { AtAGlance } from './at-a-glance'
-import { DeliverableTabs } from './deliverable-tabs'
+import { CampaignEvidence } from './campaign-evidence'
+import { DoNext } from './do-next'
 import { ExecSummary } from './exec-summary'
-import { InsightRow } from './insight-row'
-import { RecommendationCard } from './recommendation-card'
-import { SectionHeader } from './section-header'
+import { CollapsibleRow } from './collapsible-row'
+import { DeliverableRows, InsightRows, RecommendationRows } from './report-rows'
 import { TopPosts } from './top-posts'
-import type { GoldTopPost, StructuredGoldReport } from './types'
+import type { GoldCampaignEvidence, GoldTopPost, StructuredGoldReport } from './types'
 import './gold-report.css'
 
-// The designed rendition of the gold ML report (Figma: MIA-Gold-Data).
-// Sections tolerate partial payloads — anything empty is simply omitted.
-// `title` swaps the heading for the organic tier (same layout, same schema).
-// Inverted pyramid: at-a-glance tiles and the actual posts sit above the
-// long-form sections, so a 15-second read still lands the story.
+// Section eyebrow with an optional count — plain language over report jargon.
+const Section = ({
+  label,
+  count,
+  children,
+}: {
+  label: string
+  count?: number
+  children: React.ReactNode
+}) => (
+  <section>
+    <p className="gr-eyebrow mb-2">
+      {label}
+      {count != null && ` · ${count}`}
+    </p>
+    {children}
+  </section>
+)
+
+interface StructuredReportProps {
+  report: StructuredGoldReport
+  /** Heading — swaps for the organic tier. */
+  title?: string
+  /** Organic tier: real posts behind the numbers. */
+  topPosts?: GoldTopPost[]
+  /** Paid tier: real campaign metrics from the ad platforms. */
+  campaignEvidence?: GoldCampaignEvidence | null
+}
+
+/**
+ * The designed report (Figma: MIA-Gold-Data), structured as an inverted
+ * pyramid: the numbers and the actions read in about a minute, and every
+ * long-form section is a disclosure row that opens in place. Nothing is
+ * removed — "Expand all" reveals the whole report for a full read or print.
+ *
+ * Both tiers render through here; only the evidence section differs (linked
+ * posts for organic, campaign metrics for paid), because both produce the
+ * same report JSON.
+ */
 export const StructuredReport = ({
   report,
   title = 'ML Prediction Report',
   topPosts = [],
-}: {
-  report: StructuredGoldReport
-  title?: string
-  topPosts?: GoldTopPost[]
-}) => {
-  const { executive_summary, insights, recommendations, deliverables } = report
+  campaignEvidence,
+}: StructuredReportProps) => {
+  const { executive_summary, insights, recommendations, deliverables, email_digest } = report
+  const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined)
+
   return (
-    <div className="gold-report space-y-8">
-      <div className="space-y-1">
+    <div className="gold-report space-y-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1
-          className="flex items-center gap-2.5 text-[28px] leading-10 font-semibold tracking-[-0.01em]"
+          className="flex items-center gap-2.5 text-[24px] leading-8 font-semibold tracking-[-0.01em]"
           style={{ color: 'var(--gr-heading)' }}
         >
           <svg
-            className="w-6 h-6 shrink-0"
+            className="w-5 h-5 shrink-0"
             viewBox="0 0 20 20"
             fill="#f0a63e"
             xmlns="http://www.w3.org/2000/svg"
@@ -41,76 +75,70 @@ export const StructuredReport = ({
           </svg>
           {title}
         </h1>
-        {report.intro && (
-          <p className="text-base leading-[22px]" style={{ color: 'var(--gr-subtle)' }}>
-            {report.intro}
-          </p>
-        )}
+        <button
+          type="button"
+          onClick={() => setExpandAll((v) => !v)}
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-full"
+          style={{
+            color: 'var(--gr-purple-text)',
+            backgroundColor: 'var(--gr-purple-tint)',
+          }}
+        >
+          {expandAll ? 'Collapse all' : 'Expand all'}
+        </button>
       </div>
 
-      {report.email_digest && <AtAGlance digest={report.email_digest} />}
-
-      {topPosts.length > 0 && (
-        <section>
-          <SectionHeader
-            index=""
-            eyebrow="The posts behind the numbers"
-            title="See the actual content"
-          />
-          <TopPosts posts={topPosts} />
-        </section>
+      {email_digest ? (
+        <AtAGlance digest={email_digest} />
+      ) : (
+        // Reports structured before the digest existed still get a summary.
+        <ExecSummary summary={executive_summary} />
       )}
 
-      <section>
-        <SectionHeader
-          index="01"
-          eyebrow="Executive Summary"
-          title={executive_summary.headline}
-          titleWeight="normal"
-        />
-        <ExecSummary summary={executive_summary} />
-      </section>
+      {email_digest && email_digest.next_steps_short.length > 0 && (
+        <Section label="Do this next">
+          <DoNext steps={email_digest.next_steps_short} />
+        </Section>
+      )}
+
+      {topPosts.length > 0 && (
+        <Section label="The posts behind the numbers">
+          <TopPosts posts={topPosts} />
+        </Section>
+      )}
+
+      {campaignEvidence && campaignEvidence.campaigns.length > 0 && (
+        <Section label="The campaigns behind the numbers">
+          <CampaignEvidence evidence={campaignEvidence} />
+        </Section>
+      )}
 
       {insights.length > 0 && (
-        <section>
-          <SectionHeader
-            index="02"
-            eyebrow="Insights"
-            title="What's driving performance"
-            note="Ranked by driver strength"
-          />
-          <div className="gr-card divide-y divide-[color:var(--gr-line)]">
-            {insights.map((insight, i) => (
-              <InsightRow key={i} insight={insight} />
-            ))}
-          </div>
-        </section>
+        <Section label="What's driving performance" count={insights.length}>
+          <InsightRows insights={insights} forceOpen={expandAll} />
+        </Section>
       )}
 
       {recommendations.length > 0 && (
-        <section>
-          <SectionHeader
-            index="03"
-            eyebrow="Recommendations & Predictions"
-            title="Where to point budget next"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
-            {recommendations.map((rec) => (
-              <RecommendationCard key={rec.id} rec={rec} />
-            ))}
-          </div>
-        </section>
+        <Section label="What to do about it" count={recommendations.length}>
+          <RecommendationRows recommendations={recommendations} forceOpen={expandAll} />
+        </Section>
       )}
 
       {deliverables.length > 0 && (
-        <section>
-          <SectionHeader
-            index="04"
-            eyebrow="Design Actions & Deliverables"
-            title="What to build next"
-          />
-          <DeliverableTabs deliverables={deliverables} />
-        </section>
+        <Section label="Content to make" count={deliverables.length}>
+          <DeliverableRows deliverables={deliverables} forceOpen={expandAll} />
+        </Section>
+      )}
+
+      {email_digest && (
+        <Section label="Full summary">
+          <div className="gr-card overflow-hidden">
+            <CollapsibleRow title="Read the full written summary" forceOpen={expandAll}>
+              <ExecSummary summary={executive_summary} />
+            </CollapsibleRow>
+          </div>
+        </Section>
       )}
     </div>
   )

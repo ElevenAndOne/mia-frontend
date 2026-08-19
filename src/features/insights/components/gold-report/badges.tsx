@@ -3,10 +3,10 @@
 // Accent hexes come from the Figma "Category Pill" component set (six named
 // variants). Pills are a 14%-alpha tint of the accent with full-strength text
 // and dot, no border. Two badge kinds, per the designer's notes:
-//  - Rank badge ("PERFORMANCE DRIVER 1") — position-derived, colour cycles by
-//    rank ("we can assign different colours to 1, 2, 3, 4").
-//  - Category badge ("STRUCTURAL LEVER") — keyword-mapped to the component
-//    set's variant colours, neutral fallback for unseen labels.
+// Category badge ("STRUCTURAL LEVER") — keyword-mapped to the component set's
+// variant colours, with a neutral fallback for unseen labels. (The old
+// "PERFORMANCE DRIVER n" rank badge went away with the compact layout, where
+// the rank is a plain number on the closed row.)
 
 const ACCENTS = {
   structural: '#7c6cf0',
@@ -28,15 +28,6 @@ const CATEGORY_ACCENTS: [RegExp, Accent][] = [
   [/STRUCTURAL|CHANNEL|LEVER/, 'structural'],
   [/VOLUME|SCALE|REACH|AUDIENCE|SOURCE|PLATFORM/, 'volume'],
 ] as const
-
-const RANK_CYCLE: Accent[] = [
-  'structural',
-  'volume',
-  'learning',
-  'scheduling',
-  'creative',
-  'efficiency',
-]
 
 const categoryHex = (label: string): string | null => {
   const upper = label.toUpperCase()
@@ -60,14 +51,6 @@ export const Badge = ({ label, hex }: { label: string; hex?: string }) => {
     </span>
   )
 }
-
-/** Position-derived "PERFORMANCE DRIVER n" badge — stable regardless of model wording. */
-export const RankBadge = ({ rank }: { rank: number }) => (
-  <Badge
-    label={`Performance Driver ${rank}`}
-    hex={ACCENTS[RANK_CYCLE[(rank - 1) % RANK_CYCLE.length]]}
-  />
-)
 
 /** Step number chip for the executive-summary next steps — all purple, per the design. */
 export const StepNumber = ({ n }: { n: number }) => (
