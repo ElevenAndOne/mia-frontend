@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { AtAGlance } from './at-a-glance'
 import { CampaignEvidence } from './campaign-evidence'
-import { DoNext } from './do-next'
 import { ExecSummary } from './exec-summary'
 import { CollapsibleRow } from './collapsible-row'
 import { DeliverableRows, InsightRows, RecommendationRows } from './report-rows'
@@ -95,9 +94,9 @@ export const StructuredReport = ({
         <ExecSummary summary={executive_summary} />
       )}
 
-      {email_digest && email_digest.next_steps_short.length > 0 && (
-        <Section label="Do this next">
-          <DoNext steps={email_digest.next_steps_short} />
+      {recommendations.length > 0 && (
+        <Section label="Do this next" count={recommendations.length}>
+          <RecommendationRows recommendations={recommendations} forceOpen={expandAll} />
         </Section>
       )}
 
@@ -119,12 +118,6 @@ export const StructuredReport = ({
         </Section>
       )}
 
-      {recommendations.length > 0 && (
-        <Section label="What to do about it" count={recommendations.length}>
-          <RecommendationRows recommendations={recommendations} forceOpen={expandAll} />
-        </Section>
-      )}
-
       {deliverables.length > 0 && (
         <Section label="Content to make" count={deliverables.length}>
           <DeliverableRows deliverables={deliverables} forceOpen={expandAll} />
@@ -135,7 +128,7 @@ export const StructuredReport = ({
         <Section label="Full summary">
           <div className="gr-card overflow-hidden">
             <CollapsibleRow title="Read the full written summary" forceOpen={expandAll}>
-              <ExecSummary summary={executive_summary} />
+              <ExecSummary summary={executive_summary} showNextSteps={false} />
             </CollapsibleRow>
           </div>
         </Section>
