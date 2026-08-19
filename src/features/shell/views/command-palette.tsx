@@ -12,6 +12,7 @@ import { Settings01 } from '../../../components/icon/settings-01'
 import { Stars01 } from '../../../components/icon/stars-01'
 import { Target01 } from '../../../components/icon/target-01'
 import { Wallet01 } from '../../../components/icon/wallet-01'
+import { ClipboardCheck } from '../../../components/icon/clipboard-check'
 import { useSession } from '../../../contexts/session-context'
 import { usePlugins } from '../../plugins/hooks/use-plugins'
 import { useCommandPalette } from '../context/command-palette-context'
@@ -117,6 +118,13 @@ export const CommandPalette = () => {
         group: 'Jump to',
         icon: <Wallet01 size={17} />,
         run: () => go('/budget-tracker'),
+      },
+      {
+        id: 'jump-memo',
+        label: 'Weekly Memo',
+        group: 'Jump to',
+        icon: <ClipboardCheck size={17} />,
+        run: () => go('/memo'),
       },
       {
         id: 'jump-integrations',

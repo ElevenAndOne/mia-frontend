@@ -34,6 +34,7 @@ const PostsPage = lazy(() => import('../pages/posts-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
 const ReportPrintPage = lazy(() => import('../features/reports/report-print-page'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
+const MemoPage = lazy(() => import('../pages/memo-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
 const InternalPulsePage = lazy(() => import('../pages/internal-pulse-page'))
@@ -261,6 +262,17 @@ export const AppRoutes = ({
               <ProtectedRoute requireAccount>
                 <ErrorBoundary>
                   <BudgetTrackerPage />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/memo"
+            element={
+              <ProtectedRoute requireAccount>
+                <ErrorBoundary>
+                  <MemoPage />
                 </ErrorBoundary>
               </ProtectedRoute>
             }

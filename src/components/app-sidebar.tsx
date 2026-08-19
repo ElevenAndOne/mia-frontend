@@ -28,6 +28,7 @@ import { Sun } from './icon/sun'
 import { Target01 } from './icon/target-01'
 import { Users01 } from './icon/users-01'
 import { Wallet01 } from './icon/wallet-01'
+import { ClipboardCheck } from './icon/clipboard-check'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
 
 // Mia Create is hidden from the nav for now (2026-08-12). The page, its route
@@ -116,6 +117,8 @@ export const AppSidebar = () => {
           ? 'reports'
           : path.startsWith('/budget-tracker')
             ? 'budget'
+          : path.startsWith('/memo')
+            ? 'memo'
             : path.startsWith('/settings/workspace')
               ? 'settings'
               : ''
@@ -222,6 +225,13 @@ export const AppSidebar = () => {
             collapsed={collapsed}
             active={activeKey === 'budget'}
             onClick={() => navigate('/budget-tracker')}
+          />
+          <NavItem
+            icon={<ClipboardCheck size={18} />}
+            label="Weekly Memo"
+            collapsed={collapsed}
+            active={activeKey === 'memo'}
+            onClick={() => navigate('/memo')}
           />
           <NavItem
             icon={<Settings01 size={18} />}
