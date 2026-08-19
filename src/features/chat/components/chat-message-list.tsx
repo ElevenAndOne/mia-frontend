@@ -13,6 +13,7 @@ interface ChatMessageListProps {
   pinnedAssetId?: string | null
   onPinAsset?: (asset: MiaAsset | null) => void
   onUseAssetInPost?: (asset: MiaAsset) => void
+  onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
 }
 
 /**
@@ -33,6 +34,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   pinnedAssetId,
   onPinAsset,
   onUseAssetInPost,
+  onFixDrift,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
@@ -64,6 +66,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             pinnedAssetId={pinnedAssetId}
             onPinAsset={onPinAsset}
             onUseAssetInPost={onUseAssetInPost}
+            onFixDrift={onFixDrift}
           />
         </div>
       ))}

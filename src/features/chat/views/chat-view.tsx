@@ -302,6 +302,13 @@ export const ChatView = ({
                     setEditTarget({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
                     handleSubmit('Use this image in the post')
                   }}
+                  onFixDrift={(source) => {
+                    // Re-pin the edit SOURCE (not the drifted result) and redo precisely.
+                    setEditTarget(source)
+                    handleSubmit(
+                      'Redo the previous edit — change ONLY what was asked and keep everything else exactly the same.'
+                    )
+                  }}
                 />
 
                 {/* Dots while Claude is thinking (tools running, no text yet) */}

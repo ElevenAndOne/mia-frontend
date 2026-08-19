@@ -27,6 +27,8 @@ interface Props {
   onPin?: (asset: MiaAsset | null) => void
   /** "Use in post": pin the asset and ask Mia to put it in a post document. */
   onUseInPost?: (asset: MiaAsset) => void
+  /** Drift badge "Fix" — re-pin the edit SOURCE and ask Mia to redo the edit precisely. */
+  onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
 }
 
 /**
@@ -37,7 +39,7 @@ interface Props {
  * Polling (rather than streaming the images) reuses the endpoints the Mia Create page
  * already depends on — see docs/CHAT_IMAGE_GEN_SCOPE.md D2.
  */
-export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Props) {
+export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixDrift }: Props) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id || ''
   const [assets, setAssets] = useState<MiaAsset[]>(event.assets ?? [])
@@ -121,7 +123,15 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Prop
                     media_type: 'image' as const,
                   }))
             )
-            stop()
+            // Edits get a drift-QA verdict shortly AFTER completion — keep polling
+            // briefly so the badge appears without a reopen (same grace pattern as
+            // set vision scores). Non-edit jobs stop immediately.
+            if (event.reference_mode === 'edit' && !jobAssets.some((a) => a.drift)) {
+              graceRef.current += 1
+              if (graceRef.current > 15) stop()
+            } else {
+              stop()
+            }
           } else if (job.status === 'failed') {
             setFailed(job.error_message || 'Generation failed.')
             stop()
@@ -165,14 +175,18 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Prop
         <span className="paragraph-xs text-quaternary">
           {settled ? label : `${label} — generating…`}
         </span>
-        {event.aspect_ratio && (
+        {/* Edits keep the SOURCE framing (aspect_ratio goes to the model as "auto"), so
+            the requested ratio would be a lie on the card — only expand changes the frame. */}
+        {event.aspect_ratio && event.reference_mode !== 'edit' && (
           <span className="paragraph-xs text-quaternary">· {event.aspect_ratio}</span>
         )}
       </div>
 
+      {/* 2-up, not 4-up: four tiles across a narrow chat column render a composited
+          headline as illegible fragments (the assets are fine — it just looked broken). */}
       <div
         className={`items-start ${
-          single ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2'
+          single ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 lg:grid-cols-3 gap-2'
         }`}
       >
         {assets.map((asset) => (
@@ -186,6 +200,7 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost }: Prop
             onUseInPost={
               onUseInPost && !asset.asset_id.startsWith('inline-') ? onUseInPost : undefined
             }
+            onFixDrift={onFixDrift}
           />
         ))}
         {!settled &&
@@ -233,6 +248,7 @@ function ImageTile({
   onPin,
   onZoom,
   onUseInPost,
+  onFixDrift,
 }: {
   asset: MiaAsset
   isPinned: boolean
@@ -240,7 +256,9 @@ function ImageTile({
   onPin?: (asset: MiaAsset | null) => void
   onZoom: (url: string) => void
   onUseInPost?: (asset: MiaAsset) => void
+  onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
 }) {
+  const drift = asset.drift
   return (
     <div
       draggable
@@ -326,6 +344,29 @@ function ImageTile({
           <span className="paragraph-xs text-quaternary">
             on-brand {asset.vision_score.on_brand}/10 · overall {asset.vision_score.overall}/10
           </span>
+        </div>
+      )}
+
+      {/* Drift QA: the edit changed more than asked (report §6.1). Non-blocking —
+          the image already rendered; this is the retoucher's second opinion. */}
+      {drift?.changed_beyond_request && (
+        <div
+          className="px-2 py-1.5 flex items-center gap-1.5 flex-wrap"
+          title={drift.note ?? undefined}
+        >
+          <span className="paragraph-xs font-medium text-warning bg-warning-subtle border border-warning rounded px-1.5 py-0.5">
+            Changed more than asked
+          </span>
+          {onFixDrift && drift.source_asset_id && drift.source_url && (
+            <button
+              onClick={() =>
+                onFixDrift({ asset_id: drift.source_asset_id!, cdn_url: drift.source_url! })
+              }
+              className="paragraph-xs font-semibold text-brand-solid hover:underline"
+            >
+              Fix
+            </button>
+          )}
         </div>
       )}
     </div>

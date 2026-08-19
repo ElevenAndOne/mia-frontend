@@ -334,6 +334,8 @@ export interface ImageJobEvent {
   cdn_urls?: string[] | null
   /** Sync tools return their stored assets — real ids make tiles pinnable immediately. */
   assets?: { asset_id: string; cdn_url: string; ratio?: string | null }[] | null
+  /** 'edit' → the card keeps polling briefly after the image lands for the drift verdict. */
+  reference_mode?: string | null
 }
 
 export const sendChatMessageStreaming = async (

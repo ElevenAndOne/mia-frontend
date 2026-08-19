@@ -119,7 +119,9 @@ export const BrandKitTab = ({
         const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
         throw new Error(err.detail || 'Upload failed')
       }
-      applyKit((await res.json()) as BrandKitData)
+      // Only refresh the ASSET side — applyKit would overwrite font/palette/imagery-style
+      // edits the user hasn't saved yet (uploading a logo wiped them, reported 2026-08-18).
+      setKit((await res.json()) as BrandKitData)
       showToast('success', kind === 'logo' ? 'Logo uploaded' : 'Reference added')
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Upload failed')
@@ -132,7 +134,7 @@ export const BrandKitTab = ({
     try {
       const res = await apiFetch(`${base}/assets/${assetId}`, { method: 'DELETE', headers })
       if (!res.ok) throw new Error(String(res.status))
-      applyKit((await res.json()) as BrandKitData)
+      setKit((await res.json()) as BrandKitData)  // assets only — keep unsaved form edits
     } catch {
       showToast('error', "Couldn't remove that image.")
     }

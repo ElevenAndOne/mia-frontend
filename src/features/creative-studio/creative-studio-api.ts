@@ -287,6 +287,13 @@ export interface MiaAsset {
   prompt?: string
   model?: string
   ratio?: string | null // set for placement-set images → shown as a size badge
+  /** Edit-drift QA: did the edit change more than asked? Arrives shortly after the image. */
+  drift?: {
+    changed_beyond_request: boolean
+    note?: string | null
+    source_asset_id?: string | null
+    source_url?: string | null
+  } | null
   created_at?: string
 }
 

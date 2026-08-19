@@ -523,6 +523,10 @@ export const useChatView = () => {
         platform_count: selectedPlatforms.length,
       })
       justSubmittedRef.current = true
+      // Sending a message IS intent to follow the reply — re-enable auto-scroll even if
+      // the user had scrolled up earlier (otherwise the generating image card renders
+      // below the fold and never gets revealed).
+      shouldAutoScrollRef.current = true
       setMessages((prev) => [...prev, userMessage])
       setImages([])
       setDocuments([])
@@ -672,6 +676,14 @@ export const useChatView = () => {
           imageJobs: imageJobs.length > 0 ? imageJobs : undefined,
         }
         setMessages((prev) => [...prev, assistantMessage])
+        // The settled message can be TALLER than the streamed text (image cards render
+        // skeleton placeholders below it) — nudge the view down so the generating card
+        // is visible, unless the user has scrolled up to read something.
+        if (shouldAutoScrollRef.current) {
+          requestAnimationFrame(() =>
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+          )
+        }
         // A pin is consumed by the generation it produced: once the edit exists, follow-up
         // instructions should chain on the newest image (the edit result), not keep
         // re-editing the original. Turns with no generation leave the pin in place.

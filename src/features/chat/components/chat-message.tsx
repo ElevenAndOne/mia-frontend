@@ -29,6 +29,7 @@ interface ChatMessageProps {
   pinnedAssetId?: string | null
   onPinAsset?: (asset: MiaAsset | null) => void
   onUseAssetInPost?: (asset: MiaAsset) => void
+  onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -47,6 +48,7 @@ export const ChatMessage = memo(function ChatMessage({
   pinnedAssetId,
   onPinAsset,
   onUseAssetInPost,
+  onFixDrift,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
 
@@ -98,6 +100,7 @@ export const ChatMessage = memo(function ChatMessage({
                   pinnedAssetId={pinnedAssetId}
                   onPin={onPinAsset}
                   onUseInPost={onUseAssetInPost}
+                  onFixDrift={onFixDrift}
                 />
               ))}
             </div>
