@@ -7,7 +7,9 @@ import { XClose } from '../../../components/icon/x-close'
 import { Stars01 } from '../../../components/icon/stars-01'
 import { ImagePlus } from '../../../components/icon/image-plus'
 import { Skeleton } from '../../../components/skeleton'
+import { Crop01 } from '../../../components/icon/crop-01'
 import { MIA_ASSET_DRAG_TYPE } from './previews/preview-bits'
+import ImageEditorOverlay from './image-editor-overlay'
 import type { ImageJobEvent } from '../services/chat-service'
 
 const POLL_MS = 3000
@@ -45,6 +47,8 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
   const [assets, setAssets] = useState<MiaAsset[]>(event.assets ?? [])
   const [failed, setFailed] = useState<string | null>(null)
   const [zoom, setZoom] = useState<string | null>(null)
+  // Asset open in the full-screen editor (move text/logo, select & replace).
+  const [editing, setEditing] = useState<MiaAsset | null>(null)
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const ticksRef = useRef(0)
@@ -201,6 +205,11 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
               onUseInPost && !asset.asset_id.startsWith('inline-') ? onUseInPost : undefined
             }
             onFixDrift={onFixDrift}
+            onEdit={
+              asset.asset_id.startsWith('inline-') || asset.asset_id.startsWith('job-')
+                ? undefined
+                : setEditing
+            }
           />
         ))}
         {!settled &&
@@ -218,6 +227,28 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
         <p className="paragraph-xs text-quaternary mt-2">
           Still generating — check Mia Create → Library in a moment.
         </p>
+      )}
+
+      {editing && (
+        <ImageEditorOverlay
+          asset={editing}
+          conversationId={editing.conversation_id ?? null}
+          onClose={() => setEditing(null)}
+          onEdited={(next) => {
+            // Show the edited result in this card straight away; the editor keeps
+            // working on it, so further edits chain from the new version.
+            setAssets((prev) =>
+              prev.map((a) =>
+                a.asset_id === editing.asset_id
+                  ? { ...a, asset_id: next.asset_id, cdn_url: next.cdn_url }
+                  : a
+              )
+            )
+            setEditing((cur) =>
+              cur ? { ...cur, asset_id: next.asset_id, cdn_url: next.cdn_url } : cur
+            )
+          }}
+        />
       )}
 
       {zoom && (
@@ -249,6 +280,7 @@ function ImageTile({
   onZoom,
   onUseInPost,
   onFixDrift,
+  onEdit,
 }: {
   asset: MiaAsset
   isPinned: boolean
@@ -257,6 +289,7 @@ function ImageTile({
   onZoom: (url: string) => void
   onUseInPost?: (asset: MiaAsset) => void
   onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
+  onEdit?: (asset: MiaAsset) => void
 }) {
   const drift = asset.drift
   return (
@@ -328,6 +361,15 @@ function ImageTile({
             className="p-1.5 rounded bg-black/60 text-white hover:bg-brand-solid"
           >
             <ImagePlus size={14} />
+          </button>
+        )}
+        {onEdit && (
+          <button
+            onClick={() => onEdit(asset)}
+            title="Edit — move the text/logo, or select an object to replace"
+            className="p-1.5 rounded bg-black/60 text-white hover:bg-brand-solid"
+          >
+            <Crop01 size={14} />
           </button>
         )}
         <button

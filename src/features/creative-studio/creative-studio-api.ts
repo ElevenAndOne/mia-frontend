@@ -287,6 +287,12 @@ export interface MiaAsset {
   prompt?: string
   model?: string
   ratio?: string | null // set for placement-set images → shown as a size badge
+  /** Chat conversation the asset was generated in (scopes edits + iteration). */
+  conversation_id?: string | null
+  /** Composited text recipe — seeds the editor's drag handles at their current spots. */
+  headline?: string | null
+  headline_xy?: [number, number] | null
+  logo_xy?: [number, number] | null
   /** Edit-drift QA: did the edit change more than asked? Arrives shortly after the image. */
   drift?: {
     changed_beyond_request: boolean
@@ -384,7 +390,101 @@ export interface PageFrame {
   thumbnail_url: string | null
 }
 
+/** What the editor overlay can change about a composited image. */
+export interface RecomposeOverrides {
+  headline?: string // '' removes the text
+  subhead?: string
+  text_color?: string
+  text_position?: 'top' | 'center' | 'bottom'
+  font_family?: string
+  text_scale?: number
+  max_lines?: number
+  headline_xy?: [number, number] // 0-1 fractions — free placement
+  logo_asset_id?: string
+  logo_position?: string
+  logo_xy?: [number, number]
+  ratio?: string
+}
+
+export interface EditedAsset {
+  asset_id: string
+  cdn_url: string
+  ratio?: string | null
+}
+
 export const miaCreateApi = {
+  /** Re-render text/logo from the clean base — used by every drag in the editor. */
+  recompose: async (
+    sessionId: string,
+    tenantId: string,
+    assetId: string,
+    overrides: RecomposeOverrides,
+    conversationId?: string | null,
+  ): Promise<EditedAsset> => {
+    const res = await apiFetch(`${miaBase()}/recompose`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        asset_id: assetId,
+        conversation_id: conversationId ?? undefined,
+        ...overrides,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Could not apply that change' }))
+      throw new Error(err.detail || 'Could not apply that change')
+    }
+    return res.json()
+  },
+
+  /** Click-to-select: clicks (fractions) → a precise object mask to outline. */
+  segment: async (
+    sessionId: string,
+    tenantId: string,
+    assetId: string,
+    points: { x: number; y: number; label: number }[],
+    box?: { x_min: number; y_min: number; x_max: number; y_max: number },
+  ): Promise<{ mask_url: string; width: number; height: number }> => {
+    const res = await apiFetch(`${miaBase()}/segment`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: tenantId, asset_id: assetId, points, box }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Selection failed' }))
+      throw new Error(err.detail || 'Selection failed')
+    }
+    return res.json()
+  },
+
+  /** Repaint inside the selection; everything outside stays as it was. */
+  inpaint: async (
+    sessionId: string,
+    tenantId: string,
+    assetId: string,
+    maskUrl: string,
+    prompt: string,
+    conversationId?: string | null,
+  ): Promise<EditedAsset> => {
+    const res = await apiFetch(`${miaBase()}/inpaint`, {
+      method: 'POST',
+      headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        asset_id: assetId,
+        mask_url: maskUrl,
+        prompt,
+        conversation_id: conversationId ?? undefined,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Edit failed' }))
+      throw new Error(err.detail || 'Edit failed')
+    }
+    return res.json()
+  },
+
   getJob: async (sessionId: string, tenantId: string, jobId: string): Promise<MiaJob> => {
     const url = `${miaBase()}/jobs/${jobId}?tenant_id=${encodeURIComponent(tenantId)}`
     const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
