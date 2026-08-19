@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+
+import { linkedinLabelFor } from './utils/linkedin-label'
 import { useNavigate } from 'react-router-dom'
 import { EXTERNAL_URLS } from '../../constants/external-urls'
 import { StorageKey } from '../../constants/storage-keys'
@@ -236,6 +238,15 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowSmartleadModal = (show: boolean) => setOpenModal(show ? 'smartlead' : null)
 
   // Build integrations list from platformStatus - memoized to prevent unnecessary recalculations
+  const linkedinLabel = useMemo(
+    () =>
+      linkedinLabelFor(
+        currentAccountData?.linkedin_ads_account_id,
+        currentAccountData?.linkedin_organization_id,
+      ),
+    [currentAccountData?.linkedin_ads_account_id, currentAccountData?.linkedin_organization_id],
+  )
+
   const integrations = useMemo((): Integration[] => {
     if (!platformStatus) return []
 
@@ -329,8 +340,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       },
       {
         id: 'linkedin_ads',
-        name: 'LinkedIn Ads',
-        description: 'B2B advertising and lead generation',
+        // A LinkedIn connection can be an ad account, a company page, or both, and
+        // the row used to claim "LinkedIn Ads" for all three — so a workspace with
+        // only an organic page looked like its advertising was connected and
+        // measured when no ad data could flow at all.
+        name: linkedinLabel.name,
+        description: linkedinLabel.description,
         icon: '/icons/linkedin.svg',
         connected: platformStatus.linkedin_ads?.connected || false,
         linked:
@@ -395,7 +410,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     ]
 
     return data
-  }, [platformStatus, getTimeAgo])
+  }, [platformStatus, getTimeAgo, linkedinLabel])
 
   // Handle Brevo API Key Submission
   const handleBrevoSubmit = async () => {
