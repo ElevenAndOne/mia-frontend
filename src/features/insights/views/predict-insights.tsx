@@ -125,7 +125,11 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                 )}
 
                 {data.report ? (
-                  <StructuredReport report={data.report} title={reportTitle} />
+                  <StructuredReport
+                    report={data.report}
+                    title={reportTitle}
+                    topPosts={data.top_posts ?? []}
+                  />
                 ) : (
                   // Fallback: structured rendition is still being built server-side
                   // (or this report predates it) — show the raw markdown report.

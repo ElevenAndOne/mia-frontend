@@ -1,20 +1,26 @@
+import { AtAGlance } from './at-a-glance'
 import { DeliverableTabs } from './deliverable-tabs'
 import { ExecSummary } from './exec-summary'
 import { InsightRow } from './insight-row'
 import { RecommendationCard } from './recommendation-card'
 import { SectionHeader } from './section-header'
-import type { StructuredGoldReport } from './types'
+import { TopPosts } from './top-posts'
+import type { GoldTopPost, StructuredGoldReport } from './types'
 import './gold-report.css'
 
 // The designed rendition of the gold ML report (Figma: MIA-Gold-Data).
 // Sections tolerate partial payloads — anything empty is simply omitted.
 // `title` swaps the heading for the organic tier (same layout, same schema).
+// Inverted pyramid: at-a-glance tiles and the actual posts sit above the
+// long-form sections, so a 15-second read still lands the story.
 export const StructuredReport = ({
   report,
   title = 'ML Prediction Report',
+  topPosts = [],
 }: {
   report: StructuredGoldReport
   title?: string
+  topPosts?: GoldTopPost[]
 }) => {
   const { executive_summary, insights, recommendations, deliverables } = report
   return (
@@ -42,6 +48,19 @@ export const StructuredReport = ({
         )}
       </div>
 
+      {report.email_digest && <AtAGlance digest={report.email_digest} />}
+
+      {topPosts.length > 0 && (
+        <section>
+          <SectionHeader
+            index=""
+            eyebrow="The posts behind the numbers"
+            title="See the actual content"
+          />
+          <TopPosts posts={topPosts} />
+        </section>
+      )}
+
       <section>
         <SectionHeader
           index="01"
@@ -58,7 +77,7 @@ export const StructuredReport = ({
             index="02"
             eyebrow="Insights"
             title="What's driving performance"
-            note="Ranked by model driver strength"
+            note="Ranked by driver strength"
           />
           <div className="gr-card divide-y divide-[color:var(--gr-line)]">
             {insights.map((insight, i) => (
@@ -73,7 +92,7 @@ export const StructuredReport = ({
           <SectionHeader
             index="03"
             eyebrow="Recommendations & Predictions"
-            title="Where we're pointing budget next"
+            title="Where to point budget next"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
             {recommendations.map((rec) => (
@@ -88,7 +107,7 @@ export const StructuredReport = ({
           <SectionHeader
             index="04"
             eyebrow="Design Actions & Deliverables"
-            title="What our team will build"
+            title="What to build next"
           />
           <DeliverableTabs deliverables={deliverables} />
         </section>

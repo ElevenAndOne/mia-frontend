@@ -33,6 +33,28 @@ export interface GoldDeliverable {
   expected_impact: { kpi: string; direction: 'up' | 'down'; explanation: string }[]
 }
 
+export interface GoldEmailDigest {
+  subject: string
+  preview_text: string
+  headline: string
+  stat_tiles: { label: string; value: string; note: string }[]
+  next_steps_short: string[]
+  insights_teaser: string
+  deliverables_teaser: string
+}
+
+/** A real post behind the report's numbers (organic tier), with permalink. */
+export interface GoldTopPost {
+  platform: string
+  published_at: string | null
+  views: number
+  reach: number
+  engagements: number
+  engagement_rate_pct: number | null
+  text: string
+  permalink: string | null
+}
+
 export interface StructuredGoldReport {
   intro: string | null
   executive_summary: {
@@ -44,4 +66,7 @@ export interface StructuredGoldReport {
   insights: GoldInsight[]
   recommendations: GoldRecommendation[]
   deliverables: GoldDeliverable[]
+  /** Condensed scannable rendition — powers the summary email AND the page's
+   *  at-a-glance hero. Absent on reports structured before it existed. */
+  email_digest?: GoldEmailDigest | null
 }

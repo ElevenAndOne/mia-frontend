@@ -17,9 +17,7 @@ export const SectionHeader = ({
 }: SectionHeaderProps) => (
   <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1 mb-3.5">
     <div className="space-y-0.5">
-      <p className="gr-eyebrow">
-        {index} · {eyebrow}
-      </p>
+      <p className="gr-eyebrow">{index ? `${index} · ${eyebrow}` : eyebrow}</p>
       <h2
         className={`text-lg leading-[27px] ${titleWeight === 'bold' ? 'font-bold' : 'font-normal'}`}
         style={{ color: 'var(--gr-heading)' }}

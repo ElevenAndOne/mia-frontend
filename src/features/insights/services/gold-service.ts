@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import type { StructuredGoldReport } from '../components/gold-report/types'
+import type { GoldTopPost, StructuredGoldReport } from '../components/gold-report/types'
 
 export interface GoldInsightsResponse {
   success: boolean
@@ -11,6 +11,8 @@ export interface GoldInsightsResponse {
   // Which tier produced the report: paid ML analysis, or the organic
   // performance pipeline for workspaces with no usable paid data.
   report_type?: 'ml' | 'organic'
+  // Organic tier: the real posts behind the report's numbers, with permalinks.
+  top_posts?: GoldTopPost[]
   created_at: string | null
   job_status: string | null
   failure_reason: string | null
