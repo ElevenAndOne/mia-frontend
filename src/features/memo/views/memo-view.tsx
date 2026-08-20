@@ -50,9 +50,11 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                 <h1 className="label-lg text-primary">
                   {open.length > 0
                     ? `${open.length} thing${open.length === 1 ? '' : 's'} worth doing this week`
-                    : 'Nothing needs your attention this week'}
+                    : handled.length > 0
+                      ? "You've handled everything in this week's memo"
+                      : 'Nothing needs your attention this week'}
                 </h1>
-                {memo.memo?.narrative && (
+                {memo.memo?.narrative && open.length > 0 && (
                   <p className="paragraph-md text-secondary">
                     {memo.memo.narrative.replaceAll('**', '')}
                   </p>
@@ -79,8 +81,9 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                 {open.length === 0 && (
                   <div className="rounded-2xl border border-secondary bg-primary p-6 text-center">
                     <p className="paragraph-sm text-tertiary">
-                      Every campaign is running inside its normal range. Mia will check again on
-                      Monday.
+                      {handled.length > 0
+                        ? 'Everything Mia raised this week has been dealt with. She checks again on Monday.'
+                        : 'Every campaign is running inside its normal range. Mia will check again on Monday.'}
                     </p>
                   </div>
                 )}

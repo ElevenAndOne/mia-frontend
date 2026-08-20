@@ -13,7 +13,7 @@ import { normalizeKind } from '../utils/memo-format'
 
 // Open items lead with the most urgent kind, then the most money at stake — the
 // same ranking the memo used to decide what to show at all.
-const KIND_RANK: Record<string, number> = { optimize: 0, protect: 1, grow: 2, info: 3 }
+const KIND_RANK: Record<string, number> = { optimise: 0, protect: 1, grow: 2, info: 3 }
 
 const value = (rec: MemoRecommendation): number =>
   rec.evidence?.impact ?? rec.evidence?.stake ?? 0

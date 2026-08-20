@@ -8,7 +8,7 @@ import { KIND_LABEL, actionSummary, impactLine, normalizeKind } from '../utils/m
 
 const KIND_CHIP: Record<string, string> = {
   grow: 'text-success bg-success-subtle border-success-subtle',
-  optimize: 'text-error bg-error-primary border-error-subtle',
+  optimise: 'text-error bg-error-primary border-error-subtle',
   protect: 'text-warning bg-warning-subtle border-warning-subtle',
   info: 'text-tertiary bg-tertiary border-tertiary',
 }

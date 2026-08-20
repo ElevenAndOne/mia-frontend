@@ -2,9 +2,10 @@ import type { MemoDisclosure, MemoEvidence } from '../types'
 
 export const KIND_LABEL: Record<string, string> = {
   grow: 'Grow',
-  optimize: 'Optimize',
+  optimise: 'Optimise',
   protect: 'Protect',
   info: 'Info',
+  optimize: 'Optimise',  // US spelling written before the switch
   // Rows written before the Grow/Optimize/Protect rename. Kept so history renders
   // rather than showing an empty chip — decided cards live on the memo for weeks.
   scale: 'Grow',
@@ -14,7 +15,7 @@ export const KIND_LABEL: Record<string, string> = {
 
 /** Legacy kinds map onto the current three for colour and ordering. */
 export const normalizeKind = (kind: string): string =>
-  ({ scale: 'grow', kill: 'optimize', fix: 'optimize' })[kind] ?? kind
+  ({ scale: 'grow', kill: 'optimise', fix: 'optimise', optimize: 'optimise' })[kind] ?? kind
 
 export const PLATFORM_LABEL: Record<string, string> = {
   google_ads: 'Google Ads',
@@ -41,7 +42,9 @@ export const evidenceSummary = (evidence: MemoEvidence | null): string | null =>
     const label = r.result_label ?? 'result'
     const count = r.results ?? r.conversions
     const parts = [`${fmt(r.spend)} spend`, `${fmt(count)} ${label}s`]
-    if (r.roas !== null && r.roas !== undefined) parts.push(`ROAS ${fmt(r.roas)}x`)
+    const gradedOnRoas = evidence.basis === 'roas'
+    if (gradedOnRoas && r.roas !== null && r.roas !== undefined)
+      parts.push(`ROAS ${fmt(r.roas)}x`)
     else if (r.cost_per_result !== null && r.cost_per_result !== undefined)
       parts.push(`${fmt(r.cost_per_result)} / ${label}`)
     if (evidence.spend_share !== null && evidence.spend_share !== undefined)
