@@ -60,6 +60,16 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
   const recipe = state?.recipe ?? {}
   const headline = (recipe.headline || '').trim()
 
+  // Warm the segmentation model as soon as the editor opens — fal spins idle
+  // containers down, so without this the first click of a session waits 6-18s.
+  // Once per overlay, regardless of which mode the user ends up using.
+  const prewarmedRef = useRef(false)
+  useEffect(() => {
+    if (prewarmedRef.current || !sessionId || !tenantId) return
+    prewarmedRef.current = true
+    void miaCreateApi.prewarmEditor(sessionId, tenantId, asset.asset_id)
+  }, [sessionId, tenantId, asset.asset_id])
+
   // Load the base + recipe
   useEffect(() => {
     if (!sessionId || !tenantId) return
@@ -155,7 +165,16 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     setPoints(next)
     setBusy('Selecting…')
     try {
-      const res = await miaCreateApi.segment(sessionId, tenantId, assetId, next)
+      const res = await miaCreateApi.segment(
+        sessionId,
+        tenantId,
+        assetId,
+        next,
+        undefined,
+        state?.width && state?.height
+          ? { width: state.width, height: state.height }
+          : undefined
+      )
       setMaskUrl(res.mask_url)
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Selection failed')

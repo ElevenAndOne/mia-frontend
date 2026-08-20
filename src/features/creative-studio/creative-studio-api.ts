@@ -462,6 +462,19 @@ export const miaCreateApi = {
     return res.json()
   },
 
+  /** Warm the segmentation model on editor open so the first click isn't the slow one. */
+  prewarmEditor: async (sessionId: string, tenantId: string, assetId: string): Promise<void> => {
+    try {
+      await apiFetch(`${miaBase()}/prewarm`, {
+        method: 'POST',
+        headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId, asset_id: assetId }),
+      })
+    } catch {
+      // Purely an optimisation — a failed pre-warm just means a slower first click.
+    }
+  },
+
   /** Click-to-select: clicks (fractions) → a precise object mask to outline. */
   segment: async (
     sessionId: string,
@@ -469,11 +482,20 @@ export const miaCreateApi = {
     assetId: string,
     points: { x: number; y: number; label: number }[],
     box?: { x_min: number; y_min: number; x_max: number; y_max: number },
+    // Pass the known pixel dims — saves the server re-downloading the image per click.
+    dims?: { width: number; height: number },
   ): Promise<{ mask_url: string; width: number; height: number }> => {
     const res = await apiFetch(`${miaBase()}/segment`, {
       method: 'POST',
       headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenant_id: tenantId, asset_id: assetId, points, box }),
+      body: JSON.stringify({
+        tenant_id: tenantId,
+        asset_id: assetId,
+        points,
+        box,
+        width: dims?.width,
+        height: dims?.height,
+      }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Selection failed' }))
