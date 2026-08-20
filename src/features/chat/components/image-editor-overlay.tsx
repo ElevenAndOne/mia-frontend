@@ -5,30 +5,34 @@ import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import {
   miaCreateApi,
+  type EditState,
   type EditedAsset,
   type MiaAsset,
 } from '../../creative-studio/creative-studio-api'
 
 type Mode = 'place' | 'select'
-/** What's being dragged in place mode. */
-type Handle = 'headline' | 'logo' | null
+type Handle = 'headline' | 'logo'
 
 interface Props {
   asset: MiaAsset
   conversationId?: string | null
   onClose: () => void
-  /** A new asset was produced — the thread appends it as the latest version. */
   onEdited: (asset: EditedAsset) => void
 }
 
+/** Mirrors the compositor's hybrid reference edge so the preview matches the render. */
+const refEdge = (w: number, h: number) => (Math.min(w, h) * 3 + Math.max(w, h)) / 4
+const LOGO_WIDTH_FRAC = 0.18 // overlay_logo's width_frac
+
 /**
- * Full-screen editor for an image in the chat thread.
+ * Full-screen editor for a chat image.
  *
- * Two modes, both deliberately outside the chat loop so they feel immediate:
- *  place  — drag the headline / logo anywhere; each drop re-renders from the clean base
- *           (so text never stacks) and the position is persisted with the asset.
- *  select — click objects to build a precise selection (SAM2), then say what should be
- *           there instead; only the selected pixels change.
+ * Placement is previewed ENTIRELY in the browser: the headline and logo are real DOM
+ * elements over the text-free base, so dragging is instant and WYSIWYG. Only "Apply"
+ * hits the server. (The first version re-rendered server-side on every drop, which
+ * took 13-31s each and gave no idea where things would land.)
+ *
+ * Select mode clicks through SAM2 for a true object outline, then repaints only inside it.
  */
 export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }: Props) => {
   const { sessionId, activeWorkspace } = useSession()
@@ -36,26 +40,59 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
   const tenantId = activeWorkspace?.tenant_id || ''
 
   const [mode, setMode] = useState<Mode>('place')
-  const [current, setCurrent] = useState<MiaAsset>(asset)
+  const [state, setState] = useState<EditState | null>(null)
+  const [assetId, setAssetId] = useState(asset.asset_id)
   const [busy, setBusy] = useState<string | null>(null)
-  const imgRef = useRef<HTMLImageElement>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const frameRef = useRef<HTMLDivElement>(null)
 
-  // place mode — fractional positions, seeded from whatever the asset was composited with
-  const meta = current as MiaAsset & {
-    headline?: string | null
-    headline_xy?: [number, number] | null
-    logo_xy?: [number, number] | null
-  }
-  const [headlinePos, setHeadlinePos] = useState<[number, number] | null>(
-    meta.headline_xy ?? null
-  )
-  const [logoPos, setLogoPos] = useState<[number, number] | null>(meta.logo_xy ?? null)
-  const [dragging, setDragging] = useState<Handle>(null)
+  // Live placement (fractions). Seeded from the recipe, then owned by the drag.
+  const [headlinePos, setHeadlinePos] = useState<[number, number] | null>(null)
+  const [logoPos, setLogoPos] = useState<[number, number] | null>(null)
+  const [dirty, setDirty] = useState(false)
+  const dragRef = useRef<Handle | null>(null)
 
-  // select mode
+  // Select mode
   const [points, setPoints] = useState<{ x: number; y: number; label: number }[]>([])
   const [maskUrl, setMaskUrl] = useState<string | null>(null)
   const [instruction, setInstruction] = useState('')
+
+  const recipe = state?.recipe ?? {}
+  const headline = (recipe.headline || '').trim()
+
+  // Load the base + recipe
+  useEffect(() => {
+    if (!sessionId || !tenantId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const s = await miaCreateApi.getEditState(sessionId, tenantId, assetId)
+        if (cancelled) return
+        setState(s)
+        setHeadlinePos(s.recipe.headline_xy ?? null)
+        setLogoPos(s.recipe.logo_xy ?? null)
+        setDirty(false)
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not open the editor')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, tenantId, assetId])
+
+  // The headline font needs to be available to the browser for a faithful preview.
+  useEffect(() => {
+    const fam = recipe.font_family
+    if (!fam) return
+    const id = `editor-font-${fam.replace(/\s+/g, '-')}`
+    if (document.getElementById(id)) return
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fam).replace(/%20/g, '+')}:wght@700&display=swap`
+    document.head.appendChild(link)
+  }, [recipe.font_family])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -65,9 +102,8 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  /** Pointer position as 0-1 fractions of the displayed image. */
   const fractionsFrom = useCallback((clientX: number, clientY: number) => {
-    const el = imgRef.current
+    const el = frameRef.current
     if (!el) return null
     const r = el.getBoundingClientRect()
     return {
@@ -76,57 +112,54 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     }
   }, [])
 
-  const applyPlacement = async (overrides: {
-    headline_xy?: [number, number]
-    logo_xy?: [number, number]
-  }) => {
-    if (!sessionId || !tenantId) return
-    setBusy('Moving…')
+  // Dragging is local state only — no network until Apply.
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    const f = fractionsFrom(e.clientX, e.clientY)
+    if (!f) return
+    if (dragRef.current === 'headline') setHeadlinePos([f.x, f.y])
+    else setLogoPos([f.x, f.y])
+    setDirty(true)
+  }
+
+  const applyPlacement = async () => {
+    if (!sessionId || !tenantId || !dirty) return
+    setBusy('Applying…')
     try {
       const next = await miaCreateApi.recompose(
         sessionId,
         tenantId,
-        current.asset_id,
-        overrides,
+        assetId,
+        {
+          ...(headlinePos ? { headline_xy: headlinePos } : {}),
+          ...(logoPos ? { logo_xy: logoPos } : {}),
+        },
         conversationId
       )
-      setCurrent({ ...current, asset_id: next.asset_id, cdn_url: next.cdn_url })
       onEdited(next)
+      setAssetId(next.asset_id) // keep editing the new version
+      setDirty(false)
+      showToast('success', 'Placement applied')
     } catch (e) {
-      showToast('error', e instanceof Error ? e.message : 'Could not move that')
+      showToast('error', e instanceof Error ? e.message : 'Could not apply that')
     } finally {
       setBusy(null)
     }
   }
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (mode !== 'place' || !dragging) return
-    const f = fractionsFrom(e.clientX, e.clientY)
-    setDragging(null)
-    if (!f) return
-    if (dragging === 'headline') {
-      setHeadlinePos([f.x, f.y])
-      void applyPlacement({ headline_xy: [f.x, f.y] })
-    } else {
-      setLogoPos([f.x, f.y])
-      void applyPlacement({ logo_xy: [f.x, f.y] })
-    }
-  }
-
-  const handleImageClick = async (e: React.MouseEvent) => {
+  const onImageClick = async (e: React.MouseEvent) => {
     if (mode !== 'select' || !sessionId || !tenantId) return
     const f = fractionsFrom(e.clientX, e.clientY)
     if (!f) return
-    // alt-click subtracts from the selection, matching Photoshop's muscle memory
     const next = [...points, { x: f.x, y: f.y, label: e.altKey ? 0 : 1 }]
     setPoints(next)
     setBusy('Selecting…')
     try {
-      const res = await miaCreateApi.segment(sessionId, tenantId, current.asset_id, next)
+      const res = await miaCreateApi.segment(sessionId, tenantId, assetId, next)
       setMaskUrl(res.mask_url)
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Selection failed')
-      setPoints(points) // roll back the click that failed
+      setPoints(points)
     } finally {
       setBusy(null)
     }
@@ -139,13 +172,13 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
       const next = await miaCreateApi.inpaint(
         sessionId,
         tenantId,
-        current.asset_id,
+        assetId,
         maskUrl,
         instruction.trim(),
         conversationId
       )
-      setCurrent({ ...current, asset_id: next.asset_id, cdn_url: next.cdn_url })
       onEdited(next)
+      setAssetId(next.asset_id)
       setPoints([])
       setMaskUrl(null)
       setInstruction('')
@@ -156,13 +189,27 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     }
   }
 
-  const clearSelection = () => {
-    setPoints([])
-    setMaskUrl(null)
-  }
+  // Preview geometry, derived from the DISPLAYED size so it matches the render.
+  const [box, setBox] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const el = frameRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect()
+      setBox({ w: r.width, h: r.height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [state])
+
+  const fontPx = box.w
+    ? refEdge(box.w, box.h) * 0.085 * (Number(recipe.text_scale) || 1)
+    : 0
+  const marginPx = box.w * 0.07
+  const previewSrc = mode === 'select' ? (state?.composited_cdn_url ?? '') : (state?.base_cdn_url ?? '')
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col">
+    <div className="fixed inset-0 z-[60] bg-black/95 flex flex-col select-none">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
         <div className="flex rounded-lg overflow-hidden border border-white/20">
@@ -171,7 +218,8 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
               key={m}
               onClick={() => {
                 setMode(m)
-                clearSelection()
+                setPoints([])
+                setMaskUrl(null)
               }}
               className={[
                 'px-3 py-1.5 paragraph-sm font-medium transition-colors',
@@ -183,86 +231,149 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
           ))}
         </div>
 
-        <span className="paragraph-xs text-white/60 hidden sm:block">
+        <span className="paragraph-xs text-white/60 hidden md:block">
           {mode === 'place'
-            ? 'Drag the handles onto the image — each drop re-renders from the clean original'
+            ? 'Drag the headline or logo — the preview is live, then Apply to render it'
             : 'Click an object to select it (alt-click to remove part), then say what belongs there'}
         </span>
 
-        {busy && (
-          <span className="flex items-center gap-2 paragraph-xs text-white/80 ml-auto">
-            <Spinner size="sm" variant="light" /> {busy}
-          </span>
-        )}
-
-        <button
-          onClick={onClose}
-          className={`p-2 rounded-lg text-white/80 hover:bg-white/10 ${busy ? '' : 'ml-auto'}`}
-          aria-label="Close editor"
-        >
-          <XClose size={20} />
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          {busy && (
+            <span className="flex items-center gap-2 paragraph-xs text-white/80">
+              <Spinner size="sm" variant="light" /> {busy}
+            </span>
+          )}
+          {mode === 'place' && (
+            <button
+              onClick={() => void applyPlacement()}
+              disabled={!dirty || !!busy}
+              className="px-4 py-1.5 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium disabled:opacity-40"
+            >
+              {dirty ? 'Apply' : 'Applied'}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-white/80 hover:bg-white/10"
+            aria-label="Close editor"
+          >
+            <XClose size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Canvas */}
       <div
         className="flex-1 min-h-0 flex items-center justify-center p-4 overflow-hidden"
-        onPointerUp={handlePointerUp}
+        onPointerMove={onPointerMove}
+        onPointerUp={() => {
+          dragRef.current = null
+        }}
+        onPointerLeave={() => {
+          dragRef.current = null
+        }}
       >
-        <div className="relative max-h-full">
-          <img
-            ref={imgRef}
-            src={current.cdn_url}
-            alt="Editing"
-            draggable={false}
-            onClick={handleImageClick}
-            className={[
-              'max-h-[calc(100dvh-180px)] max-w-full object-contain select-none',
-              mode === 'select' ? 'cursor-crosshair' : '',
-            ].join(' ')}
-          />
-
-          {/* The selection, drawn as the mask itself so the outline follows the object */}
-          {mode === 'select' && maskUrl && (
+        {loadError ? (
+          <p className="paragraph-sm text-white/70">{loadError}</p>
+        ) : !state ? (
+          <Spinner size="lg" variant="light" />
+        ) : (
+          <div ref={frameRef} className="relative inline-block max-h-full">
             <img
-              src={maskUrl}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-45 mix-blend-screen"
+              src={previewSrc}
+              alt="Editing"
+              draggable={false}
+              onClick={onImageClick}
+              className={[
+                'max-h-[calc(100dvh-190px)] max-w-full object-contain block',
+                mode === 'select' ? 'cursor-pointer' : 'cursor-default',
+              ].join(' ')}
             />
-          )}
 
-          {/* Click markers */}
-          {mode === 'select' &&
-            points.map((p, i) => (
-              <span
-                key={i}
-                className={[
-                  'absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white pointer-events-none',
-                  p.label === 1 ? 'bg-brand-solid' : 'bg-error-solid',
-                ].join(' ')}
-                style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
+            {mode === 'select' && maskUrl && (
+              <img
+                src={maskUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-45 mix-blend-screen"
               />
-            ))}
+            )}
 
-          {/* Draggable handles */}
-          {mode === 'place' && (
-            <>
-              <DragHandle
-                label="Headline"
-                pos={headlinePos ?? [0.07, 0.07]}
-                active={dragging === 'headline'}
-                onGrab={() => setDragging('headline')}
+            {mode === 'select' &&
+              points.map((p, i) => (
+                <span
+                  key={i}
+                  className={[
+                    'absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white pointer-events-none',
+                    p.label === 1 ? 'bg-brand-solid' : 'bg-error-solid',
+                  ].join(' ')}
+                  style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
+                />
+              ))}
+
+            {/* Live preview: the ACTUAL headline and logo, dragged directly */}
+            {mode === 'place' && headline && box.w > 0 && (
+              <div
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  dragRef.current = 'headline'
+                }}
+                className="absolute cursor-grab active:cursor-grabbing"
+                style={{
+                  left: headlinePos ? `${headlinePos[0] * 100}%` : `${(marginPx / box.w) * 100}%`,
+                  top: headlinePos ? `${headlinePos[1] * 100}%` : `${(marginPx / box.h) * 100}%`,
+                  maxWidth: `${box.w - marginPx}px`,
+                }}
+                title="Drag to place the headline"
+              >
+                <span
+                  className="inline-block px-2 py-1"
+                  style={{
+                    background: 'rgba(0,0,0,0.45)',
+                    color: recipe.text_color || '#FFFFFF',
+                    fontFamily: recipe.font_family
+                      ? `'${recipe.font_family}', system-ui, sans-serif`
+                      : 'system-ui, sans-serif',
+                    fontSize: `${fontPx}px`,
+                    fontWeight: 700,
+                    lineHeight: 1.12,
+                    whiteSpace: recipe.max_lines === 1 ? 'nowrap' : 'normal',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {headline}
+                </span>
+              </div>
+            )}
+
+            {mode === 'place' && state.logo_cdn_url && box.w > 0 && (
+              <img
+                src={state.logo_cdn_url}
+                alt="Logo"
+                draggable={false}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  dragRef.current = 'logo'
+                }}
+                className="absolute cursor-grab active:cursor-grabbing"
+                style={{
+                  left: logoPos ? `${logoPos[0] * 100}%` : '76%',
+                  top: logoPos ? `${logoPos[1] * 100}%` : '80%',
+                  width: `${box.w * LOGO_WIDTH_FRAC}px`,
+                }}
+                title="Drag to place the logo"
               />
-              <DragHandle
-                label="Logo"
-                pos={logoPos ?? [0.78, 0.82]}
-                active={dragging === 'logo'}
-                onGrab={() => setDragging('logo')}
-              />
-            </>
-          )}
-        </div>
+            )}
+
+            {mode === 'place' && !headline && !state.logo_cdn_url && (
+              <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                <span className="paragraph-xs text-white/70 bg-black/60 rounded px-2 py-1">
+                  This image has no headline or logo yet — ask Mia to add one first
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Select-mode instruction bar */}
@@ -284,7 +395,10 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
           />
           {maskUrl && (
             <button
-              onClick={clearSelection}
+              onClick={() => {
+                setPoints([])
+                setMaskUrl(null)
+              }}
               disabled={!!busy}
               className="px-3 py-2 rounded-lg paragraph-sm text-white/80 hover:bg-white/10"
             >
@@ -303,34 +417,5 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     </div>
   )
 }
-
-const DragHandle = ({
-  label,
-  pos,
-  active,
-  onGrab,
-}: {
-  label: string
-  pos: [number, number]
-  active: boolean
-  onGrab: () => void
-}) => (
-  <button
-    onPointerDown={(e) => {
-      e.preventDefault()
-      onGrab()
-    }}
-    className={[
-      'absolute -translate-x-1 -translate-y-1 px-2 py-1 rounded paragraph-xs font-semibold',
-      'cursor-grab active:cursor-grabbing border',
-      active
-        ? 'bg-brand-solid text-primary-onbrand border-white'
-        : 'bg-black/70 text-white border-white/50 hover:bg-black/90',
-    ].join(' ')}
-    style={{ left: `${pos[0] * 100}%`, top: `${pos[1] * 100}%` }}
-  >
-    {label}
-  </button>
-)
 
 export default ImageEditorOverlay

@@ -412,8 +412,32 @@ export interface EditedAsset {
   ratio?: string | null
 }
 
+/** Everything the editor needs to preview edits live in the browser. */
+export interface EditState {
+  asset_id: string
+  base_asset_id: string
+  base_cdn_url: string
+  composited_cdn_url: string
+  logo_cdn_url: string | null
+  width: number | null
+  height: number | null
+  recipe: RecomposeOverrides & { logo_asset_id?: string }
+}
+
 export const miaCreateApi = {
-  /** Re-render text/logo from the clean base — used by every drag in the editor. */
+  /** The text-free base + its composited recipe, for the live preview. */
+  getEditState: async (
+    sessionId: string,
+    tenantId: string,
+    assetId: string,
+  ): Promise<EditState> => {
+    const url = `${miaBase()}/edit-state?tenant_id=${encodeURIComponent(tenantId)}&asset_id=${encodeURIComponent(assetId)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) throw new Error(`Couldn't open that image for editing (${res.status})`)
+    return res.json()
+  },
+
+  /** Re-render text/logo from the clean base — called once on Apply, not per drag. */
   recompose: async (
     sessionId: string,
     tenantId: string,
