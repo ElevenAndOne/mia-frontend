@@ -7,9 +7,9 @@ import type { MemoRecommendation } from '../types'
 import { KIND_LABEL, actionSummary, impactLine } from '../utils/memo-format'
 
 const KIND_CHIP: Record<string, string> = {
-  kill: 'text-error bg-error-primary border-error-subtle',
-  scale: 'text-success bg-success-subtle border-success-subtle',
-  fix: 'text-warning bg-warning-subtle border-warning-subtle',
+  grow: 'text-success bg-success-subtle border-success-subtle',
+  optimize: 'text-error bg-error-primary border-error-subtle',
+  protect: 'text-warning bg-warning-subtle border-warning-subtle',
   info: 'text-tertiary bg-tertiary border-tertiary',
 }
 

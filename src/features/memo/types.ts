@@ -1,7 +1,7 @@
 // Weekly Optimization Memo — mirrors mia-backend routes/memo.py responses
 // (GET /api/memo/latest, POST /api/memo/recommendations/{id}/approve|dismiss).
 
-export type MemoRecKind = 'scale' | 'kill' | 'fix' | 'info'
+export type MemoRecKind = 'grow' | 'optimize' | 'protect' | 'info'
 
 export type MemoRecState = 'proposed' | 'approved' | 'declined' | 'applied' | 'failed'
 
@@ -87,9 +87,9 @@ export interface MemoRecommendation {
 }
 
 export interface MemoCounts {
-  scale: number
-  kill: number
-  fix: number
+  grow: number
+  optimize: number
+  protect: number
 }
 
 export interface MemoData {

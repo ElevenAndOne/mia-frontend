@@ -1,9 +1,9 @@
 import type { MemoDisclosure, MemoEvidence, MemoRecKind } from '../types'
 
 export const KIND_LABEL: Record<MemoRecKind, string> = {
-  scale: 'Scale',
-  kill: 'Kill',
-  fix: 'Fix',
+  grow: 'Grow',
+  optimize: 'Optimize',
+  protect: 'Protect',
   info: 'Info',
 }
 
@@ -11,6 +11,7 @@ export const PLATFORM_LABEL: Record<string, string> = {
   google_ads: 'Google Ads',
   meta_ads: 'Meta Ads',
   tiktok_ads: 'TikTok Ads',
+  linkedin_ads: 'LinkedIn Ads',
 }
 
 const fmt = (n: number | null | undefined): string => {

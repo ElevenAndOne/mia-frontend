@@ -12,7 +12,7 @@ import type { MemoRecommendation } from '../types'
 
 // Open items lead with the most urgent kind, then the most money at stake — the
 // same ranking the memo used to decide what to show at all.
-const KIND_RANK: Record<string, number> = { kill: 0, scale: 1, fix: 2, info: 3 }
+const KIND_RANK: Record<string, number> = { optimize: 0, protect: 1, grow: 2, info: 3 }
 
 const value = (rec: MemoRecommendation): number =>
   rec.evidence?.impact ?? rec.evidence?.stake ?? 0

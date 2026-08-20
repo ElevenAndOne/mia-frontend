@@ -39,7 +39,11 @@ export const MemoRecDetails = ({ rec }: MemoRecDetailsProps) => {
         </div>
       )}
       <p className="paragraph-xs text-quaternary">
-        {plan ? `Part of ${plan}` : rec.kind !== 'fix' ? 'Not part of any campaign plan' : ''}
+        {plan
+          ? `Part of ${plan}`
+          : rec.evidence?.basis !== 'plan'
+            ? 'Not part of any campaign plan'
+            : ''}
         {rec.platform ? ` · ${PLATFORM_LABEL[rec.platform] ?? rec.platform}` : ''}
       </p>
     </div>
