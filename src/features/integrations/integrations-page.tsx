@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { HealthPill } from './components/health-pill'
+import { useIntegrationHealth } from './hooks/use-integration-health'
 
 import { linkedinLabelFor } from './utils/linkedin-label'
 import { useNavigate } from 'react-router-dom'
@@ -60,6 +62,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     refetch: refetchIntegrationStatus,
     invalidate: invalidateIntegrationStatus,
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
+
+  // Per-platform warnings: a dead grant, or an ad account that has never spent.
+  const integrationHealth = useIntegrationHealth(sessionId, activeWorkspace?.tenant_id)
 
   useEffect(() => {
     trackEvent(sessionId, 'page_visit', 'integrations')
@@ -1405,6 +1410,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                               )}
                             </div>
                           </div>
+                          {integrationHealth[integration.id] && (
+                            <HealthPill health={integrationHealth[integration.id]} />
+                          )}
                           <div className="flex flex-col items-end shrink-0">
                             {/* Platform Gear Menu - unified dropdown for all platforms */}
                             <PlatformGearMenu

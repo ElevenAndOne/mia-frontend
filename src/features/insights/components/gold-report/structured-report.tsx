@@ -31,6 +31,9 @@ interface StructuredReportProps {
   report: StructuredGoldReport
   /** Heading — swaps for the organic tier. */
   title?: string
+  /** One line explaining why this tier, so an organic report doesn't read as a
+   *  downgrade or a bug when a client expected ML predictions. */
+  subtitle?: string
   /** Organic tier: real posts behind the numbers. */
   topPosts?: GoldTopPost[]
   /** Paid tier: real campaign metrics from the ad platforms. */
@@ -50,6 +53,7 @@ interface StructuredReportProps {
 export const StructuredReport = ({
   report,
   title = 'ML Prediction Report',
+  subtitle,
   topPosts = [],
   campaignEvidence,
 }: StructuredReportProps) => {
@@ -58,7 +62,8 @@ export const StructuredReport = ({
 
   return (
     <div className="gold-report space-y-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
         <h1
           className="flex items-center gap-2.5 text-[24px] leading-8 font-semibold tracking-[-0.01em]"
           style={{ color: 'var(--gr-heading)' }}
@@ -74,6 +79,12 @@ export const StructuredReport = ({
           </svg>
           {title}
         </h1>
+        {subtitle && (
+          <p className="text-[13px] leading-[19px] max-w-[68ch]" style={{ color: 'var(--gr-muted)' }}>
+            {subtitle}
+          </p>
+        )}
+        </div>
         <button
           type="button"
           onClick={() => setExpandAll((v) => !v)}

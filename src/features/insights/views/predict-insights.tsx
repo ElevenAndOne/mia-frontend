@@ -27,8 +27,13 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   const { data, isLoading, error, refresh, triggerRefresh, isRefreshing } =
     useGoldInsights(sessionId)
   // Same page, same schema — the organic tier just names itself honestly.
-  const reportTitle =
-    data?.report_type === 'organic' ? 'Organic Performance Report' : 'ML Prediction Report'
+  const isOrganic = data?.report_type === 'organic'
+  const reportTitle = isOrganic ? 'Organic Performance Report' : 'ML Prediction Report'
+  // Say why, so an organic report reads as a match to the client's data rather
+  // than a downgrade or a bug.
+  const reportSubtitle = isOrganic
+    ? 'Based on your social activity, because this workspace has no ad spend to model. Connect an ad account with active spend to unlock ML predictions.'
+    : undefined
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
   useEffect(() => {
@@ -128,6 +133,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                   <StructuredReport
                     report={data.report}
                     title={reportTitle}
+                    subtitle={reportSubtitle}
                     topPosts={data.top_posts ?? []}
                     campaignEvidence={data.campaign_evidence}
                   />
