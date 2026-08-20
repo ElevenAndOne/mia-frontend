@@ -9,6 +9,7 @@ import {
   fetchLatestMemo,
 } from '../services/memo-service'
 import type { MemoRecommendation } from '../types'
+import { normalizeKind } from '../utils/memo-format'
 
 // Open items lead with the most urgent kind, then the most money at stake — the
 // same ranking the memo used to decide what to show at all.
@@ -86,7 +87,7 @@ export const useMemoPage = () => {
         .filter((r) => r.state === 'proposed')
         .sort(
           (a, b) =>
-            (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9) || value(b) - value(a),
+            (KIND_RANK[normalizeKind(a.kind)] ?? 9) - (KIND_RANK[normalizeKind(b.kind)] ?? 9) || value(b) - value(a),
         ),
     [recommendations],
   )

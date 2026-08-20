@@ -1,11 +1,20 @@
-import type { MemoDisclosure, MemoEvidence, MemoRecKind } from '../types'
+import type { MemoDisclosure, MemoEvidence } from '../types'
 
-export const KIND_LABEL: Record<MemoRecKind, string> = {
+export const KIND_LABEL: Record<string, string> = {
   grow: 'Grow',
   optimize: 'Optimize',
   protect: 'Protect',
   info: 'Info',
+  // Rows written before the Grow/Optimize/Protect rename. Kept so history renders
+  // rather than showing an empty chip — decided cards live on the memo for weeks.
+  scale: 'Grow',
+  kill: 'Optimize',
+  fix: 'Optimize',
 }
+
+/** Legacy kinds map onto the current three for colour and ordering. */
+export const normalizeKind = (kind: string): string =>
+  ({ scale: 'grow', kill: 'optimize', fix: 'optimize' })[kind] ?? kind
 
 export const PLATFORM_LABEL: Record<string, string> = {
   google_ads: 'Google Ads',

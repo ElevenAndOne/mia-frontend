@@ -4,7 +4,7 @@ import { Button } from '../../../components/button'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { MemoRecDetails } from './memo-rec-details'
 import type { MemoRecommendation } from '../types'
-import { KIND_LABEL, actionSummary, impactLine } from '../utils/memo-format'
+import { KIND_LABEL, actionSummary, impactLine, normalizeKind } from '../utils/memo-format'
 
 const KIND_CHIP: Record<string, string> = {
   grow: 'text-success bg-success-subtle border-success-subtle',
@@ -42,9 +42,9 @@ export const MemoRecCard = ({
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1.5 min-w-0">
           <span
-            className={`self-start inline-flex items-center px-2.5 py-0.5 border rounded-full label-xs uppercase tracking-wide ${KIND_CHIP[rec.kind] ?? KIND_CHIP.info}`}
+            className={`self-start inline-flex items-center px-2.5 py-0.5 border rounded-full label-xs uppercase tracking-wide ${KIND_CHIP[normalizeKind(rec.kind)] ?? KIND_CHIP.info}`}
           >
-            {KIND_LABEL[rec.kind]}
+            {KIND_LABEL[rec.kind] ?? rec.kind}
           </span>
           <h3 className="label-md text-primary">
             {name}
