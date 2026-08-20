@@ -195,7 +195,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     let t: ReturnType<typeof setTimeout> | undefined
     if (googleAdsPending) {
       localStorage.removeItem(StorageKey.GOOGLE_ADS_CONNECT_PENDING)
-      t = setTimeout(() => setOpenModal('google'), 1000)
+      // One Google grant covers Ads + GA4 — offer both pickers back to back.
+      t = setTimeout(() => startModalChain(['google', 'ga4']), 1000)
     } else if (ga4Pending) {
       localStorage.removeItem(StorageKey.GA4_CONNECT_PENDING)
       // After Google OAuth for GA4, open GA4 property selector (not Google Ads)
@@ -220,6 +221,24 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const showSmartleadModal = openModal === 'smartlead'
 
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
+  // One OAuth grant unlocks several pickers — Meta auth covers Meta Ads *and* Facebook
+  // Pages, Google auth covers Google Ads *and* GA4 — but users don't know that, so walk
+  // them through the pickers in sequence instead of leaving the second one undiscovered.
+  // A ref, not state: these run inside async modal callbacks where a captured queue
+  // would be stale.
+  const modalChainRef = useRef<string[]>([])
+  const startModalChain = (steps: string[]) => {
+    modalChainRef.current = steps.slice(1)
+    setOpenModal(steps[0] ?? null)
+  }
+  /** Close the current modal and open the next picker this grant unlocked, if any. */
+  const advanceModalChain = () => setOpenModal(modalChainRef.current.shift() ?? null)
+  /** Dismissing a picker abandons the rest — don't keep pushing modals at someone. */
+  const endModalChain = () => {
+    modalChainRef.current = []
+    setOpenModal(null)
+  }
+
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
   const setShowMetaAccountSelector = (show: boolean) => setOpenModal(show ? 'meta' : null)
   const setShowBrevoAccountSelector = (show: boolean) =>
@@ -1224,7 +1243,8 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   // the selector opens and runs its pre-selection logic.
                   // This prevents stale meta_ads_id from a previous workspace being pre-selected.
                   await refetchIntegrationStatus()
-                  setShowMetaAccountSelector(true)
+                  // Meta auth also grants Facebook Pages — chain that picker after.
+                  startModalChain(['meta', 'facebook'])
                 }
 
                 // For Facebook Organic, show the Facebook page selector after OAuth completes
@@ -2354,10 +2374,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Google Account Selector Modal */}
         <GoogleAccountSelector
           isOpen={showGoogleAccountSelector}
-          onClose={() => setShowGoogleAccountSelector(false)}
+          onClose={endModalChain}
           onSuccess={async () => {
             logger.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
-            setShowGoogleAccountSelector(false)
+            advanceModalChain()
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
@@ -2369,10 +2389,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Meta Account Selector Modal */}
         <MetaAccountSelector
           isOpen={showMetaAccountSelector}
-          onClose={() => setShowMetaAccountSelector(false)}
+          onClose={endModalChain}
           onSuccess={async () => {
             logger.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
-            setShowMetaAccountSelector(false)
+            advanceModalChain()
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
@@ -2431,10 +2451,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Facebook Page Selector Modal */}
         <FacebookPageSelector
           isOpen={showFacebookPageSelector}
-          onClose={() => setShowFacebookPageSelector(false)}
+          onClose={endModalChain}
           onSuccess={async () => {
             logger.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
-            setShowFacebookPageSelector(false)
+            advanceModalChain()
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
@@ -2448,10 +2468,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* GA4 Property Selector Modal */}
         <GA4PropertySelector
           isOpen={showGA4PropertySelector}
-          onClose={() => setShowGA4PropertySelector(false)}
+          onClose={endModalChain}
           onSuccess={async () => {
             logger.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
-            setShowGA4PropertySelector(false)
+            advanceModalChain()
             invalidateIntegrationStatus()
             refreshWorkspaces().catch((err) =>
               logger.error('[INTEGRATIONS] Failed to refresh workspaces:', err)
