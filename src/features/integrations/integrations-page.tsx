@@ -229,20 +229,56 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   // One OAuth grant unlocks several pickers — Meta auth covers Meta Ads *and* Facebook
   // Pages, Google auth covers Google Ads *and* GA4 — but users don't know that, so walk
   // them through the pickers in sequence instead of leaving the second one undiscovered.
-  // A ref, not state: these run inside async modal callbacks where a captured queue
-  // would be stale.
-  const modalChainRef = useRef<string[]>([])
+  //
+  // The queue lives in sessionStorage, not a ref or state: applying an account selection
+  // refreshes the workspace/account context, which remounts this page — and an in-memory
+  // queue dies with it, which is exactly why the second picker never appeared.
+  const CHAIN_KEY = 'mia_modal_chain'
+  const readChain = (): string[] => {
+    try {
+      return JSON.parse(sessionStorage.getItem(CHAIN_KEY) ?? '[]')
+    } catch {
+      return []
+    }
+  }
+  const writeChain = (steps: string[]) => {
+    if (steps.length) sessionStorage.setItem(CHAIN_KEY, JSON.stringify(steps))
+    else sessionStorage.removeItem(CHAIN_KEY)
+  }
+  // The stored queue INCLUDES the step currently on screen, and an entry is only
+  // dropped once that picker is finished with. Storing just the *remaining* steps
+  // loses the next one when the remount lands after the hand-off.
   const startModalChain = (steps: string[]) => {
-    modalChainRef.current = steps.slice(1)
+    writeChain(steps)
     setOpenModal(steps[0] ?? null)
   }
-  /** Close the current modal and open the next picker this grant unlocked, if any. */
-  const advanceModalChain = () => setOpenModal(modalChainRef.current.shift() ?? null)
+  /** Current picker is done: drop it and open the next one this grant unlocked. */
+  const advanceModalChain = () => {
+    const rest = readChain().slice(1)
+    writeChain(rest)
+    setOpenModal(rest[0] ?? null)
+  }
   /** Dismissing a picker abandons the rest — don't keep pushing modals at someone. */
   const endModalChain = () => {
-    modalChainRef.current = []
+    writeChain([])
     setOpenModal(null)
   }
+
+  // Resume a chain that survived a remount (see above): if a queue is pending and
+  // nothing is open, continue where the previous instance left off.
+  const chainResumedRef = useRef(false)
+  useEffect(() => {
+    if (chainResumedRef.current) return
+    chainResumedRef.current = true
+    const pending = readChain()
+    if (pending.length > 0) {
+      // Reopen the step that was on screen before the remount; it stays queued
+      // until it succeeds or is dismissed.
+      const t = setTimeout(() => setOpenModal(pending[0]), 600)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setShowGoogleAccountSelector = (show: boolean) => setOpenModal(show ? 'google' : null)
   const setShowMetaAccountSelector = (show: boolean) => setOpenModal(show ? 'meta' : null)
