@@ -72,7 +72,7 @@ export const MemoRecCard = ({
           )}
 
           {metrics.length > 0 && (
-            <div className="flex flex-wrap gap-x-8 gap-y-2 mt-3 pt-3 border-t border-tertiary">
+            <div className="flex flex-wrap gap-x-7 gap-y-3 mt-3.5 pt-3.5 border-t border-tertiary">
               {metrics.map((m) => (
                 <div key={m.label}>
                   <p className="label-xs uppercase tracking-wider text-quaternary">{m.label}</p>
@@ -107,7 +107,7 @@ export const MemoRecCard = ({
           {showDetails && <MemoRecDetails rec={rec} />}
         </div>
 
-        <div className="shrink-0 md:w-52 p-4 md:p-5 md:border-l border-t md:border-t-0 border-tertiary flex flex-col md:items-end justify-center gap-3">
+        <div className="shrink-0 md:w-56 p-4 md:p-5 md:border-l border-t md:border-t-0 border-tertiary bg-primary/40 flex flex-col md:items-end justify-center gap-3">
           {value && (
             <div className="md:text-right">
               <p className="label-xs uppercase tracking-wider text-quaternary">{value.label}</p>
@@ -128,9 +128,7 @@ export const MemoRecCard = ({
                   Approve
                 </Button>
               ) : (
-                <span className="paragraph-xs text-quaternary md:text-right">
-                  Needs a person
-                </span>
+                <span className="paragraph-xs text-quaternary whitespace-nowrap">Needs a person</span>
               )}
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDismiss(rec.id)}>
                 Dismiss
@@ -154,7 +152,7 @@ export const MemoRecCard = ({
           )}
 
           {decidable && action && (
-            <p className="paragraph-xs text-tertiary md:text-right">Mia will {action}</p>
+            <p className="paragraph-xs text-tertiary md:text-right leading-snug">Mia will {action}</p>
           )}
         </div>
       </div>

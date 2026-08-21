@@ -20,7 +20,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar title="Weekly Memo" onBack={onBack} className="border-b border-tertiary" />
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto px-4 md:px-6 py-10 flex flex-col gap-8">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 flex flex-col gap-8">
           {isLoading && (
             <div className="flex justify-center py-16">
               <Spinner size="md" />
@@ -72,7 +72,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
               </div>
 
               {memo.memo?.narrative && open.length > 0 && (
-                <p className="paragraph-md text-secondary -mt-3">
+                <p className="paragraph-md text-secondary -mt-3 max-w-3xl">
                   {memo.memo.narrative.replaceAll('**', '')}
                 </p>
               )}
