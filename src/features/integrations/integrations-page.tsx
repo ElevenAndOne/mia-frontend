@@ -258,10 +258,22 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     writeChain(rest)
     setOpenModal(rest[0] ?? null)
   }
-  /** Dismissing a picker abandons the rest — don't keep pushing modals at someone. */
-  const endModalChain = () => {
-    writeChain([])
-    setOpenModal(null)
+  /**
+   * Close handler for a chained picker — deliberately step-aware. The selector hook
+   * calls onSuccess() and THEN onClose() on a successful apply
+   * (selectors/hooks/use-selector-state.ts), so a close that blindly cleared the
+   * queue wiped the next picker microseconds after opening it. That is exactly why
+   * Google Ads → GA4 and Meta → Facebook appeared to do nothing.
+   *
+   * Queue head still this step → the user genuinely dismissed it, so abandon the
+   * rest. Head already moved on → a successful advance is in flight and this is the
+   * hook's follow-up close; ignore it.
+   */
+  const dismissChainStep = (step: string) => () => {
+    if (readChain()[0] === step) {
+      writeChain([])
+      setOpenModal(null)
+    }
   }
 
   // Resume a chain that survived a remount (see above): if a queue is pending and
@@ -1059,10 +1071,12 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
+            // Already authorised: skip OAuth and walk the pickers this grant
+            // unlocks — the same sequence a fresh grant gets.
             if (integrationId === 'meta') {
-              setShowMetaAccountSelector(true)
+              startModalChain(['meta', 'facebook'])
             } else {
-              setShowFacebookPageSelector(true)
+              startModalChain(['facebook'])
             }
             return
           }
@@ -2418,7 +2432,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Google Account Selector Modal */}
         <GoogleAccountSelector
           isOpen={showGoogleAccountSelector}
-          onClose={endModalChain}
+          onClose={dismissChainStep('google')}
           onSuccess={async () => {
             logger.log('[GOOGLE-ACCOUNT-SELECTOR] Account switched successfully')
             advanceModalChain()
@@ -2433,7 +2447,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Meta Account Selector Modal */}
         <MetaAccountSelector
           isOpen={showMetaAccountSelector}
-          onClose={endModalChain}
+          onClose={dismissChainStep('meta')}
           onSuccess={async () => {
             logger.log('[META-ACCOUNT-SELECTOR] Account linked successfully')
             advanceModalChain()
@@ -2495,7 +2509,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Facebook Page Selector Modal */}
         <FacebookPageSelector
           isOpen={showFacebookPageSelector}
-          onClose={endModalChain}
+          onClose={dismissChainStep('facebook')}
           onSuccess={async () => {
             logger.log('[FACEBOOK-PAGE-SELECTOR] Page linked successfully')
             advanceModalChain()
@@ -2512,7 +2526,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* GA4 Property Selector Modal */}
         <GA4PropertySelector
           isOpen={showGA4PropertySelector}
-          onClose={endModalChain}
+          onClose={dismissChainStep('ga4')}
           onSuccess={async () => {
             logger.log('[GA4-PROPERTY-SELECTOR] Property linked successfully')
             advanceModalChain()
