@@ -9,8 +9,8 @@ export const KIND_LABEL: Record<string, string> = {
   // Rows written before the Grow/Optimize/Protect rename. Kept so history renders
   // rather than showing an empty chip — decided cards live on the memo for weeks.
   scale: 'Grow',
-  kill: 'Optimize',
-  fix: 'Optimize',
+  kill: 'Optimise',
+  fix: 'Optimise',
 }
 
 /** Legacy kinds map onto the current three for colour and ordering. */
@@ -54,20 +54,6 @@ export const evidenceSummary = (evidence: MemoEvidence | null): string | null =>
   return null
 }
 
-/** The big number on a card: what approving is worth, per month. */
-export const impactLine = (
-  evidence: MemoEvidence | null | undefined,
-  currency = 'ZAR',
-): { value: string; label: string } | null => {
-  if (!evidence) return null
-  const label = 'est. per month'
-  if (evidence.impact !== null && evidence.impact !== undefined)
-    return { value: `+${money(evidence.impact, currency)}`, label }
-  const note = (evidence.impact_notes ?? [])[0]
-  if (note) return { value: note.replace('/mo', ''), label }
-  return null
-}
-
 /** What the memo deliberately left out, stated plainly — never silent truncation. */
 export const heldBackLines = (
   disclosure: MemoDisclosure | null | undefined,
@@ -106,4 +92,17 @@ export const actionSummary = (
     return pct ? `raise the daily budget by ${String(pct)}%` : 'update the budget'
   }
   return actionType.replaceAll('_', ' ')
+}
+
+/** "9 live campaigns across Google Ads & Meta Ads · ZAR 28,400 spent" — what the
+ *  memo actually looked at, so the reader can judge how much it saw. */
+export const summariseReviewed = (
+  memo: { graded_campaigns?: number; platforms?: string[]; reviewed_spend?: number } | null | undefined,
+  currency = 'ZAR',
+): string | null => {
+  if (!memo?.graded_campaigns) return null
+  const platforms = (memo.platforms ?? []).join(' & ')
+  const where = platforms ? ` across ${platforms}` : ''
+  const spend = memo.reviewed_spend ? ` · ${money(memo.reviewed_spend, currency)} spent` : ''
+  return `${memo.graded_campaigns} live campaign${memo.graded_campaigns === 1 ? '' : 's'} reviewed${where}${spend}`
 }

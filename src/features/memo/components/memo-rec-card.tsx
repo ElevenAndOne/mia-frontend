@@ -4,13 +4,23 @@ import { Button } from '../../../components/button'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { MemoRecDetails } from './memo-rec-details'
 import type { MemoRecommendation } from '../types'
-import { KIND_LABEL, actionSummary, impactLine, normalizeKind } from '../utils/memo-format'
+import { KIND_LABEL, PLATFORM_LABEL, actionSummary, normalizeKind } from '../utils/memo-format'
+import { metricsFor, valueFor } from '../utils/memo-metrics'
 
-const KIND_CHIP: Record<string, string> = {
-  grow: 'text-success bg-success-subtle border-success-subtle',
-  optimise: 'text-error bg-error-primary border-error-subtle',
-  protect: 'text-warning bg-warning-subtle border-warning-subtle',
-  info: 'text-tertiary bg-tertiary border-tertiary',
+// The verdict is carried by a rail down the edge, so urgency reads before the
+// words do — a chip alone made every finding look equally weighted.
+const RAIL: Record<string, string> = {
+  grow: 'bg-utility-success-500',
+  optimise: 'bg-utility-error-500',
+  protect: 'bg-utility-warning-500',
+  info: 'bg-quaternary',
+}
+
+const VERDICT_INK: Record<string, string> = {
+  grow: 'text-success',
+  optimise: 'text-error',
+  protect: 'text-warning',
+  info: 'text-tertiary',
 }
 
 interface MemoRecCardProps {
@@ -31,88 +41,123 @@ export const MemoRecCard = ({
   onDismiss,
 }: MemoRecCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
+  const kind = normalizeKind(rec.kind)
   const name = rec.campaign_ref?.name ?? 'Campaign'
   const extra = rec.campaign_ref?.also?.length ?? 0
+  const platform = rec.platform ? (PLATFORM_LABEL[rec.platform] ?? rec.platform) : null
   const action = actionSummary(rec.action_type, rec.action_params)
-  const impact = impactLine(rec.evidence, currency)
+  const metrics = metricsFor(rec, currency)
+  const value = valueFor(rec, currency)
   const decidable = rec.state === 'proposed' && canManage
 
   return (
-    <div className="p-5 bg-secondary rounded-2xl border border-tertiary flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1.5 min-w-0">
-          <span
-            className={`self-start inline-flex items-center px-2.5 py-0.5 border rounded-full label-xs uppercase tracking-wide ${KIND_CHIP[normalizeKind(rec.kind)] ?? KIND_CHIP.info}`}
-          >
-            {KIND_LABEL[rec.kind] ?? rec.kind}
-          </span>
-          <h3 className="label-md text-primary">
-            {name}
-            {extra > 0 && (
-              <span className="paragraph-sm text-tertiary font-normal"> +{extra} more</span>
-            )}
-          </h3>
-        </div>
-        {impact && (
-          <div className="text-right shrink-0">
-            <p className="label-bg text-success tabular-nums">{impact.value}</p>
-            <p className="paragraph-xs text-tertiary">{impact.label}</p>
+    <div className="flex rounded-xl border border-tertiary bg-secondary overflow-hidden">
+      <div className={`w-[3px] shrink-0 ${RAIL[kind] ?? RAIL.info}`} aria-hidden="true" />
+
+      <div className="flex-1 min-w-0 flex flex-col md:flex-row">
+        <div className="flex-1 min-w-0 p-4 md:p-5">
+          <div className="flex items-baseline gap-2.5 flex-wrap">
+            <span
+              className={`label-xs uppercase tracking-wider ${VERDICT_INK[kind] ?? VERDICT_INK.info}`}
+            >
+              {KIND_LABEL[rec.kind] ?? rec.kind}
+            </span>
+            <span className="label-md text-primary">{name}</span>
+            {extra > 0 && <span className="paragraph-xs text-tertiary">+{extra} more</span>}
+            {platform && <span className="paragraph-xs text-quaternary">{platform}</span>}
           </div>
-        )}
-      </div>
 
-      {rec.body && <p className="paragraph-sm text-secondary">{rec.body.replaceAll('**', '')}</p>}
-
-      {decidable && action && (
-        <p className="subheading-bg text-primary">Mia will {action}</p>
-      )}
-
-      {decidable && (
-        <div className="flex items-center gap-2">
-          {rec.action_type ? (
-            <Button size="lg" variant="primary" loading={busy} onClick={() => onApprove(rec.id)}>
-              Approve
-            </Button>
-          ) : (
-            <span className="paragraph-sm text-tertiary">Needs a person — nothing to automate yet</span>
+          {rec.body && (
+            <p className="paragraph-sm text-secondary mt-1.5">{rec.body.replaceAll('**', '')}</p>
           )}
-          <Button size="lg" variant="ghost" disabled={busy} onClick={() => onDismiss(rec.id)}>
-            Dismiss
-          </Button>
+
+          {metrics.length > 0 && (
+            <div className="flex flex-wrap gap-x-8 gap-y-2 mt-3 pt-3 border-t border-tertiary">
+              {metrics.map((m) => (
+                <div key={m.label}>
+                  <p className="label-xs uppercase tracking-wider text-quaternary">{m.label}</p>
+                  <p
+                    className={`paragraph-md font-medium tabular-nums ${
+                      m.tone === 'bad'
+                        ? 'text-error'
+                        : m.tone === 'good'
+                          ? 'text-success'
+                          : 'text-primary'
+                    }`}
+                  >
+                    {m.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowDetails((open) => !open)}
+            className="mt-3 flex items-center gap-1 paragraph-xs text-tertiary hover:text-secondary transition-colors"
+            aria-expanded={showDetails}
+          >
+            {showDetails ? 'Hide' : 'Why'}
+            <ChevronDown
+              size={13}
+              className={showDetails ? 'rotate-180 transition-transform' : 'transition-transform'}
+            />
+          </button>
+          {showDetails && <MemoRecDetails rec={rec} />}
         </div>
-      )}
 
-      {rec.state === 'approved' && (
-        <p className="paragraph-sm text-warning">Approved — Mia is doing it now…</p>
-      )}
-      {rec.state === 'applied' && (
-        <p className="paragraph-sm text-success">
-          Done{rec.applied_at ? ` · ${new Date(rec.applied_at).toLocaleDateString()}` : ''}
-        </p>
-      )}
-      {rec.state === 'failed' && (
-        <p className="paragraph-sm text-error">
-          Couldn&apos;t complete this
-          {typeof rec.result?.error === 'string' ? ` — ${rec.result.error}` : ''}
-        </p>
-      )}
-      {rec.state === 'declined' && (
-        <p className="paragraph-sm text-quaternary">Dismissed — Mia won&apos;t raise it again soon</p>
-      )}
+        <div className="shrink-0 md:w-52 p-4 md:p-5 md:border-l border-t md:border-t-0 border-tertiary flex flex-col md:items-end justify-center gap-3">
+          {value && (
+            <div className="md:text-right">
+              <p className="label-xs uppercase tracking-wider text-quaternary">{value.label}</p>
+              <p
+                className={`subheading-bg tabular-nums ${
+                  value.tone === 'good' ? 'text-success' : 'text-tertiary'
+                }`}
+              >
+                {value.amount}
+              </p>
+            </div>
+          )}
 
-      <button
-        type="button"
-        onClick={() => setShowDetails((open) => !open)}
-        className="self-start flex items-center gap-1 paragraph-xs text-tertiary hover:text-secondary transition-colors"
-        aria-expanded={showDetails}
-      >
-        {showDetails ? 'Hide' : 'Why'}
-        <ChevronDown
-          size={14}
-          className={showDetails ? 'rotate-180 transition-transform' : 'transition-transform'}
-        />
-      </button>
-      {showDetails && <MemoRecDetails rec={rec} />}
+          {decidable && (
+            <div className="flex items-center gap-2">
+              {rec.action_type ? (
+                <Button size="sm" variant="primary" loading={busy} onClick={() => onApprove(rec.id)}>
+                  Approve
+                </Button>
+              ) : (
+                <span className="paragraph-xs text-quaternary md:text-right">
+                  Needs a person
+                </span>
+              )}
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => onDismiss(rec.id)}>
+                Dismiss
+              </Button>
+            </div>
+          )}
+
+          {rec.state === 'approved' && (
+            <p className="paragraph-xs text-warning">Mia is doing it now…</p>
+          )}
+          {rec.state === 'applied' && (
+            <p className="paragraph-xs text-success">
+              Done{rec.applied_at ? ` · ${new Date(rec.applied_at).toLocaleDateString()}` : ''}
+            </p>
+          )}
+          {rec.state === 'failed' && (
+            <p className="paragraph-xs text-error">Couldn&apos;t complete this</p>
+          )}
+          {rec.state === 'declined' && (
+            <p className="paragraph-xs text-quaternary">Dismissed</p>
+          )}
+
+          {decidable && action && (
+            <p className="paragraph-xs text-tertiary md:text-right">Mia will {action}</p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

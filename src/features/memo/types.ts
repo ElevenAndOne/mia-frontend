@@ -46,7 +46,10 @@ export interface MemoEvidence {
   plan?: string | null
   campaigns?: MemoClusterMember[]
   cluster_size?: number
-  // plan-level fix cards carry their issue list + tracker fields instead
+  // wasted-search-term cards
+  terms?: { term: string; spend: number; clicks: number; conversions: number }[]
+  waste?: number
+  // plan-level cards carry their issue list + tracker fields instead
   issues?: string[]
   pacing_state?: string
   pacing_pct?: number | null
@@ -108,6 +111,8 @@ export interface MemoData {
     disclosure: MemoDisclosure | null
     gold_enriched: boolean
     graded_campaigns: number
+    reviewed_spend: number
+    platforms: string[]
     generated_at: string
   } | null
   created_at: string | null

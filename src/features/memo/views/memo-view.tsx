@@ -2,7 +2,7 @@ import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { MemoRecCard } from '../components/memo-rec-card'
 import { useMemoPage } from '../hooks/use-memo'
-import { heldBackLines, money } from '../utils/memo-format'
+import { heldBackLines, money, summariseReviewed } from '../utils/memo-format'
 
 interface MemoViewProps {
   onBack?: () => void
@@ -14,6 +14,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
   const currency = memo?.memo?.currency ?? 'ZAR'
   const heldBack = heldBackLines(memo?.memo?.disclosure, currency)
   const impact = memo?.memo?.impact_zar ?? null
+  const reviewed = summariseReviewed(memo?.memo, currency)
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -43,28 +44,38 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
 
           {memo && (
             <>
-              <div className="flex flex-col gap-3">
-                <p className="paragraph-xs text-quaternary uppercase tracking-wide">
-                  Week of {memo.week_of}
-                </p>
-                <h1 className="label-lg text-primary">
-                  {open.length > 0
-                    ? `${open.length} thing${open.length === 1 ? '' : 's'} worth doing this week`
-                    : handled.length > 0
-                      ? "You've handled everything in this week's memo"
-                      : 'Nothing needs your attention this week'}
-                </h1>
-                {memo.memo?.narrative && open.length > 0 && (
-                  <p className="paragraph-md text-secondary">
-                    {memo.memo.narrative.replaceAll('**', '')}
+              <div className="flex items-start justify-between gap-6 flex-wrap">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <p className="label-xs uppercase tracking-wider text-quaternary">
+                    Week of {memo.week_of}
                   </p>
-                )}
+                  <h1 className="label-lg text-primary">
+                    {open.length > 0
+                      ? `${open.length} decision${open.length === 1 ? '' : 's'} waiting`
+                      : handled.length > 0
+                        ? "You've handled everything in this week's memo"
+                        : 'Nothing needs your attention this week'}
+                  </h1>
+                  {reviewed && <p className="paragraph-sm text-tertiary">{reviewed}</p>}
+                </div>
                 {impact !== null && open.length > 0 && (
-                  <p className="paragraph-sm text-success">
-                    Worth about {money(impact, currency)} a month if you approve them all.
-                  </p>
+                  <div className="text-right shrink-0">
+                    <p className="label-xs uppercase tracking-wider text-quaternary">
+                      If you approve all
+                    </p>
+                    <p className="label-lg text-success tabular-nums">
+                      +{money(impact, currency)}
+                      <span className="paragraph-sm text-tertiary font-normal">/mo</span>
+                    </p>
+                  </div>
                 )}
               </div>
+
+              {memo.memo?.narrative && open.length > 0 && (
+                <p className="paragraph-md text-secondary -mt-3">
+                  {memo.memo.narrative.replaceAll('**', '')}
+                </p>
+              )}
 
               <div className="flex flex-col gap-3">
                 {open.map((rec) => (
