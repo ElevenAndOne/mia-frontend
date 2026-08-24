@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LinkedCampaign, LinkedContent, LinkedContentSave, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignLaunchReadiness, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LaunchCheckSnapshot, LaunchCheckWaiver, LinkedCampaign, LinkedContent, LinkedContentSave, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -496,4 +496,91 @@ export async function pushChannelActionToGoogle(
   throw new Error(
     'Still pushing — Google is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
   )
+}
+
+// ── Launch readiness ───────────────────────────────────────────────────────
+
+// The campaign roll-up: the last saved check per pushable channel. Reads stored
+// snapshots only — no ad-platform calls, so it is safe to load on open.
+export async function fetchCampaignLaunchReadiness(
+  s: string,
+  t: string,
+  campaignId: string,
+): Promise<CampaignLaunchReadiness> {
+  const res = await apiFetch(`${base(t)}/${campaignId}/launch-checks`, { headers: auth(s) })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || 'Failed to load launch readiness')
+  return body as CampaignLaunchReadiness
+}
+
+// Run one channel's preflight now and save the result. Deliberately slow: it asks
+// the ad platform about the account, the objects and the creative URLs.
+export async function runLaunchChecks(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+): Promise<LaunchCheckSnapshot> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/launch-checks`,
+    { method: 'POST', headers: auth(s) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Readiness check failed (${res.status})`)
+  return body as LaunchCheckSnapshot
+}
+
+// Accept a warning, on the record. Admin only; blockers are refused server-side.
+// Returns the restated snapshot (same findings, waiver applied) so the screen can
+// update without paying for another round of platform reads.
+export async function waiveLaunchCheck(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+  code: string,
+  reason?: string,
+): Promise<{ waiver: LaunchCheckWaiver; snapshot: LaunchCheckSnapshot | null }> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/launch-checks/waivers`,
+    { method: 'POST', headers: authJson(s), body: JSON.stringify({ code, reason: reason || null }) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Could not waive that check (${res.status})`)
+  return body as { waiver: LaunchCheckWaiver; snapshot: LaunchCheckSnapshot | null }
+}
+
+// Merge keys into the channel's push profile. A plain channel-action PATCH would
+// replace the whole profile and take the PM-approved audience with it.
+export async function patchPushConfig(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/launch-checks/push-config`,
+    { method: 'PATCH', headers: authJson(s), body: JSON.stringify({ patch }) },
+  )
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.detail || `Could not save that setting (${res.status})`)
+  }
+}
+
+export async function revokeLaunchCheckWaiver(
+  s: string,
+  t: string,
+  campaignId: string,
+  actionId: string,
+  code: string,
+): Promise<{ snapshot: LaunchCheckSnapshot | null }> {
+  const res = await apiFetch(
+    `${base(t)}/${campaignId}/channel_actions/${actionId}/launch-checks/waivers/${encodeURIComponent(code)}`,
+    { method: 'DELETE', headers: auth(s) },
+  )
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.detail || `Could not remove that waiver (${res.status})`)
+  return body as { snapshot: LaunchCheckSnapshot | null }
 }

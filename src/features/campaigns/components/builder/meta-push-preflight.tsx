@@ -11,6 +11,21 @@ import type { MetaPushPreview, MetaPushResult } from '../../types'
 
 const META = '#0866FF'
 
+// Meta's regulated verticals. Declaring one restricts targeting (no age/gender,
+// limited location), which is exactly why it has to be the PM's explicit choice
+// rather than something Mia assumes. "" = not declared yet; "none" = declared as
+// not applying — the preflight tells the two apart on purpose.
+const AD_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Not declared yet' },
+  { value: 'none', label: 'None of these apply' },
+  { value: 'HOUSING', label: 'Housing' },
+  { value: 'EMPLOYMENT', label: 'Employment' },
+  { value: 'CREDIT', label: 'Credit' },
+  { value: 'FINANCIAL_PRODUCTS_SERVICES', label: 'Financial products & services' },
+  { value: 'ISSUES_ELECTIONS_POLITICS', label: 'Social issues, elections or politics' },
+  { value: 'ONLINE_GAMBLING_AND_GAMING', label: 'Online gambling & gaming' },
+]
+
 // Meta's supported CTA buttons (backend-validated set), applied to every ad in the push.
 const CTA_OPTIONS: { value: string; label: string }[] = [
   { value: 'LEARN_MORE', label: 'Learn more' },
@@ -59,6 +74,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
   const [gender, setGender] = useState<'all' | 'women' | 'men'>('all')
   const [savedAudiences, setSavedAudiences] = useState<{ name: string; subtype: string }[]>([])
   const [cta, setCta] = useState('LEARN_MORE')
+  const [adCategory, setAdCategory] = useState('')
 
   useEffect(() => {
     fetchMetaPushPreview(sessionId, tenantId, campaign.campaign_id, actionId)
@@ -72,6 +88,9 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
         setAgeMax(p.audience.age_max ?? 65)
         setGender(p.audience.genders?.[0] === 2 ? 'women' : p.audience.genders?.[0] === 1 ? 'men' : 'all')
         setCta(p.default_cta || 'LEARN_MORE')
+        const declared = (p.meta_push_config as { special_ad_categories?: string[] } | null)
+          ?.special_ad_categories
+        setAdCategory(declared === undefined ? '' : declared.length ? declared[0] : 'none')
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load preview'))
       .finally(() => setLoading(false))
@@ -122,7 +141,20 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
       }
       const existing = (preview?.meta_push_config as Record<string, unknown>) || {}
       await patchChannelAction(sessionId, tenantId, campaign.campaign_id, actionId, {
-        meta_push_config: { ...existing, audience, default_cta: cta },
+        meta_push_config: {
+          ...existing,
+          audience,
+          default_cta: cta,
+          // Three distinct states, and they must stay distinct: a chosen category,
+          // an explicit "none applies" (empty list = declared), and "not declared
+          // yet" (null). Skipping the key on the last one silently re-saved
+          // whatever was declared before.
+          special_ad_categories: adCategory
+            ? adCategory === 'none'
+              ? []
+              : [adCategory]
+            : null,
+        },
       })
       const r = await pushChannelActionToMeta(sessionId, tenantId, campaign.campaign_id, actionId, {
         default_cta: cta,
@@ -177,9 +209,17 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
             {preview.errors.map((e, i) => (
               <p key={i} className="mb-2 paragraph-xs text-utility-error-700 bg-utility-error-100 border border-utility-error-300 rounded-lg px-3 py-2">{e.message}</p>
             ))}
-            {preview.warnings.map((w, i) => (
-              <p key={i} className="mb-2 paragraph-xs text-utility-warning-700">{w}</p>
-            ))}
+            {/* Advisory checks live in Launch readiness, where they can be accepted
+                on the record or fixed in place. Repeating them here in a second
+                format was the duplication that made readiness feel like two
+                different answers. */}
+            {preview.warnings.length > 0 && (
+              <p className="mb-2 paragraph-xs text-tertiary">
+                {preview.warnings.length} advisory check
+                {preview.warnings.length === 1 ? '' : 's'} on this channel — see Launch readiness to
+                accept or fix them.
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-primary border border-secondary rounded-lg p-3">
@@ -198,6 +238,23 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
+                </div>
+                <div className="mt-2">
+                  <span className={fieldLabel}>Special ad category</span>
+                  <select
+                    value={adCategory}
+                    onChange={(e) => setAdCategory(e.target.value)}
+                    className={inputCls}
+                  >
+                    {AD_CATEGORY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <p className="paragraph-xs text-quaternary mt-0.5">
+                    {adCategory && adCategory !== 'none'
+                      ? 'Meta restricts targeting for this category — age, gender and location options narrow.'
+                      : 'Required by Meta for housing, employment, credit and social-issue ads.'}
+                  </p>
                 </div>
               </div>
               <div className="bg-primary border border-secondary rounded-lg p-3">

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { EditableTextarea } from '../../../../components/editable-textarea'
 import { AssetCard } from './asset-card'
-import { PushToMetaButton } from './push-to-meta-button'
-import { PushToGoogleButton } from './push-to-google-button'
+import { LaunchReadinessPanel } from './launch-readiness-panel'
 import { AskMiaButton } from '../ask-mia/ask-mia-button'
+import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { useChannelEditor } from '../../hooks/use-channel-editor'
 import { channelLabel } from '../../utils/channel-colors'
 import { formatBudget, formatDate } from '../../utils/campaign-dates'
@@ -31,6 +31,8 @@ export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemo
   const [expanded, setExpanded] = useState(false)
   const [assetsOpen, setAssetsOpen] = useState(false)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [readinessOpen, setReadinessOpen] = useState(false)
+  const { campaign } = useCampaignWorkspace()
   const { patchAction, addAsset, patchAsset, deleteAsset } = useChannelEditor(phaseId, action.action_id)
 
   const label = channelLabel(action.channel)
@@ -158,18 +160,32 @@ export const ChannelActionCard = ({ phaseId, phaseName, action, currency, onRemo
             )}
           </div>
 
-          {action.channel === 'meta_ads' && (
+          {/* One door to the launch. The readiness checklist is where you see what
+              is wrong, fix it, and then push — a second push button here would be
+              the same launch with none of that context. */}
+          {(action.channel === 'meta_ads' || action.channel === 'google_ads') && (
             <div className="pt-1 flex items-center justify-between gap-2">
-              <span className="paragraph-xs text-quaternary">Ready ads publish to Meta as paused campaigns.</span>
-              <PushToMetaButton actionId={action.action_id} assets={action.assets} />
+              <span className="paragraph-xs text-quaternary">
+                {action.channel === 'meta_ads'
+                  ? 'Ready ads publish to Meta as paused campaigns.'
+                  : 'Ready ads publish to Google as a paused Search campaign.'}
+              </span>
+              <button
+                onClick={() => setReadinessOpen(true)}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-utility-brand-600 label-xs font-semibold text-white hover:bg-utility-brand-700"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m-9.5-4.5h11a1.5 1.5 0 011.5 1.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19V7a1.5 1.5 0 011.5-1.5z" /></svg>
+                Review &amp; push
+              </button>
             </div>
           )}
 
-          {action.channel === 'google_ads' && (
-            <div className="pt-1 flex items-center justify-between gap-2">
-              <span className="paragraph-xs text-quaternary">Ready ads publish to Google as a paused Search campaign.</span>
-              <PushToGoogleButton actionId={action.action_id} assets={action.assets} />
-            </div>
+          {readinessOpen && (
+            <LaunchReadinessPanel
+              campaignId={campaign.campaign_id}
+              focusActionId={action.action_id}
+              onClose={() => setReadinessOpen(false)}
+            />
           )}
         </div>
       )}

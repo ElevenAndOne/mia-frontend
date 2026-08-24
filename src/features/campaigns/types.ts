@@ -297,8 +297,84 @@ export interface MetaPushAudience {
   exclude_custom_audiences: string[]
 }
 
+// One launch-readiness check from a push preflight (backend utils/push_checks).
+// Blocking problems and advisory warnings are the same shape — `severity` is the
+// only difference — so a check can be counted, grouped by `target`, and (once
+// persisted) waived by code.
+// severity is the check's answer, and every check gives one:
+//   block   stops the push        warn   a judgement call, acceptable on the record
+//   info    a note, not a verdict unknown we couldn't find out — NOT a pass
+//   pass    checked, fine
+export type CheckSeverity = 'block' | 'warn' | 'info' | 'unknown' | 'pass'
+
+export interface PushCheck {
+  code: string
+  severity: CheckSeverity
+  message: string
+  target: { level: 'asset' | 'channel' | 'account' | 'campaign'; names: string[]; ids: string[] } | null
+  // Set when someone has accepted this warning (blockers are never waivable).
+  waived?: { by: string; user_id: string | null; at: string | null; reason: string | null } | null
+}
+
+// ── Launch readiness (persisted preflight checks) ─────────────────────────
+
+export interface LaunchCheckSnapshot {
+  id: string
+  campaign_id: string
+  action_id: string
+  platform: 'meta' | 'google'
+  // check = someone asked "is this ready?"; push = the state we launched on.
+  triggered_by: 'check' | 'push'
+  workflow_id: string | null
+  checks: PushCheck[]
+  blocking_count: number
+  warning_count: number
+  waived_count: number
+  unknown_count: number
+  passed_count: number
+  checked_by: { user_id: string | null; name: string | null; email: string | null }
+  checked_at: string | null
+}
+
+export interface LaunchReadinessChannel {
+  action_id: string
+  channel: string
+  platform: 'meta' | 'google'
+  phase_name: string
+  snapshot: LaunchCheckSnapshot | null
+}
+
+export interface CampaignLaunchReadiness {
+  campaign_id: string
+  campaign_name: string
+  totals: {
+    blocking: number
+    warnings: number
+    waived: number
+    unknown: number
+    passed: number
+    unchecked: number
+  }
+  channels: LaunchReadinessChannel[]
+}
+
+export interface LaunchCheckWaiver {
+  id: string
+  action_id: string
+  platform: string
+  code: string
+  message: string | null
+  reason: string | null
+  waived_by: { user_id: string | null; name: string | null; email: string | null }
+  waived_at: string | null
+  revoked_at: string | null
+  revoked_by: string | null
+}
+
 export interface MetaPushPreview {
-  errors: { code: string; message: string }[]
+  errors: PushCheck[]
+  /** Message strings — kept as-is so an older bundle can still render them.
+   *  The typed rows (with severity, target and waivers) are on the snapshot. */
   warnings: string[]
   capabilities: {
     has_pixel: boolean
@@ -351,7 +427,9 @@ export interface GooglePushAdGroup {
 }
 
 export interface GooglePushPreview {
-  errors: { code: string; message: string }[]
+  errors: PushCheck[]
+  /** Message strings — kept as-is so an older bundle can still render them.
+   *  The typed rows (with severity, target and waivers) are on the snapshot. */
   warnings: string[]
   capabilities: {
     conversion_actions: { name: string; primary: boolean }[]

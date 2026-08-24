@@ -231,8 +231,6 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
   const missingBudget = !dailyBudget && (preview?.errors ?? []).some((e) => BUDGET_ERRORS.has(e.code))
   const blocked = hardErrors.length > 0 || draftIssues || missingBudget
 
-  const trackingTemplateWarning = !!preview?.capabilities?.tracking_url_template?.includes('utm_')
-
   return (
     <div className="campaign-workspace fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4" onClick={onClose}>
       <div
@@ -277,12 +275,15 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
             {hardErrors.map((e, i) => (
               <p key={i} className="mb-2 paragraph-xs text-utility-error-700 bg-utility-error-100 border border-utility-error-300 rounded-lg px-3 py-2">{e.message}</p>
             ))}
-            {preview.warnings.map((w, i) => (
-              <p key={i} className="mb-2 paragraph-xs text-utility-warning-700">{w}</p>
-            ))}
-            {trackingTemplateWarning && (
-              <p className="mb-2 paragraph-xs text-utility-warning-700">
-                This account's tracking template already appends utm_ parameters — final-URL UTMs may double-tag.
+            {/* Advisory checks live in Launch readiness, where they can be accepted
+                on the record or fixed in place. Repeating them here in a second
+                format was the duplication that made readiness feel like two
+                different answers. */}
+            {preview.warnings.length > 0 && (
+              <p className="mb-2 paragraph-xs text-tertiary">
+                {preview.warnings.length} advisory check
+                {preview.warnings.length === 1 ? '' : 's'} on this channel — see Launch readiness to
+                accept or fix them.
               </p>
             )}
 

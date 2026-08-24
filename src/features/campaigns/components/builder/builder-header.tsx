@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../../../utils/api'
 import { fetchLinkedContent } from '../../services/campaign-api'
 import { LinkedContentPanel } from './linked-content-panel'
+import { LaunchReadinessPanel } from './launch-readiness-panel'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
 import { ClickUpActions } from '../clickup/clickup-actions'
@@ -56,6 +57,7 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
   // platform what exists, so it loads on hover/focus rather than on every builder open,
   // the same deal as the GA4 property list above.
   const [linkedOpen, setLinkedOpen] = useState(false)
+  const [readinessOpen, setReadinessOpen] = useState(false)
   const [unreviewed, setUnreviewed] = useState<number | null>(null)
   const [unreviewedLoading, setUnreviewedLoading] = useState(false)
   const linkedCount = (campaign.phases ?? []).reduce(
@@ -117,6 +119,13 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
         />
       )}
 
+      {readinessOpen && (
+        <LaunchReadinessPanel
+          campaignId={campaign.campaign_id}
+          onClose={() => setReadinessOpen(false)}
+        />
+      )}
+
       {/* Nav card — same compact shape as the Overview / Calendar header */}
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -144,6 +153,14 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center flex-wrap gap-3">
         <ClickUpActions />
+        <button
+          onClick={() => setReadinessOpen(true)}
+          title="What the preflight found on every pushable channel — kept with each push"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tertiary label-xs text-secondary hover:bg-tertiary"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m-9.5-4.5h11a1.5 1.5 0 011.5 1.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19V7a1.5 1.5 0 011.5-1.5z" /></svg>
+          Launch readiness
+        </button>
         <button onClick={onDelete} title="Delete campaign" className="p-1 text-quaternary hover:text-utility-error-500 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>
