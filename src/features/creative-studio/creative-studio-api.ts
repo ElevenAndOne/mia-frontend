@@ -293,6 +293,9 @@ export interface MiaAsset {
   headline?: string | null
   headline_xy?: [number, number] | null
   logo_xy?: [number, number] | null
+  logo_scale?: number | null
+  /** Asset this edit supersedes — see collapseEdits. */
+  replaces?: string | null
   /** Edit-drift QA: did the edit change more than asked? Arrives shortly after the image. */
   drift?: {
     changed_beyond_request: boolean
@@ -403,6 +406,7 @@ export interface RecomposeOverrides {
   logo_asset_id?: string
   logo_position?: string
   logo_xy?: [number, number]
+  logo_scale?: number // multiplier on the default 18%-of-width logo
   ratio?: string
 }
 
@@ -410,6 +414,24 @@ export interface EditedAsset {
   asset_id: string
   cdn_url: string
   ratio?: string | null
+  width?: number | null
+  height?: number | null
+  /** 'adjust' = done locally in a moment; 'repaint' = went through the fill model. */
+  method?: 'adjust' | 'repaint'
+}
+
+/**
+ * An edit REPLACES the image it came from rather than adding a tile.
+ *
+ * Every edit writes a new asset row carrying the same conversation_id, so a reopened
+ * thread used to restore all of them — the grid grew every time you came back to a chat
+ * (2026-08-20). Drop anything a later version supersedes.
+ */
+export const collapseEdits = <T extends { asset_id: string; replaces?: string | null }>(
+  assets: T[],
+): T[] => {
+  const superseded = new Set(assets.map((a) => a.replaces).filter(Boolean) as string[])
+  return assets.filter((a) => !superseded.has(a.asset_id))
 }
 
 /** Everything the editor needs to preview edits live in the browser. */
@@ -418,7 +440,10 @@ export interface EditState {
   base_asset_id: string
   base_cdn_url: string
   composited_cdn_url: string
+  /** Keyed transparent PNG (data URL) when the upload had a white background baked in. */
   logo_cdn_url: string | null
+  /** Size of the COMPOSITED canvas — the aspect the preview must use and the pixel space
+   *  a click maps into. Sending the base's size instead made every selection miss. */
   width: number | null
   height: number | null
   recipe: RecomposeOverrides & { logo_asset_id?: string }
@@ -482,9 +507,11 @@ export const miaCreateApi = {
     assetId: string,
     points: { x: number; y: number; label: number }[],
     box?: { x_min: number; y_min: number; x_max: number; y_max: number },
-    // Pass the known pixel dims — saves the server re-downloading the image per click.
+    // Known pixel dims, used only as a hint if the server can't infer them.
     dims?: { width: number; height: number },
-  ): Promise<{ mask_url: string; width: number; height: number }> => {
+    // Select everything EXCEPT the clicked object — the reliable way to get a background.
+    invert?: boolean,
+  ): Promise<{ mask_url: string; width: number; height: number; coverage?: number | null }> => {
     const res = await apiFetch(`${miaBase()}/segment`, {
       method: 'POST',
       headers: { ...sessionHeaders(sessionId), 'Content-Type': 'application/json' },
@@ -495,6 +522,7 @@ export const miaCreateApi = {
         box,
         width: dims?.width,
         height: dims?.height,
+        invert: !!invert,
       }),
     })
     if (!res.ok) {
@@ -568,6 +596,19 @@ export const miaCreateApi = {
     const url = `${miaBase()}/assets?tenant_id=${encodeURIComponent(tenantId)}&conversation_id=${encodeURIComponent(conversationId)}&limit=60`
     const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
     if (!res.ok) return { assets: [] }
+    return res.json()
+  },
+
+  /** Generations still running in this conversation, so a reload mid-generation can put
+   *  the polling card back instead of losing it until the thread is reopened. */
+  listPendingJobs: async (
+    sessionId: string,
+    tenantId: string,
+    conversationId: string,
+  ): Promise<{ jobs: MiaJob[] }> => {
+    const url = `${miaBase()}/pending-jobs?tenant_id=${encodeURIComponent(tenantId)}&conversation_id=${encodeURIComponent(conversationId)}`
+    const res = await apiFetch(url, { headers: sessionHeaders(sessionId) })
+    if (!res.ok) return { jobs: [] }
     return res.json()
   },
 

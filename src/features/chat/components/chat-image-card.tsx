@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
+import { collapseEdits, miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
 import { useSession } from '../../../contexts/session-context'
 import { Pencil01 } from '../../../components/icon/pencil-01'
 import { Maximize01 } from '../../../components/icon/maximize-01'
@@ -91,7 +91,9 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
       try {
         if (event.variant_group) {
           const set = await miaCreateApi.getSet(sessionId, tenantId, event.variant_group)
-          if (set.assets.length) setAssets(set.assets)
+          // Edits inherit the variant_group so they land in this card — keep the newest
+          // version of each tile, not both.
+          if (set.assets.length) setAssets(collapseEdits(set.assets))
           // `complete` means every job settled — some may have failed, so a short set is
           // the real answer, not a reason to keep polling for the missing ones.
           if (set.complete) {
@@ -120,7 +122,7 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
             // Fall back to the job's own output_urls if the asset rows aren't visible yet.
             setAssets(
               jobAssets.length
-                ? jobAssets
+                ? collapseEdits(jobAssets)
                 : job.output_urls.map((url, i) => ({
                     asset_id: `job-${event.job_id}-${i}`,
                     cdn_url: url,
@@ -235,6 +237,9 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
           conversationId={editing.conversation_id ?? null}
           onClose={() => setEditing(null)}
           onEdited={(next) => {
+            // A poll still in its scoring/drift grace window would overwrite this swap
+            // with a listing that predates the edit. Nothing left to wait for anyway.
+            stop()
             // Show the edited result in this card straight away; the editor keeps
             // working on it, so further edits chain from the new version.
             setAssets((prev) =>

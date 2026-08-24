@@ -29,7 +29,7 @@ import type {
 import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
 import type { ChatImageJob } from '../components/chat-image-card'
-import { miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
+import { collapseEdits, miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 
@@ -269,8 +269,14 @@ export const useChatView = () => {
       const tenantId = activeWorkspace?.tenant_id
       if (!sessionId || !tenantId) return
       try {
-        const { assets } = await miaCreateApi.listConversationAssets(sessionId, tenantId, convId)
-        if (!assets.length) return
+        const [listed, pending] = await Promise.all([
+          miaCreateApi.listConversationAssets(sessionId, tenantId, convId),
+          miaCreateApi.listPendingJobs(sessionId, tenantId, convId),
+        ])
+        // An edit replaces the tile it came from — otherwise every version ever rendered
+        // came back as its own card and the grid grew on each visit (2026-08-20).
+        const assets = collapseEdits(listed.assets)
+        if (!assets.length && !pending.jobs.length) return
 
         const groups = new Map<string, MiaAsset[]>()
         for (const a of assets) {
@@ -304,6 +310,27 @@ export const useChatView = () => {
             assets: group,
           }
           jobsByMsgId.set(anchor.id, [...(jobsByMsgId.get(anchor.id) ?? []), card])
+        }
+
+        // Generations still running: attach a card with no assets so it resumes polling.
+        // Grouped by variant_group so a 3-variant set is one card, not three.
+        const pendingGroups = new Map<string, typeof pending.jobs>()
+        for (const j of pending.jobs) {
+          const key = j.variant_group || j.job_id
+          pendingGroups.set(key, [...(pendingGroups.get(key) ?? []), j])
+        }
+        const lastAssistant = assistants[assistants.length - 1]
+        for (const group of pendingGroups.values()) {
+          jobsByMsgId.set(lastAssistant.id, [
+            ...(jobsByMsgId.get(lastAssistant.id) ?? []),
+            {
+              tool: 'generate_creative',
+              status: 'generating',
+              job_id: group[0].variant_group ? null : group[0].job_id,
+              variant_group: group[0].variant_group ?? null,
+              num_images: group.length,
+            },
+          ])
         }
 
         setMessages((prev) =>
@@ -592,6 +619,9 @@ export const useChatView = () => {
         // ChatImageJob, not ImageJobEvent: the raw SSE assets (nullable, no media_type)
         // are normalized on push into renderable MiaAssets.
         const imageJobs: ChatImageJob[] = []
+        // A failure reported mid-stream, surfaced after the turn settles so whatever text
+        // did arrive is still shown.
+        let streamError: string | null = null
 
         await sendChatMessageStreaming(
           {
@@ -621,6 +651,13 @@ export const useChatView = () => {
               : {}),
           },
           (chunk) => {
+            // The stream can report a mid-turn failure. With no branch for it the event
+            // was dropped and the user got the generic "something went wrong" fallback
+            // instead of the actual reason (rate limit, tool error, cap reached).
+            if (chunk.error) {
+              streamError = chunk.error
+              return
+            }
             if (chunk.text) {
               accumulated += chunk.text
               receivedRef.current = accumulated  // interval reads this; no setState here
@@ -688,6 +725,7 @@ export const useChatView = () => {
         // instructions should chain on the newest image (the edit result), not keep
         // re-editing the original. Turns with no generation leave the pin in place.
         if (imageJobs.length > 0 && editTargetRef.current) setEditTarget(null)
+        if (streamError) showToast('error', streamError)
       } catch (error) {
         if (revealIntervalRef.current) {
           clearInterval(revealIntervalRef.current)
