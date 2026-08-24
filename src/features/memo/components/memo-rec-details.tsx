@@ -15,7 +15,7 @@ export const MemoRecDetails = ({ rec }: MemoRecDetailsProps) => {
   const plan = rec.campaign_ref?.plan
 
   return (
-    <div className="flex flex-col gap-2 pt-3 border-t border-tertiary">
+    <div className="flex flex-col gap-2 pt-3 border-t border-secondary">
       {evidence && <p className="paragraph-xs text-tertiary">{evidence}</p>}
       {reasons.map((reason) => (
         <p key={reason} className="paragraph-xs text-tertiary">

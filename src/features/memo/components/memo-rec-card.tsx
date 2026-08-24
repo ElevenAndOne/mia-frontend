@@ -51,7 +51,7 @@ export const MemoRecCard = ({
   const decidable = rec.state === 'proposed' && canManage
 
   return (
-    <div className="flex rounded-xl border border-tertiary bg-secondary overflow-hidden">
+    <div className="flex rounded-xl border border-secondary bg-secondary overflow-hidden">
       <div className={`w-[3px] shrink-0 ${RAIL[kind] ?? RAIL.info}`} aria-hidden="true" />
 
       <div className="flex-1 min-w-0 flex flex-col md:flex-row">
@@ -72,7 +72,7 @@ export const MemoRecCard = ({
           )}
 
           {metrics.length > 0 && (
-            <div className="flex flex-wrap gap-x-7 gap-y-3 mt-3.5 pt-3.5 border-t border-tertiary">
+            <div className="flex flex-wrap gap-x-7 gap-y-3 mt-3.5 pt-3.5 border-t border-secondary">
               {metrics.map((m) => (
                 <div key={m.label}>
                   <p className="label-xs uppercase tracking-wider text-quaternary">{m.label}</p>
@@ -107,7 +107,7 @@ export const MemoRecCard = ({
           {showDetails && <MemoRecDetails rec={rec} />}
         </div>
 
-        <div className="shrink-0 md:w-56 p-4 md:p-5 md:border-l border-t md:border-t-0 border-tertiary bg-primary/40 flex flex-col md:items-end justify-center gap-3">
+        <div className="shrink-0 md:w-56 p-4 md:p-5 md:border-l border-t md:border-t-0 border-secondary bg-primary/40 flex flex-col md:items-end justify-center gap-3">
           {value && (
             <div className="md:text-right">
               <p className="label-xs uppercase tracking-wider text-quaternary">{value.label}</p>
