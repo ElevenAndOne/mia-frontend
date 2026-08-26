@@ -9,6 +9,13 @@ interface Props {
 
 export const ClickUpUpdateModal = ({ result, updating, error, onClose }: Props) => {
   const errorCount = result?.errors?.length ?? 0
+  // A no-op update reading "0 updated · 0 created" in green was the same misreport the
+  // push modal had — nothing happened, and it looked like success.
+  const nothingHappened =
+    !!result &&
+    (result.tasks_updated ?? 0) === 0 &&
+    (result.tasks_created ?? 0) === 0 &&
+    (result.tasks_deleted ?? 0) === 0
   return (
     <div className="campaign-workspace fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-secondary border border-secondary rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -17,9 +24,11 @@ export const ClickUpUpdateModal = ({ result, updating, error, onClose }: Props) 
         {error && !updating && <p className="paragraph-sm text-utility-error-700 mb-4">{error}</p>}
         {result && !updating && (
           <div className="space-y-2 mb-4">
-            <div className={`rounded-lg p-3 flex items-center gap-3 border ${errorCount === 0 ? 'bg-utility-success-100 border-utility-success-300' : 'bg-utility-warning-100 border-utility-warning-300'}`}>
+            <div className={`rounded-lg p-3 flex items-center gap-3 border ${errorCount === 0 && !nothingHappened ? 'bg-utility-success-100 border-utility-success-300' : 'bg-utility-warning-100 border-utility-warning-300'}`}>
               <span className="paragraph-sm text-primary">
-                {result.tasks_updated ?? 0} updated · {result.tasks_created ?? 0} created · {result.tasks_deleted ?? 0} deleted
+                {nothingHappened
+                  ? 'Nothing to update — this campaign has no phases or channel actions in ClickUp yet.'
+                  : `${result.tasks_updated ?? 0} updated · ${result.tasks_created ?? 0} created · ${result.tasks_deleted ?? 0} deleted`}
               </span>
             </div>
             {errorCount > 0 && (

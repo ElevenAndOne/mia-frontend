@@ -15,6 +15,7 @@ interface Props {
 // back onto the campaign's assets.
 export const ClickUpPullModal = ({ result, loading, applying, error, applied, onApply, onClose }: Props) => {
   const ready = result?.ready ?? []
+  const unreadable = result?.unreadable ?? []
 
   return (
     <div className="campaign-workspace fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4" onClick={onClose}>
@@ -38,6 +39,31 @@ export const ClickUpPullModal = ({ result, loading, applying, error, applied, on
         {!loading && !error && ready.length === 0 && (
           <div className="mb-4 bg-tertiary/40 border border-secondary rounded-lg p-4 text-center">
             <p className="paragraph-sm text-tertiary">No ads are marked Ready to Launch yet.</p>
+          </div>
+        )}
+
+        {!loading && unreadable.length > 0 && (
+          <div className="mb-4 bg-utility-warning-100 border border-utility-warning-300 rounded-lg p-4">
+            <p className="subheading-md text-utility-warning-700 mb-1">
+              {unreadable.length} linked task{unreadable.length !== 1 ? 's' : ''} couldn't be read
+            </p>
+            {/* Grouped by reason — a deleted task and a rate-limited one need
+                different responses, and showing only the first hid that. */}
+            <ul className="paragraph-xs text-utility-warning-700 space-y-0.5">
+              {Object.entries(
+                unreadable.reduce<Record<string, number>>((acc, u) => {
+                  acc[u.reason] = (acc[u.reason] ?? 0) + 1
+                  return acc
+                }, {}),
+              ).map(([reason, n]) => (
+                <li key={reason}>
+                  {n} ×{' '}
+                  {reason === 'deleted in ClickUp'
+                    ? 'deleted in ClickUp — push the campaign again to recreate them'
+                    : reason}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

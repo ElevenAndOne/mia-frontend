@@ -320,6 +320,16 @@ export async function fetchClickupSync(s: string, t: string, id: string): Promis
   return res.json()
 }
 
+// Remembers the list a campaign was pushed to. Without this the campaign's
+// clickup_list_id stays empty, so every push needs the list picked again and a repeat
+// push (which sends no list_id) has nowhere to recreate a task that was deleted.
+export const linkClickupList = (s: string, t: string, id: string, listId: string) =>
+  apiFetch(`/api/tenants/${t}/reports/campaigns/${id}/clickup-list`, {
+    method: 'PATCH',
+    headers: authJson(s),
+    body: JSON.stringify({ clickup_list_id: listId }),
+  })
+
 // Calls the ClickUp plugin SDK (list_spaces, list_folders, list_folder_lists,
 // push_campaign_summary, update_campaign_summary). Returns the `result` payload.
 export async function invokeClickup(

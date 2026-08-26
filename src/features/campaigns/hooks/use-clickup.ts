@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { fetchClickupSync, invokeClickup, patchAsset } from '../services/campaign-api'
+import { fetchClickupSync, invokeClickup, linkClickupList, patchAsset } from '../services/campaign-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import type {
   ClickUpAdsPushResult,
@@ -42,7 +42,11 @@ export function useClickUp() {
     // repeat pushes — the 0.4.0 replacement for the removed update_campaign_summary.
     try {
       const r = (await invokeClickup(sessionId, tenantId, 'push_campaign_ads', { campaign_id: id })) as ClickUpAdsPushResult
-      setUpdateResult({ tasks_updated: r.ads_updated, tasks_created: r.ads_created })
+      // Totals, not ads alone — phase/channel tasks count as pushed work too.
+      setUpdateResult({
+        tasks_updated: r.tasks_updated ?? r.ads_updated,
+        tasks_created: r.tasks_created ?? r.ads_created,
+      })
     }
     catch (e) { setUpdateError(e instanceof Error ? e.message : 'Update failed') }
     finally { setUpdating(false) }
@@ -71,7 +75,13 @@ export function useClickUp() {
     async (listId: string) => {
       if (!listId) { setAdsError('Please select a list first'); return }
       setPushingAds(true); setAdsError(''); setAdsResult(null)
-      try { setAdsResult((await invokeClickup(sessionId, tenantId, 'push_campaign_ads', { campaign_id: id, list_id: listId })) as ClickUpAdsPushResult) }
+      try {
+        setAdsResult((await invokeClickup(sessionId, tenantId, 'push_campaign_ads', { campaign_id: id, list_id: listId })) as ClickUpAdsPushResult)
+        // Remember the target so later pushes don't have to ask again, and so a
+        // deleted task can be recreated on the update path (which sends no list_id).
+        // Best-effort: the push already succeeded, so a failure here isn't the user's problem.
+        try { await linkClickupList(sessionId, tenantId, id, listId) } catch { /* non-critical */ }
+      }
       catch (e) { setAdsError(e instanceof Error ? e.message : 'Push ads to ClickUp failed') }
       finally { setPushingAds(false) }
     },

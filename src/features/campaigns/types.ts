@@ -208,6 +208,10 @@ export interface SyncChannel {
   action_id: string
   channel: string
   channel_label: string
+  // The channel's own ClickUp task. Matters most when `assets` is empty — that's the
+  // case that used to vanish from this view instead of showing as unsynced.
+  synced?: boolean
+  clickup_task_url?: string | null
   assets: SyncAsset[]
 }
 
@@ -225,6 +229,11 @@ export interface SyncResult {
   total_assets: number
   matched: number
   unmatched: number
+  // Assets plus channel actions that have no assets to stand in for them. Counting
+  // assets alone let a missing channel task show as a green "N/N synced".
+  total_items?: number
+  matched_items?: number
+  unmatched_items?: number
   phases: SyncPhase[]
 }
 
@@ -233,6 +242,10 @@ export interface ClickUpError { type: string; error: string }
 export interface ClickUpPushResult {
   tasks_created?: number
   tasks_skipped?: number
+  comments_posted?: number
+  // Zero created and zero commented is not a success — see the ads push.
+  nothing_to_do?: boolean
+  reason?: string | null
   errors?: ClickUpError[]
   tasks?: { task_id?: string; task_url?: string }[]
 }
@@ -248,7 +261,24 @@ export interface ClickUpUpdateResult {
 export interface ClickUpAdsPushResult {
   ads_created?: number
   ads_updated?: number
-  tasks?: { asset_id?: string; task_id?: string; task_url?: string }[]
+  // Phase and channel tasks. A campaign whose actions have no assets yet pushes
+  // structure only — reporting ads alone made that look like nothing happened.
+  structure_created?: number
+  structure_updated?: number
+  tasks_created?: number
+  tasks_updated?: number
+  // Set when the push had nothing to write, with `reason` explaining why.
+  nothing_to_do?: boolean
+  reason?: string | null
+  // Custom fields the target list doesn't have, so their values were dropped.
+  missing_fields?: string[]
+  tasks?: {
+    asset_id?: string
+    task_id?: string
+    task_url?: string
+    kind?: string
+    name?: string
+  }[]
 }
 
 // pull_ready_ads — ads the studio marked Ready to Launch, with what they filled in.
@@ -264,6 +294,10 @@ export interface ClickUpPullResult {
   campaign_id: string
   ready: ReadyAd[]
   count: number
+  // Linked tasks that couldn't be read (deleted in ClickUp, rate-limited). One of
+  // these used to abort the whole pull; now they're skipped and reported.
+  unreadable?: { asset_id: string; task_id: string; reason: string }[]
+  unreadable_count?: number
 }
 
 // ── Meta push ────────────────────────────────────────────────────────────────

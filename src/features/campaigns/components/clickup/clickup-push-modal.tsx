@@ -16,7 +16,14 @@ interface Props {
 export const ClickUpPushModal = ({ browse, result, pushing, error, clickupListId, onPush, onClose }: Props) => {
   const created = result?.tasks_created ?? 0
   const skipped = result?.tasks_skipped ?? 0
+  const commented = result?.comments_posted ?? 0
+  const nothingToDo = result?.nothing_to_do ?? (!!result && created === 0 && commented === 0)
   const targetList = browse.listId || clickupListId || ''
+  const summary = [
+    created > 0 ? `${created} task${created !== 1 ? 's' : ''} created` : '',
+    commented > 0 ? `${commented} updated` : '',
+    skipped > 0 ? `${skipped} skipped` : '',
+  ].filter(Boolean).join(' · ')
 
   return (
     <div className="campaign-workspace fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4" onClick={onClose}>
@@ -28,14 +35,27 @@ export const ClickUpPushModal = ({ browse, result, pushing, error, clickupListId
           <h2 className="title-h6 text-primary">Push to ClickUp</h2>
         </div>
         <p className="paragraph-sm text-tertiary mb-4">
-          {result ? `${created} task${created !== 1 ? 's' : ''} created${skipped > 0 ? `, ${skipped} already existed` : ''}.` : 'Push channel actions to ClickUp as tasks.'}
+          {result
+            ? nothingToDo ? 'Nothing was pushed to ClickUp.' : `${summary}.`
+            : 'Push channel actions to ClickUp as tasks.'}
         </p>
 
         {result ? (
-          <div className="mb-4 bg-utility-success-100 border border-utility-success-300 rounded-lg p-4">
-            <p className="subheading-md text-utility-success-700 mb-1">{created} task{created !== 1 ? 's' : ''} created{skipped > 0 ? ` · ${skipped} skipped` : ''}</p>
-            {result.tasks?.[0]?.task_url && (
-              <a href={result.tasks[0].task_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 paragraph-xs text-utility-success-700 hover:underline">Open first task in ClickUp ↗</a>
+          <div className={`mb-4 border rounded-lg p-4 ${nothingToDo ? 'bg-utility-warning-100 border-utility-warning-300' : 'bg-utility-success-100 border-utility-success-300'}`}>
+            {nothingToDo ? (
+              <>
+                <p className="subheading-md text-utility-warning-700 mb-1">Nothing to push</p>
+                <p className="paragraph-xs text-utility-warning-700">
+                  {result.reason || 'This campaign has no channel actions to push yet.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="subheading-md text-utility-success-700 mb-1">{summary}</p>
+                {result.tasks?.find((t) => t.task_url)?.task_url && (
+                  <a href={result.tasks.find((t) => t.task_url)!.task_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 paragraph-xs text-utility-success-700 hover:underline">Open first task in ClickUp ↗</a>
+                )}
+              </>
             )}
           </div>
         ) : (
