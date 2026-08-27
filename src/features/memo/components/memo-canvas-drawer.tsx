@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { CanvasPane } from '../../chat/components/canvas-pane'
 import { useCanvas } from '../../chat/hooks/use-canvas'
-import { Sheet } from '../../overlay'
 
 export interface MemoCanvasTarget {
   conversationId: string
@@ -47,9 +47,29 @@ export const MemoCanvasDrawer = ({ target, onClose }: MemoCanvasDrawerProps) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.conversationId, target?.documentId, canvas.documentList.length])
 
-  return (
-    <Sheet isOpen={!!target} onClose={onClose} position="right" showHandle={false}>
-      <div className="h-dvh w-[min(92vw,720px)] bg-primary flex flex-col">
+  // Close on Escape while open.
+  useEffect(() => {
+    if (!target) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [target, onClose])
+
+  if (!target) return null
+
+  // Own drawer rather than the shared Sheet: that one caps a right panel at
+  // max-w-md, which is too narrow for the platform preview and clipped it.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Draft canvas">
+      <button
+        type="button"
+        aria-label="Close canvas"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 cursor-default"
+      />
+      <aside className="relative h-full w-[min(92vw,720px)] bg-primary border-l border-tertiary shadow-2xl flex flex-col min-w-0 overflow-hidden">
         {canvas.document ? (
           <CanvasPane
             document={canvas.document}
@@ -77,7 +97,8 @@ export const MemoCanvasDrawer = ({ target, onClose }: MemoCanvasDrawerProps) => 
             <p className="paragraph-sm text-tertiary">Loading Mia&rsquo;s drafts…</p>
           </div>
         )}
-      </div>
-    </Sheet>
+      </aside>
+    </div>,
+    document.body,
   )
 }
