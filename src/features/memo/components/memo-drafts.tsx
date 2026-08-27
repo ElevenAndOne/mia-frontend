@@ -65,6 +65,13 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
   const isVideoBrief = ['video', 'reel', 'story', 'animation'].includes(doc.format.toLowerCase())
   const igNeedsImage = platform === 'instagram'
   const needsMedia = igNeedsImage || isVideoBrief
+  // A stamp from an earlier schedule whose post was since removed/failed is history,
+  // not a live schedule — the tile becomes schedulable again.
+  const liveSchedule =
+    doc.scheduled && ['scheduled', 'reminded', 'published', 'publishing'].includes(doc.scheduled.status ?? 'scheduled')
+      ? doc.scheduled
+      : null
+  const priorRemoved = !!doc.scheduled && !liveSchedule
 
   const submit = useCallback(async () => {
     if (!onSchedule || busy) return
@@ -96,8 +103,10 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
         <p className="paragraph-xs text-tertiary mt-1.5 line-clamp-3">{doc.preview}</p>
       </button>
 
-      {doc.scheduled ? (
-        <p className="paragraph-xs text-success">Scheduled · {whenLabel(doc.scheduled.scheduled_at)}</p>
+      {liveSchedule ? (
+        <p className="paragraph-xs text-success">
+          {liveSchedule.status === 'published' ? 'Published' : 'Scheduled'} · {whenLabel(liveSchedule.scheduled_at)}
+        </p>
       ) : canManage && onSchedule ? (
         open ? (
           <div className="flex flex-col gap-2 pt-2 border-t border-secondary">
@@ -149,7 +158,8 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
             </div>
           </div>
         ) : (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
+            {priorRemoved && <span className="paragraph-xs text-quaternary w-full">Earlier schedule was removed.</span>}
             {needsMedia ? (
               <Button size="sm" variant="primary" onClick={onOpen}>
                 {isVideoBrief ? 'Attach video' : 'Add image'} &amp; schedule
@@ -175,7 +185,9 @@ export const MemoDrafts = ({ drafts, canManage, onSchedule, onOpen, onRedraft, r
   const docs = drafts.documents ?? []
   if (docs.length === 0) return null
   const openCanvas = (documentId?: string) => onOpen(drafts.conversation_id, documentId)
-  const scheduled = docs.filter((d) => d.scheduled).length
+  const scheduled = docs.filter(
+    (d) => d.scheduled && ['scheduled', 'reminded', 'published', 'publishing'].includes(d.scheduled.status ?? 'scheduled'),
+  ).length
 
   return (
     <div className="mt-3.5 pt-3.5 border-t border-secondary flex flex-col gap-2.5">

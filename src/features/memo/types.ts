@@ -90,7 +90,13 @@ export interface MemoDraftDocument {
   format: string
   preview: string
   why?: string | null
-  scheduled?: { post_id: string | null; scheduled_at: string | null; platform: string } | null
+  scheduled?: {
+    post_id: string | null
+    scheduled_at: string | null
+    platform: string
+    /** live status of that post: scheduled | reminded | published | failed | removed */
+    status?: string
+  } | null
 }
 
 export interface MemoDrafts {

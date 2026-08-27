@@ -114,7 +114,7 @@ export const MemoRecCard = ({
               canManage={canManage}
               onSchedule={onScheduleDraft ? (input) => onScheduleDraft(rec.id, input) : undefined}
               onOpen={(conversationId, documentId) => onOpenDraft?.(conversationId, documentId)}
-              onRedraft={onRedraft && rec.state === 'proposed' ? () => onRedraft(rec.id) : undefined}
+              onRedraft={onRedraft && (rec.state === 'proposed' || rec.state === 'applied') ? () => onRedraft(rec.id) : undefined}
               redrafting={busy}
             />
           )}
