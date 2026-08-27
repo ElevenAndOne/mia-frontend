@@ -22,6 +22,11 @@ export const PLATFORM_LABEL: Record<string, string> = {
   meta_ads: 'Meta Ads',
   tiktok_ads: 'TikTok Ads',
   linkedin_ads: 'LinkedIn Ads',
+  // organic networks
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
 }
 
 const fmt = (n: number | null | undefined): string => {
@@ -97,12 +102,32 @@ export const actionSummary = (
 /** "9 live campaigns across Google Ads & Meta Ads · ZAR 28,400 spent" — what the
  *  memo actually looked at, so the reader can judge how much it saw. */
 export const summariseReviewed = (
-  memo: { graded_campaigns?: number; platforms?: string[]; reviewed_spend?: number } | null | undefined,
+  memo:
+    | {
+        graded_campaigns?: number
+        platforms?: string[]
+        reviewed_spend?: number
+        organic?: { posts: number; window_days: number; networks: string[] } | null
+      }
+    | null
+    | undefined,
   currency = 'ZAR',
 ): string | null => {
-  if (!memo?.graded_campaigns) return null
-  const platforms = (memo.platforms ?? []).join(' & ')
-  const where = platforms ? ` across ${platforms}` : ''
-  const spend = memo.reviewed_spend ? ` · ${money(memo.reviewed_spend, currency)} spent` : ''
-  return `${memo.graded_campaigns} live campaign${memo.graded_campaigns === 1 ? '' : 's'} reviewed${where}${spend}`
+  if (!memo) return null
+  const parts: string[] = []
+  if (memo.graded_campaigns) {
+    const platforms = (memo.platforms ?? []).join(' & ')
+    const where = platforms ? ` across ${platforms}` : ''
+    const spend = memo.reviewed_spend ? ` · ${money(memo.reviewed_spend, currency)} spent` : ''
+    parts.push(
+      `${memo.graded_campaigns} live campaign${memo.graded_campaigns === 1 ? '' : 's'} reviewed${where}${spend}`,
+    )
+  }
+  if (memo.organic?.posts) {
+    const nets = (memo.organic.networks ?? []).join(' & ')
+    parts.push(
+      `${memo.organic.posts} organic post${memo.organic.posts === 1 ? '' : 's'} reviewed${nets ? ` on ${nets}` : ''} over ${memo.organic.window_days} days`,
+    )
+  }
+  return parts.length ? parts.join(' · ') : null
 }

@@ -38,7 +38,8 @@ const planMetrics = (e: MemoEvidence, currency: string): MemoMetric[] => {
   if (e.over_allocated)
     out.push({ label: 'Over by', value: money(e.over_by, currency), tone: 'bad' })
   if (e.pacing_pct !== null && e.pacing_pct !== undefined)
-    out.push({ label: 'Pacing', value: `${n(e.pacing_pct)}%`, tone: 'bad' })
+    // pacing_pct is the deviation from the plan's expected burn, not % of budget spent
+    out.push({ label: 'vs plan', value: `${e.pacing_pct > 0 ? '+' : ''}${n(e.pacing_pct)}%`, tone: 'bad' })
   return out.slice(0, 4)
 }
 
@@ -87,6 +88,9 @@ const campaignMetrics = (e: MemoEvidence, currency: string): MemoMetric[] => {
 export const metricsFor = (rec: MemoRecommendation, currency: string): MemoMetric[] => {
   const e = rec.evidence
   if (!e) return []
+  // Organic findings ship their own strip — the backend computed it in the
+  // finding's own units (views, posts, days), so there is nothing to derive here.
+  if (e.organic) return (e.metrics ?? []).slice(0, 4)
   if (e.basis === 'plan') return planMetrics(e, currency)
   if (e.basis === 'wasted_search_terms') return wasteMetrics(e, currency)
   return campaignMetrics(e, currency)
@@ -98,6 +102,10 @@ export const valueFor = (
 ): MemoValue | null => {
   const e = rec.evidence
   if (!e) return null
+  if (e.organic)
+    return e.value_text && e.value_label
+      ? { label: e.value_label, amount: e.value_text, tone: rec.kind === 'grow' ? 'good' : 'muted' }
+      : null
   if (e.impact !== null && e.impact !== undefined)
     return {
       label: rec.kind === 'grow' ? 'Est. gain' : 'Waste removed',

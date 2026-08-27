@@ -38,10 +38,20 @@ export const MemoRecDetails = ({ rec }: MemoRecDetailsProps) => {
           ))}
         </div>
       )}
+      {rec.evidence?.organic && rec.evidence.permalink && (
+        <a
+          href={rec.evidence.permalink}
+          target="_blank"
+          rel="noreferrer"
+          className="paragraph-xs text-brand underline"
+        >
+          Open the post
+        </a>
+      )}
       <p className="paragraph-xs text-quaternary">
         {plan
           ? `Part of ${plan}`
-          : rec.evidence?.basis !== 'plan'
+          : rec.evidence?.basis !== 'plan' && !rec.evidence?.organic
             ? 'Not part of any campaign plan'
             : ''}
         {rec.platform ? ` · ${PLATFORM_LABEL[rec.platform] ?? rec.platform}` : ''}

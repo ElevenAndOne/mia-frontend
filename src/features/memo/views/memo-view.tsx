@@ -9,7 +9,7 @@ interface MemoViewProps {
 }
 
 export const MemoView = ({ onBack }: MemoViewProps) => {
-  const { memo, open, handled, isLoading, error, canManage, busyRecId, approve, dismiss } =
+  const { memo, open, handled, isLoading, error, canManage, busyRecId, approve, dismiss, scheduleDraft } =
     useMemoPage()
   const currency = memo?.memo?.currency ?? 'ZAR'
   const heldBack = heldBackLines(memo?.memo?.disclosure, currency)
@@ -87,6 +87,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                     currency={currency}
                     onApprove={approve}
                     onDismiss={dismiss}
+                    onScheduleDraft={scheduleDraft}
                   />
                 ))}
                 {open.length === 0 && (
@@ -112,6 +113,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                       currency={currency}
                       onApprove={approve}
                       onDismiss={dismiss}
+                    onScheduleDraft={scheduleDraft}
                     />
                   ))}
                 </div>

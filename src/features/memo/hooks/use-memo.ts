@@ -6,6 +6,8 @@ import { useToast } from '../../../contexts/toast-context'
 import {
   approveRecommendation,
   dismissRecommendation,
+  scheduleDraft as scheduleDraftRequest,
+  type ScheduleDraftInput,
   fetchLatestMemo,
 } from '../services/memo-service'
 import type { MemoRecommendation } from '../types'
@@ -62,6 +64,18 @@ export const useMemoPage = () => {
     [sessionId, showToast, refresh],
   )
 
+  const scheduleDraft = useCallback(
+    async (recId: string, input: ScheduleDraftInput) => {
+      if (!sessionId) return
+      const result = await scheduleDraftRequest(sessionId, recId, input)
+      showToast('success', result.message || 'Post scheduled — find it on the Posts page')
+      void queryClient.invalidateQueries({ queryKey: ['posts'] })
+      refresh()
+      return result
+    },
+    [sessionId, showToast, refresh, queryClient],
+  )
+
   const dismiss = useCallback(
     async (recId: string) => {
       if (!sessionId) return
@@ -111,6 +125,7 @@ export const useMemoPage = () => {
     busyRecId,
     approve,
     dismiss,
+    scheduleDraft,
     refresh,
   }
 }

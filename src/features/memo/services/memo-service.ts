@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import type { ApproveResult, MemoData } from '../types'
+import type { ApproveResult, MemoData, ScheduleDraftResult } from '../types'
 
 // Not tenant-scoped in the URL — the backend resolves the session's active
 // workspace (same convention as /api/whatsapp-alerts/*).
@@ -32,6 +32,29 @@ export const approveRecommendation = async (
     headers: auth(sessionId),
   })
   await orThrow(response, 'Failed to approve the recommendation')
+  return response.json()
+}
+
+export interface ScheduleDraftInput {
+  document_id: string
+  platform: 'facebook' | 'instagram'
+  scheduled_at: string // ISO 8601 with offset
+  timezone?: string
+}
+
+/** Schedule one of Mia's drafted posts straight from the memo card — same Quick
+ *  Posts path as the canvas Schedule button. */
+export const scheduleDraft = async (
+  sessionId: string,
+  recId: string,
+  input: ScheduleDraftInput,
+): Promise<ScheduleDraftResult> => {
+  const response = await apiFetch(`/api/memo/recommendations/${recId}/drafts/schedule`, {
+    method: 'POST',
+    headers: { ...auth(sessionId), 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  await orThrow(response, 'Failed to schedule the post')
   return response.json()
 }
 

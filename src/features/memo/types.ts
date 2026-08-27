@@ -49,6 +49,15 @@ export interface MemoEvidence {
   // wasted-search-term cards
   terms?: { term: string; spend: number; clicks: number; conversions: number }[]
   waste?: number
+  // organic cards (Facebook / Instagram / LinkedIn posts): a ready-made metric
+  // strip and value line, because their units are views/posts, not currency
+  organic?: boolean
+  network?: string
+  metrics?: { label: string; value: string; tone?: 'bad' | 'good' }[]
+  stake_unit?: string
+  value_label?: string | null
+  value_text?: string | null
+  permalink?: string | null
   // plan-level cards carry their issue list + tracker fields instead
   issues?: string[]
   pacing_state?: string
@@ -66,6 +75,33 @@ export interface MemoDisclosure {
   ceiling: number
   plan_cards_held_back?: number
   immaterial?: number
+}
+
+/** Posts Mia drafted from an organic finding — they live on the canvas of a
+ *  dedicated memo-drafts conversation, where the Schedule button publishes them. */
+export interface MemoDraftDocument {
+  document_id: string
+  title: string
+  platform: string
+  format: string
+  preview: string
+  why?: string | null
+  scheduled?: { post_id: string | null; scheduled_at: string | null; platform: string } | null
+}
+
+export interface MemoDrafts {
+  conversation_id: string
+  generated_on?: string
+  best_weekday?: string | null
+  documents: MemoDraftDocument[]
+}
+
+export interface ScheduleDraftResult {
+  success: boolean
+  message?: string
+  post?: { post_id?: string; scheduled_at?: string }
+  drafts: MemoDrafts
+  state: MemoRecState
 }
 
 export interface MemoRecommendation {
@@ -87,6 +123,7 @@ export interface MemoRecommendation {
   decided_at: string | null
   applied_at: string | null
   result: Record<string, unknown> | null
+  drafts?: MemoDrafts | null
 }
 
 export interface MemoCounts {
@@ -113,6 +150,14 @@ export interface MemoData {
     graded_campaigns: number
     reviewed_spend: number
     platforms: string[]
+    memo_kind?: 'paid' | 'organic' | 'mixed'
+    organic?: {
+      posts: number
+      window_days: number
+      networks: string[]
+      unmeasured: string[]
+      held_back: number
+    } | null
     generated_at: string
   } | null
   created_at: string | null

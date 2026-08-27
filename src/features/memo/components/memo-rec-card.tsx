@@ -2,7 +2,9 @@ import { useState } from 'react'
 
 import { Button } from '../../../components/button'
 import { ChevronDown } from '../../../components/icon/chevron-down'
+import { MemoDrafts } from './memo-drafts'
 import { MemoRecDetails } from './memo-rec-details'
+import type { ScheduleDraftInput } from '../services/memo-service'
 import type { MemoRecommendation } from '../types'
 import { KIND_LABEL, PLATFORM_LABEL, actionSummary, normalizeKind } from '../utils/memo-format'
 import { metricsFor, valueFor } from '../utils/memo-metrics'
@@ -30,6 +32,7 @@ interface MemoRecCardProps {
   currency?: string
   onApprove: (recId: string) => void
   onDismiss: (recId: string) => void
+  onScheduleDraft?: (recId: string, input: ScheduleDraftInput) => Promise<unknown>
 }
 
 export const MemoRecCard = ({
@@ -39,6 +42,7 @@ export const MemoRecCard = ({
   currency = 'ZAR',
   onApprove,
   onDismiss,
+  onScheduleDraft,
 }: MemoRecCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
   const kind = normalizeKind(rec.kind)
@@ -90,6 +94,14 @@ export const MemoRecCard = ({
                 </div>
               ))}
             </div>
+          )}
+
+          {rec.drafts && (rec.state === 'proposed' || rec.state === 'applied') && (
+            <MemoDrafts
+              drafts={rec.drafts}
+              canManage={canManage}
+              onSchedule={onScheduleDraft ? (input) => onScheduleDraft(rec.id, input) : undefined}
+            />
           )}
 
           <button
