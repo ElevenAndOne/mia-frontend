@@ -55,6 +55,10 @@ export interface MemoEvidence {
   network?: string
   metrics?: { label: string; value: string; tone?: 'bad' | 'good' }[]
   stake_unit?: string
+  // thin-sample findings are shown with the sample size beside the verdict
+  early_signal?: boolean
+  sample_size?: number | null
+  sample_label?: string | null
   value_label?: string | null
   value_text?: string | null
   permalink?: string | null

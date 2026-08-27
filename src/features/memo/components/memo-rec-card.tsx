@@ -71,6 +71,14 @@ export const MemoRecCard = ({
             <span className="label-md text-primary">{name}</span>
             {extra > 0 && <span className="paragraph-xs text-tertiary">+{extra} more</span>}
             {platform && <span className="paragraph-xs text-quaternary">{platform}</span>}
+            {rec.evidence?.early_signal && (
+              <span
+                className="label-xs uppercase tracking-wider text-warning border border-utility-warning-500/40 rounded-full px-2 py-0.5"
+                title="Based on a small sample — treat as a lead to test, not a proven pattern"
+              >
+                Early signal · {rec.evidence.sample_label ?? `${rec.evidence.sample_size} posts`}
+              </span>
+            )}
           </div>
 
           {rec.body && (
