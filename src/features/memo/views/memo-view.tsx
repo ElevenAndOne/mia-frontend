@@ -1,5 +1,8 @@
+import { useState } from 'react'
+
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
+import { MemoCanvasDrawer, type MemoCanvasTarget } from '../components/memo-canvas-drawer'
 import { MemoRecCard } from '../components/memo-rec-card'
 import { useMemoPage } from '../hooks/use-memo'
 import { heldBackLines, money, summariseReviewed } from '../utils/memo-format'
@@ -15,6 +18,9 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
   const heldBack = heldBackLines(memo?.memo?.disclosure, currency)
   const impact = memo?.memo?.impact_zar ?? null
   const reviewed = summariseReviewed(memo?.memo, currency)
+  const [canvasTarget, setCanvasTarget] = useState<MemoCanvasTarget | null>(null)
+  const openDraft = (conversationId: string, documentId?: string) =>
+    setCanvasTarget({ conversationId, documentId })
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -88,6 +94,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                     onApprove={approve}
                     onDismiss={dismiss}
                     onScheduleDraft={scheduleDraft}
+                    onOpenDraft={openDraft}
                   />
                 ))}
                 {open.length === 0 && (
@@ -114,6 +121,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
                       onApprove={approve}
                       onDismiss={dismiss}
                     onScheduleDraft={scheduleDraft}
+                    onOpenDraft={openDraft}
                     />
                   ))}
                 </div>
@@ -136,6 +144,7 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
           )}
         </div>
       </div>
+      <MemoCanvasDrawer target={canvasTarget} onClose={() => setCanvasTarget(null)} />
     </div>
   )
 }

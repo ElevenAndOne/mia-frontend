@@ -1,6 +1,4 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-
 import { Button } from '../../../components/button'
 import type { ScheduleDraftInput } from '../services/memo-service'
 import type { MemoDraftDocument, MemoDrafts as MemoDraftsData } from '../types'
@@ -9,6 +7,8 @@ interface MemoDraftsProps {
   drafts: MemoDraftsData
   canManage: boolean
   onSchedule?: (input: ScheduleDraftInput) => Promise<unknown>
+  /** Open a draft in the docked canvas (memo page keeps the reader in place). */
+  onOpen: (conversationId: string, documentId?: string) => void
 }
 
 const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -155,11 +155,10 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
 
 /** The three posts Mia drafted from a finding: schedule inline, or open the
  *  canvas conversation to edit them first. */
-export const MemoDrafts = ({ drafts, canManage, onSchedule }: MemoDraftsProps) => {
-  const navigate = useNavigate()
+export const MemoDrafts = ({ drafts, canManage, onSchedule, onOpen }: MemoDraftsProps) => {
   const docs = drafts.documents ?? []
   if (docs.length === 0) return null
-  const openCanvas = () => navigate('/home', { state: { loadConversationId: drafts.conversation_id } })
+  const openCanvas = (documentId?: string) => onOpen(drafts.conversation_id, documentId)
   const scheduled = docs.filter((d) => d.scheduled).length
 
   return (
@@ -169,7 +168,7 @@ export const MemoDrafts = ({ drafts, canManage, onSchedule }: MemoDraftsProps) =
           Mia drafted {docs.length} post{docs.length === 1 ? '' : 's'} from this
           {scheduled > 0 ? ` · ${scheduled} scheduled` : ''}
         </p>
-        <Button size="sm" variant="secondary" onClick={openCanvas}>
+        <Button size="sm" variant="secondary" onClick={() => openCanvas()}>
           Open in canvas
         </Button>
       </div>
@@ -180,7 +179,7 @@ export const MemoDrafts = ({ drafts, canManage, onSchedule }: MemoDraftsProps) =
             doc={d}
             bestWeekday={drafts.best_weekday}
             canManage={canManage}
-            onOpen={openCanvas}
+            onOpen={() => openCanvas(d.document_id)}
             onSchedule={onSchedule}
           />
         ))}

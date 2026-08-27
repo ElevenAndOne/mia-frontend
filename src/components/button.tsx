@@ -43,7 +43,7 @@ export function Button({
 }: ButtonProps) {
   const classes = [
     'inline-flex items-center justify-center gap-2 rounded-lg transition-colors',
-    'disabled:opacity-50 disabled:cursor-not-allowed',
+    'cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
     SIZE_CLASSES[size],
     VARIANT_CLASSES[variant],
     fullWidth ? 'w-full' : '',

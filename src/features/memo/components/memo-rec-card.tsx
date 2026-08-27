@@ -33,6 +33,7 @@ interface MemoRecCardProps {
   onApprove: (recId: string) => void
   onDismiss: (recId: string) => void
   onScheduleDraft?: (recId: string, input: ScheduleDraftInput) => Promise<unknown>
+  onOpenDraft?: (conversationId: string, documentId?: string) => void
 }
 
 export const MemoRecCard = ({
@@ -43,6 +44,7 @@ export const MemoRecCard = ({
   onApprove,
   onDismiss,
   onScheduleDraft,
+  onOpenDraft,
 }: MemoRecCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
   const kind = normalizeKind(rec.kind)
@@ -101,6 +103,7 @@ export const MemoRecCard = ({
               drafts={rec.drafts}
               canManage={canManage}
               onSchedule={onScheduleDraft ? (input) => onScheduleDraft(rec.id, input) : undefined}
+              onOpen={(conversationId, documentId) => onOpenDraft?.(conversationId, documentId)}
             />
           )}
 
