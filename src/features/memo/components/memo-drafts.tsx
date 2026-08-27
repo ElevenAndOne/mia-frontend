@@ -9,6 +9,9 @@ interface MemoDraftsProps {
   onSchedule?: (input: ScheduleDraftInput) => Promise<unknown>
   /** Open a draft in the docked canvas (memo page keeps the reader in place). */
   onOpen: (conversationId: string, documentId?: string) => void
+  /** Ask Mia for three fresh drafts (replaces the unscheduled ones). */
+  onRedraft?: () => void
+  redrafting?: boolean
 }
 
 const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -168,7 +171,7 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
 
 /** The three posts Mia drafted from a finding: schedule inline, or open the
  *  canvas conversation to edit them first. */
-export const MemoDrafts = ({ drafts, canManage, onSchedule, onOpen }: MemoDraftsProps) => {
+export const MemoDrafts = ({ drafts, canManage, onSchedule, onOpen, onRedraft, redrafting }: MemoDraftsProps) => {
   const docs = drafts.documents ?? []
   if (docs.length === 0) return null
   const openCanvas = (documentId?: string) => onOpen(drafts.conversation_id, documentId)
@@ -181,9 +184,16 @@ export const MemoDrafts = ({ drafts, canManage, onSchedule, onOpen }: MemoDrafts
           Mia drafted {docs.length} post{docs.length === 1 ? '' : 's'} from this
           {scheduled > 0 ? ` · ${scheduled} scheduled` : ''}
         </p>
-        <Button size="sm" variant="secondary" onClick={() => openCanvas()}>
-          Open in canvas
-        </Button>
+        <div className="flex items-center gap-2">
+          {canManage && onRedraft && scheduled === 0 && (
+            <Button size="sm" variant="ghost" loading={redrafting} onClick={onRedraft}>
+              Redraft these
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" onClick={() => openCanvas()}>
+            Open in canvas
+          </Button>
+        </div>
       </div>
       <div className="grid gap-2 md:grid-cols-3">
         {docs.map((d) => (

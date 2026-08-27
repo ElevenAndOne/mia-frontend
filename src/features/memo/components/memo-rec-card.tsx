@@ -34,6 +34,7 @@ interface MemoRecCardProps {
   onDismiss: (recId: string) => void
   onScheduleDraft?: (recId: string, input: ScheduleDraftInput) => Promise<unknown>
   onOpenDraft?: (conversationId: string, documentId?: string) => void
+  onRedraft?: (recId: string) => void
 }
 
 export const MemoRecCard = ({
@@ -45,6 +46,7 @@ export const MemoRecCard = ({
   onDismiss,
   onScheduleDraft,
   onOpenDraft,
+  onRedraft,
 }: MemoRecCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
   const kind = normalizeKind(rec.kind)
@@ -112,6 +114,8 @@ export const MemoRecCard = ({
               canManage={canManage}
               onSchedule={onScheduleDraft ? (input) => onScheduleDraft(rec.id, input) : undefined}
               onOpen={(conversationId, documentId) => onOpenDraft?.(conversationId, documentId)}
+              onRedraft={onRedraft && rec.state === 'proposed' ? () => onRedraft(rec.id) : undefined}
+              redrafting={busy}
             />
           )}
 

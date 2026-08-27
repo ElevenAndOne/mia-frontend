@@ -6,6 +6,7 @@ import { useToast } from '../../../contexts/toast-context'
 import {
   approveRecommendation,
   dismissRecommendation,
+  redraftRecommendation,
   scheduleDraft as scheduleDraftRequest,
   type ScheduleDraftInput,
   fetchLatestMemo,
@@ -76,6 +77,23 @@ export const useMemoPage = () => {
     [sessionId, showToast, refresh, queryClient],
   )
 
+  const redraft = useCallback(
+    async (recId: string) => {
+      if (!sessionId) return
+      setBusyRecId(recId)
+      try {
+        await redraftRecommendation(sessionId, recId)
+        showToast('success', 'Mia wrote three new drafts')
+        refresh()
+      } catch (err) {
+        showToast('error', err instanceof Error ? err.message : 'Failed to redraft')
+      } finally {
+        setBusyRecId(null)
+      }
+    },
+    [sessionId, showToast, refresh],
+  )
+
   const dismiss = useCallback(
     async (recId: string) => {
       if (!sessionId) return
@@ -126,6 +144,7 @@ export const useMemoPage = () => {
     approve,
     dismiss,
     scheduleDraft,
+    redraft,
     refresh,
   }
 }

@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import type { ApproveResult, MemoData, ScheduleDraftResult } from '../types'
+import type { ApproveResult, MemoData, MemoDrafts, ScheduleDraftResult } from '../types'
 
 // Not tenant-scoped in the URL — the backend resolves the session's active
 // workspace (same convention as /api/whatsapp-alerts/*).
@@ -55,6 +55,19 @@ export const scheduleDraft = async (
     body: JSON.stringify(input),
   })
   await orThrow(response, 'Failed to schedule the post')
+  return response.json()
+}
+
+/** Throw away a card's drafts and have Mia write three new ones. */
+export const redraftRecommendation = async (
+  sessionId: string,
+  recId: string,
+): Promise<{ success: boolean; drafts: MemoDrafts }> => {
+  const response = await apiFetch(`/api/memo/recommendations/${recId}/drafts/redraft`, {
+    method: 'POST',
+    headers: auth(sessionId),
+  })
+  await orThrow(response, 'Failed to redraft the posts')
   return response.json()
 }
 
