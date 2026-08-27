@@ -59,7 +59,9 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
   const [platform, setPlatform] = useState<'facebook' | 'instagram'>(
     doc.platform.toLowerCase() === 'instagram' ? 'instagram' : 'facebook',
   )
+  const isVideoBrief = ['video', 'reel', 'story', 'animation'].includes(doc.format.toLowerCase())
   const igNeedsImage = platform === 'instagram'
+  const needsMedia = igNeedsImage || isVideoBrief
 
   const submit = useCallback(async () => {
     if (!onSchedule || busy) return
@@ -124,13 +126,18 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
             {bestWeekday && (
               <p className="paragraph-xs text-quaternary">Mia suggests {bestWeekday} 09:00 — your posts land best then.</p>
             )}
-            {igNeedsImage && (
+            {isVideoBrief ? (
+              <p className="paragraph-xs text-warning">
+                This is a {doc.format.toLowerCase()} brief — attach the {doc.format.toLowerCase()} in the canvas first,
+                or it would publish as text only.
+              </p>
+            ) : igNeedsImage ? (
               <p className="paragraph-xs text-warning">
                 Instagram needs an image — open this draft in the canvas to add one, then schedule there.
               </p>
-            )}
+            ) : null}
             <div className="flex gap-2 items-center">
-              <Button size="sm" variant="primary" loading={busy} disabled={igNeedsImage} onClick={submit}>
+              <Button size="sm" variant="primary" loading={busy} disabled={needsMedia} onClick={submit}>
                 Approve &amp; schedule
               </Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
@@ -140,9 +147,15 @@ const DraftTile = ({ doc, bestWeekday, canManage, onOpen, onSchedule }: DraftTil
           </div>
         ) : (
           <div className="flex gap-2 items-center">
-            <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
-              Schedule
-            </Button>
+            {needsMedia ? (
+              <Button size="sm" variant="primary" onClick={onOpen}>
+                {isVideoBrief ? 'Attach video' : 'Add image'} &amp; schedule
+              </Button>
+            ) : (
+              <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+                Schedule
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={onOpen}>
               Edit in canvas
             </Button>
