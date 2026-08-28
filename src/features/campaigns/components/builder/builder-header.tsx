@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../../../../utils/api'
 import { fetchLinkedContent } from '../../services/campaign-api'
-import { LinkedContentPanel } from './linked-content-panel'
-import { LaunchReadinessPanel } from './launch-readiness-panel'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
 import { ClickUpActions } from '../clickup/clickup-actions'
@@ -52,12 +50,12 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
     const name = id ? (ga4Options?.find((p) => p.property_id === id)?.display_name ?? null) : null
     patchCampaign({ ga4_property_id: id, ga4_property_name: name })
   }
-  // Linked-content entry point. The linked count is free — it is already on the campaign
+  // Linked-content entry point. Linking itself lives on the "Linked content" tab; this
+  // card only shows the counts. The linked count is free — it is already on the campaign
   // detail. The "N to review" count is not: working it out means asking every connected
   // platform what exists, so it loads on hover/focus rather than on every builder open,
   // the same deal as the GA4 property list above.
-  const [linkedOpen, setLinkedOpen] = useState(false)
-  const [readinessOpen, setReadinessOpen] = useState(false)
+  const goTo = (view: 'linked' | 'readiness') => navigate(`/campaigns/${campaign.campaign_id}/${view}`)
   const [unreviewed, setUnreviewed] = useState<number | null>(null)
   const [unreviewedLoading, setUnreviewedLoading] = useState(false)
   const linkedCount = (campaign.phases ?? []).reduce(
@@ -103,27 +101,12 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
             {unreviewed === 1 ? " it isn't" : " they aren't"} counted in the KPIs.
           </p>
           <button
-            onClick={() => setLinkedOpen(true)}
+            onClick={() => goTo('linked')}
             className="shrink-0 px-3 py-1.5 rounded-lg bg-utility-brand-600 label-sm text-white hover:bg-utility-brand-700"
           >
             Review
           </button>
         </div>
-      )}
-
-      {linkedOpen && (
-        <LinkedContentPanel
-          campaignId={campaign.campaign_id}
-          onClose={() => setLinkedOpen(false)}
-          onSaved={() => setUnreviewed(null)}
-        />
-      )}
-
-      {readinessOpen && (
-        <LaunchReadinessPanel
-          campaignId={campaign.campaign_id}
-          onClose={() => setReadinessOpen(false)}
-        />
       )}
 
       {/* Nav card — same compact shape as the Overview / Calendar header */}
@@ -154,7 +137,7 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
       <div className="flex items-center flex-wrap gap-3">
         <ClickUpActions />
         <button
-          onClick={() => setReadinessOpen(true)}
+          onClick={() => goTo('readiness')}
           title="What the preflight found on every pushable channel — kept with each push"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tertiary label-xs text-secondary hover:bg-tertiary"
         >
@@ -231,7 +214,7 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
       <div className="flex items-center gap-2" onPointerEnter={loadUnreviewed}>
         <span className="label-xs text-quaternary shrink-0">Linked content:</span>
         <button
-          onClick={() => setLinkedOpen(true)}
+          onClick={() => goTo('linked')}
           onFocus={loadUnreviewed}
           className="paragraph-xs text-tertiary border-b border-tertiary hover:border-utility-brand-400 hover:text-secondary transition-colors"
         >

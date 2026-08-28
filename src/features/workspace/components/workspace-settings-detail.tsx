@@ -9,6 +9,7 @@ import { CampaignGuidesPage } from '../../campaign-guides/views/campaign-guides-
 import { MarketingContextPage } from '../../marketing-context/views/marketing-context-page'
 import { BrandKitTab } from './brand-kit-tab'
 import { SkillLearningPage } from './skill-learning-page'
+import { NotesPanel } from '../../notes/components/notes-panel'
 import { MiaStyleTab } from './mia-style-tab'
 import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl, updateWorkspaceFramework } from '../services/workspace-service'
 import {
@@ -26,7 +27,7 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'brandkit' | 'campaigns' | 'whatsapp' | 'skills' | 'mia'
+type SettingsTab = 'members' | 'brand' | 'brandkit' | 'campaigns' | 'notes' | 'whatsapp' | 'skills' | 'mia'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -111,8 +112,8 @@ export const WorkspaceSettingsDetail = ({
 }: WorkspaceSettingsDetailProps) => {
   // Non-managers (analyst/viewer) get a read-only view limited to the guide tabs.
   const visibleTabs: SettingsTab[] = canManage
-    ? ['members', 'brand', 'brandkit', 'campaigns', 'skills', 'whatsapp', 'mia']
-    : ['brand', 'brandkit', 'campaigns', 'mia']
+    ? ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia']
+    : ['brand', 'brandkit', 'campaigns', 'notes', 'mia']
   const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
   const { sessionId, refreshWorkspaces } = useSession()
   const { showToast } = useToast()
@@ -332,6 +333,8 @@ export const WorkspaceSettingsDetail = ({
               ? 'Brand Kit'
               : tab === 'campaigns'
               ? 'Campaign Guides'
+              : tab === 'notes'
+              ? 'Notes'
               : tab === 'skills'
               ? 'Skill Learning'
               : tab === 'mia'
@@ -517,6 +520,18 @@ export const WorkspaceSettingsDetail = ({
         {/* Campaign Guides tab */}
         {activeTab === 'campaigns' && (
           <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        )}
+
+        {/* Notes — standing decisions & constraints Mia applies in every conversation */}
+        {activeTab === 'notes' && (
+          <NotesPanel
+            sessionId={sessionId}
+            tenantId={workspace.tenant_id}
+            scope="workspace"
+            title="Notes"
+            description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Notes tab."
+            placeholder="Add a rule for every campaign… e.g. “Every caption ends with the 18+ / enjoy responsibly line.”"
+          />
         )}
 
         {/* Skill Learning tab */}

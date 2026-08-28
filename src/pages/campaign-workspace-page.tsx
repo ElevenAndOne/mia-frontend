@@ -10,6 +10,9 @@ import { useCampaignDetail } from '../features/campaigns/hooks/use-campaign-deta
 import { OverviewView } from '../features/campaigns/views/overview-view'
 import { CalendarView } from '../features/campaigns/views/calendar-view'
 import { BuilderView } from '../features/campaigns/views/builder-view'
+import { LinkedContentView } from '../features/campaigns/views/linked-content-view'
+import { LaunchReadinessView } from '../features/campaigns/views/launch-readiness-view'
+import { NotesView } from '../features/campaigns/views/notes-view'
 import { AssetPreviewPanel } from '../features/campaigns/components/asset-preview-panel'
 import type { CampaignView } from '../features/campaigns/types'
 
@@ -17,6 +20,9 @@ const VIEWS: Record<CampaignView, FC> = {
   overview: OverviewView,
   calendar: CalendarView,
   builder: BuilderView,
+  linked: LinkedContentView,
+  readiness: LaunchReadinessView,
+  notes: NotesView,
 }
 
 const CampaignWorkspacePage = () => {

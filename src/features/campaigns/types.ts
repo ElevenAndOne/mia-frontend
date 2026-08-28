@@ -191,7 +191,7 @@ export interface CampaignSummary {
   end_date: string | null
 }
 
-export type CampaignView = 'overview' | 'calendar' | 'builder'
+export type CampaignView = 'overview' | 'calendar' | 'builder' | 'linked' | 'readiness' | 'notes'
 
 // ── ClickUp ────────────────────────────────────────────────────────────────
 

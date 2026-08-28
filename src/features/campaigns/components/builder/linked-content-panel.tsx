@@ -9,6 +9,13 @@ interface Props {
   onSaved?: () => void
 }
 
+interface ContentProps {
+  campaignId: string
+  onSaved?: () => void
+  /** Present when rendered as a slide-over: Save closes it and a Cancel button shows. */
+  onClose?: () => void
+}
+
 const fmtDate = (iso?: string | null) => {
   if (!iso) return null
   const d = new Date(`${iso}T00:00:00`)
@@ -170,8 +177,9 @@ const ChannelBlock = ({
 
 // Campaign-wide linking. Replaces opening a picker modal per phase × channel: every
 // channel is fetched once, the phase dates propose what belongs, and one save writes
-// the lot.
-export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => {
+// the lot. Layout-agnostic: it is the campaign's "Linked content" tab, and the same
+// body inside the slide-over below.
+export const LinkedContentContent = ({ campaignId, onSaved, onClose }: ContentProps) => {
   const { data, selection, loading, saving, error, dirty, toggle, setChannel, save } =
     useLinkedContent(campaignId, true)
 
@@ -189,35 +197,14 @@ export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => {
   const onSave = async () => {
     if (await save()) {
       onSaved?.()
-      onClose()
+      onClose?.()
     }
   }
 
   const unreviewed = data?.summary.unreviewed_total ?? 0
 
   return (
-    <div
-      className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60"
-      onClick={onClose}
-    >
-      <div
-        className="bg-secondary w-full max-w-2xl h-full flex flex-col border-l border-secondary shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 p-4 border-b border-tertiary">
-          <div className="min-w-0">
-            <p className="label-sm text-primary">Linked content</p>
-            <p className="paragraph-xs text-quaternary mt-0.5">
-              What counts towards this campaign’s KPIs. Anything not linked is not measured.
-            </p>
-          </div>
-          <button onClick={onClose} className="text-quaternary hover:text-secondary shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <div className="flex flex-col min-h-0 flex-1">
         {unreviewed > 0 && (
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-utility-brand-100 border-b border-tertiary">
             <p className="paragraph-xs text-utility-brand-700">
@@ -233,7 +220,7 @@ export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
           {loading && <p className="paragraph-xs text-tertiary text-center py-8">Loading…</p>}
           {error && <p className="paragraph-xs text-utility-error-500 text-center py-4">{error}</p>}
 
@@ -272,12 +259,14 @@ export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => {
             {data ? `${data.summary.linked_total} linked` : ''}
             {dirty ? ' · unsaved changes' : ''}
           </p>
-          <button
-            onClick={onClose}
-            className="px-3 py-2 rounded-lg border border-tertiary paragraph-sm text-secondary hover:bg-tertiary"
-          >
-            Cancel
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-3 py-2 rounded-lg border border-tertiary paragraph-sm text-secondary hover:bg-tertiary"
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={onSave}
             disabled={saving || !dirty}
@@ -286,7 +275,31 @@ export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => {
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-      </div>
     </div>
   )
 }
+
+// Slide-over wrapper, kept for any caller that still wants linking as an overlay.
+export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => (
+  <div className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
+    <div
+      className="bg-secondary w-full max-w-2xl h-full flex flex-col border-l border-secondary shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-3 p-4 border-b border-tertiary">
+        <div className="min-w-0">
+          <p className="label-sm text-primary">Linked content</p>
+          <p className="paragraph-xs text-quaternary mt-0.5">
+            What counts towards this campaign’s KPIs. Anything not linked is not measured.
+          </p>
+        </div>
+        <button onClick={onClose} className="text-quaternary hover:text-secondary shrink-0">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <LinkedContentContent campaignId={campaignId} onSaved={onSaved} onClose={onClose} />
+    </div>
+  </div>
+)

@@ -10,13 +10,14 @@ import type { Asset } from '../../types'
 // Campaign-level launch readiness: one screen for every pushable channel, read from
 // what was saved rather than re-derived on open. Replaces two per-channel pop-ups
 // whose results vanished when they closed.
-export const LaunchReadinessPanel = ({
+//
+// The content is layout-agnostic so the same screen is both the "Launch readiness"
+// tab of the campaign and the slide-over a channel card opens with itself in focus.
+export const LaunchReadinessContent = ({
   campaignId,
-  onClose,
   focusActionId,
 }: {
   campaignId: string
-  onClose: () => void
   /** Opened from one channel's card: show that channel first, but still show the
    *  campaign, because "is this ready" is a question about the whole launch. */
   focusActionId?: string
@@ -100,26 +101,7 @@ export const LaunchReadinessPanel = ({
     : (data?.channels ?? [])
 
   return (
-    <div className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
-      <div
-        className="bg-secondary w-full max-w-2xl h-full flex flex-col border-l border-secondary shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 p-4 border-b border-tertiary">
-          <div className="min-w-0">
-            <p className="label-sm text-primary">Launch readiness</p>
-            <p className="paragraph-xs text-quaternary mt-0.5">
-              What the preflight found, kept with every push — who checked, what passed, what was
-              accepted.
-            </p>
-          </div>
-          <button onClick={onClose} className="text-quaternary hover:text-secondary shrink-0">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <div className="flex flex-col min-h-0 flex-1">
         {totals && (
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-tertiary">
             <div className="flex items-center gap-2 flex-wrap">
@@ -151,7 +133,7 @@ export const LaunchReadinessPanel = ({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading && <p className="paragraph-xs text-tertiary text-center py-8">Loading…</p>}
           {error && <p className="paragraph-xs text-utility-error-500 text-center py-4">{error}</p>}
           {data?.channels.length === 0 && !loading && (
@@ -179,7 +161,41 @@ export const LaunchReadinessPanel = ({
             </p>
           )}
         </div>
-      </div>
     </div>
   )
 }
+
+// Slide-over wrapper — used by a channel card to open the campaign's readiness with
+// that channel first. The tab renders LaunchReadinessContent directly.
+export const LaunchReadinessPanel = ({
+  campaignId,
+  onClose,
+  focusActionId,
+}: {
+  campaignId: string
+  onClose: () => void
+  focusActionId?: string
+}) => (
+  <div className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
+    <div
+      className="bg-secondary w-full max-w-2xl h-full flex flex-col border-l border-secondary shadow-xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-3 p-4 border-b border-tertiary">
+        <div className="min-w-0">
+          <p className="label-sm text-primary">Launch readiness</p>
+          <p className="paragraph-xs text-quaternary mt-0.5">
+            What the preflight found, kept with every push — who checked, what passed, what was
+            accepted.
+          </p>
+        </div>
+        <button onClick={onClose} className="text-quaternary hover:text-secondary shrink-0">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <LaunchReadinessContent campaignId={campaignId} focusActionId={focusActionId} />
+    </div>
+  </div>
+)
