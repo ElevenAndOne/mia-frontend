@@ -53,7 +53,12 @@ const CandidateRow = ({
         }`}
       >
         {checked && (
-          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-2.5 h-2.5 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         )}
@@ -90,12 +95,12 @@ const ChannelBlock = ({
   channel,
   selected,
   onToggle,
-  onSetAll,
+  onAccept,
 }: {
   channel: LinkedContentChannel
   selected: Set<string>
   onToggle: (id: string) => void
-  onSetAll: (ids: string[]) => void
+  onAccept: (ids: string[]) => void
 }) => {
   const suggestedIds = channel.candidates.filter((c) => c.suggested).map((c) => c.id)
   // Suggestions first, then anything already linked, then the rest — the things needing
@@ -103,14 +108,16 @@ const ChannelBlock = ({
   const ordered = useMemo(() => {
     const rank = (c: LinkedContentCandidate) => (c.suggested ? 0 : c.linked ? 1 : 2)
     return [...channel.candidates].sort(
-      (a, b) => rank(a) - rank(b) || (b.starts_at ?? '').localeCompare(a.starts_at ?? ''),
+      (a, b) => rank(a) - rank(b) || (b.starts_at ?? '').localeCompare(a.starts_at ?? '')
     )
   }, [channel.candidates])
 
-  const [expanded, setExpanded] = useState(
-    channel.unreviewed_count > 0 || channel.linked_count > 0,
-  )
-  const visible = expanded ? ordered : ordered.filter((c) => c.suggested || selected.has(c.id))
+  // Open by default only when there is something to decide; linked-and-settled channels stay folded.
+  const [expanded, setExpanded] = useState(channel.unreviewed_count > 0)
+  // Collapsed = header + one-line summary; expanded = the full list. (A 5-row preview inside
+  // the same scroll box did not read as a collapse at all.)
+  const visible = expanded ? ordered : []
+  const suggestedUnlinked = ordered.filter((c) => c.suggested && !c.linked).length
 
   return (
     <div className="rounded-xl border border-secondary bg-primary">
@@ -127,17 +134,18 @@ const ChannelBlock = ({
         <div className="flex items-center gap-2 shrink-0">
           {suggestedIds.length > 0 && (
             <button
-              onClick={() => onSetAll([...new Set([...selected, ...suggestedIds])])}
+              onClick={() => onAccept(suggestedIds)}
+              title="Link the suggested items in this channel and save"
               className="label-xs px-2 py-1 rounded-lg bg-utility-brand-600 text-white hover:bg-utility-brand-700"
             >
-              Accept {suggestedIds.length}
+              Accept &amp; save {suggestedIds.length}
             </button>
           )}
           <button
             onClick={() => setExpanded((v) => !v)}
             className="label-xs px-2 py-1 rounded-lg border border-tertiary text-secondary hover:bg-tertiary"
           >
-            {expanded ? 'Show less' : `Show ${ordered.length}`}
+            {expanded ? 'Show less' : `Show all ${ordered.length}`}
           </button>
         </div>
       </div>
@@ -149,7 +157,17 @@ const ChannelBlock = ({
         <p className="paragraph-xs text-quaternary px-3 py-2">Nothing found on this channel</p>
       )}
 
-      <div className="p-1 max-h-72 overflow-y-auto">
+      {!expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="w-full text-left paragraph-xs text-quaternary hover:text-secondary px-3 py-2"
+        >
+          {selected.size} linked of {ordered.length}
+          {suggestedUnlinked > 0 ? ` · ${suggestedUnlinked} suggested to review` : ''} — show all
+        </button>
+      )}
+
+      <div className={expanded ? 'p-1 max-h-96 overflow-y-auto' : 'hidden'}>
         {visible.map((c) => (
           <CandidateRow
             key={c.id}
@@ -160,8 +178,7 @@ const ChannelBlock = ({
         ))}
         {!expanded && visible.length === 0 && ordered.length > 0 && (
           <p className="paragraph-xs text-quaternary px-3 py-2">
-            Nothing selected or suggested — use “Show {ordered.length}” to link something
-            manually.
+            Nothing selected or suggested — use “Show {ordered.length}” to link something manually.
           </p>
         )}
         {expanded && channel.candidates_truncated && (
@@ -180,18 +197,23 @@ const ChannelBlock = ({
 // the lot. Layout-agnostic: it is the campaign's "Linked content" tab, and the same
 // body inside the slide-over below.
 export const LinkedContentContent = ({ campaignId, onSaved, onClose }: ContentProps) => {
-  const { data, selection, loading, saving, error, dirty, toggle, setChannel, save } =
+  const { data, selection, loading, saving, error, dirty, toggle, save, acceptAndSave } =
     useLinkedContent(campaignId, true)
 
-  const acceptAll = () => {
+  // Tick every suggestion in every channel and SAVE — one click links the lot.
+  const acceptAll = async () => {
     if (!data) return
+    const updates: Record<string, string[]> = {}
     for (const phase of data.phases) {
       for (const ch of phase.channels) {
         const suggested = ch.candidates.filter((c) => c.suggested).map((c) => c.id)
-        if (suggested.length === 0) continue
-        setChannel(ch.action_id, [...new Set([...(selection[ch.action_id] ?? []), ...suggested])])
+        if (suggested.length) updates[ch.action_id] = suggested
       }
     }
+    if (await acceptAndSave(updates)) onSaved?.()
+  }
+  const acceptChannel = async (actionId: string, ids: string[]) => {
+    if (await acceptAndSave({ [actionId]: ids })) onSaved?.()
   }
 
   const onSave = async () => {
@@ -205,83 +227,87 @@ export const LinkedContentContent = ({ campaignId, onSaved, onClose }: ContentPr
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
-        {unreviewed > 0 && (
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-utility-brand-100 border-b border-tertiary">
-            <p className="paragraph-xs text-utility-brand-700">
-              {unreviewed} item{unreviewed === 1 ? '' : 's'} published inside your phase dates
-              {unreviewed === 1 ? ' is' : ' are'} not linked yet.
-            </p>
-            <button
-              onClick={acceptAll}
-              className="label-xs px-2.5 py-1 rounded-lg bg-utility-brand-600 text-white hover:bg-utility-brand-700 shrink-0"
-            >
-              Accept all
-            </button>
-          </div>
-        )}
-
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
-          {loading && <p className="paragraph-xs text-tertiary text-center py-8">Loading…</p>}
-          {error && <p className="paragraph-xs text-utility-error-500 text-center py-4">{error}</p>}
-
-          {data?.phases.map((phase) => (
-            <div key={phase.phase_id} className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <p className="label-sm text-primary">{phase.phase_name}</p>
-                <p className="paragraph-xs text-quaternary">
-                  {fmtWindow(phase.start_date, phase.end_date)}
-                </p>
-              </div>
-              {phase.channels.length === 0 && (
-                <p className="paragraph-xs text-quaternary">No channels on this phase</p>
-              )}
-              {phase.channels.map((ch) => (
-                <ChannelBlock
-                  key={ch.action_id}
-                  channel={ch}
-                  selected={selection[ch.action_id] ?? new Set<string>()}
-                  onToggle={(id) => toggle(ch.action_id, id)}
-                  onSetAll={(ids) => setChannel(ch.action_id, ids)}
-                />
-              ))}
-            </div>
-          ))}
-
-          {data?.notes.map((note) => (
-            <p key={note} className="paragraph-xs text-quaternary border-t border-tertiary pt-3">
-              {note}
-            </p>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 p-4 border-t border-tertiary">
-          <p className="paragraph-xs text-quaternary flex-1">
-            {data ? `${data.summary.linked_total} linked` : ''}
-            {dirty ? ' · unsaved changes' : ''}
+      {unreviewed > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-utility-brand-100 border-b border-tertiary">
+          <p className="paragraph-xs text-utility-brand-700">
+            {unreviewed} item{unreviewed === 1 ? '' : 's'} published inside your phase dates
+            {unreviewed === 1 ? ' is' : ' are'} not linked yet.
           </p>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="px-3 py-2 rounded-lg border border-tertiary paragraph-sm text-secondary hover:bg-tertiary"
-            >
-              Cancel
-            </button>
-          )}
           <button
-            onClick={onSave}
-            disabled={saving || !dirty}
-            className="px-4 py-2 rounded-lg bg-utility-brand-600 paragraph-sm text-white hover:bg-utility-brand-700 disabled:opacity-50"
+            onClick={() => void acceptAll()}
+            disabled={saving}
+            className="label-xs px-2.5 py-1 rounded-lg bg-utility-brand-600 text-white hover:bg-utility-brand-700 shrink-0 disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : 'Accept all & save'}
           </button>
         </div>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+        {loading && <p className="paragraph-xs text-tertiary text-center py-8">Loading…</p>}
+        {error && <p className="paragraph-xs text-utility-error-500 text-center py-4">{error}</p>}
+
+        {data?.phases.map((phase) => (
+          <div key={phase.phase_id} className="space-y-2">
+            <div className="flex items-baseline gap-2">
+              <p className="label-sm text-primary">{phase.phase_name}</p>
+              <p className="paragraph-xs text-quaternary">
+                {fmtWindow(phase.start_date, phase.end_date)}
+              </p>
+            </div>
+            {phase.channels.length === 0 && (
+              <p className="paragraph-xs text-quaternary">No channels on this phase</p>
+            )}
+            {phase.channels.map((ch) => (
+              <ChannelBlock
+                key={ch.action_id}
+                channel={ch}
+                selected={selection[ch.action_id] ?? new Set<string>()}
+                onToggle={(id) => toggle(ch.action_id, id)}
+                onAccept={(ids) => void acceptChannel(ch.action_id, ids)}
+              />
+            ))}
+          </div>
+        ))}
+
+        {data?.notes.map((note) => (
+          <p key={note} className="paragraph-xs text-quaternary border-t border-tertiary pt-3">
+            {note}
+          </p>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 p-4 border-t border-tertiary">
+        <p className="paragraph-xs text-quaternary flex-1">
+          {data ? `${data.summary.linked_total} linked` : ''}
+          {dirty ? ' · unsaved changes' : ''}
+        </p>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="px-3 py-2 rounded-lg border border-tertiary paragraph-sm text-secondary hover:bg-tertiary"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          onClick={onSave}
+          disabled={saving || !dirty}
+          className="px-4 py-2 rounded-lg bg-utility-brand-600 paragraph-sm text-white hover:bg-utility-brand-700 disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
     </div>
   )
 }
 
 // Slide-over wrapper, kept for any caller that still wants linking as an overlay.
 export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => (
-  <div className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
+  <div
+    className="campaign-workspace fixed inset-0 z-50 flex justify-end bg-black/60"
+    onClick={onClose}
+  >
     <div
       className="bg-secondary w-full max-w-2xl h-full flex flex-col border-l border-secondary shadow-xl"
       onClick={(e) => e.stopPropagation()}
@@ -295,7 +321,12 @@ export const LinkedContentPanel = ({ campaignId, onClose, onSaved }: Props) => (
         </div>
         <button onClick={onClose} className="text-quaternary hover:text-secondary shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>

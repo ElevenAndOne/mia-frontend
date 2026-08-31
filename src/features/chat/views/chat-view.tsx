@@ -57,6 +57,7 @@ export const ChatView = ({
     isLoading,
     streamingContent,
     thinkingText,
+    midStreamStatus,
     dateRange,
     setDateRange,
     platforms,
@@ -195,6 +196,7 @@ export const ChatView = ({
         documents: canvas.documentList,
         activeId: canvas.activeId,
         onSelect: canvas.select,
+        freshIds: canvas.freshIds,
         isSaving: canvas.isSaving,
         onRequestEdit: canvas.requestEdit,
         onSaveUserEdit: canvas.saveUserEdit,
@@ -235,196 +237,206 @@ export const ChatView = ({
       onLoadConversation={loadConversation}
     >
       <div className="flex-1 flex h-full min-h-0 pt-14 md:pt-0">
-       <div className="flex-1 flex flex-col h-full min-h-0 min-w-0">
-        {!hasMessages ? (
-          <>
-            <ChatEmptyState userName={userName}>
-              <div className="w-full flex flex-col gap-3">
-                <QuickActions
-                  onAction={handleQuickAction}
-                  disabled={isLoading || !hasSelectedPlatforms}
-                  strategiseReady={strategiseReady}
-                />
-                <RaceCampaignTracker
-                  disabled={isLoading}
-                  dateRange={dateRange}
-                  onCampaignChange={handleCampaignChange}
-                />
+        <div className="flex-1 flex flex-col h-full min-h-0 min-w-0">
+          {!hasMessages ? (
+            <>
+              <ChatEmptyState userName={userName}>
+                <div className="w-full flex flex-col gap-3">
+                  <QuickActions
+                    onAction={handleQuickAction}
+                    disabled={isLoading || !hasSelectedPlatforms}
+                    strategiseReady={strategiseReady}
+                  />
+                  <RaceCampaignTracker
+                    disabled={isLoading}
+                    dateRange={dateRange}
+                    onCampaignChange={handleCampaignChange}
+                  />
+                </div>
+              </ChatEmptyState>
+
+              <ChatInput
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                isLoading={isLoading}
+                disabled={isLoading}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                campaignDateLocked={campaignDateLocked}
+                campaignDateLabel={campaignDateLabel}
+                platforms={platforms}
+                selectedPlatforms={selectedPlatforms}
+                onPlatformToggle={togglePlatform}
+                hasSelectedPlatforms={hasSelectedPlatforms}
+                images={images}
+                onAddImages={addImages}
+                onRemoveImage={removeImage}
+                documents={documents}
+                onAddFile={addDocument}
+                onRemoveDocument={removeDocument}
+                onTranscribeAudio={handleTranscribeAudio}
+              />
+            </>
+          ) : (
+            <>
+              {/* Desktop back button — sits above messages, no overlap with sidebar */}
+              <div className="hidden md:flex items-center px-4 pt-3 pb-1 shrink-0">
+                <BackButton onClick={handleBack} label="Back" variant="dark" />
               </div>
-            </ChatEmptyState>
 
-            <ChatInput
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              isLoading={isLoading}
-              disabled={isLoading}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              campaignDateLocked={campaignDateLocked}
-              campaignDateLabel={campaignDateLabel}
-              platforms={platforms}
-              selectedPlatforms={selectedPlatforms}
-              onPlatformToggle={togglePlatform}
-              hasSelectedPlatforms={hasSelectedPlatforms}
-              images={images}
-              onAddImages={addImages}
-              onRemoveImage={removeImage}
-              documents={documents}
-              onAddFile={addDocument}
-              onRemoveDocument={removeDocument}
-              onTranscribeAudio={handleTranscribeAudio}
-            />
-          </>
-        ) : (
-          <>
-            {/* Desktop back button — sits above messages, no overlap with sidebar */}
-            <div className="hidden md:flex items-center px-4 pt-3 pb-1 shrink-0">
-              <BackButton onClick={handleBack} label="Back" variant="dark" />
-            </div>
+              <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                onWheel={handleWheel}
+                className="flex-1 overflow-y-auto min-h-0"
+              >
+                <div className="max-w-3xl mx-auto px-4 py-6">
+                  <ChatMessageList
+                    messages={messages}
+                    lastUserMsgRef={lastUserMsgRef}
+                    onConfirmAction={handleConfirmAction}
+                    onCancelAction={handleCancelAction}
+                    onFeedback={handleFeedback}
+                    pinnedAssetId={editTarget?.asset_id ?? null}
+                    onPinAsset={(asset) =>
+                      setEditTarget(
+                        asset ? { asset_id: asset.asset_id, cdn_url: asset.cdn_url } : null
+                      )
+                    }
+                    onUseAssetInPost={(asset) => {
+                      // Pin first so the request carries the asset id — the pinned block
+                      // tells Mia to create_document with `Media: asset:{id}`.
+                      setEditTarget({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
+                      handleSubmit('Use this image in the post')
+                    }}
+                    onFixDrift={(source) => {
+                      // Re-pin the edit SOURCE (not the drifted result) and redo precisely.
+                      setEditTarget(source)
+                      handleSubmit(
+                        'Redo the previous edit — change ONLY what was asked and keep everything else exactly the same.'
+                      )
+                    }}
+                  />
 
-            <div ref={scrollContainerRef} onScroll={handleScroll} onWheel={handleWheel} className="flex-1 overflow-y-auto min-h-0">
-              <div className="max-w-3xl mx-auto px-4 py-6">
-                <ChatMessageList
-                  messages={messages}
-                  lastUserMsgRef={lastUserMsgRef}
-                  onConfirmAction={handleConfirmAction}
-                  onCancelAction={handleCancelAction}
-                  onFeedback={handleFeedback}
-                  pinnedAssetId={editTarget?.asset_id ?? null}
-                  onPinAsset={(asset) =>
-                    setEditTarget(
-                      asset ? { asset_id: asset.asset_id, cdn_url: asset.cdn_url } : null
-                    )
-                  }
-                  onUseAssetInPost={(asset) => {
-                    // Pin first so the request carries the asset id — the pinned block
-                    // tells Mia to create_document with `Media: asset:{id}`.
-                    setEditTarget({ asset_id: asset.asset_id, cdn_url: asset.cdn_url })
-                    handleSubmit('Use this image in the post')
-                  }}
-                  onFixDrift={(source) => {
-                    // Re-pin the edit SOURCE (not the drifted result) and redo precisely.
-                    setEditTarget(source)
-                    handleSubmit(
-                      'Redo the previous edit — change ONLY what was asked and keep everything else exactly the same.'
-                    )
-                  }}
-                />
-
-                {/* Dots while Claude is thinking (tools running, no text yet) */}
-                {isLoading && !streamingContent && (
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 text-quaternary">
-                      <div className="flex gap-1">
-                        <div
-                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
-                          style={{ animationDelay: '0ms' }}
-                        />
-                        <div
-                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
-                          style={{ animationDelay: '150ms' }}
-                        />
-                        <div
-                          className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
-                          style={{ animationDelay: '300ms' }}
-                        />
+                  {/* Dots while Claude is thinking (tools running, no text yet) */}
+                  {isLoading && !streamingContent && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 text-quaternary">
+                        <div className="flex gap-1">
+                          <div
+                            className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                            style={{ animationDelay: '0ms' }}
+                          />
+                          <div
+                            className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                            style={{ animationDelay: '150ms' }}
+                          />
+                          <div
+                            className="w-2 h-2 bg-quaternary rounded-full animate-bounce"
+                            style={{ animationDelay: '300ms' }}
+                          />
+                        </div>
+                        <span className="paragraph-sm">{thinkingText}</span>
                       </div>
-                      <span className="paragraph-sm">{thinkingText}</span>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Live text stream — transitions to a permanent message when done */}
-                {streamingContent && (
-                  <ChatMessage role="assistant" content={streamingContent} isStreaming />
-                )}
+                  {/* Live text stream — transitions to a permanent message when done */}
+                  {streamingContent && (
+                    <ChatMessage role="assistant" content={streamingContent} isStreaming />
+                  )}
 
-                <div ref={messagesEndRef} />
+                  {/* Canvas/tool work mid-turn: the pre-text dots are long gone, so show
+                    the live status under the streaming message instead of a bare caret. */}
+                  {isLoading && streamingContent && midStreamStatus && (
+                    <div className="mb-6 flex items-center gap-2 text-quaternary">
+                      <div className="w-2 h-2 bg-quaternary rounded-full animate-pulse" />
+                      <span className="paragraph-sm">{midStreamStatus}</span>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
-            </div>
 
-            {/* The canvas lives behind this pill whenever it's not on screen: on mobile the
+              {/* The canvas lives behind this pill whenever it's not on screen: on mobile the
                 side pane doesn't exist (full-screen sheet instead), and on desktop closing
                 the pane previously left NO way to reopen it (the only affordance was this
                 mobile-only pill) — the user had to ask Mia, who can't reopen it either. */}
-            {docCount > 0 && (isMobile ? !mobileCanvasOpen : !canvas.isOpen) && (
-              <div className="flex justify-end px-3 pb-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isMobile) {
-                      setMobileCanvasOpen(true)
-                    } else {
-                      const target = canvas.activeId ?? canvas.documentList[0]?.id
-                      if (target) canvas.open(target)
-                    }
-                    setCanvasUnseen(false)
-                  }}
-                  className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary hover:bg-secondary active:bg-tertiary transition-colors"
-                >
-                  {canvasUnseen && (
-                    <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
-                  )}
-                  Open in Canvas{docCount > 1 ? ` · ${docCount}` : ''}
-                </button>
-              </div>
-            )}
-
-            {/* Pinned image: the next message edits THIS one rather than the newest.
-                Shown here because the pin outlives the message it was set from. */}
-            {editTarget && (
-              <div className="flex justify-center px-3 pb-1.5 shrink-0">
-                <div className="flex items-center gap-2 rounded-full border border-brand bg-brand-primary pl-2 pr-3 py-1.5">
-                  <img
-                    src={editTarget.cdn_url}
-                    alt=""
-                    className="w-6 h-6 rounded object-cover"
-                  />
-                  <span className="paragraph-xs text-brand-secondary font-medium">
-                    Editing this image
-                  </span>
+              {docCount > 0 && (isMobile ? !mobileCanvasOpen : !canvas.isOpen) && (
+                <div className="flex justify-end px-3 pb-1.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setEditTarget(null)}
-                    className="text-brand-secondary hover:text-primary"
-                    aria-label="Stop editing this image"
+                    onClick={() => {
+                      if (isMobile) {
+                        setMobileCanvasOpen(true)
+                      } else {
+                        const target = canvas.activeId ?? canvas.documentList[0]?.id
+                        if (target) canvas.open(target)
+                      }
+                      setCanvasUnseen(false)
+                    }}
+                    className="flex items-center gap-2 rounded-full border border-tertiary bg-primary shadow-md px-4 py-2 paragraph-sm font-medium text-secondary hover:bg-secondary active:bg-tertiary transition-colors"
                   >
-                    <XClose size={14} />
+                    {canvasUnseen && (
+                      <span className="w-2 h-2 rounded-full bg-utility-brand-600 animate-pulse" />
+                    )}
+                    Open in Canvas{docCount > 1 ? ` · ${docCount}` : ''}
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            <ChatInput
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              isLoading={isLoading}
-              disabled={isLoading}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              campaignDateLocked={campaignDateLocked}
-              campaignDateLabel={campaignDateLabel}
-              platforms={platforms}
-              selectedPlatforms={selectedPlatforms}
-              onPlatformToggle={togglePlatform}
-              hasSelectedPlatforms={hasSelectedPlatforms}
-              images={images}
-              onAddImages={addImages}
-              onRemoveImage={removeImage}
-              documents={documents}
-              onAddFile={addDocument}
-              onRemoveDocument={removeDocument}
-              onTranscribeAudio={handleTranscribeAudio}
-            />
-          </>
+              {/* Pinned image: the next message edits THIS one rather than the newest.
+                Shown here because the pin outlives the message it was set from. */}
+              {editTarget && (
+                <div className="flex justify-center px-3 pb-1.5 shrink-0">
+                  <div className="flex items-center gap-2 rounded-full border border-brand bg-brand-primary pl-2 pr-3 py-1.5">
+                    <img src={editTarget.cdn_url} alt="" className="w-6 h-6 rounded object-cover" />
+                    <span className="paragraph-xs text-brand-secondary font-medium">
+                      Editing this image
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditTarget(null)}
+                      className="text-brand-secondary hover:text-primary"
+                      aria-label="Stop editing this image"
+                    >
+                      <XClose size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <ChatInput
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                isLoading={isLoading}
+                disabled={isLoading}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                campaignDateLocked={campaignDateLocked}
+                campaignDateLabel={campaignDateLabel}
+                platforms={platforms}
+                selectedPlatforms={selectedPlatforms}
+                onPlatformToggle={togglePlatform}
+                hasSelectedPlatforms={hasSelectedPlatforms}
+                images={images}
+                onAddImages={addImages}
+                onRemoveImage={removeImage}
+                documents={documents}
+                onAddFile={addDocument}
+                onRemoveDocument={removeDocument}
+                onTranscribeAudio={handleTranscribeAudio}
+              />
+            </>
+          )}
+        </div>
+
+        {canvas.isOpen && canvasPaneProps && (
+          <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
+            <CanvasPane {...canvasPaneProps} onClose={canvas.close} />
+          </div>
         )}
-       </div>
-
-       {canvas.isOpen && canvasPaneProps && (
-         <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
-           <CanvasPane {...canvasPaneProps} onClose={canvas.close} />
-         </div>
-       )}
       </div>
 
       {/* Mobile canvas — full-screen sheet over the chat */}

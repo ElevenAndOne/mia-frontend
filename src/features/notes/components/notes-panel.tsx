@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Spinner } from '../../../components/spinner'
 import { useToast } from '../../../contexts/toast-context'
 import { useNotes } from '../hooks/use-notes'
@@ -60,12 +61,14 @@ const NoteRow = ({
   onRetire,
   onRestore,
   onPromote,
+  onOpenChat,
 }: {
   note: MiaNote
   busy: boolean
   onRetire: () => void
   onRestore: () => void
   onPromote?: () => void
+  onOpenChat?: () => void
 }) => (
   <div
     className={`rounded-xl border bg-primary px-4 py-3 flex items-start justify-between gap-4 ${
@@ -86,6 +89,14 @@ const NoteRow = ({
                 ? ` by ${note.retired_by.split('@')[0]}`
                 : ''
             } · originally ${provenance(note).toLowerCase()}`}
+        {onOpenChat && (
+          <>
+            {' · '}
+            <button onClick={onOpenChat} className="text-utility-brand-700 hover:underline">
+              open the conversation
+            </button>
+          </>
+        )}
       </p>
     </div>
     <div className="flex items-center gap-1.5 shrink-0">
@@ -133,7 +144,14 @@ export const NotesPanel = ({
   const { notes, retired, loading, error, saving, busyId, add, retire, restore, promote } =
     useNotes(sessionId, tenantId, scope, campaignId)
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  // Same hand-off the sidebar's Recent Chats uses: /home picks the conversation up from state.
+  const openChat = (n: MiaNote) =>
+    n.source_conversation_id
+      ? () => navigate('/home', { state: { loadConversationId: n.source_conversation_id } })
+      : undefined
   const [tab, setTab] = useState<'active' | 'retired'>('active')
+  const [kindFilter, setKindFilter] = useState<NoteKind | 'all'>('all')
   const [draft, setDraft] = useState('')
   const [kind, setKind] = useState<NoteKind>('decision')
 
@@ -141,9 +159,11 @@ export const NotesPanel = ({
     () =>
       NOTE_GROUPS.map((g) => ({
         ...g,
-        items: notes.filter((n) => g.kinds.includes(n.kind)),
+        items: notes.filter(
+          (n) => g.kinds.includes(n.kind) && (kindFilter === 'all' || n.kind === kindFilter)
+        ),
       })).filter((g) => g.items.length > 0),
-    [notes]
+    [notes, kindFilter]
   )
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
@@ -235,6 +255,28 @@ export const NotesPanel = ({
             {t === 'active' ? `Active · ${notes.length}` : `Retired · ${retired.length}`}
           </button>
         ))}
+        {tab === 'active' && notes.length > 3 && (
+          <>
+            <span className="w-px h-4 bg-tertiary mx-1" aria-hidden />
+            {(['all', ...Object.keys(NOTE_KIND_META)] as Array<NoteKind | 'all'>).map((k) => {
+              const count = k === 'all' ? notes.length : notes.filter((n) => n.kind === k).length
+              if (k !== 'all' && count === 0) return null
+              return (
+                <button
+                  key={k}
+                  onClick={() => setKindFilter(k)}
+                  className={`px-2.5 py-1 rounded-full label-xs border transition-colors ${
+                    kindFilter === k
+                      ? 'bg-brand-solid text-primary-onbrand border-transparent'
+                      : 'border-tertiary text-secondary hover:bg-tertiary'
+                  }`}
+                >
+                  {k === 'all' ? 'All kinds' : `${NOTE_KIND_META[k].label} · ${count}`}
+                </button>
+              )
+            })}
+          </>
+        )}
       </div>
 
       {loading && (
@@ -270,6 +312,7 @@ export const NotesPanel = ({
                     ? () => void run(() => promote(n), 'Now applies to every campaign')
                     : undefined
                 }
+                onOpenChat={openChat(n)}
               />
             ))}
           </div>
@@ -286,6 +329,7 @@ export const NotesPanel = ({
             busy={busyId === n.note_id}
             onRetire={() => undefined}
             onRestore={() => void run(() => restore(n), 'Restored — Mia will apply it again')}
+            onOpenChat={openChat(n)}
           />
         ))}
     </div>

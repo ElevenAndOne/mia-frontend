@@ -11,7 +11,13 @@ import { BrandKitTab } from './brand-kit-tab'
 import { SkillLearningPage } from './skill-learning-page'
 import { NotesPanel } from '../../notes/components/notes-panel'
 import { MiaStyleTab } from './mia-style-tab'
-import { uploadWorkspaceLogo, deleteWorkspaceLogo, fetchWorkspaceDetails, updateWorkspaceWebsiteUrl, updateWorkspaceFramework } from '../services/workspace-service'
+import {
+  uploadWorkspaceLogo,
+  deleteWorkspaceLogo,
+  fetchWorkspaceDetails,
+  updateWorkspaceWebsiteUrl,
+  updateWorkspaceFramework,
+} from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
   updateWorkspaceAlertsEnabled,
@@ -27,7 +33,15 @@ import { WorkspaceMembersPanel } from './workspace-members-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
-type SettingsTab = 'members' | 'brand' | 'brandkit' | 'campaigns' | 'notes' | 'whatsapp' | 'skills' | 'mia'
+type SettingsTab =
+  | 'members'
+  | 'brand'
+  | 'brandkit'
+  | 'campaigns'
+  | 'notes'
+  | 'whatsapp'
+  | 'skills'
+  | 'mia'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -115,6 +129,16 @@ export const WorkspaceSettingsDetail = ({
     ? ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia']
     : ['brand', 'brandkit', 'campaigns', 'notes', 'mia']
   const [activeTab, setActiveTab] = useState<SettingsTab>(canManage ? 'members' : 'brand')
+  // Tabs stay mounted once visited (hidden, not unmounted): each one used to refetch and
+  // show a spinner on every switch. Members and Notes only looked instant because their
+  // data was cached elsewhere.
+  const [visited, setVisited] = useState<Set<SettingsTab>>(
+    () => new Set<SettingsTab>([canManage ? 'members' : 'brand'])
+  )
+  const selectTab = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    setVisited((v) => (v.has(tab) ? v : new Set(v).add(tab)))
+  }
   const { sessionId, refreshWorkspaces } = useSession()
   const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
@@ -142,9 +166,7 @@ export const WorkspaceSettingsDetail = ({
         setWebsiteUrlInput(d.website_url || '')
         setFramework(d.active_framework || 'race')
       })
-      .catch(() =>
-        showToast('error', "Couldn't load your workspace settings. Please try again."),
-      )
+      .catch(() => showToast('error', "Couldn't load your workspace settings. Please try again."))
   }, [sessionId, workspace.tenant_id, isOwner, showToast])
 
   const handleChangeFramework = async (next: 'race' | 'generic') => {
@@ -204,20 +226,23 @@ export const WorkspaceSettingsDetail = ({
         }
       })
       .catch(() => setAlertSettingsError('Failed to load alert settings.'))
-      .finally(() => { if (showSpinner) setAlertSettingsLoading(false) })
+      .finally(() => {
+        if (showSpinner) setAlertSettingsLoading(false)
+      })
   }
 
   useEffect(() => {
-    if (activeTab !== 'whatsapp') return
+    if (activeTab !== 'whatsapp' || alertSettings) return
     loadAlertSettings(true)
-  }, [activeTab, sessionId, workspace.tenant_id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAlertSettings is not memoised
+  }, [activeTab, sessionId, workspace.tenant_id, alertSettings])
 
   const handleToggleWorkspaceAlerts = async (enabled: boolean) => {
     if (!sessionId || togglingWorkspace) return
     setTogglingWorkspace(true)
     try {
       await updateWorkspaceAlertsEnabled(sessionId, workspace.tenant_id, enabled)
-      setAlertSettings((prev) => prev ? { ...prev, whatsapp_alerts_enabled: enabled } : prev)
+      setAlertSettings((prev) => (prev ? { ...prev, whatsapp_alerts_enabled: enabled } : prev))
     } catch {
       setAlertSettingsError('Failed to update workspace setting.')
     } finally {
@@ -317,7 +342,7 @@ export const WorkspaceSettingsDetail = ({
         {visibleTabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => selectTab(tab)}
             className={[
               'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
               activeTab === tab
@@ -328,439 +353,489 @@ export const WorkspaceSettingsDetail = ({
             {tab === 'members'
               ? 'Members'
               : tab === 'brand'
-              ? 'Brand Guide'
-              : tab === 'brandkit'
-              ? 'Brand Kit'
-              : tab === 'campaigns'
-              ? 'Campaign Guides'
-              : tab === 'notes'
-              ? 'Notes'
-              : tab === 'skills'
-              ? 'Skill Learning'
-              : tab === 'mia'
-              ? 'Mia'
-              : 'WhatsApp Alerts'}
+                ? 'Brand Guide'
+                : tab === 'brandkit'
+                  ? 'Brand Kit'
+                  : tab === 'campaigns'
+                    ? 'Campaign Guides'
+                    : tab === 'notes'
+                      ? 'Notes'
+                      : tab === 'skills'
+                        ? 'Skill Learning'
+                        : tab === 'mia'
+                          ? 'Mia'
+                          : 'WhatsApp Alerts'}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full">
-
         {/* WhatsApp Alerts tab */}
-        {activeTab === 'whatsapp' && (
-          <div className="space-y-6">
-            {alertSettingsError && (
-              <div className="p-3 bg-error-primary border border-error-subtle rounded-lg">
-                <p className="paragraph-sm text-error">{alertSettingsError}</p>
-              </div>
-            )}
-
-            {alertSettingsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Spinner size="md" variant="dark" />
-              </div>
-            ) : alertSettings ? (
-              <>
-                {/* Workspace-level toggle (owner/admin only) */}
-                {canManage && (
-                  <div className="p-4 bg-secondary rounded-xl border border-tertiary">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="subheading-md text-primary">Enable alerts for this workspace</p>
-                        <p className="paragraph-sm text-tertiary mt-0.5">
-                          When enabled, opted-in members receive WhatsApp messages when campaign
-                          KPIs fall behind target for 3+ days.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() =>
-                          handleToggleWorkspaceAlerts(!alertSettings.whatsapp_alerts_enabled)
-                        }
-                        disabled={togglingWorkspace}
-                        className={[
-                          'relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50',
-                          alertSettings.whatsapp_alerts_enabled
-                            ? 'bg-brand-solid'
-                            : 'bg-quaternary',
-                        ].join(' ')}
-                      >
-                        <span
-                          className={[
-                            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
-                            alertSettings.whatsapp_alerts_enabled ? 'translate-x-5' : '',
-                          ].join(' ')}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* My subscription */}
-                <div className="p-4 bg-secondary rounded-xl border border-tertiary space-y-4">
-                  <div>
-                    <p className="subheading-md text-primary">My WhatsApp Alerts</p>
-                    <p className="paragraph-sm text-tertiary mt-0.5">
-                      Add your number to receive campaign alerts on WhatsApp.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="paragraph-sm text-secondary block mb-1.5">
-                        WhatsApp number (with country code)
-                      </label>
-                      <input
-                        type="tel"
-                        value={myWaNumber}
-                        onChange={(e) => setMyWaNumber(e.target.value)}
-                        placeholder="+27 82 123 4567"
-                        className="w-full px-3 py-2.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid"
-                      />
-                    </div>
-
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={mySubscribed}
-                        onChange={(e) => setMySubscribed(e.target.checked)}
-                        className="w-4 h-4 rounded accent-brand-solid"
-                      />
-                      <span className="paragraph-sm text-primary">Receive WhatsApp alerts</span>
-                    </label>
-
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={saveToAll}
-                        onChange={(e) => setSaveToAll(e.target.checked)}
-                        className="w-4 h-4 rounded accent-brand-solid"
-                      />
-                      <span className="paragraph-sm text-secondary">Save to all my workspaces</span>
-                    </label>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={handleSaveSubscription}
-                        disabled={savingSubscription}
-                        className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
-                      >
-                        {savingSubscription ? 'Saving…' : subscriptionSaved ? 'Saved!' : 'Save'}
-                      </button>
-                      {(myWaNumber || mySubscribed) && (
-                        <button
-                          onClick={handleRemoveSubscription}
-                          disabled={removingSubscription}
-                          className="px-4 py-2 border border-error-subtle text-error rounded-lg subheading-md hover:bg-error-primary transition-colors disabled:opacity-50"
-                        >
-                          {removingSubscription ? 'Removing…' : 'Remove'}
-                        </button>
-                      )}
-                      {mySubscribed && myWaNumber && (
-                        <button
-                          onClick={handleSendTest}
-                          disabled={sendingTest}
-                          className="px-4 py-2 border border-primary text-secondary rounded-lg subheading-md hover:bg-tertiary transition-colors disabled:opacity-50"
-                        >
-                          {sendingTest ? 'Sending…' : testSentTo ? `Sent to ${testSentTo}` : 'Send test message'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+        {visited.has('whatsapp') && (
+          <div className={activeTab === 'whatsapp' ? undefined : 'hidden'}>
+            <div className="space-y-6">
+              {alertSettingsError && (
+                <div className="p-3 bg-error-primary border border-error-subtle rounded-lg">
+                  <p className="paragraph-sm text-error">{alertSettingsError}</p>
                 </div>
+              )}
 
-                {/* Member overview (admin/owner only) */}
-                {canManage && alertSettings.members.length > 0 && (
-                  <div>
-                    <p className="subheading-md text-primary mb-3">Member Subscriptions</p>
-                    <div className="space-y-2">
-                      {alertSettings.members.map((m) => (
-                        <div
-                          key={m.user_id}
-                          className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg border border-tertiary"
+              {alertSettingsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spinner size="md" variant="dark" />
+                </div>
+              ) : alertSettings ? (
+                <>
+                  {/* Workspace-level toggle (owner/admin only) */}
+                  {canManage && (
+                    <div className="p-4 bg-secondary rounded-xl border border-tertiary">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="subheading-md text-primary">
+                            Enable alerts for this workspace
+                          </p>
+                          <p className="paragraph-sm text-tertiary mt-0.5">
+                            When enabled, opted-in members receive WhatsApp messages when campaign
+                            KPIs fall behind target for 3+ days.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            handleToggleWorkspaceAlerts(!alertSettings.whatsapp_alerts_enabled)
+                          }
+                          disabled={togglingWorkspace}
+                          className={[
+                            'relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50',
+                            alertSettings.whatsapp_alerts_enabled
+                              ? 'bg-brand-solid'
+                              : 'bg-quaternary',
+                          ].join(' ')}
                         >
-                          <div>
-                            <p className="paragraph-sm text-primary">
-                              {m.is_current_user ? 'You' : (m.name || m.email || m.user_id)}
-                              <span className="ml-2 text-quaternary">({m.role})</span>
-                            </p>
-                            {m.whatsapp_number && (
-                              <p className="paragraph-sm text-tertiary">{m.whatsapp_number}</p>
-                            )}
-                          </div>
                           <span
                             className={[
-                              'px-2 py-0.5 rounded-full paragraph-sm',
-                              m.whatsapp_alerts_subscribed
-                                ? 'bg-success-subtle text-success'
-                                : 'bg-tertiary text-quaternary',
+                              'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+                              alertSettings.whatsapp_alerts_enabled ? 'translate-x-5' : '',
                             ].join(' ')}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* My subscription */}
+                  <div className="p-4 bg-secondary rounded-xl border border-tertiary space-y-4">
+                    <div>
+                      <p className="subheading-md text-primary">My WhatsApp Alerts</p>
+                      <p className="paragraph-sm text-tertiary mt-0.5">
+                        Add your number to receive campaign alerts on WhatsApp.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="paragraph-sm text-secondary block mb-1.5">
+                          WhatsApp number (with country code)
+                        </label>
+                        <input
+                          type="tel"
+                          value={myWaNumber}
+                          onChange={(e) => setMyWaNumber(e.target.value)}
+                          placeholder="+27 82 123 4567"
+                          className="w-full px-3 py-2.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid"
+                        />
+                      </div>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={mySubscribed}
+                          onChange={(e) => setMySubscribed(e.target.checked)}
+                          className="w-4 h-4 rounded accent-brand-solid"
+                        />
+                        <span className="paragraph-sm text-primary">Receive WhatsApp alerts</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={saveToAll}
+                          onChange={(e) => setSaveToAll(e.target.checked)}
+                          className="w-4 h-4 rounded accent-brand-solid"
+                        />
+                        <span className="paragraph-sm text-secondary">
+                          Save to all my workspaces
+                        </span>
+                      </label>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={handleSaveSubscription}
+                          disabled={savingSubscription}
+                          className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+                        >
+                          {savingSubscription ? 'Saving…' : subscriptionSaved ? 'Saved!' : 'Save'}
+                        </button>
+                        {(myWaNumber || mySubscribed) && (
+                          <button
+                            onClick={handleRemoveSubscription}
+                            disabled={removingSubscription}
+                            className="px-4 py-2 border border-error-subtle text-error rounded-lg subheading-md hover:bg-error-primary transition-colors disabled:opacity-50"
                           >
-                            {m.whatsapp_alerts_subscribed ? 'Opted in' : 'Not subscribed'}
-                          </span>
-                        </div>
-                      ))}
+                            {removingSubscription ? 'Removing…' : 'Remove'}
+                          </button>
+                        )}
+                        {mySubscribed && myWaNumber && (
+                          <button
+                            onClick={handleSendTest}
+                            disabled={sendingTest}
+                            className="px-4 py-2 border border-primary text-secondary rounded-lg subheading-md hover:bg-tertiary transition-colors disabled:opacity-50"
+                          >
+                            {sendingTest
+                              ? 'Sending…'
+                              : testSentTo
+                                ? `Sent to ${testSentTo}`
+                                : 'Send test message'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
-              </>
-            ) : null}
+
+                  {/* Member overview (admin/owner only) */}
+                  {canManage && alertSettings.members.length > 0 && (
+                    <div>
+                      <p className="subheading-md text-primary mb-3">Member Subscriptions</p>
+                      <div className="space-y-2">
+                        {alertSettings.members.map((m) => (
+                          <div
+                            key={m.user_id}
+                            className="flex items-center justify-between px-4 py-3 bg-secondary rounded-lg border border-tertiary"
+                          >
+                            <div>
+                              <p className="paragraph-sm text-primary">
+                                {m.is_current_user ? 'You' : m.name || m.email || m.user_id}
+                                <span className="ml-2 text-quaternary">({m.role})</span>
+                              </p>
+                              {m.whatsapp_number && (
+                                <p className="paragraph-sm text-tertiary">{m.whatsapp_number}</p>
+                              )}
+                            </div>
+                            <span
+                              className={[
+                                'px-2 py-0.5 rounded-full paragraph-sm',
+                                m.whatsapp_alerts_subscribed
+                                  ? 'bg-success-subtle text-success'
+                                  : 'bg-tertiary text-quaternary',
+                              ].join(' ')}
+                            >
+                              {m.whatsapp_alerts_subscribed ? 'Opted in' : 'Not subscribed'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
           </div>
         )}
 
         {/* Brand Guide tab */}
-        {activeTab === 'brand' && (
-          <MarketingContextPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        {visited.has('brand') && (
+          <div className={activeTab === 'brand' ? undefined : 'hidden'}>
+            <MarketingContextPage
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              canManage={canManage}
+            />
+          </div>
         )}
 
         {/* Brand Kit tab */}
-        {activeTab === 'brandkit' && (
-          <BrandKitTab sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        {visited.has('brandkit') && (
+          <div className={activeTab === 'brandkit' ? undefined : 'hidden'}>
+            <BrandKitTab
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              canManage={canManage}
+            />
+          </div>
         )}
 
         {/* Campaign Guides tab */}
-        {activeTab === 'campaigns' && (
-          <CampaignGuidesPage sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        {visited.has('campaigns') && (
+          <div className={activeTab === 'campaigns' ? undefined : 'hidden'}>
+            <CampaignGuidesPage
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              canManage={canManage}
+            />
+          </div>
         )}
 
         {/* Notes — standing decisions & constraints Mia applies in every conversation */}
-        {activeTab === 'notes' && (
-          <NotesPanel
-            sessionId={sessionId}
-            tenantId={workspace.tenant_id}
-            scope="workspace"
-            title="Notes"
-            description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Notes tab."
-            placeholder="Add a rule for every campaign… e.g. “Every caption ends with the 18+ / enjoy responsibly line.”"
-          />
+        {visited.has('notes') && (
+          <div className={activeTab === 'notes' ? undefined : 'hidden'}>
+            <NotesPanel
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              scope="workspace"
+              title="Notes"
+              description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Notes tab."
+              placeholder="Add a rule for every campaign… e.g. “Every caption ends with the 18+ / enjoy responsibly line.”"
+            />
+          </div>
         )}
 
         {/* Skill Learning tab */}
-        {activeTab === 'skills' && (
-          <SkillLearningPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+        {visited.has('skills') && (
+          <div className={activeTab === 'skills' ? undefined : 'hidden'}>
+            <SkillLearningPage sessionId={sessionId} tenantId={workspace.tenant_id} />
+          </div>
         )}
 
         {/* Mia interaction style tab */}
-        {activeTab === 'mia' && (
-          <MiaStyleTab sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+        {visited.has('mia') && (
+          <div className={activeTab === 'mia' ? undefined : 'hidden'}>
+            <MiaStyleTab
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              canManage={canManage}
+            />
+          </div>
         )}
 
         {/* Members tab */}
-        {activeTab === 'members' && (
-          <>
-        {error && (
-          <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
-            <p className="paragraph-sm text-error">{error}</p>
-          </div>
-        )}
+        {visited.has('members') && (
+          <div className={activeTab === 'members' ? undefined : 'hidden'}>
+            <>
+              {error && (
+                <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
+                  <p className="paragraph-sm text-error">{error}</p>
+                </div>
+              )}
 
-        {canManage && (
-          <button
-            onClick={onOpenCreateInviteModal}
-            className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
-          >
-            <Plus size={20} />
-            Invite Member
-          </button>
-        )}
+              {canManage && (
+                <button
+                  onClick={onOpenCreateInviteModal}
+                  className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
+                >
+                  <Plus size={20} />
+                  Invite Member
+                </button>
+              )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Spinner size="md" variant="dark" />
-          </div>
-        ) : (
-          <WorkspaceMembersPanel
-            people={people}
-            onUpdateRole={onUpdateRole}
-            onTransferOwnership={onTransferOwnership}
-            onRemoveMember={onRemoveMember}
-            onCopyInvite={onCopyInvite}
-            onRevokeInvite={onRevokeInvite}
-          />
-        )}
-
-        {/* Workspace Settings - Owner Only */}
-        {isOwner && (
-          <div className="mt-8 pt-6 border-t border-tertiary">
-            <h3 className="subheading-md text-primary mb-2">Workspace</h3>
-
-            {/* Rename */}
-            <div className="flex items-center justify-between p-3 bg-secondary rounded-lg mb-3">
-              <div>
-                <p className="subheading-md text-primary">{workspace.name}</p>
-                <p className="paragraph-sm text-quaternary">Workspace name</p>
-              </div>
-              <button
-                onClick={onOpenRenameModal}
-                className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
-              >
-                Rename
-              </button>
-            </div>
-
-            {/* Website URL */}
-            <div className="p-3 bg-secondary rounded-lg mb-3">
-              {editingWebsite ? (
-                <div>
-                  <input
-                    type="url"
-                    value={websiteUrlInput}
-                    onChange={(e) => setWebsiteUrlInput(e.target.value)}
-                    placeholder="https://www.example.com"
-                    autoFocus
-                    onKeyDown={(e) => e.key === 'Enter' && handleSaveWebsite()}
-                    className="w-full px-3 py-1.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid mb-2"
-                  />
-                  {websiteError && <p className="paragraph-sm text-error mb-2">{websiteError}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setEditingWebsite(false); setWebsiteUrlInput(websiteUrl); setWebsiteError(null) }}
-                      className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveWebsite}
-                      disabled={savingWebsite}
-                      className="px-3 py-1.5 bg-brand-solid text-primary-onbrand rounded-lg paragraph-sm hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
-                    >
-                      {savingWebsite ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spinner size="md" variant="dark" />
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="subheading-md text-primary">{websiteUrl || 'Not set'}</p>
-                    <p className="paragraph-sm text-quaternary">Client website (for Search Console)</p>
-                  </div>
-                  <button
-                    onClick={() => setEditingWebsite(true)}
-                    className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
-                  >
-                    {websiteUrl ? 'Edit' : 'Set'}
-                  </button>
-                </div>
+                <WorkspaceMembersPanel
+                  people={people}
+                  onUpdateRole={onUpdateRole}
+                  onTransferOwnership={onTransferOwnership}
+                  onRemoveMember={onRemoveMember}
+                  onCopyInvite={onCopyInvite}
+                  onRevokeInvite={onRevokeInvite}
+                />
               )}
-            </div>
 
-            {/* Campaign builder framework */}
-            <div className="p-3 bg-secondary rounded-lg mb-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="subheading-md text-primary">Campaign framework</p>
-                  <p className="paragraph-sm text-quaternary">
-                    {framework === 'race'
-                      ? 'RACE — Reach / Act / Convert / Engage'
-                      : 'Generic — Awareness / Consideration / Conversion / Retention'}
-                  </p>
-                </div>
-                <div className="flex rounded-lg border border-primary overflow-hidden shrink-0">
-                  {(['race', 'generic'] as const).map((fw) => (
+              {/* Workspace Settings - Owner Only */}
+              {isOwner && (
+                <div className="mt-8 pt-6 border-t border-tertiary">
+                  <h3 className="subheading-md text-primary mb-2">Workspace</h3>
+
+                  {/* Rename */}
+                  <div className="flex items-center justify-between p-3 bg-secondary rounded-lg mb-3">
+                    <div>
+                      <p className="subheading-md text-primary">{workspace.name}</p>
+                      <p className="paragraph-sm text-quaternary">Workspace name</p>
+                    </div>
                     <button
-                      key={fw}
-                      onClick={() => handleChangeFramework(fw)}
-                      disabled={savingFramework || !isOwner}
-                      className={`px-3 py-1.5 paragraph-sm transition-colors disabled:opacity-50 ${
-                        framework === fw
-                          ? 'bg-brand-solid text-primary-onbrand'
-                          : 'bg-primary text-secondary hover:bg-tertiary'
-                      }`}
+                      onClick={onOpenRenameModal}
+                      className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
                     >
-                      {fw === 'race' ? 'RACE' : 'Generic'}
+                      Rename
                     </button>
-                  ))}
-                </div>
-              </div>
-              <p className="paragraph-sm text-quaternary mt-2">
-                Controls the phases Mia uses when building campaigns for this workspace. Existing campaigns are unaffected.
-              </p>
-            </div>
+                  </div>
 
-            {/* Logo */}
-            <div className="p-3 bg-secondary rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-tertiary flex items-center justify-center shrink-0">
-                    {logoUrl ? (
-                      <img src={logoUrl} alt="Workspace logo" className="w-full h-full object-contain p-1.5" />
+                  {/* Website URL */}
+                  <div className="p-3 bg-secondary rounded-lg mb-3">
+                    {editingWebsite ? (
+                      <div>
+                        <input
+                          type="url"
+                          value={websiteUrlInput}
+                          onChange={(e) => setWebsiteUrlInput(e.target.value)}
+                          placeholder="https://www.example.com"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveWebsite()}
+                          className="w-full px-3 py-1.5 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid mb-2"
+                        />
+                        {websiteError && (
+                          <p className="paragraph-sm text-error mb-2">{websiteError}</p>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingWebsite(false)
+                              setWebsiteUrlInput(websiteUrl)
+                              setWebsiteError(null)
+                            }}
+                            className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveWebsite}
+                            disabled={savingWebsite}
+                            className="px-3 py-1.5 bg-brand-solid text-primary-onbrand rounded-lg paragraph-sm hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+                          >
+                            {savingWebsite ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <Image01 size={20} className="text-quaternary" />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="subheading-md text-primary">{websiteUrl || 'Not set'}</p>
+                          <p className="paragraph-sm text-quaternary">
+                            Client website (for Search Console)
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setEditingWebsite(true)}
+                          className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                        >
+                          {websiteUrl ? 'Edit' : 'Set'}
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <p className="subheading-md text-primary">Logo</p>
-                    <p className="paragraph-sm text-quaternary">SVG or PNG, max 500 KB</p>
+
+                  {/* Campaign builder framework */}
+                  <div className="p-3 bg-secondary rounded-lg mb-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="subheading-md text-primary">Campaign framework</p>
+                        <p className="paragraph-sm text-quaternary">
+                          {framework === 'race'
+                            ? 'RACE — Reach / Act / Convert / Engage'
+                            : 'Generic — Awareness / Consideration / Conversion / Retention'}
+                        </p>
+                      </div>
+                      <div className="flex rounded-lg border border-primary overflow-hidden shrink-0">
+                        {(['race', 'generic'] as const).map((fw) => (
+                          <button
+                            key={fw}
+                            onClick={() => handleChangeFramework(fw)}
+                            disabled={savingFramework || !isOwner}
+                            className={`px-3 py-1.5 paragraph-sm transition-colors disabled:opacity-50 ${
+                              framework === fw
+                                ? 'bg-brand-solid text-primary-onbrand'
+                                : 'bg-primary text-secondary hover:bg-tertiary'
+                            }`}
+                          >
+                            {fw === 'race' ? 'RACE' : 'Generic'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="paragraph-sm text-quaternary mt-2">
+                      Controls the phases Mia uses when building campaigns for this workspace.
+                      Existing campaigns are unaffected.
+                    </p>
+                  </div>
+
+                  {/* Logo */}
+                  <div className="p-3 bg-secondary rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-tertiary flex items-center justify-center shrink-0">
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt="Workspace logo"
+                              className="w-full h-full object-contain p-1.5"
+                            />
+                          ) : (
+                            <Image01 size={20} className="text-quaternary" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="subheading-md text-primary">Logo</p>
+                          <p className="paragraph-sm text-quaternary">SVG or PNG, max 500 KB</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {logoUrl && (
+                          <button
+                            onClick={handleLogoRemove}
+                            disabled={uploadingLogo}
+                            className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-error hover:bg-error-primary transition-colors disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                          className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
+                        >
+                          {uploadingLogo ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+                        </button>
+                      </div>
+                    </div>
+                    {logoError && <p className="paragraph-sm text-error mt-2">{logoError}</p>}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/svg+xml,image/png,image/webp,image/jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleLogoUpload(file)
+                        e.target.value = ''
+                      }}
+                    />
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {logoUrl && (
-                    <button
-                      onClick={handleLogoRemove}
-                      disabled={uploadingLogo}
-                      className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-error hover:bg-error-primary transition-colors disabled:opacity-50"
-                    >
-                      Remove
-                    </button>
-                  )}
+              )}
+
+              {/* Danger Zone - Owner Only */}
+              {isOwner && (
+                <div className="mt-8 pt-6 border-t border-tertiary">
+                  <h3 className="subheading-md text-error mb-2">Danger Zone</h3>
+                  <p className="paragraph-sm text-tertiary mb-4">
+                    Permanently delete this workspace and all its data.
+                  </p>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingLogo}
-                    className="px-3 py-1.5 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
+                    onClick={onOpenDeleteModal}
+                    className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
                   >
-                    {uploadingLogo ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+                    Delete Workspace
                   </button>
                 </div>
-              </div>
-              {logoError && (
-                <p className="paragraph-sm text-error mt-2">{logoError}</p>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/svg+xml,image/png,image/webp,image/jpeg"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleLogoUpload(file)
-                  e.target.value = ''
-                }}
-              />
-            </div>
-          </div>
-        )}
 
-        {/* Danger Zone - Owner Only */}
-        {isOwner && (
-          <div className="mt-8 pt-6 border-t border-tertiary">
-            <h3 className="subheading-md text-error mb-2">Danger Zone</h3>
-            <p className="paragraph-sm text-tertiary mb-4">
-              Permanently delete this workspace and all its data.
-            </p>
-            <button
-              onClick={onOpenDeleteModal}
-              className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
-            >
-              Delete Workspace
-            </button>
+              {/* Leave Workspace - Non-Owners Only (Feb 2026) */}
+              {!isOwner && onLeaveWorkspace && (
+                <div className="mt-8 pt-6 border-t border-tertiary">
+                  <h3 className="subheading-md text-error mb-2">Leave Workspace</h3>
+                  <p className="paragraph-sm text-tertiary mb-4">
+                    Remove yourself from this workspace. You'll lose access to all workspace data.
+                  </p>
+                  <button
+                    onClick={onLeaveWorkspace}
+                    className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
+                  >
+                    Leave Workspace
+                  </button>
+                </div>
+              )}
+            </>
           </div>
-        )}
-
-        {/* Leave Workspace - Non-Owners Only (Feb 2026) */}
-        {!isOwner && onLeaveWorkspace && (
-          <div className="mt-8 pt-6 border-t border-tertiary">
-            <h3 className="subheading-md text-error mb-2">Leave Workspace</h3>
-            <p className="paragraph-sm text-tertiary mb-4">
-              Remove yourself from this workspace. You'll lose access to all workspace data.
-            </p>
-            <button
-              onClick={onLeaveWorkspace}
-              className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
-            >
-              Leave Workspace
-            </button>
-          </div>
-        )}
-          </>
         )}
       </div>
 

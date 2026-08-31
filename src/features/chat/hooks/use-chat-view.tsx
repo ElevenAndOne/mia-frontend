@@ -70,6 +70,9 @@ export const useChatView = () => {
   // Empty by default → the whimsical rotating phrase shows; a real tool status
   // ("Checking your Google Ads performance…") overrides it when one arrives.
   const [thinkingText, setThinkingText] = useState('')
+  // Status shown UNDER the streaming message once text exists (canvas doc rounds
+  // happen mid-turn, after the pre-text dots have already disappeared).
+  const [midStreamStatus, setMidStreamStatus] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
@@ -560,6 +563,7 @@ export const useChatView = () => {
       setIsLoading(true)
       setStreamingContent('')
       setThinkingText('')
+      setMidStreamStatus('')
 
       const abortController = new AbortController()
       abortControllerRef.current = abortController
@@ -660,6 +664,7 @@ export const useChatView = () => {
             }
             if (chunk.text) {
               accumulated += chunk.text
+              setMidStreamStatus('')
               receivedRef.current = accumulated  // interval reads this; no setState here
               // Backgrounded tab throttles the reveal interval — flush straight to
               // display so Mia keeps "typing" while you're on another tab.
@@ -668,7 +673,12 @@ export const useChatView = () => {
                 setStreamingContent(accumulated)
               }
             } else if (chunk.status) {
-              if (chunk.status !== 'thinking') setThinkingText(chunk.status)
+              if (chunk.status !== 'thinking') {
+                setThinkingText(chunk.status)
+                // Text already streamed: the pre-text dots are gone, so surface the
+                // status under the streaming message (canvas work happens mid-turn).
+                if (accumulated.length > 0) setMidStreamStatus(chunk.status)
+              }
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
             } else if (chunk.skill_workspaces) {
@@ -1066,6 +1076,7 @@ export const useChatView = () => {
     isLoading,
     streamingContent,
     thinkingText: thinkingText || thinkingPhrase,
+    midStreamStatus,
     dateRange,
     setDateRange,
     platforms,

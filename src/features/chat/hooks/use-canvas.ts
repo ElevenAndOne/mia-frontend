@@ -28,6 +28,8 @@ export interface CanvasController {
   activeId: string | null
   /** Switch the active document (tab click). */
   select: (documentId: string) => void
+  /** Background tabs that just arrived (brief pulse in the tab strip). */
+  freshIds: Set<string>
   isOpen: boolean
   /** Handle a `document` chunk arriving on the chat stream. */
   handleDocumentEvent: (doc: CanvasDocument) => void
@@ -77,6 +79,21 @@ export function useCanvas({
   // null = viewing the latest. Any real content change clears it and appends a new version.
   const [viewing, setViewing] = useState<CanvasDocument | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  // Tabs that just arrived in the background (Mia streaming a multi-doc plan) — they get a
+  // brief pulse instead of stealing focus from whatever the user is reading.
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
+  const freshTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const markFresh = useCallback((id: string) => {
+    setFreshIds((prev) => new Set(prev).add(id))
+    clearTimeout(freshTimers.current[id])
+    freshTimers.current[id] = setTimeout(() => {
+      setFreshIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }, 2500)
+  }, [])
   const [isSaving, setIsSaving] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -127,17 +144,31 @@ export function useCanvas({
     }
   }, [sessionId, conversationId])
 
-  const handleDocumentEvent = useCallback((doc: CanvasDocument) => {
-    const prior = documentsRef.current[doc.id]
-    const changed = Boolean(prior && prior.content !== doc.content)
-    if (changed && prior) prevContentRef.current[doc.id] = prior.content
-    setDocuments((prev) => ({ ...prev, [doc.id]: doc }))
-    setOrder((o) => (o.includes(doc.id) ? o : [...o, doc.id]))
-    setActiveId(doc.id)
-    setViewing(null) // a fresh result supersedes any checked-out version
-    setIsOpen(true)
-    setCanUndo(changed)
-  }, [])
+  const handleDocumentEvent = useCallback(
+    (doc: CanvasDocument) => {
+      const prior = documentsRef.current[doc.id]
+      const changed = Boolean(prior && prior.content !== doc.content)
+      if (changed && prior) prevContentRef.current[doc.id] = prior.content
+      const isFirst = Object.keys(documentsRef.current).length === 0
+      const isRevision = Boolean(prior && (doc.version ?? 1) > (prior.version ?? 1))
+      setDocuments((prev) => ({ ...prev, [doc.id]: doc }))
+      setOrder((o) => (o.includes(doc.id) ? o : [...o, doc.id]))
+      if (isFirst || isRevision) {
+        // The first deliverable of a turn, or a revision the user asked for: show it.
+        setActiveId(doc.id)
+        setViewing(null) // a fresh result supersedes any checked-out version
+        setIsOpen(true)
+        setCanUndo(changed)
+      } else if (!prior) {
+        // A later document in the same run: background tab + short pulse — never yank
+        // the user off the one they're reading.
+        markFresh(doc.id)
+      }
+      // Same id, same version = the authoritative emit replacing its streamed preview —
+      // content updates silently, focus and undo state untouched.
+    },
+    [markFresh]
+  )
 
   // Refetch after a disconnect recovery: documents Mia created while the client
   // was away merge in (pill count updates), without stealing focus or open state.
@@ -277,9 +308,7 @@ export function useCanvas({
         )
         // Failures were previously swallowed — the media just never appeared, with no
         // feedback ("it allows me to add it, but it never actually loads"). Say why.
-        const firstError = results.find(
-          (r): r is PromiseRejectedResult => r.status === 'rejected'
-        )
+        const firstError = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
         if (firstError) {
           const reason =
             firstError.reason instanceof Error ? firstError.reason.message : 'Upload failed'
@@ -371,6 +400,19 @@ export function useCanvas({
     []
   )
 
+  const select = useCallback(
+    (documentId: string) => {
+      setFreshIds((prev) => {
+        if (!prev.has(documentId)) return prev
+        const next = new Set(prev)
+        next.delete(documentId)
+        return next
+      })
+      open(documentId)
+    },
+    [open]
+  )
+
   const documentList = order.map((id) => documents[id]).filter(Boolean) as CanvasDocument[]
   const active = activeId ? (documents[activeId] ?? null) : null
   // Show the checked-out version if one is selected, else the latest.
@@ -380,7 +422,8 @@ export function useCanvas({
     document: displayed,
     documentList,
     activeId,
-    select: open,
+    select,
+    freshIds,
     isOpen,
     handleDocumentEvent,
     reloadDocuments,

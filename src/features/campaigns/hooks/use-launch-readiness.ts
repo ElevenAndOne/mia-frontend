@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import {
   fetchCampaignLaunchReadiness,
@@ -15,6 +16,10 @@ const STALE_AFTER_MS = 6 * 60 * 60 * 1000
 // Bound on how much a single panel-open will do unasked. Beyond this the user can
 // press "Check every channel" — better than a ten-minute silent burst of API calls.
 const MAX_AUTO_CHECKS = 8
+// The auto-fill used to run on EVERY visit to the tab (3–6 s of platform calls each
+// time). Once per campaign per this interval is plenty; "Check every channel" is manual.
+const AUTO_CHECK_INTERVAL_MS = 10 * 60 * 1000
+const autoCheckedAt = new Map<string, number>()
 
 // Loading the roll-up is cheap (saved snapshots, one query). RUNNING a check is not:
 // it asks the ad platform about the account, the campaign objects and every creative
@@ -28,19 +33,34 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState<string[]>([]) // action_ids in flight
   const [error, setError] = useState<string | null>(null)
+  // Cache-first: show the last known roll-up instantly on revisit, refresh in the
+  // background, and keep the cache current as individual channels are re-checked.
+  const queryClient = useQueryClient()
+  const cacheKey = useMemo(
+    () => ['launch-readiness', tenantId, campaignId] as const,
+    [tenantId, campaignId]
+  )
 
   const load = useCallback(async () => {
     if (!sessionId || !tenantId || !campaignId) return
-    setLoading(true)
+    const cached = queryClient.getQueryData<CampaignLaunchReadiness>(cacheKey)
+    if (cached) setData((prev) => prev ?? cached)
+    else setLoading(true)
     setError(null)
     try {
-      setData(await fetchCampaignLaunchReadiness(sessionId, tenantId, campaignId))
+      const fresh = await fetchCampaignLaunchReadiness(sessionId, tenantId, campaignId)
+      queryClient.setQueryData(cacheKey, fresh)
+      setData(fresh)
     } catch {
-      setError('Could not load launch readiness')
+      if (!cached) setError('Could not load launch readiness')
     } finally {
       setLoading(false)
     }
-  }, [sessionId, tenantId, campaignId])
+  }, [sessionId, tenantId, campaignId, queryClient, cacheKey])
+
+  useEffect(() => {
+    if (data) queryClient.setQueryData(cacheKey, data)
+  }, [data, queryClient, cacheKey])
 
   useEffect(() => {
     if (enabled) void load()
@@ -52,7 +72,7 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
     setData((prev) => {
       if (!prev) return prev
       const channels = prev.channels.map((c) =>
-        c.action_id === actionId && c.platform === snapshot.platform ? { ...c, snapshot } : c,
+        c.action_id === actionId && c.platform === snapshot.platform ? { ...c, snapshot } : c
       )
       const totals = channels.reduce(
         (t, c) =>
@@ -66,7 +86,7 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
                 passed: t.passed + c.snapshot.passed_count,
               }
             : { ...t, unchecked: t.unchecked + 1 },
-        { blocking: 0, warnings: 0, waived: 0, unknown: 0, passed: 0, unchecked: 0 },
+        { blocking: 0, warnings: 0, waived: 0, unknown: 0, passed: 0, unchecked: 0 }
       )
       return { ...prev, channels, totals }
     })
@@ -85,7 +105,7 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
         setChecking((prev) => prev.filter((id) => id !== actionId))
       }
     },
-    [sessionId, tenantId, campaignId, applySnapshot],
+    [sessionId, tenantId, campaignId, applySnapshot]
   )
 
   // Sequential on purpose: each check is several platform round-trips, and firing
@@ -110,7 +130,12 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
   } = useLaunchFixes(campaignId, check)
 
   const setWaiver = useCallback(
-    async (actionId: string, code: string, waive: boolean, reason?: string): Promise<string | null> => {
+    async (
+      actionId: string,
+      code: string,
+      waive: boolean,
+      reason?: string
+    ): Promise<string | null> => {
       if (!sessionId || !tenantId) return 'Not signed in'
       try {
         const res = waive
@@ -129,13 +154,15 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
       // the checks so the screen and the roll-up agree.
       return check(actionId)
     },
-    [sessionId, tenantId, campaignId, check, applySnapshot],
+    [sessionId, tenantId, campaignId, check, applySnapshot]
   )
 
   // Fill in what nobody has checked yet, once per open, oldest gap first.
   const autoRan = useRef(false)
   useEffect(() => {
     if (!enabled || !data || autoRan.current) return
+    const last = autoCheckedAt.get(campaignId) ?? 0
+    if (Date.now() - last < AUTO_CHECK_INTERVAL_MS) return
     const stale = (iso: string | null | undefined) =>
       !iso || Date.now() - new Date(iso).getTime() > STALE_AFTER_MS
     const todo = data.channels
@@ -146,16 +173,17 @@ export function useLaunchReadiness(campaignId: string, enabled: boolean) {
           // A red row people came here to act on has to be current: an account
           // linked (or a budget set) elsewhere five minutes ago must not still
           // show as blocking.
-          c.snapshot.blocking_count > 0,
+          c.snapshot.blocking_count > 0
       )
       .slice(0, MAX_AUTO_CHECKS)
       .map((c) => c.action_id)
     if (todo.length === 0) return
     autoRan.current = true
+    autoCheckedAt.set(campaignId, Date.now())
     void (async () => {
       for (const id of todo) await check(id)
     })()
-  }, [enabled, data, check])
+  }, [enabled, data, check, campaignId])
 
   return {
     data,

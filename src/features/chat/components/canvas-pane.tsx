@@ -33,6 +33,8 @@ interface CanvasPaneProps {
   documents: CanvasDocument[]
   activeId: string | null
   onSelect: (documentId: string) => void
+  /** Tabs that just arrived in the background — rendered with a brief pulse. */
+  freshIds?: Set<string>
   isSaving?: boolean
   onClose: () => void
   /** Highlight → "ask Mia to change this" (span-patch). */
@@ -81,6 +83,7 @@ export const CanvasPane = ({
   documents,
   activeId,
   onSelect,
+  freshIds,
   isSaving = false,
   onClose,
   onRequestEdit,
@@ -253,9 +256,13 @@ export const CanvasPane = ({
       <div className="border-b border-tertiary px-4 md:px-5 py-3 relative select-none">
         {/* Tab strip — one tab per deliverable */}
         {hasTabs && (
-          <div className="flex items-center gap-1 overflow-x-auto mb-2 -mx-1 px-1">
+          <div
+            className="flex items-center gap-1 overflow-x-auto mb-2 -mx-1 px-1 pb-2.5 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-quaternary/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-quaternary/80"
+            style={{ scrollbarWidth: 'auto' }}
+          >
             {documents.map((d, i) => {
               const active = d.id === activeId
+              const fresh = !active && Boolean(freshIds?.has(d.id))
               return (
                 <button
                   key={d.id}
@@ -268,9 +275,12 @@ export const CanvasPane = ({
                     active
                       ? 'bg-tertiary text-primary font-medium'
                       : 'text-quaternary hover:text-secondary hover:bg-tertiary/60'
-                  }`}
+                  } ${fresh ? 'animate-pulse ring-1 ring-utility-brand-400 text-secondary' : ''}`}
                   title={d.title}
                 >
+                  {fresh && (
+                    <span className="mr-1 inline-block w-1.5 h-1.5 rounded-full bg-utility-brand-500 align-middle" />
+                  )}
                   {d.title || `Item ${i + 1}`}
                 </button>
               )
@@ -370,9 +380,7 @@ export const CanvasPane = ({
         {/* Meta row — full header width so chips wrap instead of colliding with the
             action buttons on narrow screens */}
         <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1">
-          <span className="paragraph-sm text-quaternary uppercase tracking-wide">
-            {typeLabel}
-          </span>
+          <span className="paragraph-sm text-quaternary uppercase tracking-wide">{typeLabel}</span>
           {/* Version chip → history dropdown */}
           <button
             ref={versionChipRef}
@@ -391,7 +399,9 @@ export const CanvasPane = ({
                 type="button"
                 onClick={() => setRawView(false)}
                 className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
-                  !rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                  !rawView
+                    ? 'bg-primary text-primary font-medium'
+                    : 'text-quaternary hover:text-secondary'
                 }`}
               >
                 {spec.isPaid ? 'Ad' : 'Post'}
@@ -400,7 +410,9 @@ export const CanvasPane = ({
                 type="button"
                 onClick={() => setRawView(true)}
                 className={`paragraph-sm px-2 py-0.5 rounded-full transition-colors ${
-                  rawView ? 'bg-primary text-primary font-medium' : 'text-quaternary hover:text-secondary'
+                  rawView
+                    ? 'bg-primary text-primary font-medium'
+                    : 'text-quaternary hover:text-secondary'
                 }`}
               >
                 Text
@@ -487,15 +499,11 @@ export const CanvasPane = ({
                 onUploadMedia={onUploadMedia}
                 onRemoveMedia={onRemoveMedia}
                 isUploadingMedia={isUploadingMedia}
-                onAddMediaUrl={
-                  onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined
-                }
+                onAddMediaUrl={onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined}
                 onReplaceMediaUrl={onReplaceMediaUrl}
                 onDraftSeparatePost={onDraftSeparatePost}
                 onOpenCanvaPicker={
-                  canvaConnected && onAppendMediaUrls
-                    ? () => setShowCanvaPicker(true)
-                    : undefined
+                  canvaConnected && onAppendMediaUrls ? () => setShowCanvaPicker(true) : undefined
                 }
               />
             ) : (
@@ -504,9 +512,7 @@ export const CanvasPane = ({
           </div>
         ) : WYSIWYG_TYPES.has(doc.doc_type) ? (
           <div className="max-w-[640px] mx-auto">
-            <Suspense
-              fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}
-            >
+            <Suspense fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}>
               {/* Keyed by doc ONLY — self-saves bump version and must NOT remount;
                   external changes sync inside RichEditor. */}
               <RichEditor
