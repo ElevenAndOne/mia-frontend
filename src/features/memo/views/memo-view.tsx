@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { Spinner } from '../../../components/spinner'
 import { TopBar } from '../../../components/top-bar'
 import { MemoCanvasDrawer, type MemoCanvasTarget } from '../components/memo-canvas-drawer'
 import { MemoRecCard } from '../components/memo-rec-card'
 import { useMemoPage } from '../hooks/use-memo'
+import { useSession } from '../../../contexts/session-context'
+import { switchWorkspace } from '../../workspace/services/workspace-service'
 import { heldBackLines, money, summariseReviewed } from '../utils/memo-format'
 
 interface MemoViewProps {
@@ -19,6 +22,27 @@ export const MemoView = ({ onBack }: MemoViewProps) => {
   const impact = memo?.memo?.impact_zar ?? null
   const reviewed = summariseReviewed(memo?.memo, currency)
   const [canvasTarget, setCanvasTarget] = useState<MemoCanvasTarget | null>(null)
+  // Email deep link: /memo?ws=<tenant_id> must land on THAT workspace's memo, not
+  // whichever one happens to be active (found 2026-08-31 — a Dutoit email opened
+  // on Humewood). Switch, then reload this page with the param consumed.
+  const { sessionId: memoSessionId, activeWorkspace: currentWs, availableWorkspaces } = useSession()
+  const [searchParams] = useSearchParams()
+  const switching = useRef(false)
+  useEffect(() => {
+    const ws = searchParams.get('ws')
+    if (!ws || !memoSessionId || switching.current) return
+    if (currentWs?.tenant_id === ws) {
+      window.history.replaceState(null, '', '/memo')
+      return
+    }
+    if (!availableWorkspaces.some((w) => w.tenant_id === ws)) return
+    switching.current = true
+    void switchWorkspace(memoSessionId, ws)
+      .then(() => window.location.replace('/memo'))
+      .catch(() => {
+        switching.current = false
+      })
+  }, [searchParams, memoSessionId, currentWs?.tenant_id, availableWorkspaces])
   const openDraft = (conversationId: string, documentId?: string) =>
     setCanvasTarget({ conversationId, documentId })
 
