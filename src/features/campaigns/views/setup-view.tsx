@@ -178,15 +178,16 @@ const MeasurementSection = () => {
       <div className="space-y-1">
         <p className="label-sm text-primary">UTM campaign tag</p>
         <p className="paragraph-xs text-quaternary">
-          The <span className="cw-mono">utm_campaign</span> value this campaign's links carry. When
-          set, website KPIs count only tagged (campaign-driven) traffic; when empty they count all
-          site traffic and say so.
+          The <span className="cw-mono">utm_campaign</span> value this campaign's links carry —
+          comma-separate several (e.g. <span className="cw-mono">cable_tray, y26_onvlee</span>) and
+          traffic matching any of them counts. When empty, website KPIs count all site traffic and
+          say so.
         </p>
         <div className="flex items-center gap-2 pt-1">
           <input
             value={utmDraft}
             onChange={(e) => setUtmDraft(e.target.value)}
-            placeholder="e.g. juicy_gems_2026"
+            placeholder="e.g. juicy_gems — or tag1, tag2"
             className={`${inputCls} w-64 cw-mono`}
           />
           {utmDraft !== (campaign.utm_campaign ?? '') && (
