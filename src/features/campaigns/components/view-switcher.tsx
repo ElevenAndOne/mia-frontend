@@ -2,16 +2,13 @@ import { useNavigate } from 'react-router-dom'
 import { SegmentedControl } from '../../../components/segmented-control'
 import type { CampaignView } from '../types'
 
-// One row of pills is the whole campaign navigation. Linked content and launch
-// readiness used to open from buttons buried in the builder's controls card; notes is
-// new. Six pills overflow narrow screens, so the control scrolls sideways.
+// One row of pills is the whole campaign navigation. Linked content, launch readiness
+// and rules (ex-Notes) live inside Setup's sub-nav — four pills fit where six overflowed.
 const OPTIONS: Array<{ value: CampaignView; label: string }> = [
   { value: 'overview', label: 'Overview' },
   { value: 'calendar', label: 'Calendar' },
   { value: 'builder', label: 'Builder' },
-  { value: 'linked', label: 'Linked content' },
-  { value: 'readiness', label: 'Launch readiness' },
-  { value: 'notes', label: 'Notes' },
+  { value: 'setup', label: 'Setup' },
 ]
 
 interface ViewSwitcherProps {
@@ -29,7 +26,7 @@ export const ViewSwitcher = ({ campaignId, current }: ViewSwitcherProps) => {
       <SegmentedControl
         options={OPTIONS}
         value={current}
-        onChange={(view) => navigate(`/campaigns/${campaignId}/${view}`)}
+        onChange={(view) => navigate(view === 'setup' ? `/campaigns/${campaignId}/setup/measurement` : `/campaigns/${campaignId}/${view}`)}
         className="w-max [&>button]:whitespace-nowrap"
       />
     </div>

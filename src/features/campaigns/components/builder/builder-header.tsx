@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiFetch } from '../../../../utils/api'
 import { fetchLinkedContent } from '../../services/campaign-api'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
@@ -12,76 +11,32 @@ import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { channelLabel } from '../../utils/channel-colors'
 import { formatBudget, formatShortDate } from '../../utils/campaign-dates'
 
-interface Guide { id: string; filename: string; campaign_name: string | null }
 const dateCls = 'paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer'
 const numCls = 'w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cw-mono [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden'
 
-interface GA4Option { property_id: string; display_name: string }
-
-export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuildNew: () => void }) => {
+export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
   const { campaign, sessionId, tenantId } = useCampaignWorkspace()
-  const { patchCampaign, cycleStatus, linkGuide, removeCampaign } = useCampaignMutations()
+  const { patchCampaign, cycleStatus, removeCampaign } = useCampaignMutations()
   const navigate = useNavigate()
 
-  // Per-campaign GA4 override — Website-visits KPIs read this property instead of
-  // the workspace primary (multi-brand clients whose campaigns land on different
-  // sites). Options load lazily on first hover/focus: /api/accounts/available does
-  // real platform discovery, too heavy to call on every builder open.
-  const [ga4Options, setGa4Options] = useState<GA4Option[] | null>(null)
-  const [ga4Loading, setGa4Loading] = useState(false)
-  const loadGa4Options = async () => {
-    if (ga4Options || ga4Loading) return
-    setGa4Loading(true)
-    try {
-      const res = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
-      const data = await res.json()
-      const props: GA4Option[] = (data.ga4_properties ?? []).sort((a: GA4Option, b: GA4Option) =>
-        a.display_name.localeCompare(b.display_name),
-      )
-      setGa4Options(props)
-    } catch {
-      setGa4Options([]) // keeps the current value + default usable
-    } finally {
-      setGa4Loading(false)
-    }
-  }
-  const setGa4Override = (propertyId: string) => {
-    const id = propertyId || null
-    const name = id ? (ga4Options?.find((p) => p.property_id === id)?.display_name ?? null) : null
-    patchCampaign({ ga4_property_id: id, ga4_property_name: name })
-  }
-  // Linked-content entry point. Linking itself lives on the "Linked content" tab; this
-  // card only shows the counts. The linked count is free — it is already on the campaign
-  // detail. The "N to review" count is not: working it out means asking every connected
-  // platform what exists, so it loads on hover/focus rather than on every builder open,
-  // the same deal as the GA4 property list above.
-  const goTo = (view: 'linked' | 'readiness') => navigate(`/campaigns/${campaign.campaign_id}/${view}`)
-  const [unreviewed, setUnreviewed] = useState<number | null>(null)
-  const [unreviewedLoading, setUnreviewedLoading] = useState(false)
-  const linkedCount = (campaign.phases ?? []).reduce(
-    (n, p) =>
-      n +
-      (p.channel_actions ?? []).reduce(
-        (m, a) => m + (a.linked_platform_campaigns?.length ?? 0),
-        0,
-      ),
-    0,
-  )
-  const loadUnreviewed = async () => {
-    if (unreviewed !== null || unreviewedLoading || !tenantId) return
-    setUnreviewedLoading(true)
-    try {
-      const d = await fetchLinkedContent(sessionId, tenantId, campaign.campaign_id)
-      setUnreviewed(d.summary.unreviewed_total)
-    } catch {
-      setUnreviewed(0) // a platform hiccup must not stick a badge on the header
-    } finally {
-      setUnreviewedLoading(false)
-    }
-  }
 
   const initials = (campaign.client_name || campaign.campaign_name).slice(0, 2).toUpperCase()
   const total = formatBudget(campaign.budget_total, campaign.budget_currency)
+
+  // Unlinked-content nudge. Loading this means asking every connected platform what
+  // exists — but the banner is the whole point (push, not pull), and before the Setup
+  // restructure it only appeared after hovering a row nobody knew to hover.
+  const [unreviewed, setUnreviewed] = useState<number | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    if (!tenantId) return
+    void fetchLinkedContent(sessionId, tenantId, campaign.campaign_id)
+      .then((d) => { if (!cancelled) setUnreviewed(d.summary.unreviewed_total) })
+      .catch(() => { if (!cancelled) setUnreviewed(0) })
+    return () => { cancelled = true }
+  }, [sessionId, tenantId, campaign.campaign_id])
+  const goTo = (section: 'linked' | 'readiness') =>
+    navigate(`/campaigns/${campaign.campaign_id}/setup/${section}`)
 
   const onDelete = async () => {
     if (!confirm(`Delete "${campaign.campaign_name}"? This cannot be undone.`)) return
@@ -136,19 +91,14 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center flex-wrap gap-3">
         <ClickUpActions />
-        <button
-          onClick={() => goTo('readiness')}
-          title="What the preflight found on every pushable channel — kept with each push"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tertiary label-xs text-secondary hover:bg-tertiary"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m-9.5-4.5h11a1.5 1.5 0 011.5 1.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19V7a1.5 1.5 0 011.5-1.5z" /></svg>
-          Launch readiness
-        </button>
         <button onClick={onDelete} title="Delete campaign" className="p-1 text-quaternary hover:text-utility-error-500 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>
       </div>
 
+      {/* Measurement config (GA4 property, UTM tag, campaign guide), data sources,
+          linked content and readiness all live on the Setup tab now — this card keeps
+          only what you edit while building. */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="flex items-center gap-1.5">
@@ -177,66 +127,6 @@ export const BuilderHeader = ({ guides, onBuildNew }: { guides: Guide[]; onBuild
         </div>
       )}
 
-      <div className="flex items-center gap-2" onPointerEnter={loadGa4Options}>
-        <span className="label-xs text-quaternary shrink-0">GA4 property (website visits):</span>
-        <select
-          value={campaign.ga4_property_id ?? ''}
-          onFocus={loadGa4Options}
-          onChange={(e) => setGa4Override(e.target.value)}
-          className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[260px]"
-        >
-          <option value="">Workspace default</option>
-          {/* keep the stored override selectable before (or if) the option list loads */}
-          {campaign.ga4_property_id && !ga4Options?.some((p) => p.property_id === campaign.ga4_property_id) && (
-            <option value={campaign.ga4_property_id}>
-              {campaign.ga4_property_name ?? campaign.ga4_property_id}
-            </option>
-          )}
-          {ga4Options?.map((p) => (
-            <option key={p.property_id} value={p.property_id}>
-              {/* Google allows several properties with identical names (e.g. two
-                  "Remax Bay - GA4") — show the ID when the name alone is ambiguous */}
-              {ga4Options.filter((o) => o.display_name === p.display_name).length > 1
-                ? `${p.display_name} · ${p.property_id}`
-                : p.display_name}
-            </option>
-          ))}
-        </select>
-        {ga4Loading && <span className="label-xs text-quaternary shrink-0">loading properties…</span>}
-        {campaign.ga4_property_id && (
-          <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">override</span>
-        )}
-      </div>
-
-      {/* Linked content — which platform campaigns, sends and posts count towards this
-          campaign's KPIs. Sits with the other per-campaign measurement settings because
-          it is the same kind of decision as the GA4 property override. */}
-      <div className="flex items-center gap-2" onPointerEnter={loadUnreviewed}>
-        <span className="label-xs text-quaternary shrink-0">Linked content:</span>
-        <button
-          onClick={() => goTo('linked')}
-          onFocus={loadUnreviewed}
-          className="paragraph-xs text-tertiary border-b border-tertiary hover:border-utility-brand-400 hover:text-secondary transition-colors"
-        >
-          {linkedCount > 0 ? `${linkedCount} linked` : 'nothing linked yet'}
-        </button>
-        {unreviewed !== null && unreviewed > 0 && (
-          <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">
-            {unreviewed} to review
-          </span>
-        )}
-      </div>
-
-      {guides.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="label-xs text-quaternary shrink-0">Campaign guide:</span>
-          <select value={campaign.campaign_guide_id ?? ''} onChange={(e) => linkGuide(e.target.value || null)} className="paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[240px]">
-            <option value="">— None —</option>
-            {guides.map((g) => <option key={g.id} value={g.id}>{g.campaign_name ?? g.filename}</option>)}
-          </select>
-          {campaign.campaign_guide_id && <span className="label-xs px-1.5 py-0.5 rounded bg-utility-brand-100 text-utility-brand-700 shrink-0">linked</span>}
-        </div>
-      )}
       </div>
     </div>
   )

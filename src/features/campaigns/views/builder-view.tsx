@@ -77,7 +77,7 @@ export const BuilderView = () => {
         </div>
       )}
 
-      <BuilderHeader guides={lists.guides} onBuildNew={() => navigate('/campaigns/new')} />
+      <BuilderHeader onBuildNew={() => navigate('/campaigns/new')} />
 
       <ObjectivesEditor objectives={campaign.objectives} onSave={saveObjectives} />
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
@@ -14,6 +15,7 @@ import {
 } from '../../chat/services/chat-service'
 import { useThinkingPhrase } from '../../chat/hooks/use-thinking-phrase'
 import { fetchCampaignByConversation, fetchCampaignList } from '../services/campaign-api'
+import { campaignListKey } from './use-campaign-list'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
@@ -75,13 +77,17 @@ export function useBuilderChat() {
 
   // A phase (or whole campaign) was saved — open/refresh the canvas pane. The user
   // stays in the chat; "Open in builder" in the canvas header navigates when ready.
+  const queryClient = useQueryClient()
   const handleCampaignSaved = useCallback((campaignId: string) => {
     knownIds.current.add(campaignId)
     clearTrackerCache()
     clearCampaignDetailCache()
+    // The campaign list is React-Query cached (5 min stale) — without this, a campaign
+    // built in chat is invisible on /campaigns and in the switcher until the cache ages.
+    void queryClient.invalidateQueries({ queryKey: campaignListKey(tenantId) })
     setBuiltCampaignId(campaignId)
     setCanvasRefresh((n) => n + 1)
-  }, [])
+  }, [queryClient, tenantId])
 
   // Fallback for the rare turn where the stream event is missed (e.g. disconnect
   // mid-save): diff the campaign list and populate the canvas the same way.
@@ -175,14 +181,30 @@ export function useBuilderChat() {
     [sessionId, user, messages, pollForSavedCampaign, handleCampaignSaved],
   )
 
+  // Large pastes (a brief, a strategy doc) become an attached "Pasted text" card —
+  // same behaviour as the main chat — instead of a wall of text in the composer.
+  const [pendingDocs, setPendingDocs] = useState<AttachedDocument[]>([])
+  const addPastedText = useCallback((text: string) => {
+    setPendingDocs((prev) => {
+      const pasteCount = prev.filter((d) => d.filename.startsWith('Pasted text')).length
+      const filename = pasteCount === 0 ? 'Pasted text' : `Pasted text ${pasteCount + 1}`
+      return [...prev, { filename, content: `File: ${filename}\n\n${text}` }]
+    })
+  }, [])
+  const removePendingDoc = useCallback((index: number) => {
+    setPendingDocs((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const send = useCallback(
     (text?: string) => {
       const value = (text ?? input).trim()
       if (!value || loading) return
       setInput('')
-      void runStream(value)
+      const docs = pendingDocs.length > 0 ? pendingDocs : undefined
+      setPendingDocs([])
+      void runStream(value, docs)
     },
-    [input, loading, runStream],
+    [input, loading, runStream, pendingDocs],
   )
 
   // Highlight-to-edit from the builder canvas: sends the instruction as a normal
@@ -263,5 +285,6 @@ export function useBuilderChat() {
     messages, input, setInput, loading, thinking: thinking || thinkingPhrase, streaming, pdfUploading,
     pastBuilds, send, handlePdf, openHistory, loadPastBuild, startFresh,
     builtCampaignId, canvasRefresh, sendAssetEdit,
+    pendingDocs, addPastedText, removePendingDoc,
   }
 }

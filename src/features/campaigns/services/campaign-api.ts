@@ -133,6 +133,53 @@ export const createKpi = (s: string, t: string, id: string, phaseId: string, bod
     body: JSON.stringify(body),
   })
 
+// ── KPI source documents (uploaded vendor aggregates, JSON) ─────────────────
+
+export interface KpiDocPicker {
+  numeric_paths: Array<{ path: string; value: number }>
+  bucket_lists: Array<{ path: string; count: number; value_fields: string[]; date_fields: string[] }>
+}
+
+export interface KpiSourceDoc {
+  doc_id: string
+  name: string
+  top_level_keys: string[]
+  picker?: KpiDocPicker
+  uploaded_by: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export async function fetchKpiSourceDocs(s: string, t: string, id: string): Promise<KpiSourceDoc[]> {
+  const res = await apiFetch(`${base(t)}/${id}/kpi-source-documents`, { headers: auth(s) })
+  if (!res.ok) throw new Error('Failed to load data sources')
+  return (await res.json()).documents
+}
+
+export const uploadKpiSourceDoc = (
+  s: string, t: string, id: string,
+  body: { name: string; payload: Record<string, unknown>; doc_id?: string },
+) =>
+  apiFetch(`${base(t)}/${id}/kpi-source-documents`, {
+    method: 'POST',
+    headers: authJson(s),
+    body: JSON.stringify(body),
+  })
+
+export const uploadKpiSourceFile = (s: string, t: string, id: string, file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  // No Content-Type header — the browser sets the multipart boundary itself.
+  return apiFetch(`${base(t)}/${id}/kpi-source-documents/upload`, {
+    method: 'POST',
+    headers: auth(s),
+    body: form,
+  })
+}
+
+export const deleteKpiSourceDoc = (s: string, t: string, id: string, docId: string) =>
+  apiFetch(`${base(t)}/${id}/kpi-source-documents/${docId}`, { method: 'DELETE', headers: auth(s) })
+
 export const patchKpi = (s: string, t: string, id: string, kpiId: number, fields: Json) =>
   apiFetch(`${base(t)}/${id}/kpis/${kpiId}`, {
     method: 'PATCH',
