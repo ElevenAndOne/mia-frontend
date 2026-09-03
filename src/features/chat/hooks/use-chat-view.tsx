@@ -48,6 +48,8 @@ export interface ChatMessageItem {
   /** This user's recorded vote on the message (1 / -1), if any. */
   feedback?: 1 | -1 | null
   images?: string[]
+  /** Files/pastes sent with this message — rendered as pills on the user bubble. */
+  documents?: { filename: string }[]
   /** Creative generated during this turn — each renders as a polling image card. */
   imageJobs?: ChatImageJob[]
 }
@@ -362,6 +364,10 @@ export const useChatView = () => {
               // so thumbs keep working (and show voted state) on reopened conversations.
               historyId: m.history_id ?? null,
               feedback: m.feedback ?? null,
+              // User rows carry attachment filenames — the pills survive reload.
+              documents: m.documents?.length
+                ? m.documents.map((filename) => ({ filename }))
+                : undefined,
             }))
           )
           setConversationId(convId)
@@ -473,6 +479,16 @@ export const useChatView = () => {
     setDocuments((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  // A large paste becomes an attached "Pasted text" card (like Claude/ChatGPT) instead of
+  // flooding the input. It travels through the same documents path as an uploaded file.
+  const addPastedText = useCallback((text: string) => {
+    setDocuments((prev) => {
+      const pasteCount = prev.filter((d) => d.filename.startsWith('Pasted text')).length
+      const filename = pasteCount === 0 ? 'Pasted text' : `Pasted text ${pasteCount + 1}`
+      return [...prev, { filename, content: `File: ${filename}\n\n${text}` }]
+    })
+  }, [])
+
   // A dropped stream usually means the phone backgrounded the tab (mobile
   // browsers kill in-flight fetches on screen lock / app switch). The backend
   // finishes the turn regardless and saves it to history — so wait until the
@@ -538,6 +554,10 @@ export const useChatView = () => {
         content: message,
         hidden: options?.hidden,
         images: pendingImages.length > 0 ? pendingImages : undefined,
+        documents:
+          pendingDocuments.length > 0
+            ? pendingDocuments.map((d) => ({ filename: d.filename }))
+            : undefined,
       }
 
       // Reset reveal state
@@ -1109,6 +1129,7 @@ export const useChatView = () => {
     documents,
     addDocument,
     removeDocument,
+    addPastedText,
     activeCampaign,
     handleCampaignChange,
     canvas,

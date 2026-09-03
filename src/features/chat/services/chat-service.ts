@@ -9,6 +9,8 @@ interface ChatHistoryMessage {
   feedback?: 1 | -1 | null
   /** Turn timestamp (ISO) — used to re-anchor generated images to their turns. */
   at?: string | null
+  /** Filenames attached with a user message — re-renders the attachment pills on reload. */
+  documents?: string[]
 }
 
 export interface AttachedDocument {

@@ -177,7 +177,7 @@ export const BuilderChat = () => {
       )}
 
       {!c.pdfUploading && (
-        <ChatComposer value={c.input} onChange={c.setInput} onSend={() => c.send()} disabled={c.loading} />
+        <ChatComposer value={c.input} onChange={c.setInput} onSend={() => c.send()} disabled={c.loading} pendingDocs={c.pendingDocs} onRemoveDoc={c.removePendingDoc} onPasteLarge={c.addPastedText} />
       )}
     </div>
 

@@ -47,6 +47,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             role={message.role}
             content={message.content}
             images={message.images}
+            documents={message.documents}
             pendingAction={message.pendingAction}
             actionStatus={message.actionStatus}
             actionResult={message.actionResult}
