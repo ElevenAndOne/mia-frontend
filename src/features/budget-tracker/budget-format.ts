@@ -1,12 +1,17 @@
 // Display helpers for the Budget Tracker.
 
-export const formatMoney = (amount: number | null | undefined, currency = 'ZAR'): string => {
+// `maximumFractionDigits` defaults to whole units; unit costs (CPC, CPA) pass 2.
+export const formatMoney = (
+  amount: number | null | undefined,
+  currency = 'ZAR',
+  maximumFractionDigits = 0
+): string => {
   if (amount == null) return '—'
   try {
     return new Intl.NumberFormat('en-ZA', {
       style: 'currency',
       currency,
-      maximumFractionDigits: 0,
+      maximumFractionDigits,
     }).format(amount)
   } catch {
     return `${currency} ${Math.round(amount).toLocaleString()}`

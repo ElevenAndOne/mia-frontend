@@ -5,6 +5,7 @@ import { Spinner } from '../../../components/spinner'
 import { getDateRangeDisplay } from '../../../utils/date-display'
 import DateRangeSelector from '../../../components/date-range-selector'
 import { useSummaryInsights } from '../hooks/use-summary-insights'
+import { PerformancePanel } from '../../metrics/views/performance-panel'
 
 interface SummaryInsightsProps {
   onBack?: () => void
@@ -53,6 +54,10 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
 
       {/* Content Area */}
       <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+        {/* Store-backed performance figures for the same window. Renders nothing
+            until the analytics store has data for this workspace. */}
+        <PerformancePanel dateRange={selectedDateRange} className="max-w-3xl mx-auto w-full mb-6" />
+
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
             <Spinner size="lg" variant="primary" className="mb-4" />
