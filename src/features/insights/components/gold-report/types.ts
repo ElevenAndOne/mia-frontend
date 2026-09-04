@@ -24,6 +24,16 @@ export interface GoldRecommendation {
   prediction: string
 }
 
+/** The report's "Grounded In" block: what real evidence a deliverable is modelled
+ *  on — or the honest statement that none was retrieved and it rests on category
+ *  best practice. Absent on reports structured before schema v2. */
+export interface GoldGroundedIn {
+  basis: 'campaign_copy' | 'category_best_practice' | 'unknown'
+  /** Verbatim quoted ad/post copy, quotation marks included. */
+  evidence: string | null
+  note: string | null
+}
+
 export interface GoldDeliverable {
   name: string
   title: string
@@ -31,6 +41,64 @@ export interface GoldDeliverable {
   creative_direction: string[]
   strategy: string
   expected_impact: { kpi: string; direction: 'up' | 'down'; explanation: string }[]
+  grounded_in?: GoldGroundedIn | null
+}
+
+/** Measured comparison between the client's own ads at ad grain — no model
+ *  involved (pipeline payload `creative_findings[]`). Phrase these as observed
+ *  differences, never causally: ads differ in several ways at once. */
+export interface GoldCreativeFinding {
+  attribute: string
+  metric: string
+  with_value: number
+  without_value: number
+  relative_gap: number
+  with_ads: number
+  without_ads: number
+  with_impressions: number
+  without_impressions: number
+  direction: 'better' | 'worse' | string
+  metric_direction: 'higher_is_better' | 'lower_is_better'
+  evidence_basis: 'measured' | 'model' | string
+}
+
+/** One ranked driver from the pipeline's typed payload (`structured_recommendations[]`).
+ *  Verified against prod 2026-09-04. Two traps the data team called out explicitly:
+ *  `beats_portfolio_average` — NOT the sign of `magnitude` — decides good/bad colouring,
+ *  because beating a cost metric means coming in below average; and `magnitude_kind`
+ *  says what the number means, so the two kinds must never share an axis.
+ *  `platform_scoped` / `applies_to_platform` are in the spec but absent from the rows
+ *  the pipeline writes today, so anything platform-specific stays unlabelled. */
+export interface GoldStructuredRecommendation {
+  driver: string
+  magnitude: number
+  magnitude_kind: 'pct_vs_portfolio_average' | 'share_of_model_importance_pct' | string
+  metric_direction: 'higher_is_better' | 'lower_is_better' | string
+  beats_portfolio_average: boolean | null
+  evidence_basis: 'measured' | 'model' | string
+  model_evidence: 'strong' | 'moderate' | 'weak' | 'unknown' | string
+  /** Intentionally null on measured campaign rows — render as absent, never zero. */
+  confidence: number | null
+  as_of_date: string | null
+  source?: string | null
+  /** Legacy field: literally "increase" on every row. Superseded by the pair above. */
+  direction?: string
+  platform_scoped?: boolean
+  applies_to_platform?: string | null
+}
+
+export interface GoldAnalysisDiagnostics {
+  creative_evidence?: 'ad_copy' | 'name_only' | 'none' | string
+  /** Feeds whose newest row is far behind the snapshot date. */
+  stale_feeds?: string[]
+  creative_comparisons?: number
+}
+
+/** Typed pipeline payload alongside the markdown report (handoff Part C). */
+export interface GoldAnalysisPayload {
+  structured_recommendations?: GoldStructuredRecommendation[] | null
+  creative_findings?: GoldCreativeFinding[] | null
+  diagnostics?: GoldAnalysisDiagnostics | null
 }
 
 export interface GoldEmailDigest {
@@ -97,4 +165,6 @@ export interface StructuredGoldReport {
   /** Condensed scannable rendition — powers the summary email AND the page's
    *  at-a-glance hero. Absent on reports structured before it existed. */
   email_digest?: GoldEmailDigest | null
+  /** REPORT_SCHEMA generation this rendition was built with (absent = 1). */
+  schema_version?: number
 }

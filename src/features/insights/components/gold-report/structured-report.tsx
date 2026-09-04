@@ -5,7 +5,15 @@ import { ExecSummary } from './exec-summary'
 import { CollapsibleRow } from './collapsible-row'
 import { DeliverableRows, InsightRows, RecommendationRows } from './report-rows'
 import { TopPosts } from './top-posts'
-import type { GoldCampaignEvidence, GoldTopPost, StructuredGoldReport } from './types'
+import { CreativeFindings } from './creative-findings'
+import { MeasuredDrivers } from './measured-drivers'
+import { StaleFeedsBanner } from './stale-feeds-banner'
+import type {
+  GoldAnalysisPayload,
+  GoldCampaignEvidence,
+  GoldTopPost,
+  StructuredGoldReport,
+} from './types'
 import './gold-report.css'
 
 // Section eyebrow with an optional count — plain language over report jargon.
@@ -38,6 +46,8 @@ interface StructuredReportProps {
   topPosts?: GoldTopPost[]
   /** Paid tier: real campaign metrics from the ad platforms. */
   campaignEvidence?: GoldCampaignEvidence | null
+  /** Paid tier: the pipeline's typed payload (measured creative findings, stale feeds). */
+  analysis?: GoldAnalysisPayload | null
 }
 
 /**
@@ -52,13 +62,17 @@ interface StructuredReportProps {
  */
 export const StructuredReport = ({
   report,
-  title = 'ML Prediction Report',
+  title = 'Creative Intelligence Report',
   subtitle,
   topPosts = [],
   campaignEvidence,
+  analysis,
 }: StructuredReportProps) => {
   const { executive_summary, insights, recommendations, deliverables, email_digest } = report
   const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined)
+  const staleFeeds = analysis?.diagnostics?.stale_feeds ?? []
+  const creativeFindings = analysis?.creative_findings ?? []
+  const measuredDrivers = analysis?.structured_recommendations ?? []
 
   return (
     <div className="gold-report space-y-7">
@@ -98,6 +112,8 @@ export const StructuredReport = ({
         </button>
       </div>
 
+      <StaleFeedsBanner feeds={staleFeeds} />
+
       {email_digest ? (
         <AtAGlance digest={email_digest} />
       ) : (
@@ -120,6 +136,18 @@ export const StructuredReport = ({
       {campaignEvidence && campaignEvidence.campaigns.length > 0 && (
         <Section label="The campaigns behind the numbers">
           <CampaignEvidence evidence={campaignEvidence} />
+        </Section>
+      )}
+
+      {measuredDrivers.length > 0 && (
+        <Section label="The numbers behind the ranking" count={measuredDrivers.length}>
+          <MeasuredDrivers rows={measuredDrivers} />
+        </Section>
+      )}
+
+      {creativeFindings.length > 0 && (
+        <Section label="What your own ads show" count={creativeFindings.length}>
+          <CreativeFindings findings={creativeFindings} />
         </Section>
       )}
 

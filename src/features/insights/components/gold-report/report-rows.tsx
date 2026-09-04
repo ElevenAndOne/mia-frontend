@@ -213,6 +213,52 @@ export const DeliverableRows = ({
             </div>
           )}
 
+          {d.grounded_in && d.grounded_in.basis !== 'unknown' && (
+            <div>
+              <p className="gr-eyebrow mb-1.5">Grounded in</p>
+              {d.grounded_in.basis === 'campaign_copy' ? (
+                <div className="gr-inner rounded-[10px] p-3 space-y-1.5">
+                  {d.grounded_in.evidence && (
+                    <p
+                      className="text-[13px] leading-[19px] italic"
+                      style={{ color: 'var(--gr-heading)' }}
+                    >
+                      {d.grounded_in.evidence}
+                    </p>
+                  )}
+                  {d.grounded_in.note && (
+                    <p className="text-[12.5px] leading-[18px]" style={{ color: 'var(--gr-body)' }}>
+                      <InlineMd text={d.grounded_in.note} />
+                    </p>
+                  )}
+                  <p className="text-[10.5px] tracking-[0.04em] uppercase" style={{ color: 'var(--gr-green)' }}>
+                    Your own ad copy
+                  </p>
+                </div>
+              ) : (
+                // Honesty marker: no copy or assets were retrieved, so this deliverable
+                // rests on category practice. It must not look as evidence-backed as
+                // one built on the client's real winning ad.
+                <div
+                  className="rounded-[10px] p-3 border space-y-1"
+                  style={{
+                    borderColor: 'rgb(240 166 62 / 0.45)',
+                    background: 'rgb(240 166 62 / 0.08)',
+                  }}
+                >
+                  <p className="text-[10.5px] tracking-[0.04em] uppercase font-bold" style={{ color: '#f0a63e' }}>
+                    Category best practice — not your campaign copy
+                  </p>
+                  {d.grounded_in.note && (
+                    <p className="text-[12.5px] leading-[18px]" style={{ color: 'var(--gr-body)' }}>
+                      <InlineMd text={d.grounded_in.note} />
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {d.expected_impact.length > 0 && (
             <div>
               <p className="gr-eyebrow mb-1.5">Expected impact</p>

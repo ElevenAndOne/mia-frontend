@@ -1,9 +1,5 @@
 import { apiFetch } from '../../../utils/api'
-import type {
-  GoldCampaignEvidence,
-  GoldTopPost,
-  StructuredGoldReport,
-} from '../components/gold-report/types'
+import type { GoldAnalysisPayload, GoldCampaignEvidence, GoldTopPost, StructuredGoldReport } from '../components/gold-report/types'
 
 export interface GoldInsightsResponse {
   success: boolean
@@ -20,6 +16,9 @@ export interface GoldInsightsResponse {
   // Paid tier: real campaign metrics from the ad platforms (24h cache, so null
   // on the very first view while the background refresh runs).
   campaign_evidence?: GoldCampaignEvidence | null
+  // Paid tier: the pipeline's typed payload — measured creative findings and
+  // feed diagnostics (stale_feeds). null when the result predates it.
+  analysis?: GoldAnalysisPayload | null
   created_at: string | null
   job_status: string | null
   failure_reason: string | null

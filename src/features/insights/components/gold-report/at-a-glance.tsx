@@ -2,8 +2,16 @@ import type { GoldEmailDigest } from './types'
 
 // The 15-second read: digest headline + stat tiles, above everything else.
 // Reuses the email digest, which was built as exactly this condensed rendition.
+// A CPM-only tile can flatter a poor campaign (seen live: "BEST CPM" on the campaign
+// with the portfolio's worst CTR and CPC). Drop it from the hero unless it is all we
+// have; the structuring prompt also steers away from it.
+const isCpmOnly = (t: { label: string; note: string }) =>
+  /\bCPM\b/i.test(t.label) && !/\bCTR\b|\bCPC\b|click/i.test(t.note)
+
 export const AtAGlance = ({ digest }: { digest: GoldEmailDigest }) => {
-  const tiles = (digest.stat_tiles ?? []).slice(0, 3)
+  const all = digest.stat_tiles ?? []
+  const kept = all.filter((t) => !isCpmOnly(t))
+  const tiles = (kept.length > 0 ? kept : all).slice(0, 3)
   if (!digest.headline && tiles.length === 0) return null
   return (
     <div className="gr-card p-5 md:p-6 space-y-4">

@@ -28,11 +28,13 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
     useGoldInsights(sessionId)
   // Same page, same schema — the organic tier just names itself honestly.
   const isOrganic = data?.report_type === 'organic'
-  const reportTitle = isOrganic ? 'Organic Performance Report' : 'ML Prediction Report'
+  // "Creative Intelligence Report" is what the report calls itself; "ML Prediction"
+  // is the jargon its content is written to avoid.
+  const reportTitle = isOrganic ? 'Organic Performance Report' : 'Creative Intelligence Report'
   // Say why, so an organic report reads as a match to the client's data rather
   // than a downgrade or a bug.
   const reportSubtitle = isOrganic
-    ? 'Based on your social activity, because this workspace has no ad spend to model. Connect an ad account with active spend to unlock ML predictions.'
+    ? 'Based on your social activity, because this workspace has no ad spend to model. Connect an ad account with active spend to unlock the Creative Intelligence Report.'
     : undefined
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold
@@ -60,7 +62,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 max-w-3xl mx-auto w-full">
             <Spinner size="lg" variant="primary" className="mb-4" />
-            <p className="paragraph-sm text-tertiary">Loading your ML analysis...</p>
+            <p className="paragraph-sm text-tertiary">Loading your report...</p>
           </div>
         )}
 
@@ -136,6 +138,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                     subtitle={reportSubtitle}
                     topPosts={data.top_posts ?? []}
                     campaignEvidence={data.campaign_evidence}
+                    analysis={data.analysis}
                   />
                 ) : (
                   // Fallback: structured rendition is still being built server-side
