@@ -254,6 +254,15 @@ interface BindDraft {
 // What an unbound KPI's row should say depends on whether the platforms actually
 // measure it — the tracker's actuals know (state 'live' vs 'none'). Until they load,
 // stay neutral.
+// A file only supports some read modes: an aggregate JSON has scalar numbers, a
+// spreadsheet has tables. Defaulting to "Single value" on a tabular file left an
+// empty free-text path box and a binding that could never resolve.
+const defaultModeFor = (doc: KpiSourceDoc | undefined): 'value' | 'sum' | 'count' => {
+  if ((doc?.picker?.numeric_paths?.length ?? 0) > 0) return 'value'
+  if ((doc?.picker?.bucket_lists?.length ?? 0) > 0) return 'count'
+  return 'value'
+}
+
 const describeBinding = (
   kpi: KPI,
   actual: KPIActual | undefined,
@@ -489,7 +498,7 @@ const DataSourcesSection = () => {
                                 kpiId: kpi.kpi_id,
                                 kpiName: kpi.kpi_name,
                                 docId: docs?.[0]?.doc_id ?? '',
-                                mode: 'value',
+                                mode: defaultModeFor(docs?.[0]),
                                 path: '',
                                 itemsPath: firstBuckets?.path ?? '',
                                 valueField: '',
@@ -528,7 +537,20 @@ const DataSourcesSection = () => {
               <span className="label-xs text-quaternary w-24">File</span>
               <select
                 value={bind.docId}
-                onChange={(e) => setBind({ ...bind, docId: e.target.value, path: '', valueField: '' })}
+                onChange={(e) => {
+                  const next = docs?.find((d) => d.doc_id === e.target.value)
+                  const nb = next?.picker?.bucket_lists?.[0]
+                  setBind({
+                    ...bind,
+                    docId: e.target.value,
+                    mode: defaultModeFor(next),
+                    path: '',
+                    valueField: '',
+                    itemsPath: nb?.path ?? '',
+                    startField: nb?.date_fields?.[0] ?? '',
+                    endField: nb?.date_fields?.[1] ?? '',
+                  })
+                }}
                 className={`${selectCls} cursor-pointer`}
               >
                 {docs?.map((d) => (
@@ -543,7 +565,9 @@ const DataSourcesSection = () => {
                 onChange={(e) => setBind({ ...bind, mode: e.target.value as 'value' | 'sum' | 'count' })}
                 className={`${selectCls} cursor-pointer`}
               >
-                <option value="value">Single value (a number in the file)</option>
+                <option value="value" disabled={paths.length === 0}>
+                  Single value (a number in the file){paths.length === 0 ? ' (none in this file)' : ''}
+                </option>
                 <option value="sum" disabled={buckets.length === 0}>
                   Sum a column over the date range{buckets.length === 0 ? ' (no tables in this file)' : ''}
                 </option>
@@ -552,6 +576,14 @@ const DataSourcesSection = () => {
                 </option>
               </select>
             </div>
+            {paths.length === 0 && buckets.length === 0 && (
+              <p className="paragraph-xs text-utility-warning-600 max-w-none">
+                Mia can't read numbers out of this file — it has no plain values and no table
+                with readable columns. Spreadsheets built for people (comment rows, several
+                mini-tables stacked in one sheet) usually land here. Ask for an aggregate
+                export, or pick a different file.
+              </p>
+            )}
             {bind.mode === 'value' ? (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="label-xs text-quaternary w-24">Value</span>
@@ -645,7 +677,7 @@ const DataSourcesSection = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => void saveBinding()}
-                disabled={busy || !bind.docId || (bind.mode === 'value' ? !bind.path.trim() : bind.mode === 'sum' ? !bind.valueField.trim() : false)}
+                disabled={busy || !bind.docId || (bind.mode === 'value' ? !bind.path.trim() : bind.mode === 'sum' ? !bind.valueField.trim() : !(bind.itemsPath || bucket?.path))}
                 className={`${btnText} label-xs px-3 py-1.5 rounded-lg bg-utility-brand-500 text-white disabled:opacity-50 disabled:cursor-default`}
               >
                 Save binding
