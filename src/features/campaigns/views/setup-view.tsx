@@ -243,12 +243,15 @@ interface BindDraft {
   kpiId: number
   kpiName: string
   docId: string
-  mode: 'value' | 'sum' | 'count'
+  mode: 'value' | 'sum' | 'count' | 'ratio'
   path: string
   itemsPath: string
   valueField: string
   startField: string
   endField: string
+  // ratio mode: numerator / denominator, each a scalar path in the same file
+  numPath: string
+  denPath: string
 }
 
 // What an unbound KPI's row should say depends on whether the platforms actually
@@ -257,7 +260,7 @@ interface BindDraft {
 // A file only supports some read modes: an aggregate JSON has scalar numbers, a
 // spreadsheet has tables. Defaulting to "Single value" on a tabular file left an
 // empty free-text path box and a binding that could never resolve.
-const defaultModeFor = (doc: KpiSourceDoc | undefined): 'value' | 'sum' | 'count' => {
+const defaultModeFor = (doc: KpiSourceDoc | undefined): 'value' | 'sum' | 'count' | 'ratio' => {
   if ((doc?.picker?.numeric_paths?.length ?? 0) > 0) return 'value'
   if ((doc?.picker?.bucket_lists?.length ?? 0) > 0) return 'count'
   return 'value'
@@ -272,7 +275,11 @@ const describeBinding = (
     const ref = src.ref ?? {}
     return { label: `JSON · ${ref.path ?? ref.value_field ?? 'mapped'}`, kind: 'source' }
   }
-  if (src?.provider === 'ratio') return { label: 'ratio of two fields', kind: 'source' }
+  if (src?.provider === 'ratio') {
+    const n = (src.numerator as Record<string, any> | undefined)?.ref?.path
+    const d = (src.denominator as Record<string, any> | undefined)?.ref?.path
+    return { label: n && d ? `ratio · ${n} / ${d}` : 'ratio of two values', kind: 'source' }
+  }
   if (src?.provider === 'ga4') return { label: `GA4 event · ${src.ref?.event_name ?? ''}`, kind: 'source' }
   if (kpi.manual_actual != null) return { label: 'manual entry', kind: 'manual' }
   if (kpi.hubspot_list_name) return { label: `HubSpot · ${kpi.hubspot_list_name}`, kind: 'legacy' }
@@ -343,17 +350,37 @@ const DataSourcesSection = () => {
     if (!bind) return
     const doc = docs?.find((d) => d.doc_id === bind.docId)
     const itemsPath = bind.itemsPath.trim() || (doc?.picker?.bucket_lists?.[0]?.path ?? '')
-    const ref: Record<string, unknown> =
-      bind.mode === 'value'
-        ? { doc_id: bind.docId, path: bind.path.trim() }
-        : {
-            doc_id: bind.docId,
-            items_path: itemsPath,
-            ...(bind.mode === 'sum' ? { value_field: bind.valueField.trim() } : {}),
-            start_field: bind.startField.trim(),
-            ...(bind.mode === 'sum' ? { end_field: bind.endField.trim() } : {}),
+    // A ratio is two scalar bindings the backend divides (and returns as a percent),
+    // so it nests rather than using the flat single-source ref.
+    const body =
+      bind.mode === 'ratio'
+        ? {
+            provider: 'ratio',
+            numerator: {
+              provider: 'json',
+              metric: 'value',
+              ref: { doc_id: bind.docId, path: bind.numPath.trim() },
+            },
+            denominator: {
+              provider: 'json',
+              metric: 'value',
+              ref: { doc_id: bind.docId, path: bind.denPath.trim() },
+            },
           }
-    const body = { provider: 'json', metric: bind.mode, ref }
+        : {
+            provider: 'json',
+            metric: bind.mode,
+            ref:
+              bind.mode === 'value'
+                ? { doc_id: bind.docId, path: bind.path.trim() }
+                : {
+                    doc_id: bind.docId,
+                    items_path: itemsPath,
+                    ...(bind.mode === 'sum' ? { value_field: bind.valueField.trim() } : {}),
+                    start_field: bind.startField.trim(),
+                    ...(bind.mode === 'sum' ? { end_field: bind.endField.trim() } : {}),
+                  },
+          }
     setBusy(true)
     try {
       const res = await patchKpi(sessionId, tenantId, campaign.campaign_id, bind.kpiId, {
@@ -504,6 +531,8 @@ const DataSourcesSection = () => {
                                 valueField: '',
                                 startField: firstBuckets?.date_fields?.[0] ?? '',
                                 endField: firstBuckets?.date_fields?.[1] ?? '',
+                                numPath: '',
+                                denPath: '',
                               })
                             }
                             disabled={!docs || docs.length === 0}
@@ -549,6 +578,8 @@ const DataSourcesSection = () => {
                     itemsPath: nb?.path ?? '',
                     startField: nb?.date_fields?.[0] ?? '',
                     endField: nb?.date_fields?.[1] ?? '',
+                    numPath: '',
+                    denPath: '',
                   })
                 }}
                 className={`${selectCls} cursor-pointer`}
@@ -562,7 +593,7 @@ const DataSourcesSection = () => {
               <span className="label-xs text-quaternary w-24">Read as</span>
               <select
                 value={bind.mode}
-                onChange={(e) => setBind({ ...bind, mode: e.target.value as 'value' | 'sum' | 'count' })}
+                onChange={(e) => setBind({ ...bind, mode: e.target.value as BindDraft['mode'] })}
                 className={`${selectCls} cursor-pointer`}
               >
                 <option value="value" disabled={paths.length === 0}>
@@ -574,6 +605,9 @@ const DataSourcesSection = () => {
                 <option value="count" disabled={buckets.length === 0}>
                   Count rows in the date range{buckets.length === 0 ? ' (no tables in this file)' : ''}
                 </option>
+                <option value="ratio" disabled={paths.length < 2}>
+                  Ratio of two values — shown as a %{paths.length < 2 ? ' (needs two numbers in the file)' : ''}
+                </option>
               </select>
             </div>
             {paths.length === 0 && buckets.length === 0 && (
@@ -584,7 +618,65 @@ const DataSourcesSection = () => {
                 export, or pick a different file.
               </p>
             )}
-            {bind.mode === 'value' ? (
+            {bind.mode === 'ratio' ? (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="label-xs text-quaternary w-24">Top (part)</span>
+                  <select
+                    value={bind.numPath}
+                    onChange={(e) => setBind({ ...bind, numPath: e.target.value })}
+                    className={`${selectCls} cursor-pointer cw-mono`}
+                  >
+                    <option value="">— pick the number on top —</option>
+                    {paths.map((pp) => (
+                      <option key={pp.path} value={pp.path}>
+                        {pp.path} = {pp.value.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="label-xs text-quaternary w-24">Bottom (whole)</span>
+                  <select
+                    value={bind.denPath}
+                    onChange={(e) => setBind({ ...bind, denPath: e.target.value })}
+                    className={`${selectCls} cursor-pointer cw-mono`}
+                  >
+                    <option value="">— pick the number on the bottom —</option>
+                    {paths.map((pp) => (
+                      <option key={pp.path} value={pp.path}>
+                        {pp.path} = {pp.value.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {(() => {
+                  // Show the answer before saving — a ratio built the wrong way round
+                  // is otherwise invisible until the tracker refreshes.
+                  const n = paths.find((pp) => pp.path === bind.numPath)?.value
+                  const d = paths.find((pp) => pp.path === bind.denPath)?.value
+                  if (n === undefined || d === undefined) return null
+                  if (!d) {
+                    return (
+                      <p className="paragraph-xs text-utility-warning-600">
+                        The bottom number is zero, so this ratio has no answer yet. It will start
+                        working once that number moves.
+                      </p>
+                    )
+                  }
+                  return (
+                    <p className="paragraph-xs text-tertiary">
+                      Right now that reads{' '}
+                      <span className="cw-mono text-primary">
+                        {((n / d) * 100).toFixed(2)}%
+                      </span>{' '}
+                      ({n.toLocaleString()} of {d.toLocaleString()})
+                      {bind.numPath === bind.denPath ? ' — both sides are the same number.' : ''}
+                    </p>
+                  )
+                })()}
+              </>
+            ) : bind.mode === 'value' ? (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="label-xs text-quaternary w-24">Value</span>
                 {paths.length > 0 ? (
@@ -677,7 +769,17 @@ const DataSourcesSection = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => void saveBinding()}
-                disabled={busy || !bind.docId || (bind.mode === 'value' ? !bind.path.trim() : bind.mode === 'sum' ? !bind.valueField.trim() : !(bind.itemsPath || bucket?.path))}
+                disabled={
+                  busy ||
+                  !bind.docId ||
+                  (bind.mode === 'value'
+                    ? !bind.path.trim()
+                    : bind.mode === 'ratio'
+                      ? !bind.numPath.trim() || !bind.denPath.trim()
+                      : bind.mode === 'sum'
+                        ? !bind.valueField.trim()
+                        : !(bind.itemsPath || bucket?.path))
+                }
                 className={`${btnText} label-xs px-3 py-1.5 rounded-lg bg-utility-brand-500 text-white disabled:opacity-50 disabled:cursor-default`}
               >
                 Save binding
