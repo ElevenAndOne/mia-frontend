@@ -3,6 +3,8 @@
  * Based on API documentation for /api/tenants endpoints
  */
 
+import type { FeatureFlags } from './feature-keys'
+
 /** Workspace role as returned by the API */
 export type WorkspaceRole = 'owner' | 'admin' | 'analyst' | 'viewer' | 'member'
 
@@ -20,4 +22,9 @@ export interface Workspace {
   google_ads_customer_id?: string | null
   /** URL to workspace logo image, null if using letter avatar */
   logo_url?: string | null
+  /**
+   * Effective feature flags for this workspace (every known key -> bool), resolved by the
+   * backend from constants/features.py + per-workspace overrides. Read via useFeatures().
+   */
+  features?: FeatureFlags
 }

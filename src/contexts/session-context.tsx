@@ -343,6 +343,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   onboarding_completed: activeTenant?.onboarding_completed || false,
                   connected_platforms: activeTenant?.connected_platforms || [],
                   member_count: activeTenant?.member_count || 1,
+                  features: activeTenant?.features,
                 }
               }
 

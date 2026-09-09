@@ -5,6 +5,7 @@ import { useSession } from '../contexts/session-context'
 import { useTheme } from '../contexts/theme-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 import { usePlugins } from '../features/plugins/hooks/use-plugins'
+import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
@@ -78,6 +79,9 @@ export const AppSidebar = () => {
   const { user, activeWorkspace, sessionId } = useSession()
   const { theme, setTheme } = useTheme()
   const { isEnabled } = usePlugins()
+  // Per-workspace feature flags (progressive disclosure). Everything defaults ON; a flag
+  // hides a surface, it never removes it. Workspace Settings is deliberately ungated.
+  const { isEnabled: isFeatureEnabled } = useFeatures()
   const actions = useAppShellActions()
   const { conversations, load, remove, rename, togglePin } = useRecentConversations(sessionId)
 
@@ -175,34 +179,42 @@ export const AppSidebar = () => {
             collapsed={collapsed}
             onClick={() => actions.onNewWorkspace()}
           />
-          <NavItem
-            icon={<Globe01 size={18} />}
-            label="Integrations"
-            collapsed={collapsed}
-            active={activeKey === 'integrations'}
-            onClick={actions.onIntegrationsClick}
-          />
-          <NavItem
-            icon={<Target01 size={18} />}
-            label="Campaigns"
-            collapsed={collapsed}
-            active={activeKey === 'campaigns'}
-            onClick={actions.onCampaignsClick}
-          />
-          <NavItem
-            icon={<Calendar size={18} />}
-            label="Posts"
-            collapsed={collapsed}
-            active={activeKey === 'posts'}
-            onClick={actions.onPostsClick}
-          />
-          <NavItem
-            icon={<Users01 size={18} />}
-            label="Scheduler"
-            collapsed={collapsed}
-            active={activeKey === 'scheduler'}
-            onClick={() => navigate('/scheduler')}
-          />
+          {isFeatureEnabled('integrations') && (
+            <NavItem
+              icon={<Globe01 size={18} />}
+              label="Integrations"
+              collapsed={collapsed}
+              active={activeKey === 'integrations'}
+              onClick={actions.onIntegrationsClick}
+            />
+          )}
+          {isFeatureEnabled('campaigns') && (
+            <NavItem
+              icon={<Target01 size={18} />}
+              label="Campaigns"
+              collapsed={collapsed}
+              active={activeKey === 'campaigns'}
+              onClick={actions.onCampaignsClick}
+            />
+          )}
+          {isFeatureEnabled('posts') && (
+            <NavItem
+              icon={<Calendar size={18} />}
+              label="Posts"
+              collapsed={collapsed}
+              active={activeKey === 'posts'}
+              onClick={actions.onPostsClick}
+            />
+          )}
+          {isFeatureEnabled('scheduler') && (
+            <NavItem
+              icon={<Users01 size={18} />}
+              label="Scheduler"
+              collapsed={collapsed}
+              active={activeKey === 'scheduler'}
+              onClick={() => navigate('/scheduler')}
+            />
+          )}
           {SHOW_MIA_CREATE && isEnabled('mia-creative-studio') && (
             <NavItem
               icon={<Stars01 size={18} />}
@@ -212,27 +224,33 @@ export const AppSidebar = () => {
               onClick={actions.onCreativeStudioClick}
             />
           )}
-          <NavItem
-            icon={<File02 size={18} />}
-            label="Reports"
-            collapsed={collapsed}
-            active={activeKey === 'reports'}
-            onClick={actions.onReportsClick}
-          />
-          <NavItem
-            icon={<Wallet01 size={18} />}
-            label="Budget Tracker"
-            collapsed={collapsed}
-            active={activeKey === 'budget'}
-            onClick={() => navigate('/budget-tracker')}
-          />
-          <NavItem
-            icon={<ClipboardCheck size={18} />}
-            label="Weekly Memo"
-            collapsed={collapsed}
-            active={activeKey === 'memo'}
-            onClick={() => navigate('/memo')}
-          />
+          {isFeatureEnabled('reports') && (
+            <NavItem
+              icon={<File02 size={18} />}
+              label="Reports"
+              collapsed={collapsed}
+              active={activeKey === 'reports'}
+              onClick={actions.onReportsClick}
+            />
+          )}
+          {isFeatureEnabled('budget_tracker') && (
+            <NavItem
+              icon={<Wallet01 size={18} />}
+              label="Budget Tracker"
+              collapsed={collapsed}
+              active={activeKey === 'budget'}
+              onClick={() => navigate('/budget-tracker')}
+            />
+          )}
+          {isFeatureEnabled('weekly_memo') && (
+            <NavItem
+              icon={<ClipboardCheck size={18} />}
+              label="Weekly Memo"
+              collapsed={collapsed}
+              active={activeKey === 'memo'}
+              onClick={() => navigate('/memo')}
+            />
+          )}
           <NavItem
             icon={<Settings01 size={18} />}
             label="Workspace Settings"

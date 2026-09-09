@@ -4,6 +4,7 @@
  */
 import { apiFetch, API_BASE_URL } from '../../../utils/api'
 import type { Workspace, WorkspaceRole } from '../types'
+import type { FeatureCatalogEntry, FeatureFlags, FeatureKey } from '../feature-keys'
 
 /**
  * Raw API response type (role is string from backend)
@@ -22,6 +23,7 @@ interface RawWorkspace {
   member_count?: number
   is_active?: boolean
   logo_url?: string | null
+  features?: FeatureFlags
 }
 
 /**
@@ -46,6 +48,7 @@ export interface CurrentWorkspaceResponse {
     onboarding_completed?: boolean
     connected_platforms?: string[]
     member_count?: number
+    features?: FeatureFlags
   } | null
   /** Legacy field name — backend may still return this */
   active_tenant?: {
@@ -59,6 +62,7 @@ export interface CurrentWorkspaceResponse {
     onboarding_completed?: boolean
     connected_platforms?: string[]
     member_count?: number
+    features?: FeatureFlags
   } | null
 }
 
@@ -115,6 +119,7 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
       member_count: t.member_count || 1,
       is_active: t.is_active,
       logo_url: t.logo_url ? `${API_BASE_URL}${t.logo_url}` : null,
+      features: t.features,
     })
   )
 }
@@ -324,4 +329,48 @@ export const deleteWorkspace = async (sessionId: string, tenantId: string): Prom
     const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.message || `Delete workspace failed: ${response.status}`)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Feature flags (Sep 2026). Registry lives in mia-backend/constants/features.py.
+// ---------------------------------------------------------------------------
+
+export interface FeatureFlagsResponse {
+  features: FeatureFlags
+  catalog: FeatureCatalogEntry[]
+}
+
+/** GET /api/tenants/{id}/features — effective flags + the catalog the settings UI renders. */
+export const fetchWorkspaceFeatures = async (
+  sessionId: string,
+  tenantId: string
+): Promise<FeatureFlagsResponse> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}/features`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) {
+    throw new Error(`Feature flags API failed: ${response.status}`)
+  }
+  return response.json()
+}
+
+/**
+ * PATCH /api/tenants/{id}/features — true/false set a per-workspace override, null clears
+ * it so the flag follows its default again. Admin/owner only.
+ */
+export const updateWorkspaceFeatures = async (
+  sessionId: string,
+  tenantId: string,
+  overrides: Partial<Record<FeatureKey, boolean | null>>
+): Promise<FeatureFlagsResponse> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}/features`, {
+    method: 'PATCH',
+    headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ overrides }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || `Feature flags update failed: ${response.status}`)
+  }
+  return response.json()
 }

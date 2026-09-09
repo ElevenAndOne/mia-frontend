@@ -30,6 +30,7 @@ import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
+import { FeatureFlagsPanel } from './feature-flags-panel'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 
@@ -801,6 +802,11 @@ export const WorkspaceSettingsDetail = ({
                     />
                   </div>
                 </div>
+              )}
+
+              {/* Features - Owner and Admin: what this workspace can see (Sep 2026) */}
+              {canManage && sessionId && (
+                <FeatureFlagsPanel sessionId={sessionId} tenantId={workspace.tenant_id} />
               )}
 
               {/* Danger Zone - Owner Only */}
