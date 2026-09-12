@@ -283,7 +283,7 @@ export const BuilderCanvas = ({
             {saved ? 'saves' : 'drafts'} them.
           </p>
         ) : (
-          <div className="max-w-[560px] mx-auto">
+          <div className="max-w-[35rem] mx-auto">
             {/* Asset strip: name + channel + flipper */}
             <div className="flex items-center gap-2 mb-4">
               <span className="paragraph-sm font-medium text-primary truncate">

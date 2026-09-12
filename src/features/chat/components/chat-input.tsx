@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
+import { useFeatures } from '../../workspace/hooks/use-features'
 import { VoiceWaveform } from './voice-waveform'
 import { AlertCircle } from '../../../components/icon/alert-circle'
 import { ArrowRight } from '../../../components/icon/arrow-right'
@@ -107,6 +108,9 @@ export const ChatInput = ({
   const [message, setMessage] = useState('')
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
+  // Basic never sees the per-message platform picker (feature flag platform_picker).
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+  const showPlatformPicker = isFeatureEnabled('platform_picker')
   const [micState, setMicState] = useState<MicState>('idle')
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -384,7 +388,10 @@ export const ChatInput = ({
             </div>
           ))}
           {documents.map((doc, i) => (
-            <div key={`doc-${i}`} className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[200px]">
+            <div
+              key={`doc-${i}`}
+              className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[12.5rem]"
+            >
               <FileAttachment01 size={14} className="text-tertiary shrink-0" />
               <span className="paragraph-xs text-secondary truncate">{doc.filename}</span>
               {onRemoveDocument && (
@@ -465,151 +472,159 @@ export const ChatInput = ({
 
         {/* Toolbar row — hidden during recording */}
         {micState !== 'recording' && (
-        <div className="flex items-center justify-between px-2 pb-2">
-          <div className="flex items-center gap-1 relative">
-            {/* Calendar button — non-interactive when a campaign locks the date range */}
-            <button
-              ref={calendarButtonRef}
-              type="button"
-              onClick={campaignDateLocked ? undefined : () => setShowDatePicker(!showDatePicker)}
-              className={`h-11 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary transition-colors touch-manipulation ${
-                campaignDateLocked ? 'pointer-events-none cursor-default' : 'hover:bg-tertiary'
-              }`}
-              title={campaignDateLocked ? 'Date range locked to campaign' : 'Select date range'}
-            >
-              <Calendar size={18} />
-              <span className="paragraph-xs text-tertiary">
-                {campaignDateLocked && campaignDateLabel
-                  ? campaignDateLabel
-                  : formatDateRangeDisplay(dateRange, 'short')}
-              </span>
-            </button>
-
-            {!campaignDateLocked && (
-              <DateRangePopover
-                isOpen={showDatePicker}
-                onClose={() => setShowDatePicker(false)}
-                anchorRef={calendarButtonRef}
-                selectedRange={dateRange}
-                onSelect={onDateRangeChange}
-              />
-            )}
-
-            {/* Platform selector button */}
-            <div className="relative">
+          <div className="flex items-center justify-between px-2 pb-2">
+            <div className="flex items-center gap-1 relative">
+              {/* Calendar button — non-interactive when a campaign locks the date range */}
               <button
-                ref={platformButtonRef}
+                ref={calendarButtonRef}
                 type="button"
-                onClick={() => setShowPlatformSelector(!showPlatformSelector)}
-                className="w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
-                title="Select platforms"
+                onClick={campaignDateLocked ? undefined : () => setShowDatePicker(!showDatePicker)}
+                className={`h-11 px-3 rounded-full bg-quaternary flex items-center gap-1.5 text-tertiary transition-colors touch-manipulation ${
+                  campaignDateLocked ? 'pointer-events-none cursor-default' : 'hover:bg-tertiary'
+                }`}
+                title={campaignDateLocked ? 'Date range locked to campaign' : 'Select date range'}
               >
-                <Tool01 size={18} />
+                <Calendar size={18} />
+                <span className="paragraph-xs text-tertiary">
+                  {campaignDateLocked && campaignDateLabel
+                    ? campaignDateLabel
+                    : formatDateRangeDisplay(dateRange, 'short')}
+                </span>
               </button>
 
-              <PlatformSelector
-                isOpen={showPlatformSelector}
-                onClose={() => setShowPlatformSelector(false)}
-                platforms={platforms}
-                selectedPlatforms={selectedPlatforms}
-                onToggle={onPlatformToggle}
-                anchorRef={platformButtonRef}
-              />
+              {!campaignDateLocked && (
+                <DateRangePopover
+                  isOpen={showDatePicker}
+                  onClose={() => setShowDatePicker(false)}
+                  anchorRef={calendarButtonRef}
+                  selectedRange={dateRange}
+                  onSelect={onDateRangeChange}
+                />
+              )}
+
+              {/* Platform selector button */}
+              <div className="relative">
+                {showPlatformPicker && (
+                  <>
+                    <button
+                      ref={platformButtonRef}
+                      type="button"
+                      onClick={() => setShowPlatformSelector(!showPlatformSelector)}
+                      className="w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation"
+                      title="Select platforms"
+                    >
+                      <Tool01 size={18} />
+                    </button>
+
+                    <PlatformSelector
+                      isOpen={showPlatformSelector}
+                      onClose={() => setShowPlatformSelector(false)}
+                      platforms={platforms}
+                      selectedPlatforms={selectedPlatforms}
+                      onToggle={onPlatformToggle}
+                      anchorRef={platformButtonRef}
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Attachment button — images, CSV, Excel, PDF, Markdown */}
+              {(onAddImages || onAddFile) && (
+                <>
+                  <input
+                    id="chat-file-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf,text/markdown,.md,.markdown"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => {
+                      handleFileChange(e.target.files)
+                      e.target.value = ''
+                    }}
+                    disabled={isUploading}
+                  />
+                  <label
+                    htmlFor="chat-file-input"
+                    title={isUploading ? 'Uploading…' : 'Attach file or image'}
+                    className={[
+                      'w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation',
+                      isUploading ? 'opacity-40 pointer-events-none' : 'cursor-pointer',
+                    ].join(' ')}
+                  >
+                    {isUploading ? (
+                      <Loading01 size={18} className="animate-spin" />
+                    ) : (
+                      <Attachment01 size={18} />
+                    )}
+                  </label>
+                </>
+              )}
             </div>
 
-            {/* Attachment button — images, CSV, Excel, PDF, Markdown */}
-            {(onAddImages || onAddFile) && (
-              <>
-                <input
-                  id="chat-file-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp,text/csv,application/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls,application/pdf,.pdf,text/markdown,.md,.markdown"
-                  multiple
-                  className="sr-only"
-                  onChange={(e) => { handleFileChange(e.target.files); e.target.value = '' }}
-                  disabled={isUploading}
-                />
-                <label
-                  htmlFor="chat-file-input"
-                  title={isUploading ? 'Uploading…' : 'Attach file or image'}
+            <div className="flex items-center gap-1">
+              {/* Mic button — left of send (idle / processing / error states only; recording shows waveform overlay) */}
+              {onTranscribeAudio && !isLoading && (
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  disabled={micState === 'processing' || micState === 'error'}
                   className={[
-                    'w-11 h-11 rounded-full bg-quaternary flex items-center justify-center text-tertiary hover:bg-tertiary transition-colors touch-manipulation',
-                    isUploading ? 'opacity-40 pointer-events-none' : 'cursor-pointer',
+                    'w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation',
+                    micState === 'error'
+                      ? 'bg-error-primary text-white'
+                      : micState === 'processing'
+                        ? 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
+                        : 'bg-quaternary text-tertiary hover:bg-tertiary',
                   ].join(' ')}
+                  title={
+                    micState === 'error'
+                      ? 'Microphone access blocked — check browser permissions'
+                      : 'Voice input'
+                  }
                 >
-                  {isUploading ? (
+                  {micState === 'processing' ? (
                     <Loading01 size={18} className="animate-spin" />
+                  ) : micState === 'error' ? (
+                    <MicrophoneOff01 size={18} />
                   ) : (
-                    <Attachment01 size={18} />
+                    <Microphone01 size={18} />
                   )}
-                </label>
-              </>
-            )}
-          </div>
+                </button>
+              )}
 
-          <div className="flex items-center gap-1">
-            {/* Mic button — left of send (idle / processing / error states only; recording shows waveform overlay) */}
-            {onTranscribeAudio && !isLoading && (
-              <button
-                type="button"
-                onClick={handleMicClick}
-                disabled={micState === 'processing' || micState === 'error'}
-                className={[
-                  'w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation',
-                  micState === 'error'
-                    ? 'bg-error-primary text-white'
-                    : micState === 'processing'
-                      ? 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
-                      : 'bg-quaternary text-tertiary hover:bg-tertiary',
-                ].join(' ')}
-                title={
-                  micState === 'error' ? 'Microphone access blocked — check browser permissions' :
-                  'Voice input'
-                }
-              >
-                {micState === 'processing' ? (
-                  <Loading01 size={18} className="animate-spin" />
-                ) : micState === 'error' ? (
-                  <MicrophoneOff01 size={18} />
-                ) : (
-                  <Microphone01 size={18} />
-                )}
-              </button>
-            )}
-
-            {/* Stop button (while loading) or Submit button */}
-            {isLoading ? (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-11 h-11 flex items-center justify-center text-white hover:opacity-70 transition-opacity touch-manipulation"
-                title="Stop generating"
-              >
-                <svg viewBox="0 0 24 24" width={20} height={20} fill="white">
-                  <path d="M3 7.8C3 6.11984 3 5.27976 3.32698 4.63803C3.6146 4.07354 4.07354 3.6146 4.63803 3.32698C5.27976 3 6.11984 3 7.8 3H16.2C17.8802 3 18.7202 3 19.362 3.32698C19.9265 3.6146 20.3854 4.07354 20.673 4.63803C21 5.27976 21 6.11984 21 7.8V16.2C21 17.8802 21 18.7202 20.673 19.362C20.3854 19.9265 19.9265 20.3854 19.362 20.673C18.7202 21 17.8802 21 16.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V7.8Z" />
-                  <path
-                    d="M8 9.6C8 9.03995 8 8.75992 8.10899 8.54601C8.20487 8.35785 8.35785 8.20487 8.54601 8.10899C8.75992 8 9.03995 8 9.6 8H14.4C14.9601 8 15.2401 8 15.454 8.10899C15.6422 8.20487 15.7951 8.35785 15.891 8.54601C16 8.75992 16 9.03995 16 9.6V14.4C16 14.9601 16 15.2401 15.891 15.454C15.7951 15.6422 15.6422 15.7951 15.454 15.891C15.2401 16 14.9601 16 14.4 16H9.6C9.03995 16 8.75992 16 8.54601 15.891C8.35785 15.7951 8.20487 15.6422 8.10899 15.454C8 15.2401 8 14.9601 8 14.4V9.6Z"
-                    fill="#1a1a2e"
-                  />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation ${
-                  canSubmit
-                    ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
-                    : 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
-                }`}
-                title="Send message"
-              >
-                <ArrowRight size={18} />
-              </button>
-            )}
+              {/* Stop button (while loading) or Submit button */}
+              {isLoading ? (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="w-11 h-11 flex items-center justify-center text-white hover:opacity-70 transition-opacity touch-manipulation"
+                  title="Stop generating"
+                >
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="white">
+                    <path d="M3 7.8C3 6.11984 3 5.27976 3.32698 4.63803C3.6146 4.07354 4.07354 3.6146 4.63803 3.32698C5.27976 3 6.11984 3 7.8 3H16.2C17.8802 3 18.7202 3 19.362 3.32698C19.9265 3.6146 20.3854 4.07354 20.673 4.63803C21 5.27976 21 6.11984 21 7.8V16.2C21 17.8802 21 18.7202 20.673 19.362C20.3854 19.9265 19.9265 20.3854 19.362 20.673C18.7202 21 17.8802 21 16.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V7.8Z" />
+                    <path
+                      d="M8 9.6C8 9.03995 8 8.75992 8.10899 8.54601C8.20487 8.35785 8.35785 8.20487 8.54601 8.10899C8.75992 8 9.03995 8 9.6 8H14.4C14.9601 8 15.2401 8 15.454 8.10899C15.6422 8.20487 15.7951 8.35785 15.891 8.54601C16 8.75992 16 9.03995 16 9.6V14.4C16 14.9601 16 15.2401 15.891 15.454C15.7951 15.6422 15.6422 15.7951 15.454 15.891C15.2401 16 14.9601 16 14.4 16H9.6C9.03995 16 8.75992 16 8.54601 15.891C8.35785 15.7951 8.20487 15.6422 8.10899 15.454C8 15.2401 8 14.9601 8 14.4V9.6Z"
+                      fill="#1a1a2e"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all touch-manipulation ${
+                    canSubmit
+                      ? 'bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover'
+                      : 'bg-quaternary text-placeholder-subtle cursor-not-allowed'
+                  }`}
+                  title="Send message"
+                >
+                  <ArrowRight size={18} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
         )}
       </div>
     </div>

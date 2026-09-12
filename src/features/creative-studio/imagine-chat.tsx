@@ -10,11 +10,34 @@ import {
   type DragEvent as ReactDragEvent,
 } from 'react'
 import {
-  Send, Loader2, Link2, RefreshCw, Image as ImageIcon, ThumbsUp, ThumbsDown,
-  Sparkles, Layers, Check, X, Palette, Type, Target, Maximize2, Pencil, History, Plus, UploadCloud,
+  Send,
+  Loader2,
+  Link2,
+  RefreshCw,
+  Image as ImageIcon,
+  ThumbsUp,
+  ThumbsDown,
+  Sparkles,
+  Layers,
+  Check,
+  X,
+  Palette,
+  Type,
+  Target,
+  Maximize2,
+  Pencil,
+  History,
+  Plus,
+  UploadCloud,
 } from 'lucide-react'
 import { sendChatMessageStreaming } from '../chat/services/chat-service'
-import { figmaDnaApi, miaCreateApi, type DnaSummary, type MiaAsset, type PageFrame } from './creative-studio-api'
+import {
+  figmaDnaApi,
+  miaCreateApi,
+  type DnaSummary,
+  type MiaAsset,
+  type PageFrame,
+} from './creative-studio-api'
 
 interface Props {
   tenantId: string
@@ -57,7 +80,7 @@ interface Conversation {
 }
 
 const deriveTitle = (msgs: ChatMsg[]): string => {
-  const firstUser = msgs.find(m => m.role === 'user')
+  const firstUser = msgs.find((m) => m.role === 'user')
   const t = (firstUser?.content || '').trim()
   return t ? (t.length > 44 ? t.slice(0, 44) + '…' : t) : 'New chat'
 }
@@ -72,8 +95,14 @@ const relTime = (ms: number): string => {
 
 // ── Per-asset feedback control (§6.7) ───────────────────────────────────────────
 function AssetFeedback({
-  asset, tenantId, sessionId,
-}: { asset: MiaAsset; tenantId: string; sessionId: string }) {
+  asset,
+  tenantId,
+  sessionId,
+}: {
+  asset: MiaAsset
+  tenantId: string
+  sessionId: string
+}) {
   const [rating, setRating] = useState<number | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [note, setNote] = useState('')
@@ -82,10 +111,10 @@ function AssetFeedback({
   const [saving, setSaving] = useState(false)
 
   const toggleTag = (t: string) =>
-    setTags(prev => (prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]))
+    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
 
   // Selecting a rating no longer submits — the user can add tags/a note in any order, then Save.
-  const setRatingToggle = (r: number) => setRating(prev => (prev === r ? null : r))
+  const setRatingToggle = (r: number) => setRating((prev) => (prev === r ? null : r))
   const dirty = rating != null || tags.length > 0 || note.trim().length > 0
 
   const save = async () => {
@@ -120,8 +149,8 @@ function AssetFeedback({
           <ThumbsDown className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => setOpen(o => !o)}
-          className="text-[11px] text-slate-500 hover:text-slate-300"
+          onClick={() => setOpen((o) => !o)}
+          className="text-[0.6875rem] text-slate-500 hover:text-slate-300"
         >
           {open ? 'hide' : 'add note'}
         </button>
@@ -129,13 +158,13 @@ function AssetFeedback({
           <button
             onClick={save}
             disabled={saving}
-            className="text-[11px] px-2 py-0.5 rounded bg-purple-600/40 hover:bg-purple-600/60 text-white disabled:opacity-50"
+            className="text-[0.6875rem] px-2 py-0.5 rounded bg-purple-600/40 hover:bg-purple-600/60 text-white disabled:opacity-50"
           >
             {saving ? 'Saving…' : savedAt ? 'Update' : 'Save'}
           </button>
         )}
         {savedAt && (
-          <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+          <span className="flex items-center gap-1 text-[0.6875rem] text-emerald-400">
             <Check className="w-3 h-3" /> saved
           </span>
         )}
@@ -143,11 +172,11 @@ function AssetFeedback({
       {open && (
         <div className="mt-1.5 space-y-1.5">
           <div className="flex flex-wrap gap-1">
-            {FEEDBACK_TAGS.map(t => (
+            {FEEDBACK_TAGS.map((t) => (
               <button
                 key={t}
                 onClick={() => toggleTag(t)}
-                className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                className={`px-1.5 py-0.5 rounded text-[0.625rem] border ${
                   tags.includes(t)
                     ? 'bg-purple-500/20 border-purple-500/40 text-purple-200'
                     : 'border-slate-700 text-slate-400 hover:text-slate-200'
@@ -159,9 +188,9 @@ function AssetFeedback({
           </div>
           <input
             value={note}
-            onChange={e => setNote(e.target.value)}
+            onChange={(e) => setNote(e.target.value)}
             placeholder="one-line note…"
-            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-white placeholder-slate-500"
+            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[0.6875rem] text-white placeholder-slate-500"
           />
         </div>
       )}
@@ -171,7 +200,12 @@ function AssetFeedback({
 
 // ── Inline generated-asset card ─────────────────────────────────────────────────
 function AssetCard({
-  asset, tenantId, sessionId, onZoom, isEditTarget, onPickTarget,
+  asset,
+  tenantId,
+  sessionId,
+  onZoom,
+  isEditTarget,
+  onPickTarget,
 }: {
   asset: MiaAsset
   tenantId: string
@@ -187,41 +221,44 @@ function AssetCard({
       }`}
     >
       {asset.ratio && (
-        <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded bg-slate-950/80 text-[10px] font-semibold text-white">
+        <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded bg-slate-950/80 text-[0.625rem] font-semibold text-white">
           {asset.ratio}
         </span>
       )}
       {asset.selected && !asset.ratio && (
-        <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded bg-emerald-500/80 text-[10px] font-semibold text-white flex items-center gap-0.5">
+        <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded bg-emerald-500/80 text-[0.625rem] font-semibold text-white flex items-center gap-0.5">
           <Sparkles className="w-2.5 h-2.5" /> pick
         </span>
       )}
       {isEditTarget && (
-        <span className="absolute bottom-[52px] left-1 z-10 px-1.5 py-0.5 rounded bg-purple-500/90 text-[10px] font-semibold text-white">
+        <span className="absolute bottom-[3.25rem] left-1 z-10 px-1.5 py-0.5 rounded bg-purple-500/90 text-[0.625rem] font-semibold text-white">
           editing
         </span>
       )}
       <div className="relative group">
-        <img src={asset.cdn_url} alt={asset.prompt || 'generated'} className="w-full aspect-square object-cover" />
+        <img
+          src={asset.cdn_url}
+          alt={asset.prompt || 'generated'}
+          className="w-full aspect-square object-cover"
+        />
         <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => onPickTarget(asset)}
-            title={isEditTarget ? 'Editing this image' : 'Edit this image (your next message edits it)'}
+            title={
+              isEditTarget ? 'Editing this image' : 'Edit this image (your next message edits it)'
+            }
             className={`p-1 rounded ${isEditTarget ? 'bg-purple-500/80' : 'bg-slate-950/60 hover:bg-purple-500/60'}`}
           >
             <Pencil className="w-3.5 h-3.5 text-white" />
           </button>
-          <button
-            onClick={() => onZoom(asset.cdn_url)}
-            className="p-1 rounded bg-slate-950/60"
-          >
+          <button onClick={() => onZoom(asset.cdn_url)} className="p-1 rounded bg-slate-950/60">
             <Maximize2 className="w-3.5 h-3.5 text-white" />
           </button>
         </div>
       </div>
       <div className="p-2">
         {asset.vision_score && (
-          <div className="text-[10px] text-slate-400 mb-1">
+          <div className="text-[0.625rem] text-slate-400 mb-1">
             on-brand {asset.vision_score.on_brand}/10 · overall {asset.vision_score.overall}/10
           </div>
         )}
@@ -231,7 +268,12 @@ function AssetCard({
   )
 }
 
-export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearVariantSeed }: Props) {
+export default function ImagineChat({
+  tenantId,
+  sessionId,
+  variantSeed,
+  onClearVariantSeed,
+}: Props) {
   // Per-workspace conversation history in localStorage. The current thread is the active entry;
   // "New chat" starts a fresh one and the old ones stay switchable from the History dropdown.
   const HISTORY_KEY = `mia-create-history:${tenantId}`
@@ -249,7 +291,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     } catch {
       aId = ''
     }
-    const active = hist.find(c => c.id === aId) || hist[0] || null
+    const active = hist.find((c) => c.id === aId) || hist[0] || null
     return { hist, activeId: active?.id || nextId(), active }
   }, [HISTORY_KEY, ACTIVE_KEY])
 
@@ -344,8 +386,8 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
 
   // Hydrate the de-dupe set from the active conversation's images so polling doesn't re-attach them.
   useEffect(() => {
-    ;(init.active?.messages || []).forEach(m =>
-      (m.assets || []).forEach(a => knownAssetIds.current.add(a.asset_id)),
+    ;(init.active?.messages || []).forEach((m) =>
+      (m.assets || []).forEach((a) => knownAssetIds.current.add(a.asset_id))
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -355,15 +397,15 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
   // has produced at least one generated image — keeps blank "New chat" sessions out of history —
   // and prune any pre-existing blank entries on the way.
   useEffect(() => {
-    const hasImage = (msgs: ChatMsg[]) => msgs.some(m => (m.assets?.length ?? 0) > 0)
-    setHistory(prev => {
-      const others = prev.filter(c => c.id !== activeId && hasImage(c.messages || []))
+    const hasImage = (msgs: ChatMsg[]) => msgs.some((m) => (m.assets?.length ?? 0) > 0)
+    setHistory((prev) => {
+      const others = prev.filter((c) => c.id !== activeId && hasImage(c.messages || []))
       if (!hasImage(messages)) return others
       const entry: Conversation = {
         id: activeId,
         title: deriveTitle(messages),
         savedAt: Date.now(),
-        messages: messages.map(m => ({ ...m, streaming: false })),
+        messages: messages.map((m) => ({ ...m, streaming: false })),
         fileInput,
         dna,
         selectedPage,
@@ -394,7 +436,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
   const switchConversation = (id: string) => {
     setHistoryOpen(false)
     if (id === activeId) return
-    const c = history.find(x => x.id === id)
+    const c = history.find((x) => x.id === id)
     if (!c) return
     setActiveId(id)
     setMessages(c.messages || [])
@@ -403,13 +445,13 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     setSelectedPage(c.selectedPage || '')
     setEditTarget(null)
     knownAssetIds.current = new Set(
-      (c.messages || []).flatMap(m => (m.assets || []).map(a => a.asset_id)),
+      (c.messages || []).flatMap((m) => (m.assets || []).map((a) => a.asset_id))
     )
   }
 
   const deleteConversation = (id: string, e: { stopPropagation: () => void }) => {
     e.stopPropagation()
-    setHistory(prev => prev.filter(c => c.id !== id))
+    setHistory((prev) => prev.filter((c) => c.id !== id))
     if (id === activeId) newChat()
   }
 
@@ -418,7 +460,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       pollTimers.current.forEach(clearTimeout)
       if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
     },
-    [],
+    []
   )
 
   const linkBrandSource = async () => {
@@ -460,17 +502,15 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
         ticks += 1
         try {
           const { assets } = await miaCreateApi.listAssets(sessionId, tenantId, undefined, 30)
-          const fresh = assets.filter(
-            a => a.created_at && a.created_at > sinceIso,
-          )
-          const newOnes = fresh.filter(a => !knownAssetIds.current.has(a.asset_id))
-          newOnes.forEach(a => knownAssetIds.current.add(a.asset_id))
+          const fresh = assets.filter((a) => a.created_at && a.created_at > sinceIso)
+          const newOnes = fresh.filter((a) => !knownAssetIds.current.has(a.asset_id))
+          newOnes.forEach((a) => knownAssetIds.current.add(a.asset_id))
           foundThisTurn += newOnes.length
 
           // After an edit, advance the pin to the result so consecutive edits chain naturally.
           if (autoPin && newOnes.length) {
             const newest = newOnes.reduce((a, b) =>
-              (a.created_at || '') > (b.created_at || '') ? a : b,
+              (a.created_at || '') > (b.created_at || '') ? a : b
             )
             if (newest.cdn_url) setEditTarget({ assetId: newest.asset_id, url: newest.cdn_url })
           }
@@ -478,13 +518,13 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           if (fresh.length) {
             // Merge: attach fresh assets to the target message, updating in place so
             // late-arriving Vision scores / selection flags refresh.
-            setMessages(prev =>
-              prev.map(m => {
+            setMessages((prev) =>
+              prev.map((m) => {
                 if (m.id !== targetMsgId) return m
-                const byId = new Map((m.assets || []).map(a => [a.asset_id, a]))
-                fresh.forEach(a => byId.set(a.asset_id, a))
+                const byId = new Map((m.assets || []).map((a) => [a.asset_id, a]))
+                fresh.forEach((a) => byId.set(a.asset_id, a))
                 return { ...m, assets: Array.from(byId.values()) }
-              }),
+              })
             )
           }
           idleTicks = newOnes.length ? 0 : idleTicks + 1
@@ -500,7 +540,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       }
       pollTimers.current.push(window.setTimeout(tick, 2500))
     },
-    [sessionId, tenantId],
+    [sessionId, tenantId]
   )
 
   // Load the selected page's frames as reference thumbnails; reset the pick when the page changes.
@@ -512,10 +552,18 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     setFramesLoading(true)
     figmaDnaApi
       .listPageFrames(sessionId, tenantId, dna.file_key, selectedPage)
-      .then(r => { if (!cancelled) setPageFrames(r.frames || []) })
-      .catch(() => { if (!cancelled) setPageFrames([]) })
-      .finally(() => { if (!cancelled) setFramesLoading(false) })
-    return () => { cancelled = true }
+      .then((r) => {
+        if (!cancelled) setPageFrames(r.frames || [])
+      })
+      .catch(() => {
+        if (!cancelled) setPageFrames([])
+      })
+      .finally(() => {
+        if (!cancelled) setFramesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [dna?.file_key, selectedPage, sessionId, tenantId])
 
   const buildHint = (): string => {
@@ -562,9 +610,13 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     const wasEdit = !!editTarget // editing a pinned image → advance the pin to the result
     const userMsg: ChatMsg = { id: nextId(), role: 'user', content: text }
     const asstId = nextId()
-    const history = messages.map(m => ({ role: m.role, content: m.content }))
+    const history = messages.map((m) => ({ role: m.role, content: m.content }))
 
-    setMessages(prev => [...prev, userMsg, { id: asstId, role: 'assistant', content: '', streaming: true }])
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      { id: asstId, role: 'assistant', content: '', streaming: true },
+    ])
     setInput('')
     setIsStreaming(true)
     shouldAutoScrollRef.current = true // follow the fresh reply
@@ -579,14 +631,16 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       if (remaining > 0) {
         displayIndexRef.current += Math.min(CHARS_PER_TICK, remaining)
         const shown = receivedRef.current.slice(0, displayIndexRef.current)
-        setMessages(prev => prev.map(m => (m.id === asstId ? { ...m, content: shown } : m)))
+        setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, content: shown } : m)))
         scrollToBottomIfFollowing()
       } else if (streamDoneRef.current) {
         // Caught up and the stream is done — finalize this message and stop the drip.
         if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
         revealIntervalRef.current = null
-        setMessages(prev =>
-          prev.map(m => (m.id === asstId ? { ...m, content: receivedRef.current, streaming: false } : m)),
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === asstId ? { ...m, content: receivedRef.current, streaming: false } : m
+          )
         )
       }
     }, REVEAL_INTERVAL_MS)
@@ -602,11 +656,11 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           selected_platforms: ['figma'],
           conversation_history: history,
         },
-        chunk => {
+        (chunk) => {
           // Accumulate only — the interval reveals it. No per-chunk setState (that was the choppiness).
           if (chunk.error) receivedRef.current += `\n\n⚠️ ${chunk.error}`
           if (chunk.text) receivedRef.current += chunk.text
-        },
+        }
       )
     } catch (e) {
       receivedRef.current += `\n\n⚠️ ${e instanceof Error ? e.message : 'Something went wrong'}`
@@ -630,7 +684,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
   // next message edits/generates off it (routes to the faithful edit model).
   const uploadFile = async (f: File) => {
     if (!f.type.startsWith('image/')) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         { id: nextId(), role: 'assistant', content: '⚠️ Please upload an image file.' },
       ])
@@ -642,7 +696,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       knownAssetIds.current.add(asset_id) // don't let polling re-attach the upload as a "result"
       setEditTarget({ assetId: asset_id, url: cdn_url })
     } catch (err) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           id: nextId(),
@@ -678,20 +732,20 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
         headline: placeHeadline.trim() || undefined,
         text_color: placeColor,
       })
-      assets.forEach(a => knownAssetIds.current.add(a.asset_id))
-      setMessages(prev => [
+      assets.forEach((a) => knownAssetIds.current.add(a.asset_id))
+      setMessages((prev) => [
         ...prev,
         {
           id: nextId(),
           role: 'assistant',
-          content: `Placement set — ${assets.map(a => a.ratio).join(', ')}${
+          content: `Placement set — ${assets.map((a) => a.ratio).join(', ')}${
             placeHeadline.trim() ? ' (headline composited per size)' : ''
           }.`,
           assets,
         },
       ])
     } catch (err) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           id: nextId(),
@@ -704,7 +758,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
     }
   }
   const toggleSize = (s: string) =>
-    setPlaceSizes(prev => (prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]))
+    setPlaceSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
 
   return (
     <div className="grid grid-cols-12 gap-4 h-[calc(100vh-180px)]">
@@ -716,8 +770,8 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
         <div className="flex gap-2">
           <input
             value={fileInput}
-            onChange={e => setFileInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && linkBrandSource()}
+            onChange={(e) => setFileInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && linkBrandSource()}
             placeholder="Paste a Figma file link…"
             className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-white placeholder-slate-500"
           />
@@ -729,61 +783,79 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
             {dnaLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Link'}
           </button>
         </div>
-        {dnaError && <p className="text-[11px] text-red-400 mt-2">{dnaError}</p>}
+        {dnaError && <p className="text-[0.6875rem] text-red-400 mt-2">{dnaError}</p>}
 
         {dna && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-300 truncate" title={dna.file_name}>{dna.file_name}</span>
-              <button onClick={refreshDna} className="text-slate-500 hover:text-white" title="Re-sync">
+              <span className="text-xs text-slate-300 truncate" title={dna.file_name}>
+                {dna.file_name}
+              </span>
+              <button
+                onClick={refreshDna}
+                className="text-slate-500 hover:text-white"
+                title="Re-sync"
+              >
                 <RefreshCw className={`w-3.5 h-3.5 ${dnaLoading ? 'animate-spin' : ''}`} />
               </button>
             </div>
             {dna.palette_source && dna.palette_source !== 'named_styles' && (
-              <p className="text-[10px] text-amber-400/90">
+              <p className="text-[0.625rem] text-amber-400/90">
                 Palette inferred from usage — confirm before relying on exact values.
               </p>
             )}
             {dna.pages?.length > 0 && (
               <div>
-                <p className="text-[11px] text-slate-500 mb-1">Base on page (look + voice)</p>
+                <p className="text-[0.6875rem] text-slate-500 mb-1">Base on page (look + voice)</p>
                 <select
                   value={selectedPage}
-                  onChange={e => setSelectedPage(e.target.value)}
+                  onChange={(e) => setSelectedPage(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white"
                 >
                   <option value="">All pages</option>
-                  {dna.pages.map(p => (
-                    <option key={p.page} value={p.page}>{p.page} ({p.frame_count})</option>
+                  {dna.pages.map((p) => (
+                    <option key={p.page} value={p.page}>
+                      {p.page} ({p.frame_count})
+                    </option>
                   ))}
                 </select>
 
                 {/* Reference-frame picker — choose the exact frame to style from, or palette-only */}
                 {selectedPage && (
                   <div className="mt-2">
-                    <p className="text-[11px] text-slate-500 mb-1">
+                    <p className="text-[0.6875rem] text-slate-500 mb-1">
                       Reference frame{framesLoading ? ' · loading…' : ''}
                     </p>
                     <button
-                      onClick={() => setSelectedRefNode(selectedRefNode === 'palette' ? null : 'palette')}
+                      onClick={() =>
+                        setSelectedRefNode(selectedRefNode === 'palette' ? null : 'palette')
+                      }
                       title="Generate from palette & voice only — no visual reference frame"
-                      className={`text-[10px] px-2 py-1 rounded border mb-1.5 ${selectedRefNode === 'palette' ? 'border-purple-400 bg-purple-500/20 text-white' : 'border-slate-700 text-slate-300 hover:border-slate-600'}`}
+                      className={`text-[0.625rem] px-2 py-1 rounded border mb-1.5 ${selectedRefNode === 'palette' ? 'border-purple-400 bg-purple-500/20 text-white' : 'border-slate-700 text-slate-300 hover:border-slate-600'}`}
                     >
                       Palette only
                     </button>
                     <div className="flex flex-wrap gap-1.5">
-                      {pageFrames.filter(f => f.thumbnail_url).map(f => (
-                        <button
-                          key={f.node_id}
-                          onClick={() => setSelectedRefNode(selectedRefNode === f.node_id ? null : f.node_id)}
-                          title={f.name}
-                          className={`w-14 h-14 rounded overflow-hidden border-2 ${selectedRefNode === f.node_id ? 'border-purple-400' : 'border-transparent hover:border-slate-600'}`}
-                        >
-                          <img src={f.thumbnail_url!} alt={f.name} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
+                      {pageFrames
+                        .filter((f) => f.thumbnail_url)
+                        .map((f) => (
+                          <button
+                            key={f.node_id}
+                            onClick={() =>
+                              setSelectedRefNode(selectedRefNode === f.node_id ? null : f.node_id)
+                            }
+                            title={f.name}
+                            className={`w-14 h-14 rounded overflow-hidden border-2 ${selectedRefNode === f.node_id ? 'border-purple-400' : 'border-transparent hover:border-slate-600'}`}
+                          >
+                            <img
+                              src={f.thumbnail_url!}
+                              alt={f.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
                     </div>
-                    <p className="text-[10px] text-slate-600 mt-1">
+                    <p className="text-[0.625rem] text-slate-600 mt-1">
                       {selectedRefNode === 'palette'
                         ? 'No visual reference — palette & voice only.'
                         : selectedRefNode
@@ -816,21 +888,23 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
               >
                 <X className="w-3.5 h-3.5" />
               </button>
-              <p className="text-[10px] text-purple-300 mt-1">
+              <p className="text-[0.625rem] text-purple-300 mt-1">
                 Used as the edit / reference source for your next message.
               </p>
             </div>
           ) : (
             <div
               onClick={() => uploadInputRef.current?.click()}
-              onDragOver={e => {
+              onDragOver={(e) => {
                 e.preventDefault()
                 setDragOver(true)
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={onDropImage}
               className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${
-                dragOver ? 'border-purple-400 bg-purple-500/10' : 'border-slate-700 hover:border-slate-600'
+                dragOver
+                  ? 'border-purple-400 bg-purple-500/10'
+                  : 'border-slate-700 hover:border-slate-600'
               }`}
             >
               {uploading ? (
@@ -839,7 +913,9 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
                 <>
                   <UploadCloud className="w-6 h-6 mx-auto text-slate-500 mb-1" />
                   <p className="text-xs text-slate-400">Drop an image or click to upload</p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">edit or generate from your own picture</p>
+                  <p className="text-[0.625rem] text-slate-600 mt-0.5">
+                    edit or generate from your own picture
+                  </p>
                 </>
               )}
             </div>
@@ -858,16 +934,16 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           <p className="text-sm font-semibold text-white flex items-center gap-2 mb-1">
             <Layers className="w-4 h-4 text-purple-400" /> Placement set
           </p>
-          <p className="text-[10px] text-slate-500 mb-2">
+          <p className="text-[0.625rem] text-slate-500 mb-2">
             Resize the {editTarget ? 'pinned' : 'latest'} image into multiple sizes — any headline
             is composited per size (never cropped).
           </p>
           <div className="flex flex-wrap gap-1 mb-2">
-            {['1:1', '4:5', '3:4', '9:16', '16:9', '1.91:1'].map(s => (
+            {['1:1', '4:5', '3:4', '9:16', '16:9', '1.91:1'].map((s) => (
               <button
                 key={s}
                 onClick={() => toggleSize(s)}
-                className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                className={`px-1.5 py-0.5 rounded text-[0.625rem] border ${
                   placeSizes.includes(s)
                     ? 'bg-purple-500/20 border-purple-500/40 text-purple-200'
                     : 'border-slate-700 text-slate-400 hover:text-slate-200'
@@ -879,18 +955,18 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           </div>
           <input
             value={placeHeadline}
-            onChange={e => setPlaceHeadline(e.target.value)}
+            onChange={(e) => setPlaceHeadline(e.target.value)}
             placeholder="optional headline (composited on each size)"
-            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-white placeholder-slate-500 mb-2"
+            className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[0.6875rem] text-white placeholder-slate-500 mb-2"
           />
           {placeHeadline.trim() && (
             <select
               value={placeColor}
-              onChange={e => setPlaceColor(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] text-white mb-2"
+              onChange={(e) => setPlaceColor(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[0.6875rem] text-white mb-2"
             >
               <option value="#FFFFFF">White text</option>
-              {(dna?.brand_palette || []).map(c => (
+              {(dna?.brand_palette || []).map((c) => (
                 <option key={c.hex} value={c.hex}>
                   {c.name || c.hex} text
                 </option>
@@ -902,7 +978,11 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
             disabled={makingSet || placeSizes.length === 0}
             className="w-full py-1.5 rounded bg-purple-600/40 hover:bg-purple-600/60 disabled:opacity-40 text-xs text-white flex items-center justify-center gap-1"
           >
-            {makingSet ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `Generate set (${placeSizes.length})`}
+            {makingSet ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              `Generate set (${placeSizes.length})`
+            )}
           </button>
         </div>
       </div>
@@ -911,10 +991,12 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       <div className="col-span-6 flex flex-col bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden">
         {/* Conversation header: current title + switchable history + new chat */}
         <div className="relative flex items-center justify-between px-3 py-2 border-b border-slate-800">
-          <span className="text-xs text-slate-400 truncate max-w-[50%]">{deriveTitle(messages)}</span>
+          <span className="text-xs text-slate-400 truncate max-w-[50%]">
+            {deriveTitle(messages)}
+          </span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setHistoryOpen(o => !o)}
+              onClick={() => setHistoryOpen((o) => !o)}
               className="text-xs text-slate-400 hover:text-white flex items-center gap-1"
             >
               <History className="w-3.5 h-3.5" /> History ({history.length})
@@ -931,7 +1013,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
               {history.length === 0 && (
                 <div className="px-3 py-2 text-xs text-slate-500">No saved conversations yet</div>
               )}
-              {history.map(c => (
+              {history.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => switchConversation(c.id)}
@@ -941,12 +1023,12 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
                 >
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-slate-200 truncate">{c.title}</div>
-                    <div className="text-[10px] text-slate-500">{relTime(c.savedAt)}</div>
+                    <div className="text-[0.625rem] text-slate-500">{relTime(c.savedAt)}</div>
                   </div>
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={e => deleteConversation(c.id, e)}
+                    onClick={(e) => deleteConversation(c.id, e)}
                     className="text-slate-500 hover:text-red-400 shrink-0"
                     title="Delete"
                   >
@@ -967,19 +1049,29 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
             <div className="h-full flex flex-col items-center justify-center text-center text-slate-500">
               <ImageIcon className="w-10 h-10 mb-3 opacity-40" />
               <p className="text-sm">Link a Figma file, then ask Mia to create on-brand images.</p>
-              <p className="text-xs mt-1">e.g. “3 Instagram posts for the apricot launch, for runners”</p>
+              <p className="text-xs mt-1">
+                e.g. “3 Instagram posts for the apricot launch, for runners”
+              </p>
             </div>
           )}
-          {messages.map(m => (
+          {messages.map((m) => (
             <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
-              <div className={m.role === 'user' ? 'max-w-[85%] bg-purple-600/30 border border-purple-500/30 rounded-xl px-3 py-2' : 'max-w-full'}>
+              <div
+                className={
+                  m.role === 'user'
+                    ? 'max-w-[85%] bg-purple-600/30 border border-purple-500/30 rounded-xl px-3 py-2'
+                    : 'max-w-full'
+                }
+              >
                 <p className="text-sm text-slate-100 whitespace-pre-wrap">
                   {m.content}
-                  {m.streaming && <span className="inline-block w-2 h-4 ml-0.5 bg-purple-400 animate-pulse align-middle" />}
+                  {m.streaming && (
+                    <span className="inline-block w-2 h-4 ml-0.5 bg-purple-400 animate-pulse align-middle" />
+                  )}
                 </p>
                 {m.assets && m.assets.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-3">
-                    {m.assets.map(a => (
+                    {m.assets.map((a) => (
                       <AssetCard
                         key={a.asset_id}
                         asset={a}
@@ -987,9 +1079,11 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
                         sessionId={sessionId}
                         onZoom={setZoom}
                         isEditTarget={editTarget?.assetId === a.asset_id}
-                        onPickTarget={pa =>
-                          setEditTarget(prev =>
-                            prev?.assetId === pa.asset_id ? null : { assetId: pa.asset_id, url: pa.cdn_url },
+                        onPickTarget={(pa) =>
+                          setEditTarget((prev) =>
+                            prev?.assetId === pa.asset_id
+                              ? null
+                              : { assetId: pa.asset_id, url: pa.cdn_url }
                           )
                         }
                       />
@@ -1009,7 +1103,9 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           {editTarget && (
             <div className="flex items-center gap-2 mb-2 px-2 py-1 rounded bg-purple-500/15 border border-purple-500/30">
               <img src={editTarget.url} alt="" className="w-7 h-7 rounded object-cover" />
-              <span className="text-xs text-purple-200">Editing this image — your next message edits it</span>
+              <span className="text-xs text-purple-200">
+                Editing this image — your next message edits it
+              </span>
               <button
                 onClick={() => setEditTarget(null)}
                 className="ml-auto text-slate-400 hover:text-white"
@@ -1025,17 +1121,21 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
               <span>variants</span>
               <select
                 value={numVariants}
-                onChange={e => setNumVariants(Number(e.target.value))}
+                onChange={(e) => setNumVariants(Number(e.target.value))}
                 className="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white"
               >
-                {[1, 2, 3, 4, 6].map(n => <option key={n} value={n}>{n}</option>)}
+                {[1, 2, 3, 4, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <span>size</span>
               <select
                 value={aspectRatio}
-                onChange={e => setAspectRatio(e.target.value)}
+                onChange={(e) => setAspectRatio(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white"
                 title="Output aspect ratio"
               >
@@ -1051,7 +1151,7 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
           <div className="flex items-end gap-2">
             <textarea
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               rows={2}
               placeholder="Message Mia…"
@@ -1062,7 +1162,11 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
               disabled={isStreaming || !input.trim()}
               className="p-2.5 bg-gradient-to-r from-purple-500 to-pink-500 disabled:opacity-40 rounded-lg text-white"
             >
-              {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {isStreaming ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
@@ -1073,42 +1177,58 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
         <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
           <Palette className="w-4 h-4 text-pink-400" /> Brand DNA
         </h3>
-        {!dna && <p className="text-xs text-slate-500">Link a Figma file to see its exact palette and type.</p>}
+        {!dna && (
+          <p className="text-xs text-slate-500">
+            Link a Figma file to see its exact palette and type.
+          </p>
+        )}
         {dna && (
           <div className="space-y-4">
             <div>
-              <p className="text-[11px] text-slate-500 mb-1.5">Palette</p>
+              <p className="text-[0.6875rem] text-slate-500 mb-1.5">Palette</p>
               <div className="space-y-1">
-                {dna.brand_palette?.map(c => (
+                {dna.brand_palette?.map((c) => (
                   <div key={c.hex} className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded border border-slate-600" style={{ backgroundColor: c.hex }} />
-                    <span className="text-[11px] text-slate-300">{c.name || ''}</span>
-                    <span className="text-[11px] text-slate-500 ml-auto font-mono">{c.hex}</span>
+                    <span
+                      className="w-5 h-5 rounded border border-slate-600"
+                      style={{ backgroundColor: c.hex }}
+                    />
+                    <span className="text-[0.6875rem] text-slate-300">{c.name || ''}</span>
+                    <span className="text-[0.6875rem] text-slate-500 ml-auto font-mono">
+                      {c.hex}
+                    </span>
                   </div>
                 ))}
                 {(!dna.brand_palette || dna.brand_palette.length === 0) && (
-                  <p className="text-[11px] text-slate-500">No named colours found.</p>
+                  <p className="text-[0.6875rem] text-slate-500">No named colours found.</p>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-[11px] text-slate-500 mb-1.5 flex items-center gap-1"><Type className="w-3 h-3" /> Type</p>
+              <p className="text-[0.6875rem] text-slate-500 mb-1.5 flex items-center gap-1">
+                <Type className="w-3 h-3" /> Type
+              </p>
               <div className="space-y-0.5">
                 {(dna.named_text_styles || []).slice(0, 6).map((t, i) => (
-                  <div key={i} className="text-[11px] text-slate-300">
-                    {t.fontFamily}{t.fontSize ? ` · ${t.fontSize}px` : ''}
+                  <div key={i} className="text-[0.6875rem] text-slate-300">
+                    {t.fontFamily}
+                    {t.fontSize ? ` · ${t.fontSize}px` : ''}
                   </div>
                 ))}
                 {(!dna.named_text_styles || dna.named_text_styles.length === 0) &&
                   (dna.fonts_by_frequency || []).slice(0, 4).map((f, i) => (
-                    <div key={i} className="text-[11px] text-slate-300">{f.fontFamily}</div>
+                    <div key={i} className="text-[0.6875rem] text-slate-300">
+                      {f.fontFamily}
+                    </div>
                   ))}
               </div>
             </div>
             {dna.brand_pages && dna.brand_pages.length > 0 && (
               <div>
-                <p className="text-[11px] text-slate-500 mb-1 flex items-center gap-1"><Layers className="w-3 h-3" /> Brand pages</p>
-                <p className="text-[11px] text-slate-300">{dna.brand_pages.join(', ')}</p>
+                <p className="text-[0.6875rem] text-slate-500 mb-1 flex items-center gap-1">
+                  <Layers className="w-3 h-3" /> Brand pages
+                </p>
+                <p className="text-[0.6875rem] text-slate-300">{dna.brand_pages.join(', ')}</p>
               </div>
             )}
           </div>
@@ -1116,8 +1236,13 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
       </div>
 
       {zoom && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8" onClick={() => setZoom(null)}>
-          <button className="absolute top-4 right-4 text-white" onClick={() => setZoom(null)}><X className="w-6 h-6" /></button>
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-8"
+          onClick={() => setZoom(null)}
+        >
+          <button className="absolute top-4 right-4 text-white" onClick={() => setZoom(null)}>
+            <X className="w-6 h-6" />
+          </button>
           <img src={zoom} alt="" className="max-h-full max-w-full object-contain rounded-lg" />
         </div>
       )}
@@ -1125,19 +1250,25 @@ export default function ImagineChat({ tenantId, sessionId, variantSeed, onClearV
   )
 }
 
-function DestinationToggle({ value, onChange }: { value: Destination; onChange: (v: Destination) => void }) {
+function DestinationToggle({
+  value,
+  onChange,
+}: {
+  value: Destination
+  onChange: (v: Destination) => void
+}) {
   return (
     <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-0.5">
       <button
         onClick={() => onChange('designer_hero')}
-        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] ${value === 'designer_hero' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-[0.6875rem] ${value === 'designer_hero' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
         title="Best-of-N: Mia picks the strongest"
       >
         <Sparkles className="w-3 h-3" /> Hero
       </button>
       <button
         onClick={() => onChange('meta_feed')}
-        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] ${value === 'meta_feed' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-[0.6875rem] ${value === 'meta_feed' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
         title="Keep the diverse set as a Meta creative pool"
       >
         <Target className="w-3 h-3" /> Meta feed
@@ -1149,7 +1280,8 @@ function DestinationToggle({ value, onChange }: { value: Destination; onChange: 
 function PendingHint() {
   return (
     <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-      <Loader2 className="w-3.5 h-3.5 animate-spin" /> If Mia is generating, images will appear here shortly…
+      <Loader2 className="w-3.5 h-3.5 animate-spin" /> If Mia is generating, images will appear here
+      shortly…
     </div>
   )
 }

@@ -12,7 +12,7 @@ import LibraryTab from './library-tab'
 type Tab = 'create' | 'imagine' | 'library'
 
 const TABS: { id: Tab; label: string; icon: typeof Video }[] = [
-  { id: 'create',  label: 'Create',  icon: Video },
+  { id: 'create', label: 'Create', icon: Video },
   { id: 'imagine', label: 'Imagine', icon: Image },
   { id: 'library', label: 'Library', icon: BookOpen },
 ]
@@ -38,7 +38,7 @@ export function CreativeStudioView() {
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
-    setMountedTabs(prev => new Set([...prev, tab]))
+    setMountedTabs((prev) => new Set([...prev, tab]))
     trackEvent(sessionId, 'creative_studio_tab', 'creative_studio', { tab })
   }
 
@@ -62,7 +62,7 @@ export function CreativeStudioView() {
       {/* Floating tab switcher (page title lives in the breadcrumb header above) */}
       <div className="relative z-40 px-4 pt-4">
         <div className="inline-flex items-center gap-1 bg-slate-900/80 rounded-xl p-1">
-          {TABS.map(tab => {
+          {TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
             return (
@@ -85,7 +85,7 @@ export function CreativeStudioView() {
 
       {/* Content */}
       <div className="flex-1 pt-4 pb-6">
-        <div className="w-full max-w-[1600px] mx-auto px-6">
+        <div className="w-full max-w-[100rem] mx-auto px-6">
           <div className={activeTab !== 'create' ? 'hidden' : ''}>
             <CreateTab tenantId={tenantId} sessionId={sid} />
           </div>
@@ -95,7 +95,9 @@ export function CreativeStudioView() {
                 <button
                   onClick={() => setImagineMode('chat')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    imagineMode === 'chat' ? 'bg-purple-500/30 text-white' : 'text-slate-400 hover:text-white'
+                    imagineMode === 'chat'
+                      ? 'bg-purple-500/30 text-white'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Chat with Mia
@@ -103,7 +105,9 @@ export function CreativeStudioView() {
                 <button
                   onClick={() => setImagineMode('classic')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    imagineMode === 'classic' ? 'bg-purple-500/30 text-white' : 'text-slate-400 hover:text-white'
+                    imagineMode === 'classic'
+                      ? 'bg-purple-500/30 text-white'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Classic

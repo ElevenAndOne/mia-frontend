@@ -8,6 +8,14 @@ import { Pencil01 } from '../../../components/icon/pencil-01'
 import { ReverseLeft } from '../../../components/icon/reverse-left'
 import { Type01 } from '../../../components/icon/type-01'
 import { XClose } from '../../../components/icon/x-close'
+import { Edit03 } from '../../../components/icon/edit-03'
+import { ImagePlus } from '../../../components/icon/image-plus'
+import { Lightbulb02 } from '../../../components/icon/lightbulb-02'
+import { SwitchHorizontal01 } from '../../../components/icon/switch-horizontal-01'
+import { useExperience } from '../../workspace/hooks/use-experience'
+import { CropAdjuster } from './crop-adjuster'
+import { cropImageFile, cropTargetFor, readImageRatio } from './crop-utils'
+import { useToast } from '../../../contexts/toast-context'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { useTextSelection } from '../../../hooks/use-text-selection'
 import { useSession } from '../../../contexts/session-context'
@@ -65,6 +73,10 @@ interface CanvasPaneProps {
   /** Dropped image's format doesn't fit this post — ask Mia for a matching post. */
   onDraftSeparatePost?: (asset: { asset_id?: string; cdn_url: string }) => void
   isUploadingMedia?: boolean
+  /** Basic "Swap photo": one file from the PC replaces the current photo (or becomes it). */
+  onSwapMedia?: (file: File, oldUrl?: string | null) => void
+  /** Basic "Try another idea": ask Mia for a different post in the same voice. */
+  onTryAnotherIdea?: () => void
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -101,7 +113,11 @@ export const CanvasPane = ({
   onReplaceMediaUrl,
   onDraftSeparatePost,
   isUploadingMedia = false,
+  onSwapMedia,
+  onTryAnotherIdea,
 }: CanvasPaneProps) => {
+  const { isBasic } = useExperience()
+  const swapInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('view')
   const [showVersions, setShowVersions] = useState(false)
   // Mobile-only "⋯" menu holding the actions that don't fit a phone-width header.
@@ -110,6 +126,58 @@ export const CanvasPane = ({
   /** Platform preview ↔ raw text, for docs that parse into a CreativeSpec. */
   const [rawView, setRawView] = useState(false)
   const spec = useMemo(() => parseCreativeSpec(doc), [doc])
+  const { showToast } = useToast()
+  // Swap/Upload photo: a picked file whose shape doesn't fit the post's frame waits here
+  // until the user crops it (or, on Facebook, chooses to keep it as is).
+  const [pendingSwap, setPendingSwap] = useState<{
+    file: File
+    url: string
+    imgRatio: number
+    targetRatio: number
+    oldUrl: string | null
+  } | null>(null)
+
+  const handleSwapPick = async (file: File, oldUrl: string | null) => {
+    if (!onSwapMedia) return
+    try {
+      const { ratio, url } = await readImageRatio(file)
+      const target = cropTargetFor(ratio, spec?.format)
+      if (target === null) {
+        URL.revokeObjectURL(url)
+        onSwapMedia(file, oldUrl)
+        return
+      }
+      setPendingSwap({ file, url, imgRatio: ratio, targetRatio: target, oldUrl })
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Could not read that photo')
+    }
+  }
+
+  const finishSwap = async (cropped: File | null) => {
+    if (!pendingSwap || !onSwapMedia) return
+    const { file, url, oldUrl } = pendingSwap
+    setPendingSwap(null)
+    URL.revokeObjectURL(url)
+    onSwapMedia(cropped ?? file, oldUrl)
+  }
+
+  const swapFrameLabel = (() => {
+    if (!pendingSwap) return { title: '', hint: '' }
+    const platform = spec?.platform === 'instagram' ? 'Instagram' : 'Facebook'
+    const isStory = spec?.format === 'reel' || spec?.format === 'story'
+    const shape = isStory
+      ? 'a tall 9:16 frame'
+      : pendingSwap.imgRatio < 1
+        ? 'a 4:5 frame'
+        : 'a wide 1.91:1 frame'
+    return {
+      title: isStory ? 'Fit the photo to your story' : 'Fit the photo to your post',
+      hint:
+        platform === 'Instagram' || isStory
+          ? `${platform} shows this post in ${shape}. Drag the photo to choose what stays in view.`
+          : `Facebook shows tall or very wide photos cropped to ${shape} in the feed. Drag to choose what stays, or keep the whole photo.`,
+    }
+  })()
 
   // "From Canva" media source — shown only when the workspace has Canva
   // connected (one status check per workspace, not per document).
@@ -271,7 +339,7 @@ export const CanvasPane = ({
                     flushPendingEdit()
                     onSelect(d.id)
                   }}
-                  className={`shrink-0 max-w-[160px] truncate rounded-lg px-2.5 py-1 paragraph-sm transition-colors ${
+                  className={`shrink-0 max-w-[10rem] truncate rounded-lg px-2.5 py-1 paragraph-sm transition-colors ${
                     active
                       ? 'bg-tertiary text-primary font-medium'
                       : 'text-quaternary hover:text-secondary hover:bg-tertiary/60'
@@ -317,7 +385,7 @@ export const CanvasPane = ({
               </button>
             )}
             <SchedulePost doc={doc} spec={spec} conversationId={conversationId} />
-            <AddToCampaign doc={doc} spec={spec} conversationId={conversationId} />
+            {!isBasic && <AddToCampaign doc={doc} spec={spec} conversationId={conversationId} />}
             <button
               type="button"
               onClick={() => copy(doc.content)}
@@ -490,28 +558,96 @@ export const CanvasPane = ({
             ref={bodyRef}
             onMouseUp={handleMouseUp}
             onClick={pickMode ? pickFromEvent : undefined}
-            className="max-w-[640px] mx-auto select-text"
+            className="max-w-[40rem] mx-auto select-text"
           >
             {spec && !rawView ? (
-              <CreativePreview
-                spec={spec}
-                brandName={brandName}
-                onUploadMedia={onUploadMedia}
-                onRemoveMedia={onRemoveMedia}
-                isUploadingMedia={isUploadingMedia}
-                onAddMediaUrl={onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined}
-                onReplaceMediaUrl={onReplaceMediaUrl}
-                onDraftSeparatePost={onDraftSeparatePost}
-                onOpenCanvaPicker={
-                  canvaConnected && onAppendMediaUrls ? () => setShowCanvaPicker(true) : undefined
-                }
-              />
+              <>
+                <CreativePreview
+                  spec={spec}
+                  brandName={brandName}
+                  onUploadMedia={
+                    isBasic && onSwapMedia && onUploadMedia
+                      ? (files) =>
+                          files.length === 1
+                            ? void handleSwapPick(files[0], null)
+                            : onUploadMedia(files)
+                      : onUploadMedia
+                  }
+                  onRemoveMedia={onRemoveMedia}
+                  isUploadingMedia={isUploadingMedia}
+                  onAddMediaUrl={onAppendMediaUrls ? (url) => onAppendMediaUrls([url]) : undefined}
+                  onReplaceMediaUrl={onReplaceMediaUrl}
+                  onDraftSeparatePost={onDraftSeparatePost}
+                  emptyMediaHint={
+                    isBasic ? 'No photo yet — use Upload photo below, or drop one here.' : undefined
+                  }
+                  hideCharChips={isBasic}
+                  onOpenCanvaPicker={
+                    canvaConnected && onAppendMediaUrls ? () => setShowCanvaPicker(true) : undefined
+                  }
+                />
+                {/* Basic: the three things an owner does with a drafted post (Figma "post actions"). */}
+                {isBasic && doc.doc_type === 'social_post' && (
+                  <div className="mt-4 flex flex-wrap gap-2 mia-rise">
+                    <button
+                      type="button"
+                      onClick={() => setMode('edit')}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                    >
+                      <Edit03 size={15} />
+                      Edit caption
+                    </button>
+                    {onSwapMedia && (
+                      <>
+                        <input
+                          ref={swapInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0]
+                            if (f) void handleSwapPick(f, spec.media[0] ?? null)
+                            e.target.value = ''
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={isUploadingMedia}
+                          onClick={() => swapInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
+                        >
+                          {spec.media.length > 0 ? (
+                            <SwitchHorizontal01 size={15} />
+                          ) : (
+                            <ImagePlus size={15} />
+                          )}
+                          {isUploadingMedia
+                            ? 'Uploading…'
+                            : spec.media.length > 0
+                              ? 'Swap photo'
+                              : 'Upload photo'}
+                        </button>
+                      </>
+                    )}
+                    {onTryAnotherIdea && (
+                      <button
+                        type="button"
+                        onClick={onTryAnotherIdea}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                      >
+                        <Lightbulb02 size={15} />
+                        Try another idea
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             ) : (
               <ChatMarkdown content={doc.content} />
             )}
           </div>
         ) : WYSIWYG_TYPES.has(doc.doc_type) ? (
-          <div className="max-w-[640px] mx-auto">
+          <div className="max-w-[40rem] mx-auto">
             <Suspense fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}>
               {/* Keyed by doc ONLY — self-saves bump version and must NOT remount;
                   external changes sync inside RichEditor. */}
@@ -532,7 +668,7 @@ export const CanvasPane = ({
               pendingEditRef.current = e.target.value
             }}
             spellCheck
-            className="w-full max-w-[640px] mx-auto block h-full min-h-[60vh] resize-none bg-transparent paragraph-md text-primary outline-none font-mono"
+            className="w-full max-w-[40rem] mx-auto block h-full min-h-[60vh] resize-none bg-transparent paragraph-md text-primary outline-none font-mono"
           />
         )}
       </div>
@@ -593,6 +729,32 @@ export const CanvasPane = ({
       )}
 
       {/* "From Canva" design browser — imported pages land as Media: lines */}
+      {pendingSwap && (
+        <CropAdjuster
+          url={pendingSwap.url}
+          imgRatio={pendingSwap.imgRatio}
+          targetRatio={pendingSwap.targetRatio}
+          title={swapFrameLabel.title}
+          hint={swapFrameLabel.hint}
+          onSave={(box) => {
+            void cropImageFile(pendingSwap.file, box)
+              .then((f) => finishSwap(f))
+              .catch((e: unknown) => {
+                showToast('error', e instanceof Error ? e.message : 'Could not crop the photo')
+                setPendingSwap(null)
+              })
+          }}
+          onUseAsIs={
+            spec?.platform === 'facebook' && spec?.format !== 'reel' && spec?.format !== 'story'
+              ? () => void finishSwap(null)
+              : undefined
+          }
+          onClose={() => {
+            URL.revokeObjectURL(pendingSwap.url)
+            setPendingSwap(null)
+          }}
+        />
+      )}
       {showCanvaPicker && onAppendMediaUrls && (
         <CanvaPicker
           onClose={() => setShowCanvaPicker(false)}

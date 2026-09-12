@@ -74,7 +74,7 @@ const QC_COLOUR = 'var(--brand-600, #6366f1)'
 // palette (phase blue vs public-holiday blue) and made the grid unreadable.
 const WORK_COLOUR = '#7c6cf0'
 const DAY_PX = 30
-const LABEL_W = 'w-[150px]'
+const LABEL_W = 'w-[9.375rem]'
 const TAIL_W = 'w-14'
 
 /** Short, still-readable channel names — 'OS' would be jargon to a new PM. */
@@ -184,8 +184,8 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
               key={i}
               className={`text-center leading-tight ${we ? 'text-tertiary/35' : 'text-tertiary'}`}
             >
-              <span className="block text-[9px]">{'MTWTFSS'[(d.getDay() + 6) % 7]}</span>
-              <span className="block text-[10px] tabular-nums">{d.getDate()}</span>
+              <span className="block text-[0.5625rem]">{'MTWTFSS'[(d.getDay() + 6) % 7]}</span>
+              <span className="block text-[0.625rem] tabular-nums">{d.getDate()}</span>
             </span>
           )
         })}
@@ -202,13 +202,31 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
         <h3 className="text-md font-semibold text-primary">Delivery plan</h3>
         <span className="text-xs text-tertiary font-mono">
           {flights.length} flight{flights.length === 1 ? '' : 's'} ·{' '}
-          {Object.values(workByPerson).flat().filter((w) => w.kind === 'prep').length} build
-          {Object.values(workByPerson).flat().filter((w) => w.kind === 'prep').length === 1
+          {
+            Object.values(workByPerson)
+              .flat()
+              .filter((w) => w.kind === 'prep').length
+          }{' '}
+          build
+          {Object.values(workByPerson)
+            .flat()
+            .filter((w) => w.kind === 'prep').length === 1
             ? ''
             : 's'}{' '}
-          · {Object.values(workByPerson).flat().filter((w) => w.kind === 'qc').length} sign-off
-          {Object.values(workByPerson).flat().filter((w) => w.kind === 'qc').length === 1 ? '' : 's'}{' '}
-          · {fmtDate(windowStart.toISOString())} – {fmtDate(new Date(windowStart.getTime() + (span - 1) * 86_400_000).toISOString())}
+          ·{' '}
+          {
+            Object.values(workByPerson)
+              .flat()
+              .filter((w) => w.kind === 'qc').length
+          }{' '}
+          sign-off
+          {Object.values(workByPerson)
+            .flat()
+            .filter((w) => w.kind === 'qc').length === 1
+            ? ''
+            : 's'}{' '}
+          · {fmtDate(windowStart.toISOString())} –{' '}
+          {fmtDate(new Date(windowStart.getTime() + (span - 1) * 86_400_000).toISOString())}
         </span>
       </div>
 
@@ -240,7 +258,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
             <div>
               <div className="flex mb-1.5">
                 <div className={`${LABEL_W} shrink-0`} />
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-secondary">
                   Who&rsquo;s doing it
                 </span>
               </div>
@@ -273,7 +291,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                       <span className="block text-xs font-medium text-primary truncate">
                         {person.name}
                       </span>
-                      <span className="block text-[9px] uppercase tracking-wide text-tertiary truncate">
+                      <span className="block text-[0.5625rem] uppercase tracking-wide text-tertiary truncate">
                         {person.role ?? ''}
                       </span>
                     </div>
@@ -297,7 +315,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                           return (
                             <span
                               key={i}
-                              className={`h-5 rounded-[2px] flex items-center justify-center text-[7px] font-semibold text-white ${
+                              className={`h-5 rounded-[2px] flex items-center justify-center text-[0.4375rem] font-semibold text-white ${
                                 isQc ? 'ring-1 ring-inset ring-white/40' : ''
                               }`}
                               style={{ background: isQc ? QC_COLOUR : WORK_COLOUR }}
@@ -339,7 +357,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                       })}
                     </div>
                     <span
-                      className={`${TAIL_W} shrink-0 text-right text-[10px] ${work.length ? 'text-secondary' : 'text-tertiary'}`}
+                      className={`${TAIL_W} shrink-0 text-right text-[0.625rem] ${work.length ? 'text-secondary' : 'text-tertiary'}`}
                     >
                       {work.length ? `${work.length} job${work.length === 1 ? '' : 's'}` : '—'}
                     </span>
@@ -352,11 +370,11 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
           <div className="mt-5 pt-3 border-t border-secondary">
             <div className="flex mb-1">
               <div className={`${LABEL_W} shrink-0`} />
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+              <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-secondary">
                 When it runs
               </span>
               {overdueCount > 0 && (
-                <span className="ml-2 text-[11px] text-warning">
+                <span className="ml-2 text-[0.6875rem] text-warning">
                   · {overdueCount} started before today, so nothing was built for them
                 </span>
               )}
@@ -371,10 +389,10 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                 <div className="flex">
                   <div className={`${LABEL_W} shrink-0`} />
                   <div className="flex-1 flex items-baseline gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-secondary">
+                    <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-secondary">
                       {phase}
                     </span>
-                    <span className="text-[10px] text-tertiary">
+                    <span className="text-[0.625rem] text-tertiary">
                       {rows.length} flight{rows.length === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -398,7 +416,7 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
                           return (
                             <span
                               key={i}
-                              className={`h-[14px] rounded-[2px] ${
+                              className={`h-[0.875rem] rounded-[2px] ${
                                 live ? '' : isWeekend(i) ? 'bg-tertiary/10' : 'bg-tertiary/[0.05]'
                               }`}
                               style={live ? { background: colourOf(phase) } : undefined}
@@ -422,11 +440,10 @@ function PlanTimeline({ result, currency }: { result: SchedulerRunResult; curren
               </div>
             )
           })}
-
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 text-[10px] text-tertiary">
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3 text-[0.625rem] text-tertiary">
         <span className="flex items-center gap-1.5">
           <span className="uppercase tracking-wide text-tertiary/70">This campaign</span>
           <i className="w-3 h-3 rounded-[2px]" style={{ background: WORK_COLOUR }} /> build
@@ -498,9 +515,7 @@ function HiringCase({
             ))}
           </div>
           {hires.size > 0 && (
-            <p className="text-xs text-tertiary mt-2">
-              Work picked up by: {[...hires].join(', ')}
-            </p>
+            <p className="text-xs text-tertiary mt-2">Work picked up by: {[...hires].join(', ')}</p>
           )}
         </>
       ) : (
@@ -596,7 +611,7 @@ function CapacityGrid({ resources }: { resources: ResourceUtilization[] }) {
       <div className="min-w-fit">
         <div className="flex items-center gap-1 mb-1 pl-36">
           {days.map((d) => (
-            <span key={d.slot} className="w-6 text-center text-[10px] text-tertiary shrink-0">
+            <span key={d.slot} className="w-6 text-center text-[0.625rem] text-tertiary shrink-0">
               {d.date ? new Date(d.date).getDate() : d.slot}
             </span>
           ))}

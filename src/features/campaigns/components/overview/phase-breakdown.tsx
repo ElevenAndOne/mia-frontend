@@ -19,12 +19,22 @@ export const PhaseBreakdown = ({ summaries }: Props) => (
     <span className="label-xs text-quaternary uppercase tracking-[0.14em]">Phase Breakdown</span>
     <div className="mt-4 space-y-2.5">
       {summaries.map((p) => (
-        <div key={p.phaseId} className="flex items-center justify-between gap-4 rounded-xl border border-secondary bg-secondary px-4 py-3 flex-wrap">
+        <div
+          key={p.phaseId}
+          className="flex items-center justify-between gap-4 rounded-xl border border-secondary bg-secondary px-4 py-3 flex-wrap"
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="cw-mono text-xs font-semibold" style={{ color: p.hue }}>{p.num}</span>
+            <span className="cw-mono text-xs font-semibold" style={{ color: p.hue }}>
+              {p.num}
+            </span>
             <span className="w-2 h-2 rounded-sm" style={{ background: p.hue }} />
             <span className="paragraph-sm font-semibold text-primary">{p.name}</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-md" style={{ color: p.hue, background: softColor(p.hue, 16) }}>{p.role}</span>
+            <span
+              className="text-[0.625rem] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-md"
+              style={{ color: p.hue, background: softColor(p.hue, 16) }}
+            >
+              {p.role}
+            </span>
           </div>
           <div className="flex items-center gap-6">
             <Stat value={p.channels} label="Channels" />

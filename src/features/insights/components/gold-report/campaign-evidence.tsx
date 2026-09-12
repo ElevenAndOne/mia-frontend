@@ -8,7 +8,7 @@ const money = (currency: string, n: number) =>
 
 const Cell = ({ children }: { children: React.ReactNode }) => (
   <td
-    className="py-2.5 px-3 text-right whitespace-nowrap tabular-nums text-[12.5px]"
+    className="py-2.5 px-3 text-right whitespace-nowrap tabular-nums text-[0.7813rem]"
     style={{ fontFamily: 'var(--gr-mono)', color: 'var(--gr-body)' }}
   >
     {children}
@@ -30,11 +30,17 @@ export const CampaignEvidence = ({ evidence }: { evidence: GoldCampaignEvidence 
           {[
             ['Spend', money(cur, portfolio.spend)],
             ['Clicks', portfolio.clicks.toLocaleString()],
-            ['Blended CPC', portfolio.blended_cpc != null ? money(cur, portfolio.blended_cpc) : '—'],
-            ['Blended CPM', portfolio.blended_cpm != null ? money(cur, portfolio.blended_cpm) : '—'],
+            [
+              'Blended CPC',
+              portfolio.blended_cpc != null ? money(cur, portfolio.blended_cpc) : '—',
+            ],
+            [
+              'Blended CPM',
+              portfolio.blended_cpm != null ? money(cur, portfolio.blended_cpm) : '—',
+            ],
             ['CTR', portfolio.blended_ctr_pct != null ? `${portfolio.blended_ctr_pct}%` : '—'],
           ].map(([label, value]) => (
-            <span key={label} className="text-[12.5px]">
+            <span key={label} className="text-[0.7813rem]">
               <span style={{ color: 'var(--gr-muted)' }}>{label} </span>
               <span
                 className="font-bold tabular-nums"
@@ -54,7 +60,7 @@ export const CampaignEvidence = ({ evidence }: { evidence: GoldCampaignEvidence 
               {['Campaign', 'Spend', 'Clicks', 'CTR', 'CPC'].map((h, i) => (
                 <th
                   key={h}
-                  className={`py-2 px-3 text-[10px] font-bold tracking-[0.06em] uppercase whitespace-nowrap ${
+                  className={`py-2 px-3 text-[0.625rem] font-bold tracking-[0.06em] uppercase whitespace-nowrap ${
                     i === 0 ? 'text-left' : 'text-right'
                   }`}
                   style={{ color: 'var(--gr-muted)' }}
@@ -67,7 +73,7 @@ export const CampaignEvidence = ({ evidence }: { evidence: GoldCampaignEvidence 
           <tbody>
             {campaigns.map((c, i) => (
               <tr key={i} className="border-t" style={{ borderColor: 'var(--gr-line)' }}>
-                <td className="py-2.5 px-3 text-[13px]" style={{ color: 'var(--gr-heading)' }}>
+                <td className="py-2.5 px-3 text-[0.8125rem]" style={{ color: 'var(--gr-heading)' }}>
                   <span className="gr-inner gr-chip uppercase mr-2">{c.platform}</span>
                   {c.name}
                 </td>
@@ -82,7 +88,7 @@ export const CampaignEvidence = ({ evidence }: { evidence: GoldCampaignEvidence 
       </div>
 
       <p
-        className="px-4 sm:px-5 py-2.5 text-[11.5px] leading-[17px] border-t"
+        className="px-4 sm:px-5 py-2.5 text-[0.7188rem] leading-[1.0625rem] border-t"
         style={{ borderColor: 'var(--gr-line)', color: 'var(--gr-muted)' }}
       >
         Top {campaigns.length} of {shown_of} active campaigns by spend. {portfolio.basis}

@@ -75,7 +75,7 @@ export const CalendarGrid = ({
                   {weekdayShort(cell.iso)} {cell.day}
                 </span>
                 {cell.isToday && (
-                  <span className="text-[8.5px] font-bold tracking-[0.08em] text-white bg-brand-solid rounded-full px-1.5 py-0.5">
+                  <span className="text-[0.5313rem] font-bold tracking-[0.08em] text-white bg-brand-solid rounded-full px-1.5 py-0.5">
                     TODAY
                   </span>
                 )}
@@ -116,7 +116,7 @@ export const CalendarGrid = ({
           {cells.map((cell) => (
             <div
               key={cell.iso}
-              className="relative min-h-[112px] rounded-xl border p-2 flex flex-col"
+              className="relative min-h-[7rem] rounded-xl border p-2 flex flex-col"
               onDragOver={(e) => {
                 if (!onMoveAsset) return
                 e.preventDefault()
@@ -149,7 +149,7 @@ export const CalendarGrid = ({
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span
-                  className="cw-mono text-[13px]"
+                  className="cw-mono text-[0.8125rem]"
                   style={{
                     color: cell.isToday
                       ? 'var(--cw-accent)'
@@ -162,7 +162,7 @@ export const CalendarGrid = ({
                   {cell.day}
                 </span>
                 {cell.isToday && (
-                  <span className="text-[8.5px] font-bold tracking-[0.08em] text-white bg-brand-solid rounded-full px-1.5 py-0.5">
+                  <span className="text-[0.5313rem] font-bold tracking-[0.08em] text-white bg-brand-solid rounded-full px-1.5 py-0.5">
                     TODAY
                   </span>
                 )}
@@ -179,16 +179,27 @@ export const CalendarGrid = ({
                       ev.dataTransfer.effectAllowed = 'move'
                     }}
                     className="group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left w-full cursor-pointer"
-                    style={{ background: softColor(e.color, 13), border: `1px solid ${softColor(e.color, 38)}` }}
+                    style={{
+                      background: softColor(e.color, 13),
+                      border: `1px solid ${softColor(e.color, 38)}`,
+                    }}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: e.color }} />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-none"
+                      style={{ background: e.color }}
+                    />
                     <span className="paragraph-xs text-secondary truncate">{e.name}</span>
                     <span className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 left-1/2 -translate-x-1/2 whitespace-nowrap bg-tertiary border border-secondary rounded-lg px-2.5 py-1.5 shadow-lg z-20 pointer-events-none">
-                      <span className="block text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: e.color }}>
+                      <span
+                        className="block text-[0.5625rem] font-bold uppercase tracking-[0.1em]"
+                        style={{ color: e.color }}
+                      >
                         {e.channelLabel}
                         {e.type ? ` · ${e.type}` : ''}
                       </span>
-                      <span className="block paragraph-xs font-semibold text-primary mt-0.5">{e.name}</span>
+                      <span className="block paragraph-xs font-semibold text-primary mt-0.5">
+                        {e.name}
+                      </span>
                       <span className="block paragraph-xs text-quaternary mt-0.5">
                         Click to preview & edit
                         {onMoveAsset ? ' · drag to reschedule' : ''}

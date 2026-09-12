@@ -78,31 +78,34 @@ export const StructuredReport = ({
     <div className="gold-report space-y-7">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-        <h1
-          className="flex items-center gap-2.5 text-[24px] leading-8 font-semibold tracking-[-0.01em]"
-          style={{ color: 'var(--gr-heading)' }}
-        >
-          <svg
-            className="w-5 h-5 shrink-0"
-            viewBox="0 0 20 20"
-            fill="#f0a63e"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
+          <h1
+            className="flex items-center gap-2.5 text-[1.5rem] leading-8 font-semibold tracking-[-0.01em]"
+            style={{ color: 'var(--gr-heading)' }}
           >
-            <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
-          </svg>
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-[13px] leading-[19px] max-w-[68ch]" style={{ color: 'var(--gr-muted)' }}>
-            {subtitle}
-          </p>
-        )}
+            <svg
+              className="w-5 h-5 shrink-0"
+              viewBox="0 0 20 20"
+              fill="#f0a63e"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path d="M10 2L12.39 7.26L18 8.27L14 12.14L14.76 18L10 15.27L5.24 18L6 12.14L2 8.27L7.61 7.26L10 2Z" />
+            </svg>
+            {title}
+          </h1>
+          {subtitle && (
+            <p
+              className="text-[0.8125rem] leading-[1.1875rem] max-w-[68ch]"
+              style={{ color: 'var(--gr-muted)' }}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
         <button
           type="button"
           onClick={() => setExpandAll((v) => !v)}
-          className="text-[12px] font-semibold px-3 py-1.5 rounded-full"
+          className="text-[0.75rem] font-semibold px-3 py-1.5 rounded-full"
           style={{
             color: 'var(--gr-purple-text)',
             backgroundColor: 'var(--gr-purple-tint)',

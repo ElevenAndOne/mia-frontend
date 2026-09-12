@@ -10,6 +10,15 @@ export default defineConfig({
     // silently drifting to 5174 (which would break OAuth origin/redirect matching).
     port: 5173,
     strictPort: true,
+    // Dev: compile the route chunks up front instead of on first click.
+    warmup: {
+      clientFiles: [
+        './src/pages/*.tsx',
+        './src/components/app-shell-layout.tsx',
+        './src/features/workspace/components/*.tsx',
+        './src/features/marketing-context/views/*.tsx',
+      ],
+    },
   },
   plugins: [
     react({

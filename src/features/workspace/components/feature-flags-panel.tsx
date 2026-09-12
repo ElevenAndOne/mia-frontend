@@ -2,12 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { Spinner } from '../../../components/spinner'
-import type { FeatureCatalogEntry, FeatureKey } from '../feature-keys'
+import {
+  EXPERIENCE_LABEL,
+  type Experience,
+  type FeatureCatalogEntry,
+  type FeatureKey,
+} from '../feature-keys'
 import { fetchWorkspaceFeatures, updateWorkspaceFeatures } from '../services/workspace-service'
 
 interface FeatureFlagsPanelProps {
   sessionId: string
   tenantId: string
+  /** Bumped by the parent after a save that changes the defaults (e.g. experience). */
+  refreshKey?: number
 }
 
 /**
@@ -17,10 +24,11 @@ interface FeatureFlagsPanelProps {
  * "Reset" clears it so the flag follows the registry default again. After a change we
  * refresh the session's workspaces so the sidebar (useFeatures) updates immediately.
  */
-export const FeatureFlagsPanel = ({ sessionId, tenantId }: FeatureFlagsPanelProps) => {
+export const FeatureFlagsPanel = ({ sessionId, tenantId, refreshKey }: FeatureFlagsPanelProps) => {
   const { refreshWorkspaces } = useSession()
   const { showToast } = useToast()
   const [catalog, setCatalog] = useState<FeatureCatalogEntry[]>([])
+  const [experience, setExperience] = useState<Experience | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<FeatureKey | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +38,10 @@ export const FeatureFlagsPanel = ({ sessionId, tenantId }: FeatureFlagsPanelProp
     setLoading(true)
     fetchWorkspaceFeatures(sessionId, tenantId)
       .then((res) => {
-        if (!cancelled) setCatalog(res.catalog)
+        if (!cancelled) {
+          setCatalog(res.catalog)
+          setExperience(res.experience)
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load features')
@@ -41,7 +52,7 @@ export const FeatureFlagsPanel = ({ sessionId, tenantId }: FeatureFlagsPanelProp
     return () => {
       cancelled = true
     }
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, refreshKey])
 
   const apply = useCallback(
     async (key: FeatureKey, value: boolean | null) => {
@@ -50,6 +61,7 @@ export const FeatureFlagsPanel = ({ sessionId, tenantId }: FeatureFlagsPanelProp
       try {
         const res = await updateWorkspaceFeatures(sessionId, tenantId, { [key]: value })
         setCatalog(res.catalog)
+        setExperience(res.experience)
         await refreshWorkspaces()
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to update feature'
@@ -69,6 +81,12 @@ export const FeatureFlagsPanel = ({ sessionId, tenantId }: FeatureFlagsPanelProp
         Choose what this workspace can see. Turning something off hides it from the sidebar; it
         never deletes anything, and you can turn it back on here at any time.
       </p>
+      {experience && (
+        <p className="paragraph-xs text-quaternary mb-3">
+          Defaults follow this workspace&apos;s experience ({EXPERIENCE_LABEL[experience]}). A
+          switch below overrides the default for this workspace only.
+        </p>
+      )}
 
       {error && (
         <div className="mb-3 p-3 bg-error-primary border border-error-subtle rounded-lg">

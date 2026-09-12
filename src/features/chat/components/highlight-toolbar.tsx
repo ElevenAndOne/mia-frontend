@@ -144,7 +144,8 @@ export const HighlightToolbar = ({
               left: 8,
               right: 8,
               bottom: keyboardOffset + (keyboardOffset === 0 && nativeSelActive ? 72 : 8),
-              paddingBottom: keyboardOffset > 0 ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
+              paddingBottom:
+                keyboardOffset > 0 ? undefined : 'max(0.75rem, env(safe-area-inset-bottom))',
             }
           : { top: pos.top, left: pos.left, width }
       }
@@ -152,7 +153,7 @@ export const HighlightToolbar = ({
       <div className="flex items-center gap-2 mb-2">
         <MagicWand02 size={14} className="text-utility-brand-600 shrink-0" />
         <span className="paragraph-sm font-medium text-secondary">Ask Mia to change this</span>
-        <span className="paragraph-sm text-quaternary italic ml-auto truncate max-w-[150px]">
+        <span className="paragraph-sm text-quaternary italic ml-auto truncate max-w-[9.375rem]">
           “{selectionText}”
         </span>
         <button

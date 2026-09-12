@@ -60,7 +60,7 @@ export const CreativePreview = ({ spec, brandName, ...media }: CreativePreviewPr
   return (
     <div className="flex flex-col items-center gap-3 pb-2">
       {mock}
-      <CharCountChips checks={charChecks(spec)} />
+      {!media.hideCharChips && <CharCountChips checks={charChecks(spec)} />}
       <ProductionNotes spec={spec} />
     </div>
   )

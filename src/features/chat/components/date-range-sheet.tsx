@@ -62,7 +62,7 @@ export const DateRangePopover = ({
       onClose={onClose}
       anchorRef={anchorRef}
       placement="top-start"
-      className="min-w-[240px]"
+      className="min-w-[15rem]"
       mobileAdaptation="none"
     >
       <div className="flex flex-col p-1 gap-0.5">

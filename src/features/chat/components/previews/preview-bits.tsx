@@ -15,6 +15,10 @@ export interface MediaHandlers {
   onReplaceMediaUrl?: (oldUrl: string, newUrl: string) => void
   /** Dropped image's format doesn't fit this post — pin it and ask Mia for a matching post. */
   onDraftSeparatePost?: (asset: { asset_id?: string; cdn_url: string }) => void
+  /** Plain-language copy for the empty photo slot (Basic), replacing the 'Suggested visual' brief. */
+  emptyMediaHint?: string
+  /** Basic: hide the character-count / fold chip under the preview. */
+  hideCharChips?: boolean
 }
 
 /** Drag payload type set by chat image tiles (see chat-image-card.tsx). */
@@ -79,6 +83,7 @@ export const MediaSlot = ({
   badge,
   clampPortrait,
   onUploadMedia,
+  emptyMediaHint,
   onRemoveMedia,
   isUploadingMedia = false,
   onOpenCanvaPicker,
@@ -125,8 +130,10 @@ export const MediaSlot = ({
    * conflict get a caution in the chooser — never a hard block. */
   const formatWarning = (ratio: string | null | undefined): string | undefined => {
     if (!ratio) return undefined
-    if (cover && ratio !== '9:16') return `This is a ${ratio} image — this post is a Story/Reel (9:16).`
-    if (!cover && ratio === '9:16') return `This is a 9:16 Story image — this post is a feed format.`
+    if (cover && ratio !== '9:16')
+      return `This is a ${ratio} image — this post is a Story/Reel (9:16).`
+    if (!cover && ratio === '9:16')
+      return `This is a 9:16 Story image — this post is a feed format.`
     return undefined
   }
 
@@ -266,7 +273,9 @@ export const MediaSlot = ({
               <img
                 src={media[slide]}
                 alt={`Creative slide ${slide + 1} of ${count}`}
-                title={clamped ? 'Shown as the feed will crop it — the full image is kept' : undefined}
+                title={
+                  clamped ? 'Shown as the feed will crop it — the full image is kept' : undefined
+                }
                 onLoad={(e) => {
                   const el = e.currentTarget
                   if (el.naturalWidth && el.naturalHeight) {
@@ -294,21 +303,29 @@ export const MediaSlot = ({
         <div
           className={`${cover ? 'h-full' : aspect} flex flex-col items-center justify-center gap-1.5 px-8 text-center`}
         >
-          <span className="text-[10px] uppercase tracking-[0.12em] opacity-60">
-            Suggested visual
-          </span>
-          {visuals.length > 0 ? (
-            <span className="text-[12.5px] italic opacity-90 max-w-[36ch] leading-snug">
+          {!emptyMediaHint && (
+            <span className="text-[0.625rem] uppercase tracking-[0.12em] opacity-60">
+              Suggested visual
+            </span>
+          )}
+          {emptyMediaHint ? (
+            <span className="text-[0.7813rem] opacity-80 max-w-[36ch] leading-snug">
+              {emptyMediaHint}
+            </span>
+          ) : visuals.length > 0 ? (
+            <span className="text-[0.7813rem] italic opacity-90 max-w-[36ch] leading-snug">
               {visuals[0]}
               {visuals.length > 1 && (
                 <span className="opacity-60"> +{visuals.length - 1} more slides</span>
               )}
             </span>
           ) : (
-            <span className="text-[12.5px] italic opacity-60">No visual brief yet</span>
+            <span className="text-[0.7813rem] italic opacity-60">No visual brief yet</span>
           )}
-          {onUploadMedia && (
-            <span className="text-[10.5px] opacity-50">Drop an image or video here or click +</span>
+          {onUploadMedia && !emptyMediaHint && (
+            <span className="text-[0.6563rem] opacity-50">
+              Drop an image or video here or click +
+            </span>
           )}
         </div>
       )}
@@ -323,7 +340,7 @@ export const MediaSlot = ({
         </span>
       )}
       {badge && (
-        <span className="absolute top-2 left-2 rounded bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 uppercase tracking-[0.08em] pointer-events-none">
+        <span className="absolute top-2 left-2 rounded bg-black/50 text-white text-[0.625rem] font-medium px-1.5 py-0.5 uppercase tracking-[0.08em] pointer-events-none">
           {badge}
         </span>
       )}
@@ -378,7 +395,10 @@ export const MediaSlot = ({
         </div>
       )}
       {carousel && !hasImage && (
-        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5" aria-hidden="true">
+        <div
+          className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5"
+          aria-hidden="true"
+        >
           {[0, 1, 2, 3].map((i) => (
             <span
               key={i}
@@ -420,13 +440,15 @@ export const MediaSlot = ({
                 e.stopPropagation()
                 onOpenCanvaPicker()
               }}
-              className={`h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center gap-1 px-2.5 transition-opacity ${
-                hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
+              className={`h-7 rounded-full bg-black/45 text-white text-[0.75rem] font-medium flex items-center gap-1 px-2.5 transition-opacity ${
+                hasImage
+                  ? 'opacity-0 group-hover/media:opacity-100'
+                  : 'opacity-80 hover:opacity-100'
               }`}
             >
               <span
                 aria-hidden="true"
-                className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center text-[9px] font-bold font-serif"
+                className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center text-[0.5625rem] font-bold font-serif"
                 style={{ background: 'linear-gradient(135deg,#00C4CC,#7D2AE8)' }}
               >
                 C
@@ -443,8 +465,10 @@ export const MediaSlot = ({
                 e.stopPropagation()
                 fileRef.current?.click()
               }}
-              className={`h-7 rounded-full bg-black/45 text-white text-[12px] font-medium flex items-center justify-center px-2.5 transition-opacity ${
-                hasImage ? 'opacity-0 group-hover/media:opacity-100' : 'opacity-80 hover:opacity-100'
+              className={`h-7 rounded-full bg-black/45 text-white text-[0.75rem] font-medium flex items-center justify-center px-2.5 transition-opacity ${
+                hasImage
+                  ? 'opacity-0 group-hover/media:opacity-100'
+                  : 'opacity-80 hover:opacity-100'
               }`}
             >
               {isUploadingMedia ? 'Uploading…' : hasImage ? '+ Add' : '+ Media'}
@@ -461,8 +485,8 @@ export const MediaSlot = ({
             onRemoveMedia(media[slide])
           }}
           className={`absolute ${
-            cover ? 'top-[68px] right-2' : 'top-2 right-2'
-          } w-6 h-6 rounded-full bg-black/45 text-white text-[12px] flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity`}
+            cover ? 'top-[4.25rem] right-2' : 'top-2 right-2'
+          } w-6 h-6 rounded-full bg-black/45 text-white text-[0.75rem] flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity`}
         >
           ✕
         </button>
@@ -503,7 +527,7 @@ export const ProductionNotes = ({ spec }: { spec: CreativeSpec }) => {
   const showVisuals = !hasMedia && spec.visuals.length > 1
   if (notes.length === 0 && !showVisuals) return null
   return (
-    <div className="w-full max-w-[420px] rounded-xl border border-tertiary bg-secondary/40 px-4 py-3 flex flex-col gap-1.5">
+    <div className="w-full max-w-[26.25rem] rounded-xl border border-tertiary bg-secondary/40 px-4 py-3 flex flex-col gap-1.5">
       {notes.map((n, i) => (
         <p key={`${n.label}-${i}`} className="paragraph-sm text-tertiary">
           <span className="font-semibold text-secondary">{n.label}:</span> {n.value}
@@ -547,7 +571,9 @@ const icon = (path: string, filled = false) =>
 export const HeartIcon = icon(
   'M20.4 4.6a5.5 5.5 0 0 0-7.8 0L12 5.2l-.6-.6a5.5 5.5 0 0 0-7.8 7.8l.6.6L12 20.8 19.8 13l.6-.6a5.5 5.5 0 0 0 0-7.8Z'
 )
-export const CommentIcon = icon('M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5Z')
+export const CommentIcon = icon(
+  'M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.5 0-3-.4-4.2-1L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5Z'
+)
 export const SendIcon = icon('M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z')
 export const BookmarkIcon = icon('M19 21 12 16 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z')
 export const ThumbsUpIcon = icon(

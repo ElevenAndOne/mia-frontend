@@ -39,7 +39,7 @@ export const Badge = ({ label, hex }: { label: string; hex?: string }) => {
   const accent = hex ?? categoryHex(label)
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full py-1 pl-[7px] pr-[9px] text-[11px] font-bold tracking-[0.04em] uppercase whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 rounded-full py-1 pl-[0.4375rem] pr-[0.5625rem] text-[0.6875rem] font-bold tracking-[0.04em] uppercase whitespace-nowrap"
       style={
         accent
           ? { color: accent, backgroundColor: `${accent}24` }
@@ -55,7 +55,7 @@ export const Badge = ({ label, hex }: { label: string; hex?: string }) => {
 /** Step number chip for the executive-summary next steps — all purple, per the design. */
 export const StepNumber = ({ n }: { n: number }) => (
   <span
-    className="shrink-0 w-5 h-5 mt-0.5 rounded-full flex items-center justify-center text-[11px] font-semibold"
+    className="shrink-0 w-5 h-5 mt-0.5 rounded-full flex items-center justify-center text-[0.6875rem] font-semibold"
     style={{
       fontFamily: 'var(--gr-mono)',
       color: 'var(--gr-purple-text)',

@@ -10,6 +10,21 @@ import { Trash01 } from '../../../components/icon/trash-01'
 import { XClose } from '../../../components/icon/x-close'
 import type { RecentConversation } from '../../chat/services/chat-service'
 
+/** Which list heading a chat sits under. Pinned chats come first regardless of age. */
+function dayGroup(conv: RecentConversation): string {
+  if (conv.is_pinned) return 'Pinned'
+  if (!conv.last_at) return 'Earlier'
+  const d = new Date(conv.last_at)
+  const now = new Date()
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((start(now) - start(d)) / 86_400_000)
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return 'This week'
+  if (days < 30) return 'This month'
+  return 'Earlier'
+}
+
 function formatRelativeDate(isoDate: string | null): string {
   if (!isoDate) return ''
   const date = new Date(isoDate)
@@ -82,8 +97,23 @@ export const RecentChatsPanel = ({
   }, [menuOpenId])
 
   const filteredConversations = searchQuery.trim()
-    ? conversations.filter((c) => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? conversations.filter(
+        (c) =>
+          c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (c.first_question ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
     : conversations
+  // Headings between day groups (Pinned · Today · Yesterday · This week · …).
+  const withHeaders: Array<{ header: string } | { conv: RecentConversation }> = []
+  let lastGroup: string | null = null
+  for (const conv of filteredConversations) {
+    const g = dayGroup(conv)
+    if (g !== lastGroup) {
+      withHeaders.push({ header: g })
+      lastGroup = g
+    }
+    withHeaders.push({ conv })
+  }
 
   const handleConfirmDelete = async (e: React.MouseEvent, convId: string) => {
     e.stopPropagation()
@@ -185,7 +215,18 @@ export const RecentChatsPanel = ({
           </div>
         ) : (
           <div className="space-y-0.5">
-            {filteredConversations.map((conv) => {
+            {withHeaders.map((item) => {
+              if ('header' in item) {
+                return (
+                  <p
+                    key={`h-${item.header}`}
+                    className="mia-mono text-quaternary px-3 pt-3 pb-1 first:pt-1"
+                  >
+                    {item.header}
+                  </p>
+                )
+              }
+              const conv = item.conv
               const isConfirming = confirmingId === conv.conversation_id
               const isDeleting = deletingId === conv.conversation_id
               const isMenuOpen = menuOpenId === conv.conversation_id
@@ -221,10 +262,12 @@ export const RecentChatsPanel = ({
                           className="w-full paragraph-xs text-primary bg-tertiary rounded px-1 outline-none"
                         />
                       ) : (
-                        <p className="paragraph-xs text-secondary truncate">{conv.title || 'Chat'}</p>
+                        <p className="paragraph-xs text-secondary truncate">
+                          {conv.title || 'Chat'}
+                        </p>
                       )}
-                      <p className="paragraph-xs text-quaternary mt-0.5">
-                        {formatRelativeDate(conv.last_at)}
+                      <p className="paragraph-xs text-quaternary mt-0.5 truncate">
+                        {conv.first_question?.trim() || formatRelativeDate(conv.last_at)}
                       </p>
                     </div>
                   </button>

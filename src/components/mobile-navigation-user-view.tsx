@@ -3,6 +3,7 @@ import { SegmentedControl } from './segmented-control'
 import { ChevronLeft } from './icon/chevron-left'
 import { LogOut01 } from './icon/log-out-01'
 import { Settings01 } from './icon/settings-01'
+import { useExperience } from '../features/workspace/hooks/use-experience'
 import { XClose } from './icon/x-close'
 import { UserAvatar } from './user-avatar'
 
@@ -31,6 +32,7 @@ export const MobileNavigationUserView = ({
   onWorkspaceSettings,
   onLogout,
 }: MobileNavigationUserViewProps) => {
+  const { isBasic } = useExperience()
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-4 border-b border-tertiary flex items-center justify-between">
@@ -70,7 +72,7 @@ export const MobileNavigationUserView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Workspace Settings</span>
+            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
           </button>
         )}
       </div>

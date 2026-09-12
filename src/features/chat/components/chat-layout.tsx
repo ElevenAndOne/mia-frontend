@@ -78,7 +78,7 @@ export const ChatLayout = ({
                 onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
                 className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-tertiary transition-colors"
               >
-                <span className="paragraph-sm text-secondary font-medium truncate max-w-[200px]">
+                <span className="paragraph-sm text-secondary font-medium truncate max-w-[12.5rem]">
                   {activeWorkspace?.name || 'MIA'}
                 </span>
                 <ChevronDown size={14} className="text-quaternary shrink-0" />

@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/theme-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 import { usePlugins } from '../features/plugins/hooks/use-plugins'
 import { useFeatures } from '../features/workspace/hooks/use-features'
+import { useExperience } from '../features/workspace/hooks/use-experience'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
@@ -46,15 +47,24 @@ interface NavItemProps {
   collapsed?: boolean
   onClick: () => void
   trailing?: ReactNode
+  className?: string
 }
 
-const NavItem = ({ icon, label, active, collapsed, onClick, trailing }: NavItemProps) => (
+const NavItem = ({
+  icon,
+  label,
+  active,
+  collapsed,
+  onClick,
+  trailing,
+  className = '',
+}: NavItemProps) => (
   <button
     onClick={onClick}
     title={collapsed ? label : undefined}
     className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
       collapsed ? 'justify-center px-0' : 'px-3'
-    } ${active ? 'bg-secondary text-primary' : 'text-secondary hover:bg-secondary'}`}
+    } ${active ? 'bg-secondary text-primary' : 'text-secondary hover:bg-secondary'} ${className}`}
     role="menuitem"
     aria-current={active ? 'page' : undefined}
   >
@@ -82,6 +92,20 @@ export const AppSidebar = () => {
   // Per-workspace feature flags (progressive disclosure). Everything defaults ON; a flag
   // hides a surface, it never removes it. Workspace Settings is deliberately ungated.
   const { isEnabled: isFeatureEnabled } = useFeatures()
+  const { isBasic } = useExperience()
+
+  // "Scheduled" cue (Basic home): blink the Posts item five times so people see where it went.
+  const [blinkPosts, setBlinkPosts] = useState(false)
+  useEffect(() => {
+    const onBlink = (ev: Event) => {
+      if ((ev as CustomEvent<{ key?: string }>).detail?.key !== 'posts') return
+      setBlinkPosts(false)
+      requestAnimationFrame(() => setBlinkPosts(true))
+      window.setTimeout(() => setBlinkPosts(false), 4500)
+    }
+    window.addEventListener('mia:blink-nav', onBlink)
+    return () => window.removeEventListener('mia:blink-nav', onBlink)
+  }, [])
   const actions = useAppShellActions()
   const { conversations, load, remove, rename, togglePin } = useRecentConversations(sessionId)
 
@@ -112,20 +136,20 @@ export const AppSidebar = () => {
     : path.startsWith('/posts')
       ? 'posts'
       : path.startsWith('/campaigns')
-      ? 'campaigns'
-      : path.startsWith('/scheduler')
-        ? 'scheduler'
-        : path.startsWith('/creative-studio')
-          ? 'mia-create'
-        : path.startsWith('/reports')
-          ? 'reports'
-          : path.startsWith('/budget-tracker')
-            ? 'budget'
-          : path.startsWith('/memo')
-            ? 'memo'
-            : path.startsWith('/settings/workspace')
-              ? 'settings'
-              : ''
+        ? 'campaigns'
+        : path.startsWith('/scheduler')
+          ? 'scheduler'
+          : path.startsWith('/creative-studio')
+            ? 'mia-create'
+            : path.startsWith('/reports')
+              ? 'reports'
+              : path.startsWith('/budget-tracker')
+                ? 'budget'
+                : path.startsWith('/memo')
+                  ? 'memo'
+                  : path.startsWith('/settings/workspace')
+                    ? 'settings'
+                    : ''
 
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
     { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },
@@ -147,7 +171,7 @@ export const AppSidebar = () => {
   return (
     <aside
       className={`hidden md:flex shrink-0 flex-col border-r border-secondary bg-primary print:hidden relative overflow-hidden transition-[width] duration-200 ease-out ${
-        collapsed ? 'w-[72px]' : 'w-[264px]'
+        collapsed ? 'w-[4.5rem]' : 'w-[16.5rem]'
       }`}
     >
       {/* Main panel */}
@@ -166,23 +190,28 @@ export const AppSidebar = () => {
 
         <div className="border-t border-tertiary mx-3" />
 
-        <nav className={`flex-1 min-h-0 overflow-y-auto py-2 ${collapsed ? 'px-2' : 'px-3'}`} role="menu">
+        <nav
+          className={`flex-1 min-h-0 overflow-y-auto py-2 ${collapsed ? 'px-2' : 'px-3'}`}
+          role="menu"
+        >
           <NavItem
             icon={<Edit03 size={18} />}
             label="New Chat"
             collapsed={collapsed}
             onClick={() => actions.onNewChat()}
           />
-          <NavItem
-            icon={<Plus size={18} />}
-            label="New Workspace"
-            collapsed={collapsed}
-            onClick={() => actions.onNewWorkspace()}
-          />
+          {isFeatureEnabled('new_workspace') && (
+            <NavItem
+              icon={<Plus size={18} />}
+              label="New Workspace"
+              collapsed={collapsed}
+              onClick={() => actions.onNewWorkspace()}
+            />
+          )}
           {isFeatureEnabled('integrations') && (
             <NavItem
               icon={<Globe01 size={18} />}
-              label="Integrations"
+              label={isBasic ? 'Connections' : 'Integrations'}
               collapsed={collapsed}
               active={activeKey === 'integrations'}
               onClick={actions.onIntegrationsClick}
@@ -204,6 +233,7 @@ export const AppSidebar = () => {
               collapsed={collapsed}
               active={activeKey === 'posts'}
               onClick={actions.onPostsClick}
+              className={blinkPosts ? 'nav-blink' : ''}
             />
           )}
           {isFeatureEnabled('scheduler') && (
@@ -253,7 +283,7 @@ export const AppSidebar = () => {
           )}
           <NavItem
             icon={<Settings01 size={18} />}
-            label="Workspace Settings"
+            label={isBasic ? 'Settings' : 'Workspace Settings'}
             collapsed={collapsed}
             active={activeKey === 'settings'}
             onClick={actions.onWorkspaceSettings}
@@ -276,7 +306,7 @@ export const AppSidebar = () => {
             }
           />
 
-          {!collapsed && (
+          {!collapsed && !isBasic && (
             <>
               <div className="border-t border-tertiary my-2" />
               <div className="px-1 py-1.5">

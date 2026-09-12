@@ -29,7 +29,11 @@ import type {
 import { useCanvas } from './use-canvas'
 import { useThinkingPhrase } from './use-thinking-phrase'
 import type { ChatImageJob } from '../components/chat-image-card'
-import { collapseEdits, miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
+import {
+  collapseEdits,
+  miaCreateApi,
+  type MiaAsset,
+} from '../../creative-studio/creative-studio-api'
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 
@@ -38,6 +42,8 @@ export interface ChatMessageItem {
   role: 'user' | 'assistant'
   content: string
   hidden?: boolean
+  /** What the bubble shows when the sent text is a long built-in instruction (home cards). */
+  displayText?: string
   isStreaming?: boolean
   pendingAction?: PendingAction
   actionStatus?: 'pending' | 'confirmed' | 'running' | 'completed' | 'failed'
@@ -82,15 +88,14 @@ export const useChatView = () => {
   // the conversation's most recent one. {asset_id, cdn_url} — see CHAT_IMAGE_GEN_SCOPE.md.
   // The ref mirrors the state SYNCHRONOUSLY so "pin then submit in the same tick"
   // (the Use-in-post button) sends the fresh pin, not the stale closure value.
-  const [editTarget, setEditTargetState] = useState<{ asset_id: string; cdn_url: string } | null>(null)
-  const editTargetRef = useRef<{ asset_id: string; cdn_url: string } | null>(null)
-  const setEditTarget = useCallback(
-    (t: { asset_id: string; cdn_url: string } | null) => {
-      editTargetRef.current = t
-      setEditTargetState(t)
-    },
-    []
+  const [editTarget, setEditTargetState] = useState<{ asset_id: string; cdn_url: string } | null>(
+    null
   )
+  const editTargetRef = useRef<{ asset_id: string; cdn_url: string } | null>(null)
+  const setEditTarget = useCallback((t: { asset_id: string; cdn_url: string } | null) => {
+    editTargetRef.current = t
+    setEditTargetState(t)
+  }, [])
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
     () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
@@ -130,8 +135,8 @@ export const useChatView = () => {
     revealDoneRef.current?.()
     revealDoneRef.current = null
   }, [])
-  const REVEAL_INTERVAL_MS = 40  // ~25 ticks/sec (same as Quick Insights)
-  const CHARS_PER_TICK = 5       // 125 chars/sec
+  const REVEAL_INTERVAL_MS = 40 // ~25 ticks/sec (same as Quick Insights)
+  const CHARS_PER_TICK = 5 // 125 chars/sec
   // Auto-scroll only when the user is already near the bottom — don't yank them
   // down while they've scrolled up to read.
   // Auto-scroll bookkeeping. We follow the stream ONLY while the user is parked at
@@ -305,9 +310,10 @@ export const useChatView = () => {
             if (!x.m.at || !t0 || x.m.at <= t0) anchor = x
           }
           const card: ChatImageJob = {
-            tool: group.length > 1 && group.every((a) => a.ratio)
-              ? 'make_placement_set'
-              : 'generate_creative',
+            tool:
+              group.length > 1 && group.every((a) => a.ratio)
+                ? 'make_placement_set'
+                : 'generate_creative',
             status: 'done',
             job_id: group[0].job_id ?? null,
             variant_group: group[0].variant_group ?? null,
@@ -536,7 +542,7 @@ export const useChatView = () => {
   const handleSubmit = useCallback(
     async (
       message: string,
-      options?: { hidden?: boolean; documentContext?: DocumentContext }
+      options?: { hidden?: boolean; documentContext?: DocumentContext; displayText?: string }
     ) => {
       const pendingImages = images.slice()
       const pendingDocuments = documents.slice()
@@ -553,6 +559,7 @@ export const useChatView = () => {
         role: 'user',
         content: message,
         hidden: options?.hidden,
+        displayText: options?.displayText,
         images: pendingImages.length > 0 ? pendingImages : undefined,
         documents:
           pendingDocuments.length > 0
@@ -604,7 +611,8 @@ export const useChatView = () => {
           if (remaining > 0 && isMountedRef.current) {
             displayIndexRef.current = target
             setStreamingContent(receivedRef.current)
-            if (shouldAutoScrollRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            if (shouldAutoScrollRef.current)
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
           }
           if (revealIntervalRef.current) clearInterval(revealIntervalRef.current)
           revealIntervalRef.current = null
@@ -617,7 +625,8 @@ export const useChatView = () => {
             // Only follow the stream while the user is pinned to the bottom. Use 'auto'
             // (instant) not 'smooth' — a queued smooth animation re-fired every 40ms is
             // what fought the user when they tried to scroll up.
-            if (shouldAutoScrollRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            if (shouldAutoScrollRef.current)
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
           }
         }
       }, REVEAL_INTERVAL_MS)
@@ -667,9 +676,8 @@ export const useChatView = () => {
                   end_date: activeCampaign.endDate ?? undefined,
                 }
               : {}),
-            ...(options?.documentContext
-              ? { document_context: options.documentContext }
-              : {}),
+            ...(options?.documentContext ? { document_context: options.documentContext } : {}),
+            ...(options?.displayText ? { display_text: options.displayText } : {}),
             ...(editTargetRef.current
               ? { edit_target_asset_id: editTargetRef.current.asset_id }
               : {}),
@@ -685,7 +693,7 @@ export const useChatView = () => {
             if (chunk.text) {
               accumulated += chunk.text
               setMidStreamStatus('')
-              receivedRef.current = accumulated  // interval reads this; no setState here
+              receivedRef.current = accumulated // interval reads this; no setState here
               // Backgrounded tab throttles the reveal interval — flush straight to
               // display so Mia keeps "typing" while you're on another tab.
               if (document.hidden) {
@@ -731,7 +739,8 @@ export const useChatView = () => {
           else revealDoneRef.current = resolve
         })
 
-        const finalContent = accumulated || 'Sorry, I had trouble processing your question. Please try again.'
+        const finalContent =
+          accumulated || 'Sorry, I had trouble processing your question. Please try again.'
         const assistantMessage: ChatMessageItem = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
@@ -965,7 +974,11 @@ export const useChatView = () => {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === messageId
-                ? { ...m, actionStatus: 'completed' as const, actionResult: result as Record<string, unknown> }
+                ? {
+                    ...m,
+                    actionStatus: 'completed' as const,
+                    actionResult: result as Record<string, unknown>,
+                  }
                 : m
             )
           )
@@ -1003,7 +1016,11 @@ export const useChatView = () => {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === messageId
-                ? { ...m, actionStatus: 'failed' as const, actionResult: result as Record<string, unknown> }
+                ? {
+                    ...m,
+                    actionStatus: 'failed' as const,
+                    actionResult: result as Record<string, unknown>,
+                  }
                 : m
             )
           )
@@ -1038,9 +1055,7 @@ export const useChatView = () => {
     async (messageId: string, historyId: number, rating: 1 | -1) => {
       if (!sessionId) return
       // Optimistic — the thumb lights up immediately; a failed POST is non-critical.
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m))
-      )
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m)))
       if (rating === -1) {
         // Claude-style detail dialog. The -1 below is recorded regardless — dismissing
         // the modal loses nothing; submitting upserts category/details onto the row.

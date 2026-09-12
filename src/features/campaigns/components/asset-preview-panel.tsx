@@ -8,7 +8,13 @@ import { useTextSelection } from '../../../hooks/use-text-selection'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import { assetToCreativeSpec } from '../utils/asset-preview'
 import { channelLabel } from '../utils/channel-colors'
-import { fetchAssetVersions, patchAsset, restoreAssetVersion, uploadAssetMedia, type AssetVersionRow } from '../services/campaign-api'
+import {
+  fetchAssetVersions,
+  patchAsset,
+  restoreAssetVersion,
+  uploadAssetMedia,
+  type AssetVersionRow,
+} from '../services/campaign-api'
 import { clearCampaignDetailCache } from '../campaign-detail-cache'
 
 /** Roles that may edit assets from the canvas (matches backend require_analyst). */
@@ -68,7 +74,9 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
 
   const restore = useCallback(
     async (version: number) => {
-      await restoreAssetVersion(sessionId, tenantId, campaign.campaign_id, assetId, version).catch(() => {})
+      await restoreAssetVersion(sessionId, tenantId, campaign.campaign_id, assetId, version).catch(
+        () => {}
+      )
       setShowHistory(false)
       clearCampaignDetailCache()
       void reloadDetail()
@@ -195,7 +203,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
         onClick={onClose}
         className="absolute inset-0 bg-black/50 cursor-default"
       />
-      <aside className="absolute top-0 right-0 bottom-0 w-full md:w-[480px] bg-primary md:border-l border-tertiary shadow-2xl flex flex-col">
+      <aside className="absolute top-0 right-0 bottom-0 w-full md:w-[30rem] bg-primary md:border-l border-tertiary shadow-2xl flex flex-col">
         <div className="flex items-center gap-3 px-4 md:px-5 py-3 border-b border-tertiary">
           <div className="min-w-0">
             <h2 className="paragraph-md font-semibold text-primary truncate">
@@ -234,7 +242,11 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
                   <div key={v.version} className="px-3 py-2 flex items-center gap-2">
                     <span className="paragraph-sm font-medium text-primary">v{v.version}</span>
                     <span className="paragraph-sm text-quaternary truncate">
-                      {v.edited_by === 'origin' ? 'original' : v.is_me ? 'You' : (v.edited_by_email ?? 'teammate')}
+                      {v.edited_by === 'origin'
+                        ? 'original'
+                        : v.is_me
+                          ? 'You'
+                          : (v.edited_by_email ?? 'teammate')}
                     </span>
                     {i === 0 ? (
                       <span className="paragraph-xs text-quaternary ml-auto">current</span>

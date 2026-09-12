@@ -41,12 +41,12 @@ export const CreativeFindings = ({ findings }: { findings: GoldCreativeFinding[]
             style={{ borderColor: 'var(--gr-line)' }}
           >
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <p className="text-[13.5px] leading-5" style={{ color: 'var(--gr-heading)' }}>
+              <p className="text-[0.8438rem] leading-5" style={{ color: 'var(--gr-heading)' }}>
                 Ads that <span className="font-semibold">{f.attribute}</span> ran at{' '}
                 {win ? 'a better' : 'a worse'} {metricLabel(f.metric)}
               </p>
               <p
-                className="text-[15px] font-bold tabular-nums"
+                className="text-[0.9375rem] font-bold tabular-nums"
                 style={{
                   fontFamily: 'var(--gr-mono)',
                   color: win ? 'var(--gr-green)' : 'var(--gr-muted)',
@@ -56,7 +56,7 @@ export const CreativeFindings = ({ findings }: { findings: GoldCreativeFinding[]
               </p>
             </div>
             <p
-              className="mt-1 text-[12px] leading-[18px] tabular-nums"
+              className="mt-1 text-[0.75rem] leading-[1.125rem] tabular-nums"
               style={{ color: 'var(--gr-muted)', fontFamily: 'var(--gr-mono)' }}
             >
               {formatValue(f.metric, f.with_value)} across {f.with_ads} ad
@@ -68,11 +68,11 @@ export const CreativeFindings = ({ findings }: { findings: GoldCreativeFinding[]
         )
       })}
       <p
-        className="px-4 sm:px-5 py-2.5 text-[11.5px] leading-[17px] border-t"
+        className="px-4 sm:px-5 py-2.5 text-[0.7188rem] leading-[1.0625rem] border-t"
         style={{ borderColor: 'var(--gr-line)', color: 'var(--gr-muted)' }}
       >
-        Observed differences between your own ads, not causes — ads differ in several ways at
-        once. Small ad counts deserve less weight.
+        Observed differences between your own ads, not causes — ads differ in several ways at once.
+        Small ad counts deserve less weight.
       </p>
     </div>
   )

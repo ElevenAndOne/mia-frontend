@@ -6,7 +6,7 @@ interface Props {
 }
 
 const Card = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="flex-1 min-w-[220px] min-h-[180px] rounded-2xl border border-tertiary bg-secondary/40 p-6 flex flex-col">
+  <div className="flex-1 min-w-[13.75rem] min-h-[11.25rem] rounded-2xl border border-tertiary bg-secondary/40 p-6 flex flex-col">
     <p className="paragraph-xs uppercase tracking-wide text-tertiary mb-3">{label}</p>
     {children}
   </div>
@@ -34,7 +34,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
   return (
     <div className="flex flex-wrap gap-4">
       <Card label={isMonthly ? 'Campaign Budget' : 'Total Allocation'}>
-        <p className="text-3xl font-semibold text-primary">{formatMoney(totals.total_allocation, currency)}</p>
+        <p className="text-3xl font-semibold text-primary">
+          {formatMoney(totals.total_allocation, currency)}
+        </p>
         {fx && (
           <p className="paragraph-xs text-tertiary">≈ {formatUsd(fx.total_allocation_equiv)}</p>
         )}
@@ -50,7 +52,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
               <p className="paragraph-xs text-secondary">
                 Allocated {formatMoney(totals.committed, currency)}
               </p>
-              <p className={`paragraph-xs ${totals.over_allocated ? 'text-utility-error-500' : 'text-secondary'}`}>
+              <p
+                className={`paragraph-xs ${totals.over_allocated ? 'text-utility-error-500' : 'text-secondary'}`}
+              >
                 Unallocated {formatMoney(totals.flexible, currency)}
                 {totals.over_allocated ? ' · over-allocated' : ''}
               </p>
@@ -64,7 +68,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
           {pending ? (
             <Loading />
           ) : (
-            <p className="text-3xl font-semibold text-primary">{formatMoney(totals.spent, currency)}</p>
+            <p className="text-3xl font-semibold text-primary">
+              {formatMoney(totals.spent, currency)}
+            </p>
           )}
           {totals.spent_pct != null && (
             <span className="paragraph-xs text-secondary">{totals.spent_pct}%</span>
@@ -88,7 +94,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
           </>
         ) : (
           <>
-            <p className={`text-3xl font-semibold ${PACING_TEXT[totals.pacing_state] ?? 'text-primary'}`}>
+            <p
+              className={`text-3xl font-semibold ${PACING_TEXT[totals.pacing_state] ?? 'text-primary'}`}
+            >
               {totals.pacing_pct == null
                 ? '—'
                 : `${totals.pacing_pct > 0 ? '+' : ''}${totals.pacing_pct}%`}
@@ -112,7 +120,9 @@ export const BudgetSummaryCards = ({ snapshot }: Props) => {
         {pending ? (
           <Loading />
         ) : (
-          <p className="text-3xl font-semibold text-primary">{formatMoney(totals.projected_close, currency)}</p>
+          <p className="text-3xl font-semibold text-primary">
+            {formatMoney(totals.projected_close, currency)}
+          </p>
         )}
         <p className="paragraph-xs text-tertiary mt-1">
           {totals.pacing_state === 'complete'

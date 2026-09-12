@@ -60,6 +60,10 @@ export interface CanvasController {
   removeMedia: (url: string) => void
   /** Swap one media URL for another in place (drag-drop "Replace" from chat). */
   replaceMediaUrl: (oldUrl: string, newUrl: string) => void
+  /** Upload one file and swap it in for `oldUrl` (or append when the post has no photo yet). */
+  swapMedia: (file: File, oldUrl?: string | null) => void
+  /** Put an already-hosted image into a specific document: replaces its first photo, else appends. Opens that document. */
+  placeMediaInDocument: (documentId: string, url: string) => boolean
   isUploadingMedia: boolean
 }
 
@@ -374,6 +378,75 @@ export function useCanvas({
     [saveUserEdit]
   )
 
+  // "Swap photo" (Basic): one file from the PC replaces the post's current photo in place; with
+  // no photo yet it simply becomes the photo. One version either way.
+  const swapMedia = useCallback(
+    async (file: File, oldUrl?: string | null) => {
+      const id = activeIdRef.current
+      const doc = id ? documentsRef.current[id] : null
+      if (!doc || !sessionId || !conversationId || isUploadingMedia || !file) return
+      setIsUploadingMedia(true)
+      try {
+        const url = await uploadCanvasDocumentMedia(sessionId, doc.id, conversationId, file)
+        const current = documentsRef.current[doc.id] ?? doc
+        if (oldUrl && current.content.includes(oldUrl)) {
+          const next = current.content
+            .split('\n')
+            .map((line) => (line.includes(oldUrl) ? `Media: ${url}` : line))
+            .join('\n')
+          if (next !== current.content) saveUserEdit(next)
+        } else {
+          saveUserEdit(`${current.content.trimEnd()}\nMedia: ${url}`)
+        }
+      } catch (e) {
+        showToast('error', e instanceof Error ? e.message : 'Upload failed')
+      } finally {
+        setIsUploadingMedia(false)
+      }
+    },
+    [sessionId, conversationId, isUploadingMedia, saveUserEdit, showToast]
+  )
+
+  // A generated image made FOR a post (generate_creative place_in_document_id) lands in that
+  // post the moment it exists — first Media line replaced, or appended when there is none.
+  const placeMediaInDocument = useCallback(
+    (documentId: string, url: string): boolean => {
+      const doc = documentsRef.current[documentId]
+      if (!doc || !sessionId || !conversationId || !url) return false
+      const lines = doc.content.split('\n')
+      const idx = lines.findIndex((l) => /^\s*(\*\*)?media(\*\*)?\s*:/i.test(l))
+      const next =
+        idx >= 0
+          ? lines.map((l, i) => (i === idx ? `Media: ${url}` : l)).join('\n')
+          : `${doc.content.trimEnd()}\nMedia: ${url}`
+      if (next === doc.content) return false
+      const optimistic: CanvasDocument = {
+        ...doc,
+        content: next,
+        version: doc.version + 1,
+        created_by: 'user',
+      }
+      setDocuments((prev) => ({ ...prev, [documentId]: optimistic }))
+      setIsSaving(true)
+      saveDocumentEdit(sessionId, documentId, { conversation_id: conversationId, content: next })
+        .then((res) => {
+          if (res?.version) {
+            setDocuments((prev) => ({
+              ...prev,
+              [documentId]: { ...prev[documentId], version: res.version! },
+            }))
+          }
+        })
+        .catch(() => {
+          /* optimistic copy stays; a later save reconciles */
+        })
+        .finally(() => setIsSaving(false))
+      open(documentId)
+      return true
+    },
+    [sessionId, conversationId, open]
+  )
+
   const fetchVersions = useCallback(async (): Promise<CanvasDocument[]> => {
     const id = activeIdRef.current
     if (!id || !sessionId || !conversationId) return []
@@ -441,6 +514,8 @@ export function useCanvas({
     appendMediaUrls,
     removeMedia,
     replaceMediaUrl,
+    swapMedia,
+    placeMediaInDocument,
     isUploadingMedia,
   }
 }

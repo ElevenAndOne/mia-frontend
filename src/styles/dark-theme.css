@@ -2,6 +2,17 @@
   color-scheme: dark;
 
   --color-text-primary: var(--color-neutral-gray-50);
+
+  /* Paper — dark shell gets LIGHT paper with a faded dot grid. */
+  --color-paper-bg: #f0eee9;
+  --color-paper-ink: #040b1d;
+  --color-paper-sub: #6b757b;
+  --color-paper-tile: #ffffff;
+  --color-paper-tile-border: #cbcbcb;
+  --color-paper-dot: rgba(22, 31, 34, 0.22);
+  --color-paper-cta-bg: transparent;
+  --color-paper-cta-ink: #040b1d;
+  --color-paper-cta-border: #040b1d;
   --color-text-secondary: var(--color-neutral-gray-200);
   --color-text-tertiary: var(--color-neutral-gray-300);
   --color-text-quaternary: var(--color-neutral-gray-400);

@@ -4,6 +4,17 @@
   /* ============================================================= */
 
   --color-text-primary: var(--color-neutral-gray-900);
+
+  /* Paper — the canvas surface. Light shell gets DARK paper (Figma "Basic — Home"). */
+  --color-paper-bg: #161f22;
+  --color-paper-ink: #f0eee9;
+  --color-paper-sub: rgba(240, 238, 233, 0.62);
+  --color-paper-tile: #1f282b;
+  --color-paper-tile-border: #394a4f;
+  --color-paper-dot: rgba(240, 238, 233, 0.22);
+  --color-paper-cta-bg: #6f5cf6;
+  --color-paper-cta-ink: #ffffff;
+  --color-paper-cta-border: #6f5cf6;
   --color-text-secondary: var(--color-neutral-gray-700);
   --color-text-tertiary: var(--color-neutral-gray-600);
   --color-text-quaternary: var(--color-neutral-gray-500);

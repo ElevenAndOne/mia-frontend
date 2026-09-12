@@ -111,7 +111,7 @@ export const MobileNavigation = ({
       onClose={onClose}
       position="right"
       showHandle={false}
-      className="w-[85vw] max-w-[320px]"
+      className="w-[85vw] max-w-[20rem]"
     >
       {view === 'main' ? (
         <MobileNavigationMainView

@@ -51,14 +51,14 @@ export const CollapsibleRow = ({
         {lead}
         <span className="flex-1 min-w-0">
           <span
-            className="block text-[14px] leading-5 font-semibold"
+            className="block text-[0.875rem] leading-5 font-semibold"
             style={{ color: 'var(--gr-heading)' }}
           >
             {title}
           </span>
           {subtitle && (
             <span
-              className="block text-[12px] leading-[17px] mt-0.5"
+              className="block text-[0.75rem] leading-[1.0625rem] mt-0.5"
               style={{ color: 'var(--gr-muted)' }}
             >
               {subtitle}
@@ -67,7 +67,7 @@ export const CollapsibleRow = ({
         </span>
         {stat && (
           <span
-            className="text-[13px] whitespace-nowrap tabular-nums hidden sm:block"
+            className="text-[0.8125rem] whitespace-nowrap tabular-nums hidden sm:block"
             style={{ fontFamily: 'var(--gr-mono)', color: 'var(--gr-green)' }}
           >
             {stat}

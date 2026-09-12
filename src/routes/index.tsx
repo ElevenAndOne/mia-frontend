@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
+import { RequireFeature } from './require-feature'
 import { ErrorBoundary } from '../components/error-boundary'
 import { Spinner } from '../components/spinner'
 
@@ -179,9 +180,11 @@ export const AppRoutes = ({
             path="/campaigns"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <CampaignsPage />
-                </ErrorBoundary>
+                <RequireFeature flag="campaigns">
+                  <ErrorBoundary>
+                    <CampaignsPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -192,9 +195,11 @@ export const AppRoutes = ({
             path="/campaigns/new"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <NewCampaignPage />
-                </ErrorBoundary>
+                <RequireFeature flag="campaigns">
+                  <ErrorBoundary>
+                    <NewCampaignPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -205,9 +210,11 @@ export const AppRoutes = ({
             path="/campaigns/:campaignId/:view"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <CampaignWorkspacePage />
-                </ErrorBoundary>
+                <RequireFeature flag="campaigns">
+                  <ErrorBoundary>
+                    <CampaignWorkspacePage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -216,9 +223,11 @@ export const AppRoutes = ({
             path="/campaigns/:campaignId/:view/:section"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <CampaignWorkspacePage />
-                </ErrorBoundary>
+                <RequireFeature flag="campaigns">
+                  <ErrorBoundary>
+                    <CampaignWorkspacePage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -238,9 +247,11 @@ export const AppRoutes = ({
             path="/scheduler"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <SchedulerPage />
-                </ErrorBoundary>
+                <RequireFeature flag="scheduler">
+                  <ErrorBoundary>
+                    <SchedulerPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -271,9 +282,11 @@ export const AppRoutes = ({
             path="/budget-tracker"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <BudgetTrackerPage />
-                </ErrorBoundary>
+                <RequireFeature flag="budget_tracker">
+                  <ErrorBoundary>
+                    <BudgetTrackerPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -282,9 +295,11 @@ export const AppRoutes = ({
             path="/memo"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <MemoPage />
-                </ErrorBoundary>
+                <RequireFeature flag="weekly_memo">
+                  <ErrorBoundary>
+                    <MemoPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />

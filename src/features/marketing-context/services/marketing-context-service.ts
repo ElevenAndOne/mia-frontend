@@ -1,5 +1,11 @@
 import { apiFetch } from '../../../utils/api'
-import type { BrandGuideExtracted, GenerateResult, MarketingContext, UploadResult } from '../types'
+import type {
+  BrandGuideExtracted,
+  GenerateResult,
+  MarketingContext,
+  UploadResult,
+  WebsiteScan,
+} from '../types'
 
 function tenantParam(tenantId?: string | null): string {
   return tenantId ? `&tenant_id=${encodeURIComponent(tenantId)}` : ''
@@ -121,3 +127,46 @@ export async function findCompetitors(
 // Message feedback moved to submitChatFeedback in features/chat/services/chat-service.ts
 // (per-message chat_feedback rows, Jul 2026). The old /api/marketing-context/feedback
 // endpoint remains for legacy skill_feedback_log data, which skill-notes counts still read.
+
+/** Commit the pending website-generated brand guide so Mia uses it right away (Basic flow). */
+export async function commitPendingBrandGuide(
+  sessionId: string,
+  tenantId?: string | null
+): Promise<void> {
+  const params = new URLSearchParams({ session_id: sessionId })
+  if (tenantId) params.set('tenant_id', tenantId)
+  const response = await apiFetch(`/api/marketing-context/commit-pending?${params.toString()}`, {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: 'Could not save the brand guide' }))
+    throw new Error(err.detail || 'Could not save the brand guide')
+  }
+}
+
+/**
+ * Basic "Mia, read my website": voice + colours + fonts + logo + look in one call. The backend
+ * saves the URL on the workspace, commits the brand guide and applies the Brand Kit. Slow
+ * (20-60s) — show progress.
+ */
+export async function readWebsite(
+  sessionId: string,
+  websiteUrl: string,
+  tenantId?: string | null
+): Promise<WebsiteScan> {
+  const response = await apiFetch('/api/marketing-context/read-website', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      website_url: websiteUrl,
+      tenant_id: tenantId ?? null,
+    }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: "Mia couldn't read that website" }))
+    throw new Error(err.detail || "Mia couldn't read that website")
+  }
+  const data = (await response.json()) as { success: boolean; website_scan: WebsiteScan }
+  return data.website_scan
+}

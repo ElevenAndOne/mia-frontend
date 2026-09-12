@@ -12,6 +12,8 @@ import { apiFetch, createSessionHeaders } from '../../utils/api'
 import { getTimeAgo } from '../../utils/date-display'
 import { useIntegrationStatus } from './hooks/use-integration-status'
 import { usePlugins } from '../plugins/hooks/use-plugins'
+import { useExperience } from '../workspace/hooks/use-experience'
+import { useFeatures } from '../workspace/hooks/use-features'
 import { getIntegrationHighlight, clearIntegrationHighlight } from './utils/integration-highlight'
 import MetaAccountSelector from './selectors/meta-account-selector'
 import FacebookPageSelector from './selectors/facebook-page-selector'
@@ -43,6 +45,36 @@ interface Integration {
   lastSync?: string
   autoSync?: boolean
 }
+
+/**
+ * Basic experience: the same page wears a simpler face — "Connections". An owner sees their
+ * Facebook Page (with Instagram) and a short "Add more" list where every row says, in one
+ * line, what connecting it unlocks (constants/features.py unlock rules). Team/Agency keep
+ * the full page. Ids match the `integrations` list below; handlers are shared.
+ */
+const BASIC_CONNECTIONS: Array<{ id: string; title: string; unlocks: string; page?: boolean }> = [
+  {
+    id: 'facebook_organic',
+    title: 'Facebook Page & Instagram',
+    unlocks: 'Where your posts go out and your results come in. Instagram comes with your Page.',
+    page: true,
+  },
+  {
+    id: 'meta',
+    title: 'Meta Ads',
+    unlocks: 'Unlocks Campaigns, Budget Tracker and the Weekly Memo. Mia can read and manage your boosted posts and ads.',
+  },
+  {
+    id: 'google',
+    title: 'Google Ads',
+    unlocks: 'Unlocks Campaigns and Budget Tracker for search ads. Mia can read and manage them for you.',
+  },
+  {
+    id: 'ga4',
+    title: 'Google Analytics',
+    unlocks: 'Mia can see what people do on your website after a post.',
+  },
+]
 
 const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const navigate = useNavigate()
@@ -86,10 +118,16 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       loadFigmaOAuthStatus()
       loadCanvaStatus()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspace?.tenant_id])
 
   const { isEnabled: isPluginEnabled, invalidate: invalidatePlugins } = usePlugins()
+  // Basic gets the "Connections" face of this page (see BASIC_CONNECTIONS).
+  const { isBasic } = useExperience()
+  // Paid rows on the Basic page follow the same signal as the sidebar: the paid_media flag
+  // is on only when an ad account has really spent (feature_unlock_keys on the backend).
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+  const paidUnlocked = isFeatureEnabled('paid_media')
 
   // ClickUp plugin state
   const [showClickUpModal, setShowClickUpModal] = useState(false)
@@ -302,8 +340,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
   const setShowGA4PropertySelector = (show: boolean) => setOpenModal(show ? 'ga4' : null)
   const setShowLinkedInAccountSelector = (show: boolean) =>
     setOpenModal(show ? 'linkedin_ads' : null)
-  const setShowTikTokAccountSelector = (show: boolean) =>
-    setOpenModal(show ? 'tiktok_ads' : null)
+  const setShowTikTokAccountSelector = (show: boolean) => setOpenModal(show ? 'tiktok_ads' : null)
   const setShowTikTokOrganicAccountSelector = (show: boolean) =>
     setOpenModal(show ? 'tiktok_organic' : null)
   const setShowAirtableBaseSelector = (show: boolean) => setOpenModal(show ? 'airtable' : null)
@@ -314,9 +351,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     () =>
       linkedinLabelFor(
         currentAccountData?.linkedin_ads_account_id,
-        currentAccountData?.linkedin_organization_id,
+        currentAccountData?.linkedin_organization_id
       ),
-    [currentAccountData?.linkedin_ads_account_id, currentAccountData?.linkedin_organization_id],
+    [currentAccountData?.linkedin_ads_account_id, currentAccountData?.linkedin_organization_id]
   )
 
   const integrations = useMemo((): Integration[] => {
@@ -457,8 +494,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         description: 'Short-form video advertising',
         icon: '/icons/tiktok.svg',
         connected: platformStatus.tiktok_ads?.connected || false,
-        linked:
-          platformStatus.tiktok_ads?.linked ?? platformStatus.tiktok_ads?.connected ?? false,
+        linked: platformStatus.tiktok_ads?.linked ?? platformStatus.tiktok_ads?.connected ?? false,
         lastSync: platformStatus.tiktok_ads?.connected
           ? getTimeAgo(platformStatus.tiktok_ads.last_synced)
           : undefined,
@@ -710,9 +746,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setCsError('')
     try {
       const config: Record<string, string> = {}
-      if (csFalKey.trim())    config.fal_api_key    = csFalKey.trim()
-      if (csRunwayKey.trim()) config.runway_api_key  = csRunwayKey.trim()
-      if (csGoogleKey.trim()) config.google_api_key  = csGoogleKey.trim()
+      if (csFalKey.trim()) config.fal_api_key = csFalKey.trim()
+      if (csRunwayKey.trim()) config.runway_api_key = csRunwayKey.trim()
+      if (csGoogleKey.trim()) config.google_api_key = csGoogleKey.trim()
 
       const res = await apiFetch(
         `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-creative-studio/enable`,
@@ -744,9 +780,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     setCsError('')
     try {
       const config: Record<string, string> = {}
-      if (csFalKey.trim())    config.fal_api_key    = csFalKey.trim()
-      if (csRunwayKey.trim()) config.runway_api_key  = csRunwayKey.trim()
-      if (csGoogleKey.trim()) config.google_api_key  = csGoogleKey.trim()
+      if (csFalKey.trim()) config.fal_api_key = csFalKey.trim()
+      if (csRunwayKey.trim()) config.runway_api_key = csRunwayKey.trim()
+      if (csGoogleKey.trim()) config.google_api_key = csGoogleKey.trim()
 
       const res = await apiFetch(
         `/api/tenants/${activeWorkspace.tenant_id}/plugins/mia-creative-studio/enable`,
@@ -878,16 +914,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       })
       if (!res.ok) return
       setFigmaOAuthStatus(await res.json())
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   const handleFigmaOAuthConnect = async () => {
     if (!activeWorkspace) return
     setFigmaOAuthLoading(true)
     try {
-      const res = await apiFetch(`/api/oauth/figma/auth-url?tenant_id=${activeWorkspace.tenant_id}`, {
-        headers: { 'X-Session-ID': sessionId || '' },
-      })
+      const res = await apiFetch(
+        `/api/oauth/figma/auth-url?tenant_id=${activeWorkspace.tenant_id}`,
+        {
+          headers: { 'X-Session-ID': sessionId || '' },
+        }
+      )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Failed to get Figma auth URL')
@@ -913,7 +954,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     try {
       const res = await apiFetch(
         `/api/oauth/figma/disconnect?tenant_id=${activeWorkspace.tenant_id}`,
-        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } },
+        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } }
       )
       if (!res.ok) throw new Error('Failed to disconnect Figma')
       setFigmaOAuthStatus({ connected: false })
@@ -935,16 +976,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
       })
       if (!res.ok) return
       setCanvaStatus(await res.json())
-    } catch { /* best-effort */ }
+    } catch {
+      /* best-effort */
+    }
   }
 
   const handleCanvaConnect = async () => {
     if (!activeWorkspace) return
     setCanvaLoading(true)
     try {
-      const res = await apiFetch(`/api/oauth/canva/auth-url?tenant_id=${activeWorkspace.tenant_id}`, {
-        headers: { 'X-Session-ID': sessionId || '' },
-      })
+      const res = await apiFetch(
+        `/api/oauth/canva/auth-url?tenant_id=${activeWorkspace.tenant_id}`,
+        {
+          headers: { 'X-Session-ID': sessionId || '' },
+        }
+      )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || 'Failed to get Canva auth URL')
@@ -970,7 +1016,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     try {
       const res = await apiFetch(
         `/api/oauth/canva/disconnect?tenant_id=${activeWorkspace.tenant_id}`,
-        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } },
+        { method: 'POST', headers: { 'X-Session-ID': sessionId || '' } }
       )
       if (!res.ok) throw new Error('Failed to disconnect Canva')
       setCanvaStatus({ connected: false })
@@ -1375,7 +1421,11 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
     <>
       <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
         {/* Header */}
-        <TopBar title="Integrations" onBack={onBack} className="border-b border-tertiary" />
+        <TopBar
+          title={isBasic ? 'Connections' : 'Integrations'}
+          onBack={onBack}
+          className="border-b border-tertiary"
+        />
 
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
@@ -1394,8 +1444,149 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             </div>
           )}
 
+          {/* Basic: "Connections" — your Page, then what else you can add and why */}
+          {isBasic && !loading && (
+            <div className="mia-sans mx-auto w-full max-w-[40rem]">
+              {(['page', 'more'] as const).map((group) => {
+                const rows = BASIC_CONNECTIONS.filter((c) => Boolean(c.page) === (group === 'page'))
+                  .map((c) => ({ meta: c, integration: integrations.find((i) => i.id === c.id) }))
+                  .filter((r) => r.integration)
+                if (rows.length === 0) return null
+                return (
+                  <section key={group} className="mb-6" aria-label={group === 'page' ? 'Your pages' : 'Add more'}>
+                    <div className="mb-2.5 flex items-baseline justify-between">
+                      <span className="mia-mono text-primary">
+                        {group === 'page' ? 'Your pages' : 'Add more'}
+                      </span>
+                      {group === 'more' && (
+                        <span className="paragraph-xs text-quaternary">
+                          Each one unlocks more of Mia as your business grows.
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2.5">
+                      {rows.map(({ meta, integration }) => {
+                        const i = integration as Integration
+                        const health = integrationHealth[i.id]
+                        const busy = connectingId === i.id
+                        // A Meta login leaves a Meta Ads token (and often an empty personal ad
+                        // account) on every workspace. For an owner that is not "connected":
+                        // paid rows count only when an account is linked AND has spent.
+                        const paidRow = i.id === 'meta' || i.id === 'google'
+                        const dormant =
+                          health?.state === 'no_spend' ||
+                          (paidRow && i.connected && i.linked && !paidUnlocked)
+                        const broken = Boolean(health) && health?.state !== 'no_spend'
+                        const on = i.connected && i.linked && !dormant
+                        const sub = dormant
+                          ? 'Linked, but no ads have run from this account yet. Campaigns unlock once they do.'
+                          : !on
+                            ? meta.unlocks
+                            : broken
+                              ? 'Needs your attention — reconnect to keep posts and results flowing.'
+                              : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
+                        const label = busy
+                          ? 'Connecting…'
+                          : dormant
+                            ? 'Change account'
+                            : on
+                              ? 'Reconnect'
+                              : 'Connect'
+                        const primary = (!on && !dormant) || broken
+                        return (
+                          <div
+                            key={i.id}
+                            className={`flex items-center justify-between gap-4 rounded-2xl bg-secondary p-3 ${
+                              broken ? 'ring-1 ring-inset ring-utility-error-400' : ''
+                            } ${highlightedIds.includes(i.id) ? 'ring-2 ring-brand' : ''}`}
+                          >
+                            <div className="flex min-w-0 items-start gap-3">
+                              <img
+                                src={i.icon}
+                                alt=""
+                                className={`mt-0.5 h-7 w-7 shrink-0 ${on ? '' : 'opacity-70'}`}
+                                loading="lazy"
+                              />
+                              <div className="flex min-w-0 flex-col gap-1">
+                                <span className="paragraph-sm text-primary">{meta.title}</span>
+                                <span className="paragraph-xs text-quaternary">{sub}</span>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {health && <HealthPill health={health} />}
+                              {canManageIntegrations && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleConnect(i.id)}
+                                  disabled={connectingId !== null}
+                                  className={
+                                    primary
+                                      ? 'rounded-md bg-brand-solid px-3 py-1.5 paragraph-xs font-semibold text-primary-onbrand hover:bg-brand-solid-hover disabled:opacity-60'
+                                      : 'rounded-md border border-primary px-2.5 py-1.5 paragraph-xs text-primary hover:bg-tertiary disabled:opacity-60'
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {group === 'more' && canManageIntegrations && (
+                        <div
+                          className={`flex items-center justify-between gap-4 rounded-2xl bg-secondary p-3 ${
+                            canvaStatus?.needs_reconnect ? 'ring-1 ring-inset ring-utility-error-400' : ''
+                          }`}
+                        >
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span
+                              aria-hidden="true"
+                              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#00C4CC] text-[0.6875rem] font-bold text-white"
+                            >
+                              C
+                            </span>
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <span className="paragraph-sm text-primary">Canva</span>
+                              <span className="paragraph-xs text-quaternary">
+                                {canvaStatus?.needs_reconnect
+                                  ? 'Needs reconnecting.'
+                                  : canvaStatus?.connected
+                                    ? `Connected as ${canvaStatus.display_name || 'Canva user'}`
+                                    : 'Turn a design you already made into a post from chat.'}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCanvaConnect}
+                            className={
+                              canvaStatus?.connected && !canvaStatus.needs_reconnect
+                                ? 'rounded-md border border-primary px-2.5 py-1.5 paragraph-xs text-primary hover:bg-tertiary'
+                                : 'rounded-md bg-brand-solid px-3 py-1.5 paragraph-xs font-semibold text-primary-onbrand hover:bg-brand-solid-hover'
+                            }
+                          >
+                            {canvaStatus?.needs_reconnect
+                              ? 'Reconnect'
+                              : canvaStatus?.connected
+                                ? 'Reconnect'
+                                : 'Connect'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )
+              })}
+              {!canManageIntegrations && (
+                <p className="paragraph-xs text-quaternary">
+                  Only the workspace owner can change connections.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Connected Sources Section */}
-          {!loading && connectedSources.length > 0 && (
+          {!isBasic && !loading && connectedSources.length > 0 && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
               <div className="mb-4">
                 <h2 className="label-md text-primary">{connectedSources.length} Sources</h2>
@@ -1547,7 +1738,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           )}
 
           {/* Available Integrations Section - hidden for viewer/analyst roles */}
-          {!loading && availableSources.length > 0 && canManageIntegrations && (
+          {!isBasic && !loading && availableSources.length > 0 && canManageIntegrations && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
               <h2 className="label-md text-primary mb-1">Available Integrations</h2>
               <p className="paragraph-xs text-quaternary mb-4">
@@ -1598,7 +1789,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
           )}
 
           {/* Extensions Section — plugins */}
-          {canManageIntegrations && (
+          {!isBasic && canManageIntegrations && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
               <h2 className="label-md text-primary mb-1">Extensions</h2>
               <p className="paragraph-xs text-quaternary mb-4">
@@ -1611,9 +1802,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#7B68EE]/10">
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg
+                          className="w-6 h-6"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M3 14.5L12 4l9 10.5"
+                            stroke="#7B68EE"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M7 19.5L12 15l5 4.5"
+                            stroke="#00C4FF"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -1649,8 +1857,19 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-purple-500/10">
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z" stroke="#A855F7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <svg
+                          className="w-6 h-6"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z"
+                            stroke="#A855F7"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -1687,12 +1906,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#0ACF83]/10">
-                        <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-                          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
-                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-                          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-                          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                        <svg
+                          className="w-6 h-6"
+                          viewBox="0 0 38 57"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z"
+                            fill="#1ABCFE"
+                          />
+                          <path
+                            d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z"
+                            fill="#0ACF83"
+                          />
+                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262" />
+                          <path
+                            d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z"
+                            fill="#F24E1E"
+                          />
+                          <path
+                            d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z"
+                            fill="#A259FF"
+                          />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -1728,12 +1964,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
                       <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-lg bg-[#1ABCFE]/10">
-                        <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-                          <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
-                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-                          <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-                          <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                        <svg
+                          className="w-6 h-6"
+                          viewBox="0 0 38 57"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z"
+                            fill="#1ABCFE"
+                          />
+                          <path
+                            d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z"
+                            fill="#0ACF83"
+                          />
+                          <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262" />
+                          <path
+                            d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z"
+                            fill="#F24E1E"
+                          />
+                          <path
+                            d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z"
+                            fill="#A259FF"
+                          />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
@@ -1830,9 +2083,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   {/* Canva authorizes whichever account the browser is already signed
                       into and gives us no way to force a chooser — so say how to change it. */}
                   {canvaStatus?.connected && !canvaStatus.needs_reconnect && (
-                    <p className="paragraph-xs text-quaternary mt-2 pl-[52px]">
-                      Wrong account? Disconnect, then use “Switch accounts” on Canva’s
-                      approval screen to pick a different one.
+                    <p className="paragraph-xs text-quaternary mt-2 pl-[3.25rem]">
+                      Wrong account? Disconnect, then use “Switch accounts” on Canva’s approval
+                      screen to pick a different one.
                     </p>
                   )}
                 </div>
@@ -2135,8 +2388,20 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#7B68EE]/10 shrink-0">
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 14.5L12 4l9 10.5" stroke="#7B68EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M7 19.5L12 15l5 4.5" stroke="#00C4FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path
+                        d="M3 14.5L12 4l9 10.5"
+                        stroke="#7B68EE"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M7 19.5L12 15l5 4.5"
+                        stroke="#00C4FF"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </div>
                   <h2 className="title-h6 text-primary">
@@ -2152,7 +2417,9 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
 
               {!isPluginEnabled('clickup') && (
                 <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-4 mb-4">
-                  <h3 className="subheading-md text-utility-info-700 mb-2">How to get your API token:</h3>
+                  <h3 className="subheading-md text-utility-info-700 mb-2">
+                    How to get your API token:
+                  </h3>
                   <ol className="paragraph-xs text-utility-info-700 space-y-1 list-decimal list-inside">
                     <li>Log in to ClickUp</li>
                     <li>Click your profile avatar → Settings</li>
@@ -2166,8 +2433,18 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="mb-4">
                   <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4">
                     <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-success"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <p className="subheading-md text-success">ClickUp connected</p>
                     </div>
@@ -2201,9 +2478,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                       disabled={clickUpSubmitting}
                     />
                   </div>
-                  {clickUpError && (
-                    <p className="paragraph-xs text-error">{clickUpError}</p>
-                  )}
+                  {clickUpError && <p className="paragraph-xs text-error">{clickUpError}</p>}
                 </div>
               )}
 
@@ -2249,11 +2524,21 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z" stroke="#A855F7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path
+                        d="M12 2L9 9H2l5.5 4-2 7L12 16l6.5 4-2-7L22 9h-7z"
+                        stroke="#A855F7"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </div>
                   <h2 className="title-h6 text-primary">
-                    {csJustEnabled ? 'Mia Create enabled!' : isPluginEnabled('mia-creative-studio') ? 'Manage Mia Create' : 'Enable Mia Create'}
+                    {csJustEnabled
+                      ? 'Mia Create enabled!'
+                      : isPluginEnabled('mia-creative-studio')
+                        ? 'Manage Mia Create'
+                        : 'Enable Mia Create'}
                   </h2>
                 </div>
               </div>
@@ -2263,21 +2548,40 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="mb-6">
                   <div className="bg-success-primary border border-utility-success-300 rounded-lg p-4 mb-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <svg className="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-success shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       <p className="subheading-md text-success">Ready to generate</p>
                     </div>
-                    <p className="paragraph-xs text-tertiary">AI image and video generation is now available for this workspace.</p>
+                    <p className="paragraph-xs text-tertiary">
+                      AI image and video generation is now available for this workspace.
+                    </p>
                   </div>
                   <button
-                    onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false); navigate('/creative-studio') }}
+                    onClick={() => {
+                      setShowCreativeStudioModal(false)
+                      setCsJustEnabled(false)
+                      navigate('/creative-studio')
+                    }}
                     className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-2"
                   >
                     Visit Mia Create →
                   </button>
                   <button
-                    onClick={() => { setShowCreativeStudioModal(false); setCsJustEnabled(false) }}
+                    onClick={() => {
+                      setShowCreativeStudioModal(false)
+                      setCsJustEnabled(false)
+                    }}
                     className="w-full px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
                   >
                     Close
@@ -2287,7 +2591,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 /* Manage state */
                 <div className="mb-4">
                   <button
-                    onClick={() => { setShowCreativeStudioModal(false); navigate('/creative-studio') }}
+                    onClick={() => {
+                      setShowCreativeStudioModal(false)
+                      navigate('/creative-studio')
+                    }}
                     className="w-full px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover mb-4"
                   >
                     Open Mia Create →
@@ -2295,25 +2602,71 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                   <p className="subheading-md text-secondary mb-3">Update API keys</p>
                   <div className="space-y-3">
                     <div>
-                      <label className="block paragraph-xs text-quaternary mb-1">fal.ai API Key <span className="text-quaternary">(Veo 3.1, FLUX, Kling)</span></label>
-                      <input type="password" value={csFalKey} onChange={(e) => setCsFalKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block paragraph-xs text-quaternary mb-1">
+                        fal.ai API Key{' '}
+                        <span className="text-quaternary">(Veo 3.1, FLUX, Kling)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csFalKey}
+                        onChange={(e) => setCsFalKey(e.target.value)}
+                        placeholder="Leave blank to keep existing"
+                        className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                     <div>
-                      <label className="block paragraph-xs text-quaternary mb-1">Runway API Key <span className="text-quaternary">(Runway Gen-4.5 direct)</span></label>
-                      <input type="password" value={csRunwayKey} onChange={(e) => setCsRunwayKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block paragraph-xs text-quaternary mb-1">
+                        Runway API Key{' '}
+                        <span className="text-quaternary">(Runway Gen-4.5 direct)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csRunwayKey}
+                        onChange={(e) => setCsRunwayKey(e.target.value)}
+                        placeholder="Leave blank to keep existing"
+                        className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                     <div>
-                      <label className="block paragraph-xs text-quaternary mb-1">Google API Key <span className="text-quaternary">(Nano Banana 2)</span></label>
-                      <input type="password" value={csGoogleKey} onChange={(e) => setCsGoogleKey(e.target.value)} placeholder="Leave blank to keep existing" className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block paragraph-xs text-quaternary mb-1">
+                        Google API Key <span className="text-quaternary">(Nano Banana 2)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csGoogleKey}
+                        onChange={(e) => setCsGoogleKey(e.target.value)}
+                        placeholder="Leave blank to keep existing"
+                        className="w-full px-3 py-2 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                   </div>
                   {csError && <p className="paragraph-xs text-error mt-2">{csError}</p>}
                   <div className="flex gap-3 mt-4">
-                    <button onClick={() => { setShowCreativeStudioModal(false); setCsError('') }} disabled={csSubmitting} className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Close</button>
-                    <button onClick={handleCreativeStudioUpdate} disabled={csSubmitting} className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50">
+                    <button
+                      onClick={() => {
+                        setShowCreativeStudioModal(false)
+                        setCsError('')
+                      }}
+                      disabled={csSubmitting}
+                      className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={handleCreativeStudioUpdate}
+                      disabled={csSubmitting}
+                      className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50"
+                    >
                       {csSubmitting ? 'Saving...' : 'Save Keys'}
                     </button>
-                    <button onClick={handleCreativeStudioDisable} disabled={csSubmitting} className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50">
+                    <button
+                      onClick={handleCreativeStudioDisable}
+                      disabled={csSubmitting}
+                      className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
+                    >
                       {csSubmitting ? '...' : 'Disable'}
                     </button>
                   </div>
@@ -2321,25 +2674,73 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
               ) : (
                 /* Enable state */
                 <div>
-                  <p className="paragraph-sm text-tertiary mb-4">Enter your API keys to enable AI image and video generation. All fields are optional — server keys are used as fallback.</p>
+                  <p className="paragraph-sm text-tertiary mb-4">
+                    Enter your API keys to enable AI image and video generation. All fields are
+                    optional — server keys are used as fallback.
+                  </p>
                   <div className="space-y-3 mb-4">
                     <div>
-                      <label className="block subheading-md text-secondary mb-1">fal.ai API Key <span className="paragraph-xs text-quaternary">(Veo 3.1, FLUX, Kling)</span></label>
-                      <input type="password" value={csFalKey} onChange={(e) => setCsFalKey(e.target.value)} placeholder="dec93678-..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block subheading-md text-secondary mb-1">
+                        fal.ai API Key{' '}
+                        <span className="paragraph-xs text-quaternary">(Veo 3.1, FLUX, Kling)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csFalKey}
+                        onChange={(e) => setCsFalKey(e.target.value)}
+                        placeholder="dec93678-..."
+                        className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                     <div>
-                      <label className="block subheading-md text-secondary mb-1">Runway API Key <span className="paragraph-xs text-quaternary">(Runway Gen-4.5 direct)</span></label>
-                      <input type="password" value={csRunwayKey} onChange={(e) => setCsRunwayKey(e.target.value)} placeholder="key_..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block subheading-md text-secondary mb-1">
+                        Runway API Key{' '}
+                        <span className="paragraph-xs text-quaternary">
+                          (Runway Gen-4.5 direct)
+                        </span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csRunwayKey}
+                        onChange={(e) => setCsRunwayKey(e.target.value)}
+                        placeholder="key_..."
+                        className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                     <div>
-                      <label className="block subheading-md text-secondary mb-1">Google API Key <span className="paragraph-xs text-quaternary">(Nano Banana 2)</span></label>
-                      <input type="password" value={csGoogleKey} onChange={(e) => setCsGoogleKey(e.target.value)} placeholder="AIzaSy..." className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono" disabled={csSubmitting} />
+                      <label className="block subheading-md text-secondary mb-1">
+                        Google API Key{' '}
+                        <span className="paragraph-xs text-quaternary">(Nano Banana 2)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={csGoogleKey}
+                        onChange={(e) => setCsGoogleKey(e.target.value)}
+                        placeholder="AIzaSy..."
+                        className="w-full px-4 py-3 border border-primary rounded-lg paragraph-sm font-mono"
+                        disabled={csSubmitting}
+                      />
                     </div>
                     {csError && <p className="paragraph-xs text-error">{csError}</p>}
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => { setShowCreativeStudioModal(false); setCsError('') }} disabled={csSubmitting} className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Cancel</button>
-                    <button onClick={handleCreativeStudioEnable} disabled={csSubmitting} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50">
+                    <button
+                      onClick={() => {
+                        setShowCreativeStudioModal(false)
+                        setCsError('')
+                      }}
+                      disabled={csSubmitting}
+                      className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreativeStudioEnable}
+                      disabled={csSubmitting}
+                      className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50"
+                    >
                       {csSubmitting ? 'Enabling...' : 'Enable'}
                     </button>
                   </div>
@@ -2355,12 +2756,29 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
             <div className="bg-primary rounded-2xl p-6 max-w-md w-full shadow-xl">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-[#0ACF83]/10 shrink-0">
-                  <svg className="w-6 h-6" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z" fill="#1ABCFE"/>
-                    <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
-                    <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262"/>
-                    <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-                    <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
+                  <svg
+                    className="w-6 h-6"
+                    viewBox="0 0 38 57"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M19 28.5A9.5 9.5 0 1 1 28.5 19 9.5 9.5 0 0 1 19 28.5z"
+                      fill="#1ABCFE"
+                    />
+                    <path
+                      d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z"
+                      fill="#0ACF83"
+                    />
+                    <path d="M19 0v19h9.5a9.5 9.5 0 1 0 0-19H19z" fill="#FF7262" />
+                    <path
+                      d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z"
+                      fill="#F24E1E"
+                    />
+                    <path
+                      d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z"
+                      fill="#A259FF"
+                    />
                   </svg>
                 </div>
                 <h2 className="title-h6 text-primary">
@@ -2373,13 +2791,23 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 <div className="mb-4">
                   <div className="bg-utility-success-50 border border-utility-success-200 rounded-lg p-4 mb-4">
                     <p className="subheading-md text-success mb-1">
-                      {isPluginEnabled('mia-figma-plugin') ? 'New API key generated' : 'Plugin enabled!'}
+                      {isPluginEnabled('mia-figma-plugin')
+                        ? 'New API key generated'
+                        : 'Plugin enabled!'}
                     </p>
-                    <p className="paragraph-xs text-tertiary mb-3">Copy this key — it won't be shown again. Paste it into the Mia Create plugin in Figma.</p>
+                    <p className="paragraph-xs text-tertiary mb-3">
+                      Copy this key — it won't be shown again. Paste it into the Mia Create plugin
+                      in Figma.
+                    </p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-secondary px-3 py-2 rounded-lg paragraph-xs font-mono text-primary break-all">{figmaApiKey}</code>
+                      <code className="flex-1 bg-secondary px-3 py-2 rounded-lg paragraph-xs font-mono text-primary break-all">
+                        {figmaApiKey}
+                      </code>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(figmaApiKey); setFigmaKeyCopied(true) }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(figmaApiKey)
+                          setFigmaKeyCopied(true)
+                        }}
                         className="px-3 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-sm hover:bg-brand-solid-hover shrink-0"
                       >
                         {figmaKeyCopied ? '✓ Copied' : 'Copy'}
@@ -2387,7 +2815,10 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                     </div>
                   </div>
                   <button
-                    onClick={() => { setShowFigmaModal(false); setFigmaApiKey(null) }}
+                    onClick={() => {
+                      setShowFigmaModal(false)
+                      setFigmaApiKey(null)
+                    }}
                     className="w-full px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary"
                   >
                     Done
@@ -2397,15 +2828,33 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 /* Manage state — already enabled, no key shown */
                 <div>
                   <p className="paragraph-sm text-tertiary mb-4">
-                    Your Figma plugin is active. If you need a new API key (e.g. it was lost), regenerate one below — the old key is immediately revoked.
+                    Your Figma plugin is active. If you need a new API key (e.g. it was lost),
+                    regenerate one below — the old key is immediately revoked.
                   </p>
                   {figmaError && <p className="paragraph-xs text-error mb-3">{figmaError}</p>}
                   <div className="flex gap-3">
-                    <button onClick={() => { setShowFigmaModal(false); setFigmaError('') }} disabled={figmaSubmitting} className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Close</button>
-                    <button onClick={handleFigmaRegenerateKey} disabled={figmaSubmitting} className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50">
+                    <button
+                      onClick={() => {
+                        setShowFigmaModal(false)
+                        setFigmaError('')
+                      }}
+                      disabled={figmaSubmitting}
+                      className="flex-1 px-4 py-2 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={handleFigmaRegenerateKey}
+                      disabled={figmaSubmitting}
+                      className="flex-1 px-4 py-2 bg-secondary border border-primary rounded-lg subheading-md text-primary hover:bg-tertiary disabled:opacity-50"
+                    >
                       {figmaSubmitting ? 'Generating...' : 'New Key'}
                     </button>
-                    <button onClick={handleFigmaDisable} disabled={figmaSubmitting} className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50">
+                    <button
+                      onClick={handleFigmaDisable}
+                      disabled={figmaSubmitting}
+                      className="flex-1 px-4 py-2 bg-error-solid text-primary-onbrand rounded-lg subheading-md hover:bg-error-solid-hover disabled:opacity-50"
+                    >
                       {figmaSubmitting ? '...' : 'Disable'}
                     </button>
                   </div>
@@ -2414,12 +2863,26 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
                 /* Enable state */
                 <div>
                   <p className="paragraph-sm text-tertiary mb-4">
-                    Generates an API key for the Mia Create Figma plugin, letting you browse and place your Mia Create assets directly on the Figma canvas.
+                    Generates an API key for the Mia Create Figma plugin, letting you browse and
+                    place your Mia Create assets directly on the Figma canvas.
                   </p>
                   {figmaError && <p className="paragraph-xs text-error mb-3">{figmaError}</p>}
                   <div className="flex gap-3">
-                    <button onClick={() => { setShowFigmaModal(false); setFigmaError('') }} disabled={figmaSubmitting} className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50">Cancel</button>
-                    <button onClick={handleFigmaEnable} disabled={figmaSubmitting} className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50">
+                    <button
+                      onClick={() => {
+                        setShowFigmaModal(false)
+                        setFigmaError('')
+                      }}
+                      disabled={figmaSubmitting}
+                      className="flex-1 px-4 py-3 border border-primary rounded-lg subheading-md text-secondary hover:bg-secondary disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleFigmaEnable}
+                      disabled={figmaSubmitting}
+                      className="flex-1 px-4 py-3 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50"
+                    >
                       {figmaSubmitting ? 'Enabling...' : 'Enable'}
                     </button>
                   </div>

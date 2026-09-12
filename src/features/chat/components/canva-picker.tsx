@@ -100,8 +100,7 @@ export const CanvaPicker = ({ onClose, onImported }: CanvaPickerProps) => {
     }
   }
 
-  const singleSelected =
-    selected.size === 1 ? designs.find((d) => selected.has(d.design_id)) : null
+  const singleSelected = selected.size === 1 ? designs.find((d) => selected.has(d.design_id)) : null
 
   return (
     <div
@@ -188,7 +187,7 @@ export const CanvaPicker = ({ onClose, onImported }: CanvaPickerProps) => {
                       )}
                     </div>
                     {isSel && (
-                      <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-brand-solid text-primary-onbrand text-[11px] font-bold flex items-center justify-center">
+                      <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-brand-solid text-primary-onbrand text-[0.6875rem] font-bold flex items-center justify-center">
                         ✓
                       </span>
                     )}

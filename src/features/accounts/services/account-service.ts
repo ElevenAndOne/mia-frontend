@@ -3,6 +3,7 @@
  */
 import { apiFetch } from '../../../utils/api'
 import type { AccountMapping } from '../types'
+import type { Experience, FeatureFlags } from '../../workspace/feature-keys'
 
 export interface AccountsResponse {
   accounts: AccountMapping[]
@@ -14,6 +15,9 @@ export interface SelectAccountResponse {
     tenant_id: string
     name: string
     auto_created?: boolean
+    features?: FeatureFlags
+    experience?: Experience
+    experience_profile?: Experience
   }
 }
 

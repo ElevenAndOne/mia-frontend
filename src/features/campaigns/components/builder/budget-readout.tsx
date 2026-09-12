@@ -12,7 +12,9 @@ export const BudgetReadout = ({ campaign }: { campaign: CampaignDetail }) => {
   if (!budgetTotal) {
     return (
       <span className="paragraph-xs text-quaternary">
-        {allocatedTotal > 0 ? `${fmt(allocatedTotal)} allocated · set a total budget` : 'No budget set'}
+        {allocatedTotal > 0
+          ? `${fmt(allocatedTotal)} allocated · set a total budget`
+          : 'No budget set'}
       </span>
     )
   }
@@ -20,7 +22,7 @@ export const BudgetReadout = ({ campaign }: { campaign: CampaignDetail }) => {
   const over = (unallocated ?? 0) < 0
 
   return (
-    <div className="flex flex-col gap-1.5 min-w-[200px]">
+    <div className="flex flex-col gap-1.5 min-w-[12.5rem]">
       <div className="paragraph-xs cw-mono">
         <span className="text-primary font-semibold">{fmt(allocatedTotal)}</span>
         <span className="text-quaternary"> of {fmt(budgetTotal)} allocated · </span>
@@ -29,7 +31,13 @@ export const BudgetReadout = ({ campaign }: { campaign: CampaignDetail }) => {
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-tertiary overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: over ? 'var(--color-utility-error-600)' : 'var(--cw-accent)' }} />
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            background: over ? 'var(--color-utility-error-600)' : 'var(--cw-accent)',
+          }}
+        />
       </div>
     </div>
   )

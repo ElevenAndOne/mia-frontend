@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { collapseEdits, miaCreateApi, type MiaAsset } from '../../creative-studio/creative-studio-api'
+import {
+  collapseEdits,
+  miaCreateApi,
+  type MiaAsset,
+} from '../../creative-studio/creative-studio-api'
 import { useSession } from '../../../contexts/session-context'
 import { Pencil01 } from '../../../components/icon/pencil-01'
 import { Maximize01 } from '../../../components/icon/maximize-01'
@@ -31,6 +35,8 @@ interface Props {
   onUseInPost?: (asset: MiaAsset) => void
   /** Drift badge "Fix" — re-pin the edit SOURCE and ask Mia to redo the edit precisely. */
   onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
+  /** Fires once, the first time this card has real images (live jobs only). */
+  onAssetsReady?: (assets: MiaAsset[], event: ChatImageJob) => void
 }
 
 /**
@@ -41,7 +47,14 @@ interface Props {
  * Polling (rather than streaming the images) reuses the endpoints the Mia Create page
  * already depends on — see docs/CHAT_IMAGE_GEN_SCOPE.md D2.
  */
-export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixDrift }: Props) {
+export function ChatImageCard({
+  event,
+  pinnedAssetId,
+  onPin,
+  onUseInPost,
+  onFixDrift,
+  onAssetsReady,
+}: Props) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id || ''
   const [assets, setAssets] = useState<MiaAsset[]>(event.assets ?? [])
@@ -55,6 +68,21 @@ export function ChatImageCard({ event, pinnedAssetId, onPin, onUseInPost, onFixD
   // Vision scoring (finalize_set) lands just AFTER every job reports complete, so keep
   // polling a few extra ticks once images are up to catch the scores + best-of-N pick.
   const graceRef = useRef(0)
+
+  // Placement into a post happens once, when the first real (stored) asset arrives from a
+  // live job — never for cards restored from history.
+  const readyFiredRef = useRef(!!event.assets?.length)
+  const onAssetsReadyRef = useRef(onAssetsReady)
+  useEffect(() => {
+    onAssetsReadyRef.current = onAssetsReady
+  }, [onAssetsReady])
+  useEffect(() => {
+    if (readyFiredRef.current) return
+    const real = assets.filter((a) => a.cdn_url && !String(a.asset_id).startsWith('job-'))
+    if (!real.length) return
+    readyFiredRef.current = true
+    onAssetsReadyRef.current?.(real, event)
+  }, [assets, event])
 
   const expected = Math.max(1, event.num_images || 1)
   // A finished set/composite is authoritative; otherwise we're still waiting.
@@ -348,7 +376,11 @@ function ImageTile({
         {canPin && (
           <button
             onClick={() => onPin?.(isPinned ? null : asset)}
-            title={isPinned ? 'Stop editing this image' : 'Edit this image — your next message changes it'}
+            title={
+              isPinned
+                ? 'Stop editing this image'
+                : 'Edit this image — your next message changes it'
+            }
             className={[
               'p-1.5 rounded',
               isPinned

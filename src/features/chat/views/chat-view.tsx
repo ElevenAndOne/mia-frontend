@@ -9,6 +9,13 @@ import { CanvasPane } from '../components/canvas-pane'
 import { Sheet } from '../../overlay'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
 import QuickActions from '../components/quick-actions'
+import { useFeatures } from '../../workspace/hooks/use-features'
+import { useExperience } from '../../workspace/hooks/use-experience'
+import { useHomeBrief } from '../../home/hooks/use-home-brief'
+import { useHomeCardTurnover } from '../../home/hooks/use-home-card-turnover'
+import { setHomeCardInFlight } from '../../home/in-flight'
+import { BasicHome } from '../../home/components/basic-home'
+import { BestPostCanvas } from '../../home/components/best-post-canvas'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { FeedbackModal } from '../components/feedback-modal'
@@ -18,6 +25,7 @@ import { setIntegrationHighlight } from '../../integrations/utils/integration-hi
 import { useChatView } from '../hooks/use-chat-view.tsx'
 import { useGoldInsights } from '../../insights/hooks/use-gold-insights'
 import { useSession } from '../../../contexts/session-context'
+import { useToast } from '../../../contexts/toast-context'
 import { trackEvent } from '../../../utils/tracking'
 
 interface ChatViewProps {
@@ -97,6 +105,87 @@ export const ChatView = ({
     editTarget,
     setEditTarget,
   } = useChatView()
+
+  // Basic hides the five fixed home cards; team/agency keep them (feature flag home_cards).
+
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+
+  // Basic experience: the home column is today's brief (cards + chips) and the canvas rests
+  // on the workspace's best post until a real document takes it over. Closing the best post
+  // is remembered; a pill brings it back.
+  const { isBasic } = useExperience()
+  const { showToast } = useToast()
+  const { brief, patchCard } = useHomeBrief(sessionId, activeWorkspace?.tenant_id, isBasic)
+  // A scheduled post turns its home card over — listened for here because the schedule
+  // flow runs from the canvas mid-conversation, when the home column is not mounted.
+  useHomeCardTurnover(patchCard, isBasic)
+  // The canvas column's open width, from the row it lives in (not the viewport — the sidebar
+  // takes part of that, and OS display scaling changes the CSS px available). Column and
+  // its inner sheet share the number, so nothing is ever wider than the column.
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [rowWidth, setRowWidth] = useState(0)
+  useEffect(() => {
+    const el = rowRef.current
+    if (!el) return
+    const update = () => setRowWidth(el.getBoundingClientRect().width)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  // Bounds in rem so they follow the UI scale (index.css scales the root font-size).
+  const remPx =
+    typeof document !== 'undefined'
+      ? parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      : 16
+  // 40% of the row, 24–42rem: leaves Home more room. The sheet inside renders at 92% so
+  // the paper reads a notch smaller than the shell.
+  const CANVAS_ZOOM = 0.92
+  const canvasWidth = rowWidth
+    ? Math.round(Math.min(42 * remPx, Math.max(24 * remPx, rowWidth * 0.4)))
+    : Math.round(38 * remPx)
+  const BEST_POST_OPEN_KEY = 'mia:basic-canvas-open'
+  const [bestPostOpen, setBestPostOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(BEST_POST_OPEN_KEY) !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const [bestPostSheetOpen, setBestPostSheetOpen] = useState(false)
+  const setBestPost = (open: boolean) => {
+    setBestPostOpen(open)
+    try {
+      localStorage.setItem(BEST_POST_OPEN_KEY, open ? 'open' : 'closed')
+    } catch {
+      /* private mode */
+    }
+  }
+  const makeAnotherCard = brief?.cards.find((c) => c.kind === 'make_another')
+  // Cards and chips slide up and out before the chat takes over; Home slides back down.
+  const [homeLeaving, setHomeLeaving] = useState(false)
+  const handleBasicPrompt = (
+    prompt: string,
+    opts?: { opensCanvas?: boolean; displayText?: string }
+  ) => {
+    if (opts?.opensCanvas) {
+      setBestPost(true)
+      setBestPostSheetOpen(true)
+    }
+    setHomeLeaving(true)
+    window.setTimeout(() => {
+      setHomeLeaving(false)
+      void handleSubmit(prompt, opts?.displayText ? { displayText: opts.displayText } : undefined)
+    }, 230)
+  }
+  const handleMakeAnother = () => {
+    if (!makeAnotherCard?.cta.prompt) return
+    setHomeCardInFlight(makeAnotherCard.id)
+    handleBasicPrompt(makeAnotherCard.cta.prompt, {
+      opensCanvas: true,
+      displayText: `Make another post like my ${brief?.best_post?.weekday ?? 'best'} one`,
+    })
+  }
 
   // When a campaign is active, the date picker shows campaign dates and is non-interactive
   const campaignDateLocked = !!activeCampaign
@@ -220,6 +309,12 @@ export const ChatView = ({
           handleSubmit('Draft a separate post using this image — match its format')
         },
         isUploadingMedia: canvas.isUploadingMedia,
+        onSwapMedia: canvas.swapMedia,
+        onTryAnotherIdea: () => {
+          void handleSubmit(
+            'Try another idea: a different post for my page — new subject, same voice, something current for the business. Draft it ready to post, with one of my photos.'
+          )
+        },
       }
     : null
 
@@ -237,24 +332,77 @@ export const ChatView = ({
       onNewWorkspace={onNewWorkspace}
       onLoadConversation={loadConversation}
     >
-      <div className="flex-1 flex h-full min-h-0 pt-14 md:pt-0">
-        <div className="flex-1 flex flex-col h-full min-h-0 min-w-0">
+      <div ref={rowRef} className="flex-1 flex h-full min-h-0 pt-14 md:pt-0">
+        <div className="relative flex-1 flex flex-col h-full min-h-0 min-w-0">
+          {isBasic && !bestPostOpen && brief?.best_post && !canvas.isOpen && (
+            <button
+              type="button"
+              onClick={() => setBestPost(true)}
+              className="hidden md:inline-flex absolute right-6 top-5 z-10 items-center gap-2 rounded-full bg-secondary py-1.5 pl-1.5 pr-3 paragraph-xs font-semibold text-primary shadow-md hover:bg-tertiary"
+            >
+              <span className="h-7 w-7 rounded-full bg-gradient-to-br from-utility-success-600 to-utility-success-200" />
+              Your best post
+            </button>
+          )}
           {!hasMessages ? (
             <>
-              <ChatEmptyState userName={userName}>
-                <div className="w-full flex flex-col gap-3">
-                  <QuickActions
-                    onAction={handleQuickAction}
-                    disabled={isLoading || !hasSelectedPlatforms}
-                    strategiseReady={strategiseReady}
-                  />
-                  <RaceCampaignTracker
+              {isBasic ? (
+                <div
+                  className={`flex-1 flex flex-col min-h-0 ${homeLeaving ? 'mia-exit-up' : 'mia-enter-down'}`}
+                >
+                  <BasicHome
+                    userName={userName}
+                    onPrompt={handleBasicPrompt}
                     disabled={isLoading}
-                    dateRange={dateRange}
-                    onCampaignChange={handleCampaignChange}
+                    peek={
+                      brief?.best_post ? (
+                        <button
+                          type="button"
+                          onClick={() => setBestPostSheetOpen(true)}
+                          className="md:hidden flex w-full items-center gap-3 rounded-2xl bg-secondary p-2.5 text-left"
+                        >
+                          <span
+                            className="shrink-0 rounded-lg bg-gradient-to-br from-utility-success-600 to-utility-success-200"
+                            style={{ width: 52, height: 52 }}
+                          />
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="mia-mono text-[0.5625rem] text-placeholder">
+                              Your best post
+                            </span>
+                            <span className="paragraph-sm text-primary truncate">
+                              {brief.best_post.lift >= 2
+                                ? Math.round(brief.best_post.lift)
+                                : brief.best_post.lift.toFixed(1)}
+                              × your usual {brief.best_post.lead_metric}
+                              {brief.best_post.weekday ? ` · ${brief.best_post.weekday}` : ''}
+                            </span>
+                          </span>
+                          <span className="rounded-md border border-primary px-2.5 py-1.5 paragraph-xs text-primary">
+                            Open
+                          </span>
+                        </button>
+                      ) : undefined
+                    }
                   />
                 </div>
-              </ChatEmptyState>
+              ) : (
+                <ChatEmptyState userName={userName}>
+                  <div className="w-full flex flex-col gap-3">
+                    {isFeatureEnabled('home_cards') && (
+                      <QuickActions
+                        onAction={handleQuickAction}
+                        disabled={isLoading || !hasSelectedPlatforms}
+                        strategiseReady={strategiseReady}
+                      />
+                    )}
+                    <RaceCampaignTracker
+                      disabled={isLoading}
+                      dateRange={dateRange}
+                      onCampaignChange={handleCampaignChange}
+                    />
+                  </div>
+                </ChatEmptyState>
+              )}
 
               <ChatInput
                 onSubmit={handleSubmit}
@@ -290,7 +438,7 @@ export const ChatView = ({
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
                 onWheel={handleWheel}
-                className="flex-1 overflow-y-auto min-h-0"
+                className="flex-1 overflow-y-auto min-h-0 mia-rise"
               >
                 <div className="max-w-3xl mx-auto px-4 py-6">
                   <ChatMessageList
@@ -305,6 +453,16 @@ export const ChatView = ({
                         asset ? { asset_id: asset.asset_id, cdn_url: asset.cdn_url } : null
                       )
                     }
+                    onImageReady={(assets, ev) => {
+                      // Basic: Mia named the post this image is for — put it there now,
+                      // so nobody has to notice a card in the chat and drag it across.
+                      if (!ev.place_in_document_id || !assets[0]?.cdn_url) return
+                      const placed = canvas.placeMediaInDocument(
+                        ev.place_in_document_id,
+                        assets[0].cdn_url
+                      )
+                      if (placed) showToast('success', 'Added the new image to your post.')
+                    }}
                     onUseAssetInPost={(asset) => {
                       // Pin first so the request carries the asset id — the pinned block
                       // tells Mia to create_document with `Media: asset:{id}`.
@@ -435,11 +593,41 @@ export const ChatView = ({
           )}
         </div>
 
-        {canvas.isOpen && canvasPaneProps && (
-          <div className="hidden md:block w-[45%] max-w-[720px] h-full shrink-0">
-            <CanvasPane {...canvasPaneProps} onClose={canvas.close} />
+        {(canvas.isOpen && canvasPaneProps) || (isBasic && brief?.best_post) ? (
+          // One column for both the best post and a real document, kept mounted so it
+          // slides out and back in rather than snapping. max-width stays constant — only
+          // width animates (animating max-width is what made Close snap).
+          <div
+            aria-hidden={!(canvas.isOpen || bestPostOpen)}
+            className={`hidden md:block h-full shrink-0 overflow-hidden transition-[width,opacity,transform] duration-[420ms] ease-[cubic-bezier(0.22,0.8,0.2,1)] ${
+              canvas.isOpen || bestPostOpen
+                ? 'opacity-100 translate-x-0 border-l border-tertiary'
+                : 'opacity-0 translate-x-8'
+            }`}
+            style={{ width: canvas.isOpen || bestPostOpen ? canvasWidth : 0 }}
+          >
+            <div
+              className="h-full"
+              style={{ width: Math.round(canvasWidth / CANVAS_ZOOM), zoom: CANVAS_ZOOM }}
+            >
+              {canvas.isOpen && canvasPaneProps ? (
+                <div key="document" className="h-full mia-fade-in">
+                  <CanvasPane {...canvasPaneProps} onClose={canvas.close} />
+                </div>
+              ) : brief?.best_post ? (
+                <div key="best-post" className="h-full mia-fade-in">
+                  <BestPostCanvas
+                    post={brief.best_post}
+                    windowLabel={brief.window_label}
+                    brandName={activeWorkspace?.name}
+                    onClose={() => setBestPost(false)}
+                    onMakeAnother={makeAnotherCard ? handleMakeAnother : undefined}
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Mobile canvas — full-screen sheet over the chat */}
@@ -451,6 +639,32 @@ export const ChatView = ({
           showHandle={false}
         >
           <CanvasPane {...canvasPaneProps} onClose={() => setMobileCanvasOpen(false)} />
+        </Sheet>
+      )}
+
+      {/* Phone: the best post is a bottom sheet, opened from the peek card or "Make another like it". */}
+      {isMobile && isBasic && brief?.best_post && !canvas.document && (
+        <Sheet
+          isOpen={bestPostSheetOpen}
+          onClose={() => setBestPostSheetOpen(false)}
+          position="bottom"
+          className="h-[88%]"
+        >
+          <BestPostCanvas
+            compact
+            post={brief.best_post}
+            windowLabel={brief.window_label}
+            brandName={activeWorkspace?.name}
+            onClose={() => setBestPostSheetOpen(false)}
+            onMakeAnother={
+              makeAnotherCard
+                ? () => {
+                    setBestPostSheetOpen(false)
+                    handleMakeAnother()
+                  }
+                : undefined
+            }
+          />
         </Sheet>
       )}
 

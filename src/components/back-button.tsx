@@ -30,7 +30,7 @@ export function BackButton({
       onClick={onClick}
       variant="ghost"
       size={size === 'sm' ? 'sm' : 'md'}
-      className={`min-w-[44px] min-h-[44px] active:scale-95 transition-all duration-100 hover:bg-transparent ${textColor} ${className}`}
+      className={`min-w-[2.75rem] min-h-[2.75rem] active:scale-95 transition-all duration-100 hover:bg-transparent ${textColor} ${className}`}
       leftIcon={
         <svg width="16" height="13" viewBox="0 0 16 13" fill="none" className={iconSize}>
           <path

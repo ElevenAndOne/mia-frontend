@@ -15,6 +15,8 @@ import { Wallet01 } from '../../../components/icon/wallet-01'
 import { ClipboardCheck } from '../../../components/icon/clipboard-check'
 import { useSession } from '../../../contexts/session-context'
 import { usePlugins } from '../../plugins/hooks/use-plugins'
+import { useFeatures } from '../../workspace/hooks/use-features'
+import { useExperience } from '../../workspace/hooks/use-experience'
 import { useCommandPalette } from '../context/command-palette-context'
 import { useRecentConversations } from '../hooks/use-recent-conversations'
 
@@ -36,6 +38,8 @@ export const CommandPalette = () => {
   const navigate = useNavigate()
   const { sessionId } = useSession()
   const { isEnabled } = usePlugins()
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+  const { isBasic } = useExperience()
   const { conversations, load } = useRecentConversations(sessionId)
 
   const [query, setQuery] = useState('')
@@ -66,20 +70,28 @@ export const CommandPalette = () => {
         icon: <Plus size={17} />,
         run: () => go('/home', { newChat: true }),
       },
-      {
-        id: 'new-campaign',
-        label: 'New campaign',
-        group: 'Quick actions',
-        icon: <Target01 size={17} />,
-        run: () => go('/campaigns/new'),
-      },
-      {
-        id: 'connect-integration',
-        label: 'Connect an integration',
-        group: 'Quick actions',
-        icon: <Globe01 size={17} />,
-        run: () => go('/integrations'),
-      },
+      ...(isFeatureEnabled('campaigns')
+        ? [
+            {
+              id: 'new-campaign',
+              label: 'New campaign',
+              group: 'Quick actions',
+              icon: <Target01 size={17} />,
+              run: () => go('/campaigns/new'),
+            },
+          ]
+        : []),
+      ...(isFeatureEnabled('integrations')
+        ? [
+            {
+              id: 'connect-integration',
+              label: 'Connect an integration',
+              group: 'Quick actions',
+              icon: <Globe01 size={17} />,
+              run: () => go('/integrations'),
+            },
+          ]
+        : []),
       {
         id: 'jump-home',
         label: 'Home',
@@ -87,13 +99,17 @@ export const CommandPalette = () => {
         icon: <MessageChatCircle size={17} />,
         run: () => go('/home'),
       },
-      {
-        id: 'jump-campaigns',
-        label: 'Campaigns',
-        group: 'Jump to',
-        icon: <Target01 size={17} />,
-        run: () => go('/campaigns'),
-      },
+      ...(isFeatureEnabled('campaigns')
+        ? [
+            {
+              id: 'jump-campaigns',
+              label: 'Campaigns',
+              group: 'Jump to',
+              icon: <Target01 size={17} />,
+              run: () => go('/campaigns'),
+            } as PaletteItem,
+          ]
+        : []),
       ...(isEnabled('mia-creative-studio')
         ? [
             {
@@ -105,41 +121,86 @@ export const CommandPalette = () => {
             } as PaletteItem,
           ]
         : []),
-      {
-        id: 'jump-reports',
-        label: 'Reports',
-        group: 'Jump to',
-        icon: <File02 size={17} />,
-        run: () => go('/reports'),
-      },
-      {
-        id: 'jump-budget',
-        label: 'Budget Tracker',
-        group: 'Jump to',
-        icon: <Wallet01 size={17} />,
-        run: () => go('/budget-tracker'),
-      },
-      {
-        id: 'jump-memo',
-        label: 'Weekly Memo',
-        group: 'Jump to',
-        icon: <ClipboardCheck size={17} />,
-        run: () => go('/memo'),
-      },
-      {
-        id: 'jump-integrations',
-        label: 'Integrations',
-        group: 'Jump to',
-        icon: <Globe01 size={17} />,
-        run: () => go('/integrations'),
-      },
+      ...(isFeatureEnabled('reports')
+        ? [
+            {
+              id: 'jump-reports',
+              label: 'Reports',
+              group: 'Jump to',
+              icon: <File02 size={17} />,
+              run: () => go('/reports'),
+            } as PaletteItem,
+          ]
+        : []),
+      ...(isFeatureEnabled('budget_tracker')
+        ? [
+            {
+              id: 'jump-budget',
+              label: 'Budget Tracker',
+              group: 'Jump to',
+              icon: <Wallet01 size={17} />,
+              run: () => go('/budget-tracker'),
+            } as PaletteItem,
+          ]
+        : []),
+      ...(isFeatureEnabled('weekly_memo')
+        ? [
+            {
+              id: 'jump-memo',
+              label: 'Weekly Memo',
+              group: 'Jump to',
+              icon: <ClipboardCheck size={17} />,
+              run: () => go('/memo'),
+            } as PaletteItem,
+          ]
+        : []),
+      ...(isFeatureEnabled('integrations')
+        ? [
+            {
+              id: 'jump-integrations',
+              label: 'Integrations',
+              group: 'Jump to',
+              icon: <Globe01 size={17} />,
+              run: () => go('/integrations'),
+            } as PaletteItem,
+          ]
+        : []),
+      ...(isFeatureEnabled('posts')
+        ? [
+            {
+              id: 'jump-posts',
+              label: 'Posts',
+              group: 'Jump to',
+              icon: <MessageChatSquare size={17} />,
+              run: () => go('/posts'),
+            },
+          ]
+        : []),
       {
         id: 'jump-settings',
-        label: 'Workspace Settings',
+        label: isBasic ? 'Settings' : 'Workspace Settings',
         group: 'Jump to',
         icon: <Settings01 size={17} />,
         run: () => go('/settings/workspace'),
       },
+      ...(isBasic
+        ? [
+            {
+              id: 'jump-settings-brand',
+              label: 'Settings · Brand',
+              group: 'Jump to',
+              icon: <Settings01 size={17} />,
+              run: () => go('/settings/workspace?tab=brand'),
+            },
+            {
+              id: 'jump-settings-mia',
+              label: 'Settings · Mia',
+              group: 'Jump to',
+              icon: <Settings01 size={17} />,
+              run: () => go('/settings/workspace?tab=mia'),
+            },
+          ]
+        : []),
     ]
 
     const chatItems: PaletteItem[] = conversations.slice(0, 6).map((c) => ({
@@ -198,7 +259,7 @@ export const CommandPalette = () => {
       <div
         role="dialog"
         aria-label="Command palette"
-        className="w-full max-w-[560px] max-h-[74%] flex flex-col bg-secondary border border-primary rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-[35rem] max-h-[74%] flex flex-col bg-secondary border border-primary rounded-2xl shadow-2xl overflow-hidden"
       >
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-tertiary">
           <SearchMd size={18} className="text-quaternary shrink-0" />
@@ -242,7 +303,9 @@ export const CommandPalette = () => {
                       idx === activeIndex ? 'bg-tertiary' : 'hover:bg-tertiary/60'
                     }`}
                   >
-                    <span className={idx === activeIndex ? 'text-brand-primary' : 'text-quaternary'}>
+                    <span
+                      className={idx === activeIndex ? 'text-brand-primary' : 'text-quaternary'}
+                    >
                       {item.icon}
                     </span>
                     <span className="flex-1 min-w-0 paragraph-sm text-secondary truncate">

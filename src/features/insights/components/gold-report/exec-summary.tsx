@@ -14,22 +14,22 @@ interface ExecSummaryProps {
 // hairline on every other card.
 export const ExecSummary = ({ summary, showNextSteps = true }: ExecSummaryProps) => (
   <div
-    className="gr-card py-6 px-5 sm:px-[26px]"
+    className="gr-card py-6 px-5 sm:px-[1.625rem]"
     style={{ borderColor: 'var(--gr-purple-border)' }}
   >
-    <p className="text-[15px] leading-[22px]" style={{ color: 'var(--gr-heading)' }}>
+    <p className="text-[0.9375rem] leading-[1.375rem]" style={{ color: 'var(--gr-heading)' }}>
       <InlineMd text={summary.narrative} chips={summary.highlighted_campaigns} />
     </p>
 
     {showNextSteps && summary.next_steps.length > 0 && (
-      <div className="mt-5 pt-[18px] border-t" style={{ borderColor: 'var(--gr-line)' }}>
+      <div className="mt-5 pt-[1.125rem] border-t" style={{ borderColor: 'var(--gr-line)' }}>
         <p className="gr-eyebrow mb-3">Next steps</p>
         <ol className="space-y-3">
           {summary.next_steps.map((step, i) => (
             <li key={i} className="flex items-start gap-2.5">
               <StepNumber n={i + 1} />
               <span
-                className="text-[13px] leading-[19px] pt-0.5"
+                className="text-[0.8125rem] leading-[1.1875rem] pt-0.5"
                 style={{ color: 'var(--gr-heading)' }}
               >
                 <InlineMd text={step} />

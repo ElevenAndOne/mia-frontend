@@ -40,7 +40,7 @@ const btnText = 'cursor-pointer'
 const inputCls =
   'paragraph-xs text-secondary bg-primary border border-tertiary rounded-lg px-2 py-1.5 outline-none focus:border-utility-brand-400'
 const selectCls =
-  'paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[280px]'
+  'paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer max-w-[17.5rem]'
 
 export const SetupView = () => {
   const { section } = useParams<{ section: string }>()
@@ -87,7 +87,10 @@ export const SetupView = () => {
 
 // ── Measurement — GA4 property, UTM tag, campaign guide ─────────────────────
 
-interface GA4Option { property_id: string; display_name: string }
+interface GA4Option {
+  property_id: string
+  display_name: string
+}
 
 // GA4 options are expensive (live platform discovery), so cache them at module level —
 // switching Setup sections unmounts the component and must not refetch.
@@ -102,7 +105,7 @@ const MeasurementSection = () => {
   const [ga4Options, setGa4Options] = useState<GA4Option[] | null>(() =>
     ga4OptionsCache && Date.now() - ga4OptionsCache.ts < GA4_CACHE_TTL_MS
       ? ga4OptionsCache.options
-      : null,
+      : null
   )
   const [ga4Loading, setGa4Loading] = useState(false)
   // Loads only when the dropdown itself is opened — never on hover or section mount.
@@ -114,10 +117,12 @@ const MeasurementSection = () => {
     }
     setGa4Loading(true)
     try {
-      const res = await apiFetch('/api/accounts/available', { headers: { 'X-Session-ID': sessionId } })
+      const res = await apiFetch('/api/accounts/available', {
+        headers: { 'X-Session-ID': sessionId },
+      })
       const data = await res.json()
       const options = ((data.ga4_properties ?? []) as GA4Option[]).sort((a, b) =>
-        a.display_name.localeCompare(b.display_name),
+        a.display_name.localeCompare(b.display_name)
       )
       ga4OptionsCache = { ts: Date.now(), options }
       setGa4Options(options)
@@ -209,8 +214,8 @@ const MeasurementSection = () => {
       <div className="space-y-1">
         <p className="label-sm text-primary">Campaign guide</p>
         <p className="paragraph-xs text-quaternary">
-          The deck this campaign was built from — Mia cites it when a recommendation contradicts
-          the plan. Guides are uploaded in Workspace Settings → Campaign Guides.
+          The deck this campaign was built from — Mia cites it when a recommendation contradicts the
+          plan. Guides are uploaded in Workspace Settings → Campaign Guides.
         </p>
         <div className="flex items-center gap-2 pt-1">
           <select
@@ -268,7 +273,7 @@ const defaultModeFor = (doc: KpiSourceDoc | undefined): 'value' | 'sum' | 'count
 
 const describeBinding = (
   kpi: KPI,
-  actual: KPIActual | undefined,
+  actual: KPIActual | undefined
 ): { label: string; kind: 'source' | 'legacy' | 'manual' | 'live' | 'none' | 'unknown' } => {
   const src = kpi.kpi_source as Record<string, any> | null | undefined
   if (src?.provider === 'json') {
@@ -280,12 +285,15 @@ const describeBinding = (
     const d = (src.denominator as Record<string, any> | undefined)?.ref?.path
     return { label: n && d ? `ratio · ${n} / ${d}` : 'ratio of two values', kind: 'source' }
   }
-  if (src?.provider === 'ga4') return { label: `GA4 event · ${src.ref?.event_name ?? ''}`, kind: 'source' }
+  if (src?.provider === 'ga4')
+    return { label: `GA4 event · ${src.ref?.event_name ?? ''}`, kind: 'source' }
   if (kpi.manual_actual != null) return { label: 'manual entry', kind: 'manual' }
   if (kpi.hubspot_list_name) return { label: `HubSpot · ${kpi.hubspot_list_name}`, kind: 'legacy' }
   if (kpi.brevo_list_name) return { label: `Brevo · ${kpi.brevo_list_name}`, kind: 'legacy' }
-  if (actual?.state === 'none') return { label: 'nothing measures this — shows "Not tracked"', kind: 'none' }
-  if (actual && actual.actual_value !== null) return { label: 'measured from connected platforms', kind: 'live' }
+  if (actual?.state === 'none')
+    return { label: 'nothing measures this — shows "Not tracked"', kind: 'none' }
+  if (actual && actual.actual_value !== null)
+    return { label: 'measured from connected platforms', kind: 'live' }
   return { label: 'auto (connected platforms)', kind: 'unknown' }
 }
 
@@ -316,8 +324,13 @@ const DataSourcesSection = () => {
     const controller = new AbortController()
     for (const phase of campaign.phases) {
       void fetchPhaseActuals(
-        sessionId, tenantId, campaign.campaign_id, phase.phase_name,
-        null, null, controller.signal,
+        sessionId,
+        tenantId,
+        campaign.campaign_id,
+        phase.phase_name,
+        null,
+        null,
+        controller.signal
       )
         .then((rows) => setActualsByPhase((prev) => ({ ...prev, [phase.phase_name]: rows })))
         .catch((err) => {
@@ -399,7 +412,9 @@ const DataSourcesSection = () => {
   }
 
   const unbind = async (kpiId: number) => {
-    const res = await patchKpi(sessionId, tenantId, campaign.campaign_id, kpiId, { kpi_source: null })
+    const res = await patchKpi(sessionId, tenantId, campaign.campaign_id, kpiId, {
+      kpi_source: null,
+    })
     if (res.ok) {
       showToast('success', 'Unbound')
       await reloadDetail()
@@ -412,10 +427,10 @@ const DataSourcesSection = () => {
         <div>
           <p className="label-sm text-primary">Files for this campaign</p>
           <p className="paragraph-xs text-quaternary">
-            Whatever the client or vendor sends — JSON, CSV or Excel. KPIs read numbers straight
-            out of these files. Re-uploading a file with the same name replaces it, so bindings
-            keep working when a new period arrives. Aggregate exports are safest; files with
-            personal details get a warning and are visible to everyone in this workspace.
+            Whatever the client or vendor sends — JSON, CSV or Excel. KPIs read numbers straight out
+            of these files. Re-uploading a file with the same name replaces it, so bindings keep
+            working when a new period arrives. Aggregate exports are safest; files with personal
+            details get a warning and are visible to everyone in this workspace.
           </p>
         </div>
 
@@ -423,9 +438,12 @@ const DataSourcesSection = () => {
           <p className="paragraph-xs text-quaternary">Loading…</p>
         ) : (
           docs.map((d) => (
-            <div key={d.doc_id} className="flex items-center gap-3 bg-primary border border-tertiary rounded-xl px-3 py-2.5 flex-wrap">
+            <div
+              key={d.doc_id}
+              className="flex items-center gap-3 bg-primary border border-tertiary rounded-xl px-3 py-2.5 flex-wrap"
+            >
               <span className="cw-mono label-xs text-tertiary shrink-0">{'{ }'}</span>
-              <div className="flex-1 min-w-[180px]">
+              <div className="flex-1 min-w-[11.25rem]">
                 <p className="paragraph-xs text-secondary">{d.name}</p>
                 <p className="label-xs text-quaternary">
                   {d.uploaded_by ?? ''}
@@ -437,7 +455,12 @@ const DataSourcesSection = () => {
               </div>
               <button
                 onClick={async () => {
-                  const res = await deleteKpiSourceDoc(sessionId, tenantId, campaign.campaign_id, d.doc_id)
+                  const res = await deleteKpiSourceDoc(
+                    sessionId,
+                    tenantId,
+                    campaign.campaign_id,
+                    d.doc_id
+                  )
                   if (res.ok) {
                     showToast('success', 'Deleted — bound KPIs show "Not tracked" until re-pointed')
                     await loadDocs()
@@ -476,7 +499,7 @@ const DataSourcesSection = () => {
           </p>
         </div>
         <div className="rounded-xl border border-tertiary overflow-x-auto">
-          <table className="w-full min-w-[560px]">
+          <table className="w-full min-w-[35rem]">
             <thead>
               <tr className="bg-primary">
                 <th className="text-left label-xs text-quaternary px-3 py-2">Phase</th>
@@ -489,12 +512,16 @@ const DataSourcesSection = () => {
               {campaign.phases.flatMap((phase) =>
                 phase.kpis.map((kpi) => {
                   const rows = actualsByPhase[phase.phase_name]
-                  const actual = rows?.find((r) => r.kpi_name.toLowerCase() === kpi.kpi_name.toLowerCase())
+                  const actual = rows?.find(
+                    (r) => r.kpi_name.toLowerCase() === kpi.kpi_name.toLowerCase()
+                  )
                   const b = describeBinding(kpi, actual)
                   const firstBuckets = docs?.[0]?.picker?.bucket_lists?.[0]
                   return (
                     <tr key={kpi.kpi_id} className="border-t border-tertiary">
-                      <td className="px-3 py-2 paragraph-xs text-quaternary whitespace-nowrap">{phase.phase_name}</td>
+                      <td className="px-3 py-2 paragraph-xs text-quaternary whitespace-nowrap">
+                        {phase.phase_name}
+                      </td>
                       <td className="px-3 py-2 paragraph-xs text-secondary">{kpi.kpi_name}</td>
                       <td className="px-3 py-2">
                         <span
@@ -515,7 +542,10 @@ const DataSourcesSection = () => {
                       </td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         {kpi.kpi_source ? (
-                          <button onClick={() => void unbind(kpi.kpi_id)} className={`${btnText} label-xs text-quaternary hover:text-utility-error-500`}>
+                          <button
+                            onClick={() => void unbind(kpi.kpi_id)}
+                            className={`${btnText} label-xs text-quaternary hover:text-utility-error-500`}
+                          >
                             unbind
                           </button>
                         ) : (
@@ -537,7 +567,11 @@ const DataSourcesSection = () => {
                             }
                             disabled={!docs || docs.length === 0}
                             className={`${btnText} label-xs text-utility-brand-600 hover:text-utility-brand-700 disabled:opacity-40 disabled:cursor-default`}
-                            title={!docs || docs.length === 0 ? 'Upload a file first' : 'Point this KPI at an uploaded file'}
+                            title={
+                              !docs || docs.length === 0
+                                ? 'Upload a file first'
+                                : 'Point this KPI at an uploaded file'
+                            }
                           >
                             bind…
                           </button>
@@ -545,252 +579,268 @@ const DataSourcesSection = () => {
                       </td>
                     </tr>
                   )
-                }),
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {bind && (() => {
-        const doc = docs?.find((d) => d.doc_id === bind.docId)
-        const paths = doc?.picker?.numeric_paths ?? []
-        const buckets = doc?.picker?.bucket_lists ?? []
-        const bucket = buckets.find((b) => b.path === bind.itemsPath) ?? buckets[0]
-        return (
-          <div className="bg-primary border border-tertiary rounded-xl p-4 space-y-3">
-            <p className="label-sm text-primary">
-              Bind <span className="text-utility-brand-600">{bind.kpiName}</span> to a file
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="label-xs text-quaternary w-24">File</span>
-              <select
-                value={bind.docId}
-                onChange={(e) => {
-                  const next = docs?.find((d) => d.doc_id === e.target.value)
-                  const nb = next?.picker?.bucket_lists?.[0]
-                  setBind({
-                    ...bind,
-                    docId: e.target.value,
-                    mode: defaultModeFor(next),
-                    path: '',
-                    valueField: '',
-                    itemsPath: nb?.path ?? '',
-                    startField: nb?.date_fields?.[0] ?? '',
-                    endField: nb?.date_fields?.[1] ?? '',
-                    numPath: '',
-                    denPath: '',
-                  })
-                }}
-                className={`${selectCls} cursor-pointer`}
-              >
-                {docs?.map((d) => (
-                  <option key={d.doc_id} value={d.doc_id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="label-xs text-quaternary w-24">Read as</span>
-              <select
-                value={bind.mode}
-                onChange={(e) => setBind({ ...bind, mode: e.target.value as BindDraft['mode'] })}
-                className={`${selectCls} cursor-pointer`}
-              >
-                <option value="value" disabled={paths.length === 0}>
-                  Single value (a number in the file){paths.length === 0 ? ' (none in this file)' : ''}
-                </option>
-                <option value="sum" disabled={buckets.length === 0}>
-                  Sum a column over the date range{buckets.length === 0 ? ' (no tables in this file)' : ''}
-                </option>
-                <option value="count" disabled={buckets.length === 0}>
-                  Count rows in the date range{buckets.length === 0 ? ' (no tables in this file)' : ''}
-                </option>
-                <option value="ratio" disabled={paths.length < 2}>
-                  Ratio of two values — shown as a %{paths.length < 2 ? ' (needs two numbers in the file)' : ''}
-                </option>
-              </select>
-            </div>
-            {paths.length === 0 && buckets.length === 0 && (
-              <p className="paragraph-xs text-utility-warning-600 max-w-none">
-                Mia can't read numbers out of this file — it has no plain values and no table
-                with readable columns. Spreadsheets built for people (comment rows, several
-                mini-tables stacked in one sheet) usually land here. Ask for an aggregate
-                export, or pick a different file.
+      {bind &&
+        (() => {
+          const doc = docs?.find((d) => d.doc_id === bind.docId)
+          const paths = doc?.picker?.numeric_paths ?? []
+          const buckets = doc?.picker?.bucket_lists ?? []
+          const bucket = buckets.find((b) => b.path === bind.itemsPath) ?? buckets[0]
+          return (
+            <div className="bg-primary border border-tertiary rounded-xl p-4 space-y-3">
+              <p className="label-sm text-primary">
+                Bind <span className="text-utility-brand-600">{bind.kpiName}</span> to a file
               </p>
-            )}
-            {bind.mode === 'ratio' ? (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="label-xs text-quaternary w-24">Top (part)</span>
-                  <select
-                    value={bind.numPath}
-                    onChange={(e) => setBind({ ...bind, numPath: e.target.value })}
-                    className={`${selectCls} cursor-pointer cw-mono`}
-                  >
-                    <option value="">— pick the number on top —</option>
-                    {paths.map((pp) => (
-                      <option key={pp.path} value={pp.path}>
-                        {pp.path} = {pp.value.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="label-xs text-quaternary w-24">Bottom (whole)</span>
-                  <select
-                    value={bind.denPath}
-                    onChange={(e) => setBind({ ...bind, denPath: e.target.value })}
-                    className={`${selectCls} cursor-pointer cw-mono`}
-                  >
-                    <option value="">— pick the number on the bottom —</option>
-                    {paths.map((pp) => (
-                      <option key={pp.path} value={pp.path}>
-                        {pp.path} = {pp.value.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {(() => {
-                  // Show the answer before saving — a ratio built the wrong way round
-                  // is otherwise invisible until the tracker refreshes.
-                  const n = paths.find((pp) => pp.path === bind.numPath)?.value
-                  const d = paths.find((pp) => pp.path === bind.denPath)?.value
-                  if (n === undefined || d === undefined) return null
-                  if (!d) {
-                    return (
-                      <p className="paragraph-xs text-utility-warning-600">
-                        The bottom number is zero, so this ratio has no answer yet. It will start
-                        working once that number moves.
-                      </p>
-                    )
-                  }
-                  return (
-                    <p className="paragraph-xs text-tertiary">
-                      Right now that reads{' '}
-                      <span className="cw-mono text-primary">
-                        {((n / d) * 100).toFixed(2)}%
-                      </span>{' '}
-                      ({n.toLocaleString()} of {d.toLocaleString()})
-                      {bind.numPath === bind.denPath ? ' — both sides are the same number.' : ''}
-                    </p>
-                  )
-                })()}
-              </>
-            ) : bind.mode === 'value' ? (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="label-xs text-quaternary w-24">Value</span>
-                {paths.length > 0 ? (
-                  <select
-                    value={bind.path}
-                    onChange={(e) => setBind({ ...bind, path: e.target.value })}
-                    className={`${selectCls} cursor-pointer cw-mono`}
-                  >
-                    <option value="">— pick a value from the file —</option>
-                    {paths.map((pp) => (
-                      <option key={pp.path} value={pp.path}>
-                        {pp.path} = {pp.value.toLocaleString()}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={bind.path}
-                    onChange={(e) => setBind({ ...bind, path: e.target.value })}
-                    placeholder="e.g. summary.totalRedeemedCodes"
-                    className={`${inputCls} w-72 cw-mono`}
-                  />
-                )}
+                <span className="label-xs text-quaternary w-24">File</span>
+                <select
+                  value={bind.docId}
+                  onChange={(e) => {
+                    const next = docs?.find((d) => d.doc_id === e.target.value)
+                    const nb = next?.picker?.bucket_lists?.[0]
+                    setBind({
+                      ...bind,
+                      docId: e.target.value,
+                      mode: defaultModeFor(next),
+                      path: '',
+                      valueField: '',
+                      itemsPath: nb?.path ?? '',
+                      startField: nb?.date_fields?.[0] ?? '',
+                      endField: nb?.date_fields?.[1] ?? '',
+                      numPath: '',
+                      denPath: '',
+                    })
+                  }}
+                  className={`${selectCls} cursor-pointer`}
+                >
+                  {docs?.map((d) => (
+                    <option key={d.doc_id} value={d.doc_id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="label-xs text-quaternary w-24">Table</span>
-                  <select
-                    value={bind.itemsPath || (bucket?.path ?? '')}
-                    onChange={(e) => setBind({ ...bind, itemsPath: e.target.value, valueField: '' })}
-                    className={`${selectCls} cursor-pointer cw-mono`}
-                  >
-                    {buckets.map((bl) => (
-                      <option key={bl.path} value={bl.path}>
-                        {bl.path} ({bl.count} rows)
-                      </option>
-                    ))}
-                  </select>
-                  {bind.mode === 'sum' && (
-                    <>
-                      <span className="label-xs text-quaternary">Column</span>
-                      <select
-                        value={bind.valueField}
-                        onChange={(e) => setBind({ ...bind, valueField: e.target.value })}
-                        className={`${selectCls} cursor-pointer cw-mono`}
-                      >
-                        <option value="">— pick a column —</option>
-                        {(bucket?.value_fields ?? []).map((f) => (
-                          <option key={f} value={f}>{f}</option>
-                        ))}
-                      </select>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="label-xs text-quaternary w-24">
-                    {bind.mode === 'count' ? 'Date column' : 'Period dates'}
-                  </span>
-                  <select
-                    value={bind.startField}
-                    onChange={(e) => setBind({ ...bind, startField: e.target.value })}
-                    className={`${selectCls} cursor-pointer cw-mono`}
-                  >
-                    <option value="">start field</option>
-                    {(bucket?.date_fields ?? []).map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                  {bind.mode === 'sum' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="label-xs text-quaternary w-24">Read as</span>
+                <select
+                  value={bind.mode}
+                  onChange={(e) => setBind({ ...bind, mode: e.target.value as BindDraft['mode'] })}
+                  className={`${selectCls} cursor-pointer`}
+                >
+                  <option value="value" disabled={paths.length === 0}>
+                    Single value (a number in the file)
+                    {paths.length === 0 ? ' (none in this file)' : ''}
+                  </option>
+                  <option value="sum" disabled={buckets.length === 0}>
+                    Sum a column over the date range
+                    {buckets.length === 0 ? ' (no tables in this file)' : ''}
+                  </option>
+                  <option value="count" disabled={buckets.length === 0}>
+                    Count rows in the date range
+                    {buckets.length === 0 ? ' (no tables in this file)' : ''}
+                  </option>
+                  <option value="ratio" disabled={paths.length < 2}>
+                    Ratio of two values — shown as a %
+                    {paths.length < 2 ? ' (needs two numbers in the file)' : ''}
+                  </option>
+                </select>
+              </div>
+              {paths.length === 0 && buckets.length === 0 && (
+                <p className="paragraph-xs text-utility-warning-600 max-w-none">
+                  Mia can't read numbers out of this file — it has no plain values and no table with
+                  readable columns. Spreadsheets built for people (comment rows, several mini-tables
+                  stacked in one sheet) usually land here. Ask for an aggregate export, or pick a
+                  different file.
+                </p>
+              )}
+              {bind.mode === 'ratio' ? (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="label-xs text-quaternary w-24">Top (part)</span>
                     <select
-                      value={bind.endField}
-                      onChange={(e) => setBind({ ...bind, endField: e.target.value })}
+                      value={bind.numPath}
+                      onChange={(e) => setBind({ ...bind, numPath: e.target.value })}
                       className={`${selectCls} cursor-pointer cw-mono`}
                     >
-                      <option value="">end field</option>
-                      {(bucket?.date_fields ?? []).map((f) => (
-                        <option key={f} value={f}>{f}</option>
+                      <option value="">— pick the number on top —</option>
+                      {paths.map((pp) => (
+                        <option key={pp.path} value={pp.path}>
+                          {pp.path} = {pp.value.toLocaleString()}
+                        </option>
                       ))}
                     </select>
-                  )}
-                  {bind.mode === 'count' && (
-                    <span className="label-xs text-quaternary">
-                      rows dated inside the tracker's window are counted
-                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="label-xs text-quaternary w-24">Bottom (whole)</span>
+                    <select
+                      value={bind.denPath}
+                      onChange={(e) => setBind({ ...bind, denPath: e.target.value })}
+                      className={`${selectCls} cursor-pointer cw-mono`}
+                    >
+                      <option value="">— pick the number on the bottom —</option>
+                      {paths.map((pp) => (
+                        <option key={pp.path} value={pp.path}>
+                          {pp.path} = {pp.value.toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {(() => {
+                    // Show the answer before saving — a ratio built the wrong way round
+                    // is otherwise invisible until the tracker refreshes.
+                    const n = paths.find((pp) => pp.path === bind.numPath)?.value
+                    const d = paths.find((pp) => pp.path === bind.denPath)?.value
+                    if (n === undefined || d === undefined) return null
+                    if (!d) {
+                      return (
+                        <p className="paragraph-xs text-utility-warning-600">
+                          The bottom number is zero, so this ratio has no answer yet. It will start
+                          working once that number moves.
+                        </p>
+                      )
+                    }
+                    return (
+                      <p className="paragraph-xs text-tertiary">
+                        Right now that reads{' '}
+                        <span className="cw-mono text-primary">{((n / d) * 100).toFixed(2)}%</span>{' '}
+                        ({n.toLocaleString()} of {d.toLocaleString()})
+                        {bind.numPath === bind.denPath ? ' — both sides are the same number.' : ''}
+                      </p>
+                    )
+                  })()}
+                </>
+              ) : bind.mode === 'value' ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="label-xs text-quaternary w-24">Value</span>
+                  {paths.length > 0 ? (
+                    <select
+                      value={bind.path}
+                      onChange={(e) => setBind({ ...bind, path: e.target.value })}
+                      className={`${selectCls} cursor-pointer cw-mono`}
+                    >
+                      <option value="">— pick a value from the file —</option>
+                      {paths.map((pp) => (
+                        <option key={pp.path} value={pp.path}>
+                          {pp.path} = {pp.value.toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={bind.path}
+                      onChange={(e) => setBind({ ...bind, path: e.target.value })}
+                      placeholder="e.g. summary.totalRedeemedCodes"
+                      className={`${inputCls} w-72 cw-mono`}
+                    />
                   )}
                 </div>
-              </>
-            )}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => void saveBinding()}
-                disabled={
-                  busy ||
-                  !bind.docId ||
-                  (bind.mode === 'value'
-                    ? !bind.path.trim()
-                    : bind.mode === 'ratio'
-                      ? !bind.numPath.trim() || !bind.denPath.trim()
-                      : bind.mode === 'sum'
-                        ? !bind.valueField.trim()
-                        : !(bind.itemsPath || bucket?.path))
-                }
-                className={`${btnText} label-xs px-3 py-1.5 rounded-lg bg-utility-brand-500 text-white disabled:opacity-50 disabled:cursor-default`}
-              >
-                Save binding
-              </button>
-              <button onClick={() => setBind(null)} className={`${btnText} label-xs text-quaternary hover:text-secondary`}>
-                Cancel
-              </button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="label-xs text-quaternary w-24">Table</span>
+                    <select
+                      value={bind.itemsPath || (bucket?.path ?? '')}
+                      onChange={(e) =>
+                        setBind({ ...bind, itemsPath: e.target.value, valueField: '' })
+                      }
+                      className={`${selectCls} cursor-pointer cw-mono`}
+                    >
+                      {buckets.map((bl) => (
+                        <option key={bl.path} value={bl.path}>
+                          {bl.path} ({bl.count} rows)
+                        </option>
+                      ))}
+                    </select>
+                    {bind.mode === 'sum' && (
+                      <>
+                        <span className="label-xs text-quaternary">Column</span>
+                        <select
+                          value={bind.valueField}
+                          onChange={(e) => setBind({ ...bind, valueField: e.target.value })}
+                          className={`${selectCls} cursor-pointer cw-mono`}
+                        >
+                          <option value="">— pick a column —</option>
+                          {(bucket?.value_fields ?? []).map((f) => (
+                            <option key={f} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="label-xs text-quaternary w-24">
+                      {bind.mode === 'count' ? 'Date column' : 'Period dates'}
+                    </span>
+                    <select
+                      value={bind.startField}
+                      onChange={(e) => setBind({ ...bind, startField: e.target.value })}
+                      className={`${selectCls} cursor-pointer cw-mono`}
+                    >
+                      <option value="">start field</option>
+                      {(bucket?.date_fields ?? []).map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                    {bind.mode === 'sum' && (
+                      <select
+                        value={bind.endField}
+                        onChange={(e) => setBind({ ...bind, endField: e.target.value })}
+                        className={`${selectCls} cursor-pointer cw-mono`}
+                      >
+                        <option value="">end field</option>
+                        {(bucket?.date_fields ?? []).map((f) => (
+                          <option key={f} value={f}>
+                            {f}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {bind.mode === 'count' && (
+                      <span className="label-xs text-quaternary">
+                        rows dated inside the tracker's window are counted
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => void saveBinding()}
+                  disabled={
+                    busy ||
+                    !bind.docId ||
+                    (bind.mode === 'value'
+                      ? !bind.path.trim()
+                      : bind.mode === 'ratio'
+                        ? !bind.numPath.trim() || !bind.denPath.trim()
+                        : bind.mode === 'sum'
+                          ? !bind.valueField.trim()
+                          : !(bind.itemsPath || bucket?.path))
+                  }
+                  className={`${btnText} label-xs px-3 py-1.5 rounded-lg bg-utility-brand-500 text-white disabled:opacity-50 disabled:cursor-default`}
+                >
+                  Save binding
+                </button>
+                <button
+                  onClick={() => setBind(null)}
+                  className={`${btnText} label-xs text-quaternary hover:text-secondary`}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        )
-      })()}
+          )
+        })()}
     </div>
   )
 }

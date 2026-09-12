@@ -1,4 +1,22 @@
 @layer utilities {
+  /* Basic home typography (Figma tokens): Figtree body, JetBrains Mono labels. */
+  .mia-sans {
+    font-family: Figtree, 'Segoe UI', system-ui, sans-serif;
+  }
+  .mia-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07rem;
+    line-height: 1.085rem;
+    text-transform: uppercase;
+  }
+  /* Faded dot grid on the canvas paper. */
+  .paper-dots {
+    background-image: radial-gradient(var(--color-paper-dot) 1px, transparent 1.3px);
+    background-size: 1.625rem 1.625rem;
+  }
+
   /* Text colors */
   .text-primary {
     color: var(--text-color-primary);

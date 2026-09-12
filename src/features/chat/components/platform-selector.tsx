@@ -39,7 +39,7 @@ export const PlatformSelector = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute bottom-full left-0 mb-2 bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden z-50 min-w-[240px]"
+          className="absolute bottom-full left-0 mb-2 bg-primary rounded-xl shadow-lg border border-secondary overflow-hidden z-50 min-w-[15rem]"
         >
           <div className="flex flex-col p-1 gap-0.5">
             {platforms.map((platform) => {

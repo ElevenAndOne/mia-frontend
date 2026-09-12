@@ -29,7 +29,7 @@ export const HealthPill = ({ health }: { health: IntegrationHealth }) => {
   return (
     <span
       title={health.detail}
-      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.04em] ${style.className}`}
+      className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.6563rem] font-semibold uppercase tracking-[0.04em] ${style.className}`}
     >
       {style.label}
     </span>

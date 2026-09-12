@@ -144,7 +144,11 @@ function PhaseStatusDot({ status }: { status: CampaignPhase['status'] }) {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignChange }: RaceCampaignTrackerProps) {
+export function RaceCampaignTracker({
+  disabled = false,
+  dateRange,
+  onCampaignChange,
+}: RaceCampaignTrackerProps) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
 
@@ -152,7 +156,9 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   // adding it to their dep arrays (avoids cascading re-renders if parent
   // passes an inline function).
   const onCampaignChangeRef = useRef(onCampaignChange)
-  useEffect(() => { onCampaignChangeRef.current = onCampaignChange }, [onCampaignChange])
+  useEffect(() => {
+    onCampaignChangeRef.current = onCampaignChange
+  }, [onCampaignChange])
 
   // ── Campaign mode state — initialized from localStorage synchronously ────
   // getCampaignMode(tenantId) returns: campaign_id | "all" | null
@@ -175,10 +181,12 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
 
   // Initialize from synchronous cache so there's zero skeleton flash on re-navigation.
   // Pass the initial campaign ID so we hit the right cache key.
-  const initCampaignId = tenantId ? (() => {
-    const stored = getCampaignMode(tenantId)
-    return stored && stored !== 'all' ? stored : null
-  })() : null
+  const initCampaignId = tenantId
+    ? (() => {
+        const stored = getCampaignMode(tenantId)
+        return stored && stored !== 'all' ? stored : null
+      })()
+    : null
   const cachedOnMount = tenantId ? getCachedTracker(tenantId, initCampaignId) : undefined
   const [campaign, setCampaign] = useState<CampaignTracker | null>(cachedOnMount ?? null)
   const [loading, setLoading] = useState(cachedOnMount === undefined && campaignModeState !== 'all')
@@ -193,17 +201,29 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   })
 
   // Resolved date range for actuals — depends on dateRange prop + campaign start date
-  const resolvedDates = campaign ? resolveDates(dateRange, campaign.start_date, campaign.end_date) : null
+  const resolvedDates = campaign
+    ? resolveDates(dateRange, campaign.start_date, campaign.end_date)
+    : null
   const { startDate, endDate } = resolvedDates ?? { startDate: null, endDate: null }
 
   // Pre-populate actualsMap from cache for the resolved date range
   const [actualsMap, setActualsMap] = useState<Record<string, KPIActual[] | 'loading' | 'error'>>(
     () => {
       if (!cachedOnMount || !tenantId) return {}
-      const { startDate: initStart, endDate: initEnd } = resolveDates(dateRange, cachedOnMount.start_date, cachedOnMount.end_date)
+      const { startDate: initStart, endDate: initEnd } = resolveDates(
+        dateRange,
+        cachedOnMount.start_date,
+        cachedOnMount.end_date
+      )
       const map: Record<string, KPIActual[] | 'loading' | 'error'> = {}
       for (const phase of cachedOnMount.phases) {
-        const cached = getCachedActuals(tenantId, cachedOnMount.campaign_id, phase.phase_name, initStart, initEnd)
+        const cached = getCachedActuals(
+          tenantId,
+          cachedOnMount.campaign_id,
+          phase.phase_name,
+          initStart,
+          initEnd
+        )
         if (cached !== undefined && cached !== null) map[phase.phase_name] = cached
       }
       return map
@@ -297,13 +317,23 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
           data.phases.find((p) => p.status === 'active')?.phase_name ||
           data.phases[0]?.phase_name
         setSelectedPhase((prev) =>
-          selectedCampaignId !== null ? defaultPhase ?? null : prev ?? defaultPhase ?? null
+          selectedCampaignId !== null ? (defaultPhase ?? null) : (prev ?? defaultPhase ?? null)
         )
         // Pre-populate actualsMap from cache for all phases
-        const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(dateRange, data.start_date, data.end_date)
+        const { startDate: fetchStart, endDate: fetchEnd } = resolveDates(
+          dateRange,
+          data.start_date,
+          data.end_date
+        )
         const cached: Record<string, KPIActual[]> = {}
         for (const phase of data.phases) {
-          const hit = getCachedActuals(tenantId, data.campaign_id, phase.phase_name, fetchStart, fetchEnd)
+          const hit = getCachedActuals(
+            tenantId,
+            data.campaign_id,
+            phase.phase_name,
+            fetchStart,
+            fetchEnd
+          )
           if (hit !== undefined && hit !== null) cached[phase.phase_name] = hit
         }
         if (Object.keys(cached).length > 0) {
@@ -348,7 +378,13 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
       if (force) forceReloadRef.current = false
 
       if (!force) {
-        const jsCache = getCachedActuals(tenantId, campaign.campaign_id, phaseName, startDate, endDate)
+        const jsCache = getCachedActuals(
+          tenantId,
+          campaign.campaign_id,
+          phaseName,
+          startDate,
+          endDate
+        )
         if (jsCache !== undefined && jsCache !== null) {
           if (!actualsMapRef.current[phaseName]) {
             setActualsMap((prev) => ({ ...prev, [phaseName]: jsCache }))
@@ -449,7 +485,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
   // min-h on outer div matches full tracker height so layout doesn't shift when switching
   if (campaignModeState === 'all') {
     return (
-      <div className="w-full max-w-3xl mx-auto px-4 min-h-[210px]">
+      <div className="w-full max-w-3xl mx-auto px-4 min-h-[13.125rem]">
         <div className="rounded-xl border border-secondary bg-primary overflow-hidden">
           <div className="px-3 pt-3 pb-3">
             <p className="paragraph-xs text-quaternary leading-none mb-0.5">Campaign</p>
@@ -462,7 +498,8 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
               >
                 {campaignSummaries.map((c) => (
                   <option key={c.campaign_id} value={c.campaign_id}>
-                    {c.is_primary ? '★ ' : ''}{c.campaign_name}
+                    {c.is_primary ? '★ ' : ''}
+                    {c.campaign_name}
                   </option>
                 ))}
                 <option value="all">● All Campaigns</option>
@@ -478,7 +515,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
 
   // No campaign for this workspace — reserve same height as tracker to prevent layout shift
   if (!loading && !campaign) {
-    return <div className="w-full max-w-3xl mx-auto px-4 min-h-[210px]" />
+    return <div className="w-full max-w-3xl mx-auto px-4 min-h-[13.125rem]" />
   }
 
   // Skeleton while loading
@@ -500,7 +537,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
               </div>
             ))}
           </div>
-          <div className="px-3 py-2.5 space-y-2.5 min-h-[140px]">
+          <div className="px-3 py-2.5 space-y-2.5 min-h-[8.75rem]">
             {[0, 1, 2].map((i) => (
               <div key={i} className="space-y-1">
                 <div className="flex justify-between">
@@ -542,21 +579,25 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
             <p className="paragraph-xs text-quaternary leading-none mb-0.5">
               Campaign{' '}
               <span className="text-quaternary">
-                · {campaign.start_date && campaign.end_date
+                ·{' '}
+                {campaign.start_date && campaign.end_date
                   ? `${format(new Date(campaign.start_date), 'd MMM')} – ${format(new Date(campaign.end_date), 'd MMM')}`
-                  : (!dateRange || isSinceLaunchRange(dateRange) ? 'Since launch' : dateRange.replace(/_/g, ' ').replace(/(\d+) days/, '$1d'))}
+                  : !dateRange || isSinceLaunchRange(dateRange)
+                    ? 'Since launch'
+                    : dateRange.replace(/_/g, ' ').replace(/(\d+) days/, '$1d')}
               </span>
             </p>
             {hasDropdown ? (
               <select
                 value={selectedCampaignId ?? campaign.campaign_id}
                 onChange={(e) => handleCampaignSelect(e.target.value)}
-                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 w-auto max-w-[200px]"
+                className="subheading-xs text-primary bg-transparent border-none outline-none cursor-pointer -ml-0.5 w-auto max-w-[12.5rem]"
                 style={{ appearance: 'auto' }}
               >
                 {campaignSummaries.map((c) => (
                   <option key={c.campaign_id} value={c.campaign_id}>
-                    {c.is_primary ? '★ ' : ''}{c.campaign_name}
+                    {c.is_primary ? '★ ' : ''}
+                    {c.campaign_name}
                   </option>
                 ))}
                 <option value="all">● All Campaigns</option>
@@ -620,13 +661,22 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
         </div>
 
         {/* KPI rows — reserve height for 3 rows so 2-KPI tabs don't shift the page */}
-        <div className="px-3 py-2.5 space-y-2.5 min-h-[140px]">
+        <div className="px-3 py-2.5 space-y-2.5 min-h-[8.75rem]">
           {actualsLoading && (
             <div className="flex items-center justify-center py-4">
               <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
+                  style={{ animationDelay: '0ms' }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-tertiary animate-bounce"
+                  style={{ animationDelay: '300ms' }}
+                />
               </div>
             </div>
           )}
@@ -642,9 +692,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
               // Cumulative metrics: bar fill = actual / target progress
               // Must check actual_value !== null, not just actual object existence
               const hasValue = actual !== null && actual.actual_value !== null
-              const pct = hasValue
-                ? isRate ? 100 : progressPercent(actual!)
-                : 0
+              const pct = hasValue ? (isRate ? 100 : progressPercent(actual!)) : 0
 
               const metTarget =
                 actual &&
@@ -653,19 +701,26 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                 actual.actual_value >= actual.target_numeric
 
               const overPct = actual ? overPerformPct(actual) : null
-              const timePct = canShowOnTrack ? campaignTimePct(campaign.start_date!, campaign.end_date!) : null
+              const timePct = canShowOnTrack
+                ? campaignTimePct(campaign.start_date!, campaign.end_date!)
+                : null
 
               // Bar colour
               let barColor = 'bg-utility-brand-500'
               if (actual && actual.actual_value !== null && actual.target_numeric !== null) {
                 if (isRate) {
                   // 3-state health signal for rate metrics
-                  const rs = rateMetricStatus(kpi.kpi_name, actual.target_numeric, actual.actual_value)
-                  barColor = rs === 'on-track'
-                    ? 'bg-utility-success-500'
-                    : rs === 'at-risk'
-                      ? 'bg-utility-warning-500'
-                      : 'bg-utility-error-500'
+                  const rs = rateMetricStatus(
+                    kpi.kpi_name,
+                    actual.target_numeric,
+                    actual.actual_value
+                  )
+                  barColor =
+                    rs === 'on-track'
+                      ? 'bg-utility-success-500'
+                      : rs === 'at-risk'
+                        ? 'bg-utility-warning-500'
+                        : 'bg-utility-error-500'
                 } else if (canShowOnTrack) {
                   // Time-paced signal for cumulative metrics
                   const trackStatus = isOnTrack(
@@ -676,11 +731,12 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                     campaign.end_date!,
                     today
                   )
-                  barColor = trackStatus === true
-                    ? 'bg-utility-success-500'
-                    : trackStatus === false
-                      ? 'bg-utility-error-500'
-                      : 'bg-utility-brand-500'
+                  barColor =
+                    trackStatus === true
+                      ? 'bg-utility-success-500'
+                      : trackStatus === false
+                        ? 'bg-utility-error-500'
+                        : 'bg-utility-brand-500'
                 }
               }
 
@@ -716,11 +772,16 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                               className="paragraph-xs text-quaternary shrink-0"
                               title={`From ${actual.source_label ?? 'uploaded data'}`}
                             >
-                              {shortAsOf(actual.as_of) ? `as of ${shortAsOf(actual.as_of)}` : 'from file'}
+                              {shortAsOf(actual.as_of)
+                                ? `as of ${shortAsOf(actual.as_of)}`
+                                : 'from file'}
                             </span>
                           )}
                           {actual.scope_note && actual.actual_value !== null && (
-                            <span className="paragraph-xs text-quaternary shrink-0" title={actual.scope_note}>
+                            <span
+                              className="paragraph-xs text-quaternary shrink-0"
+                              title={actual.scope_note}
+                            >
                               all site
                             </span>
                           )}

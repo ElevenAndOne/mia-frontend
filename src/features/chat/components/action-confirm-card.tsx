@@ -325,6 +325,84 @@ function GoogleActionPreview({ action }: { action: PendingAction }) {
   )
 }
 
+const POST_PLATFORM: Record<string, { label: string; icon: string | null }> = {
+  facebook: { label: 'Facebook', icon: '/icons/facebook-48.png' },
+  instagram: { label: 'Instagram', icon: null },
+}
+
+function fmtScheduledAt(iso: unknown, tz: unknown): string | null {
+  if (typeof iso !== 'string' || !iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  }
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      ...opts,
+      ...(typeof tz === 'string' && tz ? { timeZone: tz } : {}),
+    }).format(d)
+  } catch {
+    return new Intl.DateTimeFormat(undefined, opts).format(d)
+  }
+}
+
+/**
+ * A scheduled organic post, shown the way the owner thinks about it: where it goes, when it
+ * goes out, the caption, the picture. Replaces the raw key/value dump (media_urls,
+ * source_document_id…) that the generic card showed for schedule_post.
+ */
+function SchedulePostPreview({ params }: { params: Record<string, unknown> }) {
+  const platform = String(params.platform || '').toLowerCase()
+  const meta = POST_PLATFORM[platform] || { label: platform || 'Post', icon: null }
+  const when = fmtScheduledAt(params.scheduled_at, params.timezone)
+  const copy = typeof params.copy === 'string' ? params.copy : ''
+  const media = Array.isArray(params.media_urls)
+    ? (params.media_urls as unknown[]).filter((u): u is string => typeof u === 'string')
+    : []
+  return (
+    <div className="bg-primary/50 rounded-lg p-3 mb-3 space-y-2.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="flex items-center gap-1.5">
+          <span className="label-xs text-quaternary">Where</span>
+          <span className="label-xs text-primary font-semibold">{meta.label}</span>
+        </div>
+        {when && (
+          <div className="flex items-center gap-1.5">
+            <span className="label-xs text-quaternary">When</span>
+            <span className="label-xs text-primary font-semibold">{when}</span>
+          </div>
+        )}
+      </div>
+      {copy && (
+        <p className="paragraph-xs text-primary whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+          {copy}
+        </p>
+      )}
+      {media.length > 0 && (
+        <div className="flex gap-2">
+          {media.slice(0, 4).map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              className="h-20 w-16 rounded-md object-cover bg-secondary"
+              loading="lazy"
+            />
+          ))}
+        </div>
+      )}
+      {platform === 'instagram' && media.length === 0 && (
+        <span className="label-xs text-utility-warning-700">Instagram needs a picture — add one before scheduling.</span>
+      )}
+    </div>
+  )
+}
+
 const statusConfig = {
   pending: {
     label: 'Review Action',
@@ -358,16 +436,30 @@ export const ActionConfirmCard = ({
 }: ActionConfirmCardProps) => {
   const config = statusConfig[status]
   const isCampaignAction = action.platform === 'campaign'
+  // Organic schedule: a plain "where / when / caption / picture" card, labelled as a post.
+  const isSchedulePost = action.action_type === 'schedule_post'
+  const postPlatform = isSchedulePost
+    ? POST_PLATFORM[String(action.params?.platform || '').toLowerCase()]
+    : undefined
   // Editable copy of the proposed params — campaign actions can be tweaked
   // (phase, budget, dates, launch/best-time) before Confirm; the edited params
   // are what gets sent. Other action types pass through unchanged.
   const [editedParams, setEditedParams] = useState<Record<string, unknown>>(action.params)
-  const icon = isCampaignAction ? null : (platformIcons[action.platform] || null)
+  const icon = isCampaignAction
+    ? null
+    : isSchedulePost
+      ? postPlatform?.icon || null
+      : (platformIcons[action.platform] || null)
   // Google manage actions get a live diff; google_ads_create_* only resolve a
   // PARENT object (which would diff to "no change") so they keep the params dump.
   const isGoogleDiff = !!action.action_type?.startsWith('google_ads_')
     && !action.action_type?.startsWith('google_ads_create_')
-  const platformLabel = isCampaignAction ? 'Campaign' : action.platform
+  const platformLabel = isCampaignAction
+    ? 'Campaign'
+    : isSchedulePost
+      ? postPlatform?.label || 'Post'
+      : action.platform
+  const statusLabel = status === 'pending' && isSchedulePost ? 'Schedule this post?' : config.label
   // Block confirming a campaign action the user has emptied out (all channels removed).
   const emptyCampaign = isCampaignAction
     && ((editedParams.channel_actions as unknown[] | undefined)?.length ?? 0) === 0
@@ -388,12 +480,17 @@ export const ActionConfirmCard = ({
             <span
               className={`text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0 ${config.textColor} ${config.color}`}
             >
-              {config.label}
+              {statusLabel}
             </span>
             <span className="text-xs text-quaternary truncate">{platformLabel}</span>
           </div>
 
-          <p className="paragraph-sm text-primary font-medium mb-2">{action.summary}</p>
+          {/* The schedule card already says where and when — the model's summary would repeat it. */}
+          {!(isSchedulePost && status === 'pending') && (
+            <p className="paragraph-sm text-primary font-medium mb-2">{action.summary}</p>
+          )}
+
+          {status === 'pending' && isSchedulePost && <SchedulePostPreview params={action.params} />}
 
           {/* Meta writes: live before→after diff */}
           {status === 'pending' && action.action_type?.startsWith('meta_') && (
@@ -408,6 +505,7 @@ export const ActionConfirmCard = ({
           {status === 'pending'
             && !action.action_type?.startsWith('meta_')
             && !isGoogleDiff
+            && !isSchedulePost
             && action.params && Object.keys(action.params).length > 0 && (
             action.action_type === 'campaign_add_channel_action'
               ? <CampaignActionEditor params={editedParams} onChange={setEditedParams} />
@@ -437,7 +535,7 @@ export const ActionConfirmCard = ({
                 disabled={emptyCampaign}
                 className="px-4 py-1.5 rounded-lg subheading-sm bg-brand-solid text-primary-onbrand hover:bg-brand-solid-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-solid"
               >
-                Confirm
+                {isSchedulePost ? 'Schedule' : 'Confirm'}
               </button>
               <button
                 onClick={onCancel}

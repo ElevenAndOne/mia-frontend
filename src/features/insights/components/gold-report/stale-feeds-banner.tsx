@@ -26,7 +26,7 @@ export const StaleFeedsBanner = ({ feeds }: { feeds: string[] }) => {
   return (
     <div
       role="status"
-      className="rounded-[14px] border px-4 sm:px-5 py-3.5 flex items-start gap-3"
+      className="rounded-[0.875rem] border px-4 sm:px-5 py-3.5 flex items-start gap-3"
       style={{
         borderColor: 'rgb(240 166 62 / 0.45)',
         background: 'rgb(240 166 62 / 0.1)',
@@ -48,14 +48,20 @@ export const StaleFeedsBanner = ({ feeds }: { feeds: string[] }) => {
         />
       </svg>
       <div>
-        <p className="text-[13px] leading-5 font-semibold" style={{ color: 'var(--gr-heading)' }}>
+        <p
+          className="text-[0.8125rem] leading-5 font-semibold"
+          style={{ color: 'var(--gr-heading)' }}
+        >
           {list} data used in this report is out of date
         </p>
-        <p className="text-[12.5px] leading-[18px] mt-0.5" style={{ color: 'var(--gr-muted)' }}>
+        <p
+          className="text-[0.7813rem] leading-[1.125rem] mt-0.5"
+          style={{ color: 'var(--gr-muted)' }}
+        >
           The newest {names.length === 1 ? 'row' : 'rows'} the analysis received for{' '}
-          {names.length === 1 ? 'this channel' : 'these channels'} is well behind the report
-          date, so its figures and recommendations for {names.length === 1 ? 'it' : 'them'} are
-          working from old numbers. Check the connection under Integrations.
+          {names.length === 1 ? 'this channel' : 'these channels'} is well behind the report date,
+          so its figures and recommendations for {names.length === 1 ? 'it' : 'them'} are working
+          from old numbers. Check the connection under Integrations.
         </p>
       </div>
     </div>

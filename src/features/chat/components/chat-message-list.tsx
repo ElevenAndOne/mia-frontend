@@ -2,6 +2,7 @@ import { memo, type RefObject } from 'react'
 import ChatMessage from './chat-message'
 import type { ChatMessageItem } from '../hooks/use-chat-view.tsx'
 import type { MiaAsset } from '../../creative-studio/creative-studio-api'
+import type { ChatImageJob } from './chat-image-card'
 
 interface ChatMessageListProps {
   messages: ChatMessageItem[]
@@ -14,6 +15,7 @@ interface ChatMessageListProps {
   onPinAsset?: (asset: MiaAsset | null) => void
   onUseAssetInPost?: (asset: MiaAsset) => void
   onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
+  onImageReady?: (assets: MiaAsset[], event: ChatImageJob) => void
 }
 
 /**
@@ -35,6 +37,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onPinAsset,
   onUseAssetInPost,
   onFixDrift,
+  onImageReady,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
@@ -45,7 +48,9 @@ export const ChatMessageList = memo(function ChatMessageList({
         <div key={message.id} ref={idx === lastUserIdx ? lastUserMsgRef : undefined}>
           <ChatMessage
             role={message.role}
-            content={message.content}
+            content={
+              message.role === 'user' && message.displayText ? message.displayText : message.content
+            }
             images={message.images}
             documents={message.documents}
             pendingAction={message.pendingAction}
@@ -67,6 +72,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             pinnedAssetId={pinnedAssetId}
             onPinAsset={onPinAsset}
             onUseAssetInPost={onUseAssetInPost}
+            onImageReady={onImageReady}
             onFixDrift={onFixDrift}
           />
         </div>

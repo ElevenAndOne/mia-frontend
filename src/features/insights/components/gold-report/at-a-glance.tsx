@@ -18,7 +18,7 @@ export const AtAGlance = ({ digest }: { digest: GoldEmailDigest }) => {
       <p className="gr-eyebrow">At a glance</p>
       {digest.headline && (
         <p
-          className="text-[15px] leading-6 max-w-[62ch]"
+          className="text-[0.9375rem] leading-6 max-w-[62ch]"
           style={{ color: 'var(--gr-body)' }}
           // The digest headline uses **bold** for the standout subjects.
           dangerouslySetInnerHTML={{
@@ -30,21 +30,21 @@ export const AtAGlance = ({ digest }: { digest: GoldEmailDigest }) => {
         />
       )}
       {tiles.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[10px]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[0.625rem]">
           {tiles.map((t, i) => (
             <div
               key={i}
-              className="rounded-[10px] border px-3 py-3.5 text-center"
+              className="rounded-[0.625rem] border px-3 py-3.5 text-center"
               style={{ borderColor: 'var(--gr-line)', background: 'var(--gr-surface)' }}
             >
-              <p className="gr-eyebrow !text-[10px]">{t.label}</p>
+              <p className="gr-eyebrow !text-[0.625rem]">{t.label}</p>
               <p
                 className="mt-0.5 text-xl font-bold"
                 style={{ color: 'var(--gr-green)', fontFamily: 'var(--gr-mono)' }}
               >
                 {t.value}
               </p>
-              <p className="text-[10.5px] leading-3 mt-0.5" style={{ color: 'var(--gr-muted)' }}>
+              <p className="text-[0.6563rem] leading-3 mt-0.5" style={{ color: 'var(--gr-muted)' }}>
                 {t.note}
               </p>
             </div>

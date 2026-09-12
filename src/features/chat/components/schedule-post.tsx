@@ -5,24 +5,14 @@ import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { confirmAction, type CanvasDocument } from '../services/chat-service'
 import type { CreativeSpec } from './previews/creative-spec'
+import { CropAdjuster } from './crop-adjuster'
+import { IG_MAX_RATIO, IG_MIN_RATIO, type CropBox } from './crop-utils'
 
 interface SchedulePostProps {
   doc: CanvasDocument
   spec: CreativeSpec | null
   conversationId: string | null
 }
-
-/** Fractional source-image crop box, applied server-side at schedule time. */
-interface CropBox {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
-// Instagram's publish API enforces these; Facebook renders any ratio.
-const IG_MIN_RATIO = 4 / 5
-const IG_MAX_RATIO = 1.91
 
 /** Tomorrow 10:00 local — a sane default when Mia didn't suggest a time. */
 const defaultSchedule = (): { date: string; time: string } => {
@@ -33,112 +23,6 @@ const defaultSchedule = (): { date: string; time: string } => {
     date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
     time: '10:00',
   }
-}
-
-/**
- * Drag-to-crop: the image inside a platform-ratio frame; the user slides it along
- * the overflow axis to choose which part survives. Saving emits a fractional crop
- * box the backend applies — no client-side image processing.
- */
-const CropAdjuster = ({
-  url,
-  imgRatio,
-  targetRatio,
-  onSave,
-  onClose,
-}: {
-  url: string
-  imgRatio: number
-  targetRatio: number
-  onSave: (crop: CropBox) => void
-  onClose: () => void
-}) => {
-  const [offset, setOffset] = useState(0.5) // 0 = top/left … 1 = bottom/right
-  const frameRef = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ start: number; startOffset: number } | null>(null)
-
-  const vertical = imgRatio < targetRatio // taller than frame → slides up/down
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { start: vertical ? e.clientY : e.clientX, startOffset: offset }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-  }
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current || !frameRef.current) return
-    const frame = frameRef.current.getBoundingClientRect()
-    // How far (px) the image can travel inside the frame along the overflow axis.
-    const travel = vertical
-      ? frame.width / imgRatio - frame.height
-      : frame.height * imgRatio - frame.width
-    if (travel <= 0) return
-    const deltaPx = (vertical ? e.clientY : e.clientX) - drag.current.start
-    setOffset(Math.min(1, Math.max(0, drag.current.startOffset - deltaPx / travel)))
-  }
-  const onPointerUp = () => {
-    drag.current = null
-  }
-
-  const save = () => {
-    if (vertical) {
-      const visible = imgRatio / targetRatio // fraction of source height that fits
-      onSave({ x: 0, y: offset * (1 - visible), w: 1, h: visible })
-    } else {
-      const visible = targetRatio / imgRatio // fraction of source width that fits
-      onSave({ x: offset * (1 - visible), y: 0, w: visible, h: 1 })
-    }
-  }
-
-  // object-position percentage along the overflow axis
-  const posPct = `${(offset * 100).toFixed(1)}%`
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-primary border border-tertiary rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="paragraph-sm font-semibold text-primary">Adjust crop</p>
-        <p className="paragraph-xs text-quaternary">
-          Drag the image to choose what stays in frame.
-        </p>
-        <div
-          ref={frameRef}
-          className="w-full overflow-hidden rounded-lg border border-tertiary select-none touch-none cursor-grab active:cursor-grabbing"
-          style={{ aspectRatio: `${targetRatio}` }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-        >
-          <img
-            src={url}
-            alt=""
-            draggable={false}
-            className="w-full h-full object-cover pointer-events-none"
-            style={{ objectPosition: vertical ? `50% ${posPct}` : `${posPct} 50%` }}
-          />
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            className="px-3 py-1.5 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium"
-          >
-            Save crop
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 /**
@@ -165,7 +49,8 @@ export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) =
 
   // Only offer scheduling for organic Facebook/Instagram deliverables — ads and
   // other platforms keep their existing campaign/push flows.
-  const eligible = !spec || (!spec.isPaid && (spec.platform === 'facebook' || spec.platform === 'instagram'))
+  const eligible =
+    !spec || (!spec.isPaid && (spec.platform === 'facebook' || spec.platform === 'instagram'))
 
   useEffect(() => {
     if (spec?.platform === 'instagram') setPlatform('instagram')
@@ -201,7 +86,7 @@ export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) =
 
   const bestTime = useMemo(
     () => spec?.notes.find((n) => /best time/i.test(n.label))?.value ?? null,
-    [spec],
+    [spec]
   )
 
   const scheduledDate = useMemo(() => {
@@ -215,8 +100,7 @@ export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) =
     platform === 'instagram' &&
     effectiveRatio !== null &&
     (effectiveRatio < IG_MIN_RATIO - 0.005 || effectiveRatio > IG_MAX_RATIO + 0.005)
-  const targetRatio =
-    imgRatio !== null && imgRatio < IG_MIN_RATIO ? IG_MIN_RATIO : IG_MAX_RATIO
+  const targetRatio = imgRatio !== null && imgRatio < IG_MIN_RATIO ? IG_MIN_RATIO : IG_MAX_RATIO
 
   const tooSoon = scheduledDate !== null && scheduledDate.getTime() - Date.now() < 10 * 60 * 1000
   const igNeedsImage = platform === 'instagram' && media.length === 0
@@ -253,13 +137,32 @@ export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) =
       // The Posts page list is cached (React Query) — invalidate so the new
       // post is there the moment the user goes looking for it.
       void queryClient.invalidateQueries({ queryKey: ['posts'] })
+      // Home (Basic) turns its card over and blinks Posts when it hears this.
+      window.dispatchEvent(
+        new CustomEvent('mia:post-scheduled', {
+          detail: { platform, scheduled_at: scheduledDate.toISOString(), title: doc.title },
+        })
+      )
       setOpen(false)
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to schedule the post')
     } finally {
       setSubmitting(false)
     }
-  }, [sessionId, scheduledDate, submitting, spec, doc, platform, media, crop, firstImage, conversationId, showToast, queryClient])
+  }, [
+    sessionId,
+    scheduledDate,
+    submitting,
+    spec,
+    doc,
+    platform,
+    media,
+    crop,
+    firstImage,
+    conversationId,
+    showToast,
+    queryClient,
+  ])
 
   if (!tenantId || !eligible) return null
 

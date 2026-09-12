@@ -54,11 +54,20 @@ export const FunnelCards = ({
           className="flex flex-col h-full rounded-2xl border border-secondary bg-secondary p-4"
         >
           <div className="flex items-center gap-2">
-            <span className="cw-mono text-[11px] font-semibold" style={{ color: p.hue }}>{p.num}</span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-md" style={{ color: p.hue, background: softColor(p.hue, 16) }}>{p.role}</span>
+            <span className="cw-mono text-[0.6875rem] font-semibold" style={{ color: p.hue }}>
+              {p.num}
+            </span>
+            <span
+              className="text-[0.625rem] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-md"
+              style={{ color: p.hue, background: softColor(p.hue, 16) }}
+            >
+              {p.role}
+            </span>
           </div>
           <div className="title-h6 text-primary mt-2.5">{p.name}</div>
-          <div className="paragraph-xs text-tertiary leading-snug mt-1 line-clamp-3 min-h-[3.25rem]">{p.objective}</div>
+          <div className="paragraph-xs text-tertiary leading-snug mt-1 line-clamp-3 min-h-[3.25rem]">
+            {p.objective}
+          </div>
 
           <div className="mt-3.5 pt-3.5 border-t border-tertiary">
             {primary ? (
@@ -86,7 +95,9 @@ export const FunnelCards = ({
               </>
             ) : p.primaryValue ? (
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold cw-mono tracking-tight text-primary">{p.primaryValue}</span>
+                <span className="text-2xl font-extrabold cw-mono tracking-tight text-primary">
+                  {p.primaryValue}
+                </span>
                 <span className="paragraph-xs text-tertiary">{p.primaryLabel}</span>
               </div>
             ) : (
@@ -94,21 +105,29 @@ export const FunnelCards = ({
             )}
             {secondary ? (
               <div className="paragraph-xs text-quaternary mt-0.5">
-                <span className={`cw-mono ${secondary.actual_value == null ? '' : 'text-secondary font-medium'}`}>
+                <span
+                  className={`cw-mono ${secondary.actual_value == null ? '' : 'text-secondary font-medium'}`}
+                >
                   {actualText(secondary)}
                 </span>
                 {` / ${p.secondary}`}
               </div>
             ) : (
-              p.secondary && <div className="paragraph-xs text-quaternary mt-0.5">{p.secondary}</div>
+              p.secondary && (
+                <div className="paragraph-xs text-quaternary mt-0.5">{p.secondary}</div>
+              )
             )}
           </div>
 
           {p.channels.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-3.5 mt-auto">
               {p.channels.map((c) => (
-                <span key={c.name} className="inline-flex items-center gap-1.5 paragraph-xs text-secondary bg-primary border border-secondary rounded-full px-2 py-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />{c.label}
+                <span
+                  key={c.name}
+                  className="inline-flex items-center gap-1.5 paragraph-xs text-secondary bg-primary border border-secondary rounded-full px-2 py-0.5"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.color }} />
+                  {c.label}
                 </span>
               ))}
             </div>

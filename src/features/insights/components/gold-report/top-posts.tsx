@@ -23,14 +23,14 @@ export const TopPosts = ({ posts }: { posts: GoldTopPost[] }) => {
             style={{ borderColor: 'var(--gr-line)' }}
           >
             <p
-              className="text-[10.5px] uppercase tabular-nums"
+              className="text-[0.6563rem] uppercase tabular-nums"
               style={{ fontFamily: 'var(--gr-mono)', color: 'var(--gr-muted)' }}
             >
               {p.platform} · {p.views.toLocaleString()} views
               {p.engagement_rate_pct != null && ` · ER ${p.engagement_rate_pct}%`}
               {p.published_at && ` · ${p.published_at}`}
             </p>
-            <p className="text-[13.5px] leading-5 mt-1" style={{ color: 'var(--gr-body)' }}>
+            <p className="text-[0.8438rem] leading-5 mt-1" style={{ color: 'var(--gr-body)' }}>
               {snippet(p.text)}{' '}
               {p.permalink && (
                 <a
@@ -51,7 +51,7 @@ export const TopPosts = ({ posts }: { posts: GoldTopPost[] }) => {
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-2 text-[12px] font-semibold"
+          className="mt-2 text-[0.75rem] font-semibold"
           style={{ color: 'var(--gr-purple-text)' }}
         >
           {showAll ? 'Show fewer posts' : `Show ${hidden} more posts`}

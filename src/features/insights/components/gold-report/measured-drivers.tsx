@@ -18,7 +18,7 @@ const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}%`
 
 // A driver string can be a long campaign name with a URL in it.
 const DriverName = ({ name }: { name: string }) => (
-  <span className="text-[13.3px] leading-5 break-words" style={{ color: 'var(--gr-heading)' }}>
+  <span className="text-[0.8313rem] leading-5 break-words" style={{ color: 'var(--gr-heading)' }}>
     {name}
   </span>
 )
@@ -27,29 +27,26 @@ const EvidenceNote = ({ row }: { row: GoldStructuredRecommendation }) => {
   const bits: string[] = []
   if (row.evidence_basis === 'measured') bits.push('measured')
   else if (row.evidence_basis === 'model') {
-    bits.push(row.model_evidence && row.model_evidence !== 'unknown'
-      ? `model, ${row.model_evidence} evidence`
-      : 'model estimate')
+    bits.push(
+      row.model_evidence && row.model_evidence !== 'unknown'
+        ? `model, ${row.model_evidence} evidence`
+        : 'model estimate'
+    )
   }
   // Absent confidence is intentional on measured rows — say nothing rather than 0.
-  if (typeof row.confidence === 'number') bits.push(`confidence ${Math.round(row.confidence * 100)}%`)
+  if (typeof row.confidence === 'number')
+    bits.push(`confidence ${Math.round(row.confidence * 100)}%`)
   if (row.applies_to_platform) bits.push(`${row.applies_to_platform} only`)
   else if (row.platform_scoped) bits.push('one platform only')
   if (bits.length === 0) return null
   return (
-    <p className="text-[11px] leading-4 mt-0.5" style={{ color: 'var(--gr-muted)' }}>
+    <p className="text-[0.6875rem] leading-4 mt-0.5" style={{ color: 'var(--gr-muted)' }}>
       {bits.join(' · ')}
     </p>
   )
 }
 
-const Row = ({
-  row,
-  showVerdict,
-}: {
-  row: GoldStructuredRecommendation
-  showVerdict: boolean
-}) => {
+const Row = ({ row, showVerdict }: { row: GoldStructuredRecommendation; showVerdict: boolean }) => {
   const wins = row.beats_portfolio_average === true
   return (
     <div className="px-4 sm:px-5 py-3 border-t" style={{ borderColor: 'var(--gr-line)' }}>
@@ -60,7 +57,7 @@ const Row = ({
         </div>
         <div className="shrink-0 text-right">
           <p
-            className="text-[15px] font-bold tabular-nums"
+            className="text-[0.9375rem] font-bold tabular-nums"
             style={{
               fontFamily: 'var(--gr-mono)',
               // Colour only where there is a verdict to show. Model-importance rows
@@ -75,7 +72,7 @@ const Row = ({
             {showVerdict ? signed(row.magnitude) : `${Math.abs(row.magnitude).toFixed(1)}%`}
           </p>
           {showVerdict && (
-            <p className="text-[10.5px] leading-3" style={{ color: 'var(--gr-muted)' }}>
+            <p className="text-[0.6563rem] leading-3" style={{ color: 'var(--gr-muted)' }}>
               {wins ? 'better than average' : 'below average'}
             </p>
           )}
@@ -99,7 +96,7 @@ const Group = ({
   <div className="gr-card overflow-hidden">
     <div className="px-4 sm:px-5 pt-3.5 pb-2">
       <p className="gr-eyebrow">{title}</p>
-      <p className="text-[11.5px] leading-[17px] mt-1" style={{ color: 'var(--gr-muted)' }}>
+      <p className="text-[0.7188rem] leading-[1.0625rem] mt-1" style={{ color: 'var(--gr-muted)' }}>
         {note}
       </p>
     </div>
@@ -134,7 +131,7 @@ export const MeasuredDrivers = ({ rows }: { rows: GoldStructuredRecommendation[]
         />
       )}
       {asOf && (
-        <p className="text-[11px] leading-4 px-1" style={{ color: 'var(--gr-muted)' }}>
+        <p className="text-[0.6875rem] leading-4 px-1" style={{ color: 'var(--gr-muted)' }}>
           As at {asOf}.
         </p>
       )}

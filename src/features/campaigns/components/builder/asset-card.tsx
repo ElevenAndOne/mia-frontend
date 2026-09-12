@@ -5,7 +5,12 @@ import { AskMiaButton } from '../ask-mia/ask-mia-button'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { buildAssetFinalUrl } from '../../services/campaign-api'
 import { DrivePickerModal } from './drive-picker-modal'
-import { creativeThumbnail, isDriveFolderUrl, onThumbError, splitCreativeUrls } from '../../utils/drive'
+import {
+  creativeThumbnail,
+  isDriveFolderUrl,
+  onThumbError,
+  splitCreativeUrls,
+} from '../../utils/drive'
 import type { Asset, AssetStatus, DriveFile, KeywordSpec } from '../../types'
 import { ASSET_TYPES, ASSET_TYPE_GROUPS } from '../../constants/asset-types'
 
@@ -21,7 +26,8 @@ const ASSET_STATUSES: { value: AssetStatus; label: string; cls: string }[] = [
 const inputCls =
   'w-full px-2 py-1.5 border border-tertiary rounded-lg text-xs bg-secondary-subtle text-secondary outline-none focus:border-utility-brand-400'
 const numCls = `${inputCls} [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden`
-const fieldLabel = 'text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em] mb-1 block'
+const fieldLabel =
+  'text-[0.5938rem] font-semibold text-quaternary uppercase tracking-[0.12em] mb-1 block'
 
 interface AssetCardProps {
   asset: Asset
@@ -47,7 +53,8 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
   const isRsa = asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'pmax'
   // Text-only Google Search ads: no creative to attach (hide Final Asset), no
   // single Meta-style headline (the pool replaces it) — but they DO need keywords.
-  const isSearchText = asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'search_ad'
+  const isSearchText =
+    asset.asset_type === 'responsive_search_ad' || asset.asset_type === 'search_ad'
   const detailLines = (key: string): string =>
     Array.isArray(details[key])
       ? (details[key] as unknown[]).filter((s) => typeof s === 'string').join('\n')
@@ -95,7 +102,11 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     setUtmError('')
     try {
       const url = await buildAssetFinalUrl(
-        sessionId, tenantId, campaign.campaign_id, asset.asset_id, asset.final_url,
+        sessionId,
+        tenantId,
+        campaign.campaign_id,
+        asset.asset_id,
+        asset.final_url
       )
       onPatch({ final_url: url })
     } catch (e) {
@@ -141,7 +152,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
     const next = mediaUrls.filter((_, idx) => idx !== i)
     // Removing the last picked file falls back to the Drive folder link (if any)
     // so the picker stays reachable and the field isn't silently emptied.
-    onPatch({ deliverable_url: next.length ? next.join('\n') : driveFolder ?? null })
+    onPatch({ deliverable_url: next.length ? next.join('\n') : (driveFolder ?? null) })
   }
 
   return (
@@ -167,11 +178,14 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           onChange={(e) => onPatch({ status: e.target.value as AssetStatus })}
           title="Ad status — syncs to the ClickUp task"
           className={`text-xs font-semibold border border-tertiary rounded-md px-1.5 py-0.5 bg-secondary-subtle ${
-            ASSET_STATUSES.find((s) => s.value === (asset.status ?? 'draft'))?.cls ?? 'text-tertiary'
+            ASSET_STATUSES.find((s) => s.value === (asset.status ?? 'draft'))?.cls ??
+            'text-tertiary'
           }`}
         >
           {ASSET_STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
           ))}
         </select>
         <select
@@ -187,7 +201,9 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           {ASSET_TYPE_GROUPS.map((g) => (
             <optgroup key={g.label} label={g.label}>
               {g.types.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </optgroup>
           ))}
@@ -211,9 +227,18 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
             </button>
           </div>
         ) : (
-          <button onClick={() => setConfirmingDelete(true)} className="p-0.5 text-quaternary hover:text-utility-error-500" title="Remove asset">
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="p-0.5 text-quaternary hover:text-utility-error-500"
+            title="Remove asset"
+          >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         )}
@@ -221,17 +246,41 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
 
       <div>
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">Copy</span>
-          <AskMiaButton context={{ ...askCtx, fieldLabel: 'asset copy / key message' }} currentValue={asset.key_message ?? ''} onInsert={(t) => onPatch({ key_message: t })} />
+          <span className="text-[0.5938rem] font-semibold text-quaternary uppercase tracking-[0.12em]">
+            Copy
+          </span>
+          <AskMiaButton
+            context={{ ...askCtx, fieldLabel: 'asset copy / key message' }}
+            currentValue={asset.key_message ?? ''}
+            onInsert={(t) => onPatch({ key_message: t })}
+          />
         </div>
-        <EditableTextarea value={asset.key_message ?? ''} onSave={(v) => onPatch({ key_message: v || null })} placeholder="Asset copy…" rows={2} className="paragraph-xs text-secondary" />
+        <EditableTextarea
+          value={asset.key_message ?? ''}
+          onSave={(v) => onPatch({ key_message: v || null })}
+          placeholder="Asset copy…"
+          rows={2}
+          className="paragraph-xs text-secondary"
+        />
       </div>
       <div>
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">Caption</span>
-          <AskMiaButton context={{ ...askCtx, fieldLabel: 'caption / call-to-action' }} currentValue={asset.cta ?? ''} onInsert={(t) => onPatch({ cta: t })} />
+          <span className="text-[0.5938rem] font-semibold text-quaternary uppercase tracking-[0.12em]">
+            Caption
+          </span>
+          <AskMiaButton
+            context={{ ...askCtx, fieldLabel: 'caption / call-to-action' }}
+            currentValue={asset.cta ?? ''}
+            onInsert={(t) => onPatch({ cta: t })}
+          />
         </div>
-        <EditableTextarea value={asset.cta ?? ''} onSave={(v) => onPatch({ cta: v || null })} placeholder="Caption…" rows={2} className="paragraph-xs text-tertiary" />
+        <EditableTextarea
+          value={asset.cta ?? ''}
+          onSave={(v) => onPatch({ cta: v || null })}
+          placeholder="Caption…"
+          rows={2}
+          className="paragraph-xs text-tertiary"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -245,7 +294,11 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
               onBlur={(e) => {
                 const v = e.target.value ? parseFloat(e.target.value) : null
                 if (v !== asset.budget) {
-                  onPatch(v != null && !asset.budget_period ? { budget: v, budget_period: 'total' } : { budget: v })
+                  onPatch(
+                    v != null && !asset.budget_period
+                      ? { budget: v, budget_period: 'total' }
+                      : { budget: v }
+                  )
                 }
               }}
               placeholder="—"
@@ -264,22 +317,46 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
         <div>
           <span className={fieldLabel}>Flight</span>
           <div className="space-y-1">
-            <input type="date" key={`${asset.asset_id}-sd-${asset.start_date ?? ''}`} defaultValue={asset.start_date ?? ''}
-              onChange={(e) => { if (e.target.value !== (asset.start_date ?? '')) onPatch({ start_date: e.target.value || null }) }}
-              className={inputCls} />
-            <input type="date" key={`${asset.asset_id}-ed-${asset.end_date ?? ''}`} defaultValue={asset.end_date ?? ''}
-              onChange={(e) => { if (e.target.value !== (asset.end_date ?? '')) onPatch({ end_date: e.target.value || null }) }}
-              className={inputCls} />
+            <input
+              type="date"
+              key={`${asset.asset_id}-sd-${asset.start_date ?? ''}`}
+              defaultValue={asset.start_date ?? ''}
+              onChange={(e) => {
+                if (e.target.value !== (asset.start_date ?? ''))
+                  onPatch({ start_date: e.target.value || null })
+              }}
+              className={inputCls}
+            />
+            <input
+              type="date"
+              key={`${asset.asset_id}-ed-${asset.end_date ?? ''}`}
+              defaultValue={asset.end_date ?? ''}
+              onChange={(e) => {
+                if (e.target.value !== (asset.end_date ?? ''))
+                  onPatch({ end_date: e.target.value || null })
+              }}
+              className={inputCls}
+            />
           </div>
         </div>
         <div>
           <span className={fieldLabel}>Launch</span>
-          <input type="date" defaultValue={launch} onBlur={(e) => patchDetails('launch_date', e.target.value)} className={inputCls} />
+          <input
+            type="date"
+            defaultValue={launch}
+            onBlur={(e) => patchDetails('launch_date', e.target.value)}
+            className={inputCls}
+          />
         </div>
         <div>
           <span className={fieldLabel}>Best time to post</span>
-          <input type="text" defaultValue={bestTime} onBlur={(e) => patchDetails('optimal_post_time', e.target.value)}
-            placeholder="e.g. Tuesday 09:30" className={inputCls} />
+          <input
+            type="text"
+            defaultValue={bestTime}
+            onBlur={(e) => patchDetails('optimal_post_time', e.target.value)}
+            placeholder="e.g. Tuesday 09:30"
+            className={inputCls}
+          />
         </div>
       </div>
 
@@ -336,7 +413,9 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
         )}
         {isSearchText && (
           <div>
-            <span className={fieldLabel}>Keywords — one per line (add "| EXACT" or "| PHRASE")</span>
+            <span className={fieldLabel}>
+              Keywords — one per line (add "| EXACT" or "| PHRASE")
+            </span>
             <textarea
               key={`${asset.asset_id}-kw-${keywordLines}`}
               defaultValue={keywordLines}
@@ -349,7 +428,7 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
         )}
         <div>
           <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[9.5px] font-semibold text-quaternary uppercase tracking-[0.12em]">
+            <span className="text-[0.5938rem] font-semibold text-quaternary uppercase tracking-[0.12em]">
               Final URL (destination + tracking)
             </span>
             {asset.final_url && (
@@ -373,60 +452,92 @@ export const AssetCard = ({ asset, channel, phaseName, onPatch, onDelete }: Asse
           {utmError && <p className="label-xs text-utility-error-600 mt-0.5">{utmError}</p>}
         </div>
         {!isSearchText && (
-        <div>
-          <span className={fieldLabel}>Final asset (approved creative)</span>
-          <EditableText
-            value={asset.deliverable_url ?? ''}
-            onSave={(v) => onPatch({ deliverable_url: v || null })}
-            placeholder="Drive folder link — or one image URL per line"
-            className="paragraph-xs text-secondary break-all"
-          />
-          {mediaUrls.length > 0 && (
-            <div className="flex gap-1.5 mt-1.5 overflow-x-auto pb-1" onDragOver={(e) => e.preventDefault()}>
-              {mediaUrls.map((u, i) => (
-                <div
-                  key={u}
-                  draggable={mediaUrls.length > 1}
-                  onDragStart={() => setDragFrom(i)}
-                  onDragEnter={() => reorderMedia(i)}
-                  onDragEnd={() => setDragFrom(null)}
-                  title={mediaUrls.length > 1 ? `Card ${i + 1} — drag to reorder` : undefined}
-                  className={`relative shrink-0 w-12 h-12 rounded-md overflow-hidden border border-secondary ${
-                    mediaUrls.length > 1 ? 'cursor-grab' : ''
-                  } ${dragFrom === i ? 'opacity-50' : ''}`}
-                >
-                  <img src={creativeThumbnail(u, 120)} onError={(e) => onThumbError(e, u, 120)} alt="" loading="lazy" className="w-full h-full object-cover bg-tertiary" />
-                  {mediaUrls.length > 1 && (
-                    <span className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white label-xs font-bold">
-                      {i + 1}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeMedia(i) }}
-                    title="Remove this creative"
-                    className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-utility-error-600 hover:text-white"
+          <div>
+            <span className={fieldLabel}>Final asset (approved creative)</span>
+            <EditableText
+              value={asset.deliverable_url ?? ''}
+              onSave={(v) => onPatch({ deliverable_url: v || null })}
+              placeholder="Drive folder link — or one image URL per line"
+              className="paragraph-xs text-secondary break-all"
+            />
+            {mediaUrls.length > 0 && (
+              <div
+                className="flex gap-1.5 mt-1.5 overflow-x-auto pb-1"
+                onDragOver={(e) => e.preventDefault()}
+              >
+                {mediaUrls.map((u, i) => (
+                  <div
+                    key={u}
+                    draggable={mediaUrls.length > 1}
+                    onDragStart={() => setDragFrom(i)}
+                    onDragEnter={() => reorderMedia(i)}
+                    onDragEnd={() => setDragFrom(null)}
+                    title={mediaUrls.length > 1 ? `Card ${i + 1} — drag to reorder` : undefined}
+                    className={`relative shrink-0 w-12 h-12 rounded-md overflow-hidden border border-secondary ${
+                      mediaUrls.length > 1 ? 'cursor-grab' : ''
+                    } ${dragFrom === i ? 'opacity-50' : ''}`}
                   >
-                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {driveFolder && (
-            <button
-              onClick={() => setPickerOpen(true)}
-              className="mt-1.5 inline-flex items-center gap-1 label-xs font-semibold text-utility-brand-600 hover:underline"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-              </svg>
-              {mediaUrls.length > 0 ? 'Change Drive selection' : 'Choose creatives from Drive'}
-            </button>
-          )}
-        </div>
+                    <img
+                      src={creativeThumbnail(u, 120)}
+                      onError={(e) => onThumbError(e, u, 120)}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover bg-tertiary"
+                    />
+                    {mediaUrls.length > 1 && (
+                      <span className="absolute top-0.5 left-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white label-xs font-bold">
+                        {i + 1}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeMedia(i)
+                      }}
+                      title="Remove this creative"
+                      className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-black/70 text-white/80 hover:bg-utility-error-600 hover:text-white"
+                    >
+                      <svg
+                        className="w-2.5 h-2.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {driveFolder && (
+              <button
+                onClick={() => setPickerOpen(true)}
+                className="mt-1.5 inline-flex items-center gap-1 label-xs font-semibold text-utility-brand-600 hover:underline"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
+                  />
+                </svg>
+                {mediaUrls.length > 0 ? 'Change Drive selection' : 'Choose creatives from Drive'}
+              </button>
+            )}
+          </div>
         )}
       </div>
 

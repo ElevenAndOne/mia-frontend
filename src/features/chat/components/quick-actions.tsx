@@ -18,9 +18,24 @@ interface QuickActionsProps {
 }
 
 const actions: QuickAction[] = [
-  { id: 'grow',     label: 'Grow',     icon: <TrendUp01 size={18} />,  description: 'Analyse growth opportunities across your connected channels.' },
-  { id: 'optimize', label: 'Optimise', icon: <Sliders01 size={18} />,   description: 'Identify efficiency gains and reduce wasted spend.' },
-  { id: 'protect',  label: 'Protect',  icon: <ShieldTick size={18} />,  description: 'Monitor risks and protect your campaign performance.' },
+  {
+    id: 'grow',
+    label: 'Grow',
+    icon: <TrendUp01 size={18} />,
+    description: 'Analyse growth opportunities across your connected channels.',
+  },
+  {
+    id: 'optimize',
+    label: 'Optimise',
+    icon: <Sliders01 size={18} />,
+    description: 'Identify efficiency gains and reduce wasted spend.',
+  },
+  {
+    id: 'protect',
+    label: 'Protect',
+    icon: <ShieldTick size={18} />,
+    description: 'Monitor risks and protect your campaign performance.',
+  },
 ]
 
 export const QuickActions = ({
@@ -30,7 +45,6 @@ export const QuickActions = ({
 }: QuickActionsProps) => {
   return (
     <div className="flex flex-col gap-3 w-full max-w-3xl mx-auto px-4">
-
       {/* Grow / Optimize / Protect — 3 equal columns on mobile */}
       <div className="grid grid-cols-3 gap-2 md:hidden">
         {actions.map((action) => (
@@ -44,10 +58,14 @@ export const QuickActions = ({
                 : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
             }`}
           >
-            <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+            <span
+              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+            >
               {action.icon}
             </span>
-            <span className={`subheading-sm ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+            <span
+              className={`subheading-sm ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}
+            >
               {action.label}
             </span>
           </button>
@@ -67,10 +85,14 @@ export const QuickActions = ({
                 : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
             }`}
           >
-            <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
+            <span
+              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+            >
               {action.icon}
             </span>
-            <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+            <span
+              className={`subheading-sm shrink-0 w-[4.625rem] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}
+            >
               {action.label}
             </span>
             {!disabled && (
@@ -95,7 +117,9 @@ export const QuickActions = ({
         <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}>
           <BarChartSquare02 size={18} />
         </span>
-        <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+        <span
+          className={`subheading-sm shrink-0 w-[4.625rem] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}
+        >
           Strategise
         </span>
         {!disabled && (
@@ -104,7 +128,7 @@ export const QuickActions = ({
               ML-powered predictions from your historical data.
             </span>
             {strategiseReady && (
-              <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-secondary text-secondary">
+              <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-secondary text-secondary">
                 Ready
               </span>
             )}
@@ -125,7 +149,9 @@ export const QuickActions = ({
         <span className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-brand-600'}`}>
           <BarChart01 size={18} />
         </span>
-        <span className={`subheading-sm shrink-0 w-[74px] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}>
+        <span
+          className={`subheading-sm shrink-0 w-[4.625rem] ${disabled ? 'text-placeholder-subtle' : 'text-primary'}`}
+        >
           Predict
         </span>
         {!disabled && (
@@ -133,13 +159,12 @@ export const QuickActions = ({
             <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
               Optimise budget allocation across your RACE campaign.
             </span>
-            <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-brand-100 text-brand-700">
+            <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-brand-100 text-brand-700">
               Pro
             </span>
           </>
         )}
       </button>
-
     </div>
   )
 }

@@ -4,7 +4,7 @@
  */
 import { apiFetch, API_BASE_URL } from '../../../utils/api'
 import type { Workspace, WorkspaceRole } from '../types'
-import type { FeatureCatalogEntry, FeatureFlags, FeatureKey } from '../feature-keys'
+import type { Experience, FeatureCatalogEntry, FeatureFlags, FeatureKey } from '../feature-keys'
 
 /**
  * Raw API response type (role is string from backend)
@@ -24,6 +24,8 @@ interface RawWorkspace {
   is_active?: boolean
   logo_url?: string | null
   features?: FeatureFlags
+  experience?: Experience
+  experience_profile?: Experience
 }
 
 /**
@@ -49,6 +51,8 @@ export interface CurrentWorkspaceResponse {
     connected_platforms?: string[]
     member_count?: number
     features?: FeatureFlags
+    experience?: Experience
+    experience_profile?: Experience
   } | null
   /** Legacy field name — backend may still return this */
   active_tenant?: {
@@ -63,6 +67,8 @@ export interface CurrentWorkspaceResponse {
     connected_platforms?: string[]
     member_count?: number
     features?: FeatureFlags
+    experience?: Experience
+    experience_profile?: Experience
   } | null
 }
 
@@ -75,6 +81,9 @@ export interface CreateWorkspaceResponse {
   slug?: string
   role?: string
   onboarding_completed?: boolean
+  features?: FeatureFlags
+  experience?: Experience
+  experience_profile?: Experience
 }
 
 /**
@@ -120,6 +129,8 @@ export const fetchWorkspaces = async (sessionId: string): Promise<Workspace[]> =
       is_active: t.is_active,
       logo_url: t.logo_url ? `${API_BASE_URL}${t.logo_url}` : null,
       features: t.features,
+      experience: t.experience,
+      experience_profile: t.experience_profile,
     })
   )
 }
@@ -144,10 +155,7 @@ export const uploadWorkspaceLogo = async (
   return `${API_BASE_URL}${data.logo_url}?v=${Date.now()}`
 }
 
-export const deleteWorkspaceLogo = async (
-  sessionId: string,
-  tenantId: string
-): Promise<void> => {
+export const deleteWorkspaceLogo = async (sessionId: string, tenantId: string): Promise<void> => {
   const response = await apiFetch(`/api/tenants/${tenantId}/logo`, {
     method: 'DELETE',
     headers: { 'X-Session-ID': sessionId },
@@ -184,7 +192,14 @@ export const fetchCurrentWorkspace = async (
 export const createWorkspace = async (
   sessionId: string,
   name: string
-): Promise<{ tenant_id: string; name: string; slug: string }> => {
+): Promise<{
+  tenant_id: string
+  name: string
+  slug: string
+  features?: FeatureFlags
+  experience?: Experience
+  experience_profile?: Experience
+}> => {
   const response = await apiFetch('/api/tenants', {
     method: 'POST',
     headers: {
@@ -203,6 +218,9 @@ export const createWorkspace = async (
     tenant_id: data.tenant_id || '',
     name: data.name || name,
     slug: data.slug || '',
+    features: data.features,
+    experience: data.experience,
+    experience_profile: data.experience_profile,
   }
 }
 
@@ -260,7 +278,12 @@ export const renameWorkspace = async (
 export const fetchWorkspaceDetails = async (
   sessionId: string,
   tenantId: string
-): Promise<{ website_url: string | null; active_framework: 'race' | 'generic' }> => {
+): Promise<{
+  website_url: string | null
+  active_framework: 'race' | 'generic'
+  experience_profile?: Experience
+  experience?: Experience
+}> => {
   const response = await apiFetch(`/api/tenants/${tenantId}`, {
     headers: { 'X-Session-ID': sessionId },
   })
@@ -269,6 +292,8 @@ export const fetchWorkspaceDetails = async (
   return {
     website_url: data.website_url ?? null,
     active_framework: (data.active_framework ?? 'race') as 'race' | 'generic',
+    experience_profile: data.experience_profile as Experience | undefined,
+    experience: data.experience as Experience | undefined,
   }
 }
 
@@ -338,6 +363,9 @@ export const deleteWorkspace = async (sessionId: string, tenantId: string): Prom
 export interface FeatureFlagsResponse {
   features: FeatureFlags
   catalog: FeatureCatalogEntry[]
+  /** Effective experience for the caller; the catalog's `default` column follows it. */
+  experience: Experience
+  experience_profile: Experience
 }
 
 /** GET /api/tenants/{id}/features — effective flags + the catalog the settings UI renders. */
@@ -373,4 +401,24 @@ export const updateWorkspaceFeatures = async (
     throw new Error(err.detail || `Feature flags update failed: ${response.status}`)
   }
   return response.json()
+}
+
+/**
+ * PUT /api/tenants/{id} with experience_profile — 'basic' | 'team' | 'agency'. Admin/owner.
+ * Changes the defaults for every feature flag; per-workspace overrides are kept.
+ */
+export const updateWorkspaceExperience = async (
+  sessionId: string,
+  tenantId: string,
+  experience: Experience
+): Promise<void> => {
+  const response = await apiFetch(`/api/tenants/${tenantId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ experience_profile: experience }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to update workspace experience')
+  }
 }

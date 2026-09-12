@@ -113,6 +113,19 @@
   }
 }
 
+/* UI scale — see docs: the layout is drawn for ~1920 CSS px. 100vw / 120 = 16px at 1920,
+   12.8px (80%) at 1536 (a 1080p Windows laptop at 125%), never below 80% or above 100%.
+   Everything rem-based (Tailwind spacing, type, radii) follows; phones stay at 16px. */
+html {
+  /* Fixed, not viewport-based: tying it to width cancelled browser zoom between 80–100%. */
+  font-size: 13px;
+}
+@media (max-width: 767px) {
+  html {
+    font-size: 16px;
+  }
+}
+
 html,
 body {
   width: 100%;
@@ -404,3 +417,113 @@ body.full-bleed #root {
     scroll-behavior: auto !important;
   }
 }
+
+/* Basic home motion (Sep 2026). Short, once, and off under reduced motion. */
+@keyframes mia-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes mia-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes mia-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--color-utility-success-500);
+  }
+}
+.mia-rise {
+  animation: mia-rise 260ms ease-out both;
+}
+.mia-slide-in-right {
+  animation: mia-slide-in-right 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.nav-blink {
+  animation: mia-blink 0.8s ease-in-out 5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mia-rise,
+  .mia-slide-in-right,
+  .nav-blink {
+    animation: none;
+  }
+}
+
+@keyframes mia-exit-up {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+@keyframes mia-enter-down {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mia-exit-up {
+  animation: mia-exit-up 230ms ease-in both;
+}
+.mia-enter-down {
+  animation: mia-enter-down 260ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mia-exit-up,
+  .mia-enter-down {
+    animation: none;
+  }
+}
+
+@keyframes mia-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.mia-fade-in {
+  animation: mia-fade-in 220ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mia-fade-in {
+    animation: none;
+  }
+}
+
+/* Basic settings look: white cards on cream in light mode, the app's own dark surfaces in dark.
+   The brand board is always light paper (the same paper as the home canvas in dark mode). */
+.settings-canvas { background: #f3f1ec; }
+.dark .settings-canvas { background: transparent; }
+.settings-card { background: #ffffff; border-color: rgba(10, 18, 24, 0.1); }
+.dark .settings-card { background: var(--color-background-secondary); border-color: var(--color-border-tertiary); }
+.settings-eyebrow { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; }
+.brand-paper { background-color: #f0eee9; color: #040b1d; background-image: radial-gradient(rgba(4, 11, 29, 0.14) 1px, transparent 1.3px); background-size: 1.375rem 1.375rem; }
+.brand-paper-sub { color: #4f5a63; }
+.brand-paper-tile { background: #ffffff; border: 1px solid rgba(4, 11, 29, 0.12); }
+.brand-paper-eyebrow { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: #4f5a63; }
+.brand-paper-label { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.56rem; letter-spacing: 0.02em; color: #4f5a63; }

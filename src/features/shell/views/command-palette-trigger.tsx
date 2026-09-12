@@ -37,7 +37,7 @@ export const CommandPaletteTrigger = ({
     <button
       onClick={palette.open}
       aria-label="Open command palette"
-      className={`flex items-center gap-2.5 ${fullWidth ? 'w-full' : 'w-[200px]'} px-3 py-1.5 rounded-lg bg-secondary border border-secondary hover:border-primary text-quaternary transition-colors ${className}`}
+      className={`flex items-center gap-2.5 ${fullWidth ? 'w-full' : 'w-[12.5rem]'} px-3 py-1.5 rounded-lg bg-secondary border border-secondary hover:border-primary text-quaternary transition-colors ${className}`}
     >
       <SearchMd size={15} className="shrink-0" />
       <span className="flex-1 text-left paragraph-sm truncate">Search or jump to…</span>

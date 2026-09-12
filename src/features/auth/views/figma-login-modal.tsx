@@ -159,7 +159,7 @@ const FigmaLoginModal = ({
     >
       {/* White Modal - 4 buttons layout (Google, Meta, Email, Login) */}
       <div
-        className="bg-primary rounded-t-[38px] px-6 py-5 shadow-2xl touch-manipulation"
+        className="bg-primary rounded-t-[2.375rem] px-6 py-5 shadow-2xl touch-manipulation"
         style={{
           touchAction: 'manipulation',
           height: '270px', // Adjusted for 4 buttons
@@ -170,7 +170,7 @@ const FigmaLoginModal = ({
         <button
           onClick={() => handleLoginClick('Google')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[2.75rem] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-tertiary cursor-not-allowed'
               : 'bg-primary hover:bg-secondary active:bg-tertiary'
@@ -212,7 +212,7 @@ const FigmaLoginModal = ({
         <button
           onClick={() => handleLoginClick('Meta')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[2.75rem] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-tertiary cursor-not-allowed'
               : 'bg-primary hover:bg-secondary active:bg-tertiary'
@@ -242,7 +242,7 @@ const FigmaLoginModal = ({
         <button
           onClick={() => handleLoginClick('Email')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-primary border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[44px] ${
+          className={`w-full bg-primary border border-secondary rounded-2xl py-3 px-6 mb-2 flex items-center justify-center space-x-3 touch-manipulation min-h-[2.75rem] ${
             isGoogleLoading || isMetaLoading
               ? 'bg-tertiary cursor-not-allowed'
               : 'hover:bg-secondary active:bg-tertiary'
@@ -258,7 +258,7 @@ const FigmaLoginModal = ({
         <button
           onClick={() => handleLoginClick('Login')}
           disabled={isGoogleLoading || isMetaLoading}
-          className={`w-full bg-brand-solid text-primary-onbrand rounded-2xl py-3 px-6 subheading-bg touch-manipulation min-h-[44px] ${
+          className={`w-full bg-brand-solid text-primary-onbrand rounded-2xl py-3 px-6 subheading-bg touch-manipulation min-h-[2.75rem] ${
             isGoogleLoading || isMetaLoading
               ? 'opacity-50 cursor-not-allowed'
               : 'hover:bg-brand-solid-hover'

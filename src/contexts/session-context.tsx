@@ -246,7 +246,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             const googleError = urlParams.get('google_error')
             if (googleError || !claim) {
               // User cancelled OAuth or consent was denied — restore their existing session
-              logger.warn(`[SESSION] OAuth not completed (google_error=${googleError}) - restoring session`)
+              logger.warn(
+                `[SESSION] OAuth not completed (google_error=${googleError}) - restoring session`
+              )
               window.history.replaceState({}, '', window.location.pathname)
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // No return — fall through to session validation below so user stays logged in
@@ -271,7 +273,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           } else if (oauthPending === 'meta') {
             const metaError = urlParams.get('meta_error')
             if (metaError) {
-              logger.warn(`[SESSION] Meta OAuth cancelled (meta_error=${metaError}) - restoring session`)
+              logger.warn(
+                `[SESSION] Meta OAuth cancelled (meta_error=${metaError}) - restoring session`
+              )
               window.history.replaceState({}, '', window.location.pathname)
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // Fall through to session validation — no return
@@ -317,7 +321,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             if (listLoadFailed) {
               showToast(
                 'error',
-                "Some of your workspaces or accounts couldn't be loaded. Please refresh.",
+                "Some of your workspaces or accounts couldn't be loaded. Please refresh."
               )
             }
 
@@ -344,6 +348,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   connected_platforms: activeTenant?.connected_platforms || [],
                   member_count: activeTenant?.member_count || 1,
                   features: activeTenant?.features,
+                  experience: activeTenant?.experience,
+                  experience_profile: activeTenant?.experience_profile,
                 }
               }
 
@@ -674,6 +680,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             onboarding_completed: false,
             connected_platforms: [],
             member_count: 1,
+            // Without these the new workspace fails open to the team UI until a refresh.
+            features: response.workspace.features,
+            experience: response.workspace.experience,
+            experience_profile: response.workspace.experience_profile,
           }
         }
 
@@ -723,6 +733,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           onboarding_completed: false,
           connected_platforms: [],
           member_count: 1,
+          // Without these the new workspace fails open to the team UI until a refresh.
+          features: data.features,
+          experience: data.experience,
+          experience_profile: data.experience_profile,
         }
 
         setState((prev) => ({

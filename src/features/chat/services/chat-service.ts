@@ -15,18 +15,18 @@ interface ChatHistoryMessage {
 
 export interface AttachedDocument {
   filename: string
-  content?: string  // text-based files (CSV, Excel)
-  b64?: string      // PDFs (sent as native Claude document block)
+  content?: string // text-based files (CSV, Excel)
+  b64?: string // PDFs (sent as native Claude document block)
 }
 
 // --- Canvas (highlight-to-edit) ---------------------------------------------
 
 /** A deliverable Mia rendered in the canvas pane (post copy, brief, ad copy…). */
 export interface CanvasDocument {
-  id: string          // stable document_id across versions
+  id: string // stable document_id across versions
   title: string
-  content: string     // markdown
-  doc_type: string    // social_post | ad_copy | email | campaign_brief | content_calendar | generic
+  content: string // markdown
+  doc_type: string // social_post | ad_copy | email | campaign_brief | content_calendar | generic
   version: number
   created_by?: 'mia' | 'user'
   created_at?: string | null
@@ -51,6 +51,8 @@ export interface DocumentContext {
 
 interface ChatRequestPayload {
   message: string
+  /** Short line shown as the user's bubble when message is a long built-in instruction. */
+  display_text?: string
   session_id: string | null
   user_id: string
   google_ads_id?: string
@@ -65,7 +67,7 @@ interface ChatRequestPayload {
   start_date?: string
   end_date?: string
   workspace_hint?: string
-  document_context?: DocumentContext  // set when the user is editing a canvas document
+  document_context?: DocumentContext // set when the user is editing a canvas document
   asset_context?: AssetContext // set when the user is editing a campaign asset (builder canvas)
   edit_target_asset_id?: string // image pinned in chat — the next generation edits THIS one
   no_track?: boolean // throwaway turn (campaign slide-over edits) — skip Recent Chats
@@ -77,6 +79,8 @@ export interface RecentConversation {
   is_pinned: boolean
   last_at: string | null
   message_count: number
+  /** The first thing the user asked — the second line in Recent Chats. */
+  first_question?: string | null
 }
 
 export interface PendingAction {
@@ -259,6 +263,7 @@ export const uploadChatFile = async (
 export const sendChatMessage = async (payload: ChatRequestPayload, signal?: AbortSignal) => {
   const v2Payload = {
     message: payload.message,
+    display_text: payload.display_text,
     session_id: payload.session_id,
     date_range: payload.date_range,
     selected_platforms: payload.selected_platforms,
@@ -267,7 +272,11 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
     ...(payload.images?.length ? { images: payload.images } : {}),
     ...(payload.documents?.length ? { documents: payload.documents } : {}),
     ...(payload.campaign_id
-      ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
+      ? {
+          campaign_id: payload.campaign_id,
+          start_date: payload.start_date,
+          end_date: payload.end_date,
+        }
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
@@ -338,15 +347,30 @@ export interface ImageJobEvent {
   assets?: { asset_id: string; cdn_url: string; ratio?: string | null }[] | null
   /** 'edit' → the card keeps polling briefly after the image lands for the drift verdict. */
   reference_mode?: string | null
+  /** Basic: the canvas post this image was made for — placed there when it lands. */
+  place_in_document_id?: string | null
 }
 
 export const sendChatMessageStreaming = async (
   payload: ChatRequestPayload,
-  onChunk: (chunk: { text?: string; status?: string; done?: boolean; pending_action?: PendingAction; skill_workspaces?: string[]; history_id?: number; document?: CanvasDocument; campaign_saved?: CampaignSavedEvent; asset_updated?: AssetUpdatedEvent; image_job?: ImageJobEvent; error?: string }) => void,
+  onChunk: (chunk: {
+    text?: string
+    status?: string
+    done?: boolean
+    pending_action?: PendingAction
+    skill_workspaces?: string[]
+    history_id?: number
+    document?: CanvasDocument
+    campaign_saved?: CampaignSavedEvent
+    asset_updated?: AssetUpdatedEvent
+    image_job?: ImageJobEvent
+    error?: string
+  }) => void,
   signal?: AbortSignal
 ): Promise<void> => {
   const v2Payload = {
     message: payload.message,
+    display_text: payload.display_text,
     session_id: payload.session_id,
     date_range: payload.date_range,
     selected_platforms: payload.selected_platforms,
@@ -355,7 +379,11 @@ export const sendChatMessageStreaming = async (
     ...(payload.images?.length ? { images: payload.images } : {}),
     ...(payload.documents?.length ? { documents: payload.documents } : {}),
     ...(payload.campaign_id
-      ? { campaign_id: payload.campaign_id, start_date: payload.start_date, end_date: payload.end_date }
+      ? {
+          campaign_id: payload.campaign_id,
+          start_date: payload.start_date,
+          end_date: payload.end_date,
+        }
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),

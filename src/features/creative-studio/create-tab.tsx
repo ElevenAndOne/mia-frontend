@@ -1,8 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
-import { Loader2, Film, Download, Play, Pause, RotateCw, Wand2, Camera, Layers, ChevronDown, ChevronUp, Image } from 'lucide-react'
 import {
-  VIDEO_MODELS, vfxTemplates, cameraMovements,
-  VideoModelSelector, EnhancedTimeline, ProgressBar, AspectRatioSelector,
+  Loader2,
+  Film,
+  Download,
+  Play,
+  Pause,
+  RotateCw,
+  Wand2,
+  Camera,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  Image,
+} from 'lucide-react'
+import {
+  VIDEO_MODELS,
+  vfxTemplates,
+  cameraMovements,
+  VideoModelSelector,
+  EnhancedTimeline,
+  ProgressBar,
+  AspectRatioSelector,
 } from './creative-studio-shared'
 import { creativeStudioApi } from './creative-studio-api'
 import { ReferencePicker } from './reference-picker'
@@ -33,7 +51,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const currentModel = VIDEO_MODELS.find(m => m.id === videoModel)
+  const currentModel = VIDEO_MODELS.find((m) => m.id === videoModel)
   const maxDuration = currentModel?.maxDuration ?? 8
   const minDuration = currentModel?.minDuration ?? 1
 
@@ -67,7 +85,12 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
           setJobId(null)
         }
       } catch {
-        if (!cancelled) { setError('Error checking job status'); clearInterval(pollRef.current!); setIsGenerating(false); setJobId(null) }
+        if (!cancelled) {
+          setError('Error checking job status')
+          clearInterval(pollRef.current!)
+          setIsGenerating(false)
+          setJobId(null)
+        }
       }
     }, 4000)
 
@@ -94,9 +117,9 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
     setProgress(0)
     setGeneratedVideo(null)
 
-    const vfxInfo = vfxTemplates.find(v => v.id === vfxTemplate)
+    const vfxInfo = vfxTemplates.find((v) => v.id === vfxTemplate)
     const fullPrompt = vfxInfo ? `${videoPrompt}. ${vfxInfo.prompt}` : videoPrompt
-    const camInfo = cameraMovements.find(c => c.id === cameraMovement)
+    const camInfo = cameraMovements.find((c) => c.id === cameraMovement)
     const promptWithCam = camInfo ? `${fullPrompt}. Camera: ${camInfo.description}` : fullPrompt
 
     try {
@@ -127,7 +150,8 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
   const handlePlayPause = () => {
     const v = videoRef.current
     if (!v) return
-    if (isPlaying) v.pause(); else v.play()
+    if (isPlaying) v.pause()
+    else v.play()
     setIsPlaying(!isPlaying)
   }
 
@@ -135,19 +159,20 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
     const v = videoRef.current
     if (!v) return
     v.currentTime = 0
-    if (!isPlaying) { v.play(); setIsPlaying(true) }
+    if (!isPlaying) {
+      v.play()
+      setIsPlaying(true)
+    }
   }
 
   const canGenerate = videoPrompt.trim().length > 0 && !isGenerating
-  const selectedCamera = cameraMovements.find(c => c.id === cameraMovement)
-  const selectedVfx = vfxTemplates.find(v => v.id === vfxTemplate)
+  const selectedCamera = cameraMovements.find((c) => c.id === cameraMovement)
+  const selectedVfx = vfxTemplates.find((v) => v.id === vfxTemplate)
 
   return (
     <div className="grid grid-cols-12 gap-6 items-stretch">
-
       {/* Left — Model → References → Camera Movement */}
       <div className="col-span-3 flex flex-col gap-4">
-
         {/* Model selector — highest z so its dropdown floats over everything below */}
         <div className="shrink-0 relative z-30">
           <VideoModelSelector value={videoModel} onChange={setVideoModel} />
@@ -169,9 +194,11 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
         </div>
 
         {/* Camera Movement — flex-1 fills the remaining height */}
-        <div className={`flex-1 flex flex-col relative z-10 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden ${vfxTemplate ? 'opacity-50' : ''}`}>
+        <div
+          className={`flex-1 flex flex-col relative z-10 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden ${vfxTemplate ? 'opacity-50' : ''}`}
+        >
           <button
-            onClick={() => !vfxTemplate && setCameraOpen(o => !o)}
+            onClick={() => !vfxTemplate && setCameraOpen((o) => !o)}
             disabled={!!vfxTemplate}
             className="shrink-0 w-full flex items-center justify-between p-4 text-left hover:bg-slate-800/50 transition-colors"
           >
@@ -181,25 +208,40 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               {selectedCamera && !cameraOpen && (
                 <span className="text-xs text-purple-400 font-normal">· {selectedCamera.name}</span>
               )}
-              {vfxTemplate && <span className="text-xs text-yellow-400 font-normal">(VFX active)</span>}
+              {vfxTemplate && (
+                <span className="text-xs text-yellow-400 font-normal">(VFX active)</span>
+              )}
             </span>
-            {cameraOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            {cameraOpen ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
           </button>
 
           {cameraOpen && (
             <div className="flex-1 px-4 pb-4 grid grid-cols-2 gap-3 content-start overflow-y-auto">
-              {cameraMovements.map(m => (
+              {cameraMovements.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => handleCameraSelect(m.id)}
                   className={`relative overflow-hidden rounded-lg text-left transition-all h-24 ${
-                    cameraMovement === m.id ? 'ring-2 ring-purple-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    cameraMovement === m.id
+                      ? 'ring-2 ring-purple-500 text-white'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
-                  <video src={m.video} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-25" />
+                  <video
+                    src={m.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover opacity-25"
+                  />
                   <div className="relative z-10 p-2.5">
                     <div className="text-xs font-medium">{m.name}</div>
-                    <div className="text-[10px] opacity-75 mt-0.5">{m.description}</div>
+                    <div className="text-[0.625rem] opacity-75 mt-0.5">{m.description}</div>
                   </div>
                 </button>
               ))}
@@ -211,7 +253,7 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
       {/* Centre — Preview, Prompt, Timeline */}
       <div className="col-span-6 flex flex-col gap-4">
         {/* Video preview — grows to fill */}
-        <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4 min-h-[220px] flex items-center justify-center">
+        <div className="flex-1 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4 min-h-[13.75rem] flex items-center justify-center">
           {generatedVideo ? (
             <div className="relative w-full">
               <video
@@ -226,14 +268,28 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent rounded-b-lg p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <button onClick={handlePlayPause} className="p-1.5 bg-slate-800/80 rounded-lg hover:bg-slate-700/80 transition-colors">
-                      {isPlaying ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white" />}
+                    <button
+                      onClick={handlePlayPause}
+                      className="p-1.5 bg-slate-800/80 rounded-lg hover:bg-slate-700/80 transition-colors"
+                    >
+                      {isPlaying ? (
+                        <Pause className="w-4 h-4 text-white" />
+                      ) : (
+                        <Play className="w-4 h-4 text-white" />
+                      )}
                     </button>
-                    <button onClick={handleRestart} className="p-1.5 bg-slate-800/80 rounded-lg hover:bg-slate-700/80 transition-colors">
+                    <button
+                      onClick={handleRestart}
+                      className="p-1.5 bg-slate-800/80 rounded-lg hover:bg-slate-700/80 transition-colors"
+                    >
                       <RotateCw className="w-4 h-4 text-white" />
                     </button>
                   </div>
-                  <a href={generatedVideo.url} download className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors">
+                  <a
+                    href={generatedVideo.url}
+                    download
+                    className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                  >
                     <Download className="w-4 h-4" />
                   </a>
                 </div>
@@ -257,7 +313,9 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
                 <>
                   <Film className="w-10 h-10 text-slate-600 mx-auto mb-3" />
                   <p className="text-slate-400">Your video will appear here</p>
-                  <p className="text-xs text-slate-500 mt-1">Model: {VIDEO_MODELS.find(m => m.id === videoModel)?.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Model: {VIDEO_MODELS.find((m) => m.id === videoModel)?.name}
+                  </p>
                 </>
               )}
             </div>
@@ -282,22 +340,35 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               disabled={!canGenerate}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${canGenerate ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg hover:shadow-purple-500/25' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
             >
-              {isGenerating ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</> : <><Wand2 className="w-3 h-3" /> Generate Video</>}
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" /> Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-3 h-3" /> Generate Video
+                </>
+              )}
             </button>
           </div>
         </div>
 
         <div className="shrink-0">
           <EnhancedTimeline
-            videoRef={videoRef} duration={duration} minDuration={minDuration} maxDuration={maxDuration}
-            isPlaying={isPlaying} onPlayPause={handlePlayPause} onRestart={handleRestart} onChangeDuration={setDuration}
+            videoRef={videoRef}
+            duration={duration}
+            minDuration={minDuration}
+            maxDuration={maxDuration}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onRestart={handleRestart}
+            onChangeDuration={setDuration}
           />
         </div>
       </div>
 
       {/* Right — Generation Info → VFX Templates */}
       <div className="col-span-3 flex flex-col gap-4">
-
         {/* Generation Info — compact, anchored to top */}
         <div className="shrink-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-white mb-3">Generation Info</h3>
@@ -305,13 +376,20 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
             <div className="pb-2 border-b border-slate-800">
               <AspectRatioSelector value={aspectRatio} onChange={setAspectRatio} mode="video" />
             </div>
-            {([
-              ['Model', VIDEO_MODELS.find(m => m.id === videoModel)?.name],
-              ['Duration', `${duration}s`],
-              ['References', referenceImages.length > 0 ? `${referenceImages.length} image${referenceImages.length > 1 ? 's' : ''}` : 'None'],
-              selectedVfx ? ['VFX', selectedVfx.name] : null,
-              selectedCamera ? ['Camera', selectedCamera.name] : null,
-            ] as ([string, string] | null)[])
+            {(
+              [
+                ['Model', VIDEO_MODELS.find((m) => m.id === videoModel)?.name],
+                ['Duration', `${duration}s`],
+                [
+                  'References',
+                  referenceImages.length > 0
+                    ? `${referenceImages.length} image${referenceImages.length > 1 ? 's' : ''}`
+                    : 'None',
+                ],
+                selectedVfx ? ['VFX', selectedVfx.name] : null,
+                selectedCamera ? ['Camera', selectedCamera.name] : null,
+              ] as ([string, string] | null)[]
+            )
               .filter((row): row is [string, string] => row !== null && row[1] !== undefined)
               .map(([label, val]) => (
                 <div key={label} className="flex justify-between">
@@ -323,9 +401,11 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
         </div>
 
         {/* VFX Templates — flex-1 fills remaining height */}
-        <div className={`flex-1 flex flex-col bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden ${cameraMovement ? 'opacity-50' : ''}`}>
+        <div
+          className={`flex-1 flex flex-col bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden ${cameraMovement ? 'opacity-50' : ''}`}
+        >
           <button
-            onClick={() => !cameraMovement && setVfxOpen(o => !o)}
+            onClick={() => !cameraMovement && setVfxOpen((o) => !o)}
             disabled={!!cameraMovement}
             className="shrink-0 w-full flex items-center justify-between p-4 text-left hover:bg-slate-800/50 transition-colors"
           >
@@ -335,22 +415,37 @@ export default function CreateTab({ tenantId, sessionId }: Props) {
               {selectedVfx && !vfxOpen && (
                 <span className="text-xs text-purple-400 font-normal">· {selectedVfx.name}</span>
               )}
-              {cameraMovement && <span className="text-xs text-yellow-400 font-normal">(Camera active)</span>}
+              {cameraMovement && (
+                <span className="text-xs text-yellow-400 font-normal">(Camera active)</span>
+              )}
             </span>
-            {vfxOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            {vfxOpen ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
           </button>
 
           {vfxOpen && (
             <div className="flex-1 px-4 pb-4 flex flex-col gap-2 overflow-y-auto">
-              {vfxTemplates.map(vfx => (
+              {vfxTemplates.map((vfx) => (
                 <button
                   key={vfx.id}
                   onClick={() => handleVfxSelect(vfx.id)}
-                  className={`relative overflow-hidden flex-1 min-h-[52px] w-full rounded-lg text-left transition-all flex items-center gap-3 px-3 ${
-                    vfxTemplate === vfx.id ? 'ring-2 ring-purple-500 bg-slate-700' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  className={`relative overflow-hidden flex-1 min-h-[3.25rem] w-full rounded-lg text-left transition-all flex items-center gap-3 px-3 ${
+                    vfxTemplate === vfx.id
+                      ? 'ring-2 ring-purple-500 bg-slate-700'
+                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
-                  <video src={vfx.video} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-20" />
+                  <video
+                    src={vfx.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover opacity-20"
+                  />
                   <div className="relative z-10">
                     <div className="text-sm font-medium text-white">{vfx.name}</div>
                     <div className="text-xs text-slate-400">{vfx.description}</div>

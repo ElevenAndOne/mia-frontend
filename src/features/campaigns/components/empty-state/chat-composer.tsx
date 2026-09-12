@@ -50,7 +50,7 @@ export const ChatComposer = ({
           {pendingDocs.map((doc, i) => (
             <div
               key={`${doc.filename}-${i}`}
-              className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[200px]"
+              className="relative group flex items-center gap-1.5 px-3 py-2 rounded-lg border border-tertiary bg-quaternary max-w-[12.5rem]"
             >
               <FileAttachment01 size={14} className="text-tertiary shrink-0" />
               <span className="paragraph-xs text-secondary truncate">{doc.filename}</span>
@@ -89,7 +89,7 @@ export const ChatComposer = ({
           placeholder={placeholder ?? 'Ask Mia to build a campaign for…'}
           rows={1}
           disabled={disabled}
-          className="flex-1 px-4 py-3 border border-secondary rounded-2xl paragraph-sm bg-secondary text-primary resize-none outline-none focus:border-utility-brand-400 min-h-[48px] max-h-[200px]"
+          className="flex-1 px-4 py-3 border border-secondary rounded-2xl paragraph-sm bg-secondary text-primary resize-none outline-none focus:border-utility-brand-400 min-h-[3rem] max-h-[12.5rem]"
         />
         <button
           onClick={onSend}

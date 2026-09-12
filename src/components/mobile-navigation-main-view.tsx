@@ -15,6 +15,8 @@ import { XClose } from './icon/x-close'
 import type { SegmentedControlOption } from './segmented-control'
 import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
+import { useFeatures } from '../features/workspace/hooks/use-features'
+import { useExperience } from '../features/workspace/hooks/use-experience'
 import type { RecentConversation } from '../features/chat/services/chat-service'
 
 interface MobileNavigationMainViewProps {
@@ -54,6 +56,9 @@ export const MobileNavigationMainView = ({
   onRecentChatsClick,
 }: MobileNavigationMainViewProps) => {
   const navigate = useNavigate()
+  // Same feature flags as the desktop sidebar (useFeatures): hide, never remove.
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+  const { isBasic } = useExperience()
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -70,7 +75,7 @@ export const MobileNavigationMainView = ({
 
       {/* Primary Actions */}
       <div className="p-4 space-y-2">
-        {onNewWorkspace && (
+        {onNewWorkspace && isFeatureEnabled('new_workspace') && (
           <button
             onClick={() => {
               onClose()
@@ -83,15 +88,17 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        <button
-          onClick={onIntegrationsClick}
-          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-        >
-          <Globe01 size={20} className="text-tertiary" />
-          <span className="paragraph-sm">Integrations</span>
-        </button>
+        {isFeatureEnabled('integrations') && (
+          <button
+            onClick={onIntegrationsClick}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Globe01 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Integrations</span>
+          </button>
+        )}
 
-        {onCampaignsClick && (
+        {onCampaignsClick && isFeatureEnabled('campaigns') && (
           <button
             onClick={() => {
               onClose()
@@ -104,18 +111,20 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        <button
-          onClick={() => {
-            onClose()
-            navigate('/posts')
-          }}
-          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-        >
-          <Calendar size={20} className="text-tertiary" />
-          <span className="paragraph-sm">Posts</span>
-        </button>
+        {isFeatureEnabled('posts') && (
+          <button
+            onClick={() => {
+              onClose()
+              navigate('/posts')
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Calendar size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Posts</span>
+          </button>
+        )}
 
-        {onReportsClick && (
+        {onReportsClick && isFeatureEnabled('reports') && (
           <button
             onClick={() => {
               onClose()
@@ -128,16 +137,18 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        <button
-          onClick={() => {
-            onClose()
-            navigate('/budget-tracker')
-          }}
-          className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-        >
-          <Wallet01 size={20} className="text-tertiary" />
-          <span className="paragraph-sm">Budget Tracker</span>
-        </button>
+        {isFeatureEnabled('budget_tracker') && (
+          <button
+            onClick={() => {
+              onClose()
+              navigate('/budget-tracker')
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Wallet01 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Budget Tracker</span>
+          </button>
+        )}
 
         {onWorkspaceSettings && (
           <button
@@ -145,7 +156,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Workspace Settings</span>
+            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
           </button>
         )}
 

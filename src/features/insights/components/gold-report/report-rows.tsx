@@ -19,7 +19,7 @@ const Rank = ({ rank }: { rank: number | null }) =>
     </span>
   ) : (
     <span
-      className="shrink-0 w-5 h-5 rounded-md grid place-items-center text-[10.5px] font-bold"
+      className="shrink-0 w-5 h-5 rounded-md grid place-items-center text-[0.6563rem] font-bold"
       style={{
         fontFamily: 'var(--gr-mono)',
         color: 'var(--gr-purple-text)',
@@ -48,18 +48,18 @@ export const InsightRows = ({
       >
         <div className="space-y-2.5">
           <Badge label={insight.category} />
-          <p className="text-[13.5px] leading-5" style={{ color: 'var(--gr-body)' }}>
+          <p className="text-[0.8438rem] leading-5" style={{ color: 'var(--gr-body)' }}>
             <InlineMd text={insight.body} />
           </p>
           {insight.aside && (
-            <p className="text-xs leading-[18px] italic" style={{ color: 'var(--gr-muted)' }}>
+            <p className="text-xs leading-[1.125rem] italic" style={{ color: 'var(--gr-muted)' }}>
               {insight.aside}
             </p>
           )}
           {insight.stat_callout && (
-            <div className="gr-inner rounded-[10px] p-3">
+            <div className="gr-inner rounded-[0.625rem] p-3">
               <p
-                className="text-[10.5px] font-bold tracking-[0.06em] uppercase mb-1.5"
+                className="text-[0.6563rem] font-bold tracking-[0.06em] uppercase mb-1.5"
                 style={{ color: 'var(--gr-muted)' }}
               >
                 {insight.stat_callout.label}
@@ -67,7 +67,7 @@ export const InsightRows = ({
               {insight.stat_callout.stats.map((s, j) => (
                 <p key={j} style={{ fontFamily: 'var(--gr-mono)' }}>
                   <span
-                    className="text-[17px] leading-6 font-bold"
+                    className="text-[1.0625rem] leading-6 font-bold"
                     style={{ color: 'var(--gr-green)' }}
                   >
                     {s.value}
@@ -113,18 +113,21 @@ export const RecommendationRows = ({
         forceOpen={forceOpen}
       >
         <div className="space-y-2.5">
-          <p className="text-[13.5px] leading-5" style={{ color: 'var(--gr-body)' }}>
+          <p className="text-[0.8438rem] leading-5" style={{ color: 'var(--gr-body)' }}>
             <InlineMd text={rec.body} />
           </p>
           {rec.prediction && (
             <div className="gr-predict py-2.5 px-3">
               <p
-                className="text-[10.5px] font-bold tracking-[0.06em] uppercase mb-0.5"
+                className="text-[0.6563rem] font-bold tracking-[0.06em] uppercase mb-0.5"
                 style={{ color: 'var(--gr-green)' }}
               >
                 Predicted
               </p>
-              <p className="text-[13px] leading-[19px]" style={{ color: 'var(--gr-body)' }}>
+              <p
+                className="text-[0.8125rem] leading-[1.1875rem]"
+                style={{ color: 'var(--gr-body)' }}
+              >
                 <InlineMd text={rec.prediction} />
               </p>
             </div>
@@ -144,7 +147,9 @@ const ImpactArrow = ({ direction }: { direction: 'up' | 'down' }) => (
     aria-label={direction === 'up' ? 'increase' : 'decrease'}
   >
     <path
-      d={direction === 'up' ? 'M6 10V2M6 2L2.5 5.5M6 2L9.5 5.5' : 'M6 2v8M6 10L2.5 6.5M6 10l3.5-3.5'}
+      d={
+        direction === 'up' ? 'M6 10V2M6 2L2.5 5.5M6 2L9.5 5.5' : 'M6 2v8M6 10L2.5 6.5M6 10l3.5-3.5'
+      }
       stroke="currentColor"
       strokeWidth="1.75"
       strokeLinecap="round"
@@ -166,7 +171,7 @@ export const DeliverableRows = ({
         key={i}
         lead={
           <span
-            className="shrink-0 w-5 h-5 rounded-md grid place-items-center text-[10.5px] font-bold"
+            className="shrink-0 w-5 h-5 rounded-md grid place-items-center text-[0.6563rem] font-bold"
             style={{
               fontFamily: 'var(--gr-mono)',
               color: 'var(--gr-purple-text)',
@@ -181,7 +186,10 @@ export const DeliverableRows = ({
         forceOpen={forceOpen}
       >
         <div className="space-y-3">
-          <p className="text-[14px] leading-5 font-semibold" style={{ color: 'var(--gr-heading)' }}>
+          <p
+            className="text-[0.875rem] leading-5 font-semibold"
+            style={{ color: 'var(--gr-heading)' }}
+          >
             <InlineMd text={d.title} />
           </p>
 
@@ -195,7 +203,10 @@ export const DeliverableRows = ({
                       className="shrink-0 w-1 h-1 mt-2 rounded-full"
                       style={{ backgroundColor: 'var(--gr-muted)' }}
                     />
-                    <span className="text-[13.3px] leading-5" style={{ color: 'var(--gr-body)' }}>
+                    <span
+                      className="text-[0.8313rem] leading-5"
+                      style={{ color: 'var(--gr-body)' }}
+                    >
                       <InlineMd text={point} />
                     </span>
                   </li>
@@ -207,7 +218,7 @@ export const DeliverableRows = ({
           {d.strategy && (
             <div>
               <p className="gr-eyebrow mb-1.5">How to run it</p>
-              <p className="text-[13.3px] leading-5" style={{ color: 'var(--gr-body)' }}>
+              <p className="text-[0.8313rem] leading-5" style={{ color: 'var(--gr-body)' }}>
                 <InlineMd text={d.strategy} />
               </p>
             </div>
@@ -217,21 +228,27 @@ export const DeliverableRows = ({
             <div>
               <p className="gr-eyebrow mb-1.5">Grounded in</p>
               {d.grounded_in.basis === 'campaign_copy' ? (
-                <div className="gr-inner rounded-[10px] p-3 space-y-1.5">
+                <div className="gr-inner rounded-[0.625rem] p-3 space-y-1.5">
                   {d.grounded_in.evidence && (
                     <p
-                      className="text-[13px] leading-[19px] italic"
+                      className="text-[0.8125rem] leading-[1.1875rem] italic"
                       style={{ color: 'var(--gr-heading)' }}
                     >
                       {d.grounded_in.evidence}
                     </p>
                   )}
                   {d.grounded_in.note && (
-                    <p className="text-[12.5px] leading-[18px]" style={{ color: 'var(--gr-body)' }}>
+                    <p
+                      className="text-[0.7813rem] leading-[1.125rem]"
+                      style={{ color: 'var(--gr-body)' }}
+                    >
                       <InlineMd text={d.grounded_in.note} />
                     </p>
                   )}
-                  <p className="text-[10.5px] tracking-[0.04em] uppercase" style={{ color: 'var(--gr-green)' }}>
+                  <p
+                    className="text-[0.6563rem] tracking-[0.04em] uppercase"
+                    style={{ color: 'var(--gr-green)' }}
+                  >
                     Your own ad copy
                   </p>
                 </div>
@@ -240,17 +257,23 @@ export const DeliverableRows = ({
                 // rests on category practice. It must not look as evidence-backed as
                 // one built on the client's real winning ad.
                 <div
-                  className="rounded-[10px] p-3 border space-y-1"
+                  className="rounded-[0.625rem] p-3 border space-y-1"
                   style={{
                     borderColor: 'rgb(240 166 62 / 0.45)',
                     background: 'rgb(240 166 62 / 0.08)',
                   }}
                 >
-                  <p className="text-[10.5px] tracking-[0.04em] uppercase font-bold" style={{ color: '#f0a63e' }}>
+                  <p
+                    className="text-[0.6563rem] tracking-[0.04em] uppercase font-bold"
+                    style={{ color: '#f0a63e' }}
+                  >
                     Category best practice — not your campaign copy
                   </p>
                   {d.grounded_in.note && (
-                    <p className="text-[12.5px] leading-[18px]" style={{ color: 'var(--gr-body)' }}>
+                    <p
+                      className="text-[0.7813rem] leading-[1.125rem]"
+                      style={{ color: 'var(--gr-body)' }}
+                    >
                       <InlineMd text={d.grounded_in.note} />
                     </p>
                   )}
@@ -266,7 +289,10 @@ export const DeliverableRows = ({
                 {d.expected_impact.map((impact, j) => (
                   <div key={j} className="flex items-start gap-2">
                     <ImpactArrow direction={impact.direction} />
-                    <p className="text-[13px] leading-[19px]" style={{ color: 'var(--gr-body)' }}>
+                    <p
+                      className="text-[0.8125rem] leading-[1.1875rem]"
+                      style={{ color: 'var(--gr-body)' }}
+                    >
                       <span className="font-semibold" style={{ color: 'var(--gr-heading)' }}>
                         {impact.kpi}
                       </span>{' '}

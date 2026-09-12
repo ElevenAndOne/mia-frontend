@@ -88,7 +88,9 @@ const fmtMoney = (cur: string, n: number) =>
 // Compact money for tight spots (donut centre): no cents, M-abbreviated above 1M
 const sym = (cur: string) => (cur === 'ZAR' ? 'R' : `${cur} `)
 const fmtMoneyCompact = (cur: string, n: number) =>
-  n >= 1_000_000 ? `${sym(cur)}${(n / 1_000_000).toFixed(2)}M` : `${sym(cur)}${Math.round(n).toLocaleString()}`
+  n >= 1_000_000
+    ? `${sym(cur)}${(n / 1_000_000).toFixed(2)}M`
+    : `${sym(cur)}${Math.round(n).toLocaleString()}`
 
 // ---------------------------------------------------------------------------
 // Manual-edit layer: overrides deep-merge onto report_data and persist via
@@ -130,9 +132,13 @@ interface EditState {
 const EditContext = createContext<EditState>({ editing: false, setField: () => {} })
 const useEdit = () => useContext(EditContext)
 
-const EDIT_INPUT =
-  'rounded px-1 py-0.5 outline-none focus:ring-1'
-const editStyle = { font: 'inherit', color: C.slate, background: '#FFFFFF', border: `1px solid ${C.purple}` } as React.CSSProperties
+const EDIT_INPUT = 'rounded px-1 py-0.5 outline-none focus:ring-1'
+const editStyle = {
+  font: 'inherit',
+  color: C.slate,
+  background: '#FFFFFF',
+  border: `1px solid ${C.purple}`,
+} as React.CSSProperties
 
 // Inline editable text — renders plain value in view mode, an input/textarea in edit mode.
 const Editable = ({
@@ -218,7 +224,7 @@ const ViewLink = ({ href, label }: { href?: string | null; label: string }) =>
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-[10px] font-medium inline-flex items-center gap-0.5 mt-1.5"
+      className="text-[0.625rem] font-medium inline-flex items-center gap-0.5 mt-1.5"
       style={{ color: C.purpleDeep }}
     >
       {label} <ExternalLink size={10} />
@@ -246,7 +252,7 @@ export const ReportOnePager = ({
   const overrides = editing ? draft : savedOverrides
   const data = useMemo(
     () => (baseData ? (deepMerge(baseData, overrides) as ReportData) : null),
-    [baseData, overrides],
+    [baseData, overrides]
   )
 
   if (!data) {
@@ -275,7 +281,9 @@ export const ReportOnePager = ({
         next_steps: clone(data.dashboard.next_steps),
       },
       kpi_performance: { kpis: clone(data.kpi_performance.kpis) },
-      ...(data.top_paid_ad ? { top_paid_ad: { why_it_worked: data.top_paid_ad.why_it_worked ?? '' } } : {}),
+      ...(data.top_paid_ad
+        ? { top_paid_ad: { why_it_worked: data.top_paid_ad.why_it_worked ?? '' } }
+        : {}),
       top_organic_posts: { posts: clone(data.top_organic_posts.posts) },
     })
     setEditing(true)
@@ -302,7 +310,7 @@ export const ReportOnePager = ({
       const sid = getStoredSessionId() || ''
       const res = await apiFetch(
         `/api/tenants/${report.tenant_id}/reports/${report.report_id}/pdf`,
-        { headers: { 'X-Session-ID': sid } },
+        { headers: { 'X-Session-ID': sid } }
       )
       if (!res.ok) throw new Error('pdf')
       const blob = await res.blob()
@@ -323,168 +331,160 @@ export const ReportOnePager = ({
   const cur = data.spend_breakdown.currency || data.dashboard.metrics?.currency || 'R'
 
   return (
-   <EditContext.Provider value={{ editing, setField }}>
-    <div
-      className={`report-onepager ${printMode ? '' : 'flex flex-col h-full overflow-auto'}`}
-      style={{ background: printMode ? '#FFFFFF' : C.page }}
-    >
-      {!printMode && <style>{printCss}</style>}
-
-      {/* Actions bar — hidden on print + in print-route render */}
-      {!printMode && (
-      <div className="report-actions w-full max-w-[1180px] mx-auto px-4 pt-4 flex items-center justify-between print:hidden">
-        <button
-          onClick={onBack}
-          className="text-sm font-medium"
-          style={{ color: C.slate2 }}
-        >
-          ← All Reports
-        </button>
-        <div className="flex items-center gap-2">
-          {editing ? (
-            <>
-              <button
-                onClick={cancelEdit}
-                className="px-3 py-2 rounded-lg text-sm font-medium"
-                style={{ border: `1px solid ${C.border}`, color: C.slate2 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-                style={{ background: C.green }}
-              >
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </>
-          ) : (
-            <>
-              {saveOverrides && (
-                <button
-                  onClick={startEdit}
-                  className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"
-                  style={{ border: `1px solid ${C.border}`, color: C.slate }}
-                >
-                  <Pencil size={14} /> Edit
-                </button>
-              )}
-              <button
-                onClick={handleDownloadPdf}
-                disabled={downloading}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
-                style={{ background: C.navy }}
-              >
-                {downloading ? 'Generating…' : 'Download PDF'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      )}
-
-      {/* The page */}
+    <EditContext.Provider value={{ editing, setField }}>
       <div
-        className={`report-page w-full max-w-[1180px] mx-auto rounded-2xl p-6 ${printMode ? '' : 'my-4'}`}
-        style={{
-          background: C.card,
-          color: C.slate,
-          ...(printMode ? { boxShadow: 'none', borderRadius: 0 } : { boxShadow: '0 2px 18px rgba(12,37,82,0.08)' }),
-        }}
+        className={`report-onepager ${printMode ? '' : 'flex flex-col h-full overflow-auto'}`}
+        style={{ background: printMode ? '#FFFFFF' : C.page }}
       >
-        <Header data={data} />
+        {!printMode && <style>{printCss}</style>}
 
-        {/* Row 1 — KPI cards */}
+        {/* Actions bar — hidden on print + in print-route render */}
+        {!printMode && (
+          <div className="report-actions w-full max-w-[73.75rem] mx-auto px-4 pt-4 flex items-center justify-between print:hidden">
+            <button onClick={onBack} className="text-sm font-medium" style={{ color: C.slate2 }}>
+              ← All Reports
+            </button>
+            <div className="flex items-center gap-2">
+              {editing ? (
+                <>
+                  <button
+                    onClick={cancelEdit}
+                    className="px-3 py-2 rounded-lg text-sm font-medium"
+                    style={{ border: `1px solid ${C.border}`, color: C.slate2 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={save}
+                    disabled={saving}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                    style={{ background: C.green }}
+                  >
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {saveOverrides && (
+                    <button
+                      onClick={startEdit}
+                      className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"
+                      style={{ border: `1px solid ${C.border}`, color: C.slate }}
+                    >
+                      <Pencil size={14} /> Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDownloadPdf}
+                    disabled={downloading}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60"
+                    style={{ background: C.navy }}
+                  >
+                    {downloading ? 'Generating…' : 'Download PDF'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* The page */}
         <div
-          className="grid gap-3 mt-4"
-          style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 1.3fr' }}
+          className={`report-page w-full max-w-[73.75rem] mx-auto rounded-2xl p-6 ${printMode ? '' : 'my-4'}`}
+          style={{
+            background: C.card,
+            color: C.slate,
+            ...(printMode
+              ? { boxShadow: 'none', borderRadius: 0 }
+              : { boxShadow: '0 2px 18px rgba(12,37,82,0.08)' }),
+          }}
         >
-          <KpiCard
-            variant="navy"
-            icon={<Wallet size={18} />}
-            label="Total Ad Spend"
-            value={fmtMoney(cur, data.dashboard.metrics?.total_spend.value ?? data.spend_breakdown.total_spend)}
-            deltaPct={data.dashboard.metrics?.total_spend.change_pct ?? null}
-          />
-          <KpiCard
-            variant="purple"
-            icon={<Target size={18} />}
-            label="Conversions"
-            value={fmtNum(data.dashboard.metrics?.conversions.value ?? 0)}
-            deltaPct={data.dashboard.metrics?.conversions.change_pct ?? null}
-          />
-          <KpiCard
-            variant="teal"
-            icon={<MousePointerClick size={18} />}
-            label="CTR (All)"
-            // null means unmeasurable (no impressions in the period), not 0% — `?? 0`
-            // printed "CTR 0%" for periods with no paid delivery, which reads as ads
-            // nobody clicked. Matches the Cost Per Lead treatment below.
-            value={
-              data.dashboard.metrics?.ctr.value != null
-                ? `${data.dashboard.metrics.ctr.value}%`
-                : '—'
-            }
-            deltaPct={data.dashboard.metrics?.ctr.change_pct ?? null}
-          />
-          <KpiCard
-            variant="green"
-            icon={<DollarSign size={18} />}
-            label="Cost Per Lead"
-            value={
-              data.dashboard.metrics?.cost_per_lead.value
-                ? fmtMoney(cur, data.dashboard.metrics.cost_per_lead.value)
-                : '—'
-            }
-            deltaPct={data.dashboard.metrics?.cost_per_lead.change_pct ?? null}
-            invertDelta
-          />
-          <HealthCard
-            status={data.dashboard.campaign_health.status}
-            description={data.dashboard.campaign_health.description}
-          />
-        </div>
+          <Header data={data} />
 
-        {/* Row 2 — Spend / Paid ad / Organic / KPI table */}
-        <div
-          className="grid gap-3 mt-3"
-          style={{ gridTemplateColumns: '1fr 1.2fr 1.2fr 1.1fr' }}
-        >
-          <SpendPanel data={data} cur={cur} />
-          <PaidAdPanel data={data} />
-          <OrganicPanel data={data} />
-          <KpiPanel data={data} />
-        </div>
+          {/* Row 1 — KPI cards */}
+          <div className="grid gap-3 mt-4" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr 1.3fr' }}>
+            <KpiCard
+              variant="navy"
+              icon={<Wallet size={18} />}
+              label="Total Ad Spend"
+              value={fmtMoney(
+                cur,
+                data.dashboard.metrics?.total_spend.value ?? data.spend_breakdown.total_spend
+              )}
+              deltaPct={data.dashboard.metrics?.total_spend.change_pct ?? null}
+            />
+            <KpiCard
+              variant="purple"
+              icon={<Target size={18} />}
+              label="Conversions"
+              value={fmtNum(data.dashboard.metrics?.conversions.value ?? 0)}
+              deltaPct={data.dashboard.metrics?.conversions.change_pct ?? null}
+            />
+            <KpiCard
+              variant="teal"
+              icon={<MousePointerClick size={18} />}
+              label="CTR (All)"
+              // null means unmeasurable (no impressions in the period), not 0% — `?? 0`
+              // printed "CTR 0%" for periods with no paid delivery, which reads as ads
+              // nobody clicked. Matches the Cost Per Lead treatment below.
+              value={
+                data.dashboard.metrics?.ctr.value != null
+                  ? `${data.dashboard.metrics.ctr.value}%`
+                  : '—'
+              }
+              deltaPct={data.dashboard.metrics?.ctr.change_pct ?? null}
+            />
+            <KpiCard
+              variant="green"
+              icon={<DollarSign size={18} />}
+              label="Cost Per Lead"
+              value={
+                data.dashboard.metrics?.cost_per_lead.value
+                  ? fmtMoney(cur, data.dashboard.metrics.cost_per_lead.value)
+                  : '—'
+              }
+              deltaPct={data.dashboard.metrics?.cost_per_lead.change_pct ?? null}
+              invertDelta
+            />
+            <HealthCard
+              status={data.dashboard.campaign_health.status}
+              description={data.dashboard.campaign_health.description}
+            />
+          </div>
 
-        {/* Row 3 — Audience / Studio / Takeaways */}
-        <div
-          className="grid gap-3 mt-3"
-          style={{ gridTemplateColumns: '1.4fr 1.1fr 1.5fr' }}
-        >
-          <AudiencePanel data={data} />
-          <StudioPanel data={data} />
-          <TakeawaysPanel data={data} />
-        </div>
+          {/* Row 2 — Spend / Paid ad / Organic / KPI table */}
+          <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: '1fr 1.2fr 1.2fr 1.1fr' }}>
+            <SpendPanel data={data} cur={cur} />
+            <PaidAdPanel data={data} />
+            <OrganicPanel data={data} />
+            <KpiPanel data={data} />
+          </div>
 
-        {/* Row 4 — Next steps */}
-        <NextStepsBar data={data} />
+          {/* Row 3 — Audience / Studio / Takeaways */}
+          <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: '1.4fr 1.1fr 1.5fr' }}>
+            <AudiencePanel data={data} />
+            <StudioPanel data={data} />
+            <TakeawaysPanel data={data} />
+          </div>
 
-        {/* Footer */}
-        <div className="mt-5 pt-3 text-center" style={{ borderTop: `1px solid ${C.border}` }}>
-          <p className="text-sm" style={{ color: C.purpleDeep }}>
-            Thank you for your continued trust and partnership.
-          </p>
-          <p className="text-sm font-semibold" style={{ color: C.slate }}>
-            Let's keep building momentum!
-          </p>
-          <p className="text-xs mt-1" style={{ color: C.slate2 }}>
-            {data.cover.prepared_by || '11&1 Agency'}
-          </p>
+          {/* Row 4 — Next steps */}
+          <NextStepsBar data={data} />
+
+          {/* Footer */}
+          <div className="mt-5 pt-3 text-center" style={{ borderTop: `1px solid ${C.border}` }}>
+            <p className="text-sm" style={{ color: C.purpleDeep }}>
+              Thank you for your continued trust and partnership.
+            </p>
+            <p className="text-sm font-semibold" style={{ color: C.slate }}>
+              Let's keep building momentum!
+            </p>
+            <p className="text-xs mt-1" style={{ color: C.slate2 }}>
+              {data.cover.prepared_by || '11&1 Agency'}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-   </EditContext.Provider>
+    </EditContext.Provider>
   )
 }
 
@@ -517,7 +517,7 @@ const Header = ({ data }: { data: ReportData }) => (
       >
         <CalendarDays size={16} style={{ color: C.slate2 }} />
         <div>
-          <p className="text-[10px] uppercase tracking-wide" style={{ color: C.slate2 }}>
+          <p className="text-[0.625rem] uppercase tracking-wide" style={{ color: C.slate2 }}>
             Reporting Period
           </p>
           <p className="text-xs font-medium" style={{ color: C.slate }}>
@@ -549,7 +549,14 @@ const KpiCard = ({
   invertDelta?: boolean
 }) => {
   const dark = variant === 'navy'
-  const bg = variant === 'navy' ? C.navy : variant === 'purple' ? C.purple : variant === 'teal' ? C.teal : C.greenBg
+  const bg =
+    variant === 'navy'
+      ? C.navy
+      : variant === 'purple'
+        ? C.purple
+        : variant === 'teal'
+          ? C.teal
+          : C.greenBg
   const fg = dark ? '#FFFFFF' : variant === 'green' ? C.slate : '#FFFFFF'
   const iconBg = variant === 'green' ? 'rgba(86,182,89,0.18)' : 'rgba(255,255,255,0.18)'
   const subFg = variant === 'green' ? C.slate2 : 'rgba(255,255,255,0.75)'
@@ -560,7 +567,10 @@ const KpiCard = ({
         <span className="rounded-lg p-1.5" style={{ background: iconBg, color: fg }}>
           {icon}
         </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ opacity: 0.9 }}>
+        <span
+          className="text-[0.6875rem] font-semibold uppercase tracking-wide"
+          style={{ opacity: 0.9 }}
+        >
           {label}
         </span>
       </div>
@@ -581,13 +591,21 @@ const Delta = ({
   subFg: string
   variant: string
 }) => {
-  if (pct === null || pct === undefined) return <span className="text-[11px]" style={{ color: subFg }}>—</span>
+  if (pct === null || pct === undefined)
+    return (
+      <span className="text-[0.6875rem]" style={{ color: subFg }}>
+        —
+      </span>
+    )
   const good = invert ? pct < 0 : pct > 0
   // On dark cards use white-ish; on light cards use semantic green/red
-  const goodColor = variant === 'green' || variant === 'teal' || variant === 'purple' || variant === 'navy' ? '#FFFFFF' : C.green
+  const goodColor =
+    variant === 'green' || variant === 'teal' || variant === 'purple' || variant === 'navy'
+      ? '#FFFFFF'
+      : C.green
   const color = variant === 'green' ? (good ? C.green : C.red) : goodColor
   return (
-    <span className="text-[11px] font-semibold flex items-center gap-0.5" style={{ color }}>
+    <span className="text-[0.6875rem] font-semibold flex items-center gap-0.5" style={{ color }}>
       {pct > 0 ? '▲' : '▼'} {Math.abs(pct)}%
     </span>
   )
@@ -605,7 +623,10 @@ const HealthCard = ({ status, description }: { status: string; description: stri
   const ungraded = HEALTH_UNGRADED.has(status)
   const accent = ungraded ? C.slate2 : onTrack ? C.green : mixed ? '#E0A93B' : C.red
   return (
-    <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+    <div
+      className="rounded-xl p-3 flex items-center gap-3"
+      style={{ background: C.card, border: `1px solid ${C.border}` }}
+    >
       <div
         className="rounded-full p-2.5 shrink-0"
         style={{ background: `${accent}22`, color: accent }}
@@ -613,13 +634,16 @@ const HealthCard = ({ status, description }: { status: string; description: stri
         <HeartPulse size={22} />
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wide font-semibold" style={{ color: C.slate2 }}>
+        <p
+          className="text-[0.625rem] uppercase tracking-wide font-semibold"
+          style={{ color: C.slate2 }}
+        >
           Campaign Health
         </p>
         <p className="text-base font-bold" style={{ color: accent }}>
           {status?.toUpperCase()}
         </p>
-        <p className="text-[11px] leading-snug line-clamp-2" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem] leading-snug line-clamp-2" style={{ color: C.slate2 }}>
           {description}
         </p>
       </div>
@@ -650,11 +674,13 @@ const Panel = ({
       {title}
     </p>
     {subtitle && (
-      <p className="text-[11px] mb-2" style={{ color: C.slate2 }}>
+      <p className="text-[0.6875rem] mb-2" style={{ color: C.slate2 }}>
         {subtitle}
       </p>
     )}
-    <div className={`${subtitle ? '' : 'mt-2'} ${fill ? 'flex-1 flex items-center' : ''}`}>{children}</div>
+    <div className={`${subtitle ? '' : 'mt-2'} ${fill ? 'flex-1 flex items-center' : ''}`}>
+      {children}
+    </div>
   </div>
 )
 
@@ -716,7 +742,13 @@ const Donut = ({
         </text>
       )}
       {centerBottom && (
-        <text x={cx} y={cy(size) + Math.round(size * 0.12)} textAnchor="middle" fontSize={Math.max(6, Math.round(size * 0.075))} fill={C.slate2}>
+        <text
+          x={cx}
+          y={cy(size) + Math.round(size * 0.12)}
+          textAnchor="middle"
+          fontSize={Math.max(6, Math.round(size * 0.075))}
+          fill={C.slate2}
+        >
           {centerBottom}
         </text>
       )}
@@ -728,7 +760,7 @@ const cy = (size: number) => size / 2
 const Legend = ({ items }: { items: { label: string; color: string; value: string }[] }) => (
   <div className="flex-1 space-y-1">
     {items.map((it, i) => (
-      <div key={i} className="flex items-center gap-1.5 text-[11px]">
+      <div key={i} className="flex items-center gap-1.5 text-[0.6875rem]">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: it.color }} />
         <span className="flex-1 truncate" style={{ color: C.slate }}>
           {it.label}
@@ -751,7 +783,7 @@ const SpendPanel = ({ data, cur }: { data: ReportData; cur: string }) => {
   if (!split.length) {
     return (
       <Panel title="Spend Breakdown" subtitle="Where your budget is used">
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No spend data for this period.
         </p>
       </Panel>
@@ -784,7 +816,7 @@ const SpendPanel = ({ data, cur }: { data: ReportData; cur: string }) => {
 // ---------------------------------------------------------------------------
 
 const StatChip = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex items-center justify-between text-[11px] py-0.5">
+  <div className="flex items-center justify-between text-[0.6875rem] py-0.5">
     <span style={{ color: C.slate2 }}>{label}</span>
     <span className="font-semibold" style={{ color: C.slate }}>
       {value}
@@ -801,7 +833,7 @@ const PaidAdPanel = ({ data }: { data: ReportData }) => {
   return (
     <Panel title="Top Performing Paid Ad">
       {!ad ? (
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No paid ad data for this period.
         </p>
       ) : (
@@ -810,7 +842,7 @@ const PaidAdPanel = ({ data }: { data: ReportData }) => {
             <ThumbImage
               url={ad.image_url || ad.thumbnail_url}
               href={adUrl}
-              className="w-[88px] h-[88px] rounded-lg shrink-0"
+              className="w-[5.5rem] h-[5.5rem] rounded-lg shrink-0"
             />
             <div className="flex-1 min-w-0">
               <StatChip label="CTR" value={`${ad.ctr}%`} />
@@ -841,15 +873,18 @@ const Callout = ({
 }) => {
   const { editing } = useEdit()
   return (
-    <div className="mt-2 rounded-lg p-2.5 flex gap-1.5 items-start min-h-[64px]" style={{ background: C.greenBg }}>
+    <div
+      className="mt-2 rounded-lg p-2.5 flex gap-1.5 items-start min-h-[4rem]"
+      style={{ background: C.greenBg }}
+    >
       <Star size={13} className="shrink-0 mt-0.5" style={{ color: C.green }} />
       {editing && editPath ? (
-        <div className="flex-1 text-[10.5px] leading-snug" style={{ color: C.slate }}>
+        <div className="flex-1 text-[0.6563rem] leading-snug" style={{ color: C.slate }}>
           <span className="font-semibold">{label}: </span>
           <Editable path={editPath} value={text} multiline rows={3} />
         </div>
       ) : (
-        <p className="text-[10.5px] leading-snug" style={{ color: C.slate }}>
+        <p className="text-[0.6563rem] leading-snug" style={{ color: C.slate }}>
           <span className="font-semibold">{label}: </span>
           {text}
         </p>
@@ -867,7 +902,7 @@ const OrganicPanel = ({ data }: { data: ReportData }) => {
   return (
     <Panel title="Top Performing Organic Post">
       {!post ? (
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No organic posts for this period.
         </p>
       ) : (
@@ -876,7 +911,7 @@ const OrganicPanel = ({ data }: { data: ReportData }) => {
             <ThumbImage
               url={post.image_url}
               href={post.post_url}
-              className="w-[88px] h-[88px] rounded-lg shrink-0"
+              className="w-[5.5rem] h-[5.5rem] rounded-lg shrink-0"
             />
             <div className="flex-1 min-w-0">
               <StatChip label="Engagements" value={fmtNum(post.engaged_users)} />
@@ -904,19 +939,28 @@ const OrganicPanel = ({ data }: { data: ReportData }) => {
 const KpiStatus = ({ status }: { status: KpiItem['status'] }) => {
   if (status === 'on_track')
     return (
-      <span className="inline-flex rounded-full p-0.5" style={{ background: `${C.green}22`, color: C.green }}>
+      <span
+        className="inline-flex rounded-full p-0.5"
+        style={{ background: `${C.green}22`, color: C.green }}
+      >
         <Check size={11} />
       </span>
     )
   if (status === 'behind')
     return (
-      <span className="inline-flex rounded-full p-0.5" style={{ background: `${C.red}22`, color: C.red }}>
+      <span
+        className="inline-flex rounded-full p-0.5"
+        style={{ background: `${C.red}22`, color: C.red }}
+      >
         <ArrowDown size={11} />
       </span>
     )
   if (status === 'close')
     return (
-      <span className="inline-flex rounded-full p-0.5" style={{ background: '#E0A93B22', color: '#E0A93B' }}>
+      <span
+        className="inline-flex rounded-full p-0.5"
+        style={{ background: '#E0A93B22', color: '#E0A93B' }}
+      >
         <Minus size={11} />
       </span>
     )
@@ -940,13 +984,13 @@ const KpiPanel = ({ data }: { data: ReportData }) => {
   return (
     <Panel title="KPI Performance" subtitle="Performance against targets">
       {kpis.length === 0 ? (
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No KPI targets set.
         </p>
       ) : (
         <table className="w-full">
           <thead>
-            <tr className="text-[9px] uppercase tracking-wide" style={{ color: C.slate2 }}>
+            <tr className="text-[0.5625rem] uppercase tracking-wide" style={{ color: C.slate2 }}>
               <th className="text-left font-semibold pb-1">KPI</th>
               <th className="text-right font-semibold pb-1">Target</th>
               <th className="text-right font-semibold pb-1">Current</th>
@@ -956,19 +1000,33 @@ const KpiPanel = ({ data }: { data: ReportData }) => {
           <tbody>
             {kpis.map((k, i) => (
               <tr key={i} style={{ borderTop: `1px solid ${C.border}` }}>
-                <td className="text-[10px] py-1 pr-1 truncate" style={{ color: C.slate, maxWidth: 90 }}>
+                <td
+                  className="text-[0.625rem] py-1 pr-1 truncate"
+                  style={{ color: C.slate, maxWidth: 90 }}
+                >
                   {k.kpi}
                 </td>
-                <td className="text-[10px] py-1 text-right" style={{ color: C.slate2 }}>
+                <td className="text-[0.625rem] py-1 text-right" style={{ color: C.slate2 }}>
                   {editing ? (
-                    <Editable path={['kpi_performance', 'kpis', i, 'target']} value={k.target ?? ''} widthClass="w-14 text-right" />
+                    <Editable
+                      path={['kpi_performance', 'kpis', i, 'target']}
+                      value={k.target ?? ''}
+                      widthClass="w-14 text-right"
+                    />
                   ) : (
                     k.target || '—'
                   )}
                 </td>
-                <td className="text-[10px] py-1 text-right font-semibold" style={{ color: C.slate }}>
+                <td
+                  className="text-[0.625rem] py-1 text-right font-semibold"
+                  style={{ color: C.slate }}
+                >
                   {editing ? (
-                    <Editable path={['kpi_performance', 'kpis', i, 'current']} value={k.current ?? ''} widthClass="w-14 text-right" />
+                    <Editable
+                      path={['kpi_performance', 'kpis', i, 'current']}
+                      value={k.current ?? ''}
+                      widthClass="w-14 text-right"
+                    />
                   ) : (
                     k.current || '—'
                   )}
@@ -977,8 +1035,10 @@ const KpiPanel = ({ data }: { data: ReportData }) => {
                   {editing ? (
                     <select
                       value={k.status}
-                      onChange={(e) => setField(['kpi_performance', 'kpis', i, 'status'], e.target.value)}
-                      className="text-[9px] rounded px-0.5"
+                      onChange={(e) =>
+                        setField(['kpi_performance', 'kpis', i, 'status'], e.target.value)
+                      }
+                      className="text-[0.5625rem] rounded px-0.5"
                       style={{ border: `1px solid ${C.purple}`, color: C.slate }}
                     >
                       {KPI_STATUSES.map((s) => (
@@ -1019,7 +1079,7 @@ const AudiencePanel = ({ data }: { data: ReportData }) => {
   if (!ages.length && !locations.length) {
     return (
       <Panel title="Audience Insights" subtitle="Who we are reaching">
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No audience data. Connect Meta Ads to enable this.
         </p>
       </Panel>
@@ -1031,20 +1091,34 @@ const AudiencePanel = ({ data }: { data: ReportData }) => {
       <div className="grid gap-2" style={{ gridTemplateColumns: '1.1fr 0.8fr 1.1fr' }}>
         {/* Age donut */}
         <div>
-          <p className="text-[9px] uppercase tracking-wide font-semibold mb-1" style={{ color: C.slate2 }}>
+          <p
+            className="text-[0.5625rem] uppercase tracking-wide font-semibold mb-1"
+            style={{ color: C.slate2 }}
+          >
             Age
           </p>
           <div className="flex items-center gap-2">
             <Donut
               size={68}
               thickness={12}
-              segments={ages.map((a, i) => ({ value: a.percentage, color: DONUT[i % DONUT.length] }))}
+              segments={ages.map((a, i) => ({
+                value: a.percentage,
+                color: DONUT[i % DONUT.length],
+              }))}
             />
             <div className="space-y-[3px]">
               {ages.map((a, i) => (
-                <div key={i} className="flex items-center gap-1 text-[9px] leading-none whitespace-nowrap">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: DONUT[i % DONUT.length] }} />
-                  <span className="shrink-0" style={{ color: C.slate2 }}>{a.range}</span>
+                <div
+                  key={i}
+                  className="flex items-center gap-1 text-[0.5625rem] leading-none whitespace-nowrap"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ background: DONUT[i % DONUT.length] }}
+                  />
+                  <span className="shrink-0" style={{ color: C.slate2 }}>
+                    {a.range}
+                  </span>
                   <span className="font-semibold shrink-0" style={{ color: C.slate }}>
                     {a.percentage}%
                   </span>
@@ -1055,25 +1129,38 @@ const AudiencePanel = ({ data }: { data: ReportData }) => {
         </div>
         {/* Gender */}
         <div className="flex flex-col">
-          <p className="text-[9px] uppercase tracking-wide font-semibold mb-1 text-center" style={{ color: C.slate2 }}>
+          <p
+            className="text-[0.5625rem] uppercase tracking-wide font-semibold mb-1 text-center"
+            style={{ color: C.slate2 }}
+          >
             Gender
           </p>
           <div className="flex-1 flex items-center justify-center gap-2">
             <div className="text-center">
-              <PersonStanding size={42} strokeWidth={2.2} style={{ color: C.navy }} className="mx-auto" />
+              <PersonStanding
+                size={42}
+                strokeWidth={2.2}
+                style={{ color: C.navy }}
+                className="mx-auto"
+              />
               <p className="text-base font-bold leading-none mt-1" style={{ color: C.navy }}>
                 {male}%
               </p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.slate2 }}>
+              <p className="text-[0.625rem] mt-0.5" style={{ color: C.slate2 }}>
                 Male
               </p>
             </div>
             <div className="text-center">
-              <PersonStanding size={42} strokeWidth={2.2} style={{ color: C.purple }} className="mx-auto" />
+              <PersonStanding
+                size={42}
+                strokeWidth={2.2}
+                style={{ color: C.purple }}
+                className="mx-auto"
+              />
               <p className="text-base font-bold leading-none mt-1" style={{ color: C.purple }}>
                 {female}%
               </p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.slate2 }}>
+              <p className="text-[0.625rem] mt-0.5" style={{ color: C.slate2 }}>
                 Female
               </p>
             </div>
@@ -1081,12 +1168,15 @@ const AudiencePanel = ({ data }: { data: ReportData }) => {
         </div>
         {/* Locations */}
         <div>
-          <p className="text-[9px] uppercase tracking-wide font-semibold mb-1" style={{ color: C.slate2 }}>
+          <p
+            className="text-[0.5625rem] uppercase tracking-wide font-semibold mb-1"
+            style={{ color: C.slate2 }}
+          >
             Top Locations
           </p>
           <div className="space-y-0.5">
             {locations.map((l, i) => (
-              <div key={i} className="flex items-center justify-between text-[10px]">
+              <div key={i} className="flex items-center justify-between text-[0.625rem]">
                 <span className="truncate" style={{ color: C.slate2 }}>
                   {i + 1}. {l.location}
                 </span>
@@ -1127,7 +1217,7 @@ const StudioPanel = ({ data }: { data: ReportData }) => {
     setField(['studio_hours', 'breakdown'], breakdown)
     setField(
       ['studio_hours', 'total_hours'],
-      Object.values(breakdown).reduce((s, h) => s + h, 0),
+      Object.values(breakdown).reduce((s, h) => s + h, 0)
     )
     setField(['studio_hours', 'source'], 'manual')
   }
@@ -1142,31 +1232,36 @@ const StudioPanel = ({ data }: { data: ReportData }) => {
                 value={cat}
                 placeholder="Category name"
                 onChange={(e) => commit(rows.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))}
-                className={`${EDIT_INPUT} flex-1 text-[11px]`}
+                className={`${EDIT_INPUT} flex-1 text-[0.6875rem]`}
                 style={editStyle}
               />
               <input
                 value={String(hrs)}
-                onChange={(e) => commit(rows.map((r, j) => (j === i ? [r[0], Number(e.target.value) || 0] : r)))}
-                className={`${EDIT_INPUT} w-12 text-[11px] text-right`}
+                onChange={(e) =>
+                  commit(rows.map((r, j) => (j === i ? [r[0], Number(e.target.value) || 0] : r)))
+                }
+                className={`${EDIT_INPUT} w-12 text-[0.6875rem] text-right`}
                 style={editStyle}
               />
-              <span className="text-[10px]" style={{ color: C.slate2 }}>
+              <span className="text-[0.625rem]" style={{ color: C.slate2 }}>
                 h
               </span>
-              <button onClick={() => commit(rows.filter((_, j) => j !== i))} style={{ color: C.slate2 }}>
+              <button
+                onClick={() => commit(rows.filter((_, j) => j !== i))}
+                style={{ color: C.slate2 }}
+              >
                 <X size={12} />
               </button>
             </div>
           ))}
           <button
             onClick={() => commit([...rows, ['', 0]])}
-            className="flex items-center gap-1 text-[10px] font-medium"
+            className="flex items-center gap-1 text-[0.625rem] font-medium"
             style={{ color: C.purpleDeep }}
           >
             <Plus size={11} /> Add category
           </button>
-          <p className="text-[10px] pt-1" style={{ color: C.slate2 }}>
+          <p className="text-[0.625rem] pt-1" style={{ color: C.slate2 }}>
             Total: {rows.reduce((s, [, h]) => s + (Number(h) || 0), 0)}h
           </p>
         </div>
@@ -1179,7 +1274,7 @@ const StudioPanel = ({ data }: { data: ReportData }) => {
       <Panel title="Studio Hours" subtitle="Total studio hours used">
         <div className="flex items-center gap-2">
           <Clock size={28} style={{ color: C.slate2 }} />
-          <p className="text-[11px]" style={{ color: C.slate2 }}>
+          <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
             {sh.source === 'not_linked'
               ? 'Link a ClickUp list, or click Edit to add hours manually.'
               : 'No time tracked — click Edit to add hours manually.'}
@@ -1224,7 +1319,7 @@ const TakeawaysPanel = ({ data }: { data: ReportData }) => {
   return (
     <Panel title="Key Takeaways">
       {items.length === 0 && !editing ? (
-        <p className="text-[11px]" style={{ color: C.slate2 }}>
+        <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
           No takeaways generated.
         </p>
       ) : (
@@ -1234,14 +1329,27 @@ const TakeawaysPanel = ({ data }: { data: ReportData }) => {
             const color = TAKEAWAY_COLORS[i % TAKEAWAY_COLORS.length]
             return (
               <div key={i} className="flex gap-2 items-start">
-                <span className="rounded-full p-1 shrink-0 mt-0.5" style={{ background: `${color}22`, color }}>
+                <span
+                  className="rounded-full p-1 shrink-0 mt-0.5"
+                  style={{ background: `${color}22`, color }}
+                >
                   <Icon size={12} />
                 </span>
                 {editing ? (
                   <div className="flex-1 flex items-start gap-1">
-                    <Editable path={['dashboard', 'key_takeaways', i]} value={t} multiline rows={2} />
+                    <Editable
+                      path={['dashboard', 'key_takeaways', i]}
+                      value={t}
+                      multiline
+                      rows={2}
+                    />
                     <button
-                      onClick={() => setField(['dashboard', 'key_takeaways'], all.filter((_, j) => j !== i))}
+                      onClick={() =>
+                        setField(
+                          ['dashboard', 'key_takeaways'],
+                          all.filter((_, j) => j !== i)
+                        )
+                      }
                       style={{ color: C.slate2 }}
                       className="mt-0.5"
                     >
@@ -1249,7 +1357,7 @@ const TakeawaysPanel = ({ data }: { data: ReportData }) => {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-[11px] leading-snug" style={{ color: C.slate }}>
+                  <p className="text-[0.6875rem] leading-snug" style={{ color: C.slate }}>
                     {t}
                   </p>
                 )}
@@ -1259,7 +1367,7 @@ const TakeawaysPanel = ({ data }: { data: ReportData }) => {
           {editing && (
             <button
               onClick={() => setField(['dashboard', 'key_takeaways'], [...all, ''])}
-              className="flex items-center gap-1 text-[10px] font-medium"
+              className="flex items-center gap-1 text-[0.625rem] font-medium"
               style={{ color: C.purpleDeep }}
             >
               <Plus size={11} /> Add takeaway
@@ -1282,7 +1390,10 @@ const NextStepsBar = ({ data }: { data: ReportData }) => {
   const steps = data.dashboard.next_steps.slice(0, 4)
   return (
     <div className="mt-3 rounded-xl p-3 flex items-center gap-3" style={{ background: '#F4F4F8' }}>
-      <div className="flex items-center gap-2 pr-3 shrink-0" style={{ borderRight: `1px solid ${C.border}` }}>
+      <div
+        className="flex items-center gap-2 pr-3 shrink-0"
+        style={{ borderRight: `1px solid ${C.border}` }}
+      >
         <span className="rounded-full p-1.5" style={{ background: C.navy, color: '#fff' }}>
           <Rocket size={16} />
         </span>
@@ -1290,21 +1401,35 @@ const NextStepsBar = ({ data }: { data: ReportData }) => {
           Next Steps
         </span>
       </div>
-      <div className="flex-1 grid gap-3" style={{ gridTemplateColumns: `repeat(${steps.length || 1}, 1fr)` }}>
+      <div
+        className="flex-1 grid gap-3"
+        style={{ gridTemplateColumns: `repeat(${steps.length || 1}, 1fr)` }}
+      >
         {steps.map((s, i) => {
           const Icon = STEP_ICONS[(i + 1) % STEP_ICONS.length]
           const color = STEP_COLORS[(i + 1) % STEP_COLORS.length]
           return (
             <div key={i} className="flex items-start gap-2">
-              <span className="rounded-full p-1.5 shrink-0" style={{ background: `${color}22`, color }}>
+              <span
+                className="rounded-full p-1.5 shrink-0"
+                style={{ background: `${color}22`, color }}
+              >
                 <Icon size={14} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold" style={{ color: C.slate }}>
+                <p className="text-[0.6875rem] font-bold" style={{ color: C.slate }}>
                   <Editable path={['dashboard', 'next_steps', i, 'label']} value={s.label} />
                 </p>
-                <p className="text-[10px] leading-snug line-clamp-2" style={{ color: C.slate2 }}>
-                  <Editable path={['dashboard', 'next_steps', i, 'description']} value={s.description} multiline rows={2} />
+                <p
+                  className="text-[0.625rem] leading-snug line-clamp-2"
+                  style={{ color: C.slate2 }}
+                >
+                  <Editable
+                    path={['dashboard', 'next_steps', i, 'description']}
+                    value={s.description}
+                    multiline
+                    rows={2}
+                  />
                 </p>
               </div>
             </div>
@@ -1312,10 +1437,13 @@ const NextStepsBar = ({ data }: { data: ReportData }) => {
         })}
       </div>
       <div className="pl-3 shrink-0 text-right" style={{ borderLeft: `1px solid ${C.border}` }}>
-        <p className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: C.slate2 }}>
+        <p
+          className="text-[0.5625rem] uppercase tracking-wide font-semibold"
+          style={{ color: C.slate2 }}
+        >
           Next Report
         </p>
-        <p className="text-[11px] font-medium" style={{ color: C.slate }}>
+        <p className="text-[0.6875rem] font-medium" style={{ color: C.slate }}>
           {data.dashboard.next_report_period}
         </p>
       </div>
