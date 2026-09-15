@@ -1,7 +1,19 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { ChevronDown } from '../../../components/icon/chevron-down'
+import { HelpCircle } from '../../../components/icon/help-circle'
+import { LogOut01 } from '../../../components/icon/log-out-01'
+import { Palette } from '../../../components/icon/palette'
+import { Settings01 } from '../../../components/icon/settings-01'
 import { Popover } from '../../overlay'
+import { SegmentedControl, type SegmentedControlOption } from '../../../components/segmented-control'
+import { Monitor01 } from '../../../components/icon/monitor-01'
+import { Moon01 } from '../../../components/icon/moon-01'
+import { Sun } from '../../../components/icon/sun'
+import { useTheme } from '../../../contexts/theme-context'
+import { useAppShellActions } from '../../../hooks/use-app-shell-actions'
+import { useExperience } from '../../workspace/hooks/use-experience'
 import { useRovingFocus } from '../../../hooks/use-roving-focus'
 import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
 import { WorkspaceListItem } from '../../workspace/components/workspace-list-item'
@@ -24,6 +36,99 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
+
+/**
+ * Basic has one workspace, so there is nothing to switch to. The control keeps its place
+ * and its shape and becomes the one menu for everything about *them*: their brand, their
+ * workspace, how Mia looks, help, and the way out.
+ *
+ * This is why the sidebar can drop its Settings item, its Help item and the name block
+ * pinned to the bottom — on Basic all three were restating what the person already knew.
+ */
+const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
+  const navigate = useNavigate()
+  const { onLogout } = useAppShellActions()
+  const { theme, setTheme } = useTheme()
+  const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
+    { value: 'system', label: 'Auto', icon: <Monitor01 size={14} /> },
+    { value: 'light', label: 'Light', icon: <Sun size={14} /> },
+    { value: 'dark', label: 'Dark', icon: <Moon01 size={14} /> },
+  ]
+
+  const go = (to: string) => {
+    navigate(to)
+    onDone()
+  }
+
+  const Row = ({
+    icon,
+    label,
+    sub,
+    onClick,
+    danger,
+  }: {
+    icon: React.ReactNode
+    label: string
+    sub?: string
+    onClick: () => void
+    danger?: boolean
+  }) => (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+        danger ? 'text-error hover:bg-error-primary' : 'text-primary hover:bg-secondary'
+      }`}
+    >
+      <span className="shrink-0 mt-0.5 text-quaternary">{icon}</span>
+      <span className="min-w-0">
+        <span className="block label-md">{label}</span>
+        {sub && <span className="block paragraph-xs text-quaternary">{sub}</span>}
+      </span>
+    </button>
+  )
+
+  return (
+    <div className="flex flex-col gap-1 px-2 py-2" role="menu">
+      <Row
+        icon={<Palette size={17} />}
+        label="My brand"
+        sub="Colours, fonts, logo and brand voice"
+        onClick={() => go('/settings/workspace?tab=brand')}
+      />
+      <Row
+        icon={<Settings01 size={17} />}
+        label="Workspace settings"
+        sub="Name, connected accounts, Mia's style"
+        onClick={() => go('/settings/workspace?tab=members')}
+      />
+
+      <div className="border-t border-tertiary my-1" />
+
+      <div className="flex items-center justify-between gap-3 px-3 py-2">
+        <span className="label-md text-primary">Appearance</span>
+        <div className="w-40 shrink-0">
+          <SegmentedControl options={themeOptions} value={theme} onChange={setTheme} fullWidth />
+        </div>
+      </div>
+      <Row icon={<HelpCircle size={17} />} label="Help" onClick={() => go('/help')} />
+
+      <div className="border-t border-tertiary my-1" />
+
+      <Row
+        icon={<LogOut01 size={17} />}
+        label="Sign out"
+        danger
+        onClick={() => {
+          onDone()
+          onLogout()
+        }}
+      />
+    </div>
+  )
+}
+
 /**
  * Workspace switcher trigger for the permanent sidebar: shows the active workspace
  * logo + name and opens the workspace list. When `collapsed`, shows the logo only.
@@ -32,6 +137,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
+  const { isBasic } = useExperience()
   const { activeWorkspace, availableWorkspaces, switchWorkspace, refreshWorkspaces, refreshAccounts } =
     useSession()
   const { switchingId, handleSwitch } = useWorkspaceSwitcher({
@@ -60,7 +166,9 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         }`}
         aria-haspopup="true"
         aria-expanded={isOpen}
-        aria-label={`Switch workspace. Current: ${name || 'None'}`}
+        aria-label={
+          isBasic ? `${name || 'Workspace'} menu` : `Switch workspace. Current: ${name || 'None'}`
+        }
       >
         <span
           className={`w-9 h-9 rounded-lg flex items-center justify-center label-xs font-semibold text-white overflow-hidden shrink-0 ${logoBg}`}
@@ -80,9 +188,11 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         {!collapsed && (
           <>
             <span className="flex-1 min-w-0 text-left">
-              <span className="block paragraph-xs text-quaternary uppercase tracking-wide">
-                Workspace
-              </span>
+              {!isBasic && (
+                <span className="block paragraph-xs text-quaternary uppercase tracking-wide">
+                  Workspace
+                </span>
+              )}
               <span className="block label-md text-primary truncate">
                 {name || 'Select workspace'}
               </span>
@@ -99,6 +209,9 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         placement="bottom-start"
         className="w-72"
       >
+        {isBasic ? (
+          <BasicWorkspaceMenu onDone={() => setIsOpen(false)} />
+        ) : (
         <div className="flex flex-col gap-1 px-2 py-2 max-h-72 overflow-y-auto" role="menu">
           {availableWorkspaces.length === 0 ? (
             <div className="px-3 py-4 text-center text-quaternary paragraph-sm">No workspaces yet</div>
@@ -116,6 +229,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
             ))
           )}
         </div>
+        )}
       </Popover>
     </>
   )

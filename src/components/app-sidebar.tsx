@@ -281,13 +281,17 @@ export const AppSidebar = () => {
               onClick={() => navigate('/memo')}
             />
           )}
-          <NavItem
-            icon={<Settings01 size={18} />}
-            label={isBasic ? 'Settings' : 'Workspace Settings'}
-            collapsed={collapsed}
-            active={activeKey === 'settings'}
-            onClick={actions.onWorkspaceSettings}
-          />
+          {/* Basic reaches Settings from the workspace menu at the top, so it does not
+              also sit here. Team and Agency keep it inline. */}
+          {!isBasic && (
+            <NavItem
+              icon={<Settings01 size={18} />}
+              label="Workspace Settings"
+              collapsed={collapsed}
+              active={activeKey === 'settings'}
+              onClick={actions.onWorkspaceSettings}
+            />
+          )}
 
           <div className="border-t border-tertiary my-2" />
 
@@ -320,15 +324,18 @@ export const AppSidebar = () => {
             </>
           )}
 
-          <NavItem
-            icon={<HelpCircle size={18} />}
-            label="Help"
-            collapsed={collapsed}
-            onClick={actions.onHelpClick}
-          />
+          {!isBasic && (
+            <NavItem
+              icon={<HelpCircle size={18} />}
+              label="Help"
+              collapsed={collapsed}
+              onClick={actions.onHelpClick}
+            />
+          )}
         </nav>
 
-        {/* Sign out */}
+        {/* Sign out — Basic signs out from the workspace menu at the top */}
+        {!isBasic && (
         <div className={`py-1.5 border-t border-tertiary ${collapsed ? 'px-2' : 'px-3'}`}>
           <button
             onClick={actions.onLogout}
@@ -342,8 +349,11 @@ export const AppSidebar = () => {
             {!collapsed && <span>Sign Out</span>}
           </button>
         </div>
+        )}
 
-        {/* User identity */}
+        {/* Who is signed in. Basic has one person and one workspace, so this block spent
+            the sidebar's most valuable slot telling them both. */}
+        {!isBasic && (
         <div
           className={`flex items-center gap-3 py-3 border-t border-tertiary ${
             collapsed ? 'justify-center px-2' : 'px-4'
@@ -359,6 +369,7 @@ export const AppSidebar = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* Collapse toggle */}
         <button

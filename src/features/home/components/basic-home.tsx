@@ -4,14 +4,14 @@ import { Spinner } from '../../../components/spinner'
 import { useSession } from '../../../contexts/session-context'
 import { useHomeBrief } from '../hooks/use-home-brief'
 import { setHomeCardInFlight } from '../in-flight'
-import type { BriefCard, BriefChip } from '../types'
-import { AskMiaChips } from './ask-mia-chips'
+import type { BriefCard } from '../types'
 import { DoThisNext } from './do-this-next'
 
 interface BasicHomeProps {
   userName?: string
   /** Send a prompt into the chat (the view flips to chat mode). */
   onPrompt: (prompt: string, opts?: { opensCanvas?: boolean; displayText?: string }) => void
+  /** Was only ever used to gate the Ask Mia chips; kept so callers don't have to change. */
   disabled?: boolean
   /** Phone only: the "Your best post" peek, rendered above the cards by the caller. */
   peek?: React.ReactNode
@@ -22,7 +22,7 @@ interface BasicHomeProps {
  * brief. A card's button either navigates, or sends a prompt into chat (remembering which
  * card started it, so when the schedule flow finishes the card can turn over in place).
  */
-export const BasicHome = ({ userName, onPrompt, disabled, peek }: BasicHomeProps) => {
+export const BasicHome = ({ userName, onPrompt, peek }: BasicHomeProps) => {
   const navigate = useNavigate()
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id ?? null
@@ -78,20 +78,16 @@ export const BasicHome = ({ userName, onPrompt, disabled, peek }: BasicHomeProps
         )}
         {error && !isLoading && <p className="paragraph-sm text-quaternary text-center">{error}</p>}
 
+        {/* The "Ask Mia" chips are no longer shown (Josh, 2026-09-15). The brief still
+            generates them — they cost nothing to keep and the weekly WhatsApp digest is
+            the natural next home for the same material. */}
         {brief && (
-          <>
-            <DoThisNext
-              cards={brief.cards}
-              stamp={stamp}
-              onCta={runCta}
-              onDismiss={(c) => dismiss(c.id)}
-            />
-            <AskMiaChips
-              chips={brief.chips}
-              onPick={(chip: BriefChip) => onPrompt(chip.prompt)}
-              disabled={disabled}
-            />
-          </>
+          <DoThisNext
+            cards={brief.cards}
+            stamp={stamp}
+            onCta={runCta}
+            onDismiss={(c) => dismiss(c.id)}
+          />
         )}
       </div>
     </div>
