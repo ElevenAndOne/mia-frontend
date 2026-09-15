@@ -3,6 +3,11 @@
 
 export type TesterStatus = 'active' | 'idle' | 'new' | 'cold'
 
+/** Whether the person is 11&1 staff (`user_profiles.is_staff`). A property of the PERSON. */
+export type Segment = 'internal' | 'external'
+/** Workspace experience profile (`tenants.experience_profile`). A property of the WORKSPACE. */
+export type Tier = 'basic' | 'team' | 'agency'
+
 export interface Metric {
   value: number
   delta: number | null
@@ -39,6 +44,9 @@ export interface TesterRow {
   email: string | null
   tenant: string | null
   role: string | null
+  segment: Segment
+  /** Staff always report 'agency' — that is the experience they actually get. */
+  tier: Tier | null
   questions_in_range: number
   tokens_in_range: number
   cost_in_range: number
@@ -161,11 +169,14 @@ export interface WorkspaceMember {
   google_user_id: string
   name: string
   email: string | null
+  segment: Segment
 }
 
 export interface Workspace {
   tenant_id: string
   name: string
+  /** Defaults to 'team' for every unlabelled workspace — see _tier_map in the backend. */
+  tier: Tier | null
   member_count: number
   members: WorkspaceMember[]
 }
@@ -178,4 +189,52 @@ export interface WorkspaceList {
 export interface PulseFilter {
   tenantIds: string[]
   userId: string | null
+  /** null = both internal and external. */
+  segment: Segment | null
+  /** Empty = all tiers. */
+  tiers: Tier[]
+}
+
+/** Where a post came from. Mirrors POST_SOURCES in models/scheduled_post.py. */
+export type PostSource = 'app' | 'whatsapp' | 'auto'
+
+export interface PostsBySource {
+  total: number
+  published: number
+}
+
+export interface PostsWorkspaceRow {
+  tenant_id: string
+  name: string
+  app: number
+  whatsapp: number
+  auto: number
+  total: number
+  /** whatsapp + auto — posts that went out without anyone opening Mia. */
+  without_app: number
+}
+
+/**
+ * Post provenance + the trust ratio (/api/admin/analytics/posts).
+ * The Basic tier is judged on `without_app_pct`; `trust` is what later decides
+ * whether Mia may schedule on her own.
+ */
+export interface PostsProvenance {
+  range: string
+  generated_at: string
+  by_source: Record<PostSource, PostsBySource>
+  total_posts: number
+  without_app: number
+  without_app_pct: number
+  trust: {
+    proposed: number
+    approved: number
+    /** Explicit signals — WhatsApp only today; the in-app card sends neither. */
+    edited: number
+    rejected: number
+    not_taken: number
+    /** null when Mia proposed nothing in range — not 0%. */
+    approval_rate_pct: number | null
+  }
+  workspaces: PostsWorkspaceRow[]
 }

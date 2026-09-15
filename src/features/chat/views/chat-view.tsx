@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ChatLayout from '../components/chat-layout'
 import { BackButton } from '../../../components/back-button'
 import ChatEmptyState from '../components/chat-empty-state'
@@ -26,7 +27,6 @@ import { useChatView } from '../hooks/use-chat-view.tsx'
 import { useGoldInsights } from '../../insights/hooks/use-gold-insights'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
-import { trackEvent } from '../../../utils/tracking'
 
 interface ChatViewProps {
   onIntegrationsClick?: () => void
@@ -198,14 +198,11 @@ export const ChatView = ({
     return new Date(dateStr).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
   }
 
-  // Track page visit once
-  const tracked = useRef(false)
-  useEffect(() => {
-    if (!tracked.current && sessionId) {
-      tracked.current = true
-      trackEvent(sessionId, 'page_visit', 'home')
-    }
-  }, [sessionId])
+  // No page_visit event for /home. It is the app's landing route, so the ref guard only
+  // held for the lifetime of one mount — tabbing back, switching workspace or any remount
+  // logged another "Viewed Home", which then dominated the Pulse activity feed. Chat turns
+  // and the other page_visit events already show whether someone was in the app.
+  // (Josh, 2026-09-15.)
 
   const [promptDismissed, setPromptDismissed] = useState(false)
 
@@ -247,6 +244,39 @@ export const ChatView = ({
       localStorage.removeItem(StorageKey.LAST_CANVAS_OPEN)
     }
   }, [isMobile, mobileCanvasOpen, canvas.conversationId])
+
+  // Arriving from WhatsApp: /home?drafts=<conversation_id>. Mia sent three posts to their
+  // phone and they tapped "edit in Mia", so the drafts are the reason they are here — load
+  // that conversation and put it on the canvas.
+  //
+  // On mobile this AUTO-OPENS the sheet, which is deliberately the opposite of the rule
+  // three lines above (new documents light the pill instead of taking over the screen).
+  // That rule protects someone mid-conversation from being interrupted; this person tapped
+  // a link about these specific posts. Once only — reopening it later is their choice.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const draftsParam = searchParams.get('drafts')
+  const draftsHandledRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!draftsParam || draftsHandledRef.current === draftsParam) return
+    draftsHandledRef.current = draftsParam
+    void loadConversation(draftsParam)
+    // Drop the parameter so a refresh doesn't re-open the sheet over their work.
+    const next = new URLSearchParams(searchParams)
+    next.delete('drafts')
+    setSearchParams(next, { replace: true })
+  }, [draftsParam, loadConversation, searchParams, setSearchParams])
+
+  // The documents arrive a beat after the conversation does; open the sheet then.
+  const draftsPendingRef = useRef(false)
+  useEffect(() => {
+    if (draftsParam) draftsPendingRef.current = true
+  }, [draftsParam])
+  useEffect(() => {
+    if (!draftsPendingRef.current || docCount === 0) return
+    draftsPendingRef.current = false
+    if (isMobile) setMobileCanvasOpen(true)
+    setCanvasUnseen(false)
+  }, [docCount, isMobile])
 
   // Throttle: only show the integration prompt every 5th chat page visit
   const [shouldShowPromptThisVisit] = useState(() => {
