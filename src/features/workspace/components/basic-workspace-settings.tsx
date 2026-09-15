@@ -11,6 +11,7 @@ import {
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { EXPERIENCES, EXPERIENCE_LABEL, type Experience } from '../feature-keys'
 import { WebsiteReadCard } from './website-read-card'
+import { WhatsAppNumberCard } from './whatsapp-number-card'
 
 interface BasicWorkspaceSettingsProps<T extends string> {
   sessionId: string
@@ -168,6 +169,7 @@ export function BasicWorkspaceSettings<T extends string>({
       </Group>
 
       <Group label="How Mia shows up">
+        <WhatsAppNumberCard sessionId={sessionId} />
         <Row icon={<Stars01 size={16} />} title="Experience">
           <div className="flex rounded-lg border border-primary overflow-hidden">
             {EXPERIENCES.map((exp) => (

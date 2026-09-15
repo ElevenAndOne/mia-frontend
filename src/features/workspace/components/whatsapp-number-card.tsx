@@ -1,0 +1,194 @@
+import { useCallback, useEffect, useState } from 'react'
+import { MessageChatSquare } from '../../../components/icon/message-chat-square'
+import {
+  confirmWhatsAppVerification,
+  fetchWhatsAppNumber,
+  removeWhatsAppNumber,
+  startWhatsAppVerification,
+  type WhatsAppNumberState,
+} from '../services/whatsapp-number-service'
+
+const ghost =
+  'px-2.5 py-1.5 border border-primary rounded-lg paragraph-xs text-secondary hover:bg-tertiary transition-colors disabled:opacity-50'
+const solid =
+  'px-2.5 py-1.5 rounded-lg paragraph-xs bg-brand-solid text-primary-onbrand hover:opacity-90 transition-opacity disabled:opacity-50'
+const field =
+  'w-full px-3 py-2 rounded-lg border border-primary bg-primary paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:ring-2 focus:ring-utility-info-500'
+
+/**
+ * Add the phone number that can send Mia photos on WhatsApp.
+ *
+ * Three states, because there are genuinely three: no number, a code in flight, a verified
+ * number. The middle one is the point of the whole component — typing a number proves
+ * nothing, and the code is sent to that phone rather than shown here, so adding a
+ * colleague's number by mistake (or on purpose) gets you nowhere.
+ *
+ * Any member of the workspace can add their own (D1); only owners and admins can schedule
+ * what comes back (D16), which the flow itself enforces, not this form.
+ */
+export const WhatsAppNumberCard = ({ sessionId }: { sessionId: string | null }) => {
+  const [state, setState] = useState<WhatsAppNumberState | null>(null)
+  const [number, setNumber] = useState('')
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      const next = await fetchWhatsAppNumber(sessionId)
+      setState(next)
+      if (next.whatsapp_number) setNumber(next.whatsapp_number)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load your number')
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await fn()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendCode = () =>
+    run(async () => {
+      if (!sessionId) return
+      const res = await startWhatsAppVerification(sessionId, number)
+      setNotice(
+        res.delivered
+          ? `Code sent to ${number}. It expires in 10 minutes.`
+          : `Code created for ${number}, but WhatsApp could not deliver it yet.`
+      )
+      setCode('')
+      await load()
+    })
+
+  const confirm = () =>
+    run(async () => {
+      if (!sessionId) return
+      const res = await confirmWhatsAppVerification(sessionId, code)
+      setNotice(res.message)
+      setCode('')
+      await load()
+    })
+
+  const remove = () =>
+    run(async () => {
+      if (!sessionId) return
+      await removeWhatsAppNumber(sessionId)
+      setNumber('')
+      setCode('')
+      setNotice('Number removed.')
+      await load()
+    })
+
+  // Not on the pilot allowlist yet. A plain statement beats an input that would 403.
+  if (state?.unavailable) {
+    return (
+      <Shell>
+        <p className="paragraph-xs text-quaternary">
+          WhatsApp is not switched on for this workspace yet.
+        </p>
+      </Shell>
+    )
+  }
+
+  return (
+    <Shell>
+      {state?.verified ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="paragraph-sm text-primary">{state.whatsapp_number}</span>
+          <span className="paragraph-xs text-success-primary">· confirmed</span>
+          <button type="button" onClick={remove} disabled={busy} className={`${ghost} ml-auto`}>
+            Remove
+          </button>
+        </div>
+      ) : state?.awaiting_code ? (
+        <div className="flex flex-col gap-2">
+          <p className="paragraph-xs text-quaternary">
+            We sent a six-digit code to {state.whatsapp_number} on WhatsApp.
+          </p>
+          <div className="flex gap-2">
+            <input
+              id="whatsapp-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              className={field}
+            />
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={busy || code.trim().length < 4}
+              className={solid}
+            >
+              Confirm
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={sendCode}
+            disabled={busy}
+            className="paragraph-xs text-quaternary hover:text-secondary self-start"
+          >
+            Send a new code
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            id="whatsapp-number"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="+27 82 123 4567"
+            inputMode="tel"
+            autoComplete="tel"
+            className={field}
+          />
+          <button
+            type="button"
+            onClick={sendCode}
+            disabled={busy || number.trim().length < 8}
+            className={solid}
+          >
+            Send code
+          </button>
+        </div>
+      )}
+
+      {notice && <p className="paragraph-xs text-quaternary">{notice}</p>}
+      {error && <p className="paragraph-xs text-error-primary">{error}</p>}
+    </Shell>
+  )
+}
+
+const Shell = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex items-start gap-3 px-3 py-3">
+    <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 text-secondary">
+      <MessageChatSquare size={16} />
+    </div>
+    <div className="min-w-0 flex-1 flex flex-col gap-2">
+      <div>
+        <p className="subheading-md text-primary">WhatsApp</p>
+        <p className="paragraph-xs text-quaternary">
+          Send Mia a photo and she'll draft posts from it. Everyone here can add their own number.
+        </p>
+      </div>
+      {children}
+    </div>
+  </div>
+)
