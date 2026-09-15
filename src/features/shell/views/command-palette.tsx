@@ -158,7 +158,7 @@ export const CommandPalette = () => {
         ? [
             {
               id: 'jump-integrations',
-              label: 'Integrations',
+              label: isBasic ? 'Connections' : 'Integrations',
               group: 'Jump to',
               icon: <Globe01 size={17} />,
               run: () => go('/integrations'),
@@ -178,7 +178,7 @@ export const CommandPalette = () => {
         : []),
       {
         id: 'jump-settings',
-        label: isBasic ? 'Settings' : 'Workspace Settings',
+        label: isBasic ? 'Workspace settings' : 'Workspace Settings',
         group: 'Jump to',
         icon: <Settings01 size={17} />,
         run: () => go('/settings/workspace'),
@@ -187,14 +187,14 @@ export const CommandPalette = () => {
         ? [
             {
               id: 'jump-settings-brand',
-              label: 'Settings · Brand',
+              label: 'My brand',
               group: 'Jump to',
               icon: <Settings01 size={17} />,
               run: () => go('/settings/workspace?tab=brand'),
             },
             {
               id: 'jump-settings-mia',
-              label: 'Settings · Mia',
+              label: "Mia's style",
               group: 'Jump to',
               icon: <Settings01 size={17} />,
               run: () => go('/settings/workspace?tab=mia'),

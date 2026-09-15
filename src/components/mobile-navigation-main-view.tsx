@@ -7,6 +7,7 @@ import { Globe01 } from './icon/globe-01'
 import { HelpCircle } from './icon/help-circle'
 import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
+import { Palette } from './icon/palette'
 import { Plus } from './icon/plus'
 import { Settings01 } from './icon/settings-01'
 import { Target01 } from './icon/target-01'
@@ -94,7 +95,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Globe01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Integrations</span>
+            <span className="paragraph-sm">{isBasic ? 'Connections' : 'Integrations'}</span>
           </button>
         )}
 
@@ -150,13 +151,28 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
+        {isBasic && (
+          <button
+            onClick={() => {
+              onClose()
+              navigate('/settings/workspace?tab=brand')
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Palette size={20} className="text-tertiary" />
+            <span className="paragraph-sm">My brand</span>
+          </button>
+        )}
+
         {onWorkspaceSettings && (
           <button
             onClick={onWorkspaceSettings}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
+            <span className="paragraph-sm">
+              {isBasic ? 'Workspace settings' : 'Workspace Settings'}
+            </span>
           </button>
         )}
 

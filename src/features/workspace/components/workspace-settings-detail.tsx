@@ -444,12 +444,15 @@ export const WorkspaceSettingsDetail = ({
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar
-        title={isBasic ? 'Settings' : 'Workspace Settings'}
+        title={isBasic ? 'Workspace settings' : 'Workspace Settings'}
         onBack={onBack}
         className="border-b border-tertiary"
         breadcrumbs={[
           { label: 'Home', to: '/home' },
-          { label: isBasic ? 'Settings' : 'Workspace Settings', to: '/settings/workspace' },
+          {
+            label: isBasic ? 'Workspace settings' : 'Workspace Settings',
+            to: '/settings/workspace',
+          },
           { label: tabLabel(activeTab) },
         ]}
       />

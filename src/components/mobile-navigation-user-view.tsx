@@ -72,7 +72,9 @@ export const MobileNavigationUserView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
+            <span className="paragraph-sm">
+              {isBasic ? 'Workspace settings' : 'Workspace Settings'}
+            </span>
           </button>
         )}
       </div>
