@@ -1,19 +1,14 @@
 import { useRef, type ReactNode } from 'react'
 import { Edit03 } from '../../../components/icon/edit-03'
 import { Image01 } from '../../../components/icon/image-01'
-import { Monitor01 } from '../../../components/icon/monitor-01'
 import { Stars01 } from '../../../components/icon/stars-01'
 import { Trash01 } from '../../../components/icon/trash-01'
-import {
-  SegmentedControl,
-  type SegmentedControlOption,
-} from '../../../components/segmented-control'
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { EXPERIENCES, EXPERIENCE_LABEL, type Experience } from '../feature-keys'
 import { WebsiteReadCard } from './website-read-card'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
 
-interface BasicWorkspaceSettingsProps<T extends string> {
+interface BasicWorkspaceSettingsProps {
   sessionId: string
   tenantId: string
   workspaceName: string
@@ -31,9 +26,6 @@ interface BasicWorkspaceSettingsProps<T extends string> {
   experience: Experience
   savingExperience: boolean
   onChangeExperience: (exp: Experience) => void
-  theme: T
-  themeOptions: Array<SegmentedControlOption<T>>
-  onChangeTheme: (t: T) => void
   featuresPanel: ReactNode
   /** The workspace-level WhatsApp switch, rendered inside the number card. */
   whatsappMessagesSlot?: ReactNode
@@ -80,7 +72,7 @@ const ghost =
  * how Mia shows up (experience, appearance, features), and delete. One row per setting —
  * title, current value, one action — instead of a stack of cards with descriptions.
  */
-export function BasicWorkspaceSettings<T extends string>({
+export function BasicWorkspaceSettings({
   sessionId,
   tenantId,
   workspaceName,
@@ -98,14 +90,11 @@ export function BasicWorkspaceSettings<T extends string>({
   experience,
   savingExperience,
   onChangeExperience,
-  theme,
-  themeOptions,
-  onChangeTheme,
   featuresPanel,
   whatsappMessagesSlot,
   miaStyleSection,
   onDelete,
-}: BasicWorkspaceSettingsProps<T>) {
+}: BasicWorkspaceSettingsProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   return (
     <div className="space-y-3">
@@ -193,11 +182,6 @@ export function BasicWorkspaceSettings<T extends string>({
                 {EXPERIENCE_LABEL[exp]}
               </button>
             ))}
-          </div>
-        </Row>
-        <Row icon={<Monitor01 size={16} />} title="Appearance">
-          <div className="shrink-0">
-            <SegmentedControl options={themeOptions} value={theme} onChange={onChangeTheme} />
           </div>
         </Row>
         {canManage && (

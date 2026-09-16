@@ -106,11 +106,9 @@ const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
 
       <div className="border-t border-tertiary my-1" />
 
-      <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <div className="flex flex-col gap-1.5 px-3 py-2">
         <span className="label-md text-primary">Appearance</span>
-        <div className="w-40 shrink-0">
-          <SegmentedControl options={themeOptions} value={theme} onChange={setTheme} fullWidth />
-        </div>
+        <SegmentedControl options={themeOptions} value={theme} onChange={setTheme} fullWidth />
       </div>
       <Row icon={<HelpCircle size={17} />} label="Help" onClick={() => go('/help')} />
 

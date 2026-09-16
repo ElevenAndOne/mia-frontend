@@ -854,9 +854,6 @@ export const WorkspaceSettingsDetail = ({
                       experience={experience}
                       savingExperience={savingExperience}
                       onChangeExperience={handleChangeExperience}
-                      theme={theme}
-                      themeOptions={themeOptions}
-                      onChangeTheme={setTheme}
                       featuresPanel={
                         sessionId ? (
                           <FeatureFlagsPanel
@@ -1127,7 +1124,9 @@ export const WorkspaceSettingsDetail = ({
                           }}
                         />
                       </div>
-                      {/* Appearance — theme lives here for Basic (the sidebar toggle is hidden) */}
+                      {/* Appearance for Team/Agency, who also have the sidebar control.
+                          Basic never reaches this branch — its theme lives in the
+                          workspace menu, and only there. */}
                       <div className="flex items-center justify-between gap-3 p-3 bg-secondary rounded-lg mb-3">
                         <div>
                           <p className="subheading-md text-primary">Appearance</p>

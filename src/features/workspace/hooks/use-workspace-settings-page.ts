@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
 import { apiFetch } from '../../../utils/api'
 import { useClipboard } from '../../../hooks/use-clipboard'
@@ -11,6 +11,7 @@ import {
   type WorkspaceOverviewItem,
   type WorkspacePersonRow,
 } from '../utils/workspace-settings'
+import { useExperience } from './use-experience'
 import { useWorkspaceSettings } from './use-workspace-settings'
 
 export const useWorkspaceSettingsPage = () => {
@@ -23,7 +24,19 @@ export const useWorkspaceSettingsPage = () => {
     deleteWorkspace,
     switchWorkspace,
   } = useSession()
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
+  // The list of workspaces is a choice, and on Basic there is no choice to make: one
+  // workspace, and the menu item they tapped already said which page they wanted. Opening
+  // on the list would make them pick their only option before seeing anything.
+  const { isBasic } = useExperience()
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
+    isBasic ? (activeWorkspace?.tenant_id ?? null) : null
+  )
+  // The active workspace can resolve a beat after first render.
+  useEffect(() => {
+    if (isBasic && !selectedWorkspaceId && activeWorkspace?.tenant_id) {
+      setSelectedWorkspaceId(activeWorkspace.tenant_id)
+    }
+  }, [isBasic, selectedWorkspaceId, activeWorkspace?.tenant_id])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCreateInviteModal, setShowCreateInviteModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
