@@ -81,7 +81,7 @@ export const CommandPalette = () => {
             },
           ]
         : []),
-      ...(isFeatureEnabled('integrations')
+      ...(isFeatureEnabled('integrations') && !isBasic
         ? [
             {
               id: 'connect-integration',

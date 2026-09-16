@@ -175,7 +175,7 @@ export const WorkspaceSettingsDetail = ({
   ]
   const visibleTabs: SettingsTab[] = canManage
     ? isBasic
-      ? ['members', 'brand']
+      ? ['brand', 'members']
       : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia']
     : isBasic
       ? ['brand']
@@ -206,6 +206,18 @@ export const WorkspaceSettingsDetail = ({
   // show a spinner on every switch. Members and Notes only looked instant because their
   // data was cached elsewhere.
   const [visited, setVisited] = useState<Set<SettingsTab>>(() => new Set<SettingsTab>([initialTab]))
+
+  // The tab was only ever read from the URL on first mount, so tapping "My brand" in the
+  // workspace menu while already on Settings changed the address bar and nothing else.
+  // The URL is the source of truth; follow it whenever it moves.
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab)
+      setVisited((v) => (v.has(initialTab) ? v : new Set(v).add(initialTab)))
+    }
+    // initialTab is derived from searchParams, so this runs on every URL change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab])
   const tabLabel = (tab: SettingsTab): string => {
     if (tab === 'members') return isBasic ? 'Workspace' : 'Members'
     if (tab === 'brand') return isBasic ? 'Brand' : 'Brand Guide'
@@ -847,7 +859,7 @@ export const WorkspaceSettingsDetail = ({
                       }}
                       onOpenBrand={() => selectTab('brand')}
                       connectedPlatforms={workspace.connected_platforms ?? []}
-                      onOpenConnections={() => navigate('/integrations')}
+                      onOpenConnections={() => navigate('/integrations?from=settings')}
                       onRename={onOpenRenameModal}
                       logoUrl={logoUrl}
                       uploadingLogo={uploadingLogo}

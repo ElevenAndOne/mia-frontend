@@ -50,6 +50,16 @@ const POPULAR_FONTS = [
  * imagery-style note, logo, and product reference photos the image model matches
  * (docs/CHAT_IMAGE_GEN_SCOPE.md D6 + the image-history report).
  */
+/**
+ * The last Brand Kit seen per workspace, so returning to this tab paints the colours and
+ * fonts immediately instead of flashing a spinner. It still refetches in the background —
+ * this only removes the blank frame, it never serves stale data as final.
+ *
+ * Module-level rather than React Query because that is the whole requirement: one GET, one
+ * consumer, no invalidation graph.
+ */
+const KIT_CACHE = new Map<string, BrandKitData>()
+
 export const BrandKitTab = ({
   sessionId,
   tenantId,
@@ -63,12 +73,16 @@ export const BrandKitTab = ({
   const { isBasic } = useExperience()
   // Basic: which swatch is open for editing on the paper board.
   const [selected, setSelected] = useState<number | null>(null)
-  const [kit, setKit] = useState<BrandKitData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [kit, setKit] = useState<BrandKitData | null>(() => KIT_CACHE.get(tenantId) ?? null)
+  const [loading, setLoading] = useState(() => !KIT_CACHE.has(tenantId))
   const [saving, setSaving] = useState(false)
-  const [fontFamily, setFontFamily] = useState('')
-  const [imageryStyle, setImageryStyle] = useState('')
-  const [palette, setPalette] = useState<PaletteColor[]>([])
+  const [fontFamily, setFontFamily] = useState(() => KIT_CACHE.get(tenantId)?.font_family ?? '')
+  const [imageryStyle, setImageryStyle] = useState(
+    () => KIT_CACHE.get(tenantId)?.imagery_style ?? ''
+  )
+  const [palette, setPalette] = useState<PaletteColor[]>(
+    () => KIT_CACHE.get(tenantId)?.palette ?? []
+  )
   const [uploadingKind, setUploadingKind] = useState<'logo' | 'product' | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
   const productInputRef = useRef<HTMLInputElement>(null)
@@ -77,6 +91,7 @@ export const BrandKitTab = ({
   const base = `/api/tenants/${tenantId}/brand-kit`
 
   const applyKit = (data: BrandKitData) => {
+    KIT_CACHE.set(tenantId, data)
     setKit(data)
     setFontFamily(data.font_family ?? '')
     setImageryStyle(data.imagery_style ?? '')
