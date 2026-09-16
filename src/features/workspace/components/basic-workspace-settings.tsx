@@ -35,6 +35,10 @@ interface BasicWorkspaceSettingsProps<T extends string> {
   themeOptions: Array<SegmentedControlOption<T>>
   onChangeTheme: (t: T) => void
   featuresPanel: ReactNode
+  /** The workspace-level WhatsApp switch, rendered inside the number card. */
+  whatsappMessagesSlot?: ReactNode
+  /** Basic has no separate Mia tab — her style lives here, as the menu promises. */
+  miaStyleSection?: ReactNode
   onDelete: () => void
 }
 
@@ -98,6 +102,8 @@ export function BasicWorkspaceSettings<T extends string>({
   themeOptions,
   onChangeTheme,
   featuresPanel,
+  whatsappMessagesSlot,
+  miaStyleSection,
   onDelete,
 }: BasicWorkspaceSettingsProps<T>) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -169,7 +175,7 @@ export function BasicWorkspaceSettings<T extends string>({
       </Group>
 
       <Group label="How Mia shows up">
-        <WhatsAppNumberCard sessionId={sessionId} />
+        <WhatsAppNumberCard sessionId={sessionId} messagesSlot={whatsappMessagesSlot} />
         <Row icon={<Stars01 size={16} />} title="Experience">
           <div className="flex rounded-lg border border-primary overflow-hidden">
             {EXPERIENCES.map((exp) => (
@@ -204,6 +210,8 @@ export function BasicWorkspaceSettings<T extends string>({
           </CollapsibleSection>
         )}
       </Group>
+
+      {miaStyleSection}
 
       {isOwner && (
         <Group>

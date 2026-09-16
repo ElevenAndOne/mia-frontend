@@ -197,7 +197,8 @@ export const CommandPalette = () => {
               label: "Mia's style",
               group: 'Jump to',
               icon: <Settings01 size={17} />,
-              run: () => go('/settings/workspace?tab=mia'),
+              // Basic has no Mia tab — her style lives inside Workspace settings.
+              run: () => go('/settings/workspace?tab=members'),
             },
           ]
         : []),

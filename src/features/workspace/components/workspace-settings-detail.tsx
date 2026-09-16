@@ -173,10 +173,10 @@ export const WorkspaceSettingsDetail = ({
   ]
   const visibleTabs: SettingsTab[] = canManage
     ? isBasic
-      ? ['members', 'brand', 'mia']
+      ? ['members', 'brand']
       : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia']
     : isBasic
-      ? ['brand', 'mia']
+      ? ['brand']
       : ['brand', 'brandkit', 'campaigns', 'notes', 'mia']
   // The tab lives in the URL (?tab=brand) so a refresh or a shared link lands on the same tab,
   // and the breadcrumb can name it.
@@ -193,7 +193,11 @@ export const WorkspaceSettingsDetail = ({
       'skills',
       'mia',
     ]
-    return t && ok.includes(t) ? t : canManage ? 'members' : 'brand'
+    const wanted = t && ok.includes(t) ? t : null
+    // Basic has no Mia tab any more; an old ?tab=mia link lands on Workspace, where her
+    // style now lives, rather than on a tab that renders nothing.
+    if (wanted === 'mia' && isBasic) return canManage ? 'members' : 'brand'
+    return wanted ?? (canManage ? 'members' : 'brand')
   })()
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
   // Tabs stay mounted once visited (hidden, not unmounted): each one used to refetch and
@@ -339,7 +343,7 @@ export const WorkspaceSettingsDetail = ({
 
   useEffect(() => {
     // Basic shows WhatsApp under the Mia tab as "Messages".
-    const wantsAlerts = activeTab === 'whatsapp' || (activeTab === 'mia' && isBasic)
+    const wantsAlerts = activeTab === 'whatsapp' || (activeTab === 'members' && isBasic)
     if (!wantsAlerts || alertSettings) return
     loadAlertSettings(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAlertSettings is not memoised
@@ -773,70 +777,6 @@ export const WorkspaceSettingsDetail = ({
                 sessionId={sessionId}
                 tenantId={workspace.tenant_id}
                 canManage={canManage}
-                messagesSection={
-                  isBasic ? (
-                    <div className="settings-card rounded-lg border border-tertiary bg-secondary overflow-hidden">
-                      <p className="settings-eyebrow text-quaternary px-3 pt-3 pb-1">Messages</p>
-                      <div className="flex items-center gap-3 px-3 py-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="subheading-md text-primary">WhatsApp</p>
-                          <p className="paragraph-xs text-quaternary">
-                            {alertSettings?.whatsapp_alerts_enabled
-                              ? 'On · Mia messages you when something needs you'
-                              : 'Off · Mia can message you when something needs you'}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = !alertSettings?.whatsapp_alerts_enabled
-                            void handleToggleWorkspaceAlerts(next)
-                            setMySubscribed(next)
-                          }}
-                          disabled={togglingWorkspace || !alertSettings}
-                          aria-label="Toggle WhatsApp messages"
-                          className={`relative shrink-0 w-9 h-5 rounded-full transition-colors disabled:opacity-50 ${
-                            alertSettings?.whatsapp_alerts_enabled
-                              ? 'bg-utility-success-600'
-                              : 'bg-quaternary'
-                          }`}
-                        >
-                          <span
-                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                              alertSettings?.whatsapp_alerts_enabled ? 'translate-x-4' : ''
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      {alertSettings?.whatsapp_alerts_enabled && (
-                        <div className="px-3 pb-3 flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="tel"
-                            value={myWaNumber}
-                            onChange={(e) => setMyWaNumber(e.target.value)}
-                            placeholder="+27 82 123 4567"
-                            className="flex-1 px-3 py-2 bg-primary border border-primary rounded-lg paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:border-brand-solid"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSaveSubscription}
-                            disabled={savingSubscription || !myWaNumber.trim()}
-                            className="px-3 py-2 border border-primary rounded-lg paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
-                          >
-                            {savingSubscription
-                              ? 'Saving…'
-                              : subscriptionSaved
-                                ? 'Saved'
-                                : 'Save number'}
-                          </button>
-                        </div>
-                      )}
-                      {alertSettingsError && (
-                        <p className="paragraph-xs text-error px-3 pb-3">{alertSettingsError}</p>
-                      )}
-                    </div>
-                  ) : undefined
-                }
               />
             </Suspense>
           </div>
@@ -916,6 +856,53 @@ export const WorkspaceSettingsDetail = ({
                             refreshKey={featuresVersion}
                           />
                         ) : null
+                      }
+                      whatsappMessagesSlot={
+                        <div className="border-t border-tertiary pt-2 mt-1">
+                                              <div className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="paragraph-sm text-primary">Messages from Mia</p>
+                            <p className="paragraph-xs text-quaternary">
+                              {alertSettings?.whatsapp_alerts_enabled
+                                ? 'On · Mia messages you when something needs you'
+                                : 'Off · Mia can message you when something needs you'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = !alertSettings?.whatsapp_alerts_enabled
+                              void handleToggleWorkspaceAlerts(next)
+                              setMySubscribed(next)
+                            }}
+                            disabled={togglingWorkspace || !alertSettings}
+                            aria-label="Toggle WhatsApp messages"
+                            className={`relative shrink-0 w-9 h-5 rounded-full transition-colors disabled:opacity-50 ${
+                              alertSettings?.whatsapp_alerts_enabled
+                                ? 'bg-utility-success-600'
+                                : 'bg-quaternary'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                alertSettings?.whatsapp_alerts_enabled ? 'translate-x-4' : ''
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        {alertSettingsError && (
+                          <p className="paragraph-xs text-error">{alertSettingsError}</p>
+                        )}
+                        </div>
+                      }
+                      miaStyleSection={
+                        <Suspense fallback={<TabFallback />}>
+                          <MiaStyleTab
+                            sessionId={sessionId}
+                            tenantId={workspace.tenant_id}
+                            canManage={canManage}
+                          />
+                        </Suspense>
                       }
                       onDelete={onOpenDeleteModal}
                     />

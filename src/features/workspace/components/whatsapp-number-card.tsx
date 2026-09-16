@@ -26,7 +26,15 @@ const field =
  * Any member of the workspace can add their own (D1); only owners and admins can schedule
  * what comes back (D16), which the flow itself enforces, not this form.
  */
-export const WhatsAppNumberCard = ({ sessionId }: { sessionId: string | null }) => {
+export const WhatsAppNumberCard = ({
+  sessionId,
+  messagesSlot,
+}: {
+  sessionId: string | null
+  /** The workspace-level "may Mia message you" switch. Rendered here so WhatsApp is one
+   *  place: your number coming in, Mia's messages going out. */
+  messagesSlot?: React.ReactNode
+}) => {
   const [state, setState] = useState<WhatsAppNumberState | null>(null)
   const [number, setNumber] = useState('')
   const [code, setCode] = useState('')
@@ -99,8 +107,9 @@ export const WhatsAppNumberCard = ({ sessionId }: { sessionId: string | null }) 
     return (
       <Shell>
         <p className="paragraph-xs text-quaternary">
-          WhatsApp is not switched on for this workspace yet.
+          Sending photos to Mia is not switched on for this workspace yet.
         </p>
+        {messagesSlot}
       </Shell>
     )
   }
@@ -172,6 +181,7 @@ export const WhatsAppNumberCard = ({ sessionId }: { sessionId: string | null }) 
 
       {notice && <p className="paragraph-xs text-quaternary">{notice}</p>}
       {error && <p className="paragraph-xs text-error-primary">{error}</p>}
+      {messagesSlot}
     </Shell>
   )
 }
