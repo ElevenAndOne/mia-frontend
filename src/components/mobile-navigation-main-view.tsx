@@ -89,13 +89,14 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {isFeatureEnabled('integrations') && (
+        {/* Basic reaches Connections from Workspace settings — see app-sidebar. */}
+        {isFeatureEnabled('integrations') && !isBasic && (
           <button
             onClick={onIntegrationsClick}
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Globe01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">{isBasic ? 'Connections' : 'Integrations'}</span>
+            <span className="paragraph-sm">Integrations</span>
           </button>
         )}
 

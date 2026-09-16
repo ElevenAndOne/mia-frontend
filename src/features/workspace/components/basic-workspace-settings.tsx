@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { Edit03 } from '../../../components/icon/edit-03'
+import { Globe01 } from '../../../components/icon/globe-01'
 import { Image01 } from '../../../components/icon/image-01'
 import { Stars01 } from '../../../components/icon/stars-01'
 import { Trash01 } from '../../../components/icon/trash-01'
@@ -23,6 +24,9 @@ interface BasicWorkspaceSettingsProps {
   logoError: string | null
   onUploadLogo: (file: File) => void
   onRemoveLogo: () => void
+  /** Platform keys already connected, for the Connections row. */
+  connectedPlatforms: string[]
+  onOpenConnections: () => void
   experience: Experience
   savingExperience: boolean
   onChangeExperience: (exp: Experience) => void
@@ -88,6 +92,8 @@ export function BasicWorkspaceSettings({
   onUploadLogo,
   onRemoveLogo,
   experience,
+  connectedPlatforms,
+  onOpenConnections,
   savingExperience,
   onChangeExperience,
   featuresPanel,
@@ -163,8 +169,30 @@ export function BasicWorkspaceSettings({
         </Row>
       </Group>
 
-      <Group label="How Mia shows up">
+      {/* Connections left the sidebar: on Basic they are set up once and then only
+          revisited when something breaks, which is a settings job, not a nav slot. */}
+      <Group label="Connections">
+        <Row
+          icon={<Globe01 size={16} />}
+          title="Facebook and Instagram"
+          sub={
+            connectedPlatforms.length
+              ? `${connectedPlatforms.length} connected`
+              : 'Nothing connected yet — Mia needs these to read and post'
+          }
+        >
+          <button type="button" onClick={onOpenConnections} className={ghost}>
+            {connectedPlatforms.length ? 'Manage' : 'Connect'}
+          </button>
+        </Row>
         <WhatsAppNumberCard sessionId={sessionId} messagesSlot={whatsappMessagesSlot} />
+      </Group>
+
+      {miaStyleSection}
+
+      {/* Which experience this workspace gets, and the switches under it. Down here
+          because it is the one group a client never needs and 11&1 occasionally does. */}
+      <Group label="Advanced">
         <Row icon={<Stars01 size={16} />} title="Experience">
           <div className="flex rounded-lg border border-primary overflow-hidden">
             {EXPERIENCES.map((exp) => (
@@ -194,8 +222,6 @@ export function BasicWorkspaceSettings({
           </CollapsibleSection>
         )}
       </Group>
-
-      {miaStyleSection}
 
       {isOwner && (
         <Group>

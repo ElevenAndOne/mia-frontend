@@ -1,5 +1,5 @@
 import { Suspense, lazy, useRef, useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Image01 } from '../../../components/icon/image-01'
 import { Plus } from '../../../components/icon/plus'
 import { Spinner } from '../../../components/spinner'
@@ -165,6 +165,7 @@ export const WorkspaceSettingsDetail = ({
 }: WorkspaceSettingsDetailProps) => {
   // Non-managers (analyst/viewer) get a read-only view limited to the guide tabs.
   // Basic keeps Settings short: Workspace · Brand Guide · Brand Kit · WhatsApp · Mia.
+  const navigate = useNavigate()
   const { isBasic } = useExperience()
   const { theme, setTheme } = useTheme()
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
@@ -845,6 +846,8 @@ export const WorkspaceSettingsDetail = ({
                         setWebsiteUrlInput(url)
                       }}
                       onOpenBrand={() => selectTab('brand')}
+                      connectedPlatforms={workspace.connected_platforms ?? []}
+                      onOpenConnections={() => navigate('/integrations')}
                       onRename={onOpenRenameModal}
                       logoUrl={logoUrl}
                       uploadingLogo={uploadingLogo}

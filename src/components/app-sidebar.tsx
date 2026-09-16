@@ -208,10 +208,12 @@ export const AppSidebar = () => {
               onClick={() => actions.onNewWorkspace()}
             />
           )}
-          {isFeatureEnabled('integrations') && (
+          {/* Basic reaches Connections from Workspace settings. They are set up once and
+              then only revisited when something breaks, which does not earn a nav slot. */}
+          {isFeatureEnabled('integrations') && !isBasic && (
             <NavItem
               icon={<Globe01 size={18} />}
-              label={isBasic ? 'Connections' : 'Integrations'}
+              label="Integrations"
               collapsed={collapsed}
               active={activeKey === 'integrations'}
               onClick={actions.onIntegrationsClick}
