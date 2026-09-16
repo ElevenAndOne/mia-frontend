@@ -26,6 +26,13 @@ const SkillLearningPage = lazy(() =>
 const NotesPanel = lazy(() =>
   import('../../notes/components/notes-panel').then((m) => ({ default: m.NotesPanel }))
 )
+/**
+ * Last-seen alert settings per workspace. Without this the WhatsApp switch renders "Off"
+ * for a moment on every visit — including for workspaces where it is On — because the
+ * fetch starts from null. A wrong answer shown confidently is worse than a spinner.
+ */
+const ALERTS_CACHE = new Map<string, WorkspaceAlertSettings>()
+
 const MiaStyleTab = lazy(() => import('./mia-style-tab').then((m) => ({ default: m.MiaStyleTab })))
 
 const TabFallback = () => (
@@ -323,7 +330,9 @@ export const WorkspaceSettingsDetail = ({
   }
 
   // WhatsApp alerts tab state
-  const [alertSettings, setAlertSettings] = useState<WorkspaceAlertSettings | null>(null)
+  const [alertSettings, setAlertSettings] = useState<WorkspaceAlertSettings | null>(
+    () => ALERTS_CACHE.get(workspace.tenant_id) ?? null
+  )
   const [alertSettingsLoading, setAlertSettingsLoading] = useState(false)
   const [alertSettingsError, setAlertSettingsError] = useState<string | null>(null)
   const [myWaNumber, setMyWaNumber] = useState('')
@@ -342,6 +351,7 @@ export const WorkspaceSettingsDetail = ({
     setAlertSettingsError(null)
     fetchWorkspaceAlertSettings(sessionId, workspace.tenant_id)
       .then((s) => {
+        ALERTS_CACHE.set(workspace.tenant_id, s)
         setAlertSettings(s)
         const me = s.members.find((m) => m.is_current_user)
         if (me) {
@@ -355,13 +365,20 @@ export const WorkspaceSettingsDetail = ({
       })
   }
 
+  // One fetch per workspace per mount. Tracked in a ref rather than by reading
+  // alertSettings in the deps: the effect writes that state, so depending on it would
+  // re-run the effect on its own result, forever.
+  const alertsFetchedFor = useRef<string | null>(null)
   useEffect(() => {
-    // Basic shows WhatsApp under the Mia tab as "Messages".
+    // Basic shows WhatsApp on the Workspace tab; Team and Agency have their own tab.
     const wantsAlerts = activeTab === 'whatsapp' || (activeTab === 'members' && isBasic)
-    if (!wantsAlerts || alertSettings) return
-    loadAlertSettings(true)
+    if (!wantsAlerts || !sessionId) return
+    if (alertsFetchedFor.current === workspace.tenant_id) return
+    alertsFetchedFor.current = workspace.tenant_id
+    // With a cached value already on screen, refresh behind it; otherwise show the spinner.
+    loadAlertSettings(!ALERTS_CACHE.has(workspace.tenant_id))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAlertSettings is not memoised
-  }, [activeTab, sessionId, workspace.tenant_id, alertSettings, isBasic])
+  }, [activeTab, sessionId, workspace.tenant_id, isBasic])
 
   const handleToggleWorkspaceAlerts = async (enabled: boolean) => {
     if (!sessionId || togglingWorkspace) return

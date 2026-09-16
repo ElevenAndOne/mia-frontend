@@ -72,6 +72,14 @@ function useGoogleFonts(names: Array<string | null | undefined>) {
  * fine), and a compact board on the home canvas's paper showing what she found — colours,
  * fonts, logo, voice — in the site's own faces. Prices, awards and events live under Brand.
  */
+/**
+ * The last website read per workspace. "What Mia found" — the colours, fonts and counts —
+ * rebuilt itself from scratch on every visit to Workspace settings, which made a page of
+ * saved settings look like it was still thinking. Painted from here immediately, then
+ * refreshed behind.
+ */
+const CONTEXT_CACHE = new Map<string, { scan: WebsiteScan | null; facts: WebsiteFacts | null }>()
+
 export const WebsiteReadCard = ({
   sessionId,
   tenantId,
@@ -83,9 +91,13 @@ export const WebsiteReadCard = ({
   const { showToast } = useToast()
   const [input, setInput] = useState(websiteUrl)
   const [editing, setEditing] = useState(!websiteUrl)
-  const [scan, setScan] = useState<WebsiteScan | null>(null)
-  const [facts, setFacts] = useState<WebsiteFacts | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [scan, setScan] = useState<WebsiteScan | null>(
+    () => CONTEXT_CACHE.get(tenantId)?.scan ?? null
+  )
+  const [facts, setFacts] = useState<WebsiteFacts | null>(
+    () => CONTEXT_CACHE.get(tenantId)?.facts ?? null
+  )
+  const [loading, setLoading] = useState(() => !CONTEXT_CACHE.has(tenantId))
   const [reading, setReading] = useState(false)
   const [step, setStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -108,6 +120,7 @@ export const WebsiteReadCard = ({
         }
         const ws = ctx?.website_scan ?? null
         if (!ws || ws.status === 'reading') continue
+        CONTEXT_CACHE.set(tenantId, { scan: ws, facts: ctx?.website_facts ?? null })
         setScan(ws)
         setFacts(ctx?.website_facts ?? null)
         setReading(false)
@@ -136,6 +149,7 @@ export const WebsiteReadCard = ({
       .then((ctx) => {
         if (!cancelled) {
           const ws = ctx?.website_scan ?? null
+          CONTEXT_CACHE.set(tenantId, { scan: ws, facts: ctx?.website_facts ?? null })
           setScan(ws)
           setFacts(ctx?.website_facts ?? null)
           if (ws?.status === 'reading') {

@@ -28,6 +28,7 @@ import TikTokOrganicAccountSelector from './selectors/tiktok-organic-account-sel
 import AirtableBaseSelector from './selectors/airtable-base-selector'
 import PlatformGearMenu from './views/platform-gear-menu'
 import CsvDatasetsCard from './views/csv-datasets-card'
+import type { Crumb } from '../../components/breadcrumbs'
 import { TopBar } from '../../components/top-bar'
 import { Skeleton, SkeletonRows } from '../../components/skeleton'
 import { ConfirmDialog } from '../../components/confirm-dialog'
@@ -76,7 +77,16 @@ const BASIC_CONNECTIONS: Array<{ id: string; title: string; unlocks: string; pag
   },
 ]
 
-const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
+const IntegrationsPage = ({
+  onBack,
+  breadcrumbs,
+}: {
+  onBack: () => void
+  /** Where "up" goes. Basic reaches Connections from Workspace settings and has no nav
+   *  entry to return by, so the trail has to say so — the back arrow was removed app-wide
+   *  and breadcrumbs are the only way out. */
+  breadcrumbs?: Crumb[]
+}) => {
   const navigate = useNavigate()
   const { sessionId, selectedAccount, refreshAccounts, activeWorkspace, refreshWorkspaces } =
     useSession()
@@ -1423,6 +1433,7 @@ const IntegrationsPage = ({ onBack }: { onBack: () => void }) => {
         {/* Header */}
         <TopBar
           title={isBasic ? 'Connections' : 'Integrations'}
+          breadcrumbs={breadcrumbs}
           onBack={onBack}
           className="border-b border-tertiary"
         />
