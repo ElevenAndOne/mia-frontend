@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { WorkspaceSettingsDetail } from '../features/workspace/components/workspace-settings-detail'
 import { WorkspaceSettingsOverview } from '../features/workspace/components/workspace-settings-overview'
+import { useExperience } from '../features/workspace/hooks/use-experience'
 import { useWorkspaceSettingsPage } from '../features/workspace/hooks/use-workspace-settings-page'
 
 const WorkspaceSettingsPage = () => {
@@ -54,6 +55,11 @@ const WorkspaceSettingsPage = () => {
   } = useWorkspaceSettingsPage()
 
   const handleBack = () => navigate(-1)
+  // Basic opens straight on its only workspace, so "back" has no overview to return to —
+  // deselecting just re-selects on the next render and the arrow appears to do nothing.
+  // Leaving Settings is what back means here.
+  const { isBasic } = useExperience()
+  const backFromDetail = isBasic ? () => navigate('/home') : handleBackToOverview
 
   return (
     <>
@@ -79,7 +85,7 @@ const WorkspaceSettingsPage = () => {
           error={error}
           loading={loading}
           people={unifiedPeople}
-          onBack={handleBackToOverview}
+          onBack={backFromDetail}
           showCreateInviteModal={showCreateInviteModal}
           createdInviteLink={createdInviteLink}
           createdInviteEmail={createdInviteEmail}
