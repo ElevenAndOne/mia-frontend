@@ -29,11 +29,22 @@ const field =
 export const WhatsAppNumberCard = ({
   sessionId,
   messagesSlot,
+  mode = 'full',
 }: {
   sessionId: string | null
   /** The workspace-level "may Mia message you" switch. Rendered here so WhatsApp is one
    *  place: your number coming in, Mia's messages going out. */
   messagesSlot?: React.ReactNode
+  /**
+   * `full` — this card owns the number (Basic, where it is the only WhatsApp field).
+   *
+   * `confirm` — the number is owned by the alerts form beside it; this card only adds
+   * proof. Team and Agency have received alerts on unverified numbers for years, and
+   * alerts are outbound only so they never needed proof. Demanding a code to receive an
+   * alert would sign out every existing subscriber — so confirming is an extra step on a
+   * number they already saved, never a gate in front of it.
+   */
+  mode?: 'full' | 'confirm'
 }) => {
   const [state, setState] = useState<WhatsAppNumberState | null>(null)
   const [number, setNumber] = useState('')
@@ -73,11 +84,12 @@ export const WhatsAppNumberCard = ({
   const sendCode = () =>
     run(async () => {
       if (!sessionId) return
-      const res = await startWhatsAppVerification(sessionId, number)
+      const target = mode === 'confirm' ? state?.whatsapp_number || number : number
+      const res = await startWhatsAppVerification(sessionId, target)
       setNotice(
         res.delivered
-          ? `Code sent to ${number}. It expires in 10 minutes.`
-          : `Code created for ${number}, but WhatsApp could not deliver it yet.`
+          ? `Code sent to ${target}. It expires in 10 minutes.`
+          : `Code created for ${target}, but WhatsApp could not deliver it yet.`
       )
       setCode('')
       await load()
@@ -105,7 +117,7 @@ export const WhatsAppNumberCard = ({
   // Not on the pilot allowlist yet. A plain statement beats an input that would 403.
   if (state?.unavailable) {
     return (
-      <Shell>
+      <Shell mode={mode}>
         <p className="paragraph-xs text-quaternary">
           Sending photos to Mia is not switched on for this workspace yet.
         </p>
@@ -115,7 +127,7 @@ export const WhatsAppNumberCard = ({
   }
 
   return (
-    <Shell>
+    <Shell mode={mode}>
       {state?.verified ? (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="paragraph-sm text-primary">{state.whatsapp_number}</span>
@@ -157,6 +169,25 @@ export const WhatsAppNumberCard = ({
             Send a new code
           </button>
         </div>
+      ) : mode === 'confirm' ? (
+        state?.whatsapp_number ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="paragraph-sm text-primary">{state.whatsapp_number}</span>
+            <span className="paragraph-xs text-quaternary">· not confirmed yet</span>
+            <button
+              type="button"
+              onClick={sendCode}
+              disabled={busy}
+              className={`${solid} ml-auto`}
+            >
+              Confirm this number
+            </button>
+          </div>
+        ) : (
+          <p className="paragraph-xs text-quaternary">
+            Save your number above, then confirm it here to send Mia photos.
+          </p>
+        )
       ) : (
         <div className="flex gap-2">
           <input
@@ -186,16 +217,26 @@ export const WhatsAppNumberCard = ({
   )
 }
 
-const Shell = ({ children }: { children: React.ReactNode }) => (
+const Shell = ({
+  children,
+  mode = 'full',
+}: {
+  children: React.ReactNode
+  mode?: 'full' | 'confirm'
+}) => (
   <div className="flex items-start gap-3 px-3 py-3">
     <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 text-secondary">
       <MessageChatSquare size={16} />
     </div>
     <div className="min-w-0 flex-1 flex flex-col gap-2">
       <div>
-        <p className="subheading-md text-primary">WhatsApp</p>
+        <p className="subheading-md text-primary">
+          {mode === 'confirm' ? 'Send Mia photos' : 'WhatsApp'}
+        </p>
         <p className="paragraph-xs text-quaternary">
-          Send Mia a photo and she'll draft posts from it. Everyone here can add their own number.
+          {mode === 'confirm'
+            ? 'Confirm your number and you can send Mia a photo on WhatsApp — she drafts posts from it.'
+            : "Send Mia a photo and she'll draft posts from it. Everyone here can add their own number."}
         </p>
       </div>
       {children}

@@ -57,6 +57,7 @@ import { FeatureFlagsPanel } from './feature-flags-panel'
 import { WebsiteReadCard } from './website-read-card'
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { BasicWorkspaceSettings } from './basic-workspace-settings'
+import { WhatsAppNumberCard } from './whatsapp-number-card'
 import { BrandFactsSection } from './brand-facts-section'
 import {
   SegmentedControl,
@@ -631,6 +632,14 @@ export const WorkspaceSettingsDetail = ({
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Proving the number, for the photo flow. Separate from the alerts
+                      controls above on purpose: alerts are outbound and have never needed
+                      proof, so confirming is an extra step on a number already saved,
+                      never a gate in front of receiving alerts. */}
+                  <div className="p-4 bg-secondary rounded-xl border border-tertiary">
+                    <WhatsAppNumberCard sessionId={sessionId} mode="confirm" />
                   </div>
 
                   {/* Member overview (admin/owner only) */}
