@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/button'
+import { TopBar } from '../../components/top-bar'
 import { Edit03 } from '../../components/icon/edit-03'
 import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
@@ -436,19 +437,24 @@ const PostsView = () => {
   const openPost = posts?.find((p) => p.post_id === openPostId) ?? null
 
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <h1 className="paragraph-lg font-semibold text-primary">Posts</h1>
-            <p className="paragraph-xs text-quaternary">
-              {posts === null
-                ? 'Loading…'
-                : `${posts.length} post${posts.length === 1 ? '' : 's'}${scheduledCount ? ` · ${scheduledCount} scheduled` : ''}`}
-            </p>
-          </div>
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {/* Posts was the one page still wearing its own header — no trail, no way back
+          except the sidebar. Same TopBar as everywhere else. */}
+      <TopBar
+        title="Posts"
+        onBack={() => navigate('/home')}
+        className="border-b border-tertiary"
+        rightSlot={
           <Button onClick={() => navigate('/home', { state: { newChat: true } })}>New post</Button>
-        </div>
+        }
+      />
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 flex flex-col gap-4">
+          <p className="paragraph-xs text-quaternary">
+            {posts === null
+              ? 'Loading…'
+              : `${posts.length} post${posts.length === 1 ? '' : 's'}${scheduledCount ? ` · ${scheduledCount} scheduled` : ''}`}
+          </p>
 
         {error && (
           <div className="flex items-center gap-3">
@@ -492,6 +498,7 @@ const PostsView = () => {
               onRemoved={onRemoved}
             />
           ))}
+        </div>
       </div>
 
       {openPost && (

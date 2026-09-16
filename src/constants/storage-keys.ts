@@ -36,6 +36,8 @@ export const StorageKey = {
 
   // UI state
   INTEGRATION_PROMPT_VISIT_COUNT: 'mia_integration_prompt_visit_count',
+  /** {key, until} — which set of missing platforms was dismissed, and until when. */
+  INTEGRATION_PROMPT_SNOOZE: 'mia_integration_prompt_snooze',
   CONFIG_GUIDANCE_VISIT_COUNT: 'mia_config_guidance_visit_count',
   INTEGRATION_HIGHLIGHT: 'mia_integration_highlight',
   KNOWN_CONNECTED_PLATFORMS: 'mia_known_connected_platforms',

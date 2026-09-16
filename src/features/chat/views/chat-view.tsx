@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ChatLayout from '../components/chat-layout'
+
+/** How long "Not now" lasts. Long enough to be an answer, short enough that a workspace
+ *  still missing its data hears about it again. */
+const PROMPT_SNOOZE_DAYS = 7
 import { BackButton } from '../../../components/back-button'
 import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
@@ -278,34 +282,55 @@ export const ChatView = ({
     setCanvasUnseen(false)
   }, [docCount, isMobile])
 
-  // Throttle: only show the integration prompt every 5th chat page visit
-  const [shouldShowPromptThisVisit] = useState(() => {
-    const count =
-      parseInt(localStorage.getItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT) || '0', 10) + 1
-    localStorage.setItem(StorageKey.INTEGRATION_PROMPT_VISIT_COUNT, String(count))
-    return count % 5 === 1 // Show on 1st, 6th, 11th visit...
-  })
-
-  // Reset dismissal when missing platforms change
   const missingKey = integrationPrompt?.missingPlatformIds.join('|') ?? ''
-  useEffect(() => {
-    if (!integrationPrompt) return
-    setPromptDismissed(false)
-  }, [missingKey, integrationPrompt])
 
-  const showIntegrationPrompt =
-    Boolean(integrationPrompt) && !promptDismissed && shouldShowPromptThisVisit
+  // Closing it has to mean something. It used to be counted in visits — but a "visit" is a
+  // mount of this view, and moving between Home and Settings remounts it, so the every-5th
+  // rule came round in a minute. Dismissal is now a real snooze, stored against the exact
+  // set of platforms that were missing: connect one and the set changes, so Mia is allowed
+  // to mention what is still missing.
+  const readSnooze = (): { key: string; until: number } | null => {
+    try {
+      const raw = localStorage.getItem(StorageKey.INTEGRATION_PROMPT_SNOOZE)
+      return raw ? (JSON.parse(raw) as { key: string; until: number }) : null
+    } catch {
+      return null
+    }
+  }
+  const [promptSnooze, setPromptSnooze] = useState(readSnooze)
+  const snoozed = !!promptSnooze && promptSnooze.key === missingKey && promptSnooze.until > Date.now()
+
+  const snoozePrompt = () => {
+    const next = { key: missingKey, until: Date.now() + PROMPT_SNOOZE_DAYS * 86400_000 }
+    try {
+      localStorage.setItem(StorageKey.INTEGRATION_PROMPT_SNOOZE, JSON.stringify(next))
+    } catch {
+      /* private mode — the in-memory state below still holds for this session */
+    }
+    setPromptSnooze(next)
+    setPromptDismissed(true)
+  }
+
+  // Reset the in-session dismissal when the missing set changes. Depends on the KEY
+  // alone: integrationPrompt is rebuilt whenever connectedPlatforms is a fresh array,
+  // so having the object in here re-ran this every render and un-dismissed the dialog
+  // the instant it was closed.
+  useEffect(() => {
+    setPromptDismissed(false)
+  }, [missingKey])
+
+  const showIntegrationPrompt = Boolean(integrationPrompt) && !promptDismissed && !snoozed
 
   const handleIntegrationPromptAction = () => {
     if (integrationPrompt) {
       setIntegrationHighlight(integrationPrompt.missingPlatformIds, activeWorkspace?.tenant_id)
     }
-    setPromptDismissed(true)
+    snoozePrompt()
     onIntegrationsClick?.()
   }
 
   const handleIntegrationPromptClose = () => {
-    setPromptDismissed(true)
+    snoozePrompt()
   }
 
   // One prop set for both canvas hosts (desktop side pane / mobile sheet) — only

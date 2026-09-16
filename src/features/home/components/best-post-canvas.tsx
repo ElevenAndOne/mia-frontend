@@ -90,13 +90,22 @@ export const BestPostCanvas = ({
       )}
 
       <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full' : 'max-w-[26.875rem]'}`}>
-        {/* stamp — the Figma sticker */}
-        <img
-          src="/images/stickers/sticker-top-performer.png"
-          alt="Top performer"
-          className="-ml-1 w-[9.125rem] -rotate-[8deg] select-none"
-          draggable={false}
-        />
+        {/* stamp — the Figma sticker. The wrapper owns the rotation and the shine so the
+            highlight can be masked to the sticker's own shape (see .mia-sticker). */}
+        <span
+          className="mia-sticker -ml-1 w-[9.125rem] select-none"
+          style={
+            {
+              '--mia-sticker-src': "url('/images/stickers/sticker-top-performer.png')",
+            } as React.CSSProperties
+          }
+        >
+          <img
+            src="/images/stickers/sticker-top-performer.png"
+            alt="Top performer"
+            draggable={false}
+          />
+        </span>
 
         <p className="mia-mono font-normal text-paper-ink">
           This post outperformed your usual by{' '}

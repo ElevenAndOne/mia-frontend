@@ -113,17 +113,23 @@
   }
 }
 
-/* UI scale — see docs: the layout is drawn for ~1920 CSS px. 100vw / 120 = 16px at 1920,
-   12.8px (80%) at 1536 (a 1080p Windows laptop at 125%), never below 80% or above 100%.
-   Everything rem-based (Tailwind spacing, type, radii) follows; phones stay at 16px. */
+/* UI scale — the browser's own default, deliberately not overridden.
+ *
+ * This used to be 13px on desktop, tuned so the app looked right on a 1080p Windows laptop
+ * running at 125% OS scaling: 13 x 1.25 ~= 16. That cancels out one machine's settings and
+ * is therefore wrong on every other one — on Linux/Firefox at 100%, where nothing is
+ * scaling, 13px is simply 19% smaller than the design.
+ *
+ * And it WAS the design: the Basic canvas specifies a 232px sidebar and a 640px content
+ * column, which are exactly the 14.5rem and 40rem this app already uses — at a 16px root.
+ * The override quietly shrank every screen away from the file it was drawn from.
+ *
+ * OS scaling, browser zoom and a reader's own minimum font size are all the user's
+ * controls, and they already work. An app that pre-empts them can only be right on the one
+ * machine it was measured on. Nearly everything here is rem-based (375 rem values against
+ * 16 px ones), so the root size is the single scale knob and it belongs to the reader. */
 html {
-  /* Fixed, not viewport-based: tying it to width cancelled browser zoom between 80–100%. */
-  font-size: 13px;
-}
-@media (max-width: 767px) {
-  html {
-    font-size: 16px;
-  }
+  font-size: 100%;
 }
 
 html,
@@ -527,3 +533,76 @@ body.full-bleed #root {
 .brand-paper-tile { background: #ffffff; border: 1px solid rgba(4, 11, 29, 0.12); }
 .brand-paper-eyebrow { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: #4f5a63; }
 .brand-paper-label { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.56rem; letter-spacing: 0.02em; color: #4f5a63; }
+
+/* ---------------------------------------------------------------------------
+   Top-performer sticker — a little life on the canvas.
+
+   The sticker is a PNG, so the shine is an overlay MASKED BY THE STICKER ITSELF:
+   without the mask a rectangle of light sweeps across the paper around it, which
+   reads as a rendering bug rather than a stamp catching the light.
+
+   Timing is deliberately lazy — one 1.4s pass every 9 seconds, plus a barely-there
+   settle in the rotation. Something that shimmers constantly stops being a detail
+   and becomes a distraction on a page people are meant to read.
+   --------------------------------------------------------------------------- */
+.mia-sticker {
+  position: relative;
+  display: inline-block;
+  transform: rotate(-8deg);
+  animation: mia-sticker-settle 9s ease-in-out infinite;
+  will-change: transform;
+}
+.mia-sticker > img {
+  display: block;
+  width: 100%;
+}
+.mia-sticker::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.72) 50%,
+    transparent 62%
+  );
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  -webkit-mask-image: var(--mia-sticker-src);
+  mask-image: var(--mia-sticker-src);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  animation: mia-sticker-shine 9s ease-in-out infinite;
+}
+
+@keyframes mia-sticker-shine {
+  0%,
+  84% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -80% 0;
+  }
+}
+
+@keyframes mia-sticker-settle {
+  0%,
+  80%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  88% {
+    transform: rotate(-6.8deg) translateY(-1px);
+  }
+  94% {
+    transform: rotate(-8.4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mia-sticker,
+  .mia-sticker::after {
+    animation: none;
+  }
+}
