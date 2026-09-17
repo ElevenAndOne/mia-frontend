@@ -34,6 +34,8 @@ const SchedulerPage = lazy(() => import('../pages/scheduler-page'))
 const PostsPage = lazy(() => import('../pages/posts-page'))
 const ReportsPage = lazy(() => import('../pages/reports-page'))
 const ReportPrintPage = lazy(() => import('../features/reports/report-print-page'))
+const PostCardPage = lazy(() => import('../features/posts/post-card-page'))
+const DraftsShortLink = lazy(() => import('../features/posts/drafts-short-link'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const MemoPage = lazy(() => import('../pages/memo-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
@@ -125,6 +127,11 @@ export const AppRoutes = ({
         />
 
         {/* Legacy /dashboard route — redirects to /home */}
+        {/* Short link from WhatsApp. The id travels in a chat message, so the URL has to fit
+            on one line — WhatsApp wraps a long one and linkifies its trailing digits as a
+            phone number, which breaks the link in half. This just redirects into the drafts
+            view, which is behind the usual auth. */}
+        <Route path="/p/:draftsId" element={<DraftsShortLink />} />
         <Route path="/dashboard" element={<Navigate to="/home" replace />} />
         {/* backward-compat redirects */}
         <Route path="/strategise" element={<Navigate to="/predict" replace />} />
@@ -379,6 +386,18 @@ export const AppRoutes = ({
           element={
             <ErrorBoundary>
               <ReportPrintPage />
+            </ErrorBoundary>
+          }
+        />
+
+        {/* Standalone card route for server-side (Playwright) rendering of ONE post as its
+            platform shows it — the picture Mia sends over WhatsApp. NOT protected:
+            authenticates via a signed, five-minute, single-document token. */}
+        <Route
+          path="/post-card"
+          element={
+            <ErrorBoundary>
+              <PostCardPage />
             </ErrorBoundary>
           }
         />

@@ -588,11 +588,11 @@ export const CanvasPane = ({
                 />
                 {/* Basic: the three things an owner does with a drafted post (Figma "post actions"). */}
                 {isBasic && doc.doc_type === 'social_post' && (
-                  <div className="mt-4 flex flex-wrap gap-2 mia-rise">
+                  <div className="mt-4 flex flex-wrap items-stretch gap-2 mia-rise">
                     <button
                       type="button"
                       onClick={() => setMode('edit')}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                      className="inline-flex flex-1 basis-32 items-center justify-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary whitespace-nowrap hover:bg-tertiary transition-colors"
                     >
                       <Edit03 size={15} />
                       Edit caption
@@ -614,7 +614,7 @@ export const CanvasPane = ({
                           type="button"
                           disabled={isUploadingMedia}
                           onClick={() => swapInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors disabled:opacity-50"
+                          className="inline-flex flex-1 basis-32 items-center justify-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary whitespace-nowrap hover:bg-tertiary transition-colors disabled:opacity-50"
                         >
                           {spec.media.length > 0 ? (
                             <SwitchHorizontal01 size={15} />
@@ -633,7 +633,7 @@ export const CanvasPane = ({
                       <button
                         type="button"
                         onClick={onTryAnotherIdea}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                        className="inline-flex flex-1 basis-32 items-center justify-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary whitespace-nowrap hover:bg-tertiary transition-colors"
                       >
                         <Lightbulb02 size={15} />
                         Try another idea

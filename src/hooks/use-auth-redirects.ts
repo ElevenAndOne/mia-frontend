@@ -11,6 +11,22 @@ interface UseAuthRedirectsParams {
   setShowCreateWorkspaceModal: (value: boolean) => void
 }
 
+/**
+ * Routes that authenticate themselves and must never be redirected.
+ *
+ * Each of these is opened by something that has no session and cannot get one: the backend's
+ * headless-Chromium renderer, or an invited user who has not signed up yet. They carry their
+ * own credential in the URL — a signed, short-lived, single-resource token — so the session
+ * checks below do not apply to them.
+ *
+ * Sending them to the landing page does not look like an auth failure. It looks like a
+ * renderer that hangs waiting for content that will never appear.
+ */
+const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card']
+
+const isStandalonePath = (path: string) =>
+  STANDALONE_PATHS.some((p) => path === p || path.startsWith(p))
+
 export const useAuthRedirects = ({
   justAcceptedInvite,
   setJustAcceptedInvite,
@@ -44,8 +60,8 @@ export const useAuthRedirects = ({
     const path = location.pathname
     logger.log('[AUTH-REDIRECT] Passed loading check - path:', path)
 
-    if (path.startsWith('/invite/')) {
-      logger.log('[AUTH-REDIRECT] On invite page - exiting early')
+    if (isStandalonePath(path)) {
+      logger.log('[AUTH-REDIRECT] Standalone route - exiting early:', path)
       return
     }
 
@@ -126,7 +142,7 @@ export const useAuthRedirects = ({
       }
     }
 
-    if (!isAnyAuthenticated && !path.startsWith('/invite/') && path !== '/') {
+    if (!isAnyAuthenticated && !isStandalonePath(path) && path !== '/') {
       navigate('/')
       return
     }
