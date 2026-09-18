@@ -90,6 +90,7 @@ export const ChatView = ({
     documents,
     addDocument,
     removeDocument,
+    addPastedText,
     activeCampaign,
     handleCampaignChange,
     canvas,
@@ -274,6 +275,7 @@ export const ChatView = ({
                 documents={documents}
                 onAddFile={addDocument}
                 onRemoveDocument={removeDocument}
+                onAddPastedText={addPastedText}
                 onTranscribeAudio={handleTranscribeAudio}
               />
             </>
@@ -426,6 +428,7 @@ export const ChatView = ({
                 documents={documents}
                 onAddFile={addDocument}
                 onRemoveDocument={removeDocument}
+                onAddPastedText={addPastedText}
                 onTranscribeAudio={handleTranscribeAudio}
               />
             </>

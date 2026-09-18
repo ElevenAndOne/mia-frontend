@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { ChatMarkdown } from '../../../components/chat-markdown'
 import { Check } from '../../../components/icon/check'
+import { FileAttachment01 } from '../../../components/icon/file-attachment-01'
 import { Copy01 } from '../../../components/icon/copy-01'
 import { useClipboard } from '../../../hooks/use-clipboard'
 import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
@@ -23,6 +24,8 @@ interface ChatMessageProps {
   /** Present only when the message has a persisted chat_history row to vote on. */
   onFeedback?: (feedback: 1 | -1) => void
   images?: string[]
+  /** Files/pastes sent with this message — rendered as pills under the user bubble. */
+  documents?: { filename: string }[]
   /** Creative generated during this turn — rendered as polling image cards. */
   imageJobs?: ChatImageJob[]
   /** Asset pinned thread-wide as the edit target. */
@@ -44,6 +47,7 @@ export const ChatMessage = memo(function ChatMessage({
   feedback = null,
   onFeedback,
   images = [],
+  documents = [],
   imageJobs,
   pinnedAssetId,
   onPinAsset,
@@ -77,6 +81,20 @@ export const ChatMessage = memo(function ChatMessage({
           <div className="bg-tertiary rounded-3xl px-4 py-3">
             <p className="paragraph-md text-primary whitespace-pre-wrap">{content}</p>
           </div>
+          {documents.length > 0 && (
+            <div className="flex gap-1.5 mt-1.5 justify-end flex-wrap">
+              {documents.map((doc, i) => (
+                <div
+                  key={`${doc.filename}-${i}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tertiary bg-quaternary max-w-[220px]"
+                  title={doc.filename}
+                >
+                  <FileAttachment01 size={13} className="text-tertiary shrink-0" />
+                  <span className="paragraph-xs text-secondary truncate">{doc.filename}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     )

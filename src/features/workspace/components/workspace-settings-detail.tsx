@@ -159,7 +159,7 @@ export const WorkspaceSettingsDetail = ({
   const [savingFramework, setSavingFramework] = useState(false)
 
   useEffect(() => {
-    if (!sessionId || !isOwner) return
+    if (!sessionId || !canManage) return
     fetchWorkspaceDetails(sessionId, workspace.tenant_id)
       .then((d) => {
         setWebsiteUrl(d.website_url || '')
@@ -167,7 +167,7 @@ export const WorkspaceSettingsDetail = ({
         setFramework(d.active_framework || 'race')
       })
       .catch(() => showToast('error', "Couldn't load your workspace settings. Please try again."))
-  }, [sessionId, workspace.tenant_id, isOwner, showToast])
+  }, [sessionId, workspace.tenant_id, canManage, showToast])
 
   const handleChangeFramework = async (next: 'race' | 'generic') => {
     if (!sessionId || savingFramework || next === framework) return
@@ -359,7 +359,7 @@ export const WorkspaceSettingsDetail = ({
                   : tab === 'campaigns'
                     ? 'Campaign Guides'
                     : tab === 'notes'
-                      ? 'Notes'
+                      ? 'Rules'
                       : tab === 'skills'
                         ? 'Skill Learning'
                         : tab === 'mia'
@@ -581,8 +581,8 @@ export const WorkspaceSettingsDetail = ({
               sessionId={sessionId}
               tenantId={workspace.tenant_id}
               scope="workspace"
-              title="Notes"
-              description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Notes tab."
+              title="Rules"
+              description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Setup → Rules."
               placeholder="Add a rule for every campaign… e.g. “Every caption ends with the 18+ / enjoy responsibly line.”"
             />
           </div>
@@ -641,8 +641,8 @@ export const WorkspaceSettingsDetail = ({
                 />
               )}
 
-              {/* Workspace Settings - Owner Only */}
-              {isOwner && (
+              {/* Workspace Settings - Owner and Admin */}
+              {canManage && (
                 <div className="mt-8 pt-6 border-t border-tertiary">
                   <h3 className="subheading-md text-primary mb-2">Workspace</h3>
 
@@ -730,7 +730,7 @@ export const WorkspaceSettingsDetail = ({
                           <button
                             key={fw}
                             onClick={() => handleChangeFramework(fw)}
-                            disabled={savingFramework || !isOwner}
+                            disabled={savingFramework || !canManage}
                             className={`px-3 py-1.5 paragraph-sm transition-colors disabled:opacity-50 ${
                               framework === fw
                                 ? 'bg-brand-solid text-primary-onbrand'

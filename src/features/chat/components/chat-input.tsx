@@ -38,6 +38,8 @@ interface ChatInputProps {
   documents?: AttachedDocument[]
   onAddFile?: (file: File) => Promise<void>
   onRemoveDocument?: (index: number) => void
+  /** Large pastes become a "Pasted text" attachment card instead of flooding the input. */
+  onAddPastedText?: (text: string) => void
   onTranscribeAudio?: (blob: Blob, mimeType: string) => Promise<string>
 }
 
@@ -48,6 +50,10 @@ type MicState = 'idle' | 'recording' | 'processing' | 'error'
 // through a canvas also normalizes the format — clipboard items frequently
 // report the wrong MIME type (e.g. image/jpeg for PNG data), which the API 400s.
 const MAX_IMAGE_EDGE = 1568
+
+// A paste at least this long becomes an attached "Pasted text" card (like Claude/ChatGPT)
+// instead of dumping a wall of text into the composer. Short pastes stay inline.
+const PASTE_TO_CARD_CHARS = 2000
 
 const resizeImageFile = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -95,6 +101,7 @@ export const ChatInput = ({
   documents = [],
   onAddFile,
   onRemoveDocument,
+  onAddPastedText,
   onTranscribeAudio,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('')
@@ -113,12 +120,19 @@ export const ChatInput = ({
   const dragDepthRef = useRef(0)
 
   const handleSubmit = () => {
-    if (message.trim() && !disabled) {
-      onSubmit(message.trim())
-      setMessage('')
-      if (inputRef.current) {
-        inputRef.current.style.height = 'auto'
-      }
+    if (disabled) return
+    const text = message.trim()
+    if (!text && images.length === 0 && documents.length === 0) return
+    // Attachment-only send: substitute a minimal factual message so the turn (and its
+    // Recent Chats title) still reads sensibly — the attachments carry the content.
+    const fallback =
+      documents.length > 0
+        ? `Attached: ${documents.map((d) => d.filename).join(', ')}`
+        : 'Attached image'
+    onSubmit(text || fallback)
+    setMessage('')
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
     }
   }
 
@@ -137,24 +151,33 @@ export const ChatInput = ({
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      if (!onAddImages) return
-      const imageItems = Array.from(e.clipboardData.items).filter((item) =>
-        item.type.startsWith('image/')
-      )
-      if (imageItems.length === 0) return
-      e.preventDefault()
-      const remaining = 10 - images.length
-      const files = imageItems
-        .slice(0, remaining)
-        .map((item) => item.getAsFile())
-        .filter((f): f is File => f !== null)
-      Promise.all(files.map(resizeImageFile))
-        .then((urls) => {
-          if (urls.length) onAddImages(urls)
-        })
-        .catch((err) => console.error('[chat-input] paste image error:', err))
+      const imageItems = onAddImages
+        ? Array.from(e.clipboardData.items).filter((item) => item.type.startsWith('image/'))
+        : []
+      if (imageItems.length > 0 && onAddImages) {
+        e.preventDefault()
+        const remaining = 10 - images.length
+        const files = imageItems
+          .slice(0, remaining)
+          .map((item) => item.getAsFile())
+          .filter((f): f is File => f !== null)
+        Promise.all(files.map(resizeImageFile))
+          .then((urls) => {
+            if (urls.length) onAddImages(urls)
+          })
+          .catch((err) => console.error('[chat-input] paste image error:', err))
+        return
+      }
+      // Large text paste → attachment card, keeping the composer usable for the actual ask.
+      if (onAddPastedText) {
+        const text = e.clipboardData.getData('text/plain')
+        if (text && text.length >= PASTE_TO_CARD_CHARS) {
+          e.preventDefault()
+          onAddPastedText(text)
+        }
+      }
     },
-    [images.length, onAddImages]
+    [images.length, onAddImages, onAddPastedText]
   )
 
   const handleFileChange = useCallback(
@@ -326,7 +349,7 @@ export const ChatInput = ({
 
   // FEB 2026: Removed auto-focus on mount - bad UX on mobile
 
-  const canSubmit = message.trim() && !disabled
+  const canSubmit = (message.trim() || images.length > 0 || documents.length > 0) && !disabled
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 md:pb-6">

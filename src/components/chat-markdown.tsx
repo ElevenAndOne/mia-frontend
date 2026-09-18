@@ -95,6 +95,12 @@ function reflowFlatTables(content: string): string {
     .join('\n')
 }
 
+// The model sometimes glues a thematic break straight onto a heading ("---## Meta Ads"),
+// which markdown renders as literal text. Split them back onto their own lines.
+function unglueDividerHeadings(content: string): string {
+  return content.replace(/^(-{3,})(#{1,6}\s)/gm, '$1\n\n$2')
+}
+
 const THINKING_HEADING = /^#{2,3}\s*campaign thinking\b.*$/im
 
 type Segment = { collapsible: boolean; text: string }
@@ -149,7 +155,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({
   content,
   className = '',
 }: ChatMarkdownProps) {
-  const segments = useMemo(() => splitThinking(reflowFlatTables(content)), [content])
+  const segments = useMemo(() => splitThinking(unglueDividerHeadings(reflowFlatTables(content))), [content])
   return (
     <div className={className}>
       {segments.map((seg, i) =>

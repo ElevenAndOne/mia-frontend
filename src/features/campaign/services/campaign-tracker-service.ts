@@ -134,6 +134,13 @@ export interface KPIActual {
   unit: string
   actual_value: number | null
   actual_label: string | null
+  // Provenance (absent on entries cached before Sep 2026):
+  // live = platform pipeline · snapshot = uploaded source doc · manual = human entry ·
+  // none = no source wired — render "Not tracked", not a dash
+  state?: 'live' | 'snapshot' | 'manual' | 'none'
+  as_of?: string | null
+  source_label?: string | null
+  scope_note?: string | null
 }
 
 // ---------------------------------------------------------------------------

@@ -187,6 +187,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
   const hashtagLines: string[] = []
 
   let inNotes = false
+  let seenContent = false
   let collectingVisuals = false
   let collectingMedia = false
   let collectingKeywords = false
@@ -195,6 +196,9 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
 
   for (const rawLine of lines) {
     if (HR_LINE.test(rawLine)) {
+      // A leading divider (before any real content) is template residue, not the
+      // copy/fields separator — skipping it keeps the caption as the copy section.
+      if (!seenContent) continue
       inNotes = true
       collectingVisuals = false
       collectingMedia = false
@@ -202,6 +206,8 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
       captionOpen = false
       continue
     }
+
+    if (rawLine.trim()) seenContent = true
 
     const labelMatch = rawLine.match(LABEL_LINE)
     const label = labelMatch ? labelMatch[1].trim().toLowerCase() : null

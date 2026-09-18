@@ -16,6 +16,7 @@ export interface FunnelPhase {
   primaryValue: string | null
   primaryLabel: string | null
   secondary: string | null
+  secondaryKpiName: string | null
   channels: { name: string; label: string; color: string }[]
 }
 
@@ -39,6 +40,7 @@ export function buildFunnel(campaign: CampaignDetail): FunnelPhase[] {
         primaryValue: k0?.target_value ?? null,
         primaryLabel: k0?.kpi_name ?? null,
         secondary: k1 ? `${k1.target_value ?? ''} ${k1.kpi_name}`.trim() : `${channels.length} channel${channels.length === 1 ? '' : 's'}`,
+        secondaryKpiName: k1?.kpi_name ?? null,
         channels,
       }
     })

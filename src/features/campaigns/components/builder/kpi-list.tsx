@@ -95,6 +95,31 @@ export const KpiList = ({
                     </button>
                   )}
                 </div>
+                {kpi.manual_actual != null && (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="shrink-0 px-1.5 py-0.5 rounded bg-utility-warning-100 text-utility-warning-700 label-xs"
+                      title="This value overrides live platform data in the tracker until cleared"
+                    >
+                      manual actual: {kpi.manual_actual.toLocaleString()}
+                      {kpi.manual_actual_updated_by ? ` · ${kpi.manual_actual_updated_by}` : ''}
+                      {kpi.manual_actual_updated_at
+                        ? ` · ${new Date(kpi.manual_actual_updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+                        : ''}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        setSavingId(kpi.kpi_id)
+                        try { await onPatchKpi(kpi.kpi_id, { clear_manual_actual: true }) } finally { setSavingId(null) }
+                      }}
+                      disabled={savingId === kpi.kpi_id}
+                      className="cursor-pointer label-xs text-utility-error-600 hover:text-utility-error-700 shrink-0 disabled:opacity-50"
+                      title="Remove the manual value — the tracker goes back to live platform data"
+                    >
+                      clear
+                    </button>
+                  </div>
+                )}
                 {showHs && (
                   <div className="flex items-center gap-2">
                     <select value={kpi.hubspot_list_name ?? ''} disabled={savingId === kpi.kpi_id} onChange={(e) => linkList(kpi.kpi_id, 'hubspot_list_name', e.target.value || null)} className={linkSelect}>

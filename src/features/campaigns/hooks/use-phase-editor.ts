@@ -52,9 +52,14 @@ export function usePhaseEditor(phaseId: string) {
 
   const patchKpi = useCallback(
     async (kpiId: number, fields: Partial<KPI>) => {
+      // clear_manual_actual is a write-only verb — locally it means "null the manual
+      // fields", not "store the flag", or the chip would linger until a reload.
+      const local: Partial<KPI> = fields.clear_manual_actual
+        ? { ...fields, clear_manual_actual: undefined, manual_actual: null, manual_actual_updated_at: null, manual_actual_updated_by: null }
+        : fields
       await commitPatch(
         () => api.patchKpi(sessionId, tenantId, id, kpiId, fields),
-        () => applyPhase((p) => ({ ...p, kpis: p.kpis.map((k) => (k.kpi_id === kpiId ? { ...k, ...fields } : k)) })),
+        () => applyPhase((p) => ({ ...p, kpis: p.kpis.map((k) => (k.kpi_id === kpiId ? { ...k, ...local } : k)) })),
         showToast,
       )
     },

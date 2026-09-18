@@ -11,6 +11,15 @@ export interface KPI {
   hubspot_list_name?: string | null
   brevo_list_name?: string | null
   sort_order?: number
+  // Generalised source binding ({provider, metric, ref}) — null = platform pipeline
+  kpi_source?: Record<string, unknown> | null
+  // Manual-actual provenance. A set manual_actual overrides live platform data in the
+  // tracker, so the builder must show it (chip + clear) — never invisible again.
+  manual_actual?: number | null
+  manual_actual_updated_at?: string | null
+  manual_actual_updated_by?: string | null
+  // Write-only patch verb (never returned by the API): true wipes the manual actual
+  clear_manual_actual?: boolean
 }
 
 export interface LinkedCampaign {
@@ -191,7 +200,9 @@ export interface CampaignSummary {
   end_date: string | null
 }
 
-export type CampaignView = 'overview' | 'calendar' | 'builder' | 'linked' | 'readiness' | 'notes'
+export type CampaignView = 'overview' | 'calendar' | 'builder' | 'setup'
+// Sub-sections of the Setup view — each deep-linkable (/campaigns/:id/setup/:section)
+export type SetupSection = 'measurement' | 'sources' | 'linked' | 'readiness' | 'rules'
 
 // ── ClickUp ────────────────────────────────────────────────────────────────
 

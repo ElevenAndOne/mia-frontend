@@ -211,6 +211,17 @@ export const AppRoutes = ({
               </ProtectedRoute>
             }
           />
+          {/* Setup sub-sections are deep-linkable: /campaigns/:id/setup/sources etc. */}
+          <Route
+            path="/campaigns/:campaignId/:view/:section"
+            element={
+              <ProtectedRoute requireAccount>
+                <ErrorBoundary>
+                  <CampaignWorkspacePage />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/predict"

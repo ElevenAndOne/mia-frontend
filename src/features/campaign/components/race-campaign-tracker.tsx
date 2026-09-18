@@ -78,7 +78,11 @@ function resolveDates(
 
 function formatActual(actual: KPIActual): string {
   if (actual.actual_label) return actual.actual_label
-  if (actual.actual_value === null || actual.actual_value === undefined) return '—'
+  if (actual.actual_value === null || actual.actual_value === undefined) {
+    // 'none' = nothing is wired to this KPI — say so instead of a dash that reads
+    // as "loading" or "zero" (state is absent on pre-Sep-2026 cached entries).
+    return actual.state === 'none' ? 'Not tracked' : '—'
+  }
   if (actual.unit === 'percent') return `${actual.actual_value.toFixed(1)}%`
   if (actual.actual_value >= 1000000) return `${(actual.actual_value / 1000000).toFixed(1)}M`
   if (actual.actual_value >= 1000) return `${(actual.actual_value / 1000).toFixed(1)}K`
@@ -96,6 +100,14 @@ function formatTarget(kpi: {
   if (kpi.target_numeric >= 1000000) return `${(kpi.target_numeric / 1000000).toFixed(1)}M`
   if (kpi.target_numeric >= 1000) return `${(kpi.target_numeric / 1000).toFixed(0)}K`
   return kpi.target_numeric.toLocaleString()
+}
+
+// Compact freshness label for snapshot/manual provenance, e.g. "1 Sep"
+function shortAsOf(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 function progressPercent(actual: KPIActual): number {
@@ -680,13 +692,36 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                       {hasActual && actual ? (
                         <>
                           <span
-                            className={`paragraph-xs font-medium ${metTarget ? 'text-utility-success-600' : 'text-primary'}`}
+                            className={`paragraph-xs font-medium ${actual.actual_value === null ? 'text-quaternary' : metTarget ? 'text-utility-success-600' : 'text-primary'}`}
+                            title={actual.scope_note ?? undefined}
                           >
                             {formatActual(actual)}
                           </span>
                           {overPct !== null && (
                             <span className="paragraph-xs text-utility-success-600 font-medium">
                               (+{overPct}%)
+                            </span>
+                          )}
+                          {/* Provenance — a manual or snapshot number must never look live */}
+                          {actual.state === 'manual' && (
+                            <span
+                              className="label-xs px-1 py-px rounded bg-utility-warning-100 text-utility-warning-700 shrink-0"
+                              title={`Manual entry${actual.source_label ? ` by ${actual.source_label}` : ''}${shortAsOf(actual.as_of) ? ` · ${shortAsOf(actual.as_of)}` : ''}`}
+                            >
+                              manual
+                            </span>
+                          )}
+                          {actual.state === 'snapshot' && actual.actual_value !== null && (
+                            <span
+                              className="paragraph-xs text-quaternary shrink-0"
+                              title={`From ${actual.source_label ?? 'uploaded data'}`}
+                            >
+                              {shortAsOf(actual.as_of) ? `as of ${shortAsOf(actual.as_of)}` : 'from file'}
+                            </span>
+                          )}
+                          {actual.scope_note && actual.actual_value !== null && (
+                            <span className="paragraph-xs text-quaternary shrink-0" title={actual.scope_note}>
+                              all site
                             </span>
                           )}
                           <span className="paragraph-xs text-quaternary">/</span>

@@ -10,9 +10,7 @@ import { useCampaignDetail } from '../features/campaigns/hooks/use-campaign-deta
 import { OverviewView } from '../features/campaigns/views/overview-view'
 import { CalendarView } from '../features/campaigns/views/calendar-view'
 import { BuilderView } from '../features/campaigns/views/builder-view'
-import { LinkedContentView } from '../features/campaigns/views/linked-content-view'
-import { LaunchReadinessView } from '../features/campaigns/views/launch-readiness-view'
-import { NotesView } from '../features/campaigns/views/notes-view'
+import { SetupView } from '../features/campaigns/views/setup-view'
 import { AssetPreviewPanel } from '../features/campaigns/components/asset-preview-panel'
 import type { CampaignView } from '../features/campaigns/types'
 
@@ -20,9 +18,15 @@ const VIEWS: Record<CampaignView, FC> = {
   overview: OverviewView,
   calendar: CalendarView,
   builder: BuilderView,
-  linked: LinkedContentView,
-  readiness: LaunchReadinessView,
-  notes: NotesView,
+  setup: SetupView,
+}
+
+// Old top-level tabs that now live inside Setup — redirect so existing links
+// (memos, chat messages, bookmarks) keep working.
+const LEGACY_VIEWS: Record<string, string> = {
+  linked: 'setup/linked',
+  readiness: 'setup/readiness',
+  notes: 'setup/rules',
 }
 
 const CampaignWorkspacePage = () => {
@@ -35,6 +39,7 @@ const CampaignWorkspacePage = () => {
   // Asset canvas slide-over — openable from any view (asset cards, calendar events).
   const [previewAssetId, setPreviewAssetId] = useState<string | null>(null)
 
+  const legacyTarget = view && LEGACY_VIEWS[view]
   const ViewComponent = view && view in VIEWS ? VIEWS[view as CampaignView] : null
 
   const body = () => {
@@ -80,6 +85,9 @@ const CampaignWorkspacePage = () => {
     )
   }
 
+  if (campaignId && legacyTarget) {
+    return <Navigate to={`/campaigns/${campaignId}/${legacyTarget}`} replace />
+  }
   if (campaignId && view && !(view in VIEWS)) {
     return <Navigate to={`/campaigns/${campaignId}/overview`} replace />
   }
