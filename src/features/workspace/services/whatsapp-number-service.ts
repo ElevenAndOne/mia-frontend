@@ -20,6 +20,8 @@ export interface WhatsAppNumberState {
   alerts_subscribed: boolean
   /** True when this workspace is not on the WhatsApp pilot allowlist yet. */
   unavailable?: boolean
+  /** A wa.me link that opens WhatsApp with Mia's number and a message ready to send. */
+  start_chat_url?: string | null
 }
 
 const headers = (sessionId: string) => ({

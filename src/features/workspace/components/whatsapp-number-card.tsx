@@ -129,12 +129,27 @@ export const WhatsAppNumberCard = ({
   return (
     <Shell mode={mode}>
       {state?.verified ? (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="paragraph-sm text-primary">{state.whatsapp_number}</span>
-          <span className="paragraph-xs text-success-primary">· confirmed</span>
-          <button type="button" onClick={remove} disabled={busy} className={`${ghost} ml-auto`}>
-            Remove
-          </button>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="paragraph-sm text-primary">{state.whatsapp_number}</span>
+            <span className="paragraph-xs text-success-primary">· confirmed</span>
+            <button type="button" onClick={remove} disabled={busy} className={`${ghost} ml-auto`}>
+              Remove
+            </button>
+          </div>
+          {/* The cold start. Every menu Mia has on WhatsApp is a *reply* — she cannot open a
+              conversation — so a confirmed number with no way in is a dead end. Nobody
+              messages a business number unprompted; this is the one tap that begins it. */}
+          {state.start_chat_url && (
+            <a
+              href={state.start_chat_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 self-start rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+            >
+              Send Mia a photo on WhatsApp
+            </a>
+          )}
         </div>
       ) : state?.awaiting_code ? (
         <div className="flex flex-col gap-2">
@@ -160,14 +175,27 @@ export const WhatsAppNumberCard = ({
               Confirm
             </button>
           </div>
-          <button
-            type="button"
-            onClick={sendCode}
-            disabled={busy}
-            className="paragraph-xs text-quaternary hover:text-secondary self-start"
-          >
-            Send a new code
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={sendCode}
+              disabled={busy}
+              className="paragraph-xs text-quaternary hover:text-secondary"
+            >
+              Send a new code
+            </button>
+            {/* Without this, mistyping the number traps you: Remove only appeared once a
+                number was verified, and a wrong number is exactly the one that never will
+                be. */}
+            <button
+              type="button"
+              onClick={remove}
+              disabled={busy}
+              className="paragraph-xs text-quaternary hover:text-secondary"
+            >
+              Use a different number
+            </button>
+          </div>
         </div>
       ) : mode === 'confirm' ? (
         state?.whatsapp_number ? (
