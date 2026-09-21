@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { format } from 'date-fns'
 import { useSession } from '../../../contexts/session-context'
+import { DataFreshnessBadge } from '../../../components/data-freshness-badge'
 import { apiFetch } from '../../../utils/api'
 import {
   fetchCampaignTracker,
@@ -702,8 +703,25 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                               (+{overPct}%)
                             </span>
                           )}
-                          {/* Provenance — a manual or snapshot number must never look live */}
-                          {actual.state === 'manual' && (
+                          {/* Store-served actuals: how fresh and how complete the number is */}
+                          {actual.actual_source && actual.actual_value !== null && (
+                            <DataFreshnessBadge
+                              source={actual.actual_source}
+                              asOf={actual.as_of}
+                              notes={actual.store_notes}
+                            />
+                          )}
+                          {actual.actual_value === null && actual.store_notes && actual.store_notes.length > 0 && (
+                            <span
+                              className="paragraph-xs text-quaternary truncate max-w-[180px]"
+                              title={actual.store_notes.join('\n')}
+                            >
+                              {actual.store_notes[0]}
+                            </span>
+                          )}
+                          {/* Provenance — a manual or snapshot number must never look live.
+                              Skipped when the store badge above already says it. */}
+                          {actual.state === 'manual' && !actual.actual_source && (
                             <span
                               className="label-xs px-1 py-px rounded bg-utility-warning-100 text-utility-warning-700 shrink-0"
                               title={`Manual entry${actual.source_label ? ` by ${actual.source_label}` : ''}${shortAsOf(actual.as_of) ? ` · ${shortAsOf(actual.as_of)}` : ''}`}
@@ -711,7 +729,7 @@ export function RaceCampaignTracker({ disabled = false, dateRange, onCampaignCha
                               manual
                             </span>
                           )}
-                          {actual.state === 'snapshot' && actual.actual_value !== null && (
+                          {actual.state === 'snapshot' && !actual.actual_source && actual.actual_value !== null && (
                             <span
                               className="paragraph-xs text-quaternary shrink-0"
                               title={`From ${actual.source_label ?? 'uploaded data'}`}

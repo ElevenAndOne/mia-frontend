@@ -7,6 +7,7 @@ import { BudgetAllocationBar } from '../components/overview/budget-allocation-ba
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import { buildFunnel, phaseSummaries } from '../utils/overview-data'
 import { PerformancePanel } from '../../metrics/views/performance-panel'
+import { FindingsPanel } from '../../findings/views/findings-panel'
 import {
   fetchPhaseActuals,
   isAbort,
@@ -74,6 +75,9 @@ export const OverviewView = () => {
       {/* Store-backed performance for this campaign; nothing renders until the
           analytics store covers the workspace. */}
       <PerformancePanel campaignId={campaign.campaign_id} />
+
+      {/* Findings scoped to this campaign — same quiet-when-unavailable contract. */}
+      <FindingsPanel campaignId={campaign.campaign_id} />
 
       <div>
         <span className="label-xs text-quaternary uppercase tracking-[0.14em]">The Customer Journey</span>

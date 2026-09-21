@@ -1,3 +1,5 @@
+import type { DataFreshnessSource } from '../../utils/data-freshness'
+
 export type TopAdMetric = 'conversions' | 'ctr' | 'roas' | 'clicks' | 'impressions' | 'cpc'
 export type TopOrganicMetric = 'engagement_rate' | 'impressions' | 'reach' | 'clicks' | 'reactions'
 
@@ -82,6 +84,11 @@ export interface KpiItem {
   target_period?: string
   window_covers_campaign?: boolean
   window_exceeds_campaign?: boolean
+  // Store-served actuals: provenance, watermark and why `current` may be partial
+  // (also the reason behind a `not_graded` status).
+  actual_source?: DataFreshnessSource | null
+  as_of?: string | null
+  completeness?: string[]
 }
 
 export interface ReportKpiPerformance {
@@ -105,6 +112,9 @@ export interface ReportSpendBreakdown {
   channel_split: ChannelSpend[]
   objective_split: ChannelSpend[]
   insight: string
+  data_source?: DataFreshnessSource | null
+  as_of?: string | null
+  completeness_notes?: string[]
 }
 
 export interface OrganicPost {
@@ -214,6 +224,10 @@ export interface ReportDashboardMetrics {
   conversions: DashboardMetricValue
   ctr: DashboardMetricValue
   cost_per_lead: DashboardMetricValue
+  data_source?: DataFreshnessSource | null
+  prev_data_source?: DataFreshnessSource | null
+  as_of?: string | null
+  completeness_notes?: string[]
 }
 
 export interface ReportDashboard {
@@ -238,6 +252,13 @@ export interface ReportData {
   risks_recommendations: ReportRisksRecommendations
   next_month_plan: ReportNextMonthPlan
   dashboard: ReportDashboard
+  data_completeness?: ReportDataCompleteness
+}
+
+/** Store watermark and caveats for the report as a whole. */
+export interface ReportDataCompleteness {
+  store_as_of?: string | null
+  store_notes?: string[]
 }
 
 export interface ClientReport {

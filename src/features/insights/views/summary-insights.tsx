@@ -6,6 +6,7 @@ import { getDateRangeDisplay } from '../../../utils/date-display'
 import DateRangeSelector from '../../../components/date-range-selector'
 import { useSummaryInsights } from '../hooks/use-summary-insights'
 import { PerformancePanel } from '../../metrics/views/performance-panel'
+import { FindingsPanel } from '../../findings/views/findings-panel'
 
 interface SummaryInsightsProps {
   onBack?: () => void
@@ -54,6 +55,10 @@ const SummaryInsights = ({ onBack }: SummaryInsightsProps) => {
 
       {/* Content Area */}
       <div className="flex-1 bg-primary p-6 safe-bottom overflow-y-auto">
+        {/* What the nightly analysis found. Renders nothing until the semantic
+            layer is configured for this workspace. */}
+        <FindingsPanel className="max-w-3xl mx-auto w-full mb-6" />
+
         {/* Store-backed performance figures for the same window. Renders nothing
             until the analytics store has data for this workspace. */}
         <PerformancePanel dateRange={selectedDateRange} className="max-w-3xl mx-auto w-full mb-6" />

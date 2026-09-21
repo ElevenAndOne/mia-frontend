@@ -1,6 +1,7 @@
 import { Spinner } from '../../../components/spinner'
 import { SegmentedControl } from '../../../components/segmented-control'
 import { TopBar } from '../../../components/top-bar'
+import { DataFreshnessBadge } from '../../../components/data-freshness-badge'
 import { useBudgetTracker } from '../hooks/use-budget-tracker'
 import { BudgetSummaryCards } from '../components/budget-summary-cards'
 import { BudgetPlatformBreakdown } from '../components/budget-platform-breakdown'
@@ -88,15 +89,22 @@ export const BudgetTrackerView = ({ onBack }: Props) => {
             </button>
           )}
           {snapshot && (
-            <span className="paragraph-xs text-tertiary ml-auto text-right">
-              {snapshot.window.label} · {snapshot.window.start} → {snapshot.window.end}
-              {snapshot.spent_as_of && (
-                <>
-                  <br />
-                  Spent as of {new Date(snapshot.spent_as_of).toLocaleString()}
-                </>
-              )}
-            </span>
+            <div className="ml-auto flex items-center gap-2">
+              {/* Where the spend figures came from — a store number must never look live */}
+              <DataFreshnessBadge
+                source={snapshot.spend_source ?? null}
+                asOf={snapshot.as_of ?? snapshot.spent_as_of ?? null}
+              />
+              <span className="paragraph-xs text-tertiary text-right">
+                {snapshot.window.label} · {snapshot.window.start} → {snapshot.window.end}
+                {snapshot.spent_as_of && (
+                  <>
+                    <br />
+                    Spent as of {new Date(snapshot.spent_as_of).toLocaleString()}
+                  </>
+                )}
+              </span>
+            </div>
           )}
         </div>
 

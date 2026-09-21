@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../utils/api'
+import type { DataFreshnessSource } from '../../../utils/data-freshness'
 
 // ---------------------------------------------------------------------------
 // Cache configuration
@@ -141,6 +142,10 @@ export interface KPIActual {
   as_of?: string | null
   source_label?: string | null
   scope_note?: string | null
+  // Store-served actuals (semantic layer): provenance, and why the figure may be partial.
+  actual_source?: DataFreshnessSource
+  store_notes?: string[]
+  kpi_key?: string | null
 }
 
 // ---------------------------------------------------------------------------

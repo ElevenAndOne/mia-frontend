@@ -26,6 +26,7 @@ import {
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { apiFetch } from '../../utils/api'
 import { getStoredSessionId } from '../../utils/session'
+import { DataFreshnessBadge } from '../../components/data-freshness-badge'
 import type { ClientReport, KpiItem, ReportData } from './types'
 
 // ---------------------------------------------------------------------------
@@ -445,6 +446,14 @@ export const ReportOnePager = ({
             description={data.dashboard.campaign_health.description}
           />
         </div>
+        {/* Provenance of the tile figures — hidden when the backend says nothing */}
+        <div className="flex justify-end mt-1.5 empty:hidden">
+          <DataFreshnessBadge
+            source={data.dashboard.metrics?.data_source ?? null}
+            asOf={data.dashboard.metrics?.as_of}
+            notes={data.dashboard.metrics?.completeness_notes}
+          />
+        </div>
 
         {/* Row 2 — Spend / Paid ad / Organic / KPI table */}
         <div
@@ -746,34 +755,45 @@ const Legend = ({ items }: { items: { label: string; color: string; value: strin
 // ---------------------------------------------------------------------------
 
 const SpendPanel = ({ data, cur }: { data: ReportData; cur: string }) => {
-  const split = data.spend_breakdown.channel_split
-  const total = data.spend_breakdown.total_spend
+  const sb = data.spend_breakdown
+  const split = sb.channel_split
+  const total = sb.total_spend
+  // Where the spend came from and anything that makes it partial — hidden when unknown.
+  const freshness = (
+    <div className="flex justify-end mt-2 empty:hidden">
+      <DataFreshnessBadge source={sb.data_source ?? null} asOf={sb.as_of} notes={sb.completeness_notes} />
+    </div>
+  )
   if (!split.length) {
     return (
       <Panel title="Spend Breakdown" subtitle="Where your budget is used">
         <p className="text-[11px]" style={{ color: C.slate2 }}>
           No spend data for this period.
         </p>
+        {freshness}
       </Panel>
     )
   }
   return (
     <Panel title="Spend Breakdown" subtitle="Where your budget is used" fill>
-      <div className="flex items-center gap-3 w-full">
-        <Donut
-          size={108}
-          thickness={18}
-          segments={split.map((s, i) => ({ value: s.percentage, color: DONUT[i % DONUT.length] }))}
-          centerTop={fmtMoneyCompact(cur, total)}
-          centerBottom="TOTAL SPEND"
-        />
-        <Legend
-          items={split.map((s, i) => ({
-            label: s.platform,
-            color: DONUT[i % DONUT.length],
-            value: `${s.percentage}%`,
-          }))}
-        />
+      <div className="w-full">
+        <div className="flex items-center gap-3 w-full">
+          <Donut
+            size={108}
+            thickness={18}
+            segments={split.map((s, i) => ({ value: s.percentage, color: DONUT[i % DONUT.length] }))}
+            centerTop={fmtMoneyCompact(cur, total)}
+            centerBottom="TOTAL SPEND"
+          />
+          <Legend
+            items={split.map((s, i) => ({
+              label: s.platform,
+              color: DONUT[i % DONUT.length],
+              value: `${s.percentage}%`,
+            }))}
+          />
+        </div>
+        {freshness}
       </div>
     </Panel>
   )
@@ -966,7 +986,12 @@ const KpiPanel = ({ data }: { data: ReportData }) => {
                     k.target || '—'
                   )}
                 </td>
-                <td className="text-[10px] py-1 text-right font-semibold" style={{ color: C.slate }}>
+                <td
+                  className="text-[10px] py-1 text-right font-semibold"
+                  style={{ color: C.slate }}
+                  // Why a store-served actual is partial (or why the row is not graded).
+                  title={k.completeness?.length ? k.completeness.join('\n') : undefined}
+                >
                   {editing ? (
                     <Editable path={['kpi_performance', 'kpis', i, 'current']} value={k.current ?? ''} widthClass="w-14 text-right" />
                   ) : (

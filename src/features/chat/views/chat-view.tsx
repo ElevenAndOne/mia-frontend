@@ -10,6 +10,7 @@ import { Sheet } from '../../overlay'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
 import QuickActions from '../components/quick-actions'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
+import { FindingsPanel } from '../../findings/views/findings-panel'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { FeedbackModal } from '../components/feedback-modal'
 import { XClose } from '../../../components/icon/x-close'
@@ -253,6 +254,9 @@ export const ChatView = ({
                     dateRange={dateRange}
                     onCampaignChange={handleCampaignChange}
                   />
+                  {/* Top findings from the nightly analysis; nothing renders until the
+                      semantic layer is configured for this workspace. */}
+                  <FindingsPanel compact className="w-full max-w-3xl mx-auto px-4" />
                 </div>
               </ChatEmptyState>
 

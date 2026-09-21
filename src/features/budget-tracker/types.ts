@@ -1,6 +1,8 @@
 // Mirrors the backend snapshot from GET /api/tenants/{tenant_id}/budget-tracker/{campaign_id}
 // (services/budget_tracker_service.py :: build_budget_snapshot).
 
+import type { DataFreshnessSource } from '../../utils/data-freshness'
+
 export interface BudgetWindow {
   start: string
   end: string
@@ -46,6 +48,9 @@ export interface BudgetPlatformRow {
   remaining: number | null
   spent_pct?: number | null
   matched_campaigns?: string[]
+  // Store-served rows: spend in the platform's own currency, before conversion.
+  spend_native?: number | null
+  currency?: string | null
 }
 
 export interface BudgetFx {
@@ -62,6 +67,9 @@ export interface BudgetSnapshot {
   currency: string
   ended?: boolean
   spent_as_of?: string | null
+  // Where `spent` came from and the store watermark it is complete through.
+  spend_source?: Extract<DataFreshnessSource, 'store' | 'live'> | null
+  as_of?: string | null
   spend_pending?: boolean
   available_months?: string[]
   window: BudgetWindow
