@@ -782,7 +782,7 @@ export function RaceCampaignTracker({
                               className="paragraph-xs text-quaternary shrink-0"
                               title={actual.scope_note}
                             >
-                              all site
+                              {actual.scope_label ?? 'all site'}
                             </span>
                           )}
                           <span className="paragraph-xs text-quaternary">/</span>

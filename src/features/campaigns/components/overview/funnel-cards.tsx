@@ -31,7 +31,7 @@ const freshness = (a: KPIActual): string | null => {
       return `as of ${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
     return 'from file'
   }
-  if (a.scope_note && a.actual_value !== null) return 'all site'
+  if (a.scope_note && a.actual_value !== null) return a.scope_label ?? 'all site'
   return null
 }
 

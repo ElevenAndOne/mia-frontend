@@ -141,6 +141,9 @@ export interface KPIActual {
   as_of?: string | null
   source_label?: string | null
   scope_note?: string | null
+  // Short chip text for scope_note ('all site', '4/11 posts'). Older cached rows
+  // predate it — callers fall back to 'all site', which is what they always showed.
+  scope_label?: string | null
 }
 
 // ---------------------------------------------------------------------------
