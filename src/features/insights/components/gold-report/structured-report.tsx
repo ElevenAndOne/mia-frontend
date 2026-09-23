@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AtAGlance } from './at-a-glance'
 import { CampaignEvidence } from './campaign-evidence'
+import { CompetitorLandscape } from './competitor-landscape'
 import { ExecSummary } from './exec-summary'
 import { CollapsibleRow } from './collapsible-row'
 import { DeliverableRows, InsightRows, RecommendationRows } from './report-rows'
@@ -69,6 +70,8 @@ export const StructuredReport = ({
   analysis,
 }: StructuredReportProps) => {
   const { executive_summary, insights, recommendations, deliverables, email_digest } = report
+  const competitorLandscape = report.competitor_landscape
+  const competitorChanges = analysis?.competitor_findings ?? []
   const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined)
   const staleFeeds = analysis?.diagnostics?.stale_feeds ?? []
   const creativeFindings = analysis?.creative_findings ?? []
@@ -151,6 +154,15 @@ export const StructuredReport = ({
       {creativeFindings.length > 0 && (
         <Section label="What your own ads show" count={creativeFindings.length}>
           <CreativeFindings findings={creativeFindings} />
+        </Section>
+      )}
+
+      {(competitorLandscape?.brands?.length || competitorChanges.length > 0) && (
+        <Section
+          label="What your competitors are saying"
+          count={competitorLandscape?.brands?.length || undefined}
+        >
+          <CompetitorLandscape landscape={competitorLandscape} changes={competitorChanges} />
         </Section>
       )}
 

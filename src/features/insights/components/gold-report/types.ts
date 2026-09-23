@@ -87,6 +87,16 @@ export interface GoldStructuredRecommendation {
   applies_to_platform?: string | null
 }
 
+/** A competitor CHANGE EVENT from the pipeline payload (`competitor_findings[]`):
+ *  something a rival altered between two snapshots. Legitimately empty for a tenant
+ *  whose competitors have only ever been captured once — it is NOT the competitor
+ *  list, which reaches the page as prose in `report.competitor_landscape`. */
+export interface GoldCompetitorFinding {
+  competitor: string
+  change_type: string
+  detail: string
+}
+
 export interface GoldAnalysisDiagnostics {
   creative_evidence?: 'ad_copy' | 'name_only' | 'none' | string
   /** Feeds whose newest row is far behind the snapshot date. */
@@ -98,6 +108,7 @@ export interface GoldAnalysisDiagnostics {
 export interface GoldAnalysisPayload {
   structured_recommendations?: GoldStructuredRecommendation[] | null
   creative_findings?: GoldCreativeFinding[] | null
+  competitor_findings?: GoldCompetitorFinding[] | null
   diagnostics?: GoldAnalysisDiagnostics | null
 }
 
@@ -151,6 +162,26 @@ export interface GoldCampaignEvidence {
   shown_of: number
 }
 
+/** One competitor as the report observed it: the lines read off their website, the
+ *  claims they make, and the hero image they lead with. Structured by a second pass
+ *  over the report's competitor sections (schema v3). */
+export interface GoldCompetitorBrand {
+  name: string
+  source_url: string | null
+  taglines: string[]
+  claims: string[]
+  hero_image_url: string | null
+  note: string | null
+}
+
+export interface GoldCompetitorLandscape {
+  /** The report's own line about how these competitors were identified and whether
+   *  the client confirmed them. Shown verbatim — it is the honesty statement. */
+  caveat: string | null
+  brands: GoldCompetitorBrand[]
+  territory_summary: string | null
+}
+
 export interface StructuredGoldReport {
   intro: string | null
   executive_summary: {
@@ -165,6 +196,9 @@ export interface StructuredGoldReport {
   /** Condensed scannable rendition — powers the summary email AND the page's
    *  at-a-glance hero. Absent on reports structured before it existed. */
   email_digest?: GoldEmailDigest | null
+  /** The report's competitor sections. Absent on reports structured before v3, and
+   *  null for a report (or a tier) with no competitor section. */
+  competitor_landscape?: GoldCompetitorLandscape | null
   /** REPORT_SCHEMA generation this rendition was built with (absent = 1). */
   schema_version?: number
 }
