@@ -936,7 +936,10 @@ const KPI_STATUSES: KpiItem['status'][] = [
 
 const KpiPanel = ({ data }: { data: ReportData }) => {
   const { editing, setField } = useEdit()
-  const kpis = data.kpi_performance.kpis.slice(0, 6)
+  // Every KPI, not the first six. Juicy Gems carries nine, so the whole Engage phase
+  // fell off the end — including the only KPI that was on target. The data was complete
+  // in the stored report all along; only the render was short.
+  const kpis = data.kpi_performance.kpis
   return (
     <Panel title="KPI Performance" subtitle="Performance against targets">
       {kpis.length === 0 ? (
