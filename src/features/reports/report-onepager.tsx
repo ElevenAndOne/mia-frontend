@@ -980,7 +980,12 @@ const KPI_STATUSES: KpiItem['status'][] = [
 
 const KpiPanel = ({ data }: { data: ReportData }) => {
   const { editing, setField } = useEdit()
-  const kpis = data.kpi_performance.kpis.slice(0, 6)
+  // Every KPI, not the first six. Juicy Gems carries nine, and the three that fell off
+  // the end were the whole Engage phase — including the only one that was on target.
+  const kpis = data.kpi_performance.kpis
+  // Only worth labelling when the table actually mixes periods; if every number covers
+  // the same span, saying so on each row is noise.
+  const mixedPeriods = new Set(kpis.map((k) => k.value_scope ?? 'window')).size > 1
   return (
     <Panel title="KPI Performance" subtitle="Performance against targets">
       {kpis.length === 0 ? (
@@ -1005,6 +1010,11 @@ const KpiPanel = ({ data }: { data: ReportData }) => {
                   style={{ color: C.slate, maxWidth: 90 }}
                 >
                   {k.kpi}
+                  {mixedPeriods && k.value_scope === 'since_launch' && (
+                    <span className="block text-[0.5rem]" style={{ color: C.slate2 }}>
+                      since launch
+                    </span>
+                  )}
                 </td>
                 <td className="text-[0.625rem] py-1 text-right" style={{ color: C.slate2 }}>
                   {editing ? (

@@ -80,6 +80,11 @@ export interface KpiItem {
   // Scope of `target`, so it can be labelled rather than implied to be this period's goal.
   target_scope?: 'campaign'
   target_period?: string
+  // Scope of `current` — a different question. A vendor file's summary total ignores the
+  // report window entirely ('since_launch'), so it must not sit unlabelled beside a
+  // figure that was actually measured over these dates ('window').
+  value_scope?: 'window' | 'since_launch' | 'point'
+  value_period?: string
   window_covers_campaign?: boolean
   window_exceeds_campaign?: boolean
 }
