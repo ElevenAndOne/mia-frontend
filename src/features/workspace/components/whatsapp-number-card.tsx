@@ -29,12 +29,15 @@ const field =
 export const WhatsAppNumberCard = ({
   sessionId,
   messagesSlot,
+  rhythmSlot,
   mode = 'full',
 }: {
   sessionId: string | null
   /** The workspace-level "may Mia message you" switch. Rendered here so WhatsApp is one
    *  place: your number coming in, Mia's messages going out. */
   messagesSlot?: React.ReactNode
+  /** Posting rhythm + reminder (loop step 4) — under the switch that allows the reminder. */
+  rhythmSlot?: React.ReactNode
   /**
    * `full` — this card owns the number (Basic, where it is the only WhatsApp field).
    *
@@ -241,6 +244,7 @@ export const WhatsAppNumberCard = ({
       {notice && <p className="paragraph-xs text-quaternary">{notice}</p>}
       {error && <p className="paragraph-xs text-error-primary">{error}</p>}
       {messagesSlot}
+      {rhythmSlot}
     </Shell>
   )
 }

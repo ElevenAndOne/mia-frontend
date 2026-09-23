@@ -128,6 +128,17 @@ export const useAuthRedirects = ({
         navigate(returnUrl || '/home')
         return
       }
+      // A Basic workspace signed in with Meta has a Page and no ad account, so it never has
+      // a selectedAccount — and the deep link it arrived on (/p/<drafts> from WhatsApp, saved
+      // by ProtectedRoute) was dropped on the way to /onboarding. Once onboarding is done,
+      // the saved link is where they were going.
+      if (hasSeenIntro && isAnyAuthenticated && !selectedAccount && activeWorkspace?.onboarding_completed) {
+        const returnUrl = consumeReturnUrl()
+        if (returnUrl) {
+          navigate(returnUrl)
+          return
+        }
+      }
       if (hasSeenIntro && isAnyAuthenticated && !selectedAccount) {
         // Check if user needs to create workspace first
         if (!activeWorkspace && availableWorkspaces.length === 0) {

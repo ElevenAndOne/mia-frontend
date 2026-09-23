@@ -22,6 +22,7 @@ import { useHomeCardTurnover } from '../../home/hooks/use-home-card-turnover'
 import { setHomeCardInFlight } from '../../home/in-flight'
 import { BasicHome } from '../../home/components/basic-home'
 import { BestPostCanvas } from '../../home/components/best-post-canvas'
+import { fetchWhatsAppNumber } from '../../workspace/services/whatsapp-number-service'
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { FeedbackModal } from '../components/feedback-modal'
@@ -37,7 +38,6 @@ interface ChatViewProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onReportsClick?: () => void
-  onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
   onNewWorkspace?: () => void
@@ -47,7 +47,6 @@ export const ChatView = ({
   onIntegrationsClick,
   onCampaignsClick,
   onReportsClick,
-  onHelpClick,
   onLogout,
   onWorkspaceSettings,
   onNewWorkspace,
@@ -150,10 +149,15 @@ export const ChatView = ({
   const canvasWidth = rowWidth
     ? Math.round(Math.min(42 * remPx, Math.max(24 * remPx, rowWidth * 0.4)))
     : Math.round(38 * remPx)
+  // Closing the best post is remembered for this TAB, not forever. It lived in localStorage,
+  // so one Close — or "Make another", which closes it — meant the canvas never opened on
+  // arrival again, on any device where that browser had been used. The home page exists to
+  // show this; every fresh visit shows it (Josh, 2026-09-23).
   const BEST_POST_OPEN_KEY = 'mia:basic-canvas-open'
   const [bestPostOpen, setBestPostOpen] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(BEST_POST_OPEN_KEY) !== 'closed'
+      localStorage.removeItem(BEST_POST_OPEN_KEY) // the old forever-flag, retired
+      return sessionStorage.getItem(BEST_POST_OPEN_KEY) !== 'closed'
     } catch {
       return true
     }
@@ -162,7 +166,7 @@ export const ChatView = ({
   const setBestPost = (open: boolean) => {
     setBestPostOpen(open)
     try {
-      localStorage.setItem(BEST_POST_OPEN_KEY, open ? 'open' : 'closed')
+      sessionStorage.setItem(BEST_POST_OPEN_KEY, open ? 'open' : 'closed')
     } catch {
       /* private mode */
     }
@@ -216,6 +220,36 @@ export const ChatView = ({
   // full-screen sheet the user opens from a pill above the input. New documents
   // never take over the screen mid-conversation — they light the pill up instead.
   const isMobile = useIsMobile()
+  // The phone opens it too. Desktop has shown the canvas on arrival since it was built;
+  // the phone hid it behind a peek card, so the one thing the home page is for needed a
+  // tap to see. Same stored preference, so closing it is remembered on both.
+  // The wa.me link for the canvas button. 403 on a workspace outside the WhatsApp pilot,
+  // which the service reports as `unavailable` — then there is simply no button.
+  const [startChatUrl, setStartChatUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!isMobile || !isBasic || !sessionId) return
+    let live = true
+    fetchWhatsAppNumber(sessionId)
+      .then((s) => {
+        if (live && s && !s.unavailable) setStartChatUrl(s.start_chat_url ?? null)
+      })
+      .catch(() => {
+        /* no button, rather than a broken one */
+      })
+    return () => {
+      live = false
+    }
+  }, [isMobile, isBasic, sessionId])
+
+  const autoOpenedBestPost = useRef(false)
+  useEffect(() => {
+    if (autoOpenedBestPost.current) return
+    if (!isMobile || !isBasic || hasMessages) return
+    if (!brief?.best_post || canvas.document) return
+    if (!bestPostOpen) return // they closed it last time
+    autoOpenedBestPost.current = true
+    setBestPostSheetOpen(true)
+  }, [isMobile, isBasic, hasMessages, brief?.best_post, canvas.document, bestPostOpen])
   const [mobileCanvasOpen, setMobileCanvasOpen] = useState(false)
   const [canvasUnseen, setCanvasUnseen] = useState(false)
   const prevDocCountRef = useRef(0)
@@ -384,7 +418,6 @@ export const ChatView = ({
       onIntegrationsClick={onIntegrationsClick}
       onCampaignsClick={onCampaignsClick}
       onReportsClick={onReportsClick}
-      onHelpClick={onHelpClick}
       onNewChat={handleNewChat}
       onBack={handleBack}
       onLogout={onLogout}
@@ -418,7 +451,10 @@ export const ChatView = ({
                       brief?.best_post ? (
                         <button
                           type="button"
-                          onClick={() => setBestPostSheetOpen(true)}
+                          onClick={() => {
+                            setBestPostSheetOpen(true)
+                            setBestPost(true)
+                          }}
                           className="md:hidden flex w-full items-center gap-3 rounded-2xl bg-secondary p-2.5 text-left"
                         >
                           <span
@@ -709,24 +745,25 @@ export const ChatView = ({
       {isMobile && isBasic && brief?.best_post && !canvas.document && (
         <Sheet
           isOpen={bestPostSheetOpen}
-          onClose={() => setBestPostSheetOpen(false)}
+          onClose={() => {
+            setBestPostSheetOpen(false)
+            setBestPost(false)
+          }}
           position="bottom"
           className="h-[88%]"
         >
           <BestPostCanvas
             compact
+            startChatUrl={startChatUrl}
             post={brief.best_post}
             windowLabel={brief.window_label}
             brandName={activeWorkspace?.name}
-            onClose={() => setBestPostSheetOpen(false)}
-            onMakeAnother={
-              makeAnotherCard
-                ? () => {
-                    setBestPostSheetOpen(false)
-                    handleMakeAnother()
-                  }
-                : undefined
-            }
+            onClose={() => {
+              setBestPostSheetOpen(false)
+              setBestPost(false)
+            }}
+            /* No onMakeAnother on the phone: that button lives on the card behind this
+               sheet, and the canvas's one prominent slot now opens WhatsApp instead. */
           />
         </Sheet>
       )}

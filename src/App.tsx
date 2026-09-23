@@ -37,8 +37,11 @@ function App() {
     return <LoadingScreen platform={loadingPlatform} />
   }
 
+  // w-full, not w-screen. 100vw includes the vertical scrollbar, so on any page that
+  // scrolls the shell is wider than the viewport and the first child — the sidebar — is
+  // pushed off the left edge. It only looked right in a window with no scrollbar.
   return (
-    <div className="w-screen h-dvh">
+    <div className="w-full h-dvh overflow-x-hidden">
       <div className="w-full h-full">
         <AppRoutes
           onAuthSuccess={appRoutes.onAuthSuccess}

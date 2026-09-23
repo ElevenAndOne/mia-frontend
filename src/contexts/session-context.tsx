@@ -11,6 +11,7 @@ import React, {
 // Import types from feature modules
 import type { AccountMapping } from '../features/accounts/types'
 import type { UserProfile, MetaAuthState } from '../features/auth/types'
+import type { MetaPurpose } from '../features/auth/services/meta-auth-service'
 import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 
 // Import services
@@ -53,7 +54,7 @@ export interface SessionState extends MetaAuthState {
 
 export interface SessionActions {
   login: (onPopupClosed?: () => void) => Promise<boolean>
-  loginMeta: (onPopupClosed?: () => void) => Promise<boolean>
+  loginMeta: (onPopupClosed?: () => void, purpose?: MetaPurpose | MetaPurpose[]) => Promise<boolean>
   logout: () => Promise<void>
   logoutMeta: () => Promise<void>
   selectAccount: (accountId: string) => Promise<boolean>
@@ -280,12 +281,34 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // Fall through to session validation — no return
             } else {
-              try {
-                await metaAuthService.completeMetaAuth(sessionId)
-              } catch (err) {
-                logger.error('[SESSION] Meta OAuth complete failed — restoring session:', err)
-                setState((prev) => ({ ...prev, connectingPlatform: null }))
-                // Fall through to session validation — don't throw
+              // Two different returns arrive here. A sign-up carries a claim: the session
+              // was minted inside the callback from the code exchange and redeeming the
+              // claim is the only way to get it (Audit #4). A connect carries none — the
+              // session already existed and the callback wrote credentials against it.
+              const claim = urlParams.get('claim')
+              if (claim) {
+                const claimed = await sessionService.claimSession(claim)
+                if (claimed?.session_id) {
+                  storeSessionId(claimed.session_id)
+                  sessionId = claimed.session_id
+                  window.history.replaceState({}, '', window.location.pathname)
+                } else {
+                  logger.error('[SESSION] Meta OAuth claim redemption failed')
+                  setState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                    connectingPlatform: null,
+                    error: 'Authentication failed',
+                  }))
+                }
+              } else {
+                try {
+                  await metaAuthService.completeMetaAuth(sessionId)
+                } catch (err) {
+                  logger.error('[SESSION] Meta OAuth complete failed — restoring session:', err)
+                  setState((prev) => ({ ...prev, connectingPlatform: null }))
+                  // Fall through to session validation — don't throw
+                }
               }
             }
           }
@@ -446,7 +469,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Meta Login
   const loginMeta = useCallback(
-    async (onPopupClosed?: () => void): Promise<boolean> => {
+    async (
+      onPopupClosed?: () => void,
+      purpose?: MetaPurpose | MetaPurpose[]
+    ): Promise<boolean> => {
       setState((prev) => ({ ...prev, isLoading: true, error: null, connectingPlatform: 'meta' }))
 
       try {
@@ -455,14 +481,30 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           ? window.location.origin + window.location.pathname
           : undefined
         const tenantId = state.activeWorkspace?.tenant_id
+        // No session yet means this is a sign-up, and the only thing to ask for is who they
+        // are. Someone deciding whether to trust us should not be shown a request to manage
+        // their advertising; the Page and publishing permissions come when they connect one.
+        // sessionId cannot answer "are they signed in?" — one is minted locally at boot and
+        // kept through every failed validation, so it is never empty. isAuthenticated only
+        // turns true once the backend has confirmed a session, so that is the test, and a
+        // sign-up sends no id at all rather than a dead one the callback would look up.
+        const signingIn = !state.isAuthenticated
+        // Signing in is always 'signin'. Otherwise the caller says what this connect is
+        // for, and only says nothing when it genuinely does not know — which still asks
+        // for everything, as it always has.
         const authData = await metaAuthService.getMetaAuthUrl(
-          state.sessionId || '',
+          signingIn ? '' : state.sessionId || '',
           frontendOrigin,
-          tenantId
+          tenantId,
+          signingIn ? 'signin' : purpose
         )
 
-        // Mobile redirect flow (same pattern as Google)
-        if (isMobile()) {
+        // Mobile redirect flow (same pattern as Google) — and every sign-up, on any device.
+        // A popup cannot carry a sign-up home: the callback redirects to the app with a
+        // single-use claim, which would land in the popup's URL and be redeemed into a
+        // window that is about to close, while the opener polls a status endpoint for a
+        // session it does not have. Signing in is a top-level navigation, as Google's is.
+        if (isMobile() || signingIn) {
           localStorage.setItem(StorageKey.OAUTH_PENDING, 'meta')
           localStorage.setItem(
             StorageKey.OAUTH_RETURN_URL,
@@ -599,7 +641,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         return false
       }
     },
-    [state.sessionId, state.activeWorkspace?.tenant_id, refreshAccounts, refreshWorkspaces]
+    [
+      state.sessionId,
+      state.isAuthenticated,
+      state.activeWorkspace?.tenant_id,
+      refreshAccounts,
+      refreshWorkspaces,
+    ]
   )
 
   // Logout

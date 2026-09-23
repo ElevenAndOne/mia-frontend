@@ -78,12 +78,13 @@ export const LoginPage = ({
   onOAuthPopupClosed,
   onOAuthStart,
 }: LoginPageProps) => {
-  const { isBusy, isGoogleLoading, googleLoadingMessage, handleLogin } = useLoginPage({
-    onAuthSuccess,
-    onMetaAuthSuccess,
-    onOAuthPopupClosed,
-    onOAuthStart,
-  })
+  const { isBusy, isGoogleLoading, googleLoadingMessage, isMetaLoading, metaLoadingMessage, handleLogin } =
+    useLoginPage({
+      onAuthSuccess,
+      onMetaAuthSuccess,
+      onOAuthPopupClosed,
+      onOAuthStart,
+    })
 
   const makeHandler = (method: LoginMethod) => () => void handleLogin(method)
 
@@ -106,10 +107,12 @@ export const LoginPage = ({
       iconSrc: '/icons/meta-color.svg',
       icon: <Logo.meta />,
       iconAlt: 'Meta',
-      loading: false,
-      loadingMessage: '',
-      onClick: () =>
-        alert('Meta sign-in coming soon! You can connect Meta Ads after signing in with Google.'),
+      loading: isMetaLoading,
+      loadingMessage: metaLoadingMessage,
+      // Signing in with Facebook is the front door for a business that has a Page and no
+      // Google account — which is most of them. handleLogin has had the Meta branch all
+      // along; it was the button that never called it.
+      onClick: makeHandler('meta'),
     },
   ]
 

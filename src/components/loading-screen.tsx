@@ -14,13 +14,13 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ platform, message }) => {
   const loadingText = message
     ? message
     : platform === 'meta'
-      ? 'Connecting to Meta Ads...'
+      ? 'Connecting to Meta...'
       : platform === 'google'
         ? 'Connecting to Google Ads...'
         : 'Setting up your workspace...'
 
   return (
-    <div className="flex flex-col items-center justify-center h-dvh w-screen bg-primary fixed inset-0">
+    <div className="flex flex-col items-center justify-center h-dvh w-full bg-primary fixed inset-0">
       {/* Mia logo with glow effect */}
       <div className="relative">
         {/* Glow effect behind logo */}

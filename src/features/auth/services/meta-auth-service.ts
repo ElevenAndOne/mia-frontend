@@ -43,13 +43,23 @@ export interface MetaCompleteResponse {
   }
 }
 
+/** What the person is about to do — only those permissions are requested. */
+export type MetaPurpose = 'signin' | 'pages' | 'instagram' | 'publish' | 'ads'
+
 /**
- * Get Meta OAuth authorization URL
+ * Get Meta OAuth authorization URL.
+ *
+ * `purpose` narrows the consent screen to the moment at hand: connecting a Page should not
+ * ask to manage someone's advertising. Meta supports incremental consent, so a later request
+ * shows only what is new. Several can be combined — `['pages', 'publish']`.
+ *
+ * Omitted, it asks for everything, which is what it has always done.
  */
 export const getMetaAuthUrl = async (
   sessionId: string,
   frontendOrigin?: string,
-  tenantId?: string
+  tenantId?: string,
+  purpose?: MetaPurpose | MetaPurpose[]
 ): Promise<MetaAuthUrlResponse> => {
   const params = new URLSearchParams()
   if (frontendOrigin) {
@@ -57,6 +67,9 @@ export const getMetaAuthUrl = async (
   }
   if (tenantId) {
     params.set('tenant_id', tenantId)
+  }
+  if (purpose) {
+    params.set('purpose', Array.isArray(purpose) ? purpose.join(',') : purpose)
   }
   const queryString = params.toString()
   const url = `/api/oauth/meta/auth-url${queryString ? `?${queryString}` : ''}`

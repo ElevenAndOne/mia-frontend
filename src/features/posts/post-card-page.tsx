@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { apiFetch } from '../../utils/api'
 import type { CanvasDocument } from '../chat/services/chat-service'
 import { parseCreativeSpec } from '../chat/components/previews/creative-spec'
+import type { CreativeSpec } from '../chat/components/previews/creative-spec'
 import { FacebookPreview, InstagramPreview } from '../chat/components/previews/platform-previews'
 
 /**
@@ -22,7 +23,12 @@ import { FacebookPreview, InstagramPreview } from '../chat/components/previews/p
  * layout to 1080 CSS px instead would leave the text tiny inside a huge card.
  */
 
-export const CARD_WIDTH = 420
+// The preview components are max-w-[25rem] = 400px. Capturing a 420px box left the card
+// pinned to the left edge with 20px of dead space on the right — on a phone it read as
+// clipped, because a card touching the frame looks cut off whether or not anything is
+// missing. The frame is now the card plus an even margin.
+export const CARD_WIDTH = 400
+export const CARD_PAD = 12
 
 interface CardPayload {
   document: CanvasDocument
@@ -58,21 +64,43 @@ export const PostCardPage = () => {
     }
   }, [token, doc])
 
-  const spec = payload ? parseCreativeSpec(payload.document) : null
+  // WhatsApp crops a chat-bubble image at roughly 4:5, and a faithful card — full-width
+  // photo plus the whole caption — comes out at 0.52. Sean lost 45% of the height on his
+  // phone: he saw the picture and none of the words.
+  //
+  // The fix is also the more honest mock. Instagram itself hides a caption past ~125
+  // characters behind "... more", and Facebook folds at about 250 — so a card showing the
+  // whole thing was never what the post will look like. Clamping brings it back under the
+  // crop AND shows the fold, which is the thing a client most needs to see.
+  const FOLD = { instagram: 125, facebook: 250 } as const
+
+  const folded = (spec: CreativeSpec): CreativeSpec => {
+    const limit = FOLD[spec.platform === 'instagram' ? 'instagram' : 'facebook']
+    const text = spec.primaryText || ''
+    if (text.length <= limit) return spec
+    const cut = text.slice(0, limit)
+    const atWord = cut.slice(0, Math.max(cut.lastIndexOf(' '), limit - 20)).trimEnd()
+    return { ...spec, primaryText: `${atWord}… `, hashtags: '' }
+  }
+
+  const spec = payload ? folded(parseCreativeSpec(payload.document) as CreativeSpec) : null
   const ready = !!spec || error
   const Preview = spec?.platform === 'instagram' ? InstagramPreview : FacebookPreview
 
   return (
     <div
       data-card-ready={ready ? 'true' : 'false'}
-      style={{ background: '#fff', width: CARD_WIDTH, overflow: 'hidden' }}
+      style={{ background: '#fff', width: CARD_WIDTH + CARD_PAD * 2, overflow: 'hidden' }}
     >
       {spec ? (
         <div
           data-card-root
           data-card-media={spec.media.length}
           data-card-platform={spec.platform}
-          style={{ width: CARD_WIDTH }}
+          // The padding lives here because this is the element the renderer screenshots;
+          // on the wrapper it would be outside the capture and the card would still touch
+          // the frame.
+          style={{ width: CARD_WIDTH + CARD_PAD * 2, padding: CARD_PAD, background: '#fff' }}
         >
           <Preview spec={spec} brandName={payload?.brand_name} />
         </div>

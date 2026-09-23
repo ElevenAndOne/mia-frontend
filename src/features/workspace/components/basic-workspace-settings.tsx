@@ -33,8 +33,12 @@ interface BasicWorkspaceSettingsProps {
   featuresPanel: ReactNode
   /** The workspace-level WhatsApp switch, rendered inside the number card. */
   whatsappMessagesSlot?: ReactNode
+  /** Posting rhythm and the best-day reminder, rendered under that switch. */
+  whatsappRhythmSlot?: ReactNode
   /** Basic has no separate Mia tab — her style lives here, as the menu promises. */
   miaStyleSection?: ReactNode
+  /** Light / dark / auto. Rendered here so it sits above Delete, not below it. */
+  appearanceSlot?: ReactNode
   onDelete: () => void
 }
 
@@ -98,6 +102,8 @@ export function BasicWorkspaceSettings({
   onChangeExperience,
   featuresPanel,
   whatsappMessagesSlot,
+  whatsappRhythmSlot,
+  appearanceSlot,
   miaStyleSection,
   onDelete,
 }: BasicWorkspaceSettingsProps) {
@@ -185,10 +191,16 @@ export function BasicWorkspaceSettings({
             {connectedPlatforms.length ? 'Manage' : 'Connect'}
           </button>
         </Row>
-        <WhatsAppNumberCard sessionId={sessionId} messagesSlot={whatsappMessagesSlot} />
+        <WhatsAppNumberCard
+          sessionId={sessionId}
+          messagesSlot={whatsappMessagesSlot}
+          rhythmSlot={whatsappRhythmSlot}
+        />
       </Group>
 
       {miaStyleSection}
+
+      {appearanceSlot && <Group label="Appearance">{appearanceSlot}</Group>}
 
       {/* Which experience this workspace gets, and the switches under it. Down here
           because it is the one group a client never needs and 11&1 occasionally does. */}

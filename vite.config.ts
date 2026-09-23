@@ -10,6 +10,12 @@ export default defineConfig({
     // silently drifting to 5174 (which would break OAuth origin/redirect matching).
     port: 5173,
     strictPort: true,
+    // Listen on the LAN, not just localhost, so a phone on the same Wi-Fi can open the
+    // app at http://<machine-ip>:5173. The ngrok tunnel only forwards the BACKEND (:8000),
+    // so opening that URL on a phone serves the health JSON and nothing else — which is
+    // what it looked like when this was missing. Every 192.168.101.* origin is already in
+    // the backend's dev CORS list and its OAuth redirect allowlist (config.get_cors_origins).
+    host: true,
     // Dev: compile the route chunks up front instead of on first click.
     warmup: {
       clientFiles: [

@@ -52,6 +52,14 @@ export function Sheet({
   className = '',
 }: SheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const dragStartY = useRef<number | null>(null)
+  // The distance travelled lives in a ref as well as state. State drives the transform (it
+  // has to re-render to move the sheet); the ref is what onTouchEnd reads, because that
+  // handler was created on an earlier render and its copy of the state may be a frame stale
+  // — which is the difference between a 95px swipe closing the sheet and snapping back.
+  const dragYRef = useRef(0)
+  const [dragY, setDragY] = useState(0)
+  const [dragging, setDragging] = useState(false)
   const titleId = useId()
   const { registerOverlay, unregisterOverlay, getZIndex } = useOverlayContext()
   const overlayId = useId()
@@ -92,10 +100,41 @@ export function Sheet({
   // Escape key handling
   useEscapeKey(onClose, isOpen && closeOnEscape)
 
+  // Swipe down to dismiss, from the handle only. Binding this to the whole panel would
+  // fight the content's own scrolling — which is the thing that has to keep working, since
+  // the best-post canvas is taller than a phone.
+  const CLOSE_AFTER_PX = 90
+  const dragProps =
+    position === 'bottom'
+      ? {
+          onTouchStart: (e: React.TouchEvent) => {
+            dragStartY.current = e.touches[0].clientY
+            setDragging(true)
+          },
+          onTouchMove: (e: React.TouchEvent) => {
+            if (dragStartY.current === null) return
+            // Down only. Dragging a bottom sheet upwards has nowhere to go.
+            const y = Math.max(0, e.touches[0].clientY - dragStartY.current)
+            dragYRef.current = y
+            setDragY(y)
+          },
+          onTouchEnd: () => {
+            const travelled = dragYRef.current
+            dragStartY.current = null
+            dragYRef.current = 0
+            setDragging(false)
+            setDragY(0)
+            if (travelled > CLOSE_AFTER_PX) onClose()
+          },
+        }
+      : {}
+
   const variant = POSITION_VARIANTS[position]
   // Full-screen: same slide-in motion, but the panel covers the viewport and the
   // children own their scroll (max-h/rounded/overflow-y would fight a full-height pane).
-  const panelClassName = fullScreen ? 'fixed inset-0 flex flex-col' : variant.className
+  const panelClassName = fullScreen
+    ? 'fixed inset-0 flex flex-col'
+    : `${variant.className} flex flex-col`
   const zIndex = getZIndex(overlayId)
 
   if (!mounted) return null
@@ -120,8 +159,13 @@ export function Sheet({
         className={`${panelClassName} bg-primary shadow-xl overflow-hidden ${className}`.trim()}
         style={{
           zIndex: zIndex + 1,
-          transform: shown ? 'none' : variant.closedTransform,
-          transition: `transform ${TRANSITION_MS}ms ${EASE}`,
+          transform: shown
+            ? dragY
+              ? `translateY(${dragY}px)`
+              : 'none'
+            : variant.closedTransform,
+          // No transition while a finger is on it, or the sheet lags behind the drag.
+          transition: dragging ? 'none' : `transform ${TRANSITION_MS}ms ${EASE}`,
           willChange: 'transform',
         }}
         role="dialog"
@@ -131,8 +175,21 @@ export function Sheet({
       >
         {/* Handle indicator (bottom sheets only) */}
         {showHandle && position === 'bottom' && !fullScreen && (
-          <div className="flex justify-center py-3">
-            <div className="w-10 h-1 bg-tertiary rounded-full" />
+          <div
+            className="flex shrink-0 cursor-grab justify-center py-3 touch-none"
+            role="button"
+            tabIndex={0}
+            aria-label="Close"
+            onClick={onClose}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') onClose()
+            }}
+            {...dragProps}
+          >
+            {/* bg-quaternary, not bg-tertiary: on the dark panel, above the bright paper of
+                the canvas, the old bar was a dark-grey line on dark grey and read as the
+                edge of the sheet. Nobody found it. */}
+            <div className="w-12 h-1.5 bg-quaternary rounded-full" />
           </div>
         )}
 
@@ -149,7 +206,12 @@ export function Sheet({
         {fullScreen ? (
           <div className="flex-1 min-h-0 pb-[env(safe-area-inset-bottom)]">{children}</div>
         ) : (
-          <div className="overflow-y-auto">{children}</div>
+          // flex-1 min-h-0, not a bare overflow-y-auto. The panel is overflow-hidden with a
+          // max height, so without a height of its own this div grew to the content and was
+          // simply clipped — the sheet looked scrollable and wasn't.
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+            {children}
+          </div>
         )}
       </div>
     </OverlayPortal>

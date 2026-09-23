@@ -7,7 +7,6 @@ const ChatPage = () => {
     onIntegrationsClick,
     onCampaignsClick,
     onReportsClick,
-    onHelpClick,
     onLogout,
     onWorkspaceSettings,
   } = useAppShellActions()
@@ -19,7 +18,6 @@ const ChatPage = () => {
           onIntegrationsClick={onIntegrationsClick}
           onCampaignsClick={onCampaignsClick}
           onReportsClick={onReportsClick}
-          onHelpClick={onHelpClick}
           onLogout={onLogout}
           onWorkspaceSettings={onWorkspaceSettings}
           onNewWorkspace={onNewWorkspace}

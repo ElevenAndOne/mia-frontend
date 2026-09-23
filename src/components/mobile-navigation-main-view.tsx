@@ -4,17 +4,13 @@ import { Check } from './icon/check'
 import { ChevronRight } from './icon/chevron-right'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
-import { HelpCircle } from './icon/help-circle'
 import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
-import { Palette } from './icon/palette'
 import { Plus } from './icon/plus'
 import { Settings01 } from './icon/settings-01'
 import { Target01 } from './icon/target-01'
 import { Wallet01 } from './icon/wallet-01'
 import { XClose } from './icon/x-close'
-import type { SegmentedControlOption } from './segmented-control'
-import { SegmentedControl } from './segmented-control'
 import type { Workspace } from '../features/workspace/types'
 import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useExperience } from '../features/workspace/hooks/use-experience'
@@ -26,16 +22,12 @@ interface MobileNavigationMainViewProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onReportsClick?: () => void
-  onHelpClick?: () => void
   onWorkspaceSettings?: () => void
   onLogout?: () => void
   activeWorkspace?: Workspace | null
   userName?: string
   userEmail?: string
   userImageUrl?: string | null
-  theme: 'system' | 'light' | 'dark'
-  themeOptions: Array<SegmentedControlOption<'system' | 'light' | 'dark'>>
-  onThemeChange: (value: 'system' | 'light' | 'dark') => void
   recentConversations?: RecentConversation[]
   onRecentChatsClick?: () => void
 }
@@ -46,13 +38,9 @@ export const MobileNavigationMainView = ({
   onIntegrationsClick,
   onCampaignsClick,
   onReportsClick,
-  onHelpClick,
   onWorkspaceSettings,
   onLogout,
   activeWorkspace,
-  theme,
-  themeOptions,
-  onThemeChange,
   recentConversations = [],
   onRecentChatsClick,
 }: MobileNavigationMainViewProps) => {
@@ -152,19 +140,6 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {isBasic && (
-          <button
-            onClick={() => {
-              onClose()
-              navigate('/settings/workspace?tab=brand')
-            }}
-            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-          >
-            <Palette size={20} className="text-tertiary" />
-            <span className="paragraph-sm">My brand</span>
-          </button>
-        )}
-
         {onWorkspaceSettings && (
           <button
             onClick={onWorkspaceSettings}
@@ -177,15 +152,9 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {onHelpClick && (
-          <button
-            onClick={onHelpClick}
-            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
-          >
-            <HelpCircle size={20} className="text-tertiary" />
-            <span className="paragraph-sm">Help</span>
-          </button>
-        )}
+        {/* Brand, Help and the theme switch used to sit here as three more rows beside
+            Workspace settings — four doors to one idea, and the longest menu on the
+            smallest screen. They are tabs and a control inside Settings now. */}
       </div>
 
       <div className="border-t border-tertiary mx-4" />
@@ -231,12 +200,6 @@ export const MobileNavigationMainView = ({
         </div>
       )}
 
-      <div className="border-t border-tertiary mx-4" />
-
-      {/* Theme */}
-      <div className="px-4 py-3">
-        <SegmentedControl options={themeOptions} value={theme} onChange={onThemeChange} fullWidth />
-      </div>
 
       {/* Spacer */}
       <div className="flex-1" />

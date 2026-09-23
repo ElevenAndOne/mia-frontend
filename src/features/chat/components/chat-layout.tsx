@@ -15,7 +15,6 @@ interface ChatLayoutProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onReportsClick?: () => void
-  onHelpClick?: () => void
   onNewChat?: () => void
   onBack?: () => void
   onLogout?: () => void
@@ -30,7 +29,6 @@ export const ChatLayout = ({
   onIntegrationsClick,
   onCampaignsClick,
   onReportsClick,
-  onHelpClick,
   onNewChat,
   onBack,
   onLogout,
@@ -140,7 +138,6 @@ export const ChatLayout = ({
         onIntegrationsClick={onIntegrationsClick}
         onCampaignsClick={onCampaignsClick}
         onReportsClick={onReportsClick}
-        onHelpClick={onHelpClick}
         onLogout={onLogout}
         onWorkspaceSettings={onWorkspaceSettings}
         onLoadConversation={

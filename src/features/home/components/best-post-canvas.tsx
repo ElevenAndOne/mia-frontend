@@ -1,5 +1,6 @@
 import { ChevronRight } from '../../../components/icon/chevron-right'
 import { Edit03 } from '../../../components/icon/edit-03'
+import { MessageChatSquare } from '../../../components/icon/message-chat-square'
 import type { BestPost } from '../types'
 
 interface BestPostCanvasProps {
@@ -8,8 +9,10 @@ interface BestPostCanvasProps {
   brandName?: string
   onClose: () => void
   onMakeAnother?: () => void
-  /** Phone sheet: no Close chevron (the sheet has its own), tighter padding. */
+  /** Phone sheet: tighter padding and a smaller frame. */
   compact?: boolean
+  /** wa.me link that opens WhatsApp with Mia's number and a message ready to send. */
+  startChatUrl?: string | null
 }
 
 const PLATFORM: Record<string, string> = { facebook: 'Facebook', instagram: 'Instagram' }
@@ -34,12 +37,13 @@ export const BestPostCanvas = ({
   onClose,
   onMakeAnother,
   compact,
+  startChatUrl,
 }: BestPostCanvasProps) => {
   const platform = PLATFORM[post.platform] ?? post.platform
   const lift = post.lift >= 2 ? `${Math.round(post.lift)}×` : `${post.lift.toFixed(1)}×`
   return (
     <section
-      className={`relative h-full w-full overflow-y-auto overflow-x-hidden bg-paper-bg text-paper-ink paper-dots mia-sans ${compact ? 'px-4 pb-8 pt-12' : 'pl-16 pr-10 pb-10 pt-16'}`}
+      className={`relative h-full w-full overflow-x-hidden bg-paper-bg text-paper-ink paper-dots mia-sans ${compact ? 'px-3 pb-6 pt-3' : 'overflow-y-auto pl-16 pr-10 pb-10 pt-16'}`}
       aria-label="Your best post"
     >
       {/* Decorative stickers from the Figma design (paper only, desktop only). */}
@@ -68,17 +72,35 @@ export const BestPostCanvas = ({
           />
         </>
       )}
-      {!compact && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute left-9 top-5 inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70"
+      {/* Close, top-left, on the phone too. It used to be desktop-only on the grounds that
+          "the sheet has its own" — but the sheet's only affordance is the grey handle, and
+          on a phone this panel covers almost everything, so the way out has to be labelled. */}
+      <button
+        type="button"
+        onClick={onClose}
+        className={`absolute inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70 ${
+          compact ? 'left-4 top-4' : 'left-9 top-5'
+        }`}
+      >
+        <span>Close</span>
+        <ChevronRight size={11} />
+      </button>
+      {/* Top right. On the phone this is the way into WhatsApp, not "Make another like it" —
+          that button is already on the card behind this sheet, and repeating it here spends
+          the one prominent slot on something they can already reach. Every menu Mia has on
+          WhatsApp is a *reply*, so until they message her first none of it exists for them;
+          this is the tap that opens the thread. */}
+      {compact && startChatUrl ? (
+        <a
+          href={startChatUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="absolute right-4 top-3 inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink"
         >
-          <span>Close</span>
-          <ChevronRight size={11} />
-        </button>
-      )}
-      {onMakeAnother && (
+          <MessageChatSquare size={14} />
+          <span>Open in WhatsApp</span>
+        </a>
+      ) : !compact && onMakeAnother ? (
         <button
           type="button"
           onClick={onMakeAnother}
@@ -87,13 +109,13 @@ export const BestPostCanvas = ({
           <Edit03 size={14} />
           <span>Make another like it</span>
         </button>
-      )}
+      ) : null}
 
-      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full' : 'max-w-[26.875rem]'}`}>
+      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full pt-6 gap-2.5' : 'max-w-[26.875rem]'}`}>
         {/* stamp — the Figma sticker. The wrapper owns the rotation and the shine so the
             highlight can be masked to the sticker's own shape (see .mia-sticker). */}
         <span
-          className="mia-sticker -ml-1 w-[9.125rem] select-none"
+          className={`mia-sticker -ml-1 select-none ${compact ? 'w-[5.25rem]' : 'w-[9.125rem]'}`}
           style={
             {
               '--mia-sticker-src': "url('/images/stickers/sticker-top-performer.png')",
@@ -117,7 +139,7 @@ export const BestPostCanvas = ({
             <img
               src={post.image_url}
               alt=""
-              className="block w-full max-h-[26.25rem] object-cover"
+              className={`block w-full object-cover ${compact ? 'max-h-[32vh]' : 'max-h-[26.25rem]'}`}
               loading="lazy"
             />
           ) : (
@@ -149,7 +171,7 @@ export const BestPostCanvas = ({
         </article>
 
         {post.tiles.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${compact ? 'grid-cols-2' : 'grid-cols-3'}`}>
             {post.tiles.map((t) => (
               <div
                 key={t.head}
@@ -165,6 +187,7 @@ export const BestPostCanvas = ({
         <p className="paragraph-xs text-paper-sub">
           Compared against your other {post.compared_against} {platform} posts from {windowLabel}.
         </p>
+
       </div>
     </section>
   )

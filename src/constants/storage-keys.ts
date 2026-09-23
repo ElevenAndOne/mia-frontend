@@ -24,6 +24,10 @@ export const StorageKey = {
   // Onboarding (tenant-scoped — append `_${tenantId}`)
   ONBOARDING_COMPLETED_PREFIX: 'mia_onboarding_completed_',
   ONBOARDING_MESSAGES: 'mia_onboarding_messages',
+  /** {tenantId, step, website, ts} — Basic onboarding's place in the flow. Reading the
+   *  verification code means leaving for WhatsApp, and a phone will happily discard the tab
+   *  while you do; without this you came back to step one and typed your number again. */
+  BASIC_ONBOARDING_PROGRESS: 'mia_basic_onboarding_progress',
 
   // Date range
   DATE_RANGE: 'mia_date_range',

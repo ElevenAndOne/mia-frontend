@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
+import type { MetaPurpose } from '../features/auth/services/meta-auth-service'
 import { useAppChromeEffects } from './use-app-chrome-effects'
 import { useAuthRedirects } from './use-auth-redirects'
 import { useInsightsDatePicker } from './use-insights-date-picker'
@@ -93,12 +94,21 @@ export const useAppController = () => {
   }
 
   const handleOnboardingComplete = () => {
-    navigate('/home')
+    // A full load, not SPA navigation. Onboarding has just settled which experience this
+    // workspace is, and the sidebar, the home page and the chat tools all read that from
+    // session state fetched at boot — navigating in place would show the old shell until
+    // the next refresh. Same reasoning as handleInviteAccepted below.
+    window.location.href = '/home'
   }
 
   const handleConnectPlatform = async (platformId: string) => {
     if (platformId === 'meta_ads' || platformId === 'meta' || platformId === 'facebook_organic') {
-      const success = await loginMeta()
+      // What they clicked says what to ask Facebook for. Someone connecting a Page to post
+      // from should not be shown a request to manage their advertising — that is the whole
+      // point of the scope split, and it only works if the caller names the moment.
+      const purpose: MetaPurpose[] =
+        platformId === 'meta_ads' ? ['ads'] : ['pages', 'instagram', 'publish']
+      const success = await loginMeta(undefined, purpose)
       if (success) {
         await refreshAccounts()
       }

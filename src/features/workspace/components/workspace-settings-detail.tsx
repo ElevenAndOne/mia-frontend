@@ -64,7 +64,10 @@ import { FeatureFlagsPanel } from './feature-flags-panel'
 import { WebsiteReadCard } from './website-read-card'
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { BasicWorkspaceSettings } from './basic-workspace-settings'
+import { HelpContent } from '../../shell/components/help-content'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
+import { PostingRhythmCard } from './posting-rhythm-card'
+import { CreativeWatchCard } from './creative-watch-card'
 import { BrandFactsSection } from './brand-facts-section'
 import {
   SegmentedControl,
@@ -82,6 +85,7 @@ import { EXPERIENCES, EXPERIENCE_COPY, EXPERIENCE_LABEL, type Experience } from 
 type SettingsTab =
   | 'members'
   | 'brand'
+  | 'help'
   | 'brandkit'
   | 'campaigns'
   | 'notes'
@@ -180,13 +184,16 @@ export const WorkspaceSettingsDetail = ({
     { value: 'light', label: 'Light', icon: <Sun size={16} /> },
     { value: 'dark', label: 'Dark', icon: <Moon01 size={16} /> },
   ]
+  // Help sits here rather than as its own row in the menu. Brand, Workspace settings, Help
+  // and the theme switch were four separate doors to one idea; Settings is the door and
+  // these are the rooms.
   const visibleTabs: SettingsTab[] = canManage
     ? isBasic
-      ? ['brand', 'members']
-      : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia']
+      ? ['brand', 'members', 'help']
+      : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia', 'help']
     : isBasic
-      ? ['brand']
-      : ['brand', 'brandkit', 'campaigns', 'notes', 'mia']
+      ? ['brand', 'help']
+      : ['brand', 'brandkit', 'campaigns', 'notes', 'mia', 'help']
   // The tab lives in the URL (?tab=brand) so a refresh or a shared link lands on the same tab,
   // and the breadcrumb can name it.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -201,6 +208,7 @@ export const WorkspaceSettingsDetail = ({
       'whatsapp',
       'skills',
       'mia',
+      'help',
     ]
     const wanted = t && ok.includes(t) ? t : null
     // Basic has no Mia tab any more; an old ?tab=mia link lands on Workspace, where her
@@ -225,16 +233,23 @@ export const WorkspaceSettingsDetail = ({
     // initialTab is derived from searchParams, so this runs on every URL change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab])
-  const tabLabel = (tab: SettingsTab): string => {
-    if (tab === 'members') return isBasic ? 'Workspace' : 'Members'
-    if (tab === 'brand') return isBasic ? 'Brand' : 'Brand Guide'
-    if (tab === 'brandkit') return 'Brand Kit'
-    if (tab === 'campaigns') return 'Campaign Guides'
-    if (tab === 'notes') return 'Rules'
-    if (tab === 'skills') return 'Skill Learning'
-    if (tab === 'whatsapp') return 'WhatsApp Alerts'
-    return 'Mia'
+  // One labeller, and it names every tab explicitly. There used to be two — this one, and
+  // a second chain inlined in the tab bar below — with different fallbacks: 'Mia' here and
+  // 'WhatsApp Alerts' there. So a new tab was labelled two different things depending on
+  // where you read it, and the Help tab came out as "WhatsApp Alerts" in the bar. A Record
+  // means a tab added to the union without a label fails to compile instead of guessing.
+  const TAB_LABELS: Record<SettingsTab, string> = {
+    members: isBasic ? 'Workspace' : 'Members',
+    brand: isBasic ? 'Brand' : 'Brand Guide',
+    brandkit: 'Brand Kit',
+    campaigns: 'Campaign Guides',
+    notes: 'Rules',
+    skills: 'Skill Learning',
+    whatsapp: 'WhatsApp Alerts',
+    mia: 'Mia',
+    help: 'Help',
   }
+  const tabLabel = (tab: SettingsTab): string => TAB_LABELS[tab]
   const selectTab = (tab: SettingsTab) => {
     setActiveTab(tab)
     setSearchParams(
@@ -505,25 +520,7 @@ export const WorkspaceSettingsDetail = ({
                 : 'border-transparent text-secondary hover:text-primary',
             ].join(' ')}
           >
-            {tab === 'members'
-              ? isBasic
-                ? 'Workspace'
-                : 'Members'
-              : tab === 'brand' && isBasic
-                ? 'Brand'
-                : tab === 'brand'
-                  ? 'Brand Guide'
-                  : tab === 'brandkit'
-                    ? 'Brand Kit'
-                    : tab === 'campaigns'
-                      ? 'Campaign Guides'
-                      : tab === 'notes'
-                        ? 'Rules'
-                        : tab === 'skills'
-                          ? 'Skill Learning'
-                          : tab === 'mia'
-                            ? 'Mia'
-                            : 'WhatsApp Alerts'}
+            {tabLabel(tab)}
           </button>
         ))}
       </div>
@@ -531,6 +528,18 @@ export const WorkspaceSettingsDetail = ({
       <div
         className={`flex-1 overflow-y-auto min-h-0 px-4 py-4 max-w-3xl mx-auto w-full${isBasic ? ' settings-canvas' : ''}`}
       >
+        {/* Any active member can send Mia photos on WhatsApp — it's their own number, not a
+            workspace setting, so it doesn't belong behind the owner/admin gate below. Before
+            this, an invited member (Sean into Lesley's Basic test, 23 Sep) had no way at all
+            to add their number: the card lived only inside the owner/admin-only sections for
+            every tier. Owners/admins already have the fuller card further down; this is only
+            for everyone else. */}
+        {!canManage && (
+          <div className="mb-4 bg-secondary rounded-xl border border-tertiary">
+            <WhatsAppNumberCard sessionId={sessionId} mode={isBasic ? 'full' : 'confirm'} />
+          </div>
+        )}
+
         {/* WhatsApp Alerts tab */}
         {visited.has('whatsapp') && (
           <div className={activeTab === 'whatsapp' ? undefined : 'hidden'}>
@@ -671,6 +680,22 @@ export const WorkspaceSettingsDetail = ({
                   <div className="p-4 bg-secondary rounded-xl border border-tertiary">
                     <WhatsAppNumberCard sessionId={sessionId} mode="confirm" />
                   </div>
+
+                  {/* The loop's two workspace-level controls (docs2/CONTINUOUS_CREATIVE_LOOP_ANALYSIS.md
+                      steps 4 and 5): how often this workspace posts, and a client folder Mia
+                      watches for new creative. Owners and admins only — both end in posts. */}
+                  {canManage && (
+                    <>
+                      <div className="p-4 bg-secondary rounded-xl border border-tertiary">
+                        <PostingRhythmCard
+                          sessionId={sessionId}
+                          tenantId={workspace.tenant_id}
+                          canManage={canManage}
+                        />
+                      </div>
+                      <CreativeWatchCard sessionId={sessionId} tenantId={workspace.tenant_id} />
+                    </>
+                  )}
 
                   {/* Member overview (admin/owner only) */}
                   {canManage && alertSettings.members.length > 0 && (
@@ -821,6 +846,14 @@ export const WorkspaceSettingsDetail = ({
           </div>
         )}
 
+        {/* Help tab. Same body as the /help route — the mobile menu used to carry Help as
+            its own row, which made Settings one of four doors instead of the door. */}
+        {visited.has('help') && (
+          <div className={activeTab === 'help' ? undefined : 'hidden'}>
+            <HelpContent />
+          </div>
+        )}
+
         {/* Members tab */}
         {visited.has('members') && (
           <div className={activeTab === 'members' ? undefined : 'hidden'}>
@@ -831,7 +864,11 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
-              {canManage && !isBasic && (
+              {/* Basic can invite people too. It is one workspace, not one person — a sole
+                  owner who takes on a bookkeeper should not have to change experience to
+                  let them in. Inviting does not change the experience; it only adds a
+                  member (see suggest_experience: the shape is read once, at sign-up). */}
+              {canManage && (
                 <button
                   onClick={onOpenCreateInviteModal}
                   className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
@@ -841,21 +878,20 @@ export const WorkspaceSettingsDetail = ({
                 </button>
               )}
 
-              {!isBasic &&
-                (loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Spinner size="md" variant="dark" />
-                  </div>
-                ) : (
-                  <WorkspaceMembersPanel
-                    people={people}
-                    onUpdateRole={onUpdateRole}
-                    onTransferOwnership={onTransferOwnership}
-                    onRemoveMember={onRemoveMember}
-                    onCopyInvite={onCopyInvite}
-                    onRevokeInvite={onRevokeInvite}
-                  />
-                ))}
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spinner size="md" variant="dark" />
+                </div>
+              ) : (
+                <WorkspaceMembersPanel
+                  people={people}
+                  onUpdateRole={onUpdateRole}
+                  onTransferOwnership={onTransferOwnership}
+                  onRemoveMember={onRemoveMember}
+                  onCopyInvite={onCopyInvite}
+                  onRevokeInvite={onRevokeInvite}
+                />
+              )}
 
               {/* Workspace Settings - Owner and Admin */}
               {canManage && (
@@ -863,6 +899,7 @@ export const WorkspaceSettingsDetail = ({
                   {!isBasic && <h3 className="subheading-md text-primary mb-2">Workspace</h3>}
 
                   {isBasic ? (
+                    <>
                     <BasicWorkspaceSettings
                       sessionId={sessionId ?? ''}
                       tenantId={workspace.tenant_id}
@@ -933,6 +970,13 @@ export const WorkspaceSettingsDetail = ({
                         )}
                         </div>
                       }
+                      whatsappRhythmSlot={
+                        <PostingRhythmCard
+                          sessionId={sessionId}
+                          tenantId={workspace.tenant_id}
+                          canManage={canManage}
+                        />
+                      }
                       miaStyleSection={
                         <Suspense fallback={<TabFallback />}>
                           <MiaStyleTab
@@ -942,8 +986,30 @@ export const WorkspaceSettingsDetail = ({
                           />
                         </Suspense>
                       }
+                      appearanceSlot={
+                        /* Basic used to be the one experience without a theme control in
+                           Settings — its theme lived in the workspace menu, which no longer
+                           carries it. Passed in as a slot so it sits above Delete. */
+                        <div className="flex items-center justify-between gap-3 px-3 py-2">
+                          <div>
+                            <p className="paragraph-sm text-primary">Theme</p>
+                            <p className="paragraph-xs text-quaternary">
+                              Light, dark or follow your device
+                            </p>
+                          </div>
+                          <div className="w-[13.5rem] shrink-0">
+                            <SegmentedControl
+                              options={themeOptions}
+                              value={theme}
+                              onChange={setTheme}
+                              fullWidth
+                            />
+                          </div>
+                        </div>
+                      }
                       onDelete={onOpenDeleteModal}
                     />
+                    </>
                   ) : (
                     <>
                       {/* Rename */}
@@ -1156,9 +1222,9 @@ export const WorkspaceSettingsDetail = ({
                           }}
                         />
                       </div>
-                      {/* Appearance for Team/Agency, who also have the sidebar control.
-                          Basic never reaches this branch — its theme lives in the
-                          workspace menu, and only there. */}
+                      {/* Appearance, for everyone. It used to be withheld from Basic on the
+                          grounds that its theme lived in the workspace menu — which meant
+                          light/dark was the one setting not in Settings. */}
                       <div className="flex items-center justify-between gap-3 p-3 bg-secondary rounded-lg mb-3">
                         <div>
                           <p className="subheading-md text-primary">Appearance</p>

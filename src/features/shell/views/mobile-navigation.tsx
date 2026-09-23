@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../../../contexts/session-context'
-import { useTheme } from '../../../contexts/theme-context'
 import { useToast } from '../../../contexts/toast-context'
 import { Sheet } from '../../overlay'
-import { Monitor01 } from '../../../components/icon/monitor-01'
-import { Moon01 } from '../../../components/icon/moon-01'
-import { Sun } from '../../../components/icon/sun'
-import type { SegmentedControlOption } from '../../../components/segmented-control'
 import { MobileNavigationMainView } from '../../../components/mobile-navigation-main-view'
 import { MobileNavigationChatsView } from '../../../components/mobile-navigation-chats-view'
 import { fetchRecentConversations } from '../../chat/services/chat-service'
@@ -21,7 +16,6 @@ interface MobileNavigationProps {
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
   onReportsClick?: () => void
-  onHelpClick?: () => void
   onLogout?: () => void
   onWorkspaceSettings?: () => void
   onLoadConversation?: (conversationId: string) => void
@@ -34,13 +28,11 @@ export const MobileNavigation = ({
   onIntegrationsClick,
   onCampaignsClick,
   onReportsClick,
-  onHelpClick,
   onLogout,
   onWorkspaceSettings,
   onLoadConversation,
 }: MobileNavigationProps) => {
   const { user, activeWorkspace, sessionId } = useSession()
-  const { theme, setTheme } = useTheme()
   const { showToast } = useToast()
   const [view, setView] = useState<NavView>('main')
   const [recentConversations, setRecentConversations] = useState<RecentConversation[]>([])
@@ -68,12 +60,6 @@ export const MobileNavigation = ({
     }
   }, [isOpen, sessionId, showToast])
 
-  const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
-    { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },
-    { value: 'light', label: 'Light', icon: <Sun size={16} /> },
-    { value: 'dark', label: 'Dark', icon: <Moon01 size={16} /> },
-  ]
-
   const handleIntegrations = () => {
     onIntegrationsClick?.()
     onClose()
@@ -86,10 +72,6 @@ export const MobileNavigation = ({
     onReportsClick?.()
     onClose()
   }
-  const handleHelp = () => {
-    onHelpClick?.()
-    onClose()
-  }
   const handleWorkspaceSettings = () => {
     onWorkspaceSettings?.()
     onClose()
@@ -98,7 +80,6 @@ export const MobileNavigation = ({
     onLogout?.()
     onClose()
   }
-  const handleThemeChange = (value: typeof theme) => setTheme(value)
 
   const handleLoadConversation = (id: string) => {
     onLoadConversation?.(id)
@@ -120,16 +101,12 @@ export const MobileNavigation = ({
           onIntegrationsClick={handleIntegrations}
           onCampaignsClick={onCampaignsClick ? handleCampaigns : undefined}
           onReportsClick={onReportsClick ? handleReports : undefined}
-          onHelpClick={onHelpClick ? handleHelp : undefined}
           onWorkspaceSettings={onWorkspaceSettings ? handleWorkspaceSettings : undefined}
           onLogout={handleLogout}
           activeWorkspace={activeWorkspace}
           userName={user?.name || 'User'}
           userEmail={user?.email || ''}
           userImageUrl={user?.picture_url}
-          theme={theme}
-          themeOptions={themeOptions}
-          onThemeChange={handleThemeChange}
           recentConversations={recentConversations}
           onRecentChatsClick={onLoadConversation ? () => setView('chats') : undefined}
         />
