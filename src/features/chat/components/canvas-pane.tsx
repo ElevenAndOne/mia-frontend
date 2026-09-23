@@ -45,8 +45,10 @@ interface CanvasPaneProps {
   freshIds?: Set<string>
   isSaving?: boolean
   onClose: () => void
-  /** Highlight → "ask Mia to change this" (span-patch). */
-  onRequestEdit: (instruction: string, selection: DocumentSelection) => void
+  /** Highlight → quote the selection into the chat composer (edits happen in the conversation). */
+  onQuoteToChat?: (selection: DocumentSelection) => void
+  /** Surfaces without a composer (memo drawer): highlight → typed instruction → span edit. */
+  onRequestEdit?: (instruction: string, selection: DocumentSelection) => void
   /** User's own inline edit (debounced save happens in the hook). */
   onSaveUserEdit: (content: string) => void
   /** Revert Mia's last rewrite. */
@@ -56,8 +58,6 @@ interface CanvasPaneProps {
   onFetchVersions: () => Promise<CanvasDocument[]>
   /** Check out a version for viewing (no new version until edited). */
   onSelectVersion: (version: CanvasDocument) => void
-  /** Optional voice-to-edit passthrough for the toolbar. */
-  onDictateEdit?: () => void
   /** Workspace/brand name shown in the platform-native previews. */
   brandName?: string
   /** Conversation id — provenance for "Add to campaign". */
@@ -98,13 +98,13 @@ export const CanvasPane = ({
   freshIds,
   isSaving = false,
   onClose,
+  onQuoteToChat,
   onRequestEdit,
   onSaveUserEdit,
   onUndo,
   canUndo = false,
   onFetchVersions,
   onSelectVersion,
-  onDictateEdit,
   brandName,
   conversationId = null,
   onUploadMedia,
@@ -244,9 +244,13 @@ export const CanvasPane = ({
     setPickMode(false)
   }, [closeToolbar])
 
+  const askInChat = useCallback(() => {
+    if (!selection || !onQuoteToChat) return
+    onQuoteToChat({ text: selection.text })
+  }, [selection, onQuoteToChat])
   const submitEdit = useCallback(
     (instruction: string) => {
-      if (!selection) return
+      if (!selection || !onRequestEdit) return
       onRequestEdit(instruction, { text: selection.text })
     },
     [selection, onRequestEdit]
@@ -643,7 +647,7 @@ export const CanvasPane = ({
                 )}
               </>
             ) : (
-              <ChatMarkdown content={doc.content} />
+              <ChatMarkdown content={doc.content} hardBreaks />
             )}
           </div>
         ) : WYSIWYG_TYPES.has(doc.doc_type) ? (
@@ -706,7 +710,7 @@ export const CanvasPane = ({
                 className="w-full flex items-center justify-center gap-2 rounded-xl border border-tertiary py-2.5 paragraph-sm font-medium text-secondary active:bg-tertiary transition-colors"
               >
                 <MagicWand02 size={15} className="text-utility-brand-600" />
-                Edit with Mia
+                Ask Mia about a line
               </button>
               <p className="paragraph-xs text-quaternary text-center mt-1.5">
                 or long-press text in the preview to pick a spot yourself
@@ -721,9 +725,9 @@ export const CanvasPane = ({
         <HighlightToolbar
           anchorRect={selection.rect}
           selectionText={selection.text}
-          onSubmit={submitEdit}
+          onAsk={onQuoteToChat ? askInChat : undefined}
+          onSubmit={!onQuoteToChat && onRequestEdit ? submitEdit : undefined}
           onClose={closeToolbarAndPick}
-          onDictate={onDictateEdit}
           ignoreOutsideRef={pickMode ? bodyRef : undefined}
         />
       )}

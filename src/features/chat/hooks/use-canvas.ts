@@ -18,7 +18,12 @@ interface UseCanvasArgs {
    * own the chat loop — it hands the parent a message + document_context and the
    * `document` SSE event comes back through the same stream (see handleDocumentEvent).
    */
-  onSendEdit: (message: string, documentContext: DocumentContext) => void
+  /** Main chat: quote a highlighted span into the composer, carrying the document context along. */
+  onQuoteToChat?: (text: string, documentContext: DocumentContext) => void
+  /** Surfaces without a composer (memo drawer): send a scoped edit instruction directly. */
+  onSendEdit?: (message: string, documentContext: DocumentContext) => void
+  /** "Use this" on a chat option: send it straight into the active document. */
+  onUseOption?: (text: string, documentContext: DocumentContext) => void
 }
 
 export interface CanvasController {
@@ -42,8 +47,12 @@ export interface CanvasController {
   fetchVersions: () => Promise<CanvasDocument[]>
   /** View a past version (checkout — no new version created; editing from it appends). */
   viewVersion: (version: CanvasDocument) => void
-  /** Ask Mia to change the highlighted span (full-document rewrite). */
+  /** Quote the highlighted span into the chat (the conversation is where edits happen). */
+  quoteToChat: (selection: DocumentSelection) => void
+  /** Legacy instruction mode (memo drawer): ask Mia to change the highlighted span. */
   requestEdit: (instruction: string, selection: DocumentSelection) => void
+  /** Put a chosen chat option into the active document (no highlight needed). */
+  useOptionInActive: (text: string) => void
   /** Persist the user's own inline edit as a new version (debounced). */
   saveUserEdit: (content: string) => void
   isSaving: boolean
@@ -72,7 +81,9 @@ const EDIT_SAVE_DEBOUNCE_MS = 800
 export function useCanvas({
   sessionId,
   conversationId,
+  onQuoteToChat,
   onSendEdit,
+  onUseOption,
 }: UseCanvasArgs): CanvasController {
   // Latest version per document_id.
   const [documents, setDocuments] = useState<Record<string, CanvasDocument>>({})
@@ -206,12 +217,12 @@ export function useCanvas({
 
   const close = useCallback(() => setIsOpen(false), [])
 
-  const requestEdit = useCallback(
-    (instruction: string, selection: DocumentSelection) => {
+  const buildContext = useCallback(
+    (selection: DocumentSelection): DocumentContext | null => {
       const latest = activeId ? documents[activeId] : null
-      if (!latest) return
+      if (!latest) return null
       const displayed = viewing ?? latest
-      const documentContext: DocumentContext = {
+      return {
         document_id: latest.id,
         title: latest.title,
         doc_type: latest.doc_type,
@@ -219,9 +230,42 @@ export function useCanvas({
         version: latest.version, // number off the true latest so versions never collide
         selection,
       }
-      onSendEdit(instruction, documentContext)
     },
-    [activeId, documents, viewing, onSendEdit]
+    [activeId, documents, viewing]
+  )
+
+  const quoteToChat = useCallback(
+    (selection: DocumentSelection) => {
+      const ctx = buildContext(selection)
+      if (ctx) onQuoteToChat?.(selection.text, ctx)
+    },
+    [buildContext, onQuoteToChat]
+  )
+
+  const requestEdit = useCallback(
+    (instruction: string, selection: DocumentSelection) => {
+      const ctx = buildContext(selection)
+      if (ctx) onSendEdit?.(instruction, ctx)
+    },
+    [buildContext, onSendEdit]
+  )
+
+  const useOptionInActive = useCallback(
+    (text: string) => {
+      // Fall back to the first document when none is active (canvas closed, one doc).
+      const targetId = activeId ?? order[0] ?? null
+      const latest = targetId ? documents[targetId] : null
+      if (!latest) return
+      const ctx: DocumentContext = {
+        document_id: latest.id,
+        title: latest.title,
+        doc_type: latest.doc_type,
+        current_content: latest.content,
+        version: latest.version,
+      }
+      onUseOption?.(text, ctx)
+    },
+    [activeId, order, documents, onUseOption]
   )
 
   const saveUserEdit = useCallback(
@@ -504,7 +548,9 @@ export function useCanvas({
     close,
     fetchVersions,
     viewVersion,
+    quoteToChat,
     requestEdit,
+    useOptionInActive,
     saveUserEdit,
     isSaving,
     undo,

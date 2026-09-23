@@ -42,6 +42,7 @@ const Hashtags = ({ tags, className }: { tags: string; className: string }) =>
 
 export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => {
   const showLinkCard = spec.isPaid && (spec.headline || spec.cta || spec.linkUrl)
+  const onImage = spec.copyType === 'on-image' || (spec.frames.length > 0 && !spec.primaryText)
   return (
     <div className="w-full max-w-[25rem] rounded-xl overflow-hidden bg-white text-[#050505] border border-[#E4E6EB] shadow-sm dark:bg-[#242526] dark:text-[#E4E6EB] dark:border-transparent">
       <div className="flex items-center gap-2.5 px-3.5 pt-3">
@@ -54,7 +55,7 @@ export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => 
         </div>
       </div>
 
-      {spec.primaryText && (
+      {spec.primaryText && !onImage && (
         <p className="px-3.5 py-2.5 text-[0.8438rem] leading-[1.45] whitespace-pre-line">
           {spec.primaryText}
           <Hashtags tags={spec.hashtags} className="text-[#216FDB] dark:text-[#4599FF]" />
@@ -62,12 +63,14 @@ export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => 
       )}
 
       <MediaSlot
-        visuals={spec.visuals}
+        visuals={spec.frames.length > 0 ? spec.frames.map((_, i) => `Frame ${i + 1}`) : spec.visuals}
         media={spec.media}
-        aspect={spec.format === 'carousel' ? 'aspect-square' : 'aspect-[1.91/1]'}
-        carousel={spec.format === 'carousel'}
+        aspect={spec.format === 'carousel' || spec.frames.length > 1 ? 'aspect-square' : 'aspect-[1.91/1]'}
+        carousel={spec.format === 'carousel' || spec.frames.length > 1}
         play={isMotion(spec)}
         badge={motionBadge(spec)}
+        overlayText={onImage ? spec.primaryText : undefined}
+        frames={spec.frames.length > 0 ? spec.frames : undefined}
         clampPortrait={4 / 5}
         className="bg-[#F0F2F5] text-[#65676B] dark:bg-[#18191A] dark:text-[#B0B3B8]"
         {...media}
@@ -126,12 +129,14 @@ export const InstagramPreview = ({ spec, brandName, ...media }: PreviewProps) =>
     </div>
 
     <MediaSlot
-      visuals={spec.visuals}
+      visuals={spec.frames.length > 0 ? spec.frames.map((_, i) => `Frame ${i + 1}`) : spec.visuals}
       media={spec.media}
       aspect="aspect-square"
-      carousel={spec.format === 'carousel'}
+      carousel={spec.format === 'carousel' || spec.frames.length > 1}
       play={isMotion(spec)}
       badge={motionBadge(spec)}
+      overlayText={spec.copyType === 'on-image' ? spec.primaryText : undefined}
+      frames={spec.frames.length > 0 ? spec.frames : undefined}
       clampPortrait={4 / 5}
       className="bg-[#FAFAFA] text-[#737373] border-y border-[#EFEFEF] dark:bg-[#111111] dark:text-[#A8A8A8] dark:border-[#1C1C1C]"
       {...media}
@@ -152,7 +157,7 @@ export const InstagramPreview = ({ spec, brandName, ...media }: PreviewProps) =>
       </span>
     </div>
 
-    {spec.primaryText && (
+    {spec.primaryText && spec.copyType !== 'on-image' && (
       <p className="px-3 pt-2 pb-3 text-[0.7813rem] leading-[1.45] whitespace-pre-line">
         <span className="font-semibold">{igHandle(brandName)}</span> {spec.primaryText}
         <Hashtags tags={spec.hashtags} className="text-[#00376B] dark:text-[#B3C7F9]" />
@@ -246,6 +251,7 @@ export const InstagramReelPreview = ({ spec, brandName, ...media }: PreviewProps
 
 export const LinkedInPreview = ({ spec, brandName, ...media }: PreviewProps) => {
   const showCtaBar = spec.isPaid && (spec.headline || spec.cta)
+  const onImage = spec.copyType === 'on-image' || (spec.frames.length > 0 && !spec.primaryText)
   return (
     <div className="w-full max-w-[25rem] rounded-xl overflow-hidden bg-white text-[#191919] border border-[#E8E8E8] shadow-sm dark:bg-[#1B1F23] dark:text-[#E9E9EA] dark:border-transparent">
       <div className="flex items-center gap-2.5 px-3.5 pt-3">
@@ -258,7 +264,7 @@ export const LinkedInPreview = ({ spec, brandName, ...media }: PreviewProps) => 
         </div>
       </div>
 
-      {spec.primaryText && (
+      {spec.primaryText && !onImage && (
         <p className="px-3.5 py-2.5 text-[0.8438rem] leading-[1.45] whitespace-pre-line">
           {spec.primaryText}
           <Hashtags tags={spec.hashtags} className="text-[#0A66C2] dark:text-[#70B5F9]" />
@@ -266,12 +272,14 @@ export const LinkedInPreview = ({ spec, brandName, ...media }: PreviewProps) => 
       )}
 
       <MediaSlot
-        visuals={spec.visuals}
+        visuals={spec.frames.length > 0 ? spec.frames.map((_, i) => `Frame ${i + 1}`) : spec.visuals}
         media={spec.media}
-        aspect={spec.format === 'carousel' ? 'aspect-square' : 'aspect-[1.91/1]'}
-        carousel={spec.format === 'carousel'}
+        aspect={spec.format === 'carousel' || spec.frames.length > 1 ? 'aspect-square' : 'aspect-[1.91/1]'}
+        carousel={spec.format === 'carousel' || spec.frames.length > 1}
         play={isMotion(spec)}
         badge={motionBadge(spec)}
+        overlayText={onImage ? spec.primaryText : undefined}
+        frames={spec.frames.length > 0 ? spec.frames : undefined}
         className="bg-[#F3F2EF] text-[#666666] dark:bg-[#111417] dark:text-[#B0B3B8]"
         {...media}
       />

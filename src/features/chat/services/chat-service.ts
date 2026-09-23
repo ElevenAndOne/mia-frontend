@@ -62,6 +62,8 @@ interface ChatRequestPayload {
   conversation_history?: ChatHistoryMessage[]
   conversation_id?: string
   images?: string[]
+  /** Parallel to images: original filenames, so Mia can label "Image 2 of 2: frame-3.png". */
+  image_names?: string[]
   documents?: AttachedDocument[]
   campaign_id?: string
   start_date?: string
@@ -270,6 +272,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
     ...(payload.images?.length ? { images: payload.images } : {}),
+    ...(payload.image_names?.length ? { image_names: payload.image_names } : {}),
     ...(payload.documents?.length ? { documents: payload.documents } : {}),
     ...(payload.campaign_id
       ? {
@@ -377,6 +380,7 @@ export const sendChatMessageStreaming = async (
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
     ...(payload.images?.length ? { images: payload.images } : {}),
+    ...(payload.image_names?.length ? { image_names: payload.image_names } : {}),
     ...(payload.documents?.length ? { documents: payload.documents } : {}),
     ...(payload.campaign_id
       ? {

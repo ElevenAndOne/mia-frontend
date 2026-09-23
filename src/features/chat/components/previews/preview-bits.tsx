@@ -65,6 +65,10 @@ interface MediaSlotProps extends MediaHandlers {
    * stretches the whole preview, which the real feed would never do.
    */
   clampPortrait?: number
+  /** On-image copy (a carousel frame headline): rendered centred over the media/placeholder
+   *  instead of as a feed caption. Per-slide text when `frames` has one line per slide. */
+  overlayText?: string
+  frames?: string[]
 }
 
 /**
@@ -90,8 +94,11 @@ export const MediaSlot = ({
   onAddMediaUrl,
   onReplaceMediaUrl,
   onDraftSeparatePost,
+  overlayText,
+  frames,
 }: MediaSlotProps) => {
   const [slide, setSlide] = useState(0)
+  const slideText = frames && frames.length > 0 ? frames[Math.min(slide, frames.length - 1)] : overlayText
   const [dragging, setDragging] = useState(false)
   const [ratios, setRatios] = useState<Record<string, number>>({})
   // An image dragged in from chat while the slot already has media — the user
@@ -158,7 +165,7 @@ export const MediaSlot = ({
 
   return (
     <div
-      className={`${frame} ${className} group/media overflow-hidden ${
+      className={`${frame} ${className} group/media overflow-hidden relative ${
         dragging ? 'ring-2 ring-inset ring-utility-brand-600' : ''
       }`}
       onDragOver={(e) => {
@@ -189,6 +196,13 @@ export const MediaSlot = ({
         pickFiles(e.dataTransfer.files)
       }}
     >
+      {slideText && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
+          <p className="text-white font-semibold leading-snug text-[0.95rem] drop-shadow-[0_1px_6px_rgba(0,0,0,0.75)] whitespace-pre-line">
+            {slideText}
+          </p>
+        </div>
+      )}
       {pendingDrop && (
         <div className="absolute inset-0 z-20 bg-black/60 flex flex-col items-center justify-center gap-2 px-3 text-center">
           <span className="paragraph-xs text-white font-medium">

@@ -56,6 +56,10 @@ export interface CreativeSpec {
   media: string[]
   /** Remaining production notes (Format, Best time to post, Why this works…). */
   notes: CreativeNote[]
+  /** Where the copy lives: the feed caption (default) or on the image itself. */
+  copyType: 'caption' | 'on-image' | 'both'
+  /** "Frame 1:" … "Frame N:" lines — on-image copy for a carousel, one per slide. */
+  frames: string[]
 }
 
 export interface CharCheck {
@@ -102,6 +106,9 @@ const FIELD_ALIASES: Record<string, string> = {
   keyword: 'keyword',
   keywords: 'keyword',
   'target keywords': 'keyword',
+  // "Copy type: on-image" — the copy is text ON the creative (a carousel frame headline),
+  // not the feed caption, so caption rules (the 125-char fold) don't apply.
+  'copy type': 'copyType',
 }
 
 /** Pull the URL out of a `Media:` value (handles bare URLs and `![alt](url)` / `[text](url)`). */
@@ -183,6 +190,7 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
   const descriptions: string[] = []
   const keywords: string[] = []
   const notes: CreativeNote[] = []
+  const frames: string[] = []
   const copyLines: string[] = []
   const hashtagLines: string[] = []
 
@@ -293,6 +301,11 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
         continue
       }
       if (labelMatch) {
+        if (/^frame\s*\d+$/i.test(labelMatch[1].trim())) {
+          const frameText = cleanValue(labelMatch[2])
+          if (frameText) frames.push(frameText)
+          continue
+        }
         notes.push({ label: titleCase(labelMatch[1].trim()), value: cleanValue(labelMatch[2]) })
       }
       continue
@@ -373,10 +386,20 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     media,
     // A label whose bullets never arrived renders as a dangling "Label:" — drop it.
     notes: notes.filter((n) => n.value),
+    copyType: /on[- ]image/i.test(fields.copyType ?? '')
+      ? 'on-image'
+      : /both/i.test(fields.copyType ?? '')
+        ? 'both'
+        : 'caption',
+    frames,
   }
 
   // Not enough to draw anything faithful → let the markdown renderer handle it.
-  if (!spec.primaryText && !(platform === 'google' && (spec.headline || spec.headlines.length)))
+  if (
+    !spec.primaryText &&
+    !spec.frames.length &&
+    !(platform === 'google' && (spec.headline || spec.headlines.length))
+  )
     return null
 
   return spec
@@ -450,8 +473,9 @@ export const charChecks = (spec: CreativeSpec): CharCheck[] => {
     return checks
   }
 
-  if (caption) {
-    // 125 chars is where feed copy truncates behind "See more".
+  if (caption && spec.copyType !== 'on-image') {
+    // 125 chars is where feed copy truncates behind "See more" — a caption rule; on-image
+    // copy (a carousel frame headline) never meets a fold.
     checks.push({ label: 'Copy · fold', count: caption.length, limit: 125, over: caption.length > 125 })
   }
   if (spec.isPaid && spec.headline) {

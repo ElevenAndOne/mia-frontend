@@ -13,6 +13,7 @@ import ChatMessageList from '../components/chat-message-list'
 import { CanvasPane } from '../components/canvas-pane'
 import { Sheet } from '../../overlay'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
+import type { DocumentSelection } from '../services/chat-service'
 import QuickActions from '../components/quick-actions'
 import { useFeatures } from '../../workspace/hooks/use-features'
 import { useExperience } from '../../workspace/hooks/use-experience'
@@ -108,6 +109,7 @@ export const ChatView = ({
     canvas,
     editTarget,
     setEditTarget,
+    composerDraft,
   } = useChatView()
 
   // Basic hides the five fixed home cards; team/agency keep them (feature flag home_cards).
@@ -343,7 +345,10 @@ export const ChatView = ({
         onSelect: canvas.select,
         freshIds: canvas.freshIds,
         isSaving: canvas.isSaving,
-        onRequestEdit: canvas.requestEdit,
+        onQuoteToChat: (selection: DocumentSelection) => {
+          canvas.quoteToChat(selection)
+          if (isMobile) setMobileCanvasOpen(false)
+        },
         onSaveUserEdit: canvas.saveUserEdit,
         onUndo: canvas.undo,
         canUndo: canvas.canUndo,
@@ -479,6 +484,7 @@ export const ChatView = ({
                 onAddFile={addDocument}
                 onRemoveDocument={removeDocument}
                 onAddPastedText={addPastedText}
+                draft={composerDraft}
                 onTranscribeAudio={handleTranscribeAudio}
               />
             </>
@@ -502,6 +508,7 @@ export const ChatView = ({
                     onConfirmAction={handleConfirmAction}
                     onCancelAction={handleCancelAction}
                     onFeedback={handleFeedback}
+                    onUseOption={canvas.documentList.length > 0 ? canvas.useOptionInActive : undefined}
                     pinnedAssetId={editTarget?.asset_id ?? null}
                     onPinAsset={(asset) =>
                       setEditTarget(
@@ -642,6 +649,7 @@ export const ChatView = ({
                 onAddFile={addDocument}
                 onRemoveDocument={removeDocument}
                 onAddPastedText={addPastedText}
+                draft={composerDraft}
                 onTranscribeAudio={handleTranscribeAudio}
               />
             </>

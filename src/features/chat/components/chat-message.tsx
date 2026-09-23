@@ -34,6 +34,8 @@ interface ChatMessageProps {
   onUseAssetInPost?: (asset: MiaAsset) => void
   onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
   onImageReady?: (assets: MiaAsset[], event: ChatImageJob) => void
+  /** Present when a canvas document exists: numbered options get a "Use this" action. */
+  onUseOption?: (text: string) => void
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -55,6 +57,7 @@ export const ChatMessage = memo(function ChatMessage({
   onUseAssetInPost,
   onFixDrift,
   onImageReady,
+  onUseOption,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
 
@@ -107,7 +110,11 @@ export const ChatMessage = memo(function ChatMessage({
       {/* Assistant message */}
       <div className="prose prose-gray max-w-none">
         <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary select-text">
-          <ChatMarkdown content={content} className="text-secondary" />
+          <ChatMarkdown
+            content={content}
+            className="text-secondary"
+            onUseListItem={!isStreaming ? onUseOption : undefined}
+          />
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse mt-1" />
           )}

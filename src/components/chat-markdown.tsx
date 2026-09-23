@@ -1,16 +1,80 @@
 import { memo, useMemo, useState } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 
 interface ChatMarkdownProps {
   content: string
   className?: string
+  /** Render single newlines as line breaks (canvas Text view: "Platform:" / "Format:" /
+   *  "CTA:" lines the model wrote on consecutive lines must not collapse into one paragraph). */
+  hardBreaks?: boolean
+  /** When set, every numbered-list item gets a small "Use this" action carrying the item's
+   *  plain text — the chat-first way to move a chosen copy option into the canvas. */
+  onUseListItem?: (text: string) => void
+}
+
+/** Plain text of one markdown list item: strip the marker, bold/italic/quotes, keep line one. */
+const listItemText = (src: string): string =>
+  src
+    .split('\n')[0]
+    .replace(/^\s*(?:\d+[.)]|[-*+])\s+/, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/(^|\s)[*_](.+?)[*_](?=\s|$|[.,!?])/g, '$1$2')
+    .replace(/^[“"']+|[”"']+$/g, '')
+    .trim()
+
+/** A markdown segment with an optional per-item action (positions are relative to `text`). */
+const SegmentMarkdown = ({
+  text,
+  remarkPlugins,
+  onUseListItem,
+}: {
+  text: string
+  remarkPlugins: React.ComponentProps<typeof ReactMarkdown>['remarkPlugins']
+  onUseListItem?: (text: string) => void
+}) => {
+  const components = useMemo<Components>(() => {
+    if (!onUseListItem) return MARKDOWN_COMPONENTS
+    return {
+      ...MARKDOWN_COMPONENTS,
+      li: ({ children, node }) => {
+        const start = node?.position?.start.offset
+        const end = node?.position?.end.offset
+        const src = start != null && end != null ? text.slice(start, end) : ''
+        const ordered = /^\s*\d+[.)]\s/.test(src)
+        const item = ordered ? listItemText(src) : ''
+        const usable = item.length > 0 && item.length <= 220 && !/:\s*$/.test(item)
+        return (
+          <li className="text-secondary group/opt">
+            {children}
+            {usable && (
+              <button
+                type="button"
+                onClick={() => onUseListItem(item)}
+                className="ml-2 align-baseline paragraph-xs text-utility-brand-600 opacity-0 group-hover/opt:opacity-100 focus:opacity-100 hover:underline transition-opacity"
+                aria-label={`Use this line in the canvas: ${item}`}
+              >
+                Use this
+              </button>
+            )}
+          </li>
+        )
+      },
+    }
+  }, [text, onUseListItem])
+  return (
+    <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+      {text}
+    </ReactMarkdown>
+  )
 }
 
 // Hoisted to module scope: recreating this object per render gave react-markdown
 // a new `components` identity every time, forcing it to rebuild the whole element
 // tree — expensive at 25 renders/sec while a reply streams.
 const REMARK_PLUGINS = [remarkGfm]
+const REMARK_PLUGINS_BREAKS = [remarkGfm, remarkBreaks]
 const MARKDOWN_COMPONENTS: Components = {
   // Tables
   table: ({ children }) => (
@@ -154,7 +218,10 @@ const ThinkingSection = ({ text }: { text: string }) => {
 export const ChatMarkdown = memo(function ChatMarkdown({
   content,
   className = '',
+  hardBreaks = false,
+  onUseListItem,
 }: ChatMarkdownProps) {
+  const remarkPlugins = hardBreaks ? REMARK_PLUGINS_BREAKS : REMARK_PLUGINS
   const segments = useMemo(() => splitThinking(unglueDividerHeadings(reflowFlatTables(content))), [content])
   return (
     <div className={className}>
@@ -162,9 +229,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({
         seg.collapsible ? (
           <ThinkingSection key={i} text={seg.text} />
         ) : (
-          <ReactMarkdown key={i} remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
-            {seg.text}
-          </ReactMarkdown>
+          <SegmentMarkdown key={i} text={seg.text} remarkPlugins={remarkPlugins} onUseListItem={onUseListItem} />
         )
       )}
     </div>

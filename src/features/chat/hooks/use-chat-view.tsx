@@ -73,6 +73,10 @@ export const useChatView = () => {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  // Text pushed into the composer from outside (a canvas quote); nonce re-fires the effect.
+  const [composerDraft, setComposerDraft] = useState<{ text: string; nonce: number } | null>(null)
+  // Document context waiting for the next send (set when a canvas span was quoted).
+  const pendingDocContextRef = useRef<DocumentContext | null>(null)
   // chat_history id awaiting thumbs-down details (null = modal closed)
   const [feedbackModalTarget, setFeedbackModalTarget] = useState<number | null>(null)
   // Empty by default → the whimsical rotating phrase shows; a real tool status
@@ -83,6 +87,9 @@ export const useChatView = () => {
   const [midStreamStatus, setMidStreamStatus] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
+  // Parallel to `images`: the original filename of each (empty string when unknown, e.g. a
+  // paste). Sent as image_names so Mia can label and reference each image.
+  const [imageNames, setImageNames] = useState<string[]>([])
   const [documents, setDocuments] = useState<AttachedDocument[]>([])
   // Image pinned as the edit target: the next generation edits THIS image instead of
   // the conversation's most recent one. {asset_id, cdn_url} — see CHAT_IMAGE_GEN_SCOPE.md.
@@ -456,12 +463,14 @@ export const useChatView = () => {
     setActiveCampaign(info)
   }, [])
 
-  const addImages = useCallback((newImages: string[]) => {
+  const addImages = useCallback((newImages: string[], names?: string[]) => {
     setImages((prev) => [...prev, ...newImages].slice(0, 10))
+    setImageNames((prev) => [...prev, ...newImages.map((_, i) => names?.[i] ?? '')].slice(0, 10))
   }, [])
 
   const removeImage = useCallback((index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index))
+    setImageNames((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
   const addDocument = useCallback(
@@ -469,9 +478,13 @@ export const useChatView = () => {
       const result = await uploadChatFile(sessionId || 'default', file)
       if (result.type === 'image') {
         setImages((prev) => [...prev, result.data_url].slice(0, 10))
+        setImageNames((prev) => [...prev, file.name].slice(0, 10))
       } else if (result.type === 'pdf_images') {
         // Image-based PDF (Figma exports, slide decks) — each page becomes a vision image
         setImages((prev) => [...prev, ...result.pages].slice(0, 10))
+        setImageNames((prev) =>
+          [...prev, ...result.pages.map((_, i) => `${file.name} — page ${i + 1}`)].slice(0, 10)
+        )
       } else if (result.b64) {
         setDocuments((prev) => [...prev, { filename: result.filename, b64: result.b64 }])
       } else if (result.content) {
@@ -545,7 +558,11 @@ export const useChatView = () => {
       options?: { hidden?: boolean; documentContext?: DocumentContext; displayText?: string }
     ) => {
       const pendingImages = images.slice()
+      const pendingImageNames = imageNames.slice(0, pendingImages.length)
       const pendingDocuments = documents.slice()
+      // A quoted canvas span rides along with the very next send, then clears.
+      const docContext = options?.documentContext ?? pendingDocContextRef.current
+      pendingDocContextRef.current = null
       const activeConvId =
         conversationId ??
         (() => {
@@ -586,6 +603,7 @@ export const useChatView = () => {
       shouldAutoScrollRef.current = true
       setMessages((prev) => [...prev, userMessage])
       setImages([])
+      setImageNames([])
       setDocuments([])
       setIsLoading(true)
       setStreamingContent('')
@@ -668,6 +686,8 @@ export const useChatView = () => {
             conversation_history: history.length > 0 ? history : undefined,
             conversation_id: activeConvId,
             images: pendingImages.length > 0 ? pendingImages : undefined,
+            image_names:
+              pendingImages.length > 0 && pendingImageNames.some(Boolean) ? pendingImageNames : undefined,
             documents: pendingDocuments.length > 0 ? pendingDocuments : undefined,
             ...(activeCampaign
               ? {
@@ -676,7 +696,7 @@ export const useChatView = () => {
                   end_date: activeCampaign.endDate ?? undefined,
                 }
               : {}),
-            ...(options?.documentContext ? { document_context: options.documentContext } : {}),
+            ...(docContext ? { document_context: docContext } : {}),
             ...(options?.displayText ? { display_text: options.displayText } : {}),
             ...(editTargetRef.current
               ? { edit_target_asset_id: editTargetRef.current.asset_id }
@@ -859,14 +879,27 @@ export const useChatView = () => {
     handleSubmitRef.current = handleSubmit
   }, [handleSubmit])
 
-  // Canvas (highlight-to-edit). An edit goes through the normal send path with
-  // document_context attached; Mia's `document` SSE event then updates the pane.
-  const sendCanvasEdit = useCallback((message: string, documentContext: DocumentContext) => {
-    // hidden: true keeps the internal edit instruction ("Rewrite only the highlighted
-    // text…") out of the visible chat thread; Mia's short confirmation still shows.
-    handleSubmitRef.current(message, { documentContext, hidden: true })
+  // Canvas highlight → quote into the composer. The user finishes the message themselves
+  // ("give me 5 alternatives", "shorter"), and the send carries document_context so Mia
+  // knows which document and span they mean; her `document` SSE event updates the pane
+  // only if she actually changes it.
+  const quoteToChat = useCallback((text: string, documentContext: DocumentContext) => {
+    pendingDocContextRef.current = documentContext
+    setComposerDraft({ text: `“${text.trim()}”\n\n`, nonce: Date.now() })
   }, [])
-  const canvas = useCanvas({ sessionId, conversationId, onSendEdit: sendCanvasEdit })
+  // "Use this" on a chat option: an immediate, visible send with the document context so
+  // Mia swaps the chosen line into that document (same document_id, nothing else changes).
+  const useOptionInCanvas = useCallback((text: string, documentContext: DocumentContext) => {
+    handleSubmitRef.current(`Use this line in the canvas document — replace the current main line with it and change nothing else: “${text}”`, {
+      documentContext,
+    })
+  }, [])
+  const canvas = useCanvas({
+    sessionId,
+    conversationId,
+    onQuoteToChat: quoteToChat,
+    onUseOption: useOptionInCanvas,
+  })
   useEffect(() => {
     canvasDocEventRef.current = canvas.handleDocumentEvent
     canvasReloadRef.current = canvas.reloadDocuments
@@ -1107,6 +1140,7 @@ export const useChatView = () => {
 
   return {
     userName: user?.name?.split(' ')[0],
+    composerDraft,
     messages,
     isLoading,
     streamingContent,

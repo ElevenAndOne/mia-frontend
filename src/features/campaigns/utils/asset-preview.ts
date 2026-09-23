@@ -129,6 +129,8 @@ export const assetToCreativeSpec = (asset: Asset, channel: string): CreativeSpec
   return {
     platform,
     format,
+    copyType: 'caption',
+    frames: [],
     isPaid,
     primaryText,
     hashtags: '',

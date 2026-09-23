@@ -16,6 +16,8 @@ interface ChatMessageListProps {
   onUseAssetInPost?: (asset: MiaAsset) => void
   onFixDrift?: (source: { asset_id: string; cdn_url: string }) => void
   onImageReady?: (assets: MiaAsset[], event: ChatImageJob) => void
+  /** Set when the conversation has a canvas document — numbered options become actionable. */
+  onUseOption?: (text: string) => void
 }
 
 /**
@@ -38,6 +40,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onUseAssetInPost,
   onFixDrift,
   onImageReady,
+  onUseOption,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
@@ -74,6 +77,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             onUseAssetInPost={onUseAssetInPost}
             onImageReady={onImageReady}
             onFixDrift={onFixDrift}
+            onUseOption={message.role === 'assistant' ? onUseOption : undefined}
           />
         </div>
       ))}

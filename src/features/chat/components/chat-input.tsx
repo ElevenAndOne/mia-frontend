@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
@@ -34,7 +34,7 @@ interface ChatInputProps {
   onPlatformToggle: (platformId: string) => void
   hasSelectedPlatforms?: boolean
   images?: string[]
-  onAddImages?: (images: string[]) => void
+  onAddImages?: (images: string[], names?: string[]) => void
   onRemoveImage?: (index: number) => void
   documents?: AttachedDocument[]
   onAddFile?: (file: File) => Promise<void>
@@ -42,6 +42,9 @@ interface ChatInputProps {
   /** Large pastes become a "Pasted text" attachment card instead of flooding the input. */
   onAddPastedText?: (text: string) => void
   onTranscribeAudio?: (blob: Blob, mimeType: string) => Promise<string>
+  /** Text pushed into the composer from outside (a quoted canvas span). A new nonce
+   *  replaces whatever is typed and focuses the input so the user finishes the message. */
+  draft?: { text: string; nonce: number } | null
 }
 
 type MicState = 'idle' | 'recording' | 'processing' | 'error'
@@ -104,8 +107,22 @@ export const ChatInput = ({
   onRemoveDocument,
   onAddPastedText,
   onTranscribeAudio,
+  draft = null,
 }: ChatInputProps) => {
   const [message, setMessage] = useState('')
+  useEffect(() => {
+    if (!draft) return
+    setMessage(draft.text)
+    const el = inputRef.current
+    if (el) {
+      el.focus()
+      requestAnimationFrame(() => {
+        el.style.height = 'auto'
+        el.style.height = `${el.scrollHeight}px`
+        el.setSelectionRange(el.value.length, el.value.length)
+      })
+    }
+  }, [draft])
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   // Basic never sees the per-message platform picker (feature flag platform_picker).
@@ -167,7 +184,7 @@ export const ChatInput = ({
           .filter((f): f is File => f !== null)
         Promise.all(files.map(resizeImageFile))
           .then((urls) => {
-            if (urls.length) onAddImages(urls)
+            if (urls.length) onAddImages(urls, urls.map((_, i) => `pasted-image-${i + 1}`))
           })
           .catch((err) => console.error('[chat-input] paste image error:', err))
         return
@@ -200,7 +217,7 @@ export const ChatInput = ({
         const remaining = 10 - images.length
         const toRead = imageFiles.slice(0, remaining)
         const dataUrls = await Promise.all(toRead.map(resizeImageFile))
-        onAddImages(dataUrls)
+        onAddImages(dataUrls, toRead.map((f) => f.name))
       }
 
       // Docs/other: upload to backend for parsing

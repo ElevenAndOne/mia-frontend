@@ -7,6 +7,9 @@ export interface BrandGuideExtracted {
   key_differentiators: string | null
   brand_voice: string | null
   tone_descriptors: string[] | null
+  humour: string | null
+  voice_do: string[] | null
+  voice_dont: string[] | null
   competitors: string[] | null
   primary_goals: string[] | null
   customer_language: string | null
@@ -193,6 +196,9 @@ export const FIELD_LABELS: Record<keyof BrandGuideExtracted, string> = {
   key_differentiators: 'Key Differentiators',
   brand_voice: 'Brand Voice',
   tone_descriptors: 'Tone Descriptors',
+  humour: 'Humour (none / dry / warm / playful)',
+  voice_do: 'Voice — do',
+  voice_dont: 'Voice — don\'t',
   competitors: 'Competitors',
   primary_goals: 'Primary Goals',
   customer_language: 'Customer Language',
@@ -205,6 +211,8 @@ export const FIELD_LABELS: Record<keyof BrandGuideExtracted, string> = {
 
 export const ARRAY_FIELDS: Array<keyof BrandGuideExtracted> = [
   'tone_descriptors',
+  'voice_do',
+  'voice_dont',
   'competitors',
   'primary_goals',
   'taglines',
