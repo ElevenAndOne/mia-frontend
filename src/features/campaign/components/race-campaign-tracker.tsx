@@ -110,6 +110,36 @@ function shortAsOf(iso: string | null | undefined): string | null {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+/** The last 7 days' movement, as it reads on the chip.
+ *
+ * A percent KPI moves in percentage POINTS — "+1.7%" on a rate would be read as a
+ * relative change, which is a different number. Cumulative values can still fall when
+ * the vendor restates an earlier week, so the sign is not assumed. */
+function formatChange(actual: KPIActual): string | null {
+  if (actual.change === null || actual.change === undefined) return null
+  const points = actual.unit === 'percent'
+  const magnitude = points
+    ? Math.abs(actual.change).toFixed(1)
+    : Math.abs(Math.round(actual.change)).toLocaleString()
+  return `${actual.change < 0 ? '\u2212' : '+'}${magnitude}${points ? ' pts' : ''}`
+}
+
+/** Why the chip is coloured at all: every bound KPI is cumulative since launch, so the
+ * value only ever climbs and "it went up" says nothing. Green means this week added more
+ * than last week did. */
+function changeTone(momentum: KPIActual['change_momentum']): string {
+  if (momentum === 'up') return 'bg-utility-success-100 text-utility-success-700'
+  if (momentum === 'down') return 'bg-secondary text-tertiary'
+  return 'bg-secondary text-quaternary'
+}
+
+function changeTitle(actual: KPIActual): string {
+  const moved = formatChange(actual)
+  if (actual.change_momentum === 'up') return `${moved} in the last 7 days — more than the 7 days before`
+  if (actual.change_momentum === 'down') return `${moved} in the last 7 days — less than the 7 days before`
+  return `${moved} in the last 7 days`
+}
+
 function progressPercent(actual: KPIActual): number {
   if (actual.actual_value === null || !actual.target_numeric) return 0
   return Math.min(100, Math.round((actual.actual_value / actual.target_numeric) * 100))
@@ -747,6 +777,14 @@ export function RaceCampaignTracker({
                     <div className="flex items-center gap-1.5 shrink-0">
                       {hasActual && actual ? (
                         <>
+                          {formatChange(actual) && (
+                            <span
+                              className={`label-xs px-1.5 py-px rounded shrink-0 tabular-nums ${changeTone(actual.change_momentum)}`}
+                              title={changeTitle(actual)}
+                            >
+                              {formatChange(actual)}
+                            </span>
+                          )}
                           <span
                             className={`paragraph-xs font-medium ${actual.actual_value === null ? 'text-quaternary' : metTarget ? 'text-utility-success-600' : 'text-primary'}`}
                             title={actual.scope_note ?? undefined}

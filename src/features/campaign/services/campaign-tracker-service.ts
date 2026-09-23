@@ -144,6 +144,13 @@ export interface KPIActual {
   // Short chip text for scope_note ('all site', '4/11 posts'). Older cached rows
   // predate it — callers fall back to 'all site', which is what they always showed.
   scope_label?: string | null
+  // Movement over the last 7 days, from the recorded reading series. Absent when the
+  // series doesn't reach back a week yet, or when the date picker is off the campaign's
+  // own window (the displayed value then measures something the series doesn't).
+  change?: number | null
+  // Whether that beat the 7 days before it. Every bound KPI is cumulative since launch,
+  // so the value always rises — this is the part that carries information.
+  change_momentum?: 'up' | 'down' | 'flat' | null
 }
 
 // ---------------------------------------------------------------------------
