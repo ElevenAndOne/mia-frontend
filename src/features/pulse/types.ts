@@ -20,7 +20,12 @@ export interface Overview {
   questions: Metric
   campaigns_built: Metric
   new_signups: Metric
+  /** Median length of an engaged session — event bursts split on a 30-minute gap. */
   median_session_seconds: Metric
+  /** Sessions the median is computed over (those with more than one event). */
+  sessions_measured: number
+  /** Visits with a single event: counted, but they have no measurable length. */
+  sessions_single_event: number
   /** Total tokens (input+output+cache) across tracked turns in range. */
   tokens: Metric
   /** Estimated LLM spend (USD) for tracked turns — rows before tracking count 0. */
@@ -89,7 +94,9 @@ export interface TesterDetail {
   counters: {
     questions: number
     sessions: number
-    campaigns_built: number
+    /** Distinct campaigns this person worked on in chat. Campaigns have no creator
+     *  column, so authorship is not knowable — see the backend comment. */
+    campaigns_touched: number
     tokens: number
     est_cost_usd: number
   }

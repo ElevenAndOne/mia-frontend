@@ -426,6 +426,28 @@
 .plz-tn {
   font-size: 11.5px;
   color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+/* Which reporting bucket the tester counts toward — internal (us) vs an external client. */
+.plz-seg {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, rgba(127, 127, 127, 0.28));
+  white-space: nowrap;
+}
+.plz-seg-internal {
+  color: #6b51ef;
+  border-color: rgba(107, 81, 239, 0.45);
+}
+.plz-seg-external {
+  color: #2bccb3;
+  border-color: rgba(43, 204, 179, 0.45);
 }
 .plz-muted {
   color: var(--color-text-tertiary);

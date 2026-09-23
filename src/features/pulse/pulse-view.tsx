@@ -8,17 +8,27 @@ import type {
   FeedbackItem,
   FeedbackSummary,
   Metric,
+  PostsProvenance,
   PulseFilter,
   PulseRange,
   RecentQuestion,
+  Segment,
   TesterRow,
   TesterStatus,
+  Tier,
   TimelineEvent,
   TimeseriesPoint,
   Workspace,
   WorkspaceMember,
 } from './types'
 import './pulse.css'
+
+/** "Internal · Agency" / "External · Team" — the bucket this tester counts toward.
+ *  Tier is blank for someone with no active workspace membership. */
+function segmentLabel(segment: Segment, tier: Tier | null): string {
+  const seg = segment === 'internal' ? 'Internal' : 'External'
+  return tier ? `${seg} · ${tier[0].toUpperCase()}${tier.slice(1)}` : seg
+}
 
 const RANGES: PulseRange[] = ['7d', '30d', 'all']
 const AVATARS = ['#1a5afc', '#f86721', '#6b51ef', '#2bccb3', '#f5aa29', '#2cb763', '#f74798', '#3cbcfd']
@@ -260,6 +270,85 @@ function DetailPane({
 }
 
 // ---------- feedback (thumbs up/down) ----------
+/**
+ * Where posts come from, and how often people take Mia's suggestion.
+ *
+ * The headline is the share that went out WITHOUT anyone opening Mia — the number the
+ * Basic tier is judged on (docs2/BASIC_WHATSAPP_PLAN.md §8.1). Beside it, proposed vs
+ * approved: the ratio that later decides whether Mia may schedule on her own (§8.2).
+ * Both start at zero and only become interesting once WhatsApp ships; that is the point
+ * of recording them early.
+ */
+function PostsSection({ data, isLoading }: { data: PostsProvenance | undefined; isLoading: boolean }) {
+  const has = !!data && data.total_posts > 0
+  const trust = data?.trust
+  return (
+    <div className="plz-card plz-topics">
+      <div className="plz-card-h" style={{ paddingLeft: 0, paddingRight: 0 }}>
+        <h2>Posts &amp; who drove them</h2>
+        <span className="plz-hint">
+          {data ? `${data.total_posts} scheduled in range` : ''}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <Spinner />
+      ) : !has ? (
+        <div className="plz-empty">
+          No posts scheduled in this range yet. Once WhatsApp is live this is where
+          hands-off posting shows up.
+        </div>
+      ) : (
+        <>
+          <div className="plz-fbstats">
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.without_app_pct}%</div>
+              <div className="l">Without opening Mia</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.by_source.app.total}</div>
+              <div className="l">From the app</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.by_source.whatsapp.total}</div>
+              <div className="l">From WhatsApp</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">
+                {trust?.approval_rate_pct === null || trust?.approval_rate_pct === undefined
+                  ? '—'
+                  : `${trust.approval_rate_pct}%`}
+              </div>
+              <div className="l">
+                {trust && trust.proposed
+                  ? `Taken (${trust.approved}/${trust.proposed})`
+                  : 'Nothing proposed yet'}
+              </div>
+            </div>
+          </div>
+
+          {data!.workspaces.slice(0, 8).map((w) => (
+            <div className="plz-topic" key={w.tenant_id}>
+              <span className="plz-tlabel">{w.name}</span>
+              <span className="plz-track">
+                <span
+                  className="plz-fill"
+                  style={{
+                    width: `${Math.max(3, w.total ? Math.round((w.without_app / w.total) * 100) : 0)}%`,
+                  }}
+                />
+              </span>
+              <span className="plz-tn2 plz-num">
+                {w.without_app}/{w.total}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
 function FeedbackSection({
   summary,
   items,
@@ -466,6 +555,58 @@ function WorkspaceFilter({
   )
 }
 
+/** The five buckets the weekly beta report is grouped by. One control rather than two,
+ *  because the combinations that matter are few and "Internal · Basic" is not one of them:
+ *  staff always get the agency experience, whatever workspace they are standing in
+ *  (services/tenant_service.effective_experience). Internal therefore carries no tier —
+ *  narrowing it by tier would hide staff who are testing inside a client's Basic workspace. */
+const SEGMENT_OPTIONS: { key: string; label: string; segment: Segment | null; tiers: Tier[] }[] = [
+  { key: 'all', label: 'All segments', segment: null, tiers: [] },
+  { key: 'internal', label: 'Internal (Agency)', segment: 'internal', tiers: [] },
+  { key: 'ext-basic', label: 'External · Basic', segment: 'external', tiers: ['basic'] },
+  { key: 'ext-team', label: 'External · Team', segment: 'external', tiers: ['team'] },
+  { key: 'ext-agency', label: 'External · Agency', segment: 'external', tiers: ['agency'] },
+]
+
+function SegmentFilter({ selected, onChange }: { selected: string; onChange: (key: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useOutsideClose(ref, () => setOpen(false), open)
+
+  const label = SEGMENT_OPTIONS.find((o) => o.key === selected)?.label ?? 'All segments'
+  const pick = (key: string) => {
+    onChange(key)
+    setOpen(false)
+  }
+
+  return (
+    <div className="plz-filter" ref={ref}>
+      <button
+        type="button"
+        className={`plz-fbtn${selected !== 'all' ? ' on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <span className="plz-flabel">Segment</span>
+        {label}
+      </button>
+      {open && (
+        <div className="plz-fmenu">
+          {SEGMENT_OPTIONS.map((o, i) => (
+            <div key={o.key}>
+              {i === 1 && <div className="plz-fdiv" />}
+              <button type="button" className="plz-fitem" onClick={() => pick(o.key)}>
+                <span className={`plz-radio${selected === o.key ? ' on' : ''}`} />
+                <span className="plz-fname">{o.label}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function UserFilter({
   users,
   selected,
@@ -523,6 +664,7 @@ export function PulseView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedTenants, setSelectedTenants] = useState<string[]>([])
   const [userFilter, setUserFilter] = useState<string | null>(null)
+  const [segmentKey, setSegmentKey] = useState<string>('all')
 
   const workspaces = useWorkspaces(sessionId)
   const wsList = useMemo<Workspace[]>(() => workspaces.data?.workspaces ?? [], [workspaces.data])
@@ -543,13 +685,19 @@ export function PulseView() {
     if (userFilter && !availableUsers.some((u) => u.google_user_id === userFilter)) setUserFilter(null)
   }, [availableUsers, userFilter])
 
+  const segmentOpt = SEGMENT_OPTIONS.find((o) => o.key === segmentKey) ?? SEGMENT_OPTIONS[0]
   const filter = useMemo<PulseFilter>(
-    () => ({ tenantIds: selectedTenants, userId: userFilter }),
-    [selectedTenants, userFilter]
+    () => ({
+      tenantIds: selectedTenants,
+      userId: userFilter,
+      segment: segmentOpt.segment,
+      tiers: segmentOpt.tiers,
+    }),
+    [selectedTenants, userFilter, segmentOpt]
   )
-  const filtered = selectedTenants.length > 0 || userFilter !== null
+  const filtered = selectedTenants.length > 0 || userFilter !== null || segmentKey !== 'all'
 
-  const { overview, timeseries, testers, topics, feedbackSummary, feedbackRecent } =
+  const { overview, timeseries, testers, topics, posts, feedbackSummary, feedbackRecent } =
     usePulseDashboard(sessionId, range, filter)
 
   // Keep the detail pane in sync: follow the user filter, else auto-select the top
@@ -626,6 +774,7 @@ export function PulseView() {
 
         {/* filter bar — scope the whole dashboard by workspace and/or user */}
         <div className="plz-filters">
+          <SegmentFilter selected={segmentKey} onChange={setSegmentKey} />
           <WorkspaceFilter workspaces={wsList} selected={selectedTenants} onChange={setSelectedTenants} />
           <UserFilter users={availableUsers} selected={userFilter} onChange={setUserFilter} />
           {filtered && (
@@ -635,6 +784,7 @@ export function PulseView() {
               onClick={() => {
                 setSelectedTenants([])
                 setUserFilter(null)
+                setSegmentKey('all')
               }}
             >
               Clear
@@ -665,12 +815,24 @@ export function PulseView() {
             <div className="plz-val plz-num">{ov ? ov.questions.value : '—'}</div>
             {ov && <DeltaLine metric={ov.questions} unit="" />}
           </div>
-          <div className="plz-card plz-kpi">
+          <div
+            className="plz-card plz-kpi"
+            title="Campaigns created in the window, counted from the campaigns table. Follows the workspace and tier filters — a campaign belongs to a workspace, not to a person, so the segment and user filters do not change it."
+          >
             <div className="plz-lab">Campaigns built</div>
             <div className="plz-val plz-num">{ov ? ov.campaigns_built.value : '—'}</div>
             {ov && <DeltaLine metric={ov.campaigns_built} unit="" />}
           </div>
-          <div className="plz-card plz-kpi">
+          <div
+            className="plz-card plz-kpi"
+            title={
+              ov
+                ? `Median of ${ov.sessions_measured} measured session${ov.sessions_measured === 1 ? '' : 's'}` +
+                  ` · ${ov.sessions_single_event} single-event visit${ov.sessions_single_event === 1 ? '' : 's'} have no measurable length` +
+                  ' · a session is a burst of activity split on a 30-minute gap'
+                : undefined
+            }
+          >
             <div className="plz-lab">Median session</div>
             <div className="plz-val plz-num">{ov ? formatDuration(ov.median_session_seconds.value) : '—'}</div>
             {ov && <DeltaLine metric={ov.median_session_seconds} unit="sec" />}
@@ -740,7 +902,12 @@ export function PulseView() {
                             </div>
                             <div>
                               <div className="plz-nm">{r.name}</div>
-                              <div className="plz-tn">{r.tenant || 'No workspace'}</div>
+                              <div className="plz-tn">
+                                {r.tenant || 'No workspace'}
+                                <span className={`plz-seg plz-seg-${r.segment}`}>
+                                  {segmentLabel(r.segment, r.tier)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -795,6 +962,9 @@ export function PulseView() {
             <div className="plz-empty">No questions in this range yet.</div>
           )}
         </div>
+
+        {/* post provenance — how much Mia does without anyone logging in */}
+        <PostsSection data={posts.data} isLoading={posts.isLoading} />
 
         {/* message feedback — thumbs up/down + issue reports from chat */}
         <FeedbackSection

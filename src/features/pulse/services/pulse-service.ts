@@ -5,9 +5,12 @@ import type {
   FeedbackRecent,
   FeedbackSummary,
   Overview,
+  PostsProvenance,
   PulseFilter,
+  Segment,
   TesterDetail,
   TesterList,
+  Tier,
   Timeseries,
   Topics,
   WorkspaceList,
@@ -43,11 +46,26 @@ function scopeParams(filter?: PulseFilter): string {
   const parts: string[] = []
   for (const t of filter.tenantIds) parts.push(`tenant_id=${encodeURIComponent(t)}`)
   if (filter.userId) parts.push(`user_id=${encodeURIComponent(filter.userId)}`)
+  if (filter.segment) parts.push(`segment=${encodeURIComponent(filter.segment)}`)
+  for (const t of filter.tiers ?? []) parts.push(`tier=${encodeURIComponent(t)}`)
   return parts.length ? `&${parts.join('&')}` : ''
 }
 
 export const fetchWorkspaces = (sessionId: string | null) =>
   get<WorkspaceList>(`${BASE}/workspaces`, sessionId)
+
+/** Post provenance + trust ratio. Only the workspace filter applies — a post belongs to a
+ *  workspace, not to whoever happened to be logged in. */
+export const fetchPosts = (sessionId: string | null, range: string, filter?: PulseFilter) =>
+  get<PostsProvenance>(
+    `${BASE}/posts?range=${encodeURIComponent(range)}${scopeParams({
+      tenantIds: filter?.tenantIds ?? [],
+      userId: null,
+      segment: null,
+      tiers: filter?.tiers ?? [],
+    })}`,
+    sessionId
+  )
 
 export const fetchOverview = (sessionId: string | null, range: string, filter?: PulseFilter) =>
   get<Overview>(`${BASE}/overview?range=${encodeURIComponent(range)}${scopeParams(filter)}`, sessionId)
@@ -101,6 +119,9 @@ export interface AskPayload {
   user_ids?: string[]
   tenant_names?: string[]
   user_name?: string
+  /** Dashboard-level scope: applied server-side to every tool call, not offered to the model. */
+  segment?: Segment
+  tiers?: Tier[]
 }
 
 /** Stream an answer from POST /ask. Calls onChunk per SSE event until done/error. */

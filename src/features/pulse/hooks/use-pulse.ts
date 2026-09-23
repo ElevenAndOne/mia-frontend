@@ -3,6 +3,7 @@ import {
   fetchFeedbackRecent,
   fetchFeedbackSummary,
   fetchOverview,
+  fetchPosts,
   fetchTesterDetail,
   fetchTesters,
   fetchTimeseries,
@@ -25,7 +26,12 @@ export function useWorkspaces(sessionId: string | null) {
 export function usePulseDashboard(sessionId: string | null, range: PulseRange, filter: PulseFilter) {
   const enabled = !!sessionId
   // Stable cache key for the filter so queries refetch when the selection changes.
-  const filterKey = [...[...filter.tenantIds].sort(), `u:${filter.userId ?? ''}`].join('|')
+  const filterKey = [
+    ...[...filter.tenantIds].sort(),
+    `u:${filter.userId ?? ''}`,
+    `s:${filter.segment ?? ''}`,
+    `t:${[...filter.tiers].sort().join(',')}`,
+  ].join('|')
 
   const overview = useQuery({
     queryKey: ['pulse', 'overview', range, filterKey, sessionId],
@@ -62,6 +68,13 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
     staleTime: STALE,
   })
 
+  const posts = useQuery({
+    queryKey: ['pulse', 'posts', range, filterKey, sessionId],
+    queryFn: () => fetchPosts(sessionId, range, filter),
+    enabled,
+    staleTime: STALE,
+  })
+
   const feedbackRecent = useQuery({
     queryKey: ['pulse', 'feedback-recent', range, filterKey, sessionId],
     queryFn: () => fetchFeedbackRecent(sessionId, range, 'down', filter),
@@ -69,7 +82,7 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
     staleTime: STALE,
   })
 
-  return { overview, timeseries, testers, topics, feedbackSummary, feedbackRecent }
+  return { overview, timeseries, testers, topics, posts, feedbackSummary, feedbackRecent }
 }
 
 export function useTesterDetail(sessionId: string | null, googleUserId: string | null, filter?: PulseFilter) {

@@ -70,6 +70,8 @@ export function AskPulse({
           range,
           tenant_ids: filter.tenantIds.length ? filter.tenantIds : undefined,
           user_ids: filter.userId ? [filter.userId] : undefined,
+          segment: filter.segment ?? undefined,
+          tiers: filter.tiers.length ? filter.tiers : undefined,
           tenant_names: tenantNames.length ? tenantNames : undefined,
           user_name: userName,
         },
