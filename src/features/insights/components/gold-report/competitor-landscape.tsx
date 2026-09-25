@@ -6,6 +6,8 @@ import type { GoldCompetitorBrand, GoldCompetitorFinding, GoldCompetitorLandscap
 // (the pipeline's competitor_findings). Two honesty rules carried from the report:
 // the caveat about where these names came from is shown whenever the report makes
 // one, and nothing here is presented as advertising — it is website messaging.
+// Taglines and claims are quoted (their words are on the competitor's page); `terms` —
+// offer, delivery and price facts the pipeline extracted — are shown without quotes.
 
 const hostname = (url: string): string => {
   try {
@@ -83,6 +85,19 @@ const BrandRow = ({ brand }: { brand: GoldCompetitorBrand }) => {
                 style={{ color: line.kind === 'tagline' ? 'var(--gr-heading)' : 'var(--gr-muted)' }}
               >
                 &ldquo;{line.text}&rdquo;
+              </li>
+            ))}
+          </ul>
+        )}
+        {(brand.terms?.length ?? 0) > 0 && (
+          <ul className="space-y-1">
+            {brand.terms!.map((term, i) => (
+              <li
+                key={i}
+                className="text-[0.8125rem] leading-[1.1875rem]"
+                style={{ color: 'var(--gr-muted)' }}
+              >
+                {term}
               </li>
             ))}
           </ul>

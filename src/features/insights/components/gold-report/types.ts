@@ -170,6 +170,10 @@ export interface GoldCompetitorBrand {
   source_url: string | null
   taglines: string[]
   claims: string[]
+  /** Offer, delivery terms and price points from the pipeline's structured rows. These are
+   *  the model's one-line extraction from the page, not verbatim lines — never quote them.
+   *  Absent on blocks built by the older LLM pass. */
+  terms?: string[]
   hero_image_url: string | null
   note: string | null
 }
