@@ -30,9 +30,16 @@ import { FacebookPreview, InstagramPreview } from '../chat/components/previews/p
 export const CARD_WIDTH = 400
 export const CARD_PAD = 12
 
+interface CardIdentity {
+  facebook?: { name?: string | null; avatar?: string | null }
+  instagram?: { handle?: string | null; avatar?: string | null }
+}
+
 interface CardPayload {
   document: CanvasDocument
   brand_name: string
+  /** The linked Page / Instagram account as the platform shows it (routes/post_card.py). */
+  identity?: CardIdentity
 }
 
 export const PostCardPage = () => {
@@ -85,7 +92,6 @@ export const PostCardPage = () => {
 
   const spec = payload ? folded(parseCreativeSpec(payload.document) as CreativeSpec) : null
   const ready = !!spec || error
-  const Preview = spec?.platform === 'instagram' ? InstagramPreview : FacebookPreview
 
   return (
     <div
@@ -102,7 +108,20 @@ export const PostCardPage = () => {
           // the frame.
           style={{ width: CARD_WIDTH + CARD_PAD * 2, padding: CARD_PAD, background: '#fff' }}
         >
-          <Preview spec={spec} brandName={payload?.brand_name} />
+          {spec.platform === 'instagram' ? (
+            <InstagramPreview
+              spec={spec}
+              brandName={payload?.brand_name}
+              handle={payload?.identity?.instagram?.handle ?? undefined}
+              avatarUrl={payload?.identity?.instagram?.avatar ?? undefined}
+            />
+          ) : (
+            <FacebookPreview
+              spec={spec}
+              brandName={payload?.identity?.facebook?.name || payload?.brand_name}
+              avatarUrl={payload?.identity?.facebook?.avatar ?? undefined}
+            />
+          )}
         </div>
       ) : error ? (
         <div style={{ padding: 16, fontFamily: 'system-ui' }}>Post unavailable.</div>

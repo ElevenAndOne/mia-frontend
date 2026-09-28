@@ -33,15 +33,26 @@ const isVideoUrl = (url: string) => /\.(mp4|mov|m4v|webm|avi|mkv)([?#]|$)/i.test
  * variant); everything Mia-chrome (notes, chips) uses the semantic tokens.
  */
 
-export const BrandAvatar = ({ name, size = 38 }: { name?: string; size?: number }) => (
-  <div
-    aria-hidden="true"
-    className="rounded-full bg-utility-brand-600 flex items-center justify-center shrink-0 text-white font-semibold"
-    style={{ width: size, height: size, fontSize: size * 0.42 }}
-  >
-    {(name?.trim()[0] ?? 'M').toUpperCase()}
-  </div>
-)
+export const BrandAvatar = ({ name, size = 38, src }: { name?: string; size?: number; src?: string }) =>
+  // The account's real picture when we have it (the WhatsApp post card reads it from Meta),
+  // the first letter of its name when we do not.
+  src ? (
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className="rounded-full shrink-0 object-cover"
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    <div
+      aria-hidden="true"
+      className="rounded-full bg-utility-brand-600 flex items-center justify-center shrink-0 text-white font-semibold"
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
+    >
+      {(name?.trim()[0] ?? 'M').toUpperCase()}
+    </div>
+  )
 
 interface MediaSlotProps extends MediaHandlers {
   visuals: string[]

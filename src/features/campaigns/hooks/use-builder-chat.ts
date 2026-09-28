@@ -16,6 +16,7 @@ import {
 import { useThinkingPhrase } from '../../chat/hooks/use-thinking-phrase'
 import { fetchCampaignByConversation, fetchCampaignList } from '../services/campaign-api'
 import { campaignListKey } from './use-campaign-list'
+import { newUuid } from '../../../lib/uuid'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
@@ -71,7 +72,7 @@ export function useBuilderChat() {
   }, [sessionId, tenantId])
 
   const ensureConversation = () => {
-    if (!conversationId.current) conversationId.current = crypto.randomUUID() // bare UUID — fits varchar(36)
+    if (!conversationId.current) conversationId.current = newUuid() // bare UUID — fits varchar(36)
     return conversationId.current
   }
 

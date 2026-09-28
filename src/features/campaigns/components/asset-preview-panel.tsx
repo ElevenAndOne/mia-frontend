@@ -16,6 +16,7 @@ import {
   type AssetVersionRow,
 } from '../services/campaign-api'
 import { clearCampaignDetailCache } from '../campaign-detail-cache'
+import { newUuid } from '../../../lib/uuid'
 
 /** Roles that may edit assets from the canvas (matches backend require_analyst). */
 const EDIT_ROLES = new Set(['owner', 'admin', 'analyst'])
@@ -53,7 +54,7 @@ export const AssetPreviewPanel = ({ assetId, onClose }: AssetPreviewPanelProps) 
   const [showHistory, setShowHistory] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
   // One throwaway conversation per panel session — the edit turns are self-contained.
-  const convRef = useRef<string>(crypto.randomUUID())
+  const convRef = useRef<string>(newUuid())
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()

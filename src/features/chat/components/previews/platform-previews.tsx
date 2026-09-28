@@ -26,6 +26,10 @@ import {
 interface PreviewProps extends MediaHandlers {
   spec: CreativeSpec
   brandName?: string
+  /** The platform's own handle (Instagram username) when known; else derived from brandName. */
+  handle?: string
+  /** The account's profile picture when known; else a letter avatar. */
+  avatarUrl?: string
 }
 
 const igHandle = (name?: string) =>
@@ -40,13 +44,13 @@ const Hashtags = ({ tags, className }: { tags: string; className: string }) =>
 
 /* ---------------------------------- Facebook ---------------------------------- */
 
-export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => {
+export const FacebookPreview = ({ spec, brandName, handle: _handle, avatarUrl, ...media }: PreviewProps) => {
   const showLinkCard = spec.isPaid && (spec.headline || spec.cta || spec.linkUrl)
   const onImage = spec.copyType === 'on-image' || (spec.frames.length > 0 && !spec.primaryText)
   return (
     <div className="w-full max-w-[25rem] rounded-xl overflow-hidden bg-white text-[#050505] border border-[#E4E6EB] shadow-sm dark:bg-[#242526] dark:text-[#E4E6EB] dark:border-transparent">
       <div className="flex items-center gap-2.5 px-3.5 pt-3">
-        <BrandAvatar name={brandName} size={38} />
+        <BrandAvatar name={brandName} size={38} src={avatarUrl} />
         <div className="leading-tight">
           <p className="text-[0.875rem] font-semibold">{brandName || 'Your Page'}</p>
           <p className="text-[0.75rem] text-[#65676B] dark:text-[#B0B3B8]">
@@ -116,12 +120,12 @@ export const FacebookPreview = ({ spec, brandName, ...media }: PreviewProps) => 
 
 /* ---------------------------------- Instagram feed ---------------------------------- */
 
-export const InstagramPreview = ({ spec, brandName, ...media }: PreviewProps) => (
+export const InstagramPreview = ({ spec, brandName, handle, avatarUrl, ...media }: PreviewProps) => (
   <div className="w-full max-w-[22.5rem] rounded-xl overflow-hidden bg-white text-[#262626] border border-[#DBDBDB] dark:bg-black dark:text-[#F5F5F5] dark:border-[#262626]">
     <div className="flex items-center gap-2.5 px-3 py-2.5">
-      <BrandAvatar name={brandName} size={32} />
+      <BrandAvatar name={brandName} size={32} src={avatarUrl} />
       <div className="leading-tight">
-        <p className="text-[0.8125rem] font-semibold">{igHandle(brandName)}</p>
+        <p className="text-[0.8125rem] font-semibold">{handle || igHandle(brandName)}</p>
         {spec.isPaid && (
           <p className="text-[0.6875rem] text-[#737373] dark:text-[#A8A8A8]">Sponsored</p>
         )}
@@ -159,7 +163,7 @@ export const InstagramPreview = ({ spec, brandName, ...media }: PreviewProps) =>
 
     {spec.primaryText && spec.copyType !== 'on-image' && (
       <p className="px-3 pt-2 pb-3 text-[0.7813rem] leading-[1.45] whitespace-pre-line">
-        <span className="font-semibold">{igHandle(brandName)}</span> {spec.primaryText}
+        <span className="font-semibold">{handle || igHandle(brandName)}</span> {spec.primaryText}
         <Hashtags tags={spec.hashtags} className="text-[#00376B] dark:text-[#B3C7F9]" />
       </p>
     )}
