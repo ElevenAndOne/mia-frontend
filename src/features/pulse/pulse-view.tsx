@@ -20,6 +20,7 @@ import type {
   TimeseriesPoint,
   Workspace,
   WorkspaceMember,
+  SessionFeedbackSummary,
 } from './types'
 import './pulse.css'
 
@@ -349,6 +350,97 @@ function PostsSection({ data, isLoading }: { data: PostsProvenance | undefined; 
   )
 }
 
+function SessionFeedbackSection({
+  data,
+  isLoading,
+}: {
+  data: SessionFeedbackSummary | undefined
+  isLoading: boolean
+}) {
+  const asked = data?.asked ?? 0
+  const scoreLabel = data?.score === null || data?.score === undefined ? '—' : data.score.toFixed(2)
+  return (
+    <div className="plz-card plz-topics">
+      <div className="plz-card-h" style={{ paddingLeft: 0, paddingRight: 0 }}>
+        <h2>Session sentiment</h2>
+        <span className="plz-hint">
+          {data ? (asked ? `${data.answered} of ${asked} answered` : 'not asked in range') : ''}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <Spinner />
+      ) : !asked ? (
+        <div className="plz-empty">
+          Nobody has been asked yet in this range. The strip appears above the composer once a
+          session runs past five replies, at most once a week per person.
+        </div>
+      ) : (
+        <>
+          <div className="plz-fbstats">
+            <div className="plz-fbstat">
+              <div className="v plz-num">{scoreLabel}</div>
+              <div className="l">Score, -1 to +1</div>
+              {data!.score !== null && (
+                <DeltaLine metric={{ value: data!.score, delta: data!.score_delta }} unit="" />
+              )}
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.asked}</div>
+              <div className="l">Asked</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.response_pct ?? '—'}%</div>
+              <div className="l">Answered</div>
+            </div>
+            <div className="plz-fbstat">
+              <div className="v plz-num">{data!.dismissed}</div>
+              <div className="l">Dismissed</div>
+            </div>
+          </div>
+
+          <div className="plz-fbgrid">
+            <div>
+              <div className="plz-seclab">How the sessions landed</div>
+              {data!.breakdown.map((b: { label: string; count: number }) => (
+                <div className="plz-topic" key={b.label}>
+                  <span className="plz-tlabel">{b.label}</span>
+                  <span className="plz-track">
+                    <span
+                      className={`plz-fill ${b.label === 'Bad' ? 'down' : 'up'}`}
+                      style={{
+                        width: `${Math.max(3, (b.count / Math.max(1, data!.answered)) * 100)}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="plz-tn2 plz-num">{b.count}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              {data!.comments.length > 0 && (
+                <>
+                  <div className="plz-seclab">In their words</div>
+                  {data!.comments.slice(0, 6).map((c: SessionFeedbackSummary['comments'][number], i: number) => (
+                    <div className="plz-sfquote" key={i}>
+                      <div className="plz-fbdetails" style={{ borderLeftColor: 'inherit' }}>
+                        {c.comment}
+                      </div>
+                      <div className="plz-fbresp">
+                        {c.label} · {c.tenant_id ?? 'no workspace'}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function FeedbackSection({
   summary,
   items,
@@ -418,6 +510,23 @@ function FeedbackSection({
                         <span
                           className="plz-fill down"
                           style={{ width: `${Math.max(3, (c.count / summary!.down) * 100)}%` }}
+                        />
+                      </span>
+                      <span className="plz-tn2 plz-num">{c.count}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {summary!.praise.length > 0 && (
+                <>
+                  <div className="plz-seclab">What worked (thumbs up)</div>
+                  {summary!.praise.map((c) => (
+                    <div className="plz-topic" key={c.key}>
+                      <span className="plz-tlabel">{c.label}</span>
+                      <span className="plz-track">
+                        <span
+                          className="plz-fill up"
+                          style={{ width: `${Math.max(3, (c.count / Math.max(1, summary!.up)) * 100)}%` }}
                         />
                       </span>
                       <span className="plz-tn2 plz-num">{c.count}</span>
@@ -697,8 +806,16 @@ export function PulseView() {
   )
   const filtered = selectedTenants.length > 0 || userFilter !== null || segmentKey !== 'all'
 
-  const { overview, timeseries, testers, topics, posts, feedbackSummary, feedbackRecent } =
-    usePulseDashboard(sessionId, range, filter)
+  const {
+    overview,
+    timeseries,
+    testers,
+    topics,
+    posts,
+    feedbackSummary,
+    feedbackRecent,
+    sessionFeedback,
+  } = usePulseDashboard(sessionId, range, filter)
 
   // Keep the detail pane in sync: follow the user filter, else auto-select the top
   // tester, and never leave a selection that's no longer in the (filtered) list.
@@ -965,6 +1082,12 @@ export function PulseView() {
 
         {/* post provenance — how much Mia does without anyone logging in */}
         <PostsSection data={posts.data} isLoading={posts.isLoading} />
+
+        {/* session sentiment — whether the whole session was worth it, not one reply */}
+        <SessionFeedbackSection
+          data={sessionFeedback.data}
+          isLoading={sessionFeedback.isLoading}
+        />
 
         {/* message feedback — thumbs up/down + issue reports from chat */}
         <FeedbackSection

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   fetchFeedbackRecent,
   fetchFeedbackSummary,
+  fetchSessionFeedback,
   fetchOverview,
   fetchPosts,
   fetchTesterDetail,
@@ -82,7 +83,23 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
     staleTime: STALE,
   })
 
-  return { overview, timeseries, testers, topics, posts, feedbackSummary, feedbackRecent }
+  const sessionFeedback = useQuery({
+    queryKey: ['pulse', 'session-feedback', range, filterKey, sessionId],
+    queryFn: () => fetchSessionFeedback(sessionId, range, filter),
+    enabled,
+    staleTime: STALE,
+  })
+
+  return {
+    overview,
+    timeseries,
+    testers,
+    topics,
+    posts,
+    feedbackSummary,
+    feedbackRecent,
+    sessionFeedback,
+  }
 }
 
 export function useTesterDetail(sessionId: string | null, googleUserId: string | null, filter?: PulseFilter) {

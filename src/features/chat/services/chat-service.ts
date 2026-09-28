@@ -527,7 +527,7 @@ export const transcribeAudio = async (
 
 // --- Message feedback (thumbs up/down) --------------------------------------
 
-/** Issue categories for the thumbs-down modal — keys mirror FEEDBACK_CATEGORIES in
+/** Issue categories for the thumbs-down modal. Keys mirror FEEDBACK_CATEGORIES_DOWN in
  *  the backend (routes/chat.py); labels are what the user sees. */
 export const FEEDBACK_CATEGORIES: { key: string; label: string }[] = [
   { key: 'wrong_data', label: 'Wrong or missing data' },
@@ -537,6 +537,18 @@ export const FEEDBACK_CATEGORIES: { key: string; label: string }[] = [
   { key: 'formatting', label: 'Formatting or too long' },
   { key: 'slow_or_error', label: 'Slow, stuck, or errored' },
   { key: 'other', label: 'Other' },
+]
+
+/** ...and for a thumbs up. Keys mirror FEEDBACK_CATEGORIES_UP. Deliberately a separate
+ *  list: the backend rejects a down reason filed against an up vote, and Pulse reports the
+ *  two apart so "what worked" never lands in the issue table. */
+export const FEEDBACK_CATEGORIES_UP: { key: string; label: string }[] = [
+  { key: 'accurate_data', label: 'Got the numbers right' },
+  { key: 'useful_recommendation', label: 'Good recommendation' },
+  { key: 'did_what_i_asked', label: 'Did what I asked' },
+  { key: 'well_written', label: 'Well written, ready to use' },
+  { key: 'saved_time', label: 'Saved me time' },
+  { key: 'other_good', label: 'Something else' },
 ]
 
 /** Record (or update) a thumbs vote on one assistant message. Called twice on a
@@ -560,6 +572,46 @@ export const submitChatFeedback = async (
     }),
   })
   if (!response.ok) throw new Error(`Feedback failed (${response.status})`)
+}
+
+/** Session feedback score: -1 Bad, 0 Fine, 1 Good. */
+export type SessionFeedbackScore = -1 | 0 | 1
+
+/** Replies needed before the session strip is worth showing. The server enforces this;
+ *  the copy here only avoids a pointless request on every early turn. */
+export const SESSION_FEEDBACK_MIN_TURNS = 5
+
+/** Ask the server whether to show the "how is Mia doing in this session?" strip, and claim
+ *  the slot if it says yes. The server owns every rule (session length, one per
+ *  conversation, the per-person cooldown) so clearing site data cannot buy a second prompt,
+ *  and so a prompt nobody answers is still counted. */
+export const askSessionFeedback = async (
+  sessionId: string,
+  conversationId: string,
+  assistantTurns: number
+): Promise<number | null> => {
+  const response = await apiFetch('/api/chat/v2/session-feedback/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ conversation_id: conversationId, assistant_turns: assistantTurns }),
+  })
+  if (!response.ok) return null
+  const data = await response.json()
+  return data?.ask && typeof data.prompt_id === 'number' ? data.prompt_id : null
+}
+
+/** Record the click, and the comment that may follow it. Called twice in the usual flow, so
+ *  the score survives a comment box the person closes without typing. */
+export const submitSessionFeedback = async (
+  sessionId: string,
+  promptId: number,
+  payload: { score?: SessionFeedbackScore; comment?: string; dismissed?: boolean }
+): Promise<void> => {
+  await apiFetch('/api/chat/v2/session-feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ prompt_id: promptId, ...payload }),
+  })
 }
 
 export const fetchConversationMessages = async (

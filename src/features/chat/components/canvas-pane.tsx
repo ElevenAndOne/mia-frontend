@@ -77,6 +77,10 @@ interface CanvasPaneProps {
   onSwapMedia?: (file: File, oldUrl?: string | null) => void
   /** Basic "Try another idea": ask Mia for a different post in the same voice. */
   onTryAnotherIdea?: () => void
+  /** Basic "Edit caption": hand the change to the conversation instead of a raw textarea.
+   *  An owner who wants "shorter and warmer" should say that, not retype a caption; Mia has
+   *  the post and its photo in context and can offer options (28 Sep 2026). */
+  onEditCaptionInChat?: () => void
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -115,6 +119,7 @@ export const CanvasPane = ({
   isUploadingMedia = false,
   onSwapMedia,
   onTryAnotherIdea,
+  onEditCaptionInChat,
 }: CanvasPaneProps) => {
   const { isBasic } = useExperience()
   const swapInputRef = useRef<HTMLInputElement>(null)
@@ -593,13 +598,19 @@ export const CanvasPane = ({
                 {/* Basic: the three things an owner does with a drafted post (Figma "post actions"). */}
                 {isBasic && doc.doc_type === 'social_post' && (
                   <div className="mt-4 flex flex-wrap items-stretch gap-2 mia-rise">
+                    <SchedulePost
+                      doc={doc}
+                      spec={spec}
+                      conversationId={conversationId ?? null}
+                      variant="button"
+                    />
                     <button
                       type="button"
-                      onClick={() => setMode('edit')}
+                      onClick={onEditCaptionInChat ?? (() => setMode('edit'))}
                       className="inline-flex flex-1 basis-32 items-center justify-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary whitespace-nowrap hover:bg-tertiary transition-colors"
                     >
                       <Edit03 size={15} />
-                      Edit caption
+                      Change the words
                     </button>
                     {onSwapMedia && (
                       <>

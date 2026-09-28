@@ -12,6 +12,10 @@ interface SchedulePostProps {
   doc: CanvasDocument
   spec: CreativeSpec | null
   conversationId: string | null
+  /** 'icon' is the header affordance. 'button' is the labelled one in the post actions:
+   *  scheduling is the whole point of drafting a post, and as a 16px calendar glyph in the
+   *  top corner nobody found it (28 Sep 2026). */
+  variant?: 'icon' | 'button'
 }
 
 /** Tomorrow 10:00 local — a sane default when Mia didn't suggest a time. */
@@ -32,7 +36,12 @@ const defaultSchedule = (): { date: string; time: string } => {
  * by Mia at the chosen time. Out-of-range images are padded server-side by default;
  * the crop adjuster here lets the user choose a fill-crop instead.
  */
-export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) => {
+export const SchedulePost = ({
+  doc,
+  spec,
+  conversationId,
+  variant = 'icon',
+}: SchedulePostProps) => {
   const { sessionId, activeWorkspace } = useSession()
   const { showToast } = useToast()
   const queryClient = useQueryClient()
@@ -180,21 +189,40 @@ export const SchedulePost = ({ doc, spec, conversationId }: SchedulePostProps) =
     return `Image: ${media.length === 1 ? 'attached' : `${media.length} attached`} ✓`
   }
 
+  const asButton = variant === 'button'
+
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Schedule post"
-        aria-expanded={open}
-        title="Schedule this post to Facebook or Instagram"
-        className="w-8 h-8 max-md:w-10 max-md:h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
-      >
-        <CalendarPlus01 size={16} />
-      </button>
+    <div className={asButton ? 'relative flex-1 basis-32' : 'relative'} ref={menuRef}>
+      {asButton ? (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          title="Schedule this post to Facebook or Instagram"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-transparent bg-brand-solid px-3 py-2 paragraph-sm font-medium text-white whitespace-nowrap hover:opacity-90 transition-opacity"
+        >
+          <CalendarPlus01 size={15} />
+          Schedule post
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="Schedule post"
+          aria-expanded={open}
+          title="Schedule this post to Facebook or Instagram"
+          className="w-8 h-8 max-md:w-10 max-md:h-10 rounded-lg flex items-center justify-center text-quaternary hover:text-secondary hover:bg-tertiary transition-colors"
+        >
+          <CalendarPlus01 size={16} />
+        </button>
+      )}
 
       {open && (
-        <div className="absolute z-40 top-full right-0 mt-1 w-72 rounded-xl border border-tertiary bg-primary shadow-lg p-3 flex flex-col gap-2.5">
+        <div
+          className={`absolute z-40 w-72 rounded-xl border border-tertiary bg-primary shadow-lg p-3 flex flex-col gap-2.5 ${
+            asButton ? 'bottom-full left-0 mb-1' : 'top-full right-0 mt-1'
+          }`}
+        >
           <p className="paragraph-sm font-semibold text-primary">Schedule post</p>
 
           <div>

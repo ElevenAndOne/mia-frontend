@@ -18,7 +18,11 @@ import {
   fetchConversationMessages,
   transcribeAudio,
   uploadChatFile,
+  SESSION_FEEDBACK_MIN_TURNS,
+  askSessionFeedback,
   submitChatFeedback,
+  submitSessionFeedback,
+  type SessionFeedbackScore,
 } from '../services/chat-service'
 import type {
   PendingAction,
@@ -36,6 +40,7 @@ import {
 } from '../../creative-studio/creative-studio-api'
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
+import { newUuid } from '../../../lib/uuid'
 
 export interface ChatMessageItem {
   id: string
@@ -78,7 +83,12 @@ export const useChatView = () => {
   // Document context waiting for the next send (set when a canvas span was quoted).
   const pendingDocContextRef = useRef<DocumentContext | null>(null)
   // chat_history id awaiting thumbs-down details (null = modal closed)
-  const [feedbackModalTarget, setFeedbackModalTarget] = useState<number | null>(null)
+  // Which message the detail modal is for, and which way it was voted. Both votes open
+  // it: a thumbs down asks what went wrong, a thumbs up asks what went right.
+  const [feedbackModalTarget, setFeedbackModalTarget] = useState<{
+    historyId: number
+    rating: 1 | -1
+  } | null>(null)
   // Empty by default → the whimsical rotating phrase shows; a real tool status
   // ("Checking your Google Ads performance…") overrides it when one arrives.
   const [thinkingText, setThinkingText] = useState('')
@@ -566,7 +576,7 @@ export const useChatView = () => {
       const activeConvId =
         conversationId ??
         (() => {
-          const newId = crypto.randomUUID()
+          const newId = newUuid()
           setConversationId(newId)
           return newId
         })()
@@ -1089,11 +1099,11 @@ export const useChatView = () => {
       if (!sessionId) return
       // Optimistic — the thumb lights up immediately; a failed POST is non-critical.
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedback: rating } : m)))
-      if (rating === -1) {
-        // Claude-style detail dialog. The -1 below is recorded regardless — dismissing
-        // the modal loses nothing; submitting upserts category/details onto the row.
-        setFeedbackModalTarget(historyId)
-      }
+      // Claude-style detail dialog, on both votes. The rating below is recorded regardless,
+      // so dismissing the modal loses nothing; submitting upserts category/details onto the
+      // same row. Asking only on a thumbs down meant we heard every fault and nothing that
+      // worked (Megan, 2026-09-18).
+      setFeedbackModalTarget({ historyId, rating })
       try {
         await submitChatFeedback(sessionId, historyId, rating)
       } catch {
@@ -1109,7 +1119,7 @@ export const useChatView = () => {
       setFeedbackModalTarget(null)
       if (!sessionId || target === null || (!category && !details)) return
       try {
-        await submitChatFeedback(sessionId, target, -1, category, details)
+        await submitChatFeedback(sessionId, target.historyId, target.rating, category, details)
       } catch {
         // fire-and-forget — feedback errors are non-critical
       }
@@ -1118,6 +1128,75 @@ export const useChatView = () => {
   )
 
   const closeFeedbackModal = useCallback(() => setFeedbackModalTarget(null), [])
+
+  // --- "How is Mia doing in this session?" ----------------------------------------
+  // The server owns every rule (session length, one per conversation, the per-person
+  // cooldown) and writes the row the moment it says yes, so a prompt nobody answers still
+  // counts. All this side does is notice a finished turn and ask.
+  const [sessionFeedbackPromptId, setSessionFeedbackPromptId] = useState<number | null>(null)
+  // The last (conversation, reply count) we put to the server, and whether a call is open.
+  // NOT a "we already asked this conversation" latch: `isLoading` can flip to false a beat
+  // before the final reply lands in `messages`, so the first evaluation can see four replies
+  // when there are five. A latch set at that moment disabled the strip for the whole
+  // conversation and the server never even got a qualifying request (28 Sep 2026). Asking
+  // again on each new reply is free, because the server is idempotent per conversation.
+  const sessionFeedbackAskedAt = useRef<{ conversationId: string; turns: number } | null>(null)
+  const sessionFeedbackInFlight = useRef(false)
+
+  useEffect(() => {
+    setSessionFeedbackPromptId(null)
+    sessionFeedbackAskedAt.current = null
+  }, [conversationId])
+
+  useEffect(() => {
+    if (!sessionId || !conversationId || isLoading) return
+    if (sessionFeedbackPromptId !== null) return // already on screen
+    if (sessionFeedbackInFlight.current) return
+
+    const assistantTurns = messages.filter((m) => m.role === 'assistant').length
+    if (assistantTurns < SESSION_FEEDBACK_MIN_TURNS) return
+
+    const asked = sessionFeedbackAskedAt.current
+    if (asked && asked.conversationId === conversationId && asked.turns >= assistantTurns) return
+
+    sessionFeedbackAskedAt.current = { conversationId, turns: assistantTurns }
+    sessionFeedbackInFlight.current = true
+    askSessionFeedback(sessionId, conversationId, assistantTurns)
+      .then((promptId) => {
+        if (promptId !== null) setSessionFeedbackPromptId(promptId)
+      })
+      .catch(() => {
+        // Never surface this: a question we could not ask is not the user's problem.
+      })
+      .finally(() => {
+        sessionFeedbackInFlight.current = false
+      })
+  }, [sessionId, conversationId, isLoading, messages, sessionFeedbackPromptId])
+
+  const handleSessionScore = useCallback(
+    (score: SessionFeedbackScore) => {
+      if (!sessionId || sessionFeedbackPromptId === null) return
+      // Sent on the click, before any comment, so closing the box loses nothing.
+      submitSessionFeedback(sessionId, sessionFeedbackPromptId, { score }).catch(() => {})
+    },
+    [sessionId, sessionFeedbackPromptId]
+  )
+
+  const handleSessionComment = useCallback(
+    (comment: string) => {
+      if (!sessionId || sessionFeedbackPromptId === null) return
+      submitSessionFeedback(sessionId, sessionFeedbackPromptId, { comment }).catch(() => {})
+    },
+    [sessionId, sessionFeedbackPromptId]
+  )
+
+  const handleSessionDismiss = useCallback(() => {
+    if (sessionId && sessionFeedbackPromptId !== null) {
+      // Recorded, not just hidden: a dismiss is an answer, and the response rate needs it.
+      submitSessionFeedback(sessionId, sessionFeedbackPromptId, { dismissed: true }).catch(() => {})
+    }
+    setSessionFeedbackPromptId(null)
+  }, [sessionId, sessionFeedbackPromptId])
 
   const handleTranscribeAudio = useCallback(
     async (audioBlob: Blob, mimeType: string): Promise<string> => {
@@ -1166,7 +1245,12 @@ export const useChatView = () => {
     handleCancel,
     handleBack,
     handleFeedback,
+    showSessionFeedback: sessionFeedbackPromptId !== null,
+    handleSessionScore,
+    handleSessionComment,
+    handleSessionDismiss,
     feedbackModalOpen: feedbackModalTarget !== null,
+    feedbackModalRating: feedbackModalTarget?.rating ?? -1,
     handleFeedbackModalSubmit,
     closeFeedbackModal,
     handleTranscribeAudio,

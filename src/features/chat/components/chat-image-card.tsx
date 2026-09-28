@@ -254,8 +254,12 @@ export function ChatImageCard({
       </div>
 
       {timedOut && !assets.length && (
+        // Points at the canvas, which is where the image actually lands. It used to send
+        // people to "Mia Create → Library", a page that no longer exists, and it fired even
+        // when the image had already been placed (see canvas_media_service, 28 Sep 2026).
         <p className="paragraph-xs text-quaternary mt-2">
-          Still generating — check Mia Create → Library in a moment.
+          Still working on this one. It will appear on the post in the canvas as soon as it is
+          ready.
         </p>
       )}
 

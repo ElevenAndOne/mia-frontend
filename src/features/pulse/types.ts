@@ -141,8 +141,34 @@ export interface FeedbackSummary {
   satisfaction_pct: number | null
   satisfaction_delta: number | null
   down_with_details: number
+  up_with_details: number
   categories: FeedbackCategory[]
+  /** What a thumbs UP said worked. Kept apart from `categories` so "what worked" is never
+   *  rendered in the issue table. */
+  praise: FeedbackCategory[]
   skills: FeedbackSkill[]
+}
+
+/** "How is Mia doing in this session?" — the session-level counterpart to the per-message
+ *  thumbs. `asked` counts prompts SHOWN, so a silent week reads as a low response rate
+ *  rather than as a contented one. */
+export interface SessionFeedbackSummary {
+  range: string
+  asked: number
+  answered: number
+  dismissed: number
+  response_pct: number | null
+  /** Mean of -1 Bad / 0 Fine / +1 Good; null when nobody answered. */
+  score: number | null
+  score_delta: number | null
+  breakdown: { label: string; count: number }[]
+  comments: {
+    score: number
+    label: string | null
+    comment: string | null
+    tenant_id: string | null
+    at: string | null
+  }[]
 }
 
 export interface FeedbackItem {

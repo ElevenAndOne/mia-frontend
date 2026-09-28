@@ -14,6 +14,7 @@ import type {
   Timeseries,
   Topics,
   WorkspaceList,
+  SessionFeedbackSummary,
 } from '../types'
 
 /** Thrown so the UI can distinguish "not on the allowlist" (403) from other failures. */
@@ -99,6 +100,16 @@ export const fetchTopics = (sessionId: string | null, range: string, filter?: Pu
 export const fetchFeedbackSummary = (sessionId: string | null, range: string, filter?: PulseFilter) =>
   get<FeedbackSummary>(
     `${BASE}/feedback/summary?range=${encodeURIComponent(range)}${scopeParams(filter)}`,
+    sessionId
+  )
+
+export const fetchSessionFeedback = (
+  sessionId: string | null,
+  range: string,
+  filter?: PulseFilter
+) =>
+  get<SessionFeedbackSummary>(
+    `${BASE}/session-feedback?range=${encodeURIComponent(range)}${scopeParams(filter)}`,
     sessionId
   )
 

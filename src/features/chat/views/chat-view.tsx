@@ -26,6 +26,7 @@ import { fetchWhatsAppNumber } from '../../workspace/services/whatsapp-number-se
 import { RaceCampaignTracker } from '../../campaign/components/race-campaign-tracker'
 import { IntegrationPromptModal } from '../../../components/integration-prompt-modal'
 import { FeedbackModal } from '../components/feedback-modal'
+import { SessionFeedbackStrip } from '../components/session-feedback-strip'
 import { XClose } from '../../../components/icon/x-close'
 import { StorageKey } from '../../../constants/storage-keys'
 import { setIntegrationHighlight } from '../../integrations/utils/integration-highlight'
@@ -90,7 +91,12 @@ export const ChatView = ({
     handleCancel,
     handleBack,
     handleFeedback,
+    showSessionFeedback,
+    handleSessionScore,
+    handleSessionComment,
+    handleSessionDismiss,
     feedbackModalOpen,
+    feedbackModalRating,
     handleFeedbackModalSubmit,
     closeFeedbackModal,
     handleTranscribeAudio,
@@ -409,6 +415,23 @@ export const ChatView = ({
             'Try another idea: a different post for my page — new subject, same voice, something current for the business. Draft it ready to post, with one of my photos.'
           )
         },
+        onEditCaptionInChat: () => {
+          // Says what they want, rather than retyping a caption. The open post rides along as
+          // document context, so Mia never has to ask WHICH one — the answer is the tab they
+          // were looking at when they pressed the button (28 Sep 2026).
+          const open = canvas.document
+          if (!open) return
+          void handleSubmit(`I want to change the words on "${open.title}".`, {
+            displayText: 'Change the words on this post',
+            documentContext: {
+              document_id: open.id,
+              title: open.title,
+              doc_type: open.doc_type,
+              current_content: open.content,
+              version: open.version,
+            },
+          })
+        },
       }
     : null
 
@@ -665,6 +688,16 @@ export const ChatView = ({
                 </div>
               )}
 
+              {showSessionFeedback && (
+                <div className="mb-3">
+                  <SessionFeedbackStrip
+                    onScore={handleSessionScore}
+                    onComment={handleSessionComment}
+                    onDismiss={handleSessionDismiss}
+                  />
+                </div>
+              )}
+
               <ChatInput
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
@@ -770,6 +803,7 @@ export const ChatView = ({
 
       <FeedbackModal
         isOpen={feedbackModalOpen}
+        rating={feedbackModalRating}
         onClose={closeFeedbackModal}
         onSubmit={handleFeedbackModalSubmit}
       />
