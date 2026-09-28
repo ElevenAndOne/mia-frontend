@@ -77,6 +77,10 @@ export interface CanvasController {
 }
 
 const EDIT_SAVE_DEBOUNCE_MS = 800
+/** Documents arriving within this of the last auto-focus are the same run (Mia streaming a
+ *  multi-post plan) and become background tabs. A longer gap means a new request, so its post
+ *  takes the pane. */
+const NEW_DOC_FOCUS_GAP_MS = 20_000
 
 export function useCanvas({
   sessionId,
@@ -97,6 +101,10 @@ export function useCanvas({
   // Tabs that just arrived in the background (Mia streaming a multi-doc plan) — they get a
   // brief pulse instead of stealing focus from whatever the user is reading.
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
+  // When we last moved the pane to a brand new document. A post Mia just made is the thing the
+  // user wants to look at, so the FIRST new document of a run takes focus; the rest of that run
+  // stay background tabs, so an eight-item plan does not shuffle the pane under them.
+  const lastAutoFocusRef = useRef(0)
   const freshTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const markFresh = useCallback((id: string) => {
     setFreshIds((prev) => new Set(prev).add(id))
@@ -170,14 +178,24 @@ export function useCanvas({
       setOrder((o) => (o.includes(doc.id) ? o : [...o, doc.id]))
       if (isFirst || isRevision) {
         // The first deliverable of a turn, or a revision the user asked for: show it.
+        lastAutoFocusRef.current = Date.now()
         setActiveId(doc.id)
         setViewing(null) // a fresh result supersedes any checked-out version
         setIsOpen(true)
         setCanUndo(changed)
       } else if (!prior) {
-        // A later document in the same run: background tab + short pulse — never yank
-        // the user off the one they're reading.
-        markFresh(doc.id)
+        if (Date.now() - lastAutoFocusRef.current > NEW_DOC_FOCUS_GAP_MS) {
+          // A new post after a pause: this is what they just asked for, so show it rather
+          // than leaving them on the post they were reading before (28 Sep 2026).
+          lastAutoFocusRef.current = Date.now()
+          setActiveId(doc.id)
+          setViewing(null)
+          setIsOpen(true)
+        } else {
+          // A later document in the same run: background tab + short pulse — never yank
+          // the user off the one they're reading.
+          markFresh(doc.id)
+        }
       }
       // Same id, same version = the authoritative emit replacing its streamed preview —
       // content updates silently, focus and undo state untouched.

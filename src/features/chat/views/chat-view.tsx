@@ -411,9 +411,9 @@ export const ChatView = ({
         isUploadingMedia: canvas.isUploadingMedia,
         onSwapMedia: canvas.swapMedia,
         onTryAnotherIdea: () => {
-          void handleSubmit(
-            'Try another idea: a different post for my page — new subject, same voice, something current for the business. Draft it ready to post, with one of my photos.'
-          )
+          // Short on purpose: it shows as the user's own bubble. No mention of photos — a new
+          // post is drafted with an empty media slot and Mia offers upload or generate.
+          void handleSubmit('Another idea: a different post, new subject, same voice.')
         },
         onEditCaptionInChat: () => {
           // Says what they want, rather than retyping a caption. The open post rides along as
