@@ -12,6 +12,8 @@ interface IntegrationPromptOptions {
   connectedPlatforms: string[]
   isLoading?: boolean
   workspaceRole?: string // Only show for owner/admin (viewers can't manage integrations)
+  /** Basic never sees the ads-connect nag: connecting an ad account unlocks nothing for them. */
+  isBasic?: boolean
 }
 
 const formatList = (items: string[]): string => {
@@ -24,9 +26,10 @@ export const useIntegrationPrompt = ({
   connectedPlatforms,
   isLoading = false,
   workspaceRole,
+  isBasic = false,
 }: IntegrationPromptOptions): IntegrationPromptState | null => {
   return useMemo(() => {
-    if (isLoading) return null
+    if (isLoading || isBasic) return null
 
     // Don't prompt viewers/analysts — they can't manage integrations
     if (workspaceRole && !['owner', 'admin'].includes(workspaceRole)) return null
@@ -60,5 +63,5 @@ export const useIntegrationPrompt = ({
       missingPlatformIds,
       primaryActionLabel: 'Go to Integrations',
     }
-  }, [connectedPlatforms, isLoading, workspaceRole])
+  }, [connectedPlatforms, isLoading, workspaceRole, isBasic])
 }

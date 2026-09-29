@@ -390,6 +390,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   picture_url: sessionUser.picture_url || '',
                   google_user_id: sessionUser.user_id,
                   onboarding_completed: sessionUser.onboarding_completed || false,
+                  is_staff: Boolean(sessionUser.is_staff),
                 },
                 selectedAccount: fullSelectedAccount,
                 availableAccounts: accounts,
@@ -898,6 +899,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             picture_url:
               authData.user_info?.picture || authData.picture_url || authData.picture || '',
             google_user_id: userId,
+            is_staff: Boolean(authData.user_info?.is_staff),
           },
           selectedAccount,
         }))

@@ -15,6 +15,8 @@ interface BasicWorkspaceSettingsProps {
   workspaceName: string
   canManage: boolean
   isOwner: boolean
+  /** 11&1 staff: the only people who see the experience switcher and feature switches. */
+  isStaff: boolean
   websiteUrl: string
   onWebsiteSaved: (url: string) => void
   onOpenBrand: () => void
@@ -86,6 +88,7 @@ export function BasicWorkspaceSettings({
   workspaceName,
   canManage,
   isOwner,
+  isStaff,
   websiteUrl,
   onWebsiteSaved,
   onOpenBrand,
@@ -202,8 +205,10 @@ export function BasicWorkspaceSettings({
 
       {appearanceSlot && <Group label="Appearance">{appearanceSlot}</Group>}
 
-      {/* Which experience this workspace gets, and the switches under it. Down here
-          because it is the one group a client never needs and 11&1 occasionally does. */}
+      {/* Which experience this workspace gets, and the switches under it. 11&1 staff only
+          (29 Sep 2026): an owner who could flip their own switches would have no paywall.
+          The server refuses non-staff regardless; this keeps the controls out of sight. */}
+      {isStaff && (
       <Group label="Advanced">
         <Row icon={<Stars01 size={16} />} title="Experience">
           <div className="flex rounded-lg border border-primary overflow-hidden">
@@ -234,6 +239,7 @@ export function BasicWorkspaceSettings({
           </CollapsibleSection>
         )}
       </Group>
+      )}
 
       {isOwner && (
         <Group>

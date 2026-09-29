@@ -28,6 +28,7 @@ export interface MetaAuthStatusResponse {
     name: string
     email?: string
     has_seen_intro?: boolean
+    is_staff?: boolean
   }
 }
 

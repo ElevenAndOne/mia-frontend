@@ -243,9 +243,11 @@ export const AppRoutes = ({
             path="/predict"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <StrategisePage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <StrategisePage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -278,9 +280,11 @@ export const AppRoutes = ({
             path="/reports"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <ReportsPage />
-                </ErrorBoundary>
+                <RequireFeature flag="reports">
+                  <ErrorBoundary>
+                    <ReportsPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -316,9 +320,11 @@ export const AppRoutes = ({
             path="/insights/grow"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <InsightsGrowPage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <InsightsGrowPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -327,9 +333,11 @@ export const AppRoutes = ({
             path="/insights/optimize"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <InsightsOptimizePage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <InsightsOptimizePage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -338,9 +346,11 @@ export const AppRoutes = ({
             path="/insights/protect"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <InsightsProtectPage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <InsightsProtectPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -349,9 +359,11 @@ export const AppRoutes = ({
             path="/insights/summary"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <InsightsSummaryPage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <InsightsSummaryPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -360,9 +372,11 @@ export const AppRoutes = ({
             path="/insights/strategise"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <InsightsPredictPage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <InsightsPredictPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />
@@ -371,9 +385,11 @@ export const AppRoutes = ({
             path="/creative-studio"
             element={
               <ProtectedRoute requireAccount>
-                <ErrorBoundary>
-                  <CreativeStudioPage />
-                </ErrorBoundary>
+                <RequireFeature flag="paid_media">
+                  <ErrorBoundary>
+                    <CreativeStudioPage />
+                  </ErrorBoundary>
+                </RequireFeature>
               </ProtectedRoute>
             }
           />

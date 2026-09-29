@@ -240,6 +240,7 @@ export const useChatView = () => {
     connectedPlatforms,
     isLoading: integrationStatusLoading,
     workspaceRole: activeWorkspace?.role,
+    isBasic: activeWorkspace?.experience === 'basic',
   })
 
   const { selectedPlatforms, togglePlatform } = usePlatformPreferences({

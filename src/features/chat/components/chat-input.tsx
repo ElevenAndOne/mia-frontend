@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { DateRangePopover } from './date-range-sheet'
 import PlatformSelector from './platform-selector'
 import { useFeatures } from '../../workspace/hooks/use-features'
+import { useExperience } from '../../workspace/hooks/use-experience'
 import { VoiceWaveform } from './voice-waveform'
 import { AlertCircle } from '../../../components/icon/alert-circle'
 import { ArrowRight } from '../../../components/icon/arrow-right'
@@ -127,6 +128,8 @@ export const ChatInput = ({
   const [showPlatformSelector, setShowPlatformSelector] = useState(false)
   // Basic never sees the per-message platform picker (feature flag platform_picker).
   const { isEnabled: isFeatureEnabled } = useFeatures()
+  // Basic has no reporting window to pick: the date range belongs to paid-media questions.
+  const { isBasic } = useExperience()
   const showPlatformPicker = isFeatureEnabled('platform_picker')
   const [micState, setMicState] = useState<MicState>('idle')
   const [isUploading, setIsUploading] = useState(false)
@@ -491,7 +494,8 @@ export const ChatInput = ({
         {micState !== 'recording' && (
           <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-1 relative">
-              {/* Calendar button — non-interactive when a campaign locks the date range */}
+              {/* Calendar button — non-interactive when a campaign locks the date range; absent for Basic */}
+              {!isBasic && (
               <button
                 ref={calendarButtonRef}
                 type="button"
@@ -508,6 +512,7 @@ export const ChatInput = ({
                     : formatDateRangeDisplay(dateRange, 'short')}
                 </span>
               </button>
+              )}
 
               {!campaignDateLocked && (
                 <DateRangePopover

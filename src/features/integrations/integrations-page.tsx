@@ -49,9 +49,11 @@ interface Integration {
 
 /**
  * Basic experience: the same page wears a simpler face — "Connections". An owner sees their
- * Facebook Page (with Instagram) and a short "Add more" list where every row says, in one
- * line, what connecting it unlocks (constants/features.py unlock rules). Team/Agency keep
- * the full page. Ids match the `integrations` list below; handlers are shared.
+ * Facebook Page (with Instagram), and under "Add more" only Canva. The ad-account rows (Meta
+ * Ads, Google Ads, GA4) left on 29 Sep 2026: connecting one unlocks nothing for Basic any
+ * more (features are unlocked by paying, never by connecting), so offering them here would
+ * be a promise the app cannot keep. Team/Agency keep the full page. Ids match the
+ * `integrations` list below; handlers are shared.
  */
 const BASIC_CONNECTIONS: Array<{ id: string; title: string; unlocks: string; page?: boolean }> = [
   {
@@ -59,21 +61,6 @@ const BASIC_CONNECTIONS: Array<{ id: string; title: string; unlocks: string; pag
     title: 'Facebook Page & Instagram',
     unlocks: 'Where your posts go out and your results come in. Instagram comes with your Page.',
     page: true,
-  },
-  {
-    id: 'meta',
-    title: 'Meta Ads',
-    unlocks: 'Unlocks Campaigns, Budget Tracker and the Weekly Memo. Mia can read and manage your boosted posts and ads.',
-  },
-  {
-    id: 'google',
-    title: 'Google Ads',
-    unlocks: 'Unlocks Campaigns and Budget Tracker for search ads. Mia can read and manage them for you.',
-  },
-  {
-    id: 'ga4',
-    title: 'Google Analytics',
-    unlocks: 'Mia can see what people do on your website after a post.',
   },
 ]
 
@@ -1462,7 +1449,8 @@ const IntegrationsPage = ({
                 const rows = BASIC_CONNECTIONS.filter((c) => Boolean(c.page) === (group === 'page'))
                   .map((c) => ({ meta: c, integration: integrations.find((i) => i.id === c.id) }))
                   .filter((r) => r.integration)
-                if (rows.length === 0) return null
+                // "Add more" holds Canva for anyone who can manage connections, even with no rows.
+                if (rows.length === 0 && !(group === 'more' && canManageIntegrations)) return null
                 return (
                   <section key={group} className="mb-6" aria-label={group === 'page' ? 'Your pages' : 'Add more'}>
                     <div className="mb-2.5 flex items-baseline justify-between">
@@ -1471,7 +1459,7 @@ const IntegrationsPage = ({
                       </span>
                       {group === 'more' && (
                         <span className="paragraph-xs text-quaternary">
-                          Each one unlocks more of Mia as your business grows.
+                          Tools Mia can work with alongside your Page.
                         </span>
                       )}
                     </div>

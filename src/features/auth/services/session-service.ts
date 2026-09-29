@@ -17,6 +17,7 @@ export interface SessionValidationResponse {
     email: string
     picture_url?: string
     has_seen_intro?: boolean
+    is_staff?: boolean
     onboarding_completed?: boolean
   }
   selected_account?: {

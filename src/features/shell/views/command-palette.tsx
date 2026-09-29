@@ -110,7 +110,7 @@ export const CommandPalette = () => {
             } as PaletteItem,
           ]
         : []),
-      ...(isEnabled('mia-creative-studio')
+      ...(isEnabled('mia-creative-studio') && isFeatureEnabled('paid_media')
         ? [
             {
               id: 'jump-mia-create',

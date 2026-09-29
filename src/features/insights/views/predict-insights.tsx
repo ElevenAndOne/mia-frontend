@@ -34,7 +34,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
   // Say why, so an organic report reads as a match to the client's data rather
   // than a downgrade or a bug.
   const reportSubtitle = isOrganic
-    ? 'Based on your social activity, because this workspace has no ad spend to model. Connect an ad account with active spend to unlock the Creative Intelligence Report.'
+    ? 'Based on your social activity, because this workspace has no ad spend to model. The Creative Intelligence Report is built from paid campaigns once this workspace runs them.'
     : undefined
 
   // Track page visit + mark report as "seen" so homepage stops pulsing gold

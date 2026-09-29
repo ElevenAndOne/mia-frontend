@@ -29,6 +29,7 @@ export interface GoogleAuthStatusResponse {
     email: string
     picture: string
     has_seen_intro?: boolean
+    is_staff?: boolean
   }
   selected_account?: {
     id: string

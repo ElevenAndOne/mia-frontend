@@ -262,7 +262,10 @@ export const WorkspaceSettingsDetail = ({
     )
     setVisited((v) => (v.has(tab) ? v : new Set(v).add(tab)))
   }
-  const { sessionId, refreshWorkspaces } = useSession()
+  const { sessionId, refreshWorkspaces, user } = useSession()
+  // Only 11&1 staff may change a workspace's experience or its feature switches (29 Sep
+  // 2026). The server refuses everyone else; hiding the controls keeps the paywall honest.
+  const isStaff = Boolean(user?.is_staff)
   const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -906,6 +909,7 @@ export const WorkspaceSettingsDetail = ({
                       workspaceName={workspace.name}
                       canManage={canManage}
                       isOwner={isOwner}
+                      isStaff={isStaff}
                       websiteUrl={websiteUrl}
                       onWebsiteSaved={(url) => {
                         setWebsiteUrl(url)
@@ -1098,7 +1102,8 @@ export const WorkspaceSettingsDetail = ({
                         </div>
                       )}
 
-                      {/* Experience: how much of Mia this workspace is shown (Sep 2026) */}
+                      {/* Experience: how much of Mia this workspace is shown (Sep 2026). Staff only. */}
+                      {isStaff && (
                       <div className="p-3 bg-secondary rounded-lg mb-3">
                         <div className="flex items-center justify-between gap-3">
                           <div>
@@ -1133,6 +1138,7 @@ export const WorkspaceSettingsDetail = ({
                           </p>
                         )}
                       </div>
+                      )}
 
                       {/* Campaign builder framework — Basic never builds campaigns */}
                       {!isBasic && (
@@ -1248,8 +1254,8 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
-              {/* Features - Owner and Admin: what this workspace can see (Sep 2026) */}
-              {canManage && sessionId && !isBasic && (
+              {/* Features: what this workspace can see. 11&1 staff only (29 Sep 2026). */}
+              {isStaff && canManage && sessionId && !isBasic && (
                 <CollapsibleSection
                   title="Features"
                   summary="What this workspace can see — switches follow the experience above"
