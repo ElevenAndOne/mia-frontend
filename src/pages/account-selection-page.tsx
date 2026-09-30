@@ -79,6 +79,18 @@ const AccountSelectionPage = ({ onAccountSelected }: AccountSelectionPageProps) 
           onSelectAccount={handleAccountSelect}
         />
       )}
+
+      {/* A way out. With no account to pick there was nothing to click but a back arrow
+          that led straight back here (29 Sep 2026). */}
+      <div className="px-6 pb-8 text-center">
+        <button
+          type="button"
+          onClick={() => void logout()}
+          className="paragraph-sm text-tertiary hover:text-primary underline-offset-2 hover:underline"
+        >
+          Sign out and use a different account
+        </button>
+      </div>
     </NarrowPageContainer>
   )
 }

@@ -16,6 +16,8 @@ interface MemberRowMenuProps {
   onRemoveMember: (userId: string) => void
   onCopyInvite: (link: string) => void
   onRevokeInvite: (inviteId: string) => void
+  /** Basic has admins and viewers only. */
+  hideAnalyst?: boolean
 }
 
 export const MemberRowMenu = ({
@@ -25,6 +27,7 @@ export const MemberRowMenu = ({
   onRemoveMember,
   onCopyInvite,
   onRevokeInvite,
+  hideAnalyst = false,
 }: MemberRowMenuProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showRoleMenu, setShowRoleMenu] = useState(false)
@@ -155,8 +158,8 @@ export const MemberRowMenu = ({
         },
         icon: person.role === 'viewer' ? <Check size={16} /> : undefined,
       },
-    ],
-    [person.id, person.role, onUpdateRole]
+    ].filter((item) => !(hideAnalyst && item.id === 'analyst')),
+    [person.id, person.role, onUpdateRole, hideAnalyst]
   )
 
   const items = person.type === 'member' ? memberItems : inviteItems

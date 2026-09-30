@@ -29,6 +29,9 @@ export interface ScheduledPost {
   publish_mode: PublishMode
   platform_post_id: string | null
   permalink: string | null
+  /** Set when the owner removed a published Instagram post in Mia. Meta's API cannot delete
+   *  Instagram media, so the row waits here until they confirm it is gone from Instagram. */
+  manual_delete_at: string | null
   error: string | null
   retry_count: number
   created_by: string | null

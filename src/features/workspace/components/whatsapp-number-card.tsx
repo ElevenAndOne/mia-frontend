@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MessageChatSquare } from '../../../components/icon/message-chat-square'
 import {
   confirmWhatsAppVerification,
@@ -49,6 +49,15 @@ export const WhatsAppNumberCard = ({
    */
   mode?: 'full' | 'confirm'
 }) => {
+  // "Add my number" on the prompt lands here with ?focus=whatsapp: bring the card into view.
+  const focused = useRef(false)
+  useEffect(() => {
+    if (focused.current || !window.location.search.includes('focus=whatsapp')) return
+    focused.current = true
+    window.setTimeout(() => {
+      document.getElementById('whatsapp-number')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 300)
+  }, [])
   const [state, setState] = useState<WhatsAppNumberState | null>(null)
   const [number, setNumber] = useState('')
   const [code, setCode] = useState('')
@@ -256,7 +265,7 @@ const Shell = ({
   children: React.ReactNode
   mode?: 'full' | 'confirm'
 }) => (
-  <div className="flex items-start gap-3 px-3 py-3">
+  <div id="whatsapp-number" className="flex items-start gap-3 px-3 py-3">
     <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 text-secondary">
       <MessageChatSquare size={16} />
     </div>

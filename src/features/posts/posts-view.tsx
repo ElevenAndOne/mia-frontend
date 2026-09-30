@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/button'
@@ -8,7 +8,7 @@ import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
 import { Modal } from '../overlay'
-import { deletePost, fetchPosts, markPosted, reschedulePost, retryPost } from './services/posts-api'
+import { confirmDeleted, deletePost, fetchPosts, markPosted, reschedulePost, retryPost } from './services/posts-api'
 import type { PostStatus, ScheduledPost } from './types'
 
 /**
@@ -78,7 +78,7 @@ const usePostActions = (onChanged: (p: ScheduledPost) => void) => {
   const run = useCallback(
     async (
       fn: (sessionId: string, tenantId: string) => Promise<ScheduledPost | null>,
-      okMsg: string,
+      okMsg: string | (() => string),
       after?: () => void,
     ) => {
       if (!sessionId || !tenantId || busy) return
@@ -86,7 +86,7 @@ const usePostActions = (onChanged: (p: ScheduledPost) => void) => {
       try {
         const updated = await fn(sessionId, tenantId)
         if (updated) onChanged(updated)
-        showToast('success', okMsg)
+        showToast('success', typeof okMsg === 'function' ? okMsg() : okMsg)
         after?.()
       } catch (e) {
         showToast('error', e instanceof Error ? e.message : 'Something went wrong')
@@ -100,12 +100,54 @@ const usePostActions = (onChanged: (p: ScheduledPost) => void) => {
   return { busy, run }
 }
 
+// Meta's API has no delete for Instagram media, so removing the Facebook post leaves its
+// Instagram twin live; the toast has to say so or the owner believes both are gone.
+const INSTAGRAM_STILL_LIVE =
+  'Deleted from Facebook. The Instagram copy is still live — delete it in the Instagram app.'
+
+// Removing a published Instagram row marks it: the post itself is untouched until the owner
+// deletes it in the Instagram app and taps "I've deleted it".
+const removedToast = (post: ScheduledPost) =>
+  post.status === 'published' && post.platform === 'instagram'
+    ? 'Instagram doesn’t let apps delete posts. Open it in Instagram, delete it there, then tap “I’ve deleted it”.'
+    : 'Post removed'
+
+const awaitingInstagramDelete = (post: ScheduledPost) =>
+  post.status === 'published' && post.platform === 'instagram' && Boolean(post.manual_delete_at)
+
+/** The two-step Instagram removal: open the post in Instagram, then confirm it is gone. */
+const InstagramDeleteActions = ({
+  post,
+  busy,
+  onConfirm,
+}: {
+  post: ScheduledPost
+  busy: boolean
+  onConfirm: () => void
+}) => (
+  <div className="flex items-center gap-1.5 flex-wrap">
+    {post.permalink && (
+      <a
+        href={post.permalink}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center h-8 px-3 rounded-lg bg-secondary paragraph-xs text-primary hover:bg-tertiary whitespace-nowrap"
+      >
+        Open in Instagram ↗
+      </a>
+    )}
+    <Button size="sm" variant="secondary" disabled={busy} onClick={onConfirm}>
+      I’ve deleted it
+    </Button>
+  </div>
+)
+
 const removeConfirmText = (post: ScheduledPost) =>
   post.status !== 'published'
     ? 'Remove this post? It will not be published.'
     : post.platform === 'facebook'
-      ? 'Remove this post? This also DELETES the live post from Facebook.'
-      : 'Remove this post from the list? Instagram doesn’t let apps delete posts — the live post stays until you delete it in the Instagram app.'
+      ? 'Remove this post? This also DELETES the live post from Facebook. If it also went to Instagram, that copy stays up until you delete it in the Instagram app.'
+      : 'Instagram doesn’t let apps delete posts. Mia will keep this row with a link so you can delete it in the Instagram app, then clear it here. Continue?'
 
 const whenLine = (post: ScheduledPost) =>
   post.status === 'published' && post.published_at
@@ -261,20 +303,46 @@ const PostDetailModal = ({
                 Mark as posted
               </Button>
             )}
-            {post.status !== 'publishing' && (
+            {awaitingInstagramDelete(post) ? (
+              <InstagramDeleteActions
+                post={post}
+                busy={busy}
+                onConfirm={() =>
+                  void run(
+                    async (s, t) => {
+                      await confirmDeleted(s, t, post.post_id)
+                      return null
+                    },
+                    'Cleared',
+                    () => {
+                      onRemoved(post.post_id)
+                      onClose()
+                    },
+                  )
+                }
+              />
+            ) : post.status !== 'publishing' && (
               <Button
                 size="sm"
                 variant="danger"
                 disabled={busy}
                 onClick={() => {
                   if (window.confirm(removeConfirmText(post))) {
+                    let msg = removedToast(post)
+                    let marked = false
                     void run(
                       async (s, t) => {
-                        await deletePost(s, t, post.post_id)
+                        const r = await deletePost(s, t, post.post_id)
+                        if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
+                        if (r.instagram_manual) {
+                          marked = true
+                          return { ...post, manual_delete_at: new Date().toISOString() }
+                        }
                         return null
                       },
-                      'Post removed',
+                      () => msg,
                       () => {
+                        if (marked) return
                         onRemoved(post.post_id)
                         onClose()
                       },
@@ -345,26 +413,55 @@ const PostRow = ({
             {post.error}
           </p>
         )}
+        {awaitingInstagramDelete(post) && (
+          <p className="paragraph-xs text-utility-warning-700 truncate">
+            Still live on Instagram — delete it in the Instagram app, then clear it here.
+          </p>
+        )}
       </div>
 
       <StatusPill status={post.status} />
 
       {/* Quick actions — clicks must not open the detail view */}
       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        {post.status !== 'publishing' && (
+        {awaitingInstagramDelete(post) ? (
+          <InstagramDeleteActions
+            post={post}
+            busy={busy}
+            onConfirm={() =>
+              void run(
+                async (s, t) => {
+                  await confirmDeleted(s, t, post.post_id)
+                  return null
+                },
+                'Cleared',
+                () => onRemoved(post.post_id),
+              )
+            }
+          />
+        ) : post.status !== 'publishing' && (
           <Button
             size="sm"
             variant="ghost"
             disabled={busy}
             onClick={() => {
               if (window.confirm(removeConfirmText(post))) {
+                let msg = removedToast(post)
+                let marked = false
                 void run(
                   async (s, t) => {
-                    await deletePost(s, t, post.post_id)
+                    const r = await deletePost(s, t, post.post_id)
+                    if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
+                    if (r.instagram_manual) {
+                      marked = true
+                      return { ...post, manual_delete_at: new Date().toISOString() }
+                    }
                     return null
                   },
-                  'Post removed',
-                  () => onRemoved(post.post_id),
+                  () => msg,
+                  () => {
+                    if (!marked) onRemoved(post.post_id)
+                  },
                 )
               }
             }}
@@ -372,7 +469,7 @@ const PostRow = ({
             Remove
           </Button>
         )}
-        {post.permalink && (
+        {!awaitingInstagramDelete(post) && post.permalink && (
           <a
             href={post.permalink}
             target="_blank"
@@ -403,8 +500,30 @@ const PostsView = () => {
     queryKey: ['posts', tenantId],
     queryFn: async () => (await fetchPosts(sessionId!, tenantId!)).posts,
     enabled: !!sessionId && !!tenantId,
+    // A post going out while the page is open shows without a refresh (Megan, 30 Sep 2026):
+    // the publisher runs every five minutes, so a 30 s poll is never far behind it.
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   })
   const posts = data ?? null
+  const { showToast: notify } = useToast()
+  const seenStatus = useRef<Map<string, PostStatus> | null>(null)
+  useEffect(() => {
+    if (!posts) return
+    const next = new Map(posts.map((p) => [p.post_id, p.status] as const))
+    const before = seenStatus.current
+    seenStatus.current = next
+    if (!before) return // first load: nothing has changed yet
+    for (const p of posts) {
+      const was = before.get(p.post_id)
+      if (was && was !== 'published' && p.status === 'published') {
+        const where = p.platform === 'instagram' ? 'Instagram' : p.platform === 'linkedin' ? 'LinkedIn' : 'Facebook'
+        notify('success', `Your ${where} post is live${p.title ? `: ${p.title}` : ''}`)
+      } else if (was && was !== 'failed' && p.status === 'failed') {
+        notify('error', `A post did not go out${p.title ? `: ${p.title}` : ''}. Open it to retry.`)
+      }
+    }
+  }, [posts, notify])
   const error = queryError
     ? queryError instanceof Error
       ? queryError.message

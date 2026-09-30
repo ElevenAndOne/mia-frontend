@@ -79,14 +79,38 @@ export async function markPosted(
   return orThrow(res, 'Failed to update')
 }
 
+export interface DeletePostResult {
+  deleted: boolean
+  post_id: string
+  /** A published Instagram row: not deleted, marked for the owner to delete in the app. */
+  instagram_manual?: { post_id: string; permalink?: string | null }
+  /** Set when the removed Facebook post has a published Instagram twin. Meta's API cannot
+   *  delete Instagram media, so that copy is still live until removed in the Instagram app. */
+  instagram_still_live?: { post_id: string; permalink?: string | null }
+}
+
 export async function deletePost(
   sessionId: string,
   tenantId: string,
   postId: string,
-): Promise<void> {
+): Promise<DeletePostResult> {
   const res = await apiFetch(`${base(tenantId)}/${postId}`, {
     method: 'DELETE',
     headers: auth(sessionId),
   })
-  await orThrow(res, 'Failed to remove')
+  // orThrow already consumes the body: reading it again threw on every remove (30 Sep 2026).
+  return orThrow<DeletePostResult>(res, 'Failed to remove')
+}
+
+/** The owner deleted the Instagram post in the Instagram app: drop the marked row. */
+export async function confirmDeleted(
+  sessionId: string,
+  tenantId: string,
+  postId: string,
+): Promise<void> {
+  const res = await apiFetch(`${base(tenantId)}/${postId}/confirm-deleted`, {
+    method: 'POST',
+    headers: auth(sessionId),
+  })
+  await orThrow(res, 'Failed to clear the post')
 }

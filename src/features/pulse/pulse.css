@@ -780,6 +780,11 @@
   margin-top: 4px;
   line-height: 1.5;
 }
+/* A thumbs-up comment: same shape as a complaint, but not painted as one. */
+.plz-fbdetails.up {
+  color: var(--color-text-primary);
+  border-left-color: var(--color-foreground-brand-primary);
+}
 .plz-fbdetails {
   font-size: 12.5px;
   font-style: italic;

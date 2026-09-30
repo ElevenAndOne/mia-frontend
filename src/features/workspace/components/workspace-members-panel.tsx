@@ -1,3 +1,4 @@
+import { useExperience } from '../hooks/use-experience'
 import { Mail01 } from '../../../components/icon/mail-01'
 import { UserAvatar } from '../../../components/user-avatar'
 import { WorkspaceRoleIcon } from './workspace-role-icon'
@@ -21,6 +22,7 @@ export const WorkspaceMembersPanel = ({
   onCopyInvite,
   onRevokeInvite,
 }: WorkspaceMembersPanelProps) => {
+  const { isBasic } = useExperience()
   if (people.length === 0) {
     return (
       <div className="text-center py-8">
@@ -68,6 +70,7 @@ export const WorkspaceMembersPanel = ({
               </span>
             )}
             <MemberRowMenu
+              hideAnalyst={isBasic}
               person={person}
               onUpdateRole={onUpdateRole}
               onTransferOwnership={onTransferOwnership}

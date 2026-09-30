@@ -210,7 +210,9 @@ export const WorkspaceSettingsDetail = ({
       'mia',
       'help',
     ]
-    const wanted = t && ok.includes(t) ? t : null
+    // Basic lands only on a tab it can see: ?tab=campaigns used to mount the campaign
+    // guides for a Basic owner, which the API now refuses (30 Sep 2026).
+    const wanted = t && ok.includes(t) && (!isBasic || visibleTabs.includes(t)) ? t : null
     // Basic has no Mia tab any more; an old ?tab=mia link lands on Workspace, where her
     // style now lives, rather than on a tab that renders nothing.
     if (wanted === 'mia' && isBasic) return canManage ? 'members' : 'brand'
@@ -1321,6 +1323,7 @@ export const WorkspaceSettingsDetail = ({
         copySuccess={copySuccess}
         isCreateInviteDisabled={isCreateInviteDisabled}
         canInviteAdmins={isOwner}
+        isBasic={isBasic}
         onInviteTypeChange={onInviteTypeChange}
         onInviteEmailChange={onInviteEmailChange}
         onInviteRoleChange={onInviteRoleChange}

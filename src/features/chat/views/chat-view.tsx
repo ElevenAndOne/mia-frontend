@@ -17,6 +17,7 @@ import type { DocumentSelection } from '../services/chat-service'
 import QuickActions from '../components/quick-actions'
 import { useFeatures } from '../../workspace/hooks/use-features'
 import { useExperience } from '../../workspace/hooks/use-experience'
+import { useWhatsAppPromptGate } from '../../workspace/hooks/whatsapp-prompt-gate'
 import { useHomeBrief } from '../../home/hooks/use-home-brief'
 import { useHomeCardTurnover } from '../../home/hooks/use-home-card-turnover'
 import { setHomeCardInFlight } from '../../home/in-flight'
@@ -233,7 +234,8 @@ export const ChatView = ({
   // which the service reports as `unavailable` — then there is simply no button.
   const [startChatUrl, setStartChatUrl] = useState<string | null>(null)
   useEffect(() => {
-    if (!isMobile || !isBasic || !sessionId) return
+    // Any device (29 Sep 2026): the desktop canvas opens WhatsApp Web with the same link.
+    if (!isBasic || !sessionId) return
     let live = true
     fetchWhatsAppNumber(sessionId)
       .then((s) => {
@@ -245,17 +247,22 @@ export const ChatView = ({
     return () => {
       live = false
     }
-  }, [isMobile, isBasic, sessionId])
+  }, [isBasic, sessionId])
 
+  // The WhatsApp number prompt goes first for a member who has none (an invited colleague):
+  // the canvas slides up once they have answered or dismissed it (Josh, 30 Sep 2026).
+  const promptGate = useWhatsAppPromptGate()
+  const waitingForPrompt = isBasic && promptGate !== 'done'
   const autoOpenedBestPost = useRef(false)
   useEffect(() => {
     if (autoOpenedBestPost.current) return
     if (!isMobile || !isBasic || hasMessages) return
     if (!brief?.best_post || canvas.document) return
     if (!bestPostOpen) return // they closed it last time
+    if (waitingForPrompt) return
     autoOpenedBestPost.current = true
     setBestPostSheetOpen(true)
-  }, [isMobile, isBasic, hasMessages, brief?.best_post, canvas.document, bestPostOpen])
+  }, [isMobile, isBasic, hasMessages, brief?.best_post, canvas.document, bestPostOpen, waitingForPrompt])
   const [mobileCanvasOpen, setMobileCanvasOpen] = useState(false)
   const [canvasUnseen, setCanvasUnseen] = useState(false)
   const prevDocCountRef = useRef(0)
@@ -730,13 +737,13 @@ export const ChatView = ({
           // slides out and back in rather than snapping. max-width stays constant — only
           // width animates (animating max-width is what made Close snap).
           <div
-            aria-hidden={!(canvas.isOpen || bestPostOpen)}
+            aria-hidden={!(canvas.isOpen || (bestPostOpen && !waitingForPrompt))}
             className={`hidden md:block h-full shrink-0 overflow-hidden transition-[width,opacity,transform] duration-[420ms] ease-[cubic-bezier(0.22,0.8,0.2,1)] ${
-              canvas.isOpen || bestPostOpen
+              canvas.isOpen || (bestPostOpen && !waitingForPrompt)
                 ? 'opacity-100 translate-x-0 border-l border-tertiary'
                 : 'opacity-0 translate-x-8'
             }`}
-            style={{ width: canvas.isOpen || bestPostOpen ? canvasWidth : 0 }}
+            style={{ width: canvas.isOpen || (bestPostOpen && !waitingForPrompt) ? canvasWidth : 0 }}
           >
             <div
               className="h-full"
@@ -754,6 +761,7 @@ export const ChatView = ({
                     brandName={activeWorkspace?.name}
                     onClose={() => setBestPost(false)}
                     onMakeAnother={makeAnotherCard ? handleMakeAnother : undefined}
+                    startChatUrl={startChatUrl}
                   />
                 </div>
               ) : null}

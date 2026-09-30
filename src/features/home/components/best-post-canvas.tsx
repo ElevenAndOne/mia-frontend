@@ -90,12 +90,17 @@ export const BestPostCanvas = ({
           the one prominent slot on something they can already reach. Every menu Mia has on
           WhatsApp is a *reply*, so until they message her first none of it exists for them;
           this is the tap that opens the thread. */}
-      {compact && startChatUrl ? (
+      {startChatUrl ? (
+        /* Desktop too (Josh, 29 Sep 2026): "Make another like it" already sits on the
+           Do-this-next card, so this slot opens WhatsApp — the wa.me link lands in WhatsApp
+           Web or the desktop app. The old button stays only when there is no link. */
         <a
           href={startChatUrl}
           target="_blank"
           rel="noreferrer"
-          className="absolute right-4 top-3 inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink"
+          className={`absolute inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink hover:opacity-80 ${
+            compact ? 'right-4 top-3' : 'right-5 top-3.5'
+          }`}
         >
           <MessageChatSquare size={14} />
           <span>Open in WhatsApp</span>

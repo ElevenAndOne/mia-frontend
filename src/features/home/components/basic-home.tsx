@@ -73,7 +73,7 @@ export const BasicHome = ({ userName, onPrompt, peek }: BasicHomeProps) => {
         {isLoading && (
           <div className="flex items-center justify-center gap-3 py-6 text-tertiary paragraph-sm">
             <Spinner size="sm" variant="dark" />
-            <span>Mia is reading your pages…</span>
+            <span>Putting your week together…</span>
           </div>
         )}
         {error && !isLoading && <p className="paragraph-sm text-quaternary text-center">{error}</p>}

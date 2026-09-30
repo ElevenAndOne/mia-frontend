@@ -42,7 +42,7 @@ export const useWorkspaceSettingsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [inviteRole, setInviteRole] = useState('viewer')
   const [inviteEmail, setInviteEmail] = useState('')
-  const [isLinkInvite, setIsLinkInvite] = useState(true)
+  const [isLinkInvite, setIsLinkInvite] = useState(!isBasic)
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null)
   const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null)

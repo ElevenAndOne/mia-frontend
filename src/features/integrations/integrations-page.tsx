@@ -1478,7 +1478,7 @@ const IntegrationsPage = ({
                         const broken = Boolean(health) && health?.state !== 'no_spend'
                         const on = i.connected && i.linked && !dormant
                         const sub = dormant
-                          ? 'Linked, but no ads have run from this account yet. Campaigns unlock once they do.'
+                          ? 'Linked, but no ads have run from this account yet.'
                           : !on
                             ? meta.unlocks
                             : broken

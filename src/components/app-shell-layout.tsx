@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AppShell } from './app-shell'
+import { WhatsAppNumberPrompt } from '../features/workspace/components/whatsapp-number-prompt'
 import { Spinner } from './spinner'
 
 /**
@@ -53,6 +54,7 @@ const AppShellLayout = () => {
       >
         <Outlet />
       </Suspense>
+      <WhatsAppNumberPrompt />
     </AppShell>
   )
 }

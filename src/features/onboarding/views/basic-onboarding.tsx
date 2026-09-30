@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Spinner } from '../../../components/spinner'
 import { useSession } from '../../../contexts/session-context'
+import { fetchHomeBrief } from '../../home/services/home-brief-api'
+import { homeBriefKey } from '../../home/hooks/use-home-brief'
 import {
   completeBasicOnboarding,
   fetchReadiness,
@@ -118,7 +122,12 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   const [code, setCode] = useState('')
   const [codeSent, setCodeSent] = useState(false)
   const [waError, setWaError] = useState<string | null>(null)
+  // Set when the code was stored but WhatsApp did not deliver it (a wrong number, or the
+  // template failed): the screen must not claim "we sent a code" (30 Sep 2026).
+  const [notDelivered, setNotDelivered] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [finishSlow, setFinishSlow] = useState(false)
+  const queryClient = useQueryClient()
   const [checking, setChecking] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
@@ -132,6 +141,31 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  // Send (or resend) the code and stay on this screen.
+  const sendCode = async () => {
+    if (!sessionId || !whatsapp.trim()) return
+    setStarting(true)
+    setWaError(null)
+    try {
+      const res = await startWhatsAppVerification(sessionId, whatsapp.trim())
+      setCode('')
+      setNotDelivered(res?.delivered === false)
+      setCodeSent(true)
+    } catch (e) {
+      // Stay here and say so. Moving on after a failed send left the screen
+      // promising a code that was never sent (29 Sep 2026: the backend was down
+      // and the person landed on the next page with no way back). Tapping again
+      // resends; there is no skip, because without a number Mia cannot reach them.
+      const reason = e instanceof Error ? e.message : ''
+      setWaError(
+        /fetch|network/i.test(reason)
+          ? "Couldn't reach Mia to send the code. Check your connection and tap again."
+          : reason || 'Could not send the code. Tap to try again.',
+      )
+    }
+    setStarting(false)
+  }
 
   // Remember where they are, so a tab the phone discarded while they read the code in
   // WhatsApp comes back to the same screen.
@@ -214,8 +248,45 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
 
   useEffect(() => {
     if (step !== 'reading') return
+    // A resumed tab whose read already finished goes straight through: no rows to watch.
     if (readFinished || waited > STOP_WAITING_MS) setStep('done')
   }, [step, readFinished, waited])
+
+  // The end takes them in by itself (Josh, 29 Sep 2026). Two people reach this screen: one
+  // watching the read finish, one coming back from WhatsApp. Neither should have to find a
+  // button. The server has already marked the workspace done when the read finished
+  // (routes/onboarding._read_pages_safely); this call is the same write, idempotent, and
+  // then the home brief is fetched BEFORE the shell renders so the home page arrives with
+  // the week already on it instead of "reading your pages" for three seconds.
+  const finished = useRef(false)
+  const finish = useCallback(async () => {
+    if (finished.current) return
+    finished.current = true
+    setFinishing(true)
+    const slow = window.setTimeout(() => setFinishSlow(true), 8000)
+    try {
+      if (sessionId) await completeBasicOnboarding(sessionId)
+      const tenantId = activeWorkspace?.tenant_id
+      if (sessionId && tenantId) {
+        await Promise.race([
+          queryClient.prefetchQuery({
+            queryKey: homeBriefKey(tenantId),
+            queryFn: () => fetchHomeBrief(sessionId, tenantId),
+          }),
+          new Promise((r) => window.setTimeout(r, 6000)),
+        ])
+      }
+    } catch {
+      /* the app opens either way */
+    }
+    window.clearTimeout(slow)
+    clearResume()
+    onComplete()
+  }, [sessionId, activeWorkspace?.tenant_id, queryClient, onComplete])
+
+  useEffect(() => {
+    if (step === 'done' && !loading) void finish()
+  }, [step, loading, finish])
 
   const page = readiness?.page
   const instagram = readiness?.instagram
@@ -223,6 +294,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   return (
     <div className="min-h-full bg-primary px-4 py-8 flex justify-center">
       <div className="w-full max-w-[26rem] flex flex-col gap-6">
+        {step !== 'done' && (
         <header className="flex flex-col gap-1">
           <p className="paragraph-xs text-quaternary uppercase tracking-widest">
             Setting up {page?.name ?? 'your workspace'}
@@ -233,11 +305,16 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
             {step === 'pages' && (page ? 'We found your pages' : 'Connect your Page')}
             {step === 'details' && 'Two quick things'}
             {step === 'reading' && 'Reading your pages…'}
-            {step === 'done' && "That's everything"}
           </h1>
         </header>
+        )}
 
-        {loading && <p className="paragraph-sm text-tertiary">One moment…</p>}
+        {loading && (
+          <div className="flex items-center gap-3 py-6" role="status">
+            <Spinner size="md" />
+            <p className="paragraph-sm text-secondary">Getting your pages…</p>
+          </div>
+        )}
 
         {/* ---- pages: pre-selected, one tap confirms -------------------- */}
         {!loading && step === 'pages' && (
@@ -324,7 +401,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                 id="ob-website"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
-                placeholder="humewood.co.za"
+                placeholder="yourbusiness.co.za"
                 inputMode="url"
                 className={FIELD}
               />
@@ -342,8 +419,17 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               <input
                 id="ob-whatsapp"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="071 164 4526"
+                onChange={(e) => {
+                  setWhatsapp(e.target.value)
+                  // A different number needs its own code: the one already sent went to the old one.
+                  if (codeSent && !confirmed) {
+                    setCodeSent(false)
+                    setCode('')
+                    setNotDelivered(false)
+                    setWaError(null)
+                  }
+                }}
+                placeholder="082 123 4567"
                 inputMode="tel"
                 className={FIELD}
               />
@@ -356,7 +442,9 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               {codeSent ? (
                 <>
                   <p className="paragraph-xs text-tertiary">
-                    We sent a six-digit code to {whatsapp.trim()} on WhatsApp.
+                    {notDelivered
+                      ? `WhatsApp couldn't deliver the code to ${whatsapp.trim()} yet. Check the number, or send a new code.`
+                      : `We sent a six-digit code to ${whatsapp.trim()} on WhatsApp.`}
                   </p>
                   <input
                     id="ob-wa-code"
@@ -367,8 +455,34 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                     autoComplete="one-time-code"
                     className={FIELD}
                   />
-                  {confirmed && (
+                  {confirmed ? (
                     <p className="paragraph-xs text-tertiary">Confirmed — Mia can reach you.</p>
+                  ) : (
+                    // Never a dead end: a typo in the number, or a code that never arrived,
+                    // used to leave this screen with no way forward (a reload resumed it).
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        className="paragraph-xs text-quaternary hover:text-secondary"
+                        disabled={starting || checking}
+                        onClick={() => void sendCode()}
+                      >
+                        Send a new code
+                      </button>
+                      <button
+                        type="button"
+                        className="paragraph-xs text-quaternary hover:text-secondary"
+                        disabled={starting || checking}
+                        onClick={() => {
+                          setCodeSent(false)
+                          setCode('')
+                          setNotDelivered(false)
+                          setWaError(null)
+                        }}
+                      >
+                        Use a different number
+                      </button>
+                    </div>
                   )}
                 </>
               ) : null}
@@ -389,17 +503,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
 
                 // Nothing sent yet: send the code and stay on this screen.
                 if (!codeSent) {
-                  setStarting(true)
-                  try {
-                    await startWhatsAppVerification(sessionId, whatsapp.trim())
-                    setCodeSent(true)
-                  } catch (e) {
-                    // Not a reason to hold up onboarding — WhatsApp is served to pilot
-                    // workspaces only, and everything else here works without it.
-                    setWaError(e instanceof Error ? e.message : 'Could not send the code')
-                    await proceed()
-                  }
-                  setStarting(false)
+                  await sendCode()
                   return
                 }
 
@@ -419,39 +523,37 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   return
                 }
 
-                await proceed()
+                // WhatsApp is the product on Basic (29 Sep 2026): there is no way past this
+                // screen without a confirmed number. Only a confirmed code reaches proceed().
+                if (confirmed) await proceed()
               }}
             >
-              {checking
-                ? 'Checking…'
-                : starting
-                  ? 'Sending…'
-                  : !codeSent
-                    ? 'Send me the code'
+              {checking || starting ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Spinner size="sm" variant="light" />
+                  {checking ? 'Checking…' : 'Sending…'}
+                </span>
+              ) : !codeSent
+                    ? waError
+                      ? 'Send me the code again'
+                      : 'Send me the code'
                     : !confirmed && code.trim().length >= 4
                       ? 'Confirm and carry on'
-                      : 'Continue'}
+                      : confirmed
+                        ? 'Continue'
+                        : 'Type the code to continue'}
             </button>
             {!whatsapp.trim() && (
               <p className="paragraph-xs text-quaternary text-center">
                 A number is needed to finish — it's where Mia does the work.
               </p>
             )}
-            {codeSent && !confirmed && (
-              <button
-                type="button"
-                className={QUIET}
-                onClick={() => void proceed()}
-              >
-                Skip for now — I'll confirm in Settings
-              </button>
-            )}
           </div>
         )}
 
         {/* ---- reading: real progress, never a spinner ----------------- */}
         {!loading && step === 'reading' && (
-          <div className={CARD}>
+          <div className={CARD} role="status">
             {(readiness?.steps ?? []).map((s) => (
               <Row key={s.key} label={s.label} detail={s.detail} ok={s.done} pending={!s.done} />
             ))}
@@ -476,50 +578,23 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
           </div>
         )}
 
-        {/* ---- done ---------------------------------------------------- */}
+        {/* ---- done: a handover, not a screen (Josh, 29 Sep 2026) ---------- */}
         {!loading && step === 'done' && (
-          <div className="flex flex-col gap-4">
-            <div className={CARD}>
-              {/* An optional step that did not happen is not a failure, and an unticked row
-                  with no explanation reads as one. Say which it was: a question they
-                  skipped, or something that can still be added later. */}
-              {(readiness?.steps ?? []).map((s) => (
-                <Row
-                  key={s.key}
-                  label={s.label}
-                  detail={
-                    s.done
-                      ? s.detail
-                      : s.key === 'website' && !askedForWebsite
-                        ? 'You skipped this — you can add it any time in Settings.'
-                        : s.detail
-                  }
-                  ok={s.done}
-                />
-              ))}
-            </div>
-            {!readiness?.fully_grounded && (
-              <p className="paragraph-xs text-quaternary text-center">
-                Nothing unticked stops Mia working — it only makes the first posts better.
-              </p>
+          <div className="flex flex-col items-center justify-center gap-4 py-10" role="status">
+            <Spinner size="lg" />
+            <p className="paragraph-sm text-secondary">{finishing ? 'Taking you in…' : 'All done…'}</p>
+            {finishSlow && (
+              <button
+                type="button"
+                className={PRIMARY}
+                onClick={() => {
+                  clearResume()
+                  onComplete()
+                }}
+              >
+                Go in now
+              </button>
             )}
-            {/* Settle the experience before the shell renders. Which sidebar someone sees
-                is decided by the workspace, so it has to be written down first — this used
-                to navigate and save nothing, and a solo client arrived to the full agency
-                navigation. */}
-            <button
-              type="button"
-              className={PRIMARY}
-              disabled={finishing}
-              onClick={async () => {
-                setFinishing(true)
-                if (sessionId) await completeBasicOnboarding(sessionId)
-                clearResume()
-                onComplete()
-              }}
-            >
-              {finishing ? 'One moment…' : 'Take me in'}
-            </button>
           </div>
         )}
 
@@ -545,12 +620,24 @@ const Row = ({
   pending?: boolean
 }) => (
   <div className="flex items-start gap-3 rounded-lg border border-primary p-3">
-    <span
-      aria-hidden
-      className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border ${
-        ok ? 'border-transparent bg-brand-solid' : 'border-primary'
-      } ${pending && !ok ? 'animate-pulse' : ''}`}
-    />
+    {/* Each step carries its own spinner while it runs and turns solid purple, with a tick,
+        when it is done (Josh, 29 Sep 2026) — instead of one spinner at the top. */}
+    {pending && !ok ? (
+      <Spinner size="sm" className="mt-0.5 shrink-0" />
+    ) : (
+      <span
+        aria-hidden
+        className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border flex items-center justify-center ${
+          ok ? 'border-transparent bg-brand-solid text-white' : 'border-primary'
+        }`}
+      >
+        {ok && (
+          <svg viewBox="0 0 16 16" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M3 8.5l3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+    )}
     <span className="flex flex-col gap-0.5 min-w-0">
       <span className="paragraph-sm text-primary">{label}</span>
       {detail && <span className="paragraph-xs text-tertiary">{detail}</span>}

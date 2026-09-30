@@ -213,8 +213,10 @@ export const CommandPalette = () => {
     }))
 
     return [...base, ...chatItems]
+    // The flags and the experience are deps too: the palette mounts before the session
+    // loads, and a Basic workspace briefly listed Campaigns and Reports (30 Sep 2026).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, isEnabled])
+  }, [conversations, isEnabled, isFeatureEnabled, isBasic])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

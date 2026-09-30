@@ -77,8 +77,11 @@ export function usePulseDashboard(sessionId: string | null, range: PulseRange, f
   })
 
   const feedbackRecent = useQuery({
+    // 'all', not 'down': a thumbs UP can carry a comment too, and asking for one was the
+    // whole point of the "what went right" work. Fetching only downs meant those comments
+    // were collected and never shown to anyone (29 Sep 2026).
     queryKey: ['pulse', 'feedback-recent', range, filterKey, sessionId],
-    queryFn: () => fetchFeedbackRecent(sessionId, range, 'down', filter),
+    queryFn: () => fetchFeedbackRecent(sessionId, range, 'all', filter),
     enabled,
     staleTime: STALE,
   })

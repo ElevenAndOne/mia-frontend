@@ -15,6 +15,8 @@ interface CreateInviteModalProps {
   isCreateInviteDisabled: boolean
   /** Only an owner may grant admin, and never via a shareable link (backend enforces both). */
   canInviteAdmins: boolean
+  /** A Basic workspace: invites by email only, and the roles are admin or viewer (29 Sep 2026). */
+  isBasic?: boolean
   onInviteTypeChange: (isLinkInvite: boolean) => void
   onInviteEmailChange: (value: string) => void
   onInviteRoleChange: (role: string) => void
@@ -38,6 +40,7 @@ export const CreateInviteModal = ({
   copySuccess,
   isCreateInviteDisabled,
   canInviteAdmins,
+  isBasic = false,
   onInviteTypeChange,
   onInviteEmailChange,
   onInviteRoleChange,
@@ -49,8 +52,17 @@ export const CreateInviteModal = ({
   // invite skips the email check when redeemed, so an admin link would hand workspace
   // control to whoever the URL reached. The backend rejects both; this keeps the option
   // from being offered in the first place.
-  const availableRoles =
-    canInviteAdmins && !isLinkInvite ? ROLES_WITH_ADMIN : ROLES_WITHOUT_ADMIN
+  const availableRoles = isBasic
+    ? canInviteAdmins
+      ? ['admin', 'viewer']
+      : ['viewer']
+    : canInviteAdmins && !isLinkInvite
+      ? ROLES_WITH_ADMIN
+      : ROLES_WITHOUT_ADMIN
+  // Basic never offers a shareable link; a stale link mode from state is switched off.
+  useEffect(() => {
+    if (isBasic && isLinkInvite) onInviteTypeChange(false)
+  }, [isBasic, isLinkInvite, onInviteTypeChange])
 
   // Switching to a link invite while 'admin' is selected would submit a role the
   // backend refuses — fall back to viewer instead of surfacing an avoidable error.
@@ -77,7 +89,7 @@ export const CreateInviteModal = ({
       <div className="p-6 space-y-4">
         {!createdInviteLink ? (
           <>
-            <div className="flex gap-2" role="group" aria-label="Invite type">
+            <div className={`flex gap-2 ${isBasic ? 'hidden' : ''}`} role="group" aria-label="Invite type">
               <button
                 type="button"
                 onClick={() => onInviteTypeChange(true)}

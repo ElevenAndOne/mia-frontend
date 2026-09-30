@@ -493,7 +493,9 @@ function FeedbackSection({
               />
             </div>
             <div className="plz-fbstat">
-              <div className="v plz-num">{summary!.down_with_details}</div>
+              <div className="v plz-num">
+                {summary!.down_with_details + (summary!.up_with_details ?? 0)}
+              </div>
               <div className="l">With comments</div>
             </div>
           </div>
@@ -562,7 +564,7 @@ function FeedbackSection({
             </div>
 
             <div>
-              <div className="plz-seclab">Recent thumbs down</div>
+              <div className="plz-seclab">Recent comments</div>
               {items.length ? (
                 items.map((f) => (
                   <div
@@ -573,8 +575,15 @@ function FeedbackSection({
                   >
                     <div className="plz-q">“{f.question}”</div>
                     {f.response && <div className="plz-fbresp">{f.response.slice(0, 260)}{f.response.length > 260 ? '…' : ''}</div>}
-                    {f.details && <div className="plz-fbdetails">“{f.details}”</div>}
+                    {/* A praise comment is styled as praise, so a scan of this column does not
+                        read every quote as a complaint. */}
+                    {f.details && (
+                      <div className={f.rating === 1 ? 'plz-fbdetails up' : 'plz-fbdetails'}>
+                        “{f.details}”
+                      </div>
+                    )}
                     <div className="plz-qmeta">
+                      <span className="plz-tag">{f.rating === 1 ? '👍' : '👎'}</span>
                       {f.category_label && <span className="plz-tag">{f.category_label}</span>}
                       <span>{f.user_email || 'unknown'}</span>
                       <span>{timeAgo(f.created_at)}</span>
@@ -582,7 +591,7 @@ function FeedbackSection({
                   </div>
                 ))
               ) : (
-                <div className="plz-empty">No thumbs-down votes in this range. 🎉</div>
+                <div className="plz-empty">No votes in this range yet.</div>
               )}
             </div>
           </div>

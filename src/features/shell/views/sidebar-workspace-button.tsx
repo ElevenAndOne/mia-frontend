@@ -208,7 +208,26 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         className="w-72"
       >
         {isBasic ? (
-          <BasicWorkspaceMenu onDone={() => setIsOpen(false)} />
+          <>
+            {/* Someone in more than one workspace (a Basic one and another) had no way to
+                switch: the Basic menu replaced the list (30 Sep 2026). */}
+            {availableWorkspaces.length > 1 && (
+              <div className="flex flex-col gap-1 px-2 pt-2 max-h-48 overflow-y-auto border-b border-tertiary pb-2" role="menu">
+                {availableWorkspaces.map((workspace, index) => (
+                  <WorkspaceListItem
+                    key={workspace.tenant_id}
+                    workspace={workspace}
+                    isActive={workspace.tenant_id === activeWorkspace?.tenant_id}
+                    isSwitching={switchingId === workspace.tenant_id}
+                    onSelect={handleSwitch}
+                    dataAttribute="true"
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                  />
+                ))}
+              </div>
+            )}
+            <BasicWorkspaceMenu onDone={() => setIsOpen(false)} />
+          </>
         ) : (
         <div className="flex flex-col gap-1 px-2 py-2 max-h-72 overflow-y-auto" role="menu">
           {availableWorkspaces.length === 0 ? (
