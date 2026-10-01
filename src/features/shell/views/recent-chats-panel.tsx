@@ -9,6 +9,7 @@ import { SearchSm } from '../../../components/icon/search-sm'
 import { Trash01 } from '../../../components/icon/trash-01'
 import { XClose } from '../../../components/icon/x-close'
 import type { RecentConversation } from '../../chat/services/chat-service'
+import { Spinner } from '../../../components/spinner'
 
 /** Which list heading a chat sits under. Pinned chats come first regardless of age. */
 function dayGroup(conv: RecentConversation): string {
@@ -38,6 +39,8 @@ function formatRelativeDate(isoDate: string | null): string {
 
 interface RecentChatsPanelProps {
   conversations: RecentConversation[]
+  status?: 'idle' | 'loading' | 'ready' | 'error'
+  onRetry?: () => void
   onSelect: (conversationId: string) => void
   onBack: () => void
   onClose: () => void
@@ -58,6 +61,8 @@ export const RecentChatsPanel = ({
   onRemove,
   onRename,
   onTogglePin,
+  status = 'ready',
+  onRetry,
 }: RecentChatsPanelProps) => {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -202,8 +207,21 @@ export const RecentChatsPanel = ({
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-2">
-        {conversations.length === 0 ? (
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2">
+        {conversations.length === 0 && (status === 'loading' || status === 'idle') ? (
+          <div className="flex items-center justify-center py-12" role="status">
+            <Spinner size="sm" />
+          </div>
+        ) : conversations.length === 0 && status === 'error' ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
+            <p className="paragraph-sm text-secondary">Couldn't load your chats.</p>
+            {onRetry && (
+              <button type="button" onClick={onRetry} className="paragraph-xs text-brand-secondary hover:underline">
+                Try again
+              </button>
+            )}
+          </div>
+        ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
             <MessageChatSquare size={28} className="text-quaternary" />
             <p className="paragraph-sm text-secondary">No recent chats yet</p>

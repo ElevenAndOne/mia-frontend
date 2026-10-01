@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../../contexts/toast-context'
 import {
   fetchRecentConversations,
@@ -15,16 +15,31 @@ import type { RecentConversation } from '../../chat/services/chat-service'
  * Campaign-builder conversations (skill: strategy_planning) are excluded — those
  * belong to "Past builds" on the Campaigns page, not the general chat history.
  */
-export const useRecentConversations = (sessionId: string | null) => {
+export type RecentChatsStatus = 'idle' | 'loading' | 'ready' | 'error'
+
+export const useRecentConversations = (sessionId: string | null, workspaceId?: string | null) => {
   const { showToast } = useToast()
   const [conversations, setConversations] = useState<RecentConversation[]>([])
+  // "No recent chats yet" only after a real, successful empty answer: the panel used to show
+  // it while loading and after a failed fetch, and stayed that way until a hard refresh
+  // (30 Sep 2026).
+  const [status, setStatus] = useState<RecentChatsStatus>('idle')
+
+  // A different workspace is a different list: never show the last one's chats (or none).
+  useEffect(() => {
+    setConversations([])
+    setStatus('idle')
+  }, [workspaceId])
 
   const load = useCallback(async () => {
     if (!sessionId) return
+    setStatus((s) => (s === 'ready' ? s : 'loading'))
     try {
       const list = await fetchRecentConversations(sessionId, undefined, 'strategy_planning')
       setConversations(list)
+      setStatus('ready')
     } catch {
+      setStatus('error')
       showToast('error', "Couldn't load your recent chats. Please try again.")
     }
   }, [sessionId, showToast])
@@ -74,5 +89,5 @@ export const useRecentConversations = (sessionId: string | null) => {
     [sessionId]
   )
 
-  return { conversations, setConversations, load, remove, rename, togglePin }
+  return { conversations, setConversations, status, load, remove, rename, togglePin }
 }

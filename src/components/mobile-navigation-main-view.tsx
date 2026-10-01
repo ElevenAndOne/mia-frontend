@@ -52,7 +52,9 @@ export const MobileNavigationMainView = ({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-4 border-b border-tertiary flex items-center justify-between">
-        <h2 className="label-md text-primary">MIA</h2>
+        <h2 className="label-md text-primary truncate">
+          {isBasic && activeWorkspace ? activeWorkspace.name : 'MIA'}
+        </h2>
         <button
           onClick={onClose}
           className="w-8 h-8 rounded-lg hover:bg-tertiary flex items-center justify-center text-quaternary hover:text-secondary transition-colors"
@@ -73,7 +75,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Plus size={20} className="text-tertiary" />
-            <span className="paragraph-sm">New Workspace</span>
+            <span className="paragraph-sm">{isBasic ? 'New business profile' : 'New Workspace'}</span>
           </button>
         )}
 
@@ -146,9 +148,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">
-              {isBasic ? 'Workspace settings' : 'Workspace Settings'}
-            </span>
+            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
           </button>
         )}
 
@@ -179,7 +179,9 @@ export const MobileNavigationMainView = ({
       {/* Active Workspace */}
       {activeWorkspace && (
         <div className="p-4">
-          <h3 className="label-xs text-quaternary mb-3 px-3">Active Workspace</h3>
+          <h3 className="label-xs text-quaternary mb-3 px-3">
+            {isBasic ? 'Posting as' : 'Active Workspace'}
+          </h3>
           <div className="px-3 py-2.5 rounded-lg bg-success-primary border border-utility-success-300">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-linear-to-br from-utility-success-500 to-utility-success-600 flex items-center justify-center text-white label-sm shrink-0">
@@ -189,10 +191,14 @@ export const MobileNavigationMainView = ({
                 <p className="paragraph-sm text-primary font-medium truncate">
                   {activeWorkspace.name}
                 </p>
-                <p className="paragraph-xs text-quaternary">
-                  {activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0}{' '}
-                  platforms
-                </p>
+                {/* Basic: the business name is the whole label. "owner · 2 platforms" is
+                    our vocabulary, not theirs. */}
+                {!isBasic && (
+                  <p className="paragraph-xs text-quaternary">
+                    {activeWorkspace.role} · {activeWorkspace.connected_platforms?.length || 0}{' '}
+                    platforms
+                  </p>
+                )}
               </div>
               <Check size={18} className="text-success shrink-0" />
             </div>

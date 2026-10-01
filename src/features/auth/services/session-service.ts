@@ -43,6 +43,9 @@ export interface SessionValidationResponse {
     mailchimp?: boolean
   }
   expires_at?: string
+  /** Set when their last workspace was gone (deleted, or they were removed) and the server
+   *  opened another of theirs instead. */
+  workspace_notice?: { reason: 'unavailable'; tenant_id?: string | null; name?: string | null } | null
 }
 
 /**

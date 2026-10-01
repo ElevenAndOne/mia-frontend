@@ -7,11 +7,6 @@ import { LogOut01 } from '../../../components/icon/log-out-01'
 import { Palette } from '../../../components/icon/palette'
 import { Settings01 } from '../../../components/icon/settings-01'
 import { Popover } from '../../overlay'
-import { SegmentedControl, type SegmentedControlOption } from '../../../components/segmented-control'
-import { Monitor01 } from '../../../components/icon/monitor-01'
-import { Moon01 } from '../../../components/icon/moon-01'
-import { Sun } from '../../../components/icon/sun'
-import { useTheme } from '../../../contexts/theme-context'
 import { useAppShellActions } from '../../../hooks/use-app-shell-actions'
 import { useExperience } from '../../workspace/hooks/use-experience'
 import { useRovingFocus } from '../../../hooks/use-roving-focus'
@@ -48,12 +43,6 @@ function getInitials(name: string): string {
 const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
   const navigate = useNavigate()
   const { onLogout } = useAppShellActions()
-  const { theme, setTheme } = useTheme()
-  const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
-    { value: 'system', label: 'Auto', icon: <Monitor01 size={14} /> },
-    { value: 'light', label: 'Light', icon: <Sun size={14} /> },
-    { value: 'dark', label: 'Dark', icon: <Moon01 size={14} /> },
-  ]
 
   const go = (to: string) => {
     navigate(to)
@@ -104,14 +93,10 @@ const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
         onClick={() => go('/settings/workspace?tab=members')}
       />
 
-      <div className="border-t border-tertiary my-1" />
-
-      <div className="flex flex-col gap-1.5 px-3 py-2">
-        <span className="label-md text-primary">Appearance</span>
-        <SegmentedControl options={themeOptions} value={theme} onChange={setTheme} fullWidth />
-      </div>
       <Row icon={<HelpCircle size={17} />} label="Help" onClick={() => go('/help')} />
 
+      {/* Appearance lives in Workspace settings; it made this menu taller than short
+          windows and Sign out was cut off (30 Sep 2026). */}
       <div className="border-t border-tertiary my-1" />
 
       <Row
@@ -208,11 +193,13 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         className="w-72"
       >
         {isBasic ? (
-          <>
+          // The popover caps its height to the space under the trigger; without a scroller
+          // the bottom rows (Help, Sign out) were clipped on shorter windows (30 Sep 2026).
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
             {/* Someone in more than one workspace (a Basic one and another) had no way to
                 switch: the Basic menu replaced the list (30 Sep 2026). */}
             {availableWorkspaces.length > 1 && (
-              <div className="flex flex-col gap-1 px-2 pt-2 max-h-48 overflow-y-auto border-b border-tertiary pb-2" role="menu">
+              <div className="flex flex-col gap-1 px-2 pt-2 max-h-48 overflow-y-auto overflow-x-hidden border-b border-tertiary pb-2" role="menu">
                 {availableWorkspaces.map((workspace, index) => (
                   <WorkspaceListItem
                     key={workspace.tenant_id}
@@ -227,9 +214,9 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
               </div>
             )}
             <BasicWorkspaceMenu onDone={() => setIsOpen(false)} />
-          </>
+          </div>
         ) : (
-        <div className="flex flex-col gap-1 px-2 py-2 max-h-72 overflow-y-auto" role="menu">
+        <div className="flex flex-col gap-1 px-2 py-2 max-h-72 overflow-y-auto overflow-x-hidden" role="menu">
           {availableWorkspaces.length === 0 ? (
             <div className="px-3 py-4 text-center text-quaternary paragraph-sm">No workspaces yet</div>
           ) : (

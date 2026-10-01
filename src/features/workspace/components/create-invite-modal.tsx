@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { CheckCircle } from '../../../components/icon/check-circle'
 import { Modal } from '../../overlay'
+import { getRoleDescription } from '../utils/role'
 
 interface CreateInviteModalProps {
   isOpen: boolean
@@ -134,10 +135,12 @@ export const CreateInviteModal = ({
             )}
 
             <fieldset>
-              <legend className="block subheading-md text-secondary mb-2">Role</legend>
+              <legend className="block subheading-md text-secondary mb-2">
+                {isBasic ? 'What can they do?' : 'Role'}
+              </legend>
               <div
                 className={`grid gap-2 ${
-                  availableRoles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+                  isBasic ? 'grid-cols-1' : availableRoles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
                 }`}
                 role="group"
               >
@@ -147,13 +150,15 @@ export const CreateInviteModal = ({
                     type="button"
                     onClick={() => onInviteRoleChange(role)}
                     aria-pressed={inviteRole === role}
-                    className={`py-2 px-3 rounded-lg subheading-md capitalize transition-colors ${
+                    className={`py-2 px-3 rounded-lg subheading-md transition-colors ${
+                      isBasic ? 'text-left' : 'capitalize'
+                    } ${
                       inviteRole === role
                         ? 'bg-brand-solid text-primary-onbrand'
                         : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
                     }`}
                   >
-                    {role}
+                    {isBasic ? getRoleDescription(role, true) : role}
                   </button>
                 ))}
               </div>
@@ -184,9 +189,20 @@ export const CreateInviteModal = ({
               <span className="subheading-md">
                 {createdInviteEmail
                   ? `Invite sent to ${createdInviteEmail}!`
-                  : 'Invite link created successfully!'}
+                  : isLinkInvite
+                    ? 'Invite link created successfully!'
+                    : 'Invite created'}
               </span>
             </div>
+            {/* The email didn't go (no mail provider, or it failed): say so, instead of a
+                success line that makes them wait for an email that never arrives. */}
+            {!createdInviteEmail && !isLinkInvite && (
+              <p className="paragraph-sm text-tertiary">
+                We couldn't email the invite. Copy the link below and send it to them yourself,
+                on WhatsApp or anywhere else. They sign in with Facebook or Google using{' '}
+                {inviteEmail ? <span className="font-semibold">{inviteEmail}</span> : 'the invited email'}.
+              </p>
+            )}
 
             <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
               <input

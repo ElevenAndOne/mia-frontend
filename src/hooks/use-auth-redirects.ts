@@ -158,6 +158,17 @@ export const useAuthRedirects = ({
       return
     }
 
+    // In a workspace but no ad account (Basic, or nothing connected yet): the picker has
+    // nothing for them and its back arrow led back to it. Home, or onboarding if the
+    // workspace hasn't finished it (30 Sep 2026).
+    if (path === '/login' && !selectedAccount && activeWorkspace) {
+      navigate(
+        user?.onboarding_completed || activeWorkspace.onboarding_completed ? '/home' : '/onboarding',
+        { replace: true }
+      )
+      return
+    }
+
     if (path === '/login' && selectedAccount) {
       if (!activeWorkspace && availableWorkspaces.length === 0) {
         setShowCreateWorkspaceModal(true)

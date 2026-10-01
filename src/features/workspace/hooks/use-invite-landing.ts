@@ -15,6 +15,8 @@ export interface InviteDetails {
   invited_email?: string | null
   /** null when unknown (no session, or a link invite with no email). */
   email_matches?: boolean | null
+  /** The workspace's experience, so the role is named the way that workspace names it. */
+  experience?: 'basic' | 'team' | 'agency' | null
 }
 
 interface UseInviteLandingParams {

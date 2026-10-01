@@ -22,22 +22,35 @@ interface OnboardingPageProps {
  * and then swapping it is worse than a beat of nothing.
  */
 const OnboardingPage = ({ onComplete, onConnectPlatform }: OnboardingPageProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [experience, setExperience] = useState<string | null>(null)
+  const sessionExperience = activeWorkspace?.experience
 
   useEffect(() => {
     let active = true
     if (!sessionId) return
-    fetchReadiness(sessionId).then((r) => {
-      // effective_experience, not the stored column: every new workspace is created as
-      // "team" because the column needs a default, and that default would hand the ads
-      // onboarding to someone who signed up with nothing but a Facebook Page.
-      if (active) setExperience(r?.effective_experience ?? r?.experience ?? 'team')
-    })
+    // effective_experience, not the stored column: the column needs a default, and that
+    // default must not decide which onboarding a new sign-up sees. A failed read is retried,
+    // then falls back to the experience the session already resolved for this workspace,
+    // and never to 'team', which dropped a Basic owner into the ads onboarding (30 Sep 2026).
+    const load = async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const r = await fetchReadiness(sessionId)
+        const got = r?.effective_experience ?? r?.experience
+        if (got) {
+          if (active) setExperience(got)
+          return
+        }
+        await new Promise((res) => setTimeout(res, 800 * (attempt + 1)))
+        if (!active) return
+      }
+      if (active) setExperience(sessionExperience ?? 'basic')
+    }
+    void load()
     return () => {
       active = false
     }
-  }, [sessionId])
+  }, [sessionId, sessionExperience])
 
   if (!experience) return null
 

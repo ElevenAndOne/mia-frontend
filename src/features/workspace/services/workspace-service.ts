@@ -4,7 +4,7 @@
  */
 import { apiFetch, API_BASE_URL } from '../../../utils/api'
 import type { Workspace, WorkspaceRole } from '../types'
-import type { Experience, FeatureCatalogEntry, FeatureFlags, FeatureKey } from '../feature-keys'
+import type { Experience, FeatureFlags } from '../feature-keys'
 
 /**
  * Raw API response type (role is string from backend)
@@ -360,65 +360,3 @@ export const deleteWorkspace = async (sessionId: string, tenantId: string): Prom
 // Feature flags (Sep 2026). Registry lives in mia-backend/constants/features.py.
 // ---------------------------------------------------------------------------
 
-export interface FeatureFlagsResponse {
-  features: FeatureFlags
-  catalog: FeatureCatalogEntry[]
-  /** Effective experience for the caller; the catalog's `default` column follows it. */
-  experience: Experience
-  experience_profile: Experience
-}
-
-/** GET /api/tenants/{id}/features — effective flags + the catalog the settings UI renders. */
-export const fetchWorkspaceFeatures = async (
-  sessionId: string,
-  tenantId: string
-): Promise<FeatureFlagsResponse> => {
-  const response = await apiFetch(`/api/tenants/${tenantId}/features`, {
-    headers: { 'X-Session-ID': sessionId },
-  })
-  if (!response.ok) {
-    throw new Error(`Feature flags API failed: ${response.status}`)
-  }
-  return response.json()
-}
-
-/**
- * PATCH /api/tenants/{id}/features — true/false set a per-workspace override, null clears
- * it so the flag follows its default again. Admin/owner only.
- */
-export const updateWorkspaceFeatures = async (
-  sessionId: string,
-  tenantId: string,
-  overrides: Partial<Record<FeatureKey, boolean | null>>
-): Promise<FeatureFlagsResponse> => {
-  const response = await apiFetch(`/api/tenants/${tenantId}/features`, {
-    method: 'PATCH',
-    headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ overrides }),
-  })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err.detail || `Feature flags update failed: ${response.status}`)
-  }
-  return response.json()
-}
-
-/**
- * PUT /api/tenants/{id} with experience_profile — 'basic' | 'team' | 'agency'. Admin/owner.
- * Changes the defaults for every feature flag; per-workspace overrides are kept.
- */
-export const updateWorkspaceExperience = async (
-  sessionId: string,
-  tenantId: string,
-  experience: Experience
-): Promise<void> => {
-  const response = await apiFetch(`/api/tenants/${tenantId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
-    body: JSON.stringify({ experience_profile: experience }),
-  })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err.detail || 'Failed to update workspace experience')
-  }
-}

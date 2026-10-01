@@ -107,7 +107,10 @@ export const AppSidebar = () => {
     return () => window.removeEventListener('mia:blink-nav', onBlink)
   }, [])
   const actions = useAppShellActions()
-  const { conversations, load, remove, rename, togglePin } = useRecentConversations(sessionId)
+  const { conversations, status: chatsStatus, load, remove, rename, togglePin } = useRecentConversations(
+    sessionId,
+    activeWorkspace?.tenant_id,
+  )
 
   const [showChats, setShowChats] = useState(false)
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -129,6 +132,12 @@ export const AppSidebar = () => {
   useEffect(() => {
     if (showChats) void load()
   }, [showChats, load])
+
+  // Going anywhere else closes the slide-over: it used to stay open (and empty) across
+  // routes until a hard refresh.
+  useEffect(() => {
+    setShowChats(false)
+  }, [location.pathname, activeWorkspace?.tenant_id])
 
   const path = location.pathname
   const activeKey = path.startsWith('/integrations')
@@ -173,9 +182,20 @@ export const AppSidebar = () => {
       className={`hidden md:flex shrink-0 flex-col border-r border-secondary bg-primary print:hidden relative overflow-hidden transition-[width] duration-200 ease-out ${
         collapsed ? 'w-[4.5rem]' : 'w-[16.5rem]'
       }`}
+      // overflow:hidden still lets the browser scroll this box sideways (focus landing on a
+      // button in the off-screen chats panel, find-in-page, scroll-into-view): the whole
+      // sidebar then sat ~50px to the left, text clipped and the chats panel's back
+      // chevron peeking in at the right edge (Firefox, 30 Sep 2026). It never scrolls.
+      onScroll={(e) => {
+        if (e.currentTarget.scrollLeft || e.currentTarget.scrollTop) {
+          e.currentTarget.scrollLeft = 0
+          e.currentTarget.scrollTop = 0
+        }
+      }}
     >
       {/* Main panel */}
       <div
+        inert={showChats}
         className={`absolute inset-0 flex flex-col min-h-0 transition-transform duration-300 ease-out ${
           showChats ? '-translate-x-4 opacity-0 pointer-events-none' : 'translate-x-0'
         }`}
@@ -191,7 +211,7 @@ export const AppSidebar = () => {
         <div className="border-t border-tertiary mx-3" />
 
         <nav
-          className={`flex-1 min-h-0 overflow-y-auto py-2 ${collapsed ? 'px-2' : 'px-3'}`}
+          className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2 ${collapsed ? 'px-2' : 'px-3'}`}
           role="menu"
         >
           <NavItem
@@ -393,14 +413,18 @@ export const AppSidebar = () => {
         </button>
       </div>
 
-      {/* Recent chats slide-over (only meaningful when expanded) */}
+      {/* Recent chats slide-over (only meaningful when expanded). Inert while off-screen, so
+          nothing in it can take focus and drag the sidebar sideways. */}
       <div
+        inert={!showChats}
         className={`absolute inset-0 flex flex-col min-h-0 bg-primary transition-transform duration-300 ease-out ${
           showChats ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <RecentChatsPanel
           conversations={conversations}
+          status={chatsStatus}
+          onRetry={() => void load()}
           onSelect={openConversation}
           onBack={() => setShowChats(false)}
           onClose={() => setShowChats(false)}

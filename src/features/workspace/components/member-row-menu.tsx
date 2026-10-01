@@ -133,7 +133,7 @@ export const MemberRowMenu = ({
     () => [
       {
         id: 'admin',
-        label: 'Admin',
+        label: hideAnalyst ? 'Can post' : 'Admin',
         onClick: () => {
           onUpdateRole(person.id, 'admin')
           setShowRoleMenu(false)
@@ -151,7 +151,7 @@ export const MemberRowMenu = ({
       },
       {
         id: 'viewer',
-        label: 'Viewer',
+        label: hideAnalyst ? 'Can suggest posts (owner approves)' : 'Viewer',
         onClick: () => {
           onUpdateRole(person.id, 'viewer')
           setShowRoleMenu(false)

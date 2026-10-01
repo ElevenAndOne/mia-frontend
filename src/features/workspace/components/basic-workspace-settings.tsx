@@ -2,10 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { Edit03 } from '../../../components/icon/edit-03'
 import { Globe01 } from '../../../components/icon/globe-01'
 import { Image01 } from '../../../components/icon/image-01'
-import { Stars01 } from '../../../components/icon/stars-01'
 import { Trash01 } from '../../../components/icon/trash-01'
-import { CollapsibleSection } from '../../../components/collapsible-section'
-import { EXPERIENCES, EXPERIENCE_LABEL, type Experience } from '../feature-keys'
 import { WebsiteReadCard } from './website-read-card'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
 
@@ -15,8 +12,6 @@ interface BasicWorkspaceSettingsProps {
   workspaceName: string
   canManage: boolean
   isOwner: boolean
-  /** 11&1 staff: the only people who see the experience switcher and feature switches. */
-  isStaff: boolean
   websiteUrl: string
   onWebsiteSaved: (url: string) => void
   onOpenBrand: () => void
@@ -29,14 +24,8 @@ interface BasicWorkspaceSettingsProps {
   /** Platform keys already connected, for the Connections row. */
   connectedPlatforms: string[]
   onOpenConnections: () => void
-  experience: Experience
-  savingExperience: boolean
-  onChangeExperience: (exp: Experience) => void
-  featuresPanel: ReactNode
   /** The workspace-level WhatsApp switch, rendered inside the number card. */
   whatsappMessagesSlot?: ReactNode
-  /** Posting rhythm and the best-day reminder, rendered under that switch. */
-  whatsappRhythmSlot?: ReactNode
   /** Basic has no separate Mia tab — her style lives here, as the menu promises. */
   miaStyleSection?: ReactNode
   /** Light / dark / auto. Rendered here so it sits above Delete, not below it. */
@@ -88,7 +77,6 @@ export function BasicWorkspaceSettings({
   workspaceName,
   canManage,
   isOwner,
-  isStaff,
   websiteUrl,
   onWebsiteSaved,
   onOpenBrand,
@@ -98,14 +86,9 @@ export function BasicWorkspaceSettings({
   logoError,
   onUploadLogo,
   onRemoveLogo,
-  experience,
   connectedPlatforms,
   onOpenConnections,
-  savingExperience,
-  onChangeExperience,
-  featuresPanel,
   whatsappMessagesSlot,
-  whatsappRhythmSlot,
   appearanceSlot,
   miaStyleSection,
   onDelete,
@@ -197,49 +180,12 @@ export function BasicWorkspaceSettings({
         <WhatsAppNumberCard
           sessionId={sessionId}
           messagesSlot={whatsappMessagesSlot}
-          rhythmSlot={whatsappRhythmSlot}
         />
       </Group>
 
       {miaStyleSection}
 
       {appearanceSlot && <Group label="Appearance">{appearanceSlot}</Group>}
-
-      {/* Which experience this workspace gets, and the switches under it. 11&1 staff only
-          (29 Sep 2026): an owner who could flip their own switches would have no paywall.
-          The server refuses non-staff regardless; this keeps the controls out of sight. */}
-      {isStaff && (
-      <Group label="Advanced">
-        <Row icon={<Stars01 size={16} />} title="Experience">
-          <div className="flex rounded-lg border border-primary overflow-hidden">
-            {EXPERIENCES.map((exp) => (
-              <button
-                key={exp}
-                type="button"
-                onClick={() => onChangeExperience(exp)}
-                disabled={savingExperience || !canManage}
-                className={`px-3 py-1.5 paragraph-xs transition-colors disabled:opacity-50 ${
-                  experience === exp
-                    ? 'bg-brand-solid text-primary-onbrand'
-                    : 'bg-primary text-secondary hover:bg-tertiary'
-                }`}
-              >
-                {EXPERIENCE_LABEL[exp]}
-              </button>
-            ))}
-          </div>
-        </Row>
-        {canManage && (
-          <CollapsibleSection
-            title="Features"
-            summary="What this business can see — switches follow the experience above"
-            className="border-0 rounded-none bg-transparent"
-          >
-            {featuresPanel}
-          </CollapsibleSection>
-        )}
-      </Group>
-      )}
 
       {isOwner && (
         <Group>

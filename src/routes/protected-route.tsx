@@ -67,7 +67,11 @@ export const ProtectedRoute = ({
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
-  if (requireAccount && !selectedAccount) {
+  // Being in a workspace is enough to use the app (30 Sep 2026). A Basic workspace has a
+  // Page, not an ad account, and a new one or a member who joined before anything was
+  // connected has neither: requiring an account bounced them to the ad-account picker, whose
+  // back arrow led straight back to it. The picker is only for someone with no workspace yet.
+  if (requireAccount && !selectedAccount && !activeWorkspace) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

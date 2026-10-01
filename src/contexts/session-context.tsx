@@ -18,6 +18,7 @@ import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 import * as googleAuthService from '../features/auth/services/google-auth-service'
 import * as metaAuthService from '../features/auth/services/meta-auth-service'
 import * as sessionService from '../features/auth/services/session-service'
+import type { SessionValidationResponse } from '../features/auth/services/session-service'
 import * as workspaceService from '../features/workspace/services/workspace-service'
 import * as accountService from '../features/accounts/services/account-service'
 import {
@@ -325,10 +326,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             // login; but if the account/workspace lists fail we warn the user
             // rather than silently rendering "no accounts / no workspaces" (#13).
             let listLoadFailed = false
-            const [sessionData, accounts, workspaces, currentWorkspace] = await Promise.all([
-              sessionService
-                .validateSession(storedSessionId)
-                .catch(() => ({ valid: false, user: null })),
+            // Validate FIRST: it repairs a session whose workspace is gone (deleted, or they
+            // were removed), and the three reads below used to race it and load that dead
+            // workspace, stranding them on "No Accounts Available" (30 Sep 2026).
+            const sessionData: SessionValidationResponse = await sessionService
+              .validateSession(storedSessionId)
+              .catch(() => ({ valid: false }))
+            const [accounts, workspaces, currentWorkspace] = await Promise.all([
               accountService.fetchAccounts(storedSessionId).catch(() => {
                 listLoadFailed = true
                 return []
@@ -345,6 +349,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               showToast(
                 'error',
                 "Some of your workspaces or accounts couldn't be loaded. Please refresh."
+              )
+            }
+            if (sessionData.valid && sessionData.workspace_notice) {
+              const opened = sessionData.workspace_notice.name
+              showToast(
+                'info',
+                opened
+                  ? `Your last workspace isn't available any more, so we opened ${opened}. Switch any time from the workspace menu.`
+                  : "Your last workspace isn't available any more."
               )
             }
 

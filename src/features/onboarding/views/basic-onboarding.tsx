@@ -115,6 +115,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [linkFailed, setLinkFailed] = useState(false)
   const [readingSince, setReadingSince] = useState<number | null>(null)
   const [waited, setWaited] = useState(0)
   // The number is a claim until a code comes back. Until this slice it was typed, held in
@@ -349,14 +350,31 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                       return
                     }
                     setConfirming(true)
+                    setLinkFailed(false)
                     const ok = await linkFoundPage(sessionId || '', page, instagram)
                     setConfirming(false)
-                    if (ok) await refresh()
+                    // A failed link used to move on as if it had worked, and the drafts
+                    // later had no Page to read or post to. Say so and let them retry.
+                    if (!ok) {
+                      setLinkFailed(true)
+                      return
+                    }
+                    await refresh()
                     setStep('details')
                   }}
                 >
-                  {confirming ? 'Connecting…' : "That's them"}
+                  {confirming ? 'Connecting…' : linkFailed ? 'Try again' : "That's them"}
                 </button>
+                {linkFailed && (
+                  <p className="paragraph-xs text-error-primary" role="alert">
+                    That didn't connect. Try again, or reconnect with Facebook below.
+                  </p>
+                )}
+                {linkFailed && (
+                  <button type="button" className={QUIET} onClick={() => onConnectPlatform('meta')}>
+                    Reconnect with Facebook
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -558,8 +576,8 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               <Row key={s.key} label={s.label} detail={s.detail} ok={s.done} pending={!s.done} />
             ))}
             <p className="paragraph-xs text-tertiary">
-              About a minute. You can close this — Mia will message you on WhatsApp when it's
-              done.
+              About a minute. You can close this and come back: whatever is ticked is saved,
+              and the rest finishes on its own.
             </p>
             {/* Never a dead end. If the read is slow or has failed, the workspace still
                 works — the drafting reads their post history directly either way — so

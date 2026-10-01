@@ -5,7 +5,7 @@ import { useSession } from '../contexts/session-context'
 import { Spinner } from '../components/spinner'
 import { UserAvatar } from '../components/user-avatar'
 import { WorkspaceRoleIcon } from '../features/workspace/components/workspace-role-icon'
-import { getWorkspaceRoleDescription } from '../features/workspace/utils/role'
+import { getRoleDescription, getRoleLabel } from '../features/workspace/utils/role'
 import { useInviteLanding } from '../features/workspace/hooks/use-invite-landing'
 import { StorageKey } from '../constants/storage-keys'
 
@@ -23,6 +23,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     sessionId,
     user,
     login,
+    loginMeta,
     logout,
   } = useSession()
   const isAnyAuthenticated = isAuthenticated || isMetaAuthenticated
@@ -46,6 +47,16 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId || '')
     await logout()
     login()
+  }
+
+  // Facebook as well as Google (30 Sep 2026): a Basic owner signs up with Facebook and so do
+  // the friends they invite; Google-only sign-in meant they could not accept at all. Same
+  // hand-off as Google: the invite is remembered and accepted when the sign-in comes back.
+  const handleSignInFacebook = async (switching = false) => {
+    localStorage.setItem(StorageKey.PENDING_INVITE, inviteId || '')
+    localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId || '')
+    if (switching) await logout()
+    void loginMeta()
   }
 
   const handleBack = () => {
@@ -95,6 +106,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
   // The early return below is sufficient to prevent rendering with missing inviteId
 
   const wrongAccount = inviteDetails?.email_matches === false
+  const isBasicInvite = inviteDetails?.experience === 'basic'
 
   if (!inviteId) {
     return null
@@ -170,11 +182,20 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
             <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
           </p>
           <button
-            onClick={handleSignIn}
+            onClick={() => void handleSignInFacebook()}
             className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors mb-3"
           >
-            Sign In
+            Continue with Facebook
           </button>
+          <button
+            onClick={handleSignIn}
+            className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors mb-3"
+          >
+            Continue with Google
+          </button>
+          <p className="paragraph-xs text-quaternary mb-3">
+            Use the account with the email address the invite was sent to.
+          </p>
           <button
             onClick={dismissLoginPrompt}
             className="paragraph-sm text-quaternary hover:text-secondary"
@@ -195,7 +216,9 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
             {inviteDetails?.tenant_name?.charAt(0).toUpperCase()}
           </div>
           <h1 className="title-h5 text-primary mb-1">Join {inviteDetails?.tenant_name}</h1>
-          <p className="paragraph-sm text-quaternary">You've been invited to collaborate</p>
+          <p className="paragraph-sm text-quaternary">
+            {isBasicInvite ? "You've been invited to help with their posts" : "You've been invited to collaborate"}
+          </p>
         </div>
 
         {/* Role info */}
@@ -203,9 +226,13 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
           <div className="flex flex-col items-center gap-4">
             <WorkspaceRoleIcon role={inviteDetails?.role || ''} variant="badge" size="lg" />
             <div>
-              <p className="label-md text-primary capitalize">{inviteDetails?.role} Role</p>
+              <p className="label-md text-primary">
+                {isBasicInvite
+                  ? getRoleLabel(inviteDetails?.role || '', true)
+                  : `${getRoleLabel(inviteDetails?.role || '', false)} Role`}
+              </p>
               <p className="paragraph-sm text-tertiary">
-                {getWorkspaceRoleDescription(inviteDetails?.role || '')}
+                {getRoleDescription(inviteDetails?.role || '', isBasicInvite)}
               </p>
             </div>
           </div>
@@ -218,9 +245,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
             <p className="paragraph-sm text-warning">
               This invite is for{' '}
               <span className="font-semibold">{inviteDetails?.invited_email}</span>, but MIA is
-              signed in as <span className="font-semibold">{user?.email}</span>. Opening the email
-              in that inbox isn't enough — you have to be signed in to MIA with the invited
-              account.
+              signed in as <span className="font-semibold">{user?.email || 'another account'}</span>.
+              Sign in with the Google or Facebook account that uses the invited email.
             </p>
           </div>
         )}
@@ -258,7 +284,15 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
               onClick={handleSwitchAccount}
               className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors"
             >
-              Sign in as {inviteDetails?.invited_email}
+              Sign in with Google as {inviteDetails?.invited_email}
+            </button>
+          )}
+          {wrongAccount && (
+            <button
+              onClick={() => void handleSignInFacebook(true)}
+              className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors"
+            >
+              Sign in with Facebook instead
             </button>
           )}
 

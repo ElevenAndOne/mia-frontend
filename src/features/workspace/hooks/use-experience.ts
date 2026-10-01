@@ -4,9 +4,9 @@ import type { Experience } from '../feature-keys'
 /**
  * The experience this person gets in the active workspace: 'basic' | 'team' | 'agency'.
  *
- * `experience` is what the backend resolved for the caller (staff are always 'agency');
- * `profile` is the workspace's own setting. Fail-open to 'team' (today's UI), never to
- * 'basic'. Prefer gating on a feature flag (useFeatures) — this is for copy and vocabulary,
+ * `experience` is the workspace's experience, the same for every member of it, staff
+ * included (30 Sep 2026); `profile` is the stored column. Missing (not loaded yet) reads
+ * as 'team', which renders the same app as Agency. Prefer gating on a feature flag (useFeatures) — this is for copy and vocabulary,
  * e.g. never saying "campaign" to a Basic owner.
  */
 export function useExperience() {

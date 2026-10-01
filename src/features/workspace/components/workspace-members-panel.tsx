@@ -4,6 +4,7 @@ import { UserAvatar } from '../../../components/user-avatar'
 import { WorkspaceRoleIcon } from './workspace-role-icon'
 import { MemberRowMenu } from './member-row-menu'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
+import { getRoleLabel } from '../utils/role'
 
 interface WorkspaceMembersPanelProps {
   people: WorkspacePersonRow[]
@@ -59,14 +60,16 @@ export const WorkspaceMembersPanel = ({
               )}
             </div>
             <p className="paragraph-xs text-quaternary truncate">
-              {person.type === 'member' ? person.email : `Invited as ${person.role}`}
+              {person.type === 'member'
+                ? person.email
+                : `Invited · ${getRoleLabel(person.role, isBasic).toLowerCase()}`}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {person.type === 'member' && (
               <span className={`px-2 py-1 rounded-full label-xs ${person.roleBadgeClass}`}>
-                {person.role}
+                {getRoleLabel(person.role, isBasic)}
               </span>
             )}
             <MemberRowMenu

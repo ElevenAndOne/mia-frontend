@@ -46,7 +46,6 @@ import {
   fetchWorkspaceDetails,
   updateWorkspaceWebsiteUrl,
   updateWorkspaceFramework,
-  updateWorkspaceExperience,
 } from '../services/workspace-service'
 import {
   fetchWorkspaceAlertSettings,
@@ -60,13 +59,12 @@ import { CreateInviteModal } from './create-invite-modal'
 import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
-import { FeatureFlagsPanel } from './feature-flags-panel'
 import { WebsiteReadCard } from './website-read-card'
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { BasicWorkspaceSettings } from './basic-workspace-settings'
+import { HowMiaWritesCard, LearnedRulesCard, PeopleCard } from './basic-brand-cards'
 import { HelpContent } from '../../shell/components/help-content'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
-import { PostingRhythmCard } from './posting-rhythm-card'
 import { CreativeWatchCard } from './creative-watch-card'
 import { BrandFactsSection } from './brand-facts-section'
 import {
@@ -80,7 +78,6 @@ import { Moon01 } from '../../../components/icon/moon-01'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 import { useExperience } from '../hooks/use-experience'
-import { EXPERIENCES, EXPERIENCE_COPY, EXPERIENCE_LABEL, type Experience } from '../feature-keys'
 
 type SettingsTab =
   | 'members'
@@ -191,9 +188,11 @@ export const WorkspaceSettingsDetail = ({
     ? isBasic
       ? ['brand', 'members', 'help']
       : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia', 'help']
-    : isBasic
-      ? ['brand', 'help']
-      : ['brand', 'brandkit', 'campaigns', 'notes', 'mia', 'help']
+    : // Non-managers get the Workspace/Members tab too (30 Sep 2026): it is where Leave, their
+      // own WhatsApp number and the theme live, and without it they could reach none of them.
+      isBasic
+      ? ['brand', 'members', 'help']
+      : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'mia', 'help']
   // The tab lives in the URL (?tab=brand) so a refresh or a shared link lands on the same tab,
   // and the breadcrumb can name it.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -264,10 +263,7 @@ export const WorkspaceSettingsDetail = ({
     )
     setVisited((v) => (v.has(tab) ? v : new Set(v).add(tab)))
   }
-  const { sessionId, refreshWorkspaces, user } = useSession()
-  // Only 11&1 staff may change a workspace's experience or its feature switches (29 Sep
-  // 2026). The server refuses everyone else; hiding the controls keeps the paywall honest.
-  const isStaff = Boolean(user?.is_staff)
+  const { sessionId, refreshWorkspaces } = useSession()
   const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -286,10 +282,6 @@ export const WorkspaceSettingsDetail = ({
   const [framework, setFramework] = useState<'race' | 'generic'>('race')
   const [savingFramework, setSavingFramework] = useState(false)
 
-  // Experience profile (Sep 2026): the preset of feature-flag defaults for this workspace.
-  const [experience, setExperience] = useState<Experience>('team')
-  const [savingExperience, setSavingExperience] = useState(false)
-  const [featuresVersion, setFeaturesVersion] = useState(0)
 
   useEffect(() => {
     if (!sessionId || !canManage) return
@@ -298,7 +290,6 @@ export const WorkspaceSettingsDetail = ({
         setWebsiteUrl(d.website_url || '')
         setWebsiteUrlInput(d.website_url || '')
         setFramework(d.active_framework || 'race')
-        setExperience(d.experience_profile || 'team')
       })
       .catch(() => showToast('error', "Couldn't load your workspace settings. Please try again."))
   }, [sessionId, workspace.tenant_id, canManage, showToast])
@@ -314,23 +305,6 @@ export const WorkspaceSettingsDetail = ({
       setFramework(prev) // revert on failure
     } finally {
       setSavingFramework(false)
-    }
-  }
-
-  const handleChangeExperience = async (next: Experience) => {
-    if (!sessionId || savingExperience || next === experience) return
-    const prev = experience
-    setExperience(next) // optimistic
-    setSavingExperience(true)
-    try {
-      await updateWorkspaceExperience(sessionId, workspace.tenant_id, next)
-      await refreshWorkspaces() // sidebar follows the new defaults
-      setFeaturesVersion((v) => v + 1) // Features panel refetches now that the save has landed
-    } catch {
-      setExperience(prev)
-      showToast('error', "Couldn't change the experience. Please try again.")
-    } finally {
-      setSavingExperience(false)
     }
   }
 
@@ -539,7 +513,7 @@ export const WorkspaceSettingsDetail = ({
             to add their number: the card lived only inside the owner/admin-only sections for
             every tier. Owners/admins already have the fuller card further down; this is only
             for everyone else. */}
-        {!canManage && (
+        {!canManage && activeTab === 'members' && (
           <div className="mb-4 bg-secondary rounded-xl border border-tertiary">
             <WhatsAppNumberCard sessionId={sessionId} mode={isBasic ? 'full' : 'confirm'} />
           </div>
@@ -691,13 +665,6 @@ export const WorkspaceSettingsDetail = ({
                       watches for new creative. Owners and admins only — both end in posts. */}
                   {canManage && (
                     <>
-                      <div className="p-4 bg-secondary rounded-xl border border-tertiary">
-                        <PostingRhythmCard
-                          sessionId={sessionId}
-                          tenantId={workspace.tenant_id}
-                          canManage={canManage}
-                        />
-                      </div>
                       <CreativeWatchCard sessionId={sessionId} tenantId={workspace.tenant_id} />
                     </>
                   )}
@@ -747,11 +714,44 @@ export const WorkspaceSettingsDetail = ({
           <div className={activeTab === 'brand' ? undefined : 'hidden'}>
             <Suspense fallback={<TabFallback />}>
               {isBasic ? (
+                /* Slim Basic Brand (30 Sep 2026): four plain questions, the people Mia
+                   knows, what she has learned, and the look. The full Marketing Context
+                   field list and the website facts are under "More". */
                 <div className="space-y-3">
                   <CollapsibleSection
-                    title="Colours, fonts & logo"
-                    summary="What Mia uses to make your posts look like you"
+                    title="How Mia writes for you"
+                    summary="What you do, who it's for, how you sound, what to avoid"
                     defaultOpen
+                  >
+                    <HowMiaWritesCard
+                      sessionId={sessionId ?? ''}
+                      tenantId={workspace.tenant_id}
+                      canManage={canManage}
+                    />
+                  </CollapsibleSection>
+                  <CollapsibleSection
+                    title="People"
+                    summary="The people Mia can put in your pictures"
+                  >
+                    <PeopleCard
+                      sessionId={sessionId ?? ''}
+                      tenantId={workspace.tenant_id}
+                      canManage={canManage}
+                    />
+                  </CollapsibleSection>
+                  <CollapsibleSection
+                    title="What Mia has learned"
+                    summary="Habits she picked up from your changes; turn any of them off"
+                  >
+                    <LearnedRulesCard
+                      sessionId={sessionId ?? ''}
+                      tenantId={workspace.tenant_id}
+                      canManage={canManage}
+                    />
+                  </CollapsibleSection>
+                  <CollapsibleSection
+                    title="Colours, font & logo"
+                    summary="What Mia uses to make your posts look like you"
                   >
                     <BrandKitTab
                       sessionId={sessionId}
@@ -759,21 +759,21 @@ export const WorkspaceSettingsDetail = ({
                       canManage={canManage}
                     />
                   </CollapsibleSection>
-                  <CollapsibleSection
-                    title="Facts Mia may quote"
-                    summary="Prices, awards, dates and links from your website"
-                  >
-                    <BrandFactsSection sessionId={sessionId ?? ''} tenantId={workspace.tenant_id} />
-                  </CollapsibleSection>
-                  <CollapsibleSection
-                    title="Your voice & details"
-                    summary="How Mia writes for you — read from your website, editable here"
-                  >
-                    <MarketingContextPage
-                      sessionId={sessionId}
-                      tenantId={workspace.tenant_id}
-                      canManage={canManage}
-                    />
+                  <CollapsibleSection title="More" summary="Facts from your website, and every detail Mia keeps">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="subheading-md text-primary mb-2">Facts Mia may quote</p>
+                        <BrandFactsSection sessionId={sessionId ?? ''} tenantId={workspace.tenant_id} />
+                      </div>
+                      <div>
+                        <p className="subheading-md text-primary mb-2">All the details</p>
+                        <MarketingContextPage
+                          sessionId={sessionId}
+                          tenantId={workspace.tenant_id}
+                          canManage={canManage}
+                        />
+                      </div>
+                    </div>
                   </CollapsibleSection>
                 </div>
               ) : (
@@ -911,7 +911,6 @@ export const WorkspaceSettingsDetail = ({
                       workspaceName={workspace.name}
                       canManage={canManage}
                       isOwner={isOwner}
-                      isStaff={isStaff}
                       websiteUrl={websiteUrl}
                       onWebsiteSaved={(url) => {
                         setWebsiteUrl(url)
@@ -926,18 +925,6 @@ export const WorkspaceSettingsDetail = ({
                       logoError={logoError}
                       onUploadLogo={handleLogoUpload}
                       onRemoveLogo={handleLogoRemove}
-                      experience={experience}
-                      savingExperience={savingExperience}
-                      onChangeExperience={handleChangeExperience}
-                      featuresPanel={
-                        sessionId ? (
-                          <FeatureFlagsPanel
-                            sessionId={sessionId}
-                            tenantId={workspace.tenant_id}
-                            refreshKey={featuresVersion}
-                          />
-                        ) : null
-                      }
                       whatsappMessagesSlot={
                         <div className="border-t border-tertiary pt-2 mt-1">
                                               <div className="flex items-center gap-3">
@@ -975,13 +962,6 @@ export const WorkspaceSettingsDetail = ({
                           <p className="paragraph-xs text-error">{alertSettingsError}</p>
                         )}
                         </div>
-                      }
-                      whatsappRhythmSlot={
-                        <PostingRhythmCard
-                          sessionId={sessionId}
-                          tenantId={workspace.tenant_id}
-                          canManage={canManage}
-                        />
                       }
                       miaStyleSection={
                         <Suspense fallback={<TabFallback />}>
@@ -1104,44 +1084,6 @@ export const WorkspaceSettingsDetail = ({
                         </div>
                       )}
 
-                      {/* Experience: how much of Mia this workspace is shown (Sep 2026). Staff only. */}
-                      {isStaff && (
-                      <div className="p-3 bg-secondary rounded-lg mb-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="subheading-md text-primary">Experience</p>
-                            {!isBasic && (
-                              <p className="paragraph-sm text-quaternary">
-                                {EXPERIENCE_COPY[experience]}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex rounded-lg border border-primary overflow-hidden shrink-0">
-                            {EXPERIENCES.map((exp) => (
-                              <button
-                                key={exp}
-                                onClick={() => handleChangeExperience(exp)}
-                                disabled={savingExperience || !canManage}
-                                className={`px-3 py-1.5 paragraph-sm transition-colors disabled:opacity-50 ${
-                                  experience === exp
-                                    ? 'bg-brand-solid text-primary-onbrand'
-                                    : 'bg-primary text-secondary hover:bg-tertiary'
-                                }`}
-                              >
-                                {EXPERIENCE_LABEL[exp]}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {!isBasic && (
-                          <p className="paragraph-sm text-quaternary mt-2">
-                            Sets the defaults for the Features list below. Nothing is deleted when
-                            you switch, and 11&amp;1 staff always see everything.
-                          </p>
-                        )}
-                      </div>
-                      )}
-
                       {/* Campaign builder framework — Basic never builds campaigns */}
                       {!isBasic && (
                         <div className="p-3 bg-secondary rounded-lg mb-3">
@@ -1256,21 +1198,6 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
-              {/* Features: what this workspace can see. 11&1 staff only (29 Sep 2026). */}
-              {isStaff && canManage && sessionId && !isBasic && (
-                <CollapsibleSection
-                  title="Features"
-                  summary="What this workspace can see — switches follow the experience above"
-                  className="mt-3"
-                >
-                  <FeatureFlagsPanel
-                    sessionId={sessionId}
-                    tenantId={workspace.tenant_id}
-                    refreshKey={featuresVersion}
-                  />
-                </CollapsibleSection>
-              )}
-
               {/* Danger Zone - Owner Only */}
               {isOwner && !isBasic && (
                 <div className="mt-8 pt-6 border-t border-tertiary">
@@ -1291,18 +1218,35 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
+              {/* Theme for everyone who can't reach the manager settings above. */}
+              {!canManage && (
+                <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-tertiary bg-secondary px-3 py-2">
+                  <div>
+                    <p className="paragraph-sm text-primary">Theme</p>
+                    <p className="paragraph-xs text-quaternary">Light, dark or follow your device</p>
+                  </div>
+                  <div className="w-[13.5rem] shrink-0">
+                    <SegmentedControl options={themeOptions} value={theme} onChange={setTheme} fullWidth />
+                  </div>
+                </div>
+              )}
+
               {/* Leave Workspace - Non-Owners Only (Feb 2026) */}
               {!isOwner && onLeaveWorkspace && (
                 <div className="mt-8 pt-6 border-t border-tertiary">
-                  <h3 className="subheading-md text-error mb-2">Leave Workspace</h3>
+                  <h3 className="subheading-md text-error mb-2">
+                    {isBasic ? `Leave ${workspace.name}` : 'Leave Workspace'}
+                  </h3>
                   <p className="paragraph-sm text-tertiary mb-4">
-                    Remove yourself from this workspace. You'll lose access to all workspace data.
+                    {isBasic
+                      ? "You'll stop helping with their posts. The owner can invite you again."
+                      : "Remove yourself from this workspace. You'll lose access to all workspace data."}
                   </p>
                   <button
                     onClick={onLeaveWorkspace}
                     className="px-4 py-2 border border-error text-error hover:bg-error hover:text-white rounded-lg subheading-md transition-colors"
                   >
-                    Leave Workspace
+                    {isBasic ? 'Leave' : 'Leave Workspace'}
                   </button>
                 </div>
               )}
