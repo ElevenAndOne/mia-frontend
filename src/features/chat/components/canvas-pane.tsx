@@ -393,7 +393,7 @@ export const CanvasPane = ({
                 <ReverseLeft size={16} />
               </button>
             )}
-            <SchedulePost doc={doc} spec={spec} conversationId={conversationId} />
+            <SchedulePost doc={doc} spec={spec} conversationId={conversationId} onDone={onClose} />
             {!isBasic && <AddToCampaign doc={doc} spec={spec} conversationId={conversationId} />}
             <button
               type="button"
@@ -603,6 +603,7 @@ export const CanvasPane = ({
                       spec={spec}
                       conversationId={conversationId ?? null}
                       variant="button"
+                      onDone={onClose}
                     />
                     <button
                       type="button"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ChatLayout from '../components/chat-layout'
 
@@ -10,6 +10,7 @@ import ChatEmptyState from '../components/chat-empty-state'
 import ChatInput from '../components/chat-input'
 import ChatMessage from '../components/chat-message'
 import ChatMessageList from '../components/chat-message-list'
+import { SAVE_DRAFT_REPLY } from '../utils/save-draft-prompt'
 import { CanvasPane } from '../components/canvas-pane'
 import { Sheet } from '../../overlay'
 import { useIsMobile } from '../../../hooks/use-is-mobile'
@@ -117,6 +118,12 @@ export const ChatView = ({
     setEditTarget,
     composerDraft,
   } = useChatView()
+
+  // The campaign summary's "Type yes to save as draft" line renders as a button; it sends
+  // the same "yes" the backend save gate waits for, shown in the thread as "Save as draft".
+  const handleSaveDraft = useCallback(() => {
+    void handleSubmit(SAVE_DRAFT_REPLY, { displayText: 'Save as draft' })
+  }, [handleSubmit])
 
   // Basic hides the five fixed home cards; team/agency keep them (feature flag home_cards).
 
@@ -575,6 +582,8 @@ export const ChatView = ({
                     onCancelAction={handleCancelAction}
                     onFeedback={handleFeedback}
                     onUseOption={canvas.documentList.length > 0 ? canvas.useOptionInActive : undefined}
+                    onSaveDraft={handleSaveDraft}
+                    isBusy={isLoading}
                     pinnedAssetId={editTarget?.asset_id ?? null}
                     onPinAsset={(asset) =>
                       setEditTarget(

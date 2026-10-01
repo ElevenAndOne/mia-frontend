@@ -18,6 +18,10 @@ interface ChatMessageListProps {
   onImageReady?: (assets: MiaAsset[], event: ChatImageJob) => void
   /** Set when the conversation has a canvas document — numbered options become actionable. */
   onUseOption?: (text: string) => void
+  /** Sends the campaign save confirmation from the latest summary's button. */
+  onSaveDraft?: () => void
+  /** True while a reply is in flight (disables the save button). */
+  isBusy?: boolean
 }
 
 /**
@@ -41,9 +45,12 @@ export const ChatMessageList = memo(function ChatMessageList({
   onFixDrift,
   onImageReady,
   onUseOption,
+  onSaveDraft,
+  isBusy = false,
 }: ChatMessageListProps) {
   const visible = messages.filter((m) => !m.hidden)
   const lastUserIdx = visible.reduce((acc, m, i) => (m.role === 'user' ? i : acc), -1)
+  const lastIdx = visible.length - 1
 
   return (
     <>
@@ -78,6 +85,8 @@ export const ChatMessageList = memo(function ChatMessageList({
             onImageReady={onImageReady}
             onFixDrift={onFixDrift}
             onUseOption={message.role === 'assistant' ? onUseOption : undefined}
+            onSaveDraft={idx === lastIdx && message.role === 'assistant' ? onSaveDraft : undefined}
+            saveDraftDisabled={isBusy}
           />
         </div>
       ))}

@@ -7,6 +7,8 @@ import { useClipboard } from '../../../hooks/use-clipboard'
 import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
 import ActionConfirmCard from './action-confirm-card'
 import ChatImageCard, { type ChatImageJob } from './chat-image-card'
+import SaveDraftButton from './save-draft-button'
+import { splitSaveDraftPrompt } from '../utils/save-draft-prompt'
 import type { PendingAction } from '../services/chat-service'
 import type { MiaAsset } from '../../creative-studio/creative-studio-api'
 
@@ -36,6 +38,10 @@ interface ChatMessageProps {
   onImageReady?: (assets: MiaAsset[], event: ChatImageJob) => void
   /** Present when a canvas document exists: numbered options get a "Use this" action. */
   onUseOption?: (text: string) => void
+  /** Set on the latest assistant message only: its "Type yes to save" line becomes a button. */
+  onSaveDraft?: () => void
+  /** Disables the save button while a reply is in flight. */
+  saveDraftDisabled?: boolean
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -58,8 +64,13 @@ export const ChatMessage = memo(function ChatMessage({
   onFixDrift,
   onImageReady,
   onUseOption,
+  onSaveDraft,
+  saveDraftDisabled = false,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
+  const saveDraft =
+    role === 'assistant' && onSaveDraft && !isStreaming ? splitSaveDraftPrompt(content) : null
+  const shownContent = saveDraft?.hasPrompt ? saveDraft.body : content
 
   const handleFeedback = (value: 1 | -1) => {
     // Same-thumb re-clicks are no-ops; switching to the other thumb updates the vote.
@@ -111,10 +122,13 @@ export const ChatMessage = memo(function ChatMessage({
       <div className="prose prose-gray max-w-none">
         <div className="text-primary leading-relaxed paragraph-sm bg-secondary rounded-lg p-4 border border-tertiary select-text">
           <ChatMarkdown
-            content={content}
+            content={shownContent}
             className="text-secondary"
             onUseListItem={!isStreaming ? onUseOption : undefined}
           />
+          {saveDraft?.hasPrompt && onSaveDraft && (
+            <SaveDraftButton onClick={onSaveDraft} disabled={saveDraftDisabled} />
+          )}
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse mt-1" />
           )}

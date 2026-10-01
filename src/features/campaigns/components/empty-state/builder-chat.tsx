@@ -7,6 +7,8 @@ import { BuildHistoryMenu } from './build-history-menu'
 import { BuilderCanvas } from './builder-canvas'
 import { useBuilderChat } from '../../hooks/use-builder-chat'
 import { parsePlanDraft, type DraftPhase } from '../../utils/plan-draft'
+import SaveDraftButton from '../../../chat/components/save-draft-button'
+import { SAVE_DRAFT_REPLY, splitSaveDraftPrompt } from '../../../chat/utils/save-draft-prompt'
 
 // Empty-state "Build a campaign" surface: chat with Mia or upload a brief. As
 // Mia saves phases, the builder canvas opens beside the chat and fills with
@@ -187,6 +189,14 @@ export const BuilderChat = () => {
                 >
                   {m.role === 'user' ? (
                     <span className="whitespace-pre-wrap">{m.content}</span>
+                  ) : i === c.messages.length - 1 && splitSaveDraftPrompt(m.content).hasPrompt ? (
+                    <>
+                      <ChatMarkdown content={splitSaveDraftPrompt(m.content).body} />
+                      <SaveDraftButton
+                        onClick={() => c.send(SAVE_DRAFT_REPLY)}
+                        disabled={c.loading}
+                      />
+                    </>
                   ) : (
                     <ChatMarkdown content={m.content} />
                   )}

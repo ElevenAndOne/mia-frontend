@@ -27,6 +27,21 @@ export async function fetchPosts(sessionId: string, tenantId: string): Promise<P
   return orThrow(res, 'Failed to load posts')
 }
 
+/** The not-yet-published bookings of one canvas post — "is this already scheduled?". */
+export async function fetchBookingsForDocument(
+  sessionId: string,
+  tenantId: string,
+  documentId: string,
+): Promise<ScheduledPost[]> {
+  const q = new URLSearchParams({
+    source_document_id: documentId,
+    status: 'scheduled,draft,reminded,failed,publishing',
+  })
+  const res = await apiFetch(`${base(tenantId)}?${q.toString()}`, { headers: auth(sessionId) })
+  const data = await orThrow<PostListResponse>(res, 'Failed to load posts')
+  return data.posts ?? []
+}
+
 export async function reschedulePost(
   sessionId: string,
   tenantId: string,

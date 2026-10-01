@@ -10,6 +10,7 @@ import {
 } from '../../marketing-context/services/marketing-context-service'
 import type { BrandGuideExtracted } from '../../marketing-context/types'
 import {
+  addPerson,
   deleteLearnedRule,
   deletePerson,
   fetchLearnedRules,
@@ -17,6 +18,7 @@ import {
   resetLearnedRules,
   updateLearnedRule,
   updatePerson,
+  type AddPersonFace,
   type LearnedRule,
   type WorkspacePerson,
 } from '../services/basic-brand-service'
@@ -48,10 +50,23 @@ const Muted = ({ children }: { children: React.ReactNode }) => (
 type WriteKey = 'one_liner' | 'target_audience' | 'brand_voice' | 'voice_dont'
 
 const QUESTIONS: Array<{ key: WriteKey; label: string; hint: string; list?: boolean }> = [
-  { key: 'one_liner', label: 'What you do', hint: 'e.g. Family bakery in Stellenbosch, sourdough and cakes' },
-  { key: 'target_audience', label: "Who it's for", hint: 'e.g. Locals, families, friends who follow along' },
+  {
+    key: 'one_liner',
+    label: 'What you do',
+    hint: 'e.g. Family bakery in Stellenbosch, sourdough and cakes',
+  },
+  {
+    key: 'target_audience',
+    label: "Who it's for",
+    hint: 'e.g. Locals, families, friends who follow along',
+  },
   { key: 'brand_voice', label: 'How you sound', hint: 'e.g. Warm, chatty, a bit cheeky' },
-  { key: 'voice_dont', label: 'Words or things to avoid', hint: 'One per line, e.g. "cheap", no politics', list: true },
+  {
+    key: 'voice_dont',
+    label: 'Words or things to avoid',
+    hint: 'One per line, e.g. "cheap", no politics',
+    list: true,
+  },
 ]
 
 export function HowMiaWritesCard({ sessionId, tenantId, canManage }: CardProps) {
@@ -158,6 +173,143 @@ export function HowMiaWritesCard({ sessionId, tenantId, canManage }: CardProps) 
 // --------------------------------------------------------------------------- //
 // People                                                                        //
 // --------------------------------------------------------------------------- //
+/** Add someone (or another photo of someone saved): a photo, their name, who they are. */
+function AddPersonForm({ sessionId, tenantId, onDone }: CardProps & { onDone: () => void }) {
+  const qc = useQueryClient()
+  const { showToast } = useToast()
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [name, setName] = useState('')
+  const [relation, setRelation] = useState('')
+  const [pick, setPick] = useState<{ photoUrl: string; faces: AddPersonFace[] } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!photo) return
+    const url = URL.createObjectURL(photo)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
+
+  const add = useMutation({
+    mutationFn: (faceIndex?: number) =>
+      addPerson(sessionId, tenantId, {
+        name: name.trim(),
+        relation: relation.trim(),
+        photo: pick ? undefined : (photo ?? undefined),
+        photoUrl: pick?.photoUrl,
+        faceIndex,
+      }),
+    onSuccess: (r) => {
+      if (r.needs_pick) {
+        setPick({ photoUrl: r.photo_url, faces: r.faces })
+        return
+      }
+      void qc.invalidateQueries({ queryKey: ['workspace-people', tenantId] })
+      showToast('success', `Saved ${name.trim()}. Mia will use them in pictures when you ask.`)
+      if (r.notice) {
+        setNotice(r.notice)
+      } else {
+        onDone()
+      }
+    },
+    onError: (e) =>
+      showToast('error', e instanceof Error ? e.message : "Couldn't add them. Try again."),
+  })
+
+  if (notice) {
+    return (
+      <div className="space-y-2 pt-3">
+        <Muted>{notice}</Muted>
+        <button type="button" className={ghost} onClick={onDone}>
+          Got it
+        </button>
+      </div>
+    )
+  }
+  if (pick) {
+    return (
+      <div className="space-y-2 pt-3">
+        <p className="paragraph-sm text-secondary">
+          There are {pick.faces.length} people in that photo. Which one is {name.trim()}?
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {pick.faces.map((f) => (
+            <button
+              key={f.index}
+              type="button"
+              disabled={add.isPending}
+              onClick={() => add.mutate(f.index)}
+              className="flex flex-col items-center gap-1 p-1 rounded-lg border border-secondary hover:border-brand disabled:opacity-50"
+              aria-label={`${name.trim()} is the one ${f.position}`}
+            >
+              <img src={f.crop_url} alt="" className="w-16 h-16 rounded-full object-cover" />
+              <span className="paragraph-xs text-quaternary">{f.position}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className={ghost} onClick={() => setPick(null)}>
+          Back
+        </button>
+      </div>
+    )
+  }
+  return (
+    <form
+      className="space-y-2 pt-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (photo && name.trim()) add.mutate(undefined)
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <label className="shrink-0 cursor-pointer">
+          {preview ? (
+            <img src={preview} alt="" className="w-14 h-14 rounded-full object-cover" />
+          ) : (
+            <span className="w-14 h-14 rounded-full border border-dashed border-primary flex items-center justify-center paragraph-xs text-quaternary">
+              Photo
+            </span>
+          )}
+          <input
+            id="add-person-photo"
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
+          <input
+            id="add-person-name"
+            className={input}
+            value={name}
+            placeholder="Name"
+            aria-label="Name"
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            id="add-person-relation"
+            className={input}
+            value={relation}
+            placeholder="e.g. husband, colleague"
+            aria-label="Who they are to you"
+            onChange={(e) => setRelation(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button type="button" className={ghost} onClick={onDone}>
+          Cancel
+        </button>
+        <button type="submit" className={ghost} disabled={!photo || !name.trim() || add.isPending}>
+          {add.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export function PeopleCard({ sessionId, tenantId, canManage }: CardProps) {
   const qc = useQueryClient()
   const { showToast } = useToast()
@@ -168,7 +320,24 @@ export function PeopleCard({ sessionId, tenantId, canManage }: CardProps) {
     enabled: Boolean(sessionId && tenantId),
   })
   const [editing, setEditing] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ display_name: '', relation: '' })
+  const addControls = canManage ? (
+    adding ? (
+      <AddPersonForm
+        sessionId={sessionId}
+        tenantId={tenantId}
+        canManage
+        onDone={() => setAdding(false)}
+      />
+    ) : (
+      <div className="pt-3">
+        <button type="button" className={ghost} onClick={() => setAdding(true)}>
+          Add person
+        </button>
+      </div>
+    )
+  ) : null
   const save = useMutation({
     mutationFn: (p: WorkspacePerson) => updatePerson(sessionId, tenantId, p.person_id, form),
     onSuccess: () => {
@@ -206,95 +375,117 @@ export function PeopleCard({ sessionId, tenantId, canManage }: CardProps) {
   const people = q.data ?? []
   if (!people.length) {
     return (
-      <Muted>
-        Nobody yet. On WhatsApp, send Mia a photo and say who it is ("this is Roger, my husband"), and
-        she'll use them in pictures when you ask.
-      </Muted>
+      <div>
+        <Muted>
+          Nobody yet. Add someone here, or on WhatsApp send Mia a photo and say who it is ("this is
+          Roger, my husband"), and she'll use them in pictures when you ask.
+        </Muted>
+        {addControls}
+      </div>
     )
   }
   return (
-    <div className="divide-y divide-tertiary">
-      {people.map((p) => (
-        <div key={p.person_id} className="flex items-center gap-3 py-2.5">
-          {p.faces?.[0]?.crop_url ? (
-            <img src={p.faces[0].crop_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-          ) : (
-            <UserAvatar name={p.display_name} size="md" fallbackClassName="bg-quaternary text-tertiary" />
-          )}
-          {editing === p.person_id ? (
-            <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
-              <input
-                className={input}
-                value={form.display_name}
-                aria-label="Name"
-                onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+    <div>
+      <div className="divide-y divide-tertiary">
+        {people.map((p) => (
+          <div key={p.person_id} className="flex items-center gap-3 py-2.5">
+            {p.faces?.[0]?.crop_url ? (
+              <img
+                src={p.faces[0].crop_url}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover shrink-0"
               />
-              <input
-                className={input}
-                value={form.relation}
-                placeholder="e.g. husband, grandson"
-                aria-label="Who they are to you"
-                onChange={(e) => setForm({ ...form, relation: e.target.value })}
+            ) : (
+              <UserAvatar
+                name={p.display_name}
+                size="md"
+                fallbackClassName="bg-quaternary text-tertiary"
               />
-            </div>
-          ) : (
-            <div className="flex-1 min-w-0">
-              <p className="subheading-md text-primary truncate">
-                {p.display_name}
-                {p.is_owner ? ' (you)' : ''}
-              </p>
-              <p className="paragraph-xs text-quaternary truncate">
-                {[p.relation, p.faces?.length ? `${p.faces.length} photo${p.faces.length > 1 ? 's' : ''}` : 'no photo yet']
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            </div>
-          )}
-          {canManage && (
-            <div className="flex items-center gap-2 shrink-0">
-              {editing === p.person_id ? (
-                <>
-                  <button type="button" className={ghost} onClick={() => setEditing(null)}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className={ghost}
-                    disabled={save.isPending || !form.display_name.trim()}
-                    onClick={() => save.mutate(p)}
-                  >
-                    Save
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className={ghost}
-                    onClick={() => {
-                      setForm({ display_name: p.display_name, relation: p.relation ?? '' })
-                      setEditing(p.person_id)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={`${ghost} text-error`}
-                    aria-label={`Forget ${p.display_name}`}
-                    disabled={forget.isPending}
-                    onClick={() => {
-                      if (window.confirm(`Forget ${p.display_name}? Mia deletes their photos too.`)) forget.mutate(p)
-                    }}
-                  >
-                    <Trash01 size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+            {editing === p.person_id ? (
+              <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
+                <input
+                  className={input}
+                  value={form.display_name}
+                  aria-label="Name"
+                  onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+                />
+                <input
+                  className={input}
+                  value={form.relation}
+                  placeholder="e.g. husband, grandson"
+                  aria-label="Who they are to you"
+                  onChange={(e) => setForm({ ...form, relation: e.target.value })}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 min-w-0">
+                <p className="subheading-md text-primary truncate">
+                  {p.display_name}
+                  {p.is_owner ? ' (you)' : ''}
+                </p>
+                <p className="paragraph-xs text-quaternary truncate">
+                  {[
+                    p.relation,
+                    p.faces?.length
+                      ? `${p.faces.length} photo${p.faces.length > 1 ? 's' : ''}`
+                      : 'no photo yet',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </div>
+            )}
+            {canManage && (
+              <div className="flex items-center gap-2 shrink-0">
+                {editing === p.person_id ? (
+                  <>
+                    <button type="button" className={ghost} onClick={() => setEditing(null)}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className={ghost}
+                      disabled={save.isPending || !form.display_name.trim()}
+                      onClick={() => save.mutate(p)}
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={ghost}
+                      onClick={() => {
+                        setForm({ display_name: p.display_name, relation: p.relation ?? '' })
+                        setEditing(p.person_id)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={`${ghost} text-error`}
+                      aria-label={`Forget ${p.display_name}`}
+                      disabled={forget.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(`Forget ${p.display_name}? Mia deletes their photos too.`)
+                        )
+                          forget.mutate(p)
+                      }}
+                    >
+                      <Trash01 size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {addControls}
     </div>
   )
 }
@@ -315,7 +506,9 @@ export function LearnedRulesCard({ sessionId, tenantId, canManage }: CardProps) 
   const onError = () => showToast('error', "Couldn't change that. Try again in a moment.")
   const toggle = useMutation({
     mutationFn: (r: LearnedRule) =>
-      updateLearnedRule(sessionId, tenantId, r.id, { status: r.status === 'active' ? 'off' : 'active' }),
+      updateLearnedRule(sessionId, tenantId, r.id, {
+        status: r.status === 'active' ? 'off' : 'active',
+      }),
     onSuccess: refresh,
     onError,
   })
@@ -328,7 +521,10 @@ export function LearnedRulesCard({ sessionId, tenantId, canManage }: CardProps) 
     mutationFn: () => resetLearnedRules(sessionId, tenantId),
     onSuccess: () => {
       refresh()
-      showToast('success', 'Mia has forgotten what she learned. She starts fresh from your next posts.')
+      showToast(
+        'success',
+        'Mia has forgotten what she learned. She starts fresh from your next posts.'
+      )
     },
     onError,
   })
@@ -365,7 +561,9 @@ export function LearnedRulesCard({ sessionId, tenantId, canManage }: CardProps) 
         {rules.map((r) => (
           <div key={r.id} className="flex items-start gap-3 py-2.5">
             <div className="flex-1 min-w-0">
-              <p className={`paragraph-sm ${r.status === 'active' ? 'text-primary' : 'text-quaternary line-through'}`}>
+              <p
+                className={`paragraph-sm ${r.status === 'active' ? 'text-primary' : 'text-quaternary line-through'}`}
+              >
                 {r.text}
               </p>
               <p className="paragraph-xs text-quaternary">
@@ -406,7 +604,8 @@ export function LearnedRulesCard({ sessionId, tenantId, canManage }: CardProps) 
           className="paragraph-xs text-quaternary hover:text-secondary"
           disabled={reset.isPending}
           onClick={() => {
-            if (window.confirm('Forget everything Mia has learned about how you like your posts?')) reset.mutate()
+            if (window.confirm('Forget everything Mia has learned about how you like your posts?'))
+              reset.mutate()
           }}
         >
           Reset what Mia learned
