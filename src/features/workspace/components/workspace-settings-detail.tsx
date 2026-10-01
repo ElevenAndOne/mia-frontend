@@ -175,6 +175,9 @@ export const WorkspaceSettingsDetail = ({
   // Basic keeps Settings short: Workspace · Brand Guide · Brand Kit · WhatsApp · Mia.
   const navigate = useNavigate()
   const { isBasic } = useExperience()
+  // Deleting the only Basic profile deletes the account too (the modal says so).
+  const { availableWorkspaces } = useSession()
+  const workspaceCount = availableWorkspaces.length
   const { theme, setTheme } = useTheme()
   const themeOptions: Array<SegmentedControlOption<typeof theme>> = [
     { value: 'system', label: 'Auto', icon: <Monitor01 size={16} /> },
@@ -1289,6 +1292,7 @@ export const WorkspaceSettingsDetail = ({
         onClose={onCloseDeleteModal}
         workspace={workspace}
         onConfirm={onDeleteWorkspace}
+        deletesAccount={isBasic && workspaceCount <= 1}
       />
     </div>
   )

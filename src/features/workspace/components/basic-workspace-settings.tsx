@@ -192,7 +192,7 @@ export function BasicWorkspaceSettings({
           <Row
             icon={<Trash01 size={16} className="text-error" />}
             title="Delete this business profile"
-            sub="Posts, brand kit and website notes go with it. This can't be undone."
+            sub="Posts, brand kit and everything Mia learned go with it, and if it's your only profile your Mia account too. This can't be undone."
           >
             <button
               type="button"

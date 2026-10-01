@@ -7,6 +7,8 @@ interface DeleteWorkspaceModalProps {
   onClose: () => void
   workspace: Workspace
   onConfirm: () => Promise<boolean>
+  /** A Basic profile with no other workspace: the account goes too, and they're signed out. */
+  deletesAccount?: boolean
 }
 
 export const DeleteWorkspaceModal = ({
@@ -14,6 +16,7 @@ export const DeleteWorkspaceModal = ({
   onClose,
   workspace,
   onConfirm,
+  deletesAccount = false,
 }: DeleteWorkspaceModalProps) => {
   const [confirmText, setConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -51,7 +54,7 @@ export const DeleteWorkspaceModal = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Delete Workspace"
+      title={deletesAccount ? 'Delete your profile' : 'Delete Workspace'}
       size="md"
       closeOnOverlayClick={!isDeleting}
       closeOnEscape={!isDeleting}
@@ -60,11 +63,19 @@ export const DeleteWorkspaceModal = ({
     >
       <div className="px-6 py-5">
         <div className="bg-error-primary border border-error-subtle rounded-xl p-4 mb-4">
-          <p className="paragraph-sm text-error">
-            This action cannot be undone. This will permanently delete the workspace
-            <span className="font-semibold"> {workspace.name}</span>, all its settings, and remove
-            all members.
-          </p>
+          {deletesAccount ? (
+            <p className="paragraph-sm text-error">
+              This can't be undone. <span className="font-semibold">{workspace.name}</span>, its
+              posts and everything Mia learned go, scheduled posts are cancelled, and your Mia
+              account is deleted. You'll be signed out.
+            </p>
+          ) : (
+            <p className="paragraph-sm text-error">
+              This action cannot be undone. This will permanently delete the workspace
+              <span className="font-semibold"> {workspace.name}</span>, all its settings, cancel its
+              scheduled posts, and remove all members.
+            </p>
+          )}
         </div>
 
         <div className="mb-4">

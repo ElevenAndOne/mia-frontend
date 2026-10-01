@@ -75,7 +75,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Plus size={20} className="text-tertiary" />
-            <span className="paragraph-sm">{isBasic ? 'New business profile' : 'New Workspace'}</span>
+            <span className="paragraph-sm">New Workspace</span>
           </button>
         )}
 

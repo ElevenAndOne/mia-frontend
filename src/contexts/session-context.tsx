@@ -844,7 +844,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       if (!state.sessionId) return false
 
       try {
-        await workspaceService.deleteWorkspace(state.sessionId, tenantId)
+        const result = await workspaceService.deleteWorkspace(state.sessionId, tenantId)
+
+        if (result?.account_deleted) {
+          // Deleting a Basic profile deleted their Mia account: nothing left to be signed in
+          // to. Wipe this browser's session and start from the front page (1 Oct 2026).
+          clearSessionStorage()
+          queryClient.clear()
+          storeSessionId(generateSessionId())
+          window.location.replace('/')
+          return true
+        }
 
         // Remove from available workspaces and clear active if it was deleted
         setState((prev) => {

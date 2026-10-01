@@ -342,7 +342,10 @@ export const updateWorkspaceWebsiteUrl = async (
 /**
  * Delete a workspace (owner only)
  */
-export const deleteWorkspace = async (sessionId: string, tenantId: string): Promise<void> => {
+export const deleteWorkspace = async (
+  sessionId: string,
+  tenantId: string
+): Promise<{ account_deleted?: boolean }> => {
   const response = await apiFetch(`/api/tenants/${tenantId}`, {
     method: 'DELETE',
     headers: {
@@ -354,6 +357,8 @@ export const deleteWorkspace = async (sessionId: string, tenantId: string): Prom
     const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.message || `Delete workspace failed: ${response.status}`)
   }
+  // account_deleted: a Basic profile was the person's whole Mia account (1 Oct 2026).
+  return response.json().catch(() => ({}))
 }
 
 // ---------------------------------------------------------------------------
