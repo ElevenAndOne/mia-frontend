@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { logger } from '../../../utils/logger'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
 import { clearCampaignDetailCache } from '../../campaigns/campaign-detail-cache'
+import { campaignListKey } from '../../campaigns/hooks/use-campaign-list'
 import { CHAT_PLATFORM_CONFIG } from '../config/chat-platforms'
 import { useIntegrationStatus } from '../../integrations/hooks/use-integration-status'
 import { useIntegrationPrompt } from '../../integrations/hooks/use-integration-prompt'
@@ -26,6 +28,7 @@ import {
 } from '../services/chat-service'
 import type {
   PendingAction,
+  CampaignSavedEvent,
   AttachedDocument,
   CanvasDocument,
   DocumentContext,
@@ -63,6 +66,8 @@ export interface ChatMessageItem {
   documents?: { filename: string }[]
   /** Creative generated during this turn — each renders as a polling image card. */
   imageJobs?: ChatImageJob[]
+  /** A campaign Mia saved this turn — renders an "Open campaign" card under the reply. */
+  campaignSaved?: { campaignId: string; campaignName?: string }
 }
 
 interface LocationState {
@@ -74,6 +79,7 @@ export const useChatView = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, sessionId, selectedAccount, activeWorkspace } = useSession()
+  const queryClient = useQueryClient()
   const { showToast } = useToast()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -566,7 +572,13 @@ export const useChatView = () => {
   const handleSubmit = useCallback(
     async (
       message: string,
-      options?: { hidden?: boolean; documentContext?: DocumentContext; displayText?: string }
+      options?: {
+        hidden?: boolean
+        documentContext?: DocumentContext
+        displayText?: string
+        /** Sent by the Save as draft button under a campaign summary. */
+        confirmSave?: boolean
+      }
     ) => {
       const pendingImages = images.slice()
       const pendingImageNames = imageNames.slice(0, pendingImages.length)
@@ -676,6 +688,7 @@ export const useChatView = () => {
 
         let accumulated = ''
         let pendingAction: PendingAction | undefined
+        let savedCampaign: CampaignSavedEvent | undefined
         let skillWorkspaces: string[] = []
         let historyId: number | null = null
         // ChatImageJob, not ImageJobEvent: the raw SSE assets (nullable, no media_type)
@@ -709,6 +722,7 @@ export const useChatView = () => {
               : {}),
             ...(docContext ? { document_context: docContext } : {}),
             ...(options?.displayText ? { display_text: options.displayText } : {}),
+            ...(options?.confirmSave ? { confirm_save: true } : {}),
             ...(editTargetRef.current
               ? { edit_target_asset_id: editTargetRef.current.asset_id }
               : {}),
@@ -740,6 +754,9 @@ export const useChatView = () => {
               }
             } else if (chunk.pending_action) {
               pendingAction = chunk.pending_action
+            } else if (chunk.campaign_saved) {
+              // A multi-phase save fires once per phase; the last one names the campaign.
+              savedCampaign = chunk.campaign_saved
             } else if (chunk.skill_workspaces) {
               skillWorkspaces = chunk.skill_workspaces
             } else if (chunk.history_id !== undefined) {
@@ -781,8 +798,18 @@ export const useChatView = () => {
           skillWorkspaces,
           historyId,
           imageJobs: imageJobs.length > 0 ? imageJobs : undefined,
+          campaignSaved: savedCampaign?.campaign_id
+            ? { campaignId: savedCampaign.campaign_id, campaignName: savedCampaign.campaign_name }
+            : undefined,
         }
         setMessages((prev) => [...prev, assistantMessage])
+        if (savedCampaign?.campaign_id) {
+          // Built in home chat: the Campaigns page and pickers show it straight away
+          // (the list query was otherwise stale for up to five minutes).
+          clearTrackerCache()
+          clearCampaignDetailCache()
+          void queryClient.invalidateQueries({ queryKey: campaignListKey(activeWorkspace?.tenant_id) })
+        }
         // The settled message can be TALLER than the streamed text (image cards render
         // skeleton placeholders below it) — nudge the view down so the generating card
         // is visible, unless the user has scrolled up to read something.
@@ -852,6 +879,8 @@ export const useChatView = () => {
       editTarget,
       setEditTarget,
       recoverInterruptedTurn,
+      queryClient,
+      activeWorkspace?.tenant_id,
     ]
   )
 
@@ -1031,6 +1060,7 @@ export const useChatView = () => {
           if (message.pendingAction?.action_type === 'campaign_add_channel_action') {
             clearTrackerCache()
             clearCampaignDetailCache()
+            void queryClient.invalidateQueries({ queryKey: campaignListKey(activeWorkspace?.tenant_id) })
             const phaseName = (result as Record<string, unknown>).phase_name as string | undefined
             showToast(
               'success',
@@ -1084,7 +1114,7 @@ export const useChatView = () => {
         )
       }
     },
-    [messages, sessionId]
+    [messages, sessionId, queryClient, activeWorkspace?.tenant_id]
   )
 
   const handleCancelAction = useCallback((messageId: string) => {

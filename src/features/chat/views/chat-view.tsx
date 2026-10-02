@@ -122,7 +122,7 @@ export const ChatView = ({
   // The campaign summary's "Type yes to save as draft" line renders as a button; it sends
   // the same "yes" the backend save gate waits for, shown in the thread as "Save as draft".
   const handleSaveDraft = useCallback(() => {
-    void handleSubmit(SAVE_DRAFT_REPLY, { displayText: 'Save as draft' })
+    void handleSubmit(SAVE_DRAFT_REPLY, { displayText: 'Save as draft', confirmSave: true })
   }, [handleSubmit])
 
   // Basic hides the five fixed home cards; team/agency keep them (feature flag home_cards).
@@ -582,7 +582,7 @@ export const ChatView = ({
                     onCancelAction={handleCancelAction}
                     onFeedback={handleFeedback}
                     onUseOption={canvas.documentList.length > 0 ? canvas.useOptionInActive : undefined}
-                    onSaveDraft={handleSaveDraft}
+                    onSaveDraft={isFeatureEnabled('campaigns') ? handleSaveDraft : undefined}
                     isBusy={isLoading}
                     pinnedAssetId={editTarget?.asset_id ?? null}
                     onPinAsset={(asset) =>

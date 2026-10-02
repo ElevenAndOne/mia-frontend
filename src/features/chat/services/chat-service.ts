@@ -73,6 +73,7 @@ interface ChatRequestPayload {
   asset_context?: AssetContext // set when the user is editing a campaign asset (builder canvas)
   edit_target_asset_id?: string // image pinned in chat — the next generation edits THIS one
   no_track?: boolean // throwaway turn (campaign slide-over edits) — skip Recent Chats
+  confirm_save?: boolean // the Save as draft button under a campaign summary
 }
 
 export interface RecentConversation {
@@ -283,6 +284,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
       : {}),
     ...(payload.workspace_hint ? { workspace_hint: payload.workspace_hint } : {}),
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
+    ...(payload.confirm_save ? { confirm_save: true } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2', {
@@ -394,6 +396,7 @@ export const sendChatMessageStreaming = async (
     ...(payload.asset_context ? { asset_context: payload.asset_context } : {}),
     ...(payload.edit_target_asset_id ? { edit_target_asset_id: payload.edit_target_asset_id } : {}),
     ...(payload.no_track ? { no_track: true } : {}),
+    ...(payload.confirm_save ? { confirm_save: true } : {}),
   }
 
   const response = await apiFetch('/api/chat/v2/stream', {

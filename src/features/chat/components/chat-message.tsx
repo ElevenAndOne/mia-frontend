@@ -8,6 +8,7 @@ import { shareViaWhatsApp } from '../../../utils/whatsapp-share'
 import ActionConfirmCard from './action-confirm-card'
 import ChatImageCard, { type ChatImageJob } from './chat-image-card'
 import SaveDraftButton from './save-draft-button'
+import CampaignSavedCard from './campaign-saved-card'
 import { splitSaveDraftPrompt } from '../utils/save-draft-prompt'
 import type { PendingAction } from '../services/chat-service'
 import type { MiaAsset } from '../../creative-studio/creative-studio-api'
@@ -42,6 +43,8 @@ interface ChatMessageProps {
   onSaveDraft?: () => void
   /** Disables the save button while a reply is in flight. */
   saveDraftDisabled?: boolean
+  /** A campaign saved this turn (home chat) — shows an "Open campaign" card. */
+  campaignSaved?: { campaignId: string; campaignName?: string }
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -66,6 +69,7 @@ export const ChatMessage = memo(function ChatMessage({
   onUseOption,
   onSaveDraft,
   saveDraftDisabled = false,
+  campaignSaved,
 }: ChatMessageProps) {
   const { copied, copy } = useClipboard()
   const saveDraft =
@@ -128,6 +132,12 @@ export const ChatMessage = memo(function ChatMessage({
           />
           {saveDraft?.hasPrompt && onSaveDraft && (
             <SaveDraftButton onClick={onSaveDraft} disabled={saveDraftDisabled} />
+          )}
+          {campaignSaved && (
+            <CampaignSavedCard
+              campaignId={campaignSaved.campaignId}
+              campaignName={campaignSaved.campaignName}
+            />
           )}
           {isStreaming && (
             <span className="inline-block w-2 h-4 bg-quaternary animate-pulse mt-1" />

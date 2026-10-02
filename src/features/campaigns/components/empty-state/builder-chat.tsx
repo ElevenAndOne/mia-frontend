@@ -193,7 +193,7 @@ export const BuilderChat = () => {
                     <>
                       <ChatMarkdown content={splitSaveDraftPrompt(m.content).body} />
                       <SaveDraftButton
-                        onClick={() => c.send(SAVE_DRAFT_REPLY)}
+                        onClick={() => c.send(SAVE_DRAFT_REPLY, { confirmSave: true })}
                         disabled={c.loading}
                       />
                     </>

@@ -87,6 +87,7 @@ export const ChatMessageList = memo(function ChatMessageList({
             onUseOption={message.role === 'assistant' ? onUseOption : undefined}
             onSaveDraft={idx === lastIdx && message.role === 'assistant' ? onSaveDraft : undefined}
             saveDraftDisabled={isBusy}
+            campaignSaved={message.campaignSaved}
           />
         </div>
       ))}

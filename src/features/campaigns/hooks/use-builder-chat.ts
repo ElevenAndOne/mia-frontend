@@ -101,7 +101,12 @@ export function useBuilderChat() {
   }, [sessionId, tenantId, handleCampaignSaved])
 
   const runStream = useCallback(
-    async (content: string, documents?: AttachedDocument[], assetContext?: AssetContext) => {
+    async (
+      content: string,
+      documents?: AttachedDocument[],
+      assetContext?: AssetContext,
+      confirmSave?: boolean,
+    ) => {
       if (!sessionId) return
       const convId = ensureConversation()
       const history = [...messages, { role: 'user' as const, content }]
@@ -143,6 +148,7 @@ export function useBuilderChat() {
             conversation_id: convId,
             ...(documents ? { documents } : {}),
             ...(assetContext ? { asset_context: assetContext } : {}),
+            ...(confirmSave ? { confirm_save: true } : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -197,13 +203,13 @@ export function useBuilderChat() {
   }, [])
 
   const send = useCallback(
-    (text?: string) => {
+    (text?: string, opts?: { confirmSave?: boolean }) => {
       const value = (text ?? input).trim()
       if (!value || loading) return
       setInput('')
       const docs = pendingDocs.length > 0 ? pendingDocs : undefined
       setPendingDocs([])
-      void runStream(value, docs)
+      void runStream(value, docs, undefined, opts?.confirmSave)
     },
     [input, loading, runStream, pendingDocs],
   )

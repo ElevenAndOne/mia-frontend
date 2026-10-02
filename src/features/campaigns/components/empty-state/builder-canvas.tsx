@@ -232,7 +232,7 @@ export const BuilderCanvas = ({
             </button>
           ) : (
             <span className="ml-auto shrink-0 paragraph-sm text-utility-warning-600 border border-utility-warning-300 rounded-full px-2.5 py-0.5">
-              Draft — type yes to save
+              Draft — save it in the chat
             </span>
           )}
           {onClose && (
