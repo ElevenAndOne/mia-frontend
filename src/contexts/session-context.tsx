@@ -18,6 +18,7 @@ import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 import * as googleAuthService from '../features/auth/services/google-auth-service'
 import * as metaAuthService from '../features/auth/services/meta-auth-service'
 import * as sessionService from '../features/auth/services/session-service'
+import { isStandalonePath } from '../constants/standalone-paths'
 import type { SessionValidationResponse } from '../features/auth/services/session-service'
 import * as workspaceService from '../features/workspace/services/workspace-service'
 import * as accountService from '../features/accounts/services/account-service'
@@ -187,6 +188,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Initialize session on mount
   useEffect(() => {
     const initializeSession = async () => {
+      // A standalone page (/post-card, /report-print, /invite/) authenticates with the token
+      // in its URL and never has a session: no OAuth handling, no validation, no workspace
+      // or account fetches (each 401'd and logged the renderer out, 2 Oct 2026). A throwaway
+      // id keeps apiFetch's header shape; nothing is stored.
+      if (isStandalonePath(window.location.pathname)) {
+        setState((prev) => ({ ...prev, sessionId: generateSessionId(), isLoading: false }))
+        return
+      }
+
       setState((prev) => ({ ...prev, isLoading: true }))
 
       try {

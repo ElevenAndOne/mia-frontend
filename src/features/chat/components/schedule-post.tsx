@@ -425,8 +425,11 @@ export const SchedulePost = ({
                 </select>
               </div>
 
-              <div className="flex gap-2">
-                <div className="flex-1">
+              {/* Wrap rather than squeeze: a fixed 96px time box showed "10:00 A" on a
+                  390px phone (2 Oct 2026). Each field keeps a usable minimum and the pair
+                  stacks when the panel is narrow. */}
+              <div className="flex flex-wrap gap-2">
+                <div className="flex-1 min-w-[150px]">
                   <p className="label-xs text-tertiary mb-0.5">Date</p>
                   <input
                     type="date"
@@ -435,7 +438,7 @@ export const SchedulePost = ({
                     className={inputCls}
                   />
                 </div>
-                <div className="w-24">
+                <div className="flex-1 min-w-[120px]">
                   <p className="label-xs text-tertiary mb-0.5">Time</p>
                   <input
                     type="time"

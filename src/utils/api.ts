@@ -4,6 +4,7 @@
  */
 
 import { clearSessionStorage, getStoredSessionId } from './session'
+import { isStandalonePath } from '../constants/standalone-paths'
 
 // Get API base URL from environment variable with localhost fallback
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -37,10 +38,12 @@ function forceLogout(): void {
   console.warn('[API] Mia session invalid - redirecting to login')
   clearSessionStorage()
 
-  // Only redirect if not already on login/landing page or public invite page
+  // Only redirect if not already on login/landing page, and never from a standalone page
+  // (/post-card, /report-print, /invite/): those have no session by design, and sending
+  // the headless renderer to the sign-in page is how every WhatsApp post card failed.
   if (
     !window.location.pathname.startsWith('/login') &&
-    !window.location.pathname.startsWith('/invite/') &&
+    !isStandalonePath(window.location.pathname) &&
     window.location.pathname !== '/'
   ) {
     window.location.href = '/'
