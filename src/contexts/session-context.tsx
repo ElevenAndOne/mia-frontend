@@ -18,7 +18,7 @@ import type { Workspace, WorkspaceRole } from '../features/workspace/types'
 import * as googleAuthService from '../features/auth/services/google-auth-service'
 import * as metaAuthService from '../features/auth/services/meta-auth-service'
 import * as sessionService from '../features/auth/services/session-service'
-import { isStandalonePath } from '../constants/standalone-paths'
+import { isRendererPath } from '../constants/standalone-paths'
 import type { SessionValidationResponse } from '../features/auth/services/session-service'
 import * as workspaceService from '../features/workspace/services/workspace-service'
 import * as accountService from '../features/accounts/services/account-service'
@@ -188,11 +188,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Initialize session on mount
   useEffect(() => {
     const initializeSession = async () => {
-      // A standalone page (/post-card, /report-print, /invite/) authenticates with the token
-      // in its URL and never has a session: no OAuth handling, no validation, no workspace
-      // or account fetches (each 401'd and logged the renderer out, 2 Oct 2026). A throwaway
-      // id keeps apiFetch's header shape; nothing is stored.
-      if (isStandalonePath(window.location.pathname)) {
+      // A renderer page (/post-card, /report-print) authenticates with the token in its URL
+      // and never has a session: no OAuth handling, no validation, no workspace or account
+      // fetches (each 401'd and logged the renderer out, 2 Oct 2026). A throwaway id keeps
+      // apiFetch's header shape; nothing is stored. Not /invite/: see RENDERER_PATHS.
+      if (isRendererPath(window.location.pathname)) {
         setState((prev) => ({ ...prev, sessionId: generateSessionId(), isLoading: false }))
         return
       }
@@ -261,6 +261,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               logger.warn(
                 `[SESSION] OAuth not completed (google_error=${googleError}) - restoring session`
               )
+              // Said here, not on the login page: the URL is cleaned on the next line, before
+              // the login page could read it. A new account that must sign up with Meta (7 Oct 2026).
+              if (googleError === 'meta_signup_only') {
+                showToast(
+                  'error',
+                  'New to Mia? Sign up with Continue with Meta. Google sign-in is for existing accounts.',
+                  10000
+                )
+              }
               window.history.replaceState({}, '', window.location.pathname)
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // No return — fall through to session validation below so user stays logged in
@@ -355,7 +364,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                 .fetchCurrentWorkspace(storedSessionId)
                 .catch(() => ({ tenant: null, active_tenant: null })),
             ])
-            if (listLoadFailed) {
+            // Only a real, signed-in session is told. Starting a sign-in stores a placeholder
+            // id; when that sign-in is refused or cancelled the lists 401 on it, and a person
+            // who was never logged in was warned their workspaces failed (7 Oct 2026).
+            if (listLoadFailed && sessionData.valid) {
               showToast(
                 'error',
                 "Some of your workspaces or accounts couldn't be loaded. Please refresh."

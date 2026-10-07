@@ -30,3 +30,5 @@ dist-ssr
 
 # Claude Code personal settings (permission grants are per-machine)
 .claude/settings.local.json
+.vercel
+.env*

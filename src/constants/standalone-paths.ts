@@ -13,3 +13,17 @@ export const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card'] as c
 
 export const isStandalonePath = (path: string): boolean =>
   STANDALONE_PATHS.some((p) => path === p || path.startsWith(p))
+
+/**
+ * The pages the backend's headless renderer opens: no session, ever, so the session bootstrap
+ * (OAuth return, validation, workspace fetches) is skipped on them.
+ *
+ * /invite/ is NOT one of these (7 Oct 2026). It is standalone for redirects and logout, but an
+ * invited person signs in ON that page: Google sends them back to /invite/<id>?claim=..., and
+ * only the bootstrap redeems that claim. Skipping it there (2 Oct) left every invite on
+ * "Sign In to Accept" forever, signed in or not.
+ */
+export const RENDERER_PATHS = ['/report-print', '/post-card'] as const
+
+export const isRendererPath = (path: string): boolean =>
+  RENDERER_PATHS.some((p) => path === p || path.startsWith(p))
