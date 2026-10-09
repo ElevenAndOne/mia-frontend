@@ -709,3 +709,80 @@ export const saveDocumentEdit = async (
   if (!response.ok) throw new Error(`Failed to save document (${response.status})`)
   return response.json()
 }
+
+// --- Words on the picture of a post (8 Oct 2026) -----------------------------
+// The in-app side of the backend's services/picture_words: the words are a layer over the
+// post's clean photo, drawn with the same templates as on WhatsApp.
+
+export type PictureWordsStyle = 'band' | 'event' | 'quote' | 'tag' | 'badge' | 'list' | 'note' | 'frame'
+export type PictureWordsPosition = 'top' | 'middle' | 'bottom' | 'auto'
+
+export interface PictureWords {
+  style: PictureWordsStyle
+  headline: string
+  kicker: string
+  sub: string
+  items: string[]
+  position: PictureWordsPosition
+  font: string
+  text: string
+  panel: string
+  accent: string
+  size: 's' | 'm' | 'l'
+  logo: boolean
+}
+
+export interface DocumentWordsInfo {
+  words: PictureWords | null
+  clean_media_url: string | null
+  media_url: string | null
+  look: { panel?: string | null; text?: string | null; accent?: string | null; font?: string | null }
+  brand_font: string | null
+  fonts: string[]
+  personal: boolean
+  /** Where new words should start: never over a face or the subject (backend choose_position). */
+  suggested_position?: 'top' | 'bottom'
+}
+
+export const fetchDocumentWords = async (
+  sessionId: string,
+  documentId: string
+): Promise<DocumentWordsInfo> => {
+  const response = await apiFetch(`/api/chat/v2/documents/${documentId}/words`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || data.success === false) throw new Error(data.error || 'Could not load the words')
+  return data as DocumentWordsInfo
+}
+
+export const draftDocumentWords = async (
+  sessionId: string,
+  documentId: string,
+  conversationId: string | null
+): Promise<PictureWords> => {
+  const response = await apiFetch(`/api/chat/v2/documents/${documentId}/words/draft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ conversation_id: conversationId }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || data.success === false) throw new Error(data.error || 'No words came back')
+  return data.words as PictureWords
+}
+
+export const saveDocumentWords = async (
+  sessionId: string,
+  documentId: string,
+  conversationId: string | null,
+  words: PictureWords | null
+): Promise<{ media_url: string; version: number; font_missing?: string | null; font?: string | null }> => {
+  const response = await apiFetch(`/api/chat/v2/documents/${documentId}/words`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
+    body: JSON.stringify({ conversation_id: conversationId, words }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || data.success === false) throw new Error(data.error || 'Could not save the words')
+  return data
+}

@@ -110,6 +110,7 @@ export const MemoCanvasDrawer = ({ target, onClose }: MemoCanvasDrawerProps) => 
             documents={canvas.documentList}
             activeId={canvas.activeId}
             onSelect={canvas.select}
+            onReloadDocuments={canvas.reloadDocuments}
             isSaving={canvas.isSaving || editing}
             onClose={onClose}
             onRequestEdit={canvas.requestEdit}

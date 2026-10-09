@@ -398,6 +398,7 @@ export const ChatView = ({
         activeId: canvas.activeId,
         onSelect: canvas.select,
         freshIds: canvas.freshIds,
+        onReloadDocuments: canvas.reloadDocuments,
         isSaving: canvas.isSaving,
         onQuoteToChat: (selection: DocumentSelection) => {
           canvas.quoteToChat(selection)

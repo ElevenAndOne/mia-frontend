@@ -24,6 +24,7 @@ import { canvaApi } from '../services/canva-api'
 import { AddToCampaign } from './add-to-campaign'
 import { CanvaPicker } from './canva-picker'
 import { SchedulePost } from './schedule-post'
+import { WordsEditor } from './words-editor'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
 import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
@@ -81,6 +82,8 @@ interface CanvasPaneProps {
    *  An owner who wants "shorter and warmer" should say that, not retype a caption; Mia has
    *  the post and its photo in context and can offer options (28 Sep 2026). */
   onEditCaptionInChat?: () => void
+  /** Reload the documents after a change made outside the editor (words on the picture). */
+  onReloadDocuments?: () => void
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -120,10 +123,12 @@ export const CanvasPane = ({
   onSwapMedia,
   onTryAnotherIdea,
   onEditCaptionInChat,
+  onReloadDocuments,
 }: CanvasPaneProps) => {
   const { isBasic } = useExperience()
   const swapInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<Mode>('view')
+  const [wordsOpen, setWordsOpen] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   // Mobile-only "⋯" menu holding the actions that don't fit a phone-width header.
   const [showMore, setShowMore] = useState(false)
@@ -595,6 +600,28 @@ export const CanvasPane = ({
                     canvaConnected && onAppendMediaUrls ? () => setShowCanvaPicker(true) : undefined
                   }
                 />
+                {/* Everyone else: words on the picture, under the preview (8 Oct 2026). */}
+                {!isBasic && doc.doc_type === 'social_post' && spec.media.length > 0 && onReloadDocuments && (
+                  <div className="mt-3 flex justify-start">
+                    <button
+                      type="button"
+                      onClick={() => setWordsOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-1.5 paragraph-sm text-secondary hover:bg-tertiary transition-colors"
+                    >
+                      <Type01 size={15} />
+                      Words on the picture
+                    </button>
+                  </div>
+                )}
+                {wordsOpen && (
+                  <WordsEditor
+                    isOpen={wordsOpen}
+                    onClose={() => setWordsOpen(false)}
+                    documentId={doc.id}
+                    conversationId={conversationId ?? null}
+                    onSaved={() => onReloadDocuments?.()}
+                  />
+                )}
                 {/* Basic: the three things an owner does with a drafted post (Figma "post actions"). */}
                 {isBasic && doc.doc_type === 'social_post' && (
                   <div className="mt-4 flex flex-wrap items-stretch gap-2 mia-rise">
@@ -644,6 +671,16 @@ export const CanvasPane = ({
                               : 'Upload photo'}
                         </button>
                       </>
+                    )}
+                    {spec.media.length > 0 && onReloadDocuments && (
+                      <button
+                        type="button"
+                        onClick={() => setWordsOpen(true)}
+                        className="inline-flex flex-1 basis-32 items-center justify-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-secondary whitespace-nowrap hover:bg-tertiary transition-colors"
+                      >
+                        <Type01 size={15} />
+                        Words on the picture
+                      </button>
                     )}
                     {onTryAnotherIdea && (
                       <button
