@@ -44,3 +44,56 @@ export interface PostListResponse {
   posts: ScheduledPost[]
   counts: Partial<Record<PostStatus, number>>
 }
+
+// ── Team ideas (backend: models/post_item.py, routes/post_items_api.py) ──────────────────
+
+export type PostItemStatus = 'received' | 'idea' | 'waiting' | 'approved' | 'not_used' | 'live' | 'dropped'
+
+export interface PostItemDraft {
+  index: number
+  copy: string | null
+  hashtags: string | null
+  platform: 'facebook' | 'instagram' | string
+  media_url: string | null
+  card_url: string | null
+  scheduled_at: string | null
+  document_id: string | null
+  title: string | null
+}
+
+export interface PostItemDecision {
+  index: number
+  decision: 'pending' | 'approved' | 'not_used'
+  by?: string | null
+  by_name?: string | null
+  at?: string | null
+  reason?: string | null
+  post_id?: string | null
+  scheduled_at?: string | null
+  platform?: string | null
+}
+
+export interface PostItem {
+  id: string
+  status: PostItemStatus
+  source: string
+  submitted_by: string | null
+  sender_name: string | null
+  note: string | null
+  photo_urls: string[]
+  conversation_id: string | null
+  chosen: { indexes?: number[]; platforms?: string[] }
+  decisions: PostItemDecision[]
+  drafts: PostItemDraft[]
+  reason: string | null
+  decided_by_name: string | null
+  decided_at: string | null
+  posts: Array<{ post_id: string; status: PostStatus; platform: string; scheduled_at: string | null; permalink: string | null }>
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface PostItemListResponse {
+  items: PostItem[]
+  counts: Partial<Record<PostItemStatus, number>>
+}

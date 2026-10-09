@@ -3,7 +3,7 @@
 // is everything after that: list, reschedule, cancel, retry, mark-posted.
 
 import { apiFetch } from '../../../utils/api'
-import type { PostListResponse, ScheduledPost } from '../types'
+import type { PostItem, PostItemListResponse, PostListResponse, ScheduledPost } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/posts`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -128,4 +128,40 @@ export async function confirmDeleted(
     headers: auth(sessionId),
   })
   await orThrow(res, 'Failed to clear the post')
+}
+
+// ── Team ideas — /api/tenants/{tenantId}/post-items (staff on WhatsApp, Oct 2026) ────────
+
+const itemsBase = (tenantId: string) => `/api/tenants/${tenantId}/post-items`
+
+export type PostItemView = 'ideas' | 'waiting' | 'held'
+
+export async function fetchPostItems(
+  sessionId: string,
+  tenantId: string,
+  view: PostItemView,
+): Promise<PostItemListResponse> {
+  const res = await apiFetch(`${itemsBase(tenantId)}?view=${view}`, { headers: auth(sessionId) })
+  return orThrow(res, 'Failed to load ideas')
+}
+
+/** Approve one draft of an idea (books it at its slot) or hold it back with an optional reason. */
+export async function decidePostItem(
+  sessionId: string,
+  tenantId: string,
+  itemId: string,
+  body: { decision: 'approved' | 'not_used'; index?: number; reason?: string },
+): Promise<{ ok: boolean; item: PostItem }> {
+  const res = await apiFetch(`${itemsBase(tenantId)}/${itemId}/decide`, {
+    method: 'POST',
+    headers: authJson(sessionId),
+    body: JSON.stringify(body),
+  })
+  return orThrow(res, 'Failed to save the decision')
+}
+
+/** "Don't keep": the idea's photo is deleted everywhere; the record stays as dropped. */
+export async function dropPostItem(sessionId: string, tenantId: string, itemId: string): Promise<void> {
+  const res = await apiFetch(`${itemsBase(tenantId)}/${itemId}`, { method: 'DELETE', headers: auth(sessionId) })
+  await orThrow(res, 'Failed to remove the idea')
 }

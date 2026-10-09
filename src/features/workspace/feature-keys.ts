@@ -17,6 +17,7 @@ export const FEATURE_KEYS = [
   'home_cards',
   'platform_picker',
   'paid_media',
+  'staff_whatsapp',
 ] as const
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number]

@@ -8,8 +8,20 @@ import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
 import { Modal } from '../overlay'
-import { confirmDeleted, deletePost, fetchPosts, markPosted, reschedulePost, retryPost } from './services/posts-api'
-import type { PostStatus, ScheduledPost } from './types'
+import { SegmentedControl } from '../../components/segmented-control'
+import { useFeature } from '../workspace/hooks/use-features'
+import {
+  confirmDeleted,
+  decidePostItem,
+  deletePost,
+  dropPostItem,
+  fetchPostItems,
+  fetchPosts,
+  markPosted,
+  reschedulePost,
+  retryPost,
+} from './services/posts-api'
+import type { PostItem, PostStatus, ScheduledPost } from './types'
 
 /**
  * Posts — the Quick Posts home. For basic-tier workspaces this IS the content
@@ -484,6 +496,244 @@ const PostRow = ({
   )
 }
 
+// ── Team ideas (staff on WhatsApp, Oct 2026) ───────────────────────────────────
+// The same records WhatsApp writes (services/post_items): an idea a staff member sent, what
+// is waiting for the owner, and what the owner decided. A decision here is the same claim a
+// WhatsApp tap makes, so a tap on the stale card afterwards says "already decided".
+
+const ITEM_STATE: Record<string, { label: string; cls: string }> = {
+  idea: { label: 'Idea', cls: 'bg-utility-info-100 text-utility-info-700' },
+  waiting: { label: 'Waiting for you', cls: 'bg-utility-warning-100 text-utility-warning-700' },
+  approved: { label: 'Used', cls: 'bg-utility-success-100 text-utility-success-700' },
+  live: { label: 'Used · live', cls: 'bg-utility-success-100 text-utility-success-700' },
+  not_used: { label: 'Held back', cls: 'bg-tertiary text-quaternary' },
+}
+
+const itemWhen = (item: PostItem) => (item.created_at ? fmtWhen(item.created_at) : '')
+const itemWho = (item: PostItem) => item.sender_name || 'A team member'
+
+const useItems = (view: 'ideas' | 'waiting', enabled: boolean) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  return useQuery({
+    queryKey: ['post-items', tenantId, view],
+    queryFn: async () => (await fetchPostItems(sessionId!, tenantId!, view)).items,
+    enabled: enabled && !!sessionId && !!tenantId,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: boolean; onDropped: (id: string) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const [busy, setBusy] = useState(false)
+  const state = ITEM_STATE[item.status] ?? ITEM_STATE.idea
+  const photo = item.photo_urls[0]
+  const post = item.posts[0]
+  return (
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col">
+      {photo ? (
+        <img src={photo} alt="" className="w-full aspect-square object-cover bg-tertiary" />
+      ) : (
+        <div className="w-full aspect-square bg-tertiary flex items-center justify-center text-quaternary">
+          <Edit03 size={18} />
+        </div>
+      )}
+      <div className="p-3 flex flex-col gap-1.5 min-w-0">
+        <p className="paragraph-sm font-semibold text-primary truncate">{item.note || 'Photo'}</p>
+        <p className="paragraph-xs text-quaternary truncate">
+          {itemWho(item)} · {itemWhen(item)}
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${state.cls}`}>{state.label}</span>
+          {post?.permalink && (
+            <a href={post.permalink} target="_blank" rel="noreferrer" className="paragraph-xs text-utility-brand-600 hover:underline">
+              View ↗
+            </a>
+          )}
+        </div>
+        {canManage && item.status === 'idea' && (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                if (!sessionId || !activeWorkspace || !window.confirm("Don't keep this photo? It is deleted everywhere, including for the person who sent it.")) return
+                setBusy(true)
+                dropPostItem(sessionId, activeWorkspace.tenant_id, item.id)
+                  .then(() => {
+                    showToast('success', 'Gone')
+                    onDropped(item.id)
+                  })
+                  .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+                  .finally(() => setBusy(false))
+              }}
+            >
+              Don’t keep
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
+  const { activeWorkspace } = useSession()
+  const queryClient = useQueryClient()
+  const { data, isLoading, error } = useItems('ideas', true)
+  const items = data ?? []
+  const onDropped = (id: string) =>
+    queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'ideas'], (prev) => prev?.filter((i) => i.id !== id) ?? prev)
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the ideas.</p>
+  if (items.length === 0)
+    return (
+      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
+        <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
+        <p className="paragraph-xs text-quaternary max-w-sm">
+          Photos your team sends Mia on WhatsApp land here, and so does anything you tell her to save for later.
+          Say “what did the team send” on WhatsApp to see them there too.
+        </p>
+      </div>
+    )
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {items.map((item) => (
+        <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
+      ))}
+    </div>
+  )
+}
+
+const WaitingCard = ({ item, onChanged }: { item: PostItem; onChanged: (item: PostItem) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const [busy, setBusy] = useState(false)
+  const [holding, setHolding] = useState<number | null>(null)
+  const [reason, setReason] = useState('')
+  const photo = item.photo_urls[0]
+  const chosen = new Set(item.chosen?.indexes ?? [])
+  const pending = new Set(item.decisions.filter((d) => d.decision === 'pending').map((d) => d.index))
+  const decide = (body: { decision: 'approved' | 'not_used'; index?: number; reason?: string }, ok: string) => {
+    if (!sessionId || !activeWorkspace || busy) return
+    setBusy(true)
+    decidePostItem(sessionId, activeWorkspace.tenant_id, item.id, body)
+      .then((r) => {
+        showToast('success', ok)
+        onChanged(r.item)
+        setHolding(null)
+        setReason('')
+      })
+      .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden">
+      <div className="flex items-center gap-3 px-4 pt-3.5 pb-2.5">
+        {photo ? (
+          <img src={photo} alt="" className="w-11 h-11 rounded-lg object-cover shrink-0 border border-tertiary" />
+        ) : (
+          <div className="w-11 h-11 rounded-lg shrink-0 bg-tertiary" />
+        )}
+        <div className="min-w-0">
+          <p className="paragraph-sm font-semibold text-primary truncate">
+            {itemWho(item)} would like {chosen.size > 1 ? 'both posts' : chosen.size === 1 ? `Post ${'AB'[[...chosen][0] - 1] ?? [...chosen][0]}` : 'a post'} to go out
+          </p>
+          <p className="paragraph-xs text-quaternary truncate">
+            {item.note ? `“${item.note}” · ` : ''}{itemWhen(item)}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col divide-y divide-tertiary border-t border-tertiary">
+        {item.drafts
+          .filter((d) => chosen.size === 0 || chosen.has(d.index))
+          .map((d) => {
+            const decision = item.decisions.find((x) => x.index === d.index)
+            const open = pending.has(d.index)
+            return (
+              <div key={d.index} className="px-4 py-3 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="label-xs font-semibold text-quaternary">Post {'AB'[d.index - 1] ?? d.index}</span>
+                  <span className="paragraph-xs text-quaternary">· {PLATFORM_LABEL[d.platform] ?? d.platform}{d.scheduled_at ? ` · ${fmtWhen(d.scheduled_at)}` : ''}</span>
+                  {!open && decision && (
+                    <span className={`ml-auto inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${decision.decision === 'approved' ? ITEM_STATE.approved.cls : ITEM_STATE.not_used.cls}`}>
+                      {decision.decision === 'approved' ? `Approved by ${decision.by_name ?? 'you'}` : `Held back${decision.by_name ? ` by ${decision.by_name}` : ''}`}
+                    </span>
+                  )}
+                </div>
+                <p className="paragraph-sm text-primary whitespace-pre-wrap break-words">{d.copy}</p>
+                {open && holding !== d.index && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button size="sm" disabled={busy} onClick={() => decide({ decision: 'approved', index: d.index }, 'Approved and booked')}>
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => setHolding(d.index)}>
+                      Not this one
+                    </Button>
+                  </div>
+                )}
+                {open && holding === d.index && (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      id={`reason-${item.id}-${d.index}`}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder={`Want to tell ${itemWho(item)} why? (optional)`}
+                      className="px-2.5 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-primary outline-none focus:border-utility-brand-400"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="secondary" disabled={busy} onClick={() => decide({ decision: 'not_used', index: d.index, reason: reason.trim() || undefined }, `Held back, ${itemWho(item)} told`)}>
+                        {reason.trim() ? 'Send' : 'Skip and hold back'}
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => setHolding(null)}>
+                        Back
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+      </div>
+    </div>
+  )
+}
+
+const WaitingPanel = () => {
+  const { activeWorkspace } = useSession()
+  const queryClient = useQueryClient()
+  const { data, isLoading, error } = useItems('waiting', true)
+  const items = data ?? []
+  const onChanged = (item: PostItem) =>
+    queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'waiting'], (prev) =>
+      (prev ?? []).map((i) => (i.id === item.id ? item : i)).filter((i) => i.status === 'waiting'),
+    )
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load what’s waiting.</p>
+  if (items.length === 0)
+    return (
+      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
+        <p className="paragraph-sm font-semibold text-primary">Nothing waiting for you</p>
+        <p className="paragraph-xs text-quaternary max-w-sm">
+          When someone on your team makes a post from an idea, it lands here and on your WhatsApp. Approving in either place updates the other.
+        </p>
+      </div>
+    )
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map((item) => (
+        <WaitingCard key={item.id} item={item} onChanged={onChanged} />
+      ))}
+    </div>
+  )
+}
+
+type PostsTab = 'ideas' | 'waiting' | 'scheduled' | 'posted'
+const SCHEDULED_STATUSES: PostStatus[] = ['scheduled', 'reminded', 'publishing', 'failed', 'draft']
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 const PostsView = () => {
@@ -555,6 +805,22 @@ const PostsView = () => {
 
   const openPost = posts?.find((p) => p.post_id === openPostId) ?? null
 
+  // Staff on WhatsApp: the Ideas and Waiting-for-you tabs exist only where the feature is on,
+  // and Waiting only for owners and admins (the approvers). Everyone else sees the page as it was.
+  const teamOn = useFeature('staff_whatsapp')
+  const canManage = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
+  const [tab, setTab] = useState<PostsTab>('scheduled')
+  const { data: waitingItems } = useItems('waiting', teamOn && canManage)
+  const waitingCount = waitingItems?.length ?? 0
+  const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
+  const shown = useMemo(() => {
+    if (!posts) return null
+    if (!teamOn) return posts
+    return tab === 'posted'
+      ? posts.filter((p) => p.status === 'published' || p.status === 'canceled')
+      : posts.filter((p) => SCHEDULED_STATUSES.includes(p.status))
+  }, [posts, teamOn, tab])
+
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Posts was the one page still wearing its own header — no trail, no way back
@@ -569,11 +835,28 @@ const PostsView = () => {
       />
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 flex flex-col gap-4">
-          <p className="paragraph-xs text-quaternary">
-            {posts === null
-              ? 'Loading…'
-              : `${posts.length} post${posts.length === 1 ? '' : 's'}${scheduledCount ? ` · ${scheduledCount} scheduled` : ''}`}
-          </p>
+          {teamOn && (
+            <SegmentedControl<PostsTab>
+              value={tab}
+              onChange={setTab}
+              fullWidth
+              options={[
+                { value: 'ideas', label: 'Ideas' },
+                ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'posted', label: 'Posted' },
+              ]}
+            />
+          )}
+          {isPostsTab && (
+            <p className="paragraph-xs text-quaternary">
+              {posts === null
+                ? 'Loading…'
+                : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
+            </p>
+          )}
+          {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
+          {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
 
         {error && (
           <div className="flex items-center gap-3">
@@ -584,13 +867,13 @@ const PostsView = () => {
           </div>
         )}
 
-        {posts === null && !error && (
+        {isPostsTab && posts === null && !error && (
           <div className="flex justify-center py-16">
             <Spinner />
           </div>
         )}
 
-        {posts !== null && posts.length === 0 && (
+        {isPostsTab && shown !== null && shown.length === 0 && (
           <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
             <p className="paragraph-sm font-semibold text-primary">No posts yet</p>
             <p className="paragraph-xs text-quaternary max-w-sm">
@@ -607,8 +890,9 @@ const PostsView = () => {
           </div>
         )}
 
-        {posts !== null &&
-          posts.map((p) => (
+        {isPostsTab &&
+          shown !== null &&
+          shown.map((p) => (
             <PostRow
               key={p.post_id}
               post={p}
