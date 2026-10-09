@@ -202,7 +202,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       try {
         // Check for mobile OAuth redirect - use localStorage flag, NOT query params
         // Backend redirects to frontend_origin without query params
-        const oauthPending = localStorage.getItem(StorageKey.OAUTH_PENDING)
+        // The marker set when the sign-in started, or, failing that, the redirect itself: the
+        // marker lives per origin, so a sign-in started on localhost that comes back on the LAN
+        // address (or a machine whose address changed) found no marker, never redeemed the
+        // claim in the URL, and sat on "Connecting to Meta" for good (9 Oct 2026). A claim only
+        // exists because the backend minted a session from a code exchange, so the URL is a
+        // signal we can trust on its own.
+        const redirectParams = new URLSearchParams(window.location.search)
+        const redirectedWithClaim = redirectParams.get('claim') ? redirectParams.get('oauth_complete') : null
+        const oauthPending =
+          localStorage.getItem(StorageKey.OAUTH_PENDING) ??
+          (redirectedWithClaim === 'google' || redirectedWithClaim === 'meta' ? redirectedWithClaim : null)
         const returnUrl = localStorage.getItem(StorageKey.OAUTH_RETURN_URL)
 
         let sessionId = getStoredSessionId()
