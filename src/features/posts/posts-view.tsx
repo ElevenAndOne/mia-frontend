@@ -507,6 +507,7 @@ const ITEM_STATE: Record<string, { label: string; cls: string }> = {
   approved: { label: 'Used', cls: 'bg-utility-success-100 text-utility-success-700' },
   live: { label: 'Used · live', cls: 'bg-utility-success-100 text-utility-success-700' },
   not_used: { label: 'Held back', cls: 'bg-tertiary text-quaternary' },
+  removed: { label: 'Used, then removed', cls: 'bg-tertiary text-quaternary' },
 }
 
 const itemWhen = (item: PostItem) => (item.created_at ? fmtWhen(item.created_at) : '')

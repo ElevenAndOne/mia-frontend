@@ -47,7 +47,7 @@ export interface PostListResponse {
 
 // ── Team ideas (backend: models/post_item.py, routes/post_items_api.py) ──────────────────
 
-export type PostItemStatus = 'received' | 'idea' | 'waiting' | 'approved' | 'not_used' | 'live' | 'dropped'
+export type PostItemStatus = 'received' | 'idea' | 'waiting' | 'approved' | 'not_used' | 'live' | 'dropped' | 'removed'
 
 export interface PostItemDraft {
   index: number

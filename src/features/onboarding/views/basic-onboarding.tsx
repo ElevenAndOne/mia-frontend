@@ -572,9 +572,20 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
         {/* ---- reading: real progress, never a spinner ----------------- */}
         {!loading && step === 'reading' && (
           <div className={CARD} role="status">
-            {(readiness?.steps ?? []).map((s) => (
-              <Row key={s.key} label={s.label} detail={s.detail} ok={s.done} pending={!s.done} />
-            ))}
+            {(readiness?.steps ?? [])
+              // No website given: there is nothing to read, so no row waits for it, and the
+              // voice comes from the Page alone (9 Oct 2026: a spinner sat on "Read your
+              // website" for a workspace that never had one).
+              .filter((s) => s.key !== 'website' || askedForWebsite)
+              .map((s) => (
+                <Row
+                  key={s.key}
+                  label={s.label}
+                  detail={s.key === 'brand' && !askedForWebsite ? 'From your Page.' : s.detail}
+                  ok={s.done}
+                  pending={!s.done}
+                />
+              ))}
             <p className="paragraph-xs text-tertiary">
               About a minute. You can close this and come back: whatever is ticked is saved,
               and the rest finishes on its own.
