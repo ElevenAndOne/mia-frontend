@@ -9,7 +9,8 @@
  * the normal bootstrap, got three 401s, and forceLogout sent the renderer to the sign-in page;
  * no WhatsApp post card rendered on live).
  */
-export const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card'] as const
+// /p/ (12 Oct 2026): the read-only posts behind a WhatsApp link, for people with no login.
+export const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card', '/p/'] as const
 
 export const isStandalonePath = (path: string): boolean =>
   STANDALONE_PATHS.some((p) => path === p || path.startsWith(p))
