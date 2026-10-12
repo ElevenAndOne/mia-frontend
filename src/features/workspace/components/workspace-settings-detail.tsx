@@ -65,6 +65,8 @@ import { BasicWorkspaceSettings } from './basic-workspace-settings'
 import { HowMiaWritesCard, LearnedRulesCard, PeopleCard } from './basic-brand-cards'
 import { HelpContent } from '../../shell/components/help-content'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
+import { StaffCard } from './staff-card'
+import { useFeature } from '../hooks/use-features'
 import { CreativeWatchCard } from './creative-watch-card'
 import { BrandFactsSection } from './brand-facts-section'
 import {
@@ -267,6 +269,7 @@ export const WorkspaceSettingsDetail = ({
     setVisited((v) => (v.has(tab) ? v : new Set(v).add(tab)))
   }
   const { sessionId, refreshWorkspaces } = useSession()
+  const staffOn = useFeature('staff_whatsapp')
   const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -899,6 +902,14 @@ export const WorkspaceSettingsDetail = ({
                   onCopyInvite={onCopyInvite}
                   onRevokeInvite={onRevokeInvite}
                 />
+              )}
+
+              {/* Staff on WhatsApp (Oct 2026): the people with no login who send Mia photos.
+                  Owner/admin only, and only where the feature is on for the workspace. */}
+              {canManage && staffOn && sessionId && (
+                <div className="mt-4">
+                  <StaffCard sessionId={sessionId} tenantId={workspace.tenant_id} />
+                </div>
               )}
 
               {/* Workspace Settings - Owner and Admin */}
