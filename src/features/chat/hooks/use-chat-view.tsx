@@ -404,6 +404,13 @@ export const useChatView = () => {
           // A reopened thread starts unpinned; its image cards restore just below.
           setEditTarget(null)
           void restoreImageCards(convId, msgs)
+        } else {
+          // No chat messages, but the conversation may still hold posts (made on WhatsApp
+          // before every thread logged a message): open it anyway so its canvas loads.
+          // "Edit in Mia" on one of those used to land on an empty home screen (9 Oct 2026).
+          setMessages([])
+          setConversationId(convId)
+          setEditTarget(null)
         }
       } catch {
         showToast('error', "Couldn't open that conversation. Please try again.")
