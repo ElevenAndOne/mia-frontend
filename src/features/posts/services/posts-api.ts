@@ -165,3 +165,18 @@ export async function dropPostItem(sessionId: string, tenantId: string, itemId: 
   const res = await apiFetch(`${itemsBase(tenantId)}/${itemId}`, { method: 'DELETE', headers: auth(sessionId) })
   await orThrow(res, 'Failed to remove the idea')
 }
+
+/** A finished design (library pictures: Canva/Figma imports, uploads) sent to the owner for
+ *  approval with the words written: empty caption = Mia writes them. */
+export async function submitDesign(
+  sessionId: string,
+  tenantId: string,
+  body: { asset_ids: string[]; caption?: string },
+): Promise<{ ok: boolean; item: PostItem | null; sent: string[] }> {
+  const res = await apiFetch(`${itemsBase(tenantId)}/submit`, {
+    method: 'POST',
+    headers: authJson(sessionId),
+    body: JSON.stringify(body),
+  })
+  return orThrow(res, 'Failed to send the design')
+}

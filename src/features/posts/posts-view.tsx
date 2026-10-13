@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/button'
 import { TopBar } from '../../components/top-bar'
 import { Edit03 } from '../../components/icon/edit-03'
+import { UploadCloud01 } from '../../components/icon/upload-cloud-01'
+import { creativeStudioApi, miaCreateApi } from '../creative-studio/creative-studio-api'
+import type { CreativeAsset } from '../creative-studio/creative-studio-api'
 import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
@@ -20,6 +23,7 @@ import {
   markPosted,
   reschedulePost,
   retryPost,
+  submitDesign,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
 
@@ -732,6 +736,157 @@ const WaitingPanel = () => {
   )
 }
 
+/**
+ * Send a design for approval (staff plan slice 6): a picture already in the library (a Canva
+ * design, a Figma frame, an upload) goes to the owner with the words written, as one request
+ * on WhatsApp and on Waiting for you. The designer's own words win; left empty, Mia writes them.
+ */
+const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (line: string) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  const { showToast } = useToast()
+  const [library, setLibrary] = useState<CreativeAsset[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string[]>([])
+  const [caption, setCaption] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!sessionId || !tenantId) return
+    creativeStudioApi
+      .listAssets(tenantId, sessionId, { asset_type: 'reference', media_type: 'image', limit: 24 })
+      .then((r) => setLibrary(r.assets))
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Couldn’t load the library'))
+  }, [sessionId, tenantId])
+
+  const toggle = (id: string) =>
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 10 ? prev : [...prev, id]))
+
+  const upload = async (files: FileList | null) => {
+    if (!files || !files.length || !sessionId || !tenantId) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files).slice(0, 10)) {
+        const r = await miaCreateApi.uploadReference(sessionId, tenantId, file)
+        const asset: CreativeAsset = {
+          asset_id: r.asset_id,
+          tenant_id: tenantId,
+          type: 'reference',
+          media_type: 'image',
+          cdn_url: r.cdn_url,
+          filename: file.name,
+          source: 'upload',
+          status: 'completed',
+          created_at: new Date().toISOString(),
+        }
+        setLibrary((prev) => [asset, ...(prev ?? [])])
+        setPicked((prev) => (prev.length >= 10 ? prev : [...prev, r.asset_id]))
+      }
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const send = () => {
+    if (!sessionId || !tenantId || !picked.length || sending) return
+    setSending(true)
+    submitDesign(sessionId, tenantId, { asset_ids: picked, caption: caption.trim() || undefined })
+      .then((r) => {
+        onSent(r.sent[0] ?? 'Sent for approval')
+        onClose()
+      })
+      .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+      .finally(() => setSending(false))
+  }
+
+  const order = (id: string) => picked.indexOf(id) + 1
+  return (
+    <Modal isOpen onClose={onClose} title="Send a design for approval" size="lg">
+      <div className="flex flex-col gap-4">
+        <p className="paragraph-xs text-quaternary">
+          Pick the finished picture (or the pages of a carousel, in order). The owner gets it with the words written,
+          on WhatsApp and here under Waiting for you, and sends it out with a tap.
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="paragraph-sm font-semibold text-primary">
+            {picked.length ? `${picked.length} picked` : 'From the library'}
+          </p>
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void upload(e.target.files)} />
+          <Button size="sm" variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <UploadCloud01 size={14} />
+            {uploading ? 'Uploading…' : 'Upload a picture'}
+          </Button>
+        </div>
+        {loadError && <p className="paragraph-xs text-utility-error-600">{loadError}</p>}
+        {library === null && !loadError && (
+          <div className="flex justify-center py-8">
+            <Spinner />
+          </div>
+        )}
+        {library !== null && library.length === 0 && (
+          <p className="paragraph-xs text-quaternary">
+            Nothing in the library yet. Upload a picture, or import a design from Canva or Figma in chat first.
+          </p>
+        )}
+        {library !== null && library.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+            {library.map((a) => {
+              const n = order(a.asset_id)
+              return (
+                <button
+                  key={a.asset_id}
+                  type="button"
+                  onClick={() => toggle(a.asset_id)}
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-square bg-tertiary ${n ? 'border-utility-brand-600' : 'border-transparent hover:border-tertiary'}`}
+                  title={a.filename || ''}
+                >
+                  <img src={a.cdn_url} alt="" className="w-full h-full object-cover" />
+                  {n > 0 && (
+                    <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-brand-solid text-primary-onbrand label-xs font-semibold flex items-center justify-center">
+                      {n}
+                    </span>
+                  )}
+                  {a.source && (
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-primary/80 label-xs text-quaternary capitalize">
+                      {a.source}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="design-caption" className="paragraph-sm font-semibold text-primary">
+            The words <span className="font-normal text-quaternary">(optional: leave it empty and Mia writes them)</span>
+          </label>
+          <textarea
+            id="design-caption"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            rows={4}
+            placeholder="The caption as it should go out"
+            className="px-2.5 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-primary outline-none focus:border-utility-brand-400 resize-y"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="secondary" onClick={onClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button onClick={send} disabled={!picked.length || sending || uploading}>
+            {sending ? 'Sending…' : 'Send for approval'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 type PostsTab = 'ideas' | 'waiting' | 'scheduled' | 'posted'
 const SCHEDULED_STATUSES: PostStatus[] = ['scheduled', 'reminded', 'publishing', 'failed', 'draft']
 
@@ -811,6 +966,7 @@ const PostsView = () => {
   const teamOn = useFeature('staff_whatsapp')
   const canManage = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const [tab, setTab] = useState<PostsTab>('scheduled')
+  const [sendingDesign, setSendingDesign] = useState(false)
   const { data: waitingItems } = useItems('waiting', teamOn && canManage)
   const waitingCount = waitingItems?.length ?? 0
   const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
@@ -855,6 +1011,29 @@ const PostsView = () => {
                 ? 'Loading…'
                 : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
             </p>
+          )}
+          {teamOn && (tab === 'ideas' || tab === 'waiting') && (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="paragraph-xs text-quaternary">
+                {tab === 'ideas'
+                  ? 'What the team sent Mia on WhatsApp, and anything saved for later.'
+                  : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
+              </p>
+              <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
+                <UploadCloud01 size={14} />
+                Send a design for approval
+              </Button>
+            </div>
+          )}
+          {sendingDesign && (
+            <SendDesignDialog
+              onClose={() => setSendingDesign(false)}
+              onSent={(line) => {
+                notify('success', line)
+                void queryClient.invalidateQueries({ queryKey: ['post-items', tenantId] })
+                if (canManage) setTab('waiting')
+              }}
+            />
           )}
           {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
