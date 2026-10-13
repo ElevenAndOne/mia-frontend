@@ -283,6 +283,8 @@ export interface ClickUpAdsPushResult {
   reason?: string | null
   // Custom fields the target list doesn't have, so their values were dropped.
   missing_fields?: string[]
+  // Values a field exists for but doesn't know (a Client not in the dropdown, …).
+  unknown_options?: string[]
   tasks?: {
     asset_id?: string
     task_id?: string
@@ -547,4 +549,72 @@ export interface DriveFolderListing {
 export interface ChannelConfig {
   hidden: string[]
   custom: { key: string; label: string }[]
+}
+
+// ── Send to studio (7 Oct 2026) ───────────────────────────────────────────────
+// The checklist before a campaign goes to ClickUp. Backend: routes/studio_push.py.
+export interface StudioMember { id: number | string; username: string; email?: string | null }
+
+export interface StudioDefaults {
+  client?: string | null
+  client_type?: string | null
+  creative_lead_id?: string | null
+  creative_lead_name?: string | null
+  delivery_lead_id?: string | null
+  delivery_lead_name?: string | null
+}
+
+export interface StudioCandidate { id: string; name: string; url?: string; status?: string | null; score?: number }
+
+export interface StudioPreviewAsset {
+  asset_id: string
+  asset_name: string
+  asset_type: string | null
+  task_name: string
+  job_type: string
+  assignee_clickup_id: string | null
+  assignee_name: string | null
+  points: number | null
+  estimate_hours: number | null
+  due_date: string | null
+  launch_date: string | null
+  tags: string[]
+  existing_task_url: string | null
+  already_pushed: boolean
+  candidate: StudioCandidate | null
+}
+
+export interface StudioPreview {
+  campaign_id: string
+  campaign_name: string
+  list_id: string | null
+  list_name?: string | null
+  defaults: StudioDefaults
+  campaign_tag: string
+  job_types: string[]
+  members: StudioMember[]
+  list_fields: string[]
+  missing_fields: string[]
+  sprint_calendar_ok: boolean
+  phases: {
+    phase_id: string
+    phase_name: string
+    task_name: string
+    launch_date: string | null
+    already_pushed: boolean
+    channels: { action_id: string; channel: string; task_name: string; already_pushed: boolean; assets: StudioPreviewAsset[] }[]
+  }[]
+  warnings: string[]
+}
+
+export interface StudioPushRow {
+  asset_id: string
+  job_type?: string | null
+  assignee_clickup_id?: string | null
+  assignee_name?: string | null
+  points?: number | null
+  estimate_hours?: number | null
+  due_date?: string | null
+  adopt_task_id?: string | null
+  adopt_task_url?: string | null
 }

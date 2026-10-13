@@ -3,7 +3,7 @@
 // the raw Response so callers (hooks) can do optimistic commit-on-confirm.
 
 import { apiFetch } from '../../../utils/api'
-import type { CampaignDetail, CampaignLaunchReadiness, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LaunchCheckSnapshot, LaunchCheckWaiver, LinkedCampaign, LinkedContent, LinkedContentSave, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult } from '../types'
+import type { CampaignDetail, CampaignLaunchReadiness, CampaignSummary, ChannelConfig, DriveFolderListing, GooglePushPreview, GooglePushResult, GoogleSearchSuggestion, LaunchCheckSnapshot, LaunchCheckWaiver, LinkedCampaign, LinkedContent, LinkedContentSave, MetaAudienceSuggestion, MetaPushPreview, MetaPushResult, SyncResult, ClickUpAdsPushResult, StudioDefaults, StudioPreview, StudioPushRow } from '../types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaigns`
 const auth = (sessionId: string) => ({ 'X-Session-ID': sessionId })
@@ -640,4 +640,27 @@ export async function revokeLaunchCheckWaiver(
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Could not remove that waiver (${res.status})`)
   return body as { snapshot: LaunchCheckSnapshot | null }
+}
+
+// ── Send to studio (7 Oct 2026) ───────────────────────────────────────────────
+export async function fetchStudioPreview(s: string, t: string, id: string, listId: string | null): Promise<StudioPreview> {
+  const q = listId ? `?list_id=${encodeURIComponent(listId)}` : ''
+  const res = await apiFetch(`${base(t)}/${id}/studio-preview${q}`, { headers: auth(s) })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Could not read the studio checklist')
+  }
+  return res.json()
+}
+
+export async function studioPush(
+  s: string, t: string, id: string,
+  body: { list_id: string; defaults: StudioDefaults; remember_defaults: boolean; rows: StudioPushRow[] },
+): Promise<ClickUpAdsPushResult> {
+  const res = await apiFetch(`${base(t)}/${id}/studio-push`, { method: 'POST', headers: authJson(s), body: JSON.stringify(body) })
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || 'Send to studio failed')
+  }
+  return res.json()
 }
