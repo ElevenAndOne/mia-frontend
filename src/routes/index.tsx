@@ -241,7 +241,7 @@ export const AppRoutes = ({
             }
           />
 
-          {/* The new campaign builder (rebuild slice 3): staff only while it's tested. */}
+          {/* The new campaign builder (rebuild slice 3): Agency only (the campaigns flag), and staff only while it's tested. */}
           {['/campaign-builder/new', '/campaign-builder/:campaignId', '/campaign-builder/:campaignId/:tab'].map((path) => (
             <Route
               key={path}
@@ -249,9 +249,11 @@ export const AppRoutes = ({
               element={
                 <ProtectedRoute requireAccount>
                   <RequireStaff>
-                    <ErrorBoundary>
-                      <CampaignBuilderPage />
-                    </ErrorBoundary>
+                    <RequireFeature flag="campaigns">
+                      <ErrorBoundary>
+                        <CampaignBuilderPage />
+                      </ErrorBoundary>
+                    </RequireFeature>
                   </RequireStaff>
                 </ProtectedRoute>
               }

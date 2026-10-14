@@ -709,7 +709,7 @@ export const ChatView = ({
               )}
 
               {campaignOffer && (
-                <div className="mb-3">
+                <div className="mb-3 w-full max-w-3xl mx-auto px-4">
                   <CampaignOfferCard offer={campaignOffer} onDismiss={dismissCampaignOffer} />
                 </div>
               )}
