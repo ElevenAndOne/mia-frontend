@@ -74,6 +74,7 @@ interface ChatRequestPayload {
   edit_target_asset_id?: string // image pinned in chat — the next generation edits THIS one
   no_track?: boolean // throwaway turn (campaign slide-over edits) — skip Recent Chats
   confirm_save?: boolean // the Save as draft button under a campaign summary
+  campaign_page_id?: string // the new campaign page's docked chat: the draft being built
 }
 
 export interface RecentConversation {
@@ -369,6 +370,8 @@ export const sendChatMessageStreaming = async (
     campaign_saved?: CampaignSavedEvent
     asset_updated?: AssetUpdatedEvent
     image_job?: ImageJobEvent
+    /** Home chat: this message asked for a new campaign; offer the campaign page (staff). */
+    campaign_offer?: { pm_text: string; deck_text?: string | null }
     error?: string
   }) => void,
   signal?: AbortSignal

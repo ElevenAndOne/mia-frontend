@@ -83,6 +83,8 @@ export const useChatView = () => {
   const { showToast } = useToast()
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  // A new campaign asked for in chat: offer the campaign page under the reply (staff, Oct 2026).
+  const [campaignOffer, setCampaignOffer] = useState<{ pm_text: string; deck_text?: string | null } | null>(null)
   const [streamingContent, setStreamingContent] = useState('')
   // Text pushed into the composer from outside (a canvas quote); nonce re-fires the effect.
   const [composerDraft, setComposerDraft] = useState<{ text: string; nonce: number } | null>(null)
@@ -285,6 +287,7 @@ export const useChatView = () => {
   }, [messages])
 
   const handleNewChat = useCallback(() => {
+    setCampaignOffer(null)
     setMessages([])
     setStreamingContent('')
     setConversationId(null)
@@ -587,6 +590,7 @@ export const useChatView = () => {
         confirmSave?: boolean
       }
     ) => {
+      setCampaignOffer(null)
       const pendingImages = images.slice()
       const pendingImageNames = imageNames.slice(0, pendingImages.length)
       const pendingDocuments = documents.slice()
@@ -766,6 +770,8 @@ export const useChatView = () => {
               savedCampaign = chunk.campaign_saved
             } else if (chunk.skill_workspaces) {
               skillWorkspaces = chunk.skill_workspaces
+            } else if (chunk.campaign_offer) {
+              setCampaignOffer(chunk.campaign_offer)
             } else if (chunk.history_id !== undefined) {
               // Final event: the persisted chat_history row id — thumbs feedback target.
               historyId = chunk.history_id
@@ -1306,5 +1312,7 @@ export const useChatView = () => {
     canvas,
     editTarget,
     setEditTarget,
+    campaignOffer,
+    dismissCampaignOffer: () => setCampaignOffer(null),
   }
 }

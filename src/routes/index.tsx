@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { RequireFeature } from './require-feature'
+import { RequireStaff } from './require-staff'
 import { ErrorBoundary } from '../components/error-boundary'
 import { Spinner } from '../components/spinner'
 
@@ -29,6 +30,7 @@ const WorkspaceSettingsPage = lazy(() => import('../pages/workspace-settings-pag
 const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const NewCampaignPage = lazy(() => import('../pages/new-campaign-page'))
 const CampaignWorkspacePage = lazy(() => import('../pages/campaign-workspace-page'))
+const CampaignBuilderPage = lazy(() => import('../pages/campaign-builder-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const SchedulerPage = lazy(() => import('../pages/scheduler-page'))
 const PostsPage = lazy(() => import('../pages/posts-page'))
@@ -238,6 +240,23 @@ export const AppRoutes = ({
               </ProtectedRoute>
             }
           />
+
+          {/* The new campaign builder (rebuild slice 3): staff only while it's tested. */}
+          {['/campaign-builder/new', '/campaign-builder/:campaignId', '/campaign-builder/:campaignId/:tab'].map((path) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <ProtectedRoute requireAccount>
+                  <RequireStaff>
+                    <ErrorBoundary>
+                      <CampaignBuilderPage />
+                    </ErrorBoundary>
+                  </RequireStaff>
+                </ProtectedRoute>
+              }
+            />
+          ))}
 
           <Route
             path="/predict"

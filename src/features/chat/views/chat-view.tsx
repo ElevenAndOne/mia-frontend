@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { CampaignOfferCard } from '../../campaign-builder/campaign-offer-card'
 import { useSearchParams } from 'react-router-dom'
 import ChatLayout from '../components/chat-layout'
 
@@ -117,6 +118,8 @@ export const ChatView = ({
     editTarget,
     setEditTarget,
     composerDraft,
+    campaignOffer,
+    dismissCampaignOffer,
   } = useChatView()
 
   // The campaign summary's "Type yes to save as draft" line renders as a button; it sends
@@ -702,6 +705,12 @@ export const ChatView = ({
                       <XClose size={14} />
                     </button>
                   </div>
+                </div>
+              )}
+
+              {campaignOffer && (
+                <div className="mb-3">
+                  <CampaignOfferCard offer={campaignOffer} onDismiss={dismissCampaignOffer} />
                 </div>
               )}
 
