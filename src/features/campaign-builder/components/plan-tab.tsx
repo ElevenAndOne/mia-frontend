@@ -53,7 +53,7 @@ export function PlanTab({ state, busy, onEdit, onMakePlan, onApprove }: Props) {
 
       <Concept plan={plan} />
       <Credits plan={plan} />
-      <AskPm plan={plan} />
+      {locked ? null : <AskPm plan={plan} />}
 
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         {plan.phases.map((p) => (
