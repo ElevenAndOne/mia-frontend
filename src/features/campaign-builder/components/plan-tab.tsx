@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { KpiPicker } from './kpi-picker'
 import { Button } from '../../../components/button'
-import type { BuildState, CreativeBrief, KpiTarget, Plan, PlanAsset, PlanOp } from '../types'
+import type { BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp } from '../types'
 import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
@@ -9,13 +10,16 @@ import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLa
 
 interface Props {
   state: BuildState
+  kpiGroups: KpiGroup[]
   busy: string | null
   onEdit: (ops: PlanOp[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
   onApprove: () => Promise<unknown>
 }
 
-export function PlanTab({ state, busy, onEdit, onMakePlan, onApprove }: Props) {
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove }: Props) {
+  const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
+  const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
   const locked = !state.campaign.building
@@ -75,8 +79,28 @@ export function PlanTab({ state, busy, onEdit, onMakePlan, onApprove }: Props) {
               {plan.decisions.kpi_targets
                 .filter((t) => t.phase === p.phase)
                 .map((t) => (
-                  <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} />
+                  <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} />
                 ))}
+              {locked ? null : picking === p.phase ? (
+                <KpiPicker
+                  groups={kpiGroups}
+                  busy={busy === 'edit'}
+                  taken={new Set(plan.decisions.kpi_targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
+                  onClose={() => setPicking(null)}
+                  onPick={async (key) => {
+                    await onEdit([{ op: 'add_kpi', phase: p.phase, kpi_key: key }])
+                    setPicking(null)
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="self-start rounded-md border border-dashed border-secondary px-2 py-1 paragraph-xs text-secondary hover:text-primary hover:border-brand"
+                  onClick={() => setPicking(p.phase)}
+                >
+                  + Add a KPI from the list
+                </button>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               {plan.assets.map((a, i) =>
@@ -221,7 +245,17 @@ function BudgetField({
   )
 }
 
-function Target({ t, disabled, onEdit }: { t: KpiTarget; disabled: boolean; onEdit: Props['onEdit'] }) {
+function Target({
+  t,
+  disabled,
+  onEdit,
+  needsSource = false,
+}: {
+  t: KpiTarget
+  disabled: boolean
+  onEdit: Props['onEdit']
+  needsSource?: boolean
+}) {
   const [v, setV] = useField(t.value == null ? '' : String(t.value))
   const missing = t.value == null && !t.no_target
   const basis =
@@ -237,7 +271,19 @@ function Target({ t, disabled, onEdit }: { t: KpiTarget; disabled: boolean; onEd
   return (
     <div className={`rounded-lg bg-primary p-2 ${missing ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
       <div className="flex items-center justify-between gap-2">
-        <p className="label-sm text-primary min-w-0">{t.kpi_name}</p>
+        <p className="label-sm text-primary min-w-0">
+          {t.kpi_name}
+          {disabled ? null : (
+            <button
+              type="button"
+              className="ml-2 paragraph-xs text-tertiary hover:text-primary"
+              aria-label={`Remove ${t.kpi_name}`}
+              onClick={() => onEdit([{ op: 'remove_kpi', key: t.key }])}
+            >
+              Remove
+            </button>
+          )}
+        </p>
         {disabled ? (
           <span className="paragraph-sm text-primary">{t.value == null ? '—' : num(t.value)}</span>
         ) : (
@@ -267,6 +313,9 @@ function Target({ t, disabled, onEdit }: { t: KpiTarget; disabled: boolean; onEd
       </div>
       {t.reason ? <p className="paragraph-xs text-tertiary mt-1">{t.reason}</p> : null}
       {t.account_reference ? <p className="paragraph-xs text-tertiary">For reference: {t.account_reference}</p> : null}
+      {needsSource ? (
+        <p className="paragraph-xs text-tertiary">Tracked once its source (a HubSpot or Brevo list) is set, after approval.</p>
+      ) : null}
     </div>
   )
 }

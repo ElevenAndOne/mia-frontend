@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { BriefField, BuildState, PlanOp } from './types'
+import type { BriefField, BuildState, KpiGroup, PlanOp } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -75,5 +75,11 @@ export async function editPlan(sessionId: string, tenantId: string, campaignId: 
 export async function approvePlan(sessionId: string, tenantId: string, campaignId: string) {
   return check<{ campaign_id: string; status: string }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/approve`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+export async function fetchKpiOptions(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ groups: KpiGroup[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/kpis`, { headers: { 'X-Session-ID': sessionId } }),
   )
 }

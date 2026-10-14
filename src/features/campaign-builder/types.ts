@@ -189,8 +189,27 @@ export interface BuildState {
   next_step: { label: string; tab: 'brief' | 'plan' }
 }
 
+export interface KpiOption {
+  kpi_key: string
+  name: string
+  unit: string | null
+  lower_is_better: boolean
+  description: string | null
+  needs_source: boolean
+  last_result: { value: number; target: number | null; campaign: string; as_of: string | null } | null
+  account_90d: number | null
+}
+
+export interface KpiGroup {
+  family: string
+  label: string
+  kpis: KpiOption[]
+}
+
 export type PlanOp =
   | { op: 'set_target'; key: string; value: number | null; no_target?: boolean }
+  | { op: 'add_kpi'; phase: string; kpi_key: string }
+  | { op: 'remove_kpi'; key: string }
   | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }

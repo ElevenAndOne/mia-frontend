@@ -7,7 +7,7 @@ import type { BuildRun } from '../types'
 // dark-mode pairs, so colour is never the only signal.
 
 export const money = (v: number | null | undefined, currency = 'ZAR') =>
-  v == null ? '—' : `${currency === 'ZAR' ? 'R' : `${currency} `}${Math.round(v).toLocaleString('en-ZA')}`
+  v == null ? '—' : `${currency === 'ZAR' ? 'R' : `${currency} `}${Math.round(v).toLocaleString('en-US')}`
 
 export const day = (d: string | null | undefined) => {
   if (!d) return '—'
@@ -16,7 +16,7 @@ export const day = (d: string | null | undefined) => {
 }
 
 export const num = (v: number | null | undefined) =>
-  v == null ? '—' : Number.isInteger(v) ? v.toLocaleString('en-ZA') : v.toLocaleString('en-ZA', { maximumFractionDigits: 2 })
+  v == null ? '—' : Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
 export const CHANNEL_LABELS: Record<string, string> = {
   meta_ads: 'Meta ads',
@@ -29,7 +29,10 @@ export const CHANNEL_LABELS: Record<string, string> = {
   email: 'Email',
   website: 'Website',
 }
-export const channelLabel = (c: string) => CHANNEL_LABELS[c] ?? c.replace(/_/g, ' ')
+export const channelLabel = (c: string) => {
+  const t = CHANNEL_LABELS[c] ?? c.replace(/_/g, ' ')
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
 
 export function NeedsYou({ children }: { children: ReactNode }) {
   return (

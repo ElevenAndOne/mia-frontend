@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
-import type { Brief, BriefField, BuildState } from '../types'
+import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
+import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
@@ -8,6 +9,7 @@ import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money 
 
 interface Props {
   state: BuildState
+  kpiGroups: KpiGroup[]
   busy: string | null
   onSave: (fields: Partial<Record<BriefField, unknown>>, name?: string) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
@@ -46,7 +48,7 @@ const fromDraft = (k: BriefField, v: string): unknown => {
   return v.trim() === '' ? null : v.trim()
 }
 
-export function BriefTab({ state, busy, onSave, onRedraft, onMakePlan }: Props) {
+export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan }: Props) {
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
@@ -64,6 +66,7 @@ export function BriefTab({ state, busy, onSave, onRedraft, onMakePlan }: Props) 
         <RunFailed run={run} what="brief" busy={!!busy} onRetry={() => onRedraft([])} />
       ) : null}
       <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} />
+      <WhereTheyStand client={state.campaign.client} groups={kpiGroups} />
       <PmWords brief={b!} />
       <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />
       <WhatMiaRead state={state} />
@@ -330,6 +333,43 @@ function WhatMiaRead({ state }: { state: BuildState }) {
                 ))}
               </ul>
             ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+// Where the client stands on mia-cube's KPI list before the plan is made: the last campaign
+// result for each KPI (and its target then), else the account's own last-90-days figure.
+function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[] }) {
+  const rows = groups
+    .map((g) => ({ ...g, kpis: g.kpis.filter((k) => k.last_result || k.account_90d != null) }))
+    .filter((g) => g.kpis.length)
+  if (!rows.length) return null
+  return (
+    <details className="rounded-xl border border-secondary bg-primary p-4" open>
+      <summary className="cursor-pointer subheading-sm text-primary">Where {client} stands on the KPI list</summary>
+      <p className="paragraph-xs text-tertiary mt-1">
+        The last campaign result for each KPI, or the account's last 90 days. Targets in the plan start from these.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {rows.map((g) => (
+          <div key={g.family} className="min-w-0">
+            <p className="label-xs text-secondary">{g.label}</p>
+            <ul className="mt-1 flex flex-col gap-1">
+              {g.kpis.map((k) => (
+                <li key={k.kpi_key} className="flex flex-wrap justify-between gap-x-3 paragraph-sm">
+                  <span className="text-primary">{k.name}</span>
+                  <span className="text-secondary tabular-nums">
+                    {k.last_result
+                      ? `${kpiValue(k.last_result.value, k.unit)}${k.last_result.target != null ? ` (target ${kpiValue(k.last_result.target, k.unit)})` : ''}`
+                      : `${kpiValue(k.account_90d, k.unit)} · 90 days`}
+                  </span>
+                  {k.last_result ? <span className="w-full paragraph-xs text-tertiary">{k.last_result.campaign}</span> : null}
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>

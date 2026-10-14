@@ -32,6 +32,15 @@ export function useBuild(campaignId: string | undefined) {
     },
   })
 
+  // mia-cube's KPI list with this client's last results: for the picker and the Brief tab.
+  // Re-read when a plan or brief lands, since that's when the client file behind it changes.
+  const kpis = useQuery({
+    queryKey: [...key, 'kpis', query.data?.plan_run?.run_id ?? null, query.data?.brief?.version ?? null],
+    queryFn: () => api.fetchKpiOptions(sessionId!, tenantId!, campaignId!),
+    enabled: !!sessionId && !!tenantId && !!campaignId && !!query.data?.brief,
+    staleTime: 5 * 60 * 1000,
+  })
+
   const run = useCallback(
     async <T,>(label: string, fn: () => Promise<T>): Promise<T | undefined> => {
       setBusy(label)
@@ -56,6 +65,7 @@ export function useBuild(campaignId: string | undefined) {
   return {
     state: query.data,
     loading: query.isPending,
+    kpiGroups: kpis.data?.groups ?? [],
     loadError: query.error instanceof Error ? query.error.message : null,
     busy,
     error,
