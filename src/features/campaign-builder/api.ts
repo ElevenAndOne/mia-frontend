@@ -83,3 +83,9 @@ export async function fetchKpiOptions(sessionId: string, tenantId: string, campa
     await apiFetch(`${base(tenantId)}/${campaignId}/kpis`, { headers: { 'X-Session-ID': sessionId } }),
   )
 }
+
+export async function discardDraft(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ discarded: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}`, { method: 'DELETE', headers: { 'X-Session-ID': sessionId } }),
+  )
+}

@@ -81,5 +81,18 @@ export function useBuild(campaignId: string | undefined) {
         return next
       }),
     approve: () => run('approve', () => api.approvePlan(...ids())),
+    discard: async () => {
+      setBusy('discard')
+      setError(null)
+      try {
+        await api.discardDraft(...ids())
+        return true
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not discard the draft')
+        return false
+      } finally {
+        setBusy(null)
+      }
+    },
   }
 }

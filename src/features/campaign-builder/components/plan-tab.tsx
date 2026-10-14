@@ -44,7 +44,8 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove 
       {locked ? (
         <Card className="paragraph-sm text-primary">
           Approved{state.approved?.at ? ` ${day(state.approved.at)}` : ''}
-          {state.approved?.by ? ` by ${state.approved.by}` : ''}. Sending the jobs to the studio in Flex comes next.
+          {state.approved?.by ? ` by ${state.approved.by}` : ''}. It's saved as a draft campaign: it goes live when you
+          launch it, so nothing is tracked or counted before then. Sending the jobs to the studio in Flex comes next.
         </Card>
       ) : (
         <NeedsYouBanner title="Before you approve" items={state.blockers.map((b) => b.what)} />

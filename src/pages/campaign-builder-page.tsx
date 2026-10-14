@@ -164,13 +164,27 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 <p className="paragraph-sm text-secondary">
                   {s.campaign.client} · {day(s.campaign.start_date)} – {day(s.campaign.end_date)} ·{' '}
                   {money(s.campaign.budget_total, s.campaign.currency)}
-                  {s.campaign.building ? ' · draft' : ' · approved'}
+                  {s.campaign.building ? ' · draft' : ' · approved, not live yet'}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button className="lg:hidden" onClick={() => setChatOpen(true)}>
                   Chat with Mia
                 </Button>
+                {s.campaign.building ? (
+                  <Button
+                    variant="ghost"
+                    loading={build.busy === 'discard'}
+                    disabled={s.plan_run?.status === 'running'}
+                    title={s.plan_run?.status === 'running' ? 'Wait for Mia to finish the plan' : undefined}
+                    onClick={async () => {
+                      if (!window.confirm('Discard this draft? The brief and plan are deleted.')) return
+                      if (await build.discard()) navigate('/home')
+                    }}
+                  >
+                    Discard draft
+                  </Button>
+                ) : null}
                 <Button variant="primary" onClick={() => go(s.next_step.tab)}>
                   Next: {s.next_step.label}
                 </Button>
