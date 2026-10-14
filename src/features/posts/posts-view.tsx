@@ -24,6 +24,7 @@ import {
   reschedulePost,
   retryPost,
   submitDesign,
+  type DeletePostResult,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
 
@@ -128,11 +129,25 @@ const removedToast = (post: ScheduledPost) =>
     ? 'Instagram doesn’t let apps delete posts. Open it in Instagram, delete it there, then tap “I’ve deleted it”.'
     : 'Post removed'
 
-const awaitingInstagramDelete = (post: ScheduledPost) =>
-  post.status === 'published' && post.platform === 'instagram' && Boolean(post.manual_delete_at)
+// A published post Mia couldn't delete: Instagram never lets apps delete, and Facebook sometimes
+// refuses (the Page's settings or permissions). The owner deletes it there, with the link, then
+// clears it here (Sean, 14 Oct 2026: a Facebook remove ended in a raw Graph error).
+const awaitingManualDelete = (post: ScheduledPost) =>
+  post.status === 'published' && Boolean(post.manual_delete_at)
 
-/** The two-step Instagram removal: open the post in Instagram, then confirm it is gone. */
-const InstagramDeleteActions = ({
+const networkName = (post: ScheduledPost) => PLATFORM_LABEL[post.platform] ?? post.platform
+
+const FACEBOOK_REFUSED =
+  'Facebook didn’t let Mia delete this post (that’s a Facebook Page setting, not Mia). Open it on Facebook, delete it there, then tap “I’ve deleted it”.'
+
+// The Instagram copy of the same post is live too, and only the Instagram app can delete it.
+const facebookRefused = (r: DeletePostResult) =>
+  r.instagram_still_live
+    ? `${FACEBOOK_REFUSED} The Instagram copy is still live too: delete it in the Instagram app.`
+    : FACEBOOK_REFUSED
+
+/** The two-step removal: open the post on its network, then confirm it is gone. */
+const ManualDeleteActions = ({
   post,
   busy,
   onConfirm,
@@ -149,7 +164,7 @@ const InstagramDeleteActions = ({
         rel="noreferrer"
         className="inline-flex items-center h-8 px-3 rounded-lg bg-secondary paragraph-xs text-primary hover:bg-tertiary whitespace-nowrap"
       >
-        Open in Instagram ↗
+        Open in {networkName(post)} ↗
       </a>
     )}
     <Button size="sm" variant="secondary" disabled={busy} onClick={onConfirm}>
@@ -319,8 +334,8 @@ const PostDetailModal = ({
                 Mark as posted
               </Button>
             )}
-            {awaitingInstagramDelete(post) ? (
-              <InstagramDeleteActions
+            {awaitingManualDelete(post) ? (
+              <ManualDeleteActions
                 post={post}
                 busy={busy}
                 onConfirm={() =>
@@ -350,7 +365,8 @@ const PostDetailModal = ({
                       async (s, t) => {
                         const r = await deletePost(s, t, post.post_id)
                         if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
-                        if (r.instagram_manual) {
+                        if (r.manual_delete || r.instagram_manual) {
+                          if (r.manual_delete?.platform === 'facebook') msg = facebookRefused(r)
                           marked = true
                           return { ...post, manual_delete_at: new Date().toISOString() }
                         }
@@ -429,9 +445,9 @@ const PostRow = ({
             {post.error}
           </p>
         )}
-        {awaitingInstagramDelete(post) && (
+        {awaitingManualDelete(post) && (
           <p className="paragraph-xs text-utility-warning-700 truncate">
-            Still live on Instagram — delete it in the Instagram app, then clear it here.
+            Still live on {networkName(post)}. Delete it there, then clear it here.
           </p>
         )}
       </div>
@@ -440,8 +456,8 @@ const PostRow = ({
 
       {/* Quick actions — clicks must not open the detail view */}
       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        {awaitingInstagramDelete(post) ? (
-          <InstagramDeleteActions
+        {awaitingManualDelete(post) ? (
+          <ManualDeleteActions
             post={post}
             busy={busy}
             onConfirm={() =>
@@ -468,7 +484,8 @@ const PostRow = ({
                   async (s, t) => {
                     const r = await deletePost(s, t, post.post_id)
                     if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
-                    if (r.instagram_manual) {
+                    if (r.manual_delete || r.instagram_manual) {
+                      if (r.manual_delete?.platform === 'facebook') msg = facebookRefused(r)
                       marked = true
                       return { ...post, manual_delete_at: new Date().toISOString() }
                     }
@@ -485,7 +502,7 @@ const PostRow = ({
             Remove
           </Button>
         )}
-        {!awaitingInstagramDelete(post) && post.permalink && (
+        {!awaitingManualDelete(post) && post.permalink && (
           <a
             href={post.permalink}
             target="_blank"

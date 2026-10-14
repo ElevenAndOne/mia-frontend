@@ -99,6 +99,9 @@ export interface DeletePostResult {
   post_id: string
   /** A published Instagram row: not deleted, marked for the owner to delete in the app. */
   instagram_manual?: { post_id: string; permalink?: string | null }
+  /** A published post Mia couldn't delete (Instagram always, Facebook when the Page refuses):
+   *  kept and marked; the owner deletes it on the network and clears it here. */
+  manual_delete?: { post_id: string; platform: string; permalink?: string | null }
   /** Set when the removed Facebook post has a published Instagram twin. Meta's API cannot
    *  delete Instagram media, so that copy is still live until removed in the Instagram app. */
   instagram_still_live?: { post_id: string; permalink?: string | null }
