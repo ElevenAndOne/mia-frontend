@@ -53,6 +53,7 @@ export function CampaignChat({
     setStreaming('')
     setStatus('')
     let received = ''
+    let afterTool = false // Mia's reply resumes after a tool call: start a new paragraph
     try {
       await sendChatMessageStreaming(
         {
@@ -66,9 +67,14 @@ export function CampaignChat({
         },
         (chunk) => {
           if (chunk.text) {
+            if (afterTool && received && !received.endsWith('\n')) received += '\n\n'
+            afterTool = false
             received += chunk.text
             setStreaming(received)
-          } else if (chunk.status && chunk.status !== 'thinking') setStatus(chunk.status)
+          } else if (chunk.status && chunk.status !== 'thinking') {
+            afterTool = true
+            setStatus(chunk.status)
+          }
         },
       )
       setMessages((prev) => [...prev, { role: 'assistant', content: received || 'Something went wrong. Try again.' }])

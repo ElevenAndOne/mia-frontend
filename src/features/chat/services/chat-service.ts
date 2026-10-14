@@ -398,6 +398,7 @@ export const sendChatMessageStreaming = async (
     ...(payload.document_context ? { document_context: payload.document_context } : {}),
     ...(payload.asset_context ? { asset_context: payload.asset_context } : {}),
     ...(payload.edit_target_asset_id ? { edit_target_asset_id: payload.edit_target_asset_id } : {}),
+    ...(payload.campaign_page_id ? { campaign_page_id: payload.campaign_page_id } : {}),
     ...(payload.no_track ? { no_track: true } : {}),
     ...(payload.confirm_save ? { confirm_save: true } : {}),
   }
