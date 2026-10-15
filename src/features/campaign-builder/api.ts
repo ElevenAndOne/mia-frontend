@@ -166,3 +166,19 @@ export async function removeRule(sessionId: string, tenantId: string, ruleId: st
 export async function fetchPlaybooks(sessionId: string, tenantId: string): Promise<{ playbooks: { slug: string; name: string; summary: string }[] }> {
   return check(await apiFetch(`${base(tenantId)}/playbooks`, { headers: { 'X-Session-ID': sessionId } }))
 }
+
+export interface DeckRead {
+  text: string
+  how: string
+  pages: number | null
+  filename: string
+  chars: number
+  note?: string | null
+}
+
+// The client's deck or brief as text (PDF, PowerPoint, Word, text). Slides that are pictures are transcribed.
+export async function readDeck(sessionId: string, tenantId: string, file: File): Promise<DeckRead> {
+  const form = new FormData()
+  form.append('file', file)
+  return check(await apiFetch(`${base(tenantId)}/deck`, { method: 'POST', headers: { 'X-Session-ID': sessionId }, body: form }))
+}

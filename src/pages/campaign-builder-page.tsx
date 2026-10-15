@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { startBuild } from '../features/campaign-builder/api'
+import { readDeck, startBuild, type DeckRead } from '../features/campaign-builder/api'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
@@ -35,6 +35,8 @@ function NewBuild() {
   const [text, setText] = useState('')
   const [deck, setDeck] = useState('')
   const [showDeck, setShowDeck] = useState(false)
+  const [file, setFile] = useState<DeckRead | null>(null)
+  const [reading, setReading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,9 +45,10 @@ function NewBuild() {
     setBusy(true)
     setError(null)
     try {
+      const deckText = [file ? `${file.filename}\n\n${file.text}` : '', deck.trim()].filter(Boolean).join('\n\n')
       const { campaign_id } = await startBuild(sessionId, activeWorkspace.tenant_id, {
-        pm_text: text.trim(),
-        deck_text: deck.trim() || undefined,
+        pm_text: text.trim() || 'Build the campaign from the attached deck.',
+        deck_text: deckText || undefined,
       })
       navigate(`/campaign-builder/${campaign_id}/brief`)
     } catch (e) {
@@ -66,7 +69,7 @@ function NewBuild() {
           className="mx-auto flex max-w-2xl flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
-            if (text.trim()) start()
+            if (text.trim() || file) start()
           }}
         >
           <div>
@@ -88,6 +91,45 @@ function NewBuild() {
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
+          <div className="flex flex-col gap-1">
+            {file ? (
+              <span className="flex flex-wrap items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary">
+                📎 {file.filename}
+                <span className="paragraph-xs text-tertiary">
+                  {file.pages ? `${file.pages} pages · ` : ''}
+                  {file.how === 'text' ? 'read' : file.how} · {file.chars.toLocaleString()} characters
+                  {file.note ? ` · ${file.note}` : ''}
+                </span>
+                <button type="button" className="ml-auto paragraph-xs text-tertiary underline" onClick={() => setFile(null)}>
+                  Remove
+                </button>
+              </span>
+            ) : (
+              <label className="self-start cursor-pointer paragraph-sm text-secondary underline">
+                {reading ? 'Reading the deck… (slides that are pictures take a minute)' : "Add the client's deck or brief (PDF, PowerPoint or Word)"}
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept=".pdf,.pptx,.docx,.txt,.md"
+                  disabled={reading}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    e.target.value = ''
+                    if (!f || !sessionId || !activeWorkspace) return
+                    setReading(true)
+                    setError(null)
+                    try {
+                      setFile(await readDeck(sessionId, activeWorkspace.tenant_id, f))
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Could not read that file')
+                    } finally {
+                      setReading(false)
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
           {showDeck ? (
             <label className="flex flex-col gap-1">
               <span className="label-xs text-secondary">The deck or brief, pasted as text</span>
@@ -101,12 +143,12 @@ function NewBuild() {
             </label>
           ) : (
             <button type="button" className="self-start paragraph-sm text-secondary underline" onClick={() => setShowDeck(true)}>
-              Add a deck or brief (paste its text)
+              Or paste its text
             </button>
           )}
           {error ? <p className="paragraph-sm text-error">{error}</p> : null}
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" loading={busy} disabled={!text.trim()}>
+            <Button type="submit" variant="primary" loading={busy} disabled={(!text.trim() && !file) || reading}>
               Start the brief
             </Button>
           </div>
