@@ -279,6 +279,8 @@ function Target({
       <Chip>no target</Chip>
     ) : t.basis === 'history' ? (
       <Chip tone="mia">from history</Chip>
+    ) : t.basis === 'account' ? (
+      <Chip tone="mia">from the last 90 days</Chip>
     ) : (
       <NeedsYou>no basis: you set it</NeedsYou>
     )
