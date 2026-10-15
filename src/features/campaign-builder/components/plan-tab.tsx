@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { KpiPicker } from './kpi-picker'
 import { Button } from '../../../components/button'
-import type { BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp } from '../types'
+import type { BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
@@ -68,6 +68,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove 
         </Card>
       ) : null}
 
+      {plan.review ? <SelfCheck review={plan.review} /> : null}
       <Concept plan={plan} />
       <Credits plan={plan} />
       {locked ? null : <AskPm plan={plan} />}
@@ -313,6 +314,7 @@ function Target({
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2">
         {basis}
+        {t.missed_twice?.length ? <NeedsYou>missed twice running</NeedsYou> : null}
         {!disabled && t.value == null ? (
           <label className="flex items-center gap-1 paragraph-xs text-tertiary">
             <input
@@ -382,6 +384,19 @@ function Job({ a, index, disabled, onEdit }: { a: PlanAsset; index: number; disa
       <p className="paragraph-xs text-tertiary">
         Due to the studio {day(a.due_date)} · goes live {day(a.launch_date)}
       </p>
+      {a.audience && (a.audience.locations?.length || a.audience.interests_or_keywords?.length || a.audience.custom_audiences?.length) ? (
+        <p className="paragraph-xs text-secondary">
+          <span className="text-tertiary">Audience: </span>
+          {[
+            a.audience.locations?.join(', '),
+            a.audience.age_range,
+            a.audience.interests_or_keywords?.join(', '),
+            a.audience.custom_audiences?.length ? `custom: ${a.audience.custom_audiences.join(', ')}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      ) : null}
       {a.creative_brief ? <DesignerBrief cb={a.creative_brief} why={a.why} /> : null}
     </article>
   )
@@ -461,5 +476,84 @@ function Checks({ plan }: { plan: Plan }) {
         ))}
       </ul>
     </details>
+  )
+}
+
+const PART_LABELS: Record<string, string> = {
+  grounded: 'Numbers come from the data',
+  learns: 'Learns from the best campaigns',
+  builds_on_best: 'Builds on the best ads',
+  targets: 'Targets vs best results so far',
+  ready: 'Ready to make',
+}
+
+// Mia's own review of the plan (plan §4.3): every number checked against the client file, and the
+// plan scored against the client's best past campaigns. What the PM reads first, so they don't have
+// to fact-check the whole plan.
+function SelfCheck({ review }: { review: PlanReview }) {
+  if (review.error || !review.scorecard) {
+    return <Card className="paragraph-sm text-tertiary">Mia's self-check couldn't run on this plan.</Card>
+  }
+  const sc = review.scorecard
+  const fc = review.fact_check
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="subheading-md text-primary">Mia's self-check</h2>
+        {sc.thin_history ? (
+          <Chip>Not graded: too little history to judge against</Chip>
+        ) : (
+          <span className="rounded-full bg-brand-solid px-3 py-0.5 subheading-sm text-primary-onbrand">
+            {sc.grade} · {sc.overall}
+          </span>
+        )}
+        {sc.best_past.length ? (
+          <span className="paragraph-xs text-tertiary">
+            Judged against {sc.best_past.map((b) => `${b.campaign} (${b.kpis_hit} of ${b.kpis} targets hit)`).join(', ')}
+          </span>
+        ) : null}
+      </div>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {Object.entries(sc.parts).map(([k, p]) => (
+          <li key={k} className="min-w-0">
+            <div className="flex items-center justify-between gap-2 paragraph-sm">
+              <span className="text-primary">{PART_LABELS[k] ?? k}</span>
+              <span className="tabular-nums text-secondary">{p.score == null ? 'n/a' : p.score}</span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-tertiary overflow-hidden" aria-hidden="true">
+              <div
+                className={p.score != null && p.score < 60 ? 'h-full bg-utility-warning-600' : 'h-full bg-brand-solid'}
+                style={{ width: `${p.score ?? 0}%` }}
+              />
+            </div>
+            {p.why ? <p className="paragraph-xs text-tertiary mt-1">{p.why}</p> : null}
+          </li>
+        ))}
+      </ul>
+      {sc.look_at.length ? (
+        <div className="mt-3 rounded-lg border border-utility-warning-300 bg-utility-warning-100 px-3 py-2 text-utility-warning-700">
+          <p className="label-sm">Worth a look</p>
+          <ol className="mt-1 list-decimal pl-5 paragraph-sm flex flex-col gap-1">
+            {sc.look_at.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+      {fc && fc.unsupported.length ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer paragraph-xs text-tertiary">
+            {fc.unsupported.length} line(s) with numbers that aren't in the client file
+          </summary>
+          <ul className="mt-1 paragraph-xs text-secondary flex flex-col gap-0.5">
+            {fc.unsupported.map((u) => (
+              <li key={u.where + u.numbers.join()}>
+                {u.where}: {u.numbers.join(', ')}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </Card>
   )
 }

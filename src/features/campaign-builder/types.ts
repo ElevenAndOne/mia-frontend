@@ -74,6 +74,7 @@ export interface PlanAsset {
   due_date?: string | null
   launch_date?: string | null
   creative_brief?: CreativeBrief
+  audience?: { locations?: string[]; age_range?: string; interests_or_keywords?: string[]; custom_audiences?: string[]; notes?: string }
 }
 
 export interface KpiTarget {
@@ -89,6 +90,7 @@ export interface KpiTarget {
   reason?: string
   account_reference?: string | null
   no_target?: boolean
+  missed_twice?: string[]
 }
 
 export interface PlanPhase {
@@ -139,6 +141,31 @@ export interface Plan {
     ask_pm: { question: string; why?: string; [k: string]: unknown }[] | string[]
   }
   checks: PlanCheck[]
+  review?: PlanReview
+}
+
+export interface ScorePart {
+  score: number | null
+  why?: string | null
+}
+
+export interface PlanReview {
+  error?: string
+  fact_check?: {
+    numbers_checked: number
+    numbers_supported: number
+    share_supported: number | null
+    unsupported: { where: string; numbers: string[] }[]
+  }
+  scorecard?: {
+    overall: number | null
+    grade: string | null
+    thin_history: boolean
+    parts: Record<string, ScorePart>
+    best_past: { campaign: string; score: number; kpis_hit: number; kpis: number }[]
+    strengths: string[]
+    look_at: string[]
+  }
 }
 
 export interface PackSource {
