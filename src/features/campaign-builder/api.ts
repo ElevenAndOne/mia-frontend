@@ -139,3 +139,26 @@ export async function refreshFromFlex(sessionId: string, tenantId: string, campa
 export async function fetchBoard(sessionId: string, tenantId: string): Promise<Board> {
   return check(await apiFetch(base(tenantId), { headers: { 'X-Session-ID': sessionId } }))
 }
+
+export interface ClientRule {
+  rule_id: string
+  text: string
+  kind: string
+  by: string | null
+  added: string | null
+  origin: 'person' | 'learned'
+}
+
+export async function fetchRules(sessionId: string, tenantId: string): Promise<{ rules: ClientRule[] }> {
+  return check(await apiFetch(`${base(tenantId)}/rules`, { headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function addRule(sessionId: string, tenantId: string, text: string, kind = 'constraint'): Promise<unknown> {
+  return check(
+    await apiFetch(`${base(tenantId)}/rules`, { method: 'POST', headers: json(sessionId), body: JSON.stringify({ text, kind }) }),
+  )
+}
+
+export async function removeRule(sessionId: string, tenantId: string, ruleId: string): Promise<unknown> {
+  return check(await apiFetch(`${base(tenantId)}/rules/${ruleId}`, { method: 'DELETE', headers: { 'X-Session-ID': sessionId } }))
+}

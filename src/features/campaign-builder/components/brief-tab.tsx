@@ -1,3 +1,4 @@
+import { ClientRules } from './client-rules'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
 import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
@@ -68,6 +69,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} />
       <WhereTheyStand client={state.campaign.client} groups={kpiGroups} />
       <PmWords brief={b!} />
+      <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
       <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />
       <WhatMiaRead state={state} />
       <Card className="flex flex-wrap items-center justify-between gap-3">
