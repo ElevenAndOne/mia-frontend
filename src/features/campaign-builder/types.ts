@@ -210,6 +210,7 @@ export type PlanOp =
   | { op: 'set_target'; key: string; value: number | null; no_target?: boolean }
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
+  | { op: 'shift_dates'; days: number }
   | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }
