@@ -147,6 +147,13 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
               ? `Approve is locked: ${state.blockers.length} thing${state.blockers.length === 1 ? '' : 's'} above still need you.`
               : 'Approving saves this plan to the campaign. The jobs are sent to the studio in the next step.'}
           </p>
+          {state.warnings?.length ? (
+            <ul className="w-full paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
+              {state.warnings.map((w) => (
+                <li key={w}>⚠ {w}</li>
+              ))}
+            </ul>
+          ) : null}
           <Button variant="primary" disabled={!!state.blockers.length} loading={busy === 'approve'} onClick={() => onApprove()}>
             Approve the plan
           </Button>

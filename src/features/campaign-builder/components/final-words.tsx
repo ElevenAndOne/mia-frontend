@@ -107,6 +107,7 @@ export function JobWords({
           <>
             {piece('ad.primary_text', 'Primary text', fw.ad.primary_text, true)}
             {piece('ad.headline', 'Headline', fw.ad.headline)}
+            {piece('ad.description', 'Description', fw.ad.description)}
             {piece('ad.cta', 'Button', fw.ad.cta)}
           </>
         ) : null}
@@ -123,7 +124,7 @@ export function JobWords({
             {piece('email.body', 'Body', fw.email.body, true)}
           </>
         ) : null}
-        {fw.captions.map((c, i) => piece(`captions[${i}]`, `Caption · ${c.platform}`, c.text, true))}
+        {captionKeys(fw.captions).map(([key, c]) => piece(key, `Caption · ${c.platform}`, c.text, true))}
         {disabled || !jobId ? null : (
           <button
             type="button"
@@ -185,4 +186,15 @@ function Piece({
       )}
     </label>
   )
+}
+
+// Same keys as the server (words.caption_keys): platform plus which one of that platform, so a
+// caption stays on its platform when a rewrite returns them in another order.
+function captionKeys(caps: { platform: string; text: string }[]): [string, { platform: string; text: string }][] {
+  const seen: Record<string, number> = {}
+  return caps.map((c) => {
+    const p = (c.platform ?? '').trim()
+    seen[p.toLowerCase()] = (seen[p.toLowerCase()] ?? 0) + 1
+    return [`captions[${p}:${seen[p.toLowerCase()]}]`, c]
+  })
 }

@@ -228,6 +228,7 @@ export interface BuildState {
   what_mia_read: WhatMiaRead | null
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
+  warnings: string[]
   next_step: { label: string; tab: 'brief' | 'plan' }
 }
 
