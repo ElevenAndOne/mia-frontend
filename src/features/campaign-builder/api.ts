@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { BriefField, BuildState, KpiGroup, PlanOp } from './types'
+import type { BriefField, BuildState, KpiGroup, PlanOp, StudioState } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -97,5 +97,41 @@ export async function writeWords(sessionId: string, tenantId: string, campaignId
       headers: json(sessionId),
       body: JSON.stringify({ job_ids: jobIds ?? null, rewrite }),
     }),
+  )
+}
+
+export async function fetchStudio(sessionId: string, tenantId: string, campaignId: string) {
+  return check<StudioState>(await apiFetch(`${base(tenantId)}/${campaignId}/studio`, { headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function editStudio(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  changes: { asset_id: string; credits?: number | null; include?: boolean }[],
+  confirmAll = false,
+) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio`, {
+      method: 'PATCH',
+      headers: json(sessionId),
+      body: JSON.stringify({ changes, confirm_all: confirmAll }),
+    }),
+  )
+}
+
+export async function sendToFlex(sessionId: string, tenantId: string, campaignId: string, actingUserEmail: string) {
+  return check<{ sent: number; jobs: number }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/send`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ acting_user_email: actingUserEmail }),
+    }),
+  )
+}
+
+export async function refreshFromFlex(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ updated: number }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/refresh`, { method: 'POST', headers: json(sessionId) }),
   )
 }

@@ -229,7 +229,7 @@ export interface BuildState {
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
-  next_step: { label: string; tab: 'brief' | 'plan' }
+  next_step: { label: string; tab: 'brief' | 'plan' | 'studio' }
 }
 
 export interface KpiOption {
@@ -258,3 +258,44 @@ export type PlanOp =
   | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }
+
+export interface StudioJob {
+  asset_id: string
+  name: string
+  phase: string
+  channel: string
+  format: string | null
+  ledger_type: string | null
+  ledger_tier: string | null
+  credits: number | null
+  credits_source: string
+  due_date: string | null
+  launch_date: string | null
+  sprint: string | null
+  include: boolean
+  setup_work: boolean
+  credits_confirmed: boolean
+  flex: {
+    task_id?: string
+    status?: string
+    stage?: string
+    stage_label?: string
+    review_rounds?: { internal: number; client: number; pod_lead: number }
+    sprint_name?: string
+    sent_at?: string
+  }
+}
+
+export interface StudioState {
+  ready: boolean
+  reason?: string
+  flex_client_id?: number | null
+  jobs: StudioJob[]
+  credit_fit: { sprint: string; planned: number; free: number | null; over: boolean }[]
+  to_send: number
+  sent: number
+  blockers: string[]
+  sent_at?: string | null
+  senders: string[]
+  you: string | null
+}

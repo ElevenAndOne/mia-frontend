@@ -47,7 +47,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         <Card className="paragraph-sm text-primary">
           Approved{state.approved?.at ? ` ${day(state.approved.at)}` : ''}
           {state.approved?.by ? ` by ${state.approved.by}` : ''}. It's saved as a draft campaign: it goes live when you
-          launch it, so nothing is tracked or counted before then. Sending the jobs to the studio in Flex comes next.
+          launch it, so nothing is tracked or counted before then. Next: the Studio tab sends the jobs to Flex.
         </Card>
       ) : (
         <>
