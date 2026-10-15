@@ -223,7 +223,13 @@ function Row({ j, disabled, onChange }: { j: StudioJob; disabled: boolean; onCha
                 review: internal {j.flex.review_rounds.internal}, client {j.flex.review_rounds.client}
               </span>
             ) : null}
-            <span className="paragraph-xs text-tertiary">task {j.flex.task_id}</span>
+            {j.flex.url ? (
+              <a className="paragraph-xs text-primary underline" href={j.flex.url} target="_blank" rel="noreferrer">
+                Open in Flex ↗
+              </a>
+            ) : (
+              <span className="paragraph-xs text-tertiary">in Flex</span>
+            )}
           </span>
         ) : (
           <span className="paragraph-xs text-tertiary">Not sent</span>

@@ -277,6 +277,7 @@ export interface StudioJob {
   credits_confirmed: boolean
   flex: {
     task_id?: string
+    url?: string
     status?: string
     stage?: string
     stage_label?: string
