@@ -96,7 +96,7 @@ export function JobWords({
         {fw.flags.length ? (
           <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
             {fw.flags.map((f, i) => (
-              <li key={i}>
+              <li key={i} className="[overflow-wrap:anywhere]">
                 ⚠ {f.where}: {f.problem}. {f.fix}
               </li>
             ))}
@@ -168,7 +168,7 @@ function Piece({
   }`
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="paragraph-xs text-tertiary flex flex-wrap items-center gap-2">
+      <span className="paragraph-xs text-tertiary flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
         {label}
         {mine ? <Chip tone="pm">yours</Chip> : null}
         {limit != null ? (
@@ -178,7 +178,7 @@ function Piece({
         ) : null}
       </span>
       {disabled ? (
-        <span className="paragraph-xs text-primary whitespace-pre-wrap">{value}</span>
+        <span className="paragraph-xs text-primary whitespace-pre-wrap [overflow-wrap:anywhere]">{value}</span>
       ) : multiline ? (
         <textarea rows={2} className={cls} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v !== value && onCommit(v)} />
       ) : (

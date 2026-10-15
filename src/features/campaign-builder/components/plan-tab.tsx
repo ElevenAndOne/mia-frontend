@@ -88,9 +88,9 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </Card>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid gap-4 @2xl:grid-cols-2 @7xl:grid-cols-4">
         {plan.phases.map((p) => (
-          <section key={p.phase} className="min-w-0 rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-3">
+          <section key={p.phase} className="min-w-0 rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-3 [overflow-wrap:break-word]">
             <header className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="subheading-md text-primary">{p.phase}</h3>
@@ -189,7 +189,7 @@ function Concept({ plan }: { plan: Plan }) {
       <p className="label-xs text-tertiary">The idea</p>
       <h2 className="subheading-md text-primary mt-1">{c.name}</h2>
       {c.big_idea ? <p className="paragraph-sm text-primary mt-2">{c.big_idea}</p> : null}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 @xl:grid-cols-2">
         {c.why_this_client_now ? (
           <div className="min-w-0">
             <p className="label-xs text-secondary">Why this client, now</p>
@@ -296,8 +296,8 @@ function ChannelMoney({
     <ul className="flex flex-col gap-1.5 rounded-md border border-secondary bg-primary p-2">
       {rows.map((c) => (
         <li key={c.channel} className="flex flex-col gap-0.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="paragraph-xs text-primary flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="paragraph-xs text-primary flex items-center gap-1.5 whitespace-nowrap">
               {channelLabel(c.channel)}
               <Chip tone={c.basis === 'pm' ? 'pm' : c.basis === 'history' ? 'good' : undefined}>{BASIS_LABEL[c.basis]}</Chip>
             </span>
@@ -626,7 +626,7 @@ function SelfCheck({ review }: { review: PlanReview }) {
           </span>
         ) : null}
       </div>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+      <ul className="mt-3 grid gap-2 @xl:grid-cols-2">
         {Object.entries(sc.parts).filter(([, p]) => !p.model_judgement).map(([k, p]) => (
           <li key={k} className="min-w-0">
             <div className="flex items-center justify-between gap-2 paragraph-sm">

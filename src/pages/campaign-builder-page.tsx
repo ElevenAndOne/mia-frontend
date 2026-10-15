@@ -153,7 +153,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
         onBack={() => navigate('/home')}
       />
       <div className="flex-1 min-h-0 flex">
-      <div className="flex-1 min-w-0 overflow-y-auto">
+      <div className="@container flex-1 min-w-0 overflow-y-auto">
         {build.loading ? (
           <p className="p-6 paragraph-sm text-tertiary">Loading…</p>
         ) : build.loadError || !s ? (

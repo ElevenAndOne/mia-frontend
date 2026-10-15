@@ -156,7 +156,7 @@ function BriefCard({
       </div>
       {editing ? (
         <form
-          className="mt-3 grid gap-3 sm:grid-cols-2"
+          className="mt-3 grid gap-3 @xl:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault()
             save()
@@ -199,7 +199,7 @@ function BriefCard({
           ))}
         </form>
       ) : (
-        <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        <dl className="mt-3 grid gap-x-6 gap-y-3 @xl:grid-cols-2">
           {(Object.keys(LABELS) as BriefField[]).map((k) => (
             <div key={k} className={`min-w-0 ${['goal', 'audience', ...LIST_FIELDS].includes(k) ? 'sm:col-span-2' : ''}`}>
               <dt className="label-xs text-tertiary flex flex-wrap items-center gap-2">
@@ -314,7 +314,7 @@ function WhatMiaRead({ state }: { state: BuildState }) {
           ))}
         </ul>
       ) : null}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 @xl:grid-cols-2">
         {layers.map(([name, l]) => (
           <div key={name} className="min-w-0 rounded-lg bg-secondary p-3">
             <p className="label-xs text-secondary">{LAYER_NAMES[name] ?? name}</p>
@@ -353,7 +353,7 @@ function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[]
       <p className="paragraph-xs text-tertiary mt-1">
         The last campaign result for each KPI, or the account's last 90 days. Targets in the plan start from these.
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 @xl:grid-cols-2">
         {rows.map((g) => (
           <div key={g.family} className="min-w-0">
             <p className="label-xs text-secondary">{g.label}</p>
