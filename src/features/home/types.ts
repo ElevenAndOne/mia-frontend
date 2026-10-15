@@ -71,6 +71,21 @@ export interface BestPost {
   tiles: BestPostTile[]
   compared_against: number
   window_days: number
+  /** The stretch it's the best of: "this week", "the last two weeks", … (15 Oct 2026). */
+  window_label?: string
+  /** The stretch's post that clearly didn't land, with why in plain words. */
+  weak_post?: WeakPost | null
+}
+
+export interface WeakPost {
+  post_id: string | null
+  platform: string
+  permalink: string | null
+  image_url: string | null
+  text: string
+  published_at: string | null
+  score: number
+  why: string
 }
 
 export interface HomeBrief {

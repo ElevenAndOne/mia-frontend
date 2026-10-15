@@ -135,7 +135,7 @@ export const BestPostCanvas = ({
         </span>
 
         <p className="mia-mono font-normal text-paper-ink">
-          This post outperformed your usual by{' '}
+          {post.window_label ? `Your best post ${post.window_label}. ` : ''}It outperformed your usual by{' '}
           <mark className="rounded-sm bg-[#F4C247] px-1 font-bold text-[#040B1D]">{lift}</mark>
         </p>
 
@@ -190,8 +190,32 @@ export const BestPostCanvas = ({
         )}
 
         <p className="paragraph-xs text-paper-sub">
-          Compared against your other {post.compared_against} {platform} posts from {windowLabel}.
+          Compared against your other {post.compared_against} {platform} posts from {windowLabel}, on how many
+          people it reached and how many reacted, commented, shared or saved.
         </p>
+
+        {post.weak_post && (
+          <div className="flex gap-3 rounded border border-paper-tile-border bg-paper-tile p-2.5">
+            {post.weak_post.image_url && (
+              <img src={post.weak_post.image_url} alt="" className="h-16 w-16 shrink-0 rounded-sm object-cover" loading="lazy" />
+            )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="mia-mono text-paper-ink">Didn’t land {post.window_label ?? ''}</span>
+              <span className="paragraph-xs text-paper-sub line-clamp-2">“{post.weak_post.text}”</span>
+              <span className="text-[0.625rem] leading-snug text-paper-sub">
+                {post.weak_post.why}
+                {post.weak_post.permalink && (
+                  <>
+                    {' '}
+                    <a href={post.weak_post.permalink} target="_blank" rel="noreferrer" className="underline hover:opacity-70">
+                      open
+                    </a>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
 
       </div>
     </section>

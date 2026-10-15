@@ -63,7 +63,7 @@ export interface PostItemDraft {
 
 export interface PostItemDecision {
   index: number
-  decision: 'pending' | 'approved' | 'not_used'
+  decision: 'pending' | 'approved' | 'not_used' | 'withdrawn'
   by?: string | null
   by_name?: string | null
   at?: string | null

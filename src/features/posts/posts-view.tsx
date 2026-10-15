@@ -24,9 +24,15 @@ import {
   reschedulePost,
   retryPost,
   submitDesign,
+  buildWeeklyPlan,
+  decideWeeklyItem,
+  fetchWeeklyPlan,
   type DeletePostResult,
+  type WeeklyPlan,
+  type WeeklyPlanItem,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
+import { SwipeReview } from './swipe-review'
 
 /**
  * Posts — the Quick Posts home. For basic-tier workspaces this IS the content
@@ -606,7 +612,11 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
-  const items = data ?? []
+  const [sender, setSender] = useState<string | null>(null)
+  const all = data ?? []
+  // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
+  const senders = Array.from(new Set(all.map(itemWho)))
+  const items = sender ? all.filter((i) => itemWho(i) === sender) : all
   const onDropped = (id: string) =>
     queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'ideas'], (prev) => prev?.filter((i) => i.id !== id) ?? prev)
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
@@ -616,16 +626,34 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
         <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
-          Photos your team sends Mia on WhatsApp land here, and so does anything you tell her to save for later.
+          Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent.
           Say “what did the team send” on WhatsApp to see them there too.
         </p>
       </div>
     )
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {items.map((item) => (
-        <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
-      ))}
+    <div className="flex flex-col gap-3">
+      {senders.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {[null, ...senders].map((name) => (
+            <button
+              key={name ?? 'everyone'}
+              type="button"
+              onClick={() => setSender(name)}
+              className={`px-2.5 py-1 rounded-full label-xs font-semibold border ${
+                sender === name ? 'bg-brand-solid text-white border-transparent' : 'bg-primary text-secondary border-secondary'
+              }`}
+            >
+              {name ?? 'Everyone'}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {items.map((item) => (
+          <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -682,7 +710,7 @@ const WaitingCard = ({ item, onChanged }: { item: PostItem; onChanged: (item: Po
                   <span className="paragraph-xs text-quaternary">· {PLATFORM_LABEL[d.platform] ?? d.platform}{d.scheduled_at ? ` · ${fmtWhen(d.scheduled_at)}` : ''}</span>
                   {!open && decision && (
                     <span className={`ml-auto inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${decision.decision === 'approved' ? ITEM_STATE.approved.cls : ITEM_STATE.not_used.cls}`}>
-                      {decision.decision === 'approved' ? `Approved by ${decision.by_name ?? 'you'}` : `Held back${decision.by_name ? ` by ${decision.by_name}` : ''}`}
+                      {decision.decision === 'approved' ? `Approved by ${decision.by_name ?? 'you'}` : decision.decision === 'withdrawn' ? `Taken back by ${itemWho(item)}` : `Held back${decision.by_name ? ` by ${decision.by_name}` : ''}`}
                     </span>
                   )}
                 </div>
@@ -904,7 +932,150 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
   )
 }
 
-type PostsTab = 'ideas' | 'waiting' | 'scheduled' | 'posted'
+type PostsTab = 'ideas' | 'waiting' | 'next' | 'scheduled' | 'posted'
+
+// ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
+// The same week the owner reviews on WhatsApp on Friday; whichever is used first wins.
+
+const useWeeklyPlan = (enabled: boolean) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  return useQuery({
+    queryKey: ['weekly-plan', tenantId],
+    queryFn: () => fetchWeeklyPlan(sessionId!, tenantId!),
+    enabled: enabled && !!sessionId && !!tenantId,
+    refetchInterval: 60_000,
+  })
+}
+
+const NextWeekItem = ({ plan, item, onPlan }: { plan: WeeklyPlan; item: WeeklyPlanItem; onPlan: (p: WeeklyPlan) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const [busy, setBusy] = useState(false)
+  const [askKeep, setAskKeep] = useState(false)
+  const act = (body: { action: 'book' | 'skip'; keep_idea?: boolean }) => {
+    if (!sessionId || !activeWorkspace) return
+    setBusy(true)
+    decideWeeklyItem(sessionId, activeWorkspace.tenant_id, plan.id, item.i, body)
+      .then((r) => {
+        showToast('success', r.message)
+        onPlan(r.plan)
+      })
+      .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col sm:flex-row">
+      {item.photo_url && (
+        <img src={item.photo_url} alt="" className="w-full sm:w-40 aspect-square object-cover bg-tertiary shrink-0" />
+      )}
+      <div className="p-3 flex flex-col gap-2 min-w-0 flex-1">
+        <p className="label-xs font-semibold text-quaternary">
+          {fmtWhen(item.slot_at)} · {PLATFORM_LABEL[item.platform] ?? item.platform}
+          {item.source === 'idea' ? ' · from a saved idea' : item.source === 'drawn' ? ' · a picture Mia drew' : ''}
+        </p>
+        <p className="paragraph-sm text-primary whitespace-pre-wrap break-words">
+          {item.copy}
+          {item.hashtags ? `\n\n${item.hashtags}` : ''}
+        </p>
+        {item.decision === 'pending' && askKeep ? (
+          // Skipped: keep the photo for another week? Two taps here, not a browser dialog (review).
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="paragraph-xs text-tertiary">Keep the photo as an idea for another week?</span>
+            <Button size="sm" disabled={busy} onClick={() => act({ action: 'skip', keep_idea: true })}>
+              Keep as an idea
+            </Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => act({ action: 'skip', keep_idea: false })}>
+              No thanks
+            </Button>
+          </div>
+        ) : item.decision === 'pending' ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" disabled={busy} onClick={() => act({ action: 'book' })}>
+              Book it
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => (item.source === 'drawn' ? act({ action: 'skip', keep_idea: false }) : setAskKeep(true))}
+            >
+              Skip
+            </Button>
+          </div>
+        ) : (
+          <span className="paragraph-xs text-quaternary">{item.decision === 'booked' ? 'Booked' : 'Skipped'}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const NextWeekPanel = () => {
+  const { sessionId, activeWorkspace } = useSession()
+  const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const { data, isLoading, error } = useWeeklyPlan(true)
+  const [building, setBuilding] = useState(false)
+  const [swiping, setSwiping] = useState(false)
+  const setPlan = (plan: WeeklyPlan | null) =>
+    queryClient.setQueryData(['weekly-plan', activeWorkspace?.tenant_id], (prev: { enabled: boolean; plan: WeeklyPlan | null } | undefined) =>
+      prev ? { ...prev, plan } : prev,
+    )
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load next week’s posts.</p>
+  const plan = data?.plan
+  if (!plan || plan.status === 'empty')
+    return (
+      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-3">
+        <p className="paragraph-sm font-semibold text-primary">Nothing for next week yet</p>
+        <p className="paragraph-xs text-quaternary max-w-sm">
+          Every Friday morning Mia makes next week’s posts from your saved ideas and the photos you’ve sent, and
+          sends them to you on WhatsApp. They show here too.
+        </p>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={building}
+          onClick={() => {
+            if (!sessionId || !activeWorkspace) return
+            setBuilding(true)
+            buildWeeklyPlan(sessionId, activeWorkspace.tenant_id)
+              .then((r) => setPlan(r.plan))
+              .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+              .finally(() => setBuilding(false))
+          }}
+        >
+          {building ? 'Making them…' : 'Make them now'}
+        </Button>
+      </div>
+    )
+  const pendingCount = plan.items.filter((i) => i.decision === 'pending').length
+  return (
+    <div className="flex flex-col gap-3">
+      {pendingCount > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3">
+          <p className="paragraph-sm text-primary">
+            {pendingCount} post{pendingCount === 1 ? '' : 's'} to go through
+          </p>
+          <Button size="sm" onClick={() => setSwiping(true)}>
+            Go through them
+          </Button>
+        </div>
+      )}
+      {swiping && <SwipeReview plan={plan} onPlan={setPlan} onClose={() => setSwiping(false)} />}
+      {plan.missing.length > 0 && (
+        <p className="paragraph-xs text-quaternary">
+          {plan.missing.length} more slot{plan.missing.length === 1 ? '' : 's'} next week had no photo. Send Mia one on
+          WhatsApp and it can go in.
+        </p>
+      )}
+      {plan.items.map((item) => (
+        <NextWeekItem key={item.i} plan={plan} item={item} onPlan={setPlan} />
+      ))}
+    </div>
+  )
+}
 const SCHEDULED_STATUSES: PostStatus[] = ['scheduled', 'reminded', 'publishing', 'failed', 'draft']
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -985,6 +1156,9 @@ const PostsView = () => {
   const [tab, setTab] = useState<PostsTab>('scheduled')
   const [sendingDesign, setSendingDesign] = useState(false)
   const { data: waitingItems } = useItems('waiting', teamOn && canManage)
+  const isOwner = activeWorkspace?.role === 'owner'
+  const { data: weekly } = useWeeklyPlan(teamOn && isOwner)
+  const nextOn = Boolean(weekly?.enabled || weekly?.plan)
   const waitingCount = waitingItems?.length ?? 0
   const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
   const shown = useMemo(() => {
@@ -1017,6 +1191,7 @@ const PostsView = () => {
               options={[
                 { value: 'ideas', label: 'Ideas' },
                 ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
+                ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
@@ -1054,6 +1229,7 @@ const PostsView = () => {
           )}
           {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
+          {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
 
         {error && (
           <div className="flex items-center gap-3">

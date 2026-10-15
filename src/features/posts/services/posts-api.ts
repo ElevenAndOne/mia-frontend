@@ -183,3 +183,58 @@ export async function submitDesign(
   })
   return orThrow(res, 'Failed to send the design')
 }
+
+// ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
+
+export interface WeeklyPlanItem {
+  i: number
+  slot_at: string
+  platform: string
+  photo_url?: string | null
+  source: 'idea' | 'photo' | 'drawn'
+  note?: string
+  copy: string
+  hashtags?: string
+  title?: string
+  decision: 'pending' | 'booked' | 'skipped'
+  post_id?: string | null
+}
+
+export interface WeeklyPlan {
+  id: string
+  week_start: string | null
+  status: 'ready' | 'sent' | 'done' | 'empty'
+  items: WeeklyPlanItem[]
+  missing: string[]
+  sent_at: string | null
+}
+
+const planBase = (tenantId: string) => `/api/tenants/${tenantId}/weekly-plan`
+
+export async function fetchWeeklyPlan(
+  sessionId: string,
+  tenantId: string,
+): Promise<{ enabled: boolean; plan: WeeklyPlan | null }> {
+  const res = await apiFetch(planBase(tenantId), { headers: auth(sessionId) })
+  return orThrow(res, "Failed to load next week's posts")
+}
+
+export async function buildWeeklyPlan(sessionId: string, tenantId: string): Promise<{ plan: WeeklyPlan | null }> {
+  const res = await apiFetch(`${planBase(tenantId)}/build`, { method: 'POST', headers: auth(sessionId) })
+  return orThrow(res, "Couldn't make next week's posts")
+}
+
+export async function decideWeeklyItem(
+  sessionId: string,
+  tenantId: string,
+  planId: string,
+  i: number,
+  body: { action: 'book' | 'skip' | 'change'; keep_idea?: boolean; instruction?: string },
+): Promise<{ ok: boolean; message: string; plan: WeeklyPlan }> {
+  const res = await apiFetch(`${planBase(tenantId)}/${planId}/items/${i}`, {
+    method: 'POST',
+    headers: authJson(sessionId),
+    body: JSON.stringify(body),
+  })
+  return orThrow(res, "Couldn't save that")
+}

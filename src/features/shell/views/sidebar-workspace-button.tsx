@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
+import { Building02 } from '../../../components/icon/building-02'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { HelpCircle } from '../../../components/icon/help-circle'
 import { LogOut01 } from '../../../components/icon/log-out-01'
@@ -12,6 +14,7 @@ import { useExperience } from '../../workspace/hooks/use-experience'
 import { useRovingFocus } from '../../../hooks/use-roving-focus'
 import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
 import { WorkspaceListItem } from '../../workspace/components/workspace-list-item'
+import { fetchWorkspaceAllowance } from '../../workspace/services/workspace-service'
 
 const AVATAR_PALETTES_BG = [
   'bg-[#3B5BDB]', 'bg-[#0CA678]', 'bg-[#E67700]', 'bg-[#9C36B5]', 'bg-[#C92A2A]',
@@ -32,6 +35,35 @@ function getInitials(name: string): string {
 }
 
 
+const Row = ({
+  icon,
+  label,
+  sub,
+  onClick,
+  danger,
+}: {
+  icon: React.ReactNode
+  label: string
+  sub?: string
+  onClick: () => void
+  danger?: boolean
+}) => (
+  <button
+    type="button"
+    role="menuitem"
+    onClick={onClick}
+    className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+      danger ? 'text-error hover:bg-error-primary' : 'text-primary hover:bg-secondary'
+    }`}
+  >
+    <span className="shrink-0 mt-0.5 text-quaternary">{icon}</span>
+    <span className="min-w-0">
+      <span className="block label-md">{label}</span>
+      {sub && <span className="block paragraph-xs text-quaternary">{sub}</span>}
+    </span>
+  </button>
+)
+
 /**
  * Basic has one workspace, so there is nothing to switch to. The control keeps its place
  * and its shape and becomes the one menu for everything about *them*: their brand, their
@@ -43,40 +75,19 @@ function getInitials(name: string): string {
 const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
   const navigate = useNavigate()
   const { onLogout } = useAppShellActions()
+  const { sessionId } = useSession()
+  // A second business profile, for accounts switched on for it (no billing yet, 14 Oct 2026).
+  const { data: allowance } = useQuery({
+    queryKey: ['workspace-allowance', sessionId],
+    queryFn: () => fetchWorkspaceAllowance(sessionId!),
+    enabled: !!sessionId,
+    staleTime: 60_000,
+  })
 
   const go = (to: string) => {
     navigate(to)
     onDone()
   }
-
-  const Row = ({
-    icon,
-    label,
-    sub,
-    onClick,
-    danger,
-  }: {
-    icon: React.ReactNode
-    label: string
-    sub?: string
-    onClick: () => void
-    danger?: boolean
-  }) => (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
-        danger ? 'text-error hover:bg-error-primary' : 'text-primary hover:bg-secondary'
-      }`}
-    >
-      <span className="shrink-0 mt-0.5 text-quaternary">{icon}</span>
-      <span className="min-w-0">
-        <span className="block label-md">{label}</span>
-        {sub && <span className="block paragraph-xs text-quaternary">{sub}</span>}
-      </span>
-    </button>
-  )
 
   return (
     <div className="flex flex-col gap-1 px-2 py-2" role="menu">
@@ -92,6 +103,18 @@ const BasicWorkspaceMenu = ({ onDone }: { onDone: () => void }) => {
         sub="Name, connected accounts, Mia's style"
         onClick={() => go('/settings/workspace?tab=members')}
       />
+
+      {allowance?.basic_only && allowance.can_add && (
+        <Row
+          icon={<Building02 size={17} />}
+          label="Add a business profile"
+          sub="Another business, with its own pages and posts"
+          onClick={() => {
+            onDone()
+            window.dispatchEvent(new CustomEvent('mia:new-workspace'))
+          }}
+        />
+      )}
 
       <Row icon={<HelpCircle size={17} />} label="Help" onClick={() => go('/help')} />
 
