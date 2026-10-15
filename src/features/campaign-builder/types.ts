@@ -326,3 +326,26 @@ export interface StudioState {
   senders: string[]
   you: string | null
 }
+
+// The campaigns board (plan §8.1).
+export interface BoardCampaign {
+  campaign_id: string
+  name: string
+  status: string
+  stage?: 'Brief' | 'Plan' | 'Approved' | 'In studio' | 'Live' | 'Paused' | 'Ended'
+  progress?: string | null
+  start_date: string | null
+  end_date: string | null
+  budget_total: number | null
+  currency: string
+  jobs?: number
+  credits?: number | null
+  blockers?: number
+  next_step?: { label: string; tab: string } | null
+  updated_at: string | null
+}
+
+export interface Board {
+  campaigns: BoardCampaign[]
+  older: BoardCampaign[]
+}

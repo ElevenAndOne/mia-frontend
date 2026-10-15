@@ -140,7 +140,9 @@ export const AppSidebar = () => {
   }, [location.pathname, activeWorkspace?.tenant_id])
 
   const path = location.pathname
-  const activeKey = path.startsWith('/integrations')
+  const activeKey = path.startsWith('/campaign-builder')
+    ? 'builder'
+    : path.startsWith('/integrations')
     ? 'integrations'
     : path.startsWith('/posts')
       ? 'posts'
@@ -246,6 +248,16 @@ export const AppSidebar = () => {
               collapsed={collapsed}
               active={activeKey === 'campaigns'}
               onClick={actions.onCampaignsClick}
+            />
+          )}
+          {isFeatureEnabled('campaigns') && user?.is_staff && (
+            // The new builder's board, staff only while it's tested (rebuild §8.1).
+            <NavItem
+              icon={<Target01 size={18} />}
+              label="Campaign builder"
+              collapsed={collapsed}
+              active={activeKey === 'builder'}
+              onClick={() => navigate('/campaign-builder')}
             />
           )}
           {isFeatureEnabled('posts') && (

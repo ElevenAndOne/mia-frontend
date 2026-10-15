@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { BriefField, BuildState, KpiGroup, PlanOp, StudioState } from './types'
+import type { Board, BriefField, BuildState, KpiGroup, PlanOp, StudioState } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -134,4 +134,8 @@ export async function refreshFromFlex(sessionId: string, tenantId: string, campa
   return check<{ updated: number }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/refresh`, { method: 'POST', headers: json(sessionId) }),
   )
+}
+
+export async function fetchBoard(sessionId: string, tenantId: string): Promise<Board> {
+  return check(await apiFetch(base(tenantId), { headers: { 'X-Session-ID': sessionId } }))
 }

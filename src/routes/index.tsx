@@ -31,6 +31,7 @@ const CampaignsPage = lazy(() => import('../pages/campaigns-page'))
 const NewCampaignPage = lazy(() => import('../pages/new-campaign-page'))
 const CampaignWorkspacePage = lazy(() => import('../pages/campaign-workspace-page'))
 const CampaignBuilderPage = lazy(() => import('../pages/campaign-builder-page'))
+const CampaignBoardPage = lazy(() => import('../pages/campaign-board-page'))
 const StrategisePage = lazy(() => import('../pages/strategise-page'))
 const SchedulerPage = lazy(() => import('../pages/scheduler-page'))
 const PostsPage = lazy(() => import('../pages/posts-page'))
@@ -242,6 +243,20 @@ export const AppRoutes = ({
           />
 
           {/* The new campaign builder (rebuild slice 3): Agency only (the campaigns flag), and staff only while it's tested. */}
+          <Route
+            path="/campaign-builder"
+            element={
+              <ProtectedRoute requireAccount>
+                <RequireStaff>
+                  <RequireFeature flag="campaigns">
+                    <ErrorBoundary>
+                      <CampaignBoardPage />
+                    </ErrorBoundary>
+                  </RequireFeature>
+                </RequireStaff>
+              </ProtectedRoute>
+            }
+          />
           {['/campaign-builder/new', '/campaign-builder/:campaignId', '/campaign-builder/:campaignId/:tab'].map((path) => (
             <Route
               key={path}

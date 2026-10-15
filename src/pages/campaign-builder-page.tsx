@@ -149,7 +149,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     <div className="w-full h-dvh flex flex-col overflow-hidden bg-secondary">
       <TopBar
         title={s?.campaign.name ?? 'Campaign'}
-        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaigns', to: '/campaigns' }, { label: s?.campaign.name ?? 'Campaign' }]}
+        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaigns', to: '/campaign-builder' }, { label: s?.campaign.name ?? 'Campaign' }]}
         onBack={() => navigate('/home')}
       />
       <div className="flex-1 min-h-0 flex">
