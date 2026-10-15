@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { KpiPicker } from './kpi-picker'
 import { JobWords, WordsCard } from './final-words'
 import { Button } from '../../../components/button'
-import type { BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
+import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
@@ -37,7 +37,9 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
   }
 
   const currency = state.campaign.currency
-  const split = plan.decisions.budget_split?.value ?? {}
+  const sp = plan.decisions.budget_split
+  const split = sp?.value ?? {}
+  const pmPhases = new Set(sp?.pm_phases ?? [])
   return (
     <div className="flex flex-col gap-4">
       {run?.status === 'failed' ? (
@@ -76,6 +78,16 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
       <Credits plan={plan} />
       {locked ? null : <AskPm plan={plan} />}
 
+      {sp?.reason ? (
+        <Card className="flex flex-col gap-1">
+          <p className="subheading-sm text-primary">How the budget is split</p>
+          <p className="paragraph-sm text-secondary">{sp.reason}</p>
+          {sp.history_notes?.length ? (
+            <p className="paragraph-xs text-tertiary">{sp.history_notes.join(' ')}</p>
+          ) : null}
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         {plan.phases.map((p) => (
           <section key={p.phase} className="min-w-0 rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-3">
@@ -89,8 +101,15 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
                   onCommit={(v) => onEdit([{ op: 'set_budget', phase: p.phase, value: v }])}
                 />
               </div>
+              {pmPhases.has(p.phase) ? <Chip tone="pm">your amount</Chip> : null}
               {p.objective ? <p className="paragraph-xs text-secondary">{p.objective}</p> : null}
               <p className="paragraph-xs text-tertiary">{p.channels.map(channelLabel).join(' · ')}</p>
+              <ChannelMoney
+                rows={(sp?.channels ?? []).filter((c) => c.phase === p.phase)}
+                currency={currency}
+                disabled={locked}
+                onCommit={(channel, v) => onEdit([{ op: 'set_channel_budget', phase: p.phase, channel, value: v }])}
+              />
             </header>
             <div className="flex flex-col gap-2">
               {plan.decisions.kpi_targets
@@ -249,6 +268,53 @@ function useField(value: string) {
 const asNumber = (s: string): number | null => {
   const t = s.replace(/[^\d.]/g, '')
   return t === '' ? null : Number(t)
+}
+
+const BASIS_LABEL: Record<BudgetChannel['basis'], string> = {
+  history: 'from results',
+  account: 'past rate',
+  test: 'test',
+  no_basis: 'even',
+  pm: 'yours',
+}
+
+// Each paid channel's money in the phase, why it got that much, and roughly what it buys at the
+// client's past rates. Shown only when the phase has two paid channels or a past rate to show.
+function ChannelMoney({
+  rows,
+  currency,
+  disabled,
+  onCommit,
+}: {
+  rows: BudgetChannel[]
+  currency: string
+  disabled: boolean
+  onCommit: (channel: string, v: number | null) => void
+}) {
+  if (!rows.length || (rows.length === 1 && !rows[0].buys)) return null
+  return (
+    <ul className="flex flex-col gap-1.5 rounded-md border border-secondary bg-primary p-2">
+      {rows.map((c) => (
+        <li key={c.channel} className="flex flex-col gap-0.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="paragraph-xs text-primary flex items-center gap-1.5">
+              {channelLabel(c.channel)}
+              <Chip tone={c.basis === 'pm' ? 'pm' : c.basis === 'history' ? 'good' : undefined}>{BASIS_LABEL[c.basis]}</Chip>
+            </span>
+            {rows.length > 1 ? (
+              <BudgetField value={c.amount} currency={currency} disabled={disabled} onCommit={(v) => onCommit(c.channel, v)} />
+            ) : (
+              <span className="paragraph-xs text-secondary">{money(c.amount, currency)}</span>
+            )}
+          </div>
+          <span className="paragraph-xs text-tertiary">
+            {c.why}
+            {c.buys ? ` About ${num(c.buys.amount)} ${c.buys.unit} at past rates.` : ''}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function BudgetField({

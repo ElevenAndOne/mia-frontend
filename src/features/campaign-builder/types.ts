@@ -150,7 +150,17 @@ export interface Plan {
   credits: CreditFit
   decisions: {
     kpi_targets: KpiTarget[]
-    budget_split: { value: Record<string, number | null> | null; basis?: string; reason?: string }
+    budget_split: {
+      value: Record<string, number | null> | null
+      basis?: string
+      reason?: string
+      made_by?: string
+      by_channel?: Record<string, Record<string, number>>
+      channels?: BudgetChannel[]
+      pm_phases?: string[]
+      history_sources?: string[]
+      history_notes?: string[]
+    }
     ask_pm: { question: string; why?: string; [k: string]: unknown }[] | string[]
   }
   checks: PlanCheck[]
@@ -258,6 +268,22 @@ export type PlanOp =
   | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }
+  | { op: 'set_channel_budget'; phase: string; channel: string; value: number | null }
+
+// One paid channel's money inside a phase (A2): from the client's own history, a test share, or the PM's.
+export interface BudgetChannel {
+  phase: string
+  channel: string
+  amount: number
+  share: number | null
+  metric: 'cpm' | 'cpc' | 'cpa'
+  metric_label: string
+  metric_why: string
+  rate: number | null
+  basis: 'history' | 'account' | 'test' | 'no_basis' | 'pm'
+  buys: { amount: number; unit: string } | null
+  why: string
+}
 
 export interface StudioJob {
   asset_id: string
