@@ -72,7 +72,7 @@ export function JobWords({
   onEdit: (ops: PlanOp[]) => Promise<unknown>
   onRewrite: (jobIds: string[]) => Promise<unknown>
 }) {
-  const mine = new Set(fw.set_by_pm ?? [])
+  const mine = new Set((fw.set_by_pm ?? []).map((w) => (w.startsWith('captions[') ? w.toLowerCase() : w)))
   const flagFor = (where: string) => fw.flags.filter((f) => f.where === where || where.startsWith(`${f.where}[`))
   const piece = (where: string, label: string, value: string, multiline = false) => (
     <Piece
@@ -193,8 +193,8 @@ function Piece({
 function captionKeys(caps: { platform: string; text: string }[]): [string, { platform: string; text: string }][] {
   const seen: Record<string, number> = {}
   return caps.map((c) => {
-    const p = (c.platform ?? '').trim()
-    seen[p.toLowerCase()] = (seen[p.toLowerCase()] ?? 0) + 1
-    return [`captions[${p}:${seen[p.toLowerCase()]}]`, c]
+    const p = (c.platform ?? '').trim().toLowerCase()
+    seen[p] = (seen[p] ?? 0) + 1
+    return [`captions[${p}:${seen[p]}]`, c]
   })
 }

@@ -126,21 +126,26 @@ export function StudioTab({ campaignId, approved }: { campaignId: string; approv
           ) : null}
           {toSend.length ? (
             <>
-              <label className="flex items-center gap-1 paragraph-xs text-tertiary">
-                Send as
-                <select
-                  className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-xs text-primary"
-                  value={sender}
-                  onChange={(e) => setSender(e.target.value)}
-                >
-                  <option value="">Pick your Flex account</option>
-                  {s.senders.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {s.you ? (
+                <span className="paragraph-xs text-tertiary">Sending as you ({s.you})</span>
+              ) : (
+                // Only someone without a Flex account picks one to send as; a Flex user always sends as themselves.
+                <label className="flex items-center gap-1 paragraph-xs text-tertiary">
+                  Send as
+                  <select
+                    className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-xs text-primary"
+                    value={sender}
+                    onChange={(e) => setSender(e.target.value)}
+                  >
+                    <option value="">Pick a Flex account</option>
+                    {s.senders.map((e) => (
+                      <option key={e} value={e}>
+                        {e}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <Button
                 variant="primary"
                 loading={busy === 'send'}
