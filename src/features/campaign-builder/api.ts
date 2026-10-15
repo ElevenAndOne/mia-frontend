@@ -182,3 +182,7 @@ export async function readDeck(sessionId: string, tenantId: string, file: File):
   form.append('file', file)
   return check(await apiFetch(`${base(tenantId)}/deck`, { method: 'POST', headers: { 'X-Session-ID': sessionId }, body: form }))
 }
+
+export async function repricePlan(sessionId: string, tenantId: string, campaignId: string): Promise<{ priced: number; jobs: number }> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/plan/reprice`, { method: 'POST', headers: { 'X-Session-ID': sessionId } }))
+}

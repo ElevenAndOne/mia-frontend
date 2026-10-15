@@ -21,9 +21,10 @@ interface Props {
   onApprove: () => Promise<unknown>
   onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
   onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
+  onReprice: () => Promise<unknown>
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief }: Props) {
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
@@ -76,6 +77,17 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </Card>
       ) : null}
 
+      {!locked && plan.assets.length && plan.assets.every((a) => a.credits == null) ? (
+        // The plan was made while Flex couldn't be reached: no Credit Ledger, so no job has credits.
+        <Card warn className="flex flex-wrap items-center justify-between gap-3">
+          <p className="paragraph-sm text-primary">
+            Flex couldn't be reached when Mia made this plan, so the jobs have no credits yet.
+          </p>
+          <Button size="sm" variant="primary" loading={busy === 'reprice'} onClick={() => onReprice()}>
+            Get prices from Flex
+          </Button>
+        </Card>
+      ) : null}
       {plan.review ? <SelfCheck review={plan.review} /> : null}
       <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
       <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
