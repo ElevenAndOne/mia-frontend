@@ -221,7 +221,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               </Card>
             ) : null}
             {tab === 'plan' ? (
-              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={build.approve} />
+              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={build.approve} onWriteWords={build.writeWords} />
             ) : (
               <BriefTab
                 state={s}

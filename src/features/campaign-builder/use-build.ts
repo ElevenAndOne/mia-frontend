@@ -28,7 +28,7 @@ export function useBuild(campaignId: string | undefined) {
     enabled: !!sessionId && !!tenantId && !!campaignId,
     refetchInterval: (q) => {
       const s = q.state.data as BuildState | undefined
-      return s && (s.brief_run?.status === 'running' || s.plan_run?.status === 'running') ? POLL_MS : false
+      return s && [s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') ? POLL_MS : false
     },
   })
 
@@ -81,6 +81,7 @@ export function useBuild(campaignId: string | undefined) {
         return next
       }),
     approve: () => run('approve', () => api.approvePlan(...ids())),
+    writeWords: (jobIds?: string[], rewrite = false) => run('words', () => api.writeWords(...ids(), jobIds, rewrite)),
     discard: async () => {
       setBusy('discard')
       setError(null)

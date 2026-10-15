@@ -75,6 +75,19 @@ export interface PlanAsset {
   launch_date?: string | null
   creative_brief?: CreativeBrief
   audience?: { locations?: string[]; age_range?: string; interests_or_keywords?: string[]; custom_audiences?: string[]; notes?: string }
+  job_id?: string
+  final_words?: FinalWords
+}
+
+export interface FinalWords {
+  slides: { n: number; words: string }[]
+  captions: { platform: string; text: string }[]
+  ad: { primary_text: string; headline: string; description: string; cta: string } | null
+  rsa: { headlines: string[]; descriptions: string[] } | null
+  email: { subject: string; preheader: string; body: string } | null
+  status: 'ready' | 'flagged'
+  flags: { where: string; problem: string; fix: string }[]
+  set_by_pm?: string[]
 }
 
 export interface KpiTarget {
@@ -209,6 +222,7 @@ export interface BuildState {
   } | null
   brief_run: BuildRun | null
   plan_run: BuildRun | null
+  words_run: BuildRun | null
   plan: Plan | null
   plan_from_older_brief: boolean
   what_mia_read: WhatMiaRead | null
@@ -239,6 +253,7 @@ export type PlanOp =
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }
+  | { op: 'update_words'; index: number; where: string; value: string }
   | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }

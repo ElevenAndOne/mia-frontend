@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { KpiPicker } from './kpi-picker'
+import { JobWords, WordsCard } from './final-words'
 import { Button } from '../../../components/button'
 import type { BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
@@ -15,9 +16,10 @@ interface Props {
   onEdit: (ops: PlanOp[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
   onApprove: () => Promise<unknown>
+  onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove }: Props) {
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
@@ -69,6 +71,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove 
       ) : null}
 
       {plan.review ? <SelfCheck review={plan.review} /> : null}
+      <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
       <Concept plan={plan} />
       <Credits plan={plan} />
       {locked ? null : <AskPm plan={plan} />}
@@ -118,7 +121,17 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove 
             </div>
             <div className="flex flex-col gap-2">
               {plan.assets.map((a, i) =>
-                a.phase === p.phase ? <Job key={`${i}-${a.name}`} a={a} index={i} disabled={locked} onEdit={onEdit} /> : null,
+                a.phase === p.phase ? (
+                  <Job
+                    key={a.job_id ?? `${i}-${a.name}`}
+                    a={a}
+                    index={i}
+                    disabled={locked}
+                    onEdit={onEdit}
+                    wordsRunning={state.words_run?.status === 'running'}
+                    onRewrite={(ids) => onWriteWords(ids, true)}
+                  />
+                ) : null,
               )}
             </div>
           </section>
@@ -337,7 +350,21 @@ function Target({
   )
 }
 
-function Job({ a, index, disabled, onEdit }: { a: PlanAsset; index: number; disabled: boolean; onEdit: Props['onEdit'] }) {
+function Job({
+  a,
+  index,
+  disabled,
+  onEdit,
+  wordsRunning,
+  onRewrite,
+}: {
+  a: PlanAsset
+  index: number
+  disabled: boolean
+  onEdit: Props['onEdit']
+  wordsRunning: boolean
+  onRewrite: (jobIds: string[]) => Promise<unknown>
+}) {
   const [credits, setCredits] = useField(a.credits == null ? '' : String(a.credits))
   const noRate = a.credits == null
   return (
@@ -387,8 +414,8 @@ function Job({ a, index, disabled, onEdit }: { a: PlanAsset; index: number; disa
         Due to the studio {day(a.due_date)} · goes live {day(a.launch_date)}
       </p>
       {a.audience && (a.audience.locations?.length || a.audience.interests_or_keywords?.length || a.audience.custom_audiences?.length) ? (
-        <p className="paragraph-xs text-secondary">
-          <span className="text-tertiary">Audience: </span>
+        <details className="paragraph-xs text-secondary">
+          <summary className="cursor-pointer text-tertiary">Audience</summary>
           {[
             a.audience.locations?.join(', '),
             a.audience.age_range,
@@ -397,7 +424,18 @@ function Job({ a, index, disabled, onEdit }: { a: PlanAsset; index: number; disa
           ]
             .filter(Boolean)
             .join(' · ')}
-        </p>
+        </details>
+      ) : null}
+      {a.final_words ? (
+        <JobWords
+          fw={a.final_words}
+          index={index}
+          jobId={a.job_id}
+          disabled={disabled}
+          running={wordsRunning}
+          onEdit={onEdit}
+          onRewrite={onRewrite}
+        />
       ) : null}
       {a.creative_brief ? <DesignerBrief cb={a.creative_brief} why={a.why} /> : null}
     </article>

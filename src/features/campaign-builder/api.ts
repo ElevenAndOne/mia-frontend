@@ -89,3 +89,13 @@ export async function discardDraft(sessionId: string, tenantId: string, campaign
     await apiFetch(`${base(tenantId)}/${campaignId}`, { method: 'DELETE', headers: { 'X-Session-ID': sessionId } }),
   )
 }
+
+export async function writeWords(sessionId: string, tenantId: string, campaignId: string, jobIds?: string[], rewrite = false) {
+  return check<{ run_id: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/words`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ job_ids: jobIds ?? null, rewrite }),
+    }),
+  )
+}
