@@ -147,6 +147,7 @@ export interface Plan {
 export interface ScorePart {
   score: number | null
   why?: string | null
+  model_judgement?: boolean
 }
 
 export interface PlanReview {

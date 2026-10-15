@@ -503,7 +503,7 @@ function SelfCheck({ review }: { review: PlanReview }) {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="subheading-md text-primary">Mia's self-check</h2>
         {sc.thin_history ? (
-          <Chip>Not graded: too little history to judge against</Chip>
+          <Chip>Not graded: no past results on these KPIs to compare with</Chip>
         ) : (
           <span className="rounded-full bg-brand-solid px-3 py-0.5 subheading-sm text-primary-onbrand">
             {sc.grade} · {sc.overall}
@@ -516,7 +516,7 @@ function SelfCheck({ review }: { review: PlanReview }) {
         ) : null}
       </div>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-        {Object.entries(sc.parts).map(([k, p]) => (
+        {Object.entries(sc.parts).filter(([, p]) => !p.model_judgement).map(([k, p]) => (
           <li key={k} className="min-w-0">
             <div className="flex items-center justify-between gap-2 paragraph-sm">
               <span className="text-primary">{PART_LABELS[k] ?? k}</span>
@@ -532,6 +532,20 @@ function SelfCheck({ review }: { review: PlanReview }) {
           </li>
         ))}
       </ul>
+      {Object.entries(sc.parts).some(([, p]) => p.model_judgement) ? (
+        <div className="mt-3">
+          <p className="label-xs text-secondary">Mia's judgement (not in the grade: read the reasons)</p>
+          <ul className="mt-1 flex flex-col gap-1 paragraph-xs text-secondary">
+            {Object.entries(sc.parts)
+              .filter(([, p]) => p.model_judgement)
+              .map(([k, p]) => (
+                <li key={k}>
+                  <span className="text-primary">{PART_LABELS[k] ?? k}:</span> {p.why}
+                </li>
+              ))}
+          </ul>
+        </div>
+      ) : null}
       {sc.look_at.length ? (
         <div className="mt-3 rounded-lg border border-utility-warning-300 bg-utility-warning-100 px-3 py-2 text-utility-warning-700">
           <p className="label-sm">Worth a look</p>
