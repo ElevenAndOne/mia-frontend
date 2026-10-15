@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useSession } from '../../../contexts/session-context'
+import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
 import { JobWords, WordsCard } from './final-words'
 import { Button } from '../../../components/button'
@@ -17,9 +20,10 @@ interface Props {
   onMakePlan: () => Promise<unknown>
   onApprove: () => Promise<unknown>
   onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
+  onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords }: Props) {
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
@@ -74,6 +78,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
 
       {plan.review ? <SelfCheck review={plan.review} /> : null}
       <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
+      <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
       <Concept plan={plan} />
       <Credits plan={plan} />
       {locked ? null : <AskPm plan={plan} />}
@@ -179,6 +184,81 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </Card>
       )}
     </div>
+  )
+}
+
+// The starting shape (A4): the playbook the plan was built from, why, and the PM's way to change it. A change
+// is saved on the brief, so the next "Make the plan again" builds around it.
+function Shape({
+  plan,
+  state,
+  locked,
+  busy,
+  onSaveBrief,
+  onMakePlan,
+}: {
+  plan: Plan
+  state: BuildState
+  locked: boolean
+  busy: string | null
+  onSaveBrief: Props['onSaveBrief']
+  onMakePlan: Props['onMakePlan']
+}) {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  const books = useQuery({
+    queryKey: ['playbooks', tenantId],
+    queryFn: () => fetchPlaybooks(sessionId!, tenantId!),
+    enabled: !!sessionId && !!tenantId && !locked,
+    staleTime: 10 * 60 * 1000,
+  })
+  const pb = plan.decisions.playbook
+  const chosen = ((state.brief?.brief ?? {}) as Record<string, unknown>).playbook as string | null | undefined
+  if (!pb && locked) return null
+  return (
+    <Card className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="label-xs text-tertiary">Starting shape</p>
+        {pb ? (
+          <>
+            <p className="subheading-sm text-primary mt-0.5 flex flex-wrap items-center gap-2">
+              {pb.name}
+              {pb.blend_name ? <span className="paragraph-sm text-secondary">+ {pb.blend_name}</span> : null}
+              <Chip tone={pb.made_by === 'pm' ? 'pm' : 'mia'}>{pb.made_by === 'pm' ? 'your choice' : `${pb.confidence} confidence`}</Chip>
+            </p>
+            <p className="paragraph-xs text-secondary mt-0.5">{pb.chosen_because}</p>
+          </>
+        ) : (
+          <p className="paragraph-sm text-secondary mt-0.5">This plan was made before playbooks were used. Pick one and make the plan again.</p>
+        )}
+        {chosen && chosen !== pb?.slug ? (
+          <p className="paragraph-xs text-primary mt-1">
+            You picked another shape. Make the plan again to build around it.{' '}
+            <button type="button" className="underline" disabled={!!busy} onClick={() => onMakePlan()}>
+              Make the plan again
+            </button>
+          </p>
+        ) : null}
+      </div>
+      {locked || !books.data ? null : (
+        <label className="flex items-center gap-1 paragraph-xs text-tertiary">
+          Change
+          <select
+            className="max-w-56 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-xs text-primary"
+            value={chosen ?? ''}
+            disabled={!!busy}
+            onChange={(e) => void onSaveBrief({ playbook: e.target.value || null })}
+          >
+            <option value="">Mia picks</option>
+            {books.data.playbooks.map((b) => (
+              <option key={b.slug} value={b.slug} title={b.summary}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </Card>
   )
 }
 

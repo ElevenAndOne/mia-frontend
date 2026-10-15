@@ -34,7 +34,7 @@ export async function saveBrief(
   sessionId: string,
   tenantId: string,
   campaignId: string,
-  fields: Partial<Record<BriefField, unknown>>,
+  fields: Partial<Record<BriefField | 'playbook', unknown>>,
   name?: string,
 ): Promise<{ version: number }> {
   return check(
@@ -161,4 +161,8 @@ export async function addRule(sessionId: string, tenantId: string, text: string,
 
 export async function removeRule(sessionId: string, tenantId: string, ruleId: string): Promise<unknown> {
   return check(await apiFetch(`${base(tenantId)}/rules/${ruleId}`, { method: 'DELETE', headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function fetchPlaybooks(sessionId: string, tenantId: string): Promise<{ playbooks: { slug: string; name: string; summary: string }[] }> {
+  return check(await apiFetch(`${base(tenantId)}/playbooks`, { headers: { 'X-Session-ID': sessionId } }))
 }

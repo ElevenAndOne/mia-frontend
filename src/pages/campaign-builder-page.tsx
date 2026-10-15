@@ -224,7 +224,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             {tab === 'studio' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} />
             ) : tab === 'plan' ? (
-              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={build.approve} onWriteWords={build.writeWords} />
+              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={build.approve} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} />
             ) : (
               <BriefTab
                 state={s}

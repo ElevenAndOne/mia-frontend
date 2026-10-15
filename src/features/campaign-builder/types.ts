@@ -149,6 +149,15 @@ export interface Plan {
   assets: PlanAsset[]
   credits: CreditFit
   decisions: {
+    playbook?: {
+      slug: string
+      name?: string
+      blend_with?: string | null
+      blend_name?: string | null
+      confidence: 'high' | 'medium' | 'low'
+      chosen_because: string
+      made_by: 'pm' | 'claude'
+    } | null
     kpi_targets: KpiTarget[]
     budget_split: {
       value: Record<string, number | null> | null
