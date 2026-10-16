@@ -149,15 +149,19 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
     setConfirming(true)
     setLinkFailed(false)
     const ok = await linkFoundPage(sessionId || '', found, ig)
-    setConfirming(false)
     // A failed link used to move on as if it had worked, and the drafts later had no Page
     // to read or post to. Say so and let them retry.
     if (!ok) {
+      setConfirming(false)
       setLinkFailed(true)
       return
     }
+    // "Connecting…" stays up until the next step shows. It used to drop as soon as the link
+    // returned, and the readiness refresh after it (5 s in testing, 16 Oct 2026) left
+    // "That's them" sitting there looking like the tap did nothing.
     await refresh()
     setStep('details')
+    setConfirming(false)
   }
 
   const refresh = useCallback(async () => {
