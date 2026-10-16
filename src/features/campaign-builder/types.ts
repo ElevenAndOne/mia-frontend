@@ -360,3 +360,33 @@ export interface Board {
   campaigns: BoardCampaign[]
   older: BoardCampaign[]
 }
+
+// The Launch tab: jobs back from the studio and how each goes out.
+export interface LaunchJob {
+  asset_id: string
+  action_id: string
+  name: string
+  phase: string
+  channel: string
+  route: 'meta' | 'google' | 'schedule' | 'manual'
+  manual_where: string
+  state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled'
+  stage_label?: string | null
+  ready_at?: string | null
+  artwork: { url: string; kind: string; title?: string }[]
+  usable_artwork: string[]
+  figma_only: boolean
+  creative?: string | null
+  final_url?: string | null
+  launch_date?: string | null
+  launch: { launched_at?: string; how?: string; link?: string | null; launched_by?: string }
+  flex_url?: string | null
+}
+
+export interface LaunchState {
+  campaign_status: string
+  jobs: LaunchJob[]
+  counts: Record<string, number>
+  live: boolean
+  approved: boolean
+}

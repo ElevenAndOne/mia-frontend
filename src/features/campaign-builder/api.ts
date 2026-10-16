@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { Board, BriefField, BuildState, KpiGroup, PlanOp, StudioState } from './types'
+import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, StudioState } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -185,4 +185,20 @@ export async function readDeck(sessionId: string, tenantId: string, file: File):
 
 export async function repricePlan(sessionId: string, tenantId: string, campaignId: string): Promise<{ priced: number; jobs: number }> {
   return check(await apiFetch(`${base(tenantId)}/${campaignId}/plan/reprice`, { method: 'POST', headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function fetchLaunch(sessionId: string, tenantId: string, campaignId: string): Promise<LaunchState> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/launch`, { headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function launchAction(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  what: 'take-in' | 'mark' | 'schedule',
+  body: Record<string, unknown>,
+): Promise<unknown> {
+  return check(
+    await apiFetch(`${base(tenantId)}/${campaignId}/launch/${what}`, { method: 'POST', headers: json(sessionId), body: JSON.stringify(body) }),
+  )
 }

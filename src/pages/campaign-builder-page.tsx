@@ -9,6 +9,7 @@ import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab } from '../features/campaign-builder/components/plan-tab'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
+import { LaunchTab } from '../features/campaign-builder/components/launch-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
 
 // The new campaign page (rebuild slice 3, staff only while tested).
@@ -20,7 +21,7 @@ const TABS = [
   { key: 'brief', label: 'Brief' },
   { key: 'plan', label: 'Plan' },
   { key: 'studio', label: 'Studio' },
-  { key: 'launch', label: 'Launch', soon: true },
+  { key: 'launch', label: 'Launch' },
   { key: 'results', label: 'Results', soon: true },
 ] as const
 
@@ -264,7 +265,9 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 </button>
               </Card>
             ) : null}
-            {tab === 'studio' ? (
+            {tab === 'launch' ? (
+              <LaunchTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
+            ) : tab === 'studio' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
               <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async () => {
