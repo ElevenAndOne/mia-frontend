@@ -94,13 +94,27 @@ export function JobWords({
       </summary>
       <div className="mt-2 flex flex-col gap-2">
         {fw.flags.length ? (
-          <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
-            {fw.flags.map((f, i) => (
-              <li key={i} className="[overflow-wrap:anywhere]">
-                ⚠ {f.where}: {f.problem}. {f.fix}
-              </li>
-            ))}
-          </ul>
+          <div className="rounded-lg border border-utility-warning-300 bg-utility-warning-50 p-2 flex flex-col gap-2">
+            <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
+              {fw.flags.map((f, i) => (
+                <li key={i} className="[overflow-wrap:anywhere]">
+                  ⚠ {f.where}: {f.problem}. {f.fix}
+                </li>
+              ))}
+            </ul>
+            {disabled || !jobId ? null : (
+              // One click: Mia rewrites this job using exactly these notes, or the PM says the words are fine.
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="primary" disabled={running} onClick={() => onRewrite([jobId])}>
+                  Fix it
+                </Button>
+                <Button size="sm" disabled={running} onClick={() => onEdit([{ op: 'accept_words', index }])}>
+                  Looks fine as is
+                </Button>
+                <span className="paragraph-xs text-tertiary">Or edit the words below yourself.</span>
+              </div>
+            )}
+          </div>
         ) : null}
         {/* Slide words often have a line break (headline + line): a one-line box glued them together (16 Oct). */}
         {fw.slides.map((s) => piece(`slides[${s.n}]`, `Slide ${s.n}`, s.words, s.words.includes('\n') || s.words.length > 60))}

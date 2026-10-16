@@ -76,7 +76,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </Card>
       ) : null}
 
-      {locked ? null : <NeedsYouPanel state={state} plan={plan} busy={busy} onEdit={onEdit} onReveal={reveal} />}
+      {locked ? null : <NeedsYouPanel state={state} plan={plan} busy={busy} onEdit={onEdit} onReveal={reveal} onFix={(id) => onWriteWords([id], true)} />}
       <Summary plan={plan} state={state} currency={currency} />
       <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
       <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
@@ -237,12 +237,14 @@ function NeedsYouPanel({
   busy,
   onEdit,
   onReveal,
+  onFix,
 }: {
   state: BuildState
   plan: Plan
   busy: string | null
   onEdit: Props['onEdit']
   onReveal: (id: string, jobIndex?: number) => void
+  onFix: (jobId: string) => void
 }) {
   const jobIndex = (name?: string) => plan.assets.findIndex((a) => a.name === name)
   const flagged = plan.assets.map((a, i) => ({ a, i })).filter(({ a }) => a.final_words?.status === 'flagged')
@@ -288,9 +290,14 @@ function NeedsYouPanel({
                 ✏️ <span className="font-medium">{a.name}</span>
                 <span className="block paragraph-xs text-secondary">{a.final_words?.flags[0]?.problem}</span>
               </span>
-              <button type="button" className="paragraph-xs underline text-primary" onClick={() => onReveal(`job-${i}`, i)}>
-                Fix the words
-              </button>
+              <span className="flex items-center gap-2">
+                <Button size="sm" variant="primary" disabled={!a.job_id || busy === 'words'} onClick={() => a.job_id && onFix(a.job_id)}>
+                  Fix it
+                </Button>
+                <button type="button" className="paragraph-xs underline text-primary" onClick={() => onReveal(`job-${i}`, i)}>
+                  Look first
+                </button>
+              </span>
             </li>
           ))}
         </ul>

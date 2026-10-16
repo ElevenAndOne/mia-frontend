@@ -86,7 +86,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
               <th className="py-2 pr-2 text-right">Credits</th>
               <th className="py-2 pr-2">Due</th>
               <th className="py-2 pr-2">Sprint</th>
-              <th className="py-2 pr-2">In Flex</th>
+              <th className="py-2 pr-2 min-w-[7.5rem]">In Flex</th>
             </tr>
           </thead>
           <tbody>
@@ -177,13 +177,18 @@ function Row({ j, disabled, onChange }: { j: StudioJob; disabled: boolean; onCha
   return (
     <tr className="border-t border-secondary align-top">
       <td className="py-2 pr-2">
+        {inFlex ? (
+          <span className="label-xs text-utility-success-700 whitespace-nowrap" title="Sent to Flex">✓ sent</span>
+        ) : (
         <input
           type="checkbox"
+          className="size-4 accent-[var(--color-background-brand-solid)] cursor-pointer disabled:cursor-default"
           aria-label={`Send ${j.name}`}
           checked={j.include}
           disabled={disabled || inFlex}
           onChange={(e) => onChange({ include: e.target.checked })}
         />
+        )}
       </td>
       <td className="py-2 pr-2 min-w-0">
         <span className="text-primary">{j.name}</span>
@@ -223,14 +228,15 @@ function Row({ j, disabled, onChange }: { j: StudioJob; disabled: boolean; onCha
       <td className="py-2 pr-2">
         {inFlex ? (
           <span className="flex flex-col gap-0.5">
-            <Chip tone="mia">{j.flex.stage_label ?? j.flex.status}</Chip>
+            <StageChip label={j.flex.stage_label ?? j.flex.status ?? 'Open'} />
             {j.flex.review_rounds && (j.flex.review_rounds.internal || j.flex.review_rounds.client) ? (
               <span className="paragraph-xs text-tertiary">
                 review: internal {j.flex.review_rounds.internal}, client {j.flex.review_rounds.client}
               </span>
             ) : null}
             {j.flex.url ? (
-              <a className="paragraph-xs text-primary underline" href={j.flex.url} target="_blank" rel="noreferrer">
+              <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary"
+                href={j.flex.url} target="_blank" rel="noreferrer">
                 Open in Flex ↗
               </a>
             ) : (
@@ -242,5 +248,23 @@ function Row({ j, disabled, onChange }: { j: StudioJob; disabled: boolean; onCha
         )}
       </td>
     </tr>
+  )
+}
+
+// Each Flex stage its own colour, so where the jobs stand reads at a glance (16 Oct).
+const STAGE_STYLE: Record<string, string> = {
+  Open: 'bg-utility-gray-100 text-utility-gray-700 border-utility-gray-300',
+  Ready: 'bg-utility-blue-100 text-utility-blue-700 border-utility-blue-300',
+  'In progress': 'bg-utility-warning-100 text-utility-warning-700 border-utility-warning-300',
+  'In review': 'bg-utility-purple-100 text-utility-purple-700 border-utility-purple-300',
+  Done: 'bg-utility-success-100 text-utility-success-700 border-utility-success-300',
+  Cancelled: 'bg-utility-error-100 text-utility-error-700 border-utility-error-300',
+}
+
+function StageChip({ label }: { label: string }) {
+  return (
+    <span className={`inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2 py-0.5 label-xs ${STAGE_STYLE[label] ?? STAGE_STYLE.Open}`}>
+      {label}
+    </span>
   )
 }

@@ -279,6 +279,7 @@ export type PlanOp =
   | { op: 'remove_asset'; index: number }
   | { op: 'set_budget'; phase: string; value: number | null }
   | { op: 'set_channel_budget'; phase: string; channel: string; value: number | null }
+  | { op: 'accept_words'; index: number }
 
 // One paid channel's money inside a phase (A2): from the client's own history, a test share, or the PM's.
 export interface BudgetChannel {
