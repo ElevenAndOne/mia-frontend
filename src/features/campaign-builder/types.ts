@@ -390,3 +390,35 @@ export interface LaunchState {
   live: boolean
   approved: boolean
 }
+
+// The Results tab's frame (the actuals come from the campaign tracker).
+export interface ResultsKpi {
+  kpi_name: string
+  kpi_key: string | null
+  target: number | null
+  basis?: string | null
+  confidence?: string | null
+  rate: boolean
+  lower_is_better: boolean
+}
+
+export interface ResultsState {
+  status: string
+  live: boolean
+  when: 'not_started' | 'running' | 'ended'
+  start_date: string | null
+  end_date: string | null
+  days_total: number | null
+  days_elapsed: number | null
+  share_elapsed: number | null
+  budget_total: number | null
+  phases: { phase: string; budget: number | null; kpis: ResultsKpi[] }[]
+  debrief: {
+    headline?: string
+    confidence?: string
+    written_at?: string
+    points: Record<string, { point: string; evidence: string }[]>
+    data_gaps: string[]
+  } | null
+  can_debrief: boolean
+}
