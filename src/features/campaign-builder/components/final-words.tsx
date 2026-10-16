@@ -102,7 +102,8 @@ export function JobWords({
             ))}
           </ul>
         ) : null}
-        {fw.slides.map((s) => piece(`slides[${s.n}]`, `Slide ${s.n}`, s.words))}
+        {/* Slide words often have a line break (headline + line): a one-line box glued them together (16 Oct). */}
+        {fw.slides.map((s) => piece(`slides[${s.n}]`, `Slide ${s.n}`, s.words, s.words.includes('\n') || s.words.length > 60))}
         {fw.ad ? (
           <>
             {piece('ad.primary_text', 'Primary text', fw.ad.primary_text, true)}
@@ -180,7 +181,13 @@ function Piece({
       {disabled ? (
         <span className="paragraph-xs text-primary whitespace-pre-wrap [overflow-wrap:anywhere]">{value}</span>
       ) : multiline ? (
-        <textarea rows={2} className={cls} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v !== value && onCommit(v)} />
+        <textarea
+          rows={Math.min(6, Math.max(2, v.split('\n').length + Math.floor(v.length / 70)))}
+          className={cls}
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          onBlur={() => v !== value && onCommit(v)}
+        />
       ) : (
         <input className={cls} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v !== value && onCommit(v)} />
       )}
