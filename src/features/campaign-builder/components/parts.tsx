@@ -26,6 +26,9 @@ export const CHANNEL_LABELS: Record<string, string> = {
   youtube_ads: 'YouTube ads',
   programmatic: 'Programmatic',
   organic_social: 'Organic social',
+  linkedin_organic: 'LinkedIn organic',
+  tiktok_organic: 'TikTok organic',
+  influencer: 'Influencers',
   email: 'Email',
   website: 'Website',
 }

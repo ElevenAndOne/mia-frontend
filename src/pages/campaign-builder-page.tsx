@@ -168,6 +168,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const [flash, setFlash] = useState<string | null>(null)
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
+  const pageScroll = useRef<HTMLDivElement>(null)
 
   // After a chat reply, say what Mia changed (the page has already re-read it).
   useEffect(() => {
@@ -195,7 +196,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
         onBack={() => navigate('/home')}
       />
       <div className="flex-1 min-h-0 flex">
-      <div className="@container flex-1 min-w-0 overflow-y-auto">
+      <div ref={pageScroll} className="@container flex-1 min-w-0 overflow-y-auto">
         {build.loading ? (
           <p className="p-6 paragraph-sm text-tertiary">Loading…</p>
         ) : build.loadError || !s ? (
@@ -264,9 +265,14 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               </Card>
             ) : null}
             {tab === 'studio' ? (
-              <StudioTab campaignId={campaignId} approved={!s.campaign.building} />
+              <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
-              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={build.approve} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} onReprice={build.reprice} />
+              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async () => {
+                  // Approve sits at the bottom of a long page: show the result at the top (16 Oct).
+                  const out = await build.approve()
+                  pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
+                  return out
+                }} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} onReprice={build.reprice} />
             ) : (
               <BriefTab
                 state={s}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
@@ -6,7 +6,7 @@ import { KpiPicker } from './kpi-picker'
 import { JobWords, WordsCard } from './final-words'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
-import { Card, Chip, NeedsYou, NeedsYouBanner, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
+import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
 // basis), the jobs for the studio with their designer briefs and credits, then Approve.
@@ -26,6 +26,7 @@ interface Props {
 
 export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
+  const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
@@ -45,142 +46,171 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
   const sp = plan.decisions.budget_split
   const split = sp?.value ?? {}
   const pmPhases = new Set(sp?.pm_phases ?? [])
+  // Opening a job (or a target) from "Needs you": the row expands and scrolls into view.
+  const reveal = (id: string, jobIndex?: number) => {
+    if (jobIndex != null) setOpenJobs((o) => new Set(o).add(jobIndex))
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+  }
   return (
     <div className="flex flex-col gap-4">
-      {run?.status === 'failed' ? (
-        <RunFailed run={run} what="plan" busy={!!busy} onRetry={() => onMakePlan()} />
-      ) : null}
+      {run?.status === 'failed' ? <RunFailed run={run} what="plan" busy={!!busy} onRetry={() => onMakePlan()} /> : null}
       {locked ? (
         <Card className="paragraph-sm text-primary">
           Approved{state.approved?.at ? ` ${day(state.approved.at)}` : ''}
           {state.approved?.by ? ` by ${state.approved.by}` : ''}. It's saved as a draft campaign: it goes live when you
           launch it, so nothing is tracked or counted before then. Next: the Studio tab sends the jobs to Flex.
         </Card>
-      ) : (
-        <>
-          <NeedsYouBanner title="Before you approve" items={state.blockers.map((b) => b.what)} />
-          {state.blockers.some((b) => b.what.includes('which has passed')) ? (
-            <Card warn className="flex flex-wrap items-center justify-between gap-3">
-              <p className="paragraph-sm text-primary">
-                Some due dates passed since Mia made the plan. Move every job a week later in one go, or change them one by one.
-              </p>
-              <Button size="sm" loading={busy === 'edit'} onClick={() => onEdit([{ op: 'shift_dates', days: 7 }])}>
-                Move all job dates a week later
-              </Button>
-            </Card>
-          ) : null}
-        </>
-      )}
+      ) : null}
       {state.plan_from_older_brief && !locked ? (
         <Card warn className="paragraph-sm text-primary">
           The brief changed after this plan was made. Make the plan again from the Brief tab to use it.
         </Card>
       ) : null}
-
       {!locked && plan.assets.length && plan.assets.every((a) => a.credits == null) ? (
         // The plan was made while Flex couldn't be reached: no Credit Ledger, so no job has credits.
         <Card warn className="flex flex-wrap items-center justify-between gap-3">
-          <p className="paragraph-sm text-primary">
-            Flex couldn't be reached when Mia made this plan, so the jobs have no credits yet.
-          </p>
+          <p className="paragraph-sm text-primary">Flex couldn't be reached when Mia made this plan, so the jobs have no credits yet.</p>
           <Button size="sm" variant="primary" loading={busy === 'reprice'} onClick={() => onReprice()}>
             Get prices from Flex
           </Button>
         </Card>
       ) : null}
-      {plan.review ? <SelfCheck review={plan.review} /> : null}
+
+      {locked ? null : <NeedsYouPanel state={state} plan={plan} busy={busy} onEdit={onEdit} onReveal={reveal} />}
+      <Summary plan={plan} state={state} currency={currency} />
       <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
       <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
-      <Concept plan={plan} />
-      <Credits plan={plan} />
-      {locked ? null : <AskPm plan={plan} />}
 
-      {sp?.reason ? (
-        <Card className="flex flex-col gap-1">
-          <p className="subheading-sm text-primary">How the budget is split</p>
-          <p className="paragraph-sm text-secondary">{sp.reason}</p>
-          {sp.history_notes?.length ? (
-            <p className="paragraph-xs text-tertiary">{sp.history_notes.join(' ')}</p>
-          ) : null}
-        </Card>
-      ) : null}
-
-      <div className="grid gap-4 @2xl:grid-cols-2 @7xl:grid-cols-4">
-        {plan.phases.map((p) => (
-          <section key={p.phase} className="min-w-0 rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-3 [overflow-wrap:break-word]">
-            <header className="flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="subheading-md text-primary">{p.phase}</h3>
-                <BudgetField
-                  value={split?.[p.phase] ?? null}
-                  currency={currency}
-                  disabled={locked}
-                  onCommit={(v) => onEdit([{ op: 'set_budget', phase: p.phase, value: v }])}
-                />
+      <section className="flex flex-col gap-2">
+        <h2 className="subheading-md text-primary">Phases, budget and targets</h2>
+        {sp?.reason ? (
+          <details className="paragraph-xs text-tertiary">
+            <summary className="cursor-pointer">How the budget is split</summary>
+            <p className="mt-1 text-secondary">{sp.reason}</p>
+            {sp.history_notes?.length ? <p className="mt-1">{sp.history_notes.join(' ')}</p> : null}
+          </details>
+        ) : null}
+        <div className="grid gap-3 @2xl:grid-cols-2 @7xl:grid-cols-4">
+          {plan.phases.map((p) => (
+            <section key={p.phase} className="min-w-0 rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-2 [overflow-wrap:break-word]">
+              <header className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="subheading-md text-primary">{p.phase}</h3>
+                  <BudgetField
+                    value={split?.[p.phase] ?? null}
+                    currency={currency}
+                    disabled={locked}
+                    onCommit={(v) => onEdit([{ op: 'set_budget', phase: p.phase, value: v }])}
+                  />
+                </div>
+                {pmPhases.has(p.phase) ? <Chip tone="pm">your amount</Chip> : null}
+                <p className="paragraph-xs text-tertiary">{p.channels.map(channelLabel).join(' · ')}</p>
+                {p.objective ? (
+                  <details className="paragraph-xs text-secondary">
+                    <summary className="cursor-pointer line-clamp-2">{p.objective}</summary>
+                    <p className="mt-1">{p.objective}</p>
+                  </details>
+                ) : null}
+                {(sp?.channels ?? []).some((c) => c.phase === p.phase) ? (
+                  <details className="paragraph-xs">
+                    <summary className="cursor-pointer text-tertiary">Money by channel</summary>
+                    <div className="mt-1">
+                      <ChannelMoney
+                        rows={(sp?.channels ?? []).filter((c) => c.phase === p.phase)}
+                        currency={currency}
+                        disabled={locked}
+                        onCommit={(channel, v) => onEdit([{ op: 'set_channel_budget', phase: p.phase, channel, value: v }])}
+                      />
+                    </div>
+                  </details>
+                ) : null}
+              </header>
+              <div className="flex flex-col gap-1.5">
+                {plan.decisions.kpi_targets
+                  .filter((t) => t.phase === p.phase)
+                  .map((t) => (
+                    <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} />
+                  ))}
+                {locked ? null : picking === p.phase ? (
+                  <KpiPicker
+                    groups={kpiGroups}
+                    busy={busy === 'edit'}
+                    taken={new Set(plan.decisions.kpi_targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
+                    onClose={() => setPicking(null)}
+                    onPick={async (key) => {
+                      await onEdit([{ op: 'add_kpi', phase: p.phase, kpi_key: key }])
+                      setPicking(null)
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="self-start rounded-md border border-dashed border-secondary px-2 py-1 paragraph-xs text-secondary hover:text-primary hover:border-brand"
+                    onClick={() => setPicking(p.phase)}
+                  >
+                    + Add a KPI from the list
+                  </button>
+                )}
               </div>
-              {pmPhases.has(p.phase) ? <Chip tone="pm">your amount</Chip> : null}
-              {p.objective ? <p className="paragraph-xs text-secondary">{p.objective}</p> : null}
-              <p className="paragraph-xs text-tertiary">{p.channels.map(channelLabel).join(' · ')}</p>
-              <ChannelMoney
-                rows={(sp?.channels ?? []).filter((c) => c.phase === p.phase)}
-                currency={currency}
-                disabled={locked}
-                onCommit={(channel, v) => onEdit([{ op: 'set_channel_budget', phase: p.phase, channel, value: v }])}
-              />
-            </header>
-            <div className="flex flex-col gap-2">
-              {plan.decisions.kpi_targets
-                .filter((t) => t.phase === p.phase)
-                .map((t) => (
-                  <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} />
-                ))}
-              {locked ? null : picking === p.phase ? (
-                <KpiPicker
-                  groups={kpiGroups}
-                  busy={busy === 'edit'}
-                  taken={new Set(plan.decisions.kpi_targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
-                  onClose={() => setPicking(null)}
-                  onPick={async (key) => {
-                    await onEdit([{ op: 'add_kpi', phase: p.phase, kpi_key: key }])
-                    setPicking(null)
-                  }}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="self-start rounded-md border border-dashed border-secondary px-2 py-1 paragraph-xs text-secondary hover:text-primary hover:border-brand"
-                  onClick={() => setPicking(p.phase)}
-                >
-                  + Add a KPI from the list
-                </button>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              {plan.assets.map((a, i) =>
-                a.phase === p.phase ? (
-                  <Job
+            </section>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="subheading-md text-primary">Jobs for the studio ({plan.assets.length})</h2>
+          <p className="paragraph-xs text-tertiary">Open a job for its words, designer brief and audience.</p>
+        </div>
+        {plan.phases.map((p) => {
+          const jobs = plan.assets.map((a, i) => ({ a, i })).filter(({ a }) => a.phase === p.phase)
+          if (!jobs.length) return null
+          return (
+            <div key={p.phase} className="rounded-xl border border-secondary bg-secondary">
+              <p className="px-3 pt-2 label-xs text-tertiary">
+                {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
+              </p>
+              <ul className="divide-y divide-secondary">
+                {jobs.map(({ a, i }) => (
+                  <JobRow
                     key={a.job_id ?? `${i}-${a.name}`}
                     a={a}
                     index={i}
-                    disabled={locked}
-                    onEdit={onEdit}
-                    wordsRunning={state.words_run?.status === 'running'}
-                    onRewrite={(ids) => onWriteWords(ids, true)}
-                  />
-                ) : null,
-              )}
+                    open={openJobs.has(i)}
+                    onToggle={() => setOpenJobs((o) => { const n = new Set(o); if (n.has(i)) n.delete(i); else n.add(i); return n })}
+                  >
+                    <Job
+                      a={a}
+                      index={i}
+                      disabled={locked}
+                      onEdit={onEdit}
+                      wordsRunning={state.words_run?.status === 'running'}
+                      onRewrite={(ids) => onWriteWords(ids, true)}
+                    />
+                  </JobRow>
+                ))}
+              </ul>
             </div>
-          </section>
-        ))}
-      </div>
+          )
+        })}
+      </section>
 
-      <Checks plan={plan} />
+      <details className="rounded-xl border border-secondary bg-primary px-4 py-3">
+        <summary className="cursor-pointer subheading-sm text-primary">
+          The idea in full, Mia's self-check and checks
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <Concept plan={plan} />
+          {plan.review ? <SelfCheck review={plan.review} /> : null}
+          <Checks plan={plan} />
+        </div>
+      </details>
 
       {locked ? null : (
         <Card className="flex flex-wrap items-center justify-between gap-3">
           <p className="paragraph-sm text-secondary">
             {state.blockers.length
-              ? `Approve is locked: ${state.blockers.length} thing${state.blockers.length === 1 ? '' : 's'} above still need you.`
+              ? `Approve is locked: ${state.blockers.length} thing${state.blockers.length === 1 ? '' : 's'} in "Needs you" first.`
               : 'Approving saves this plan to the campaign. The jobs are sent to the studio in the next step.'}
           </p>
           {state.warnings?.length ? (
@@ -196,6 +226,179 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </Card>
       )}
     </div>
+  )
+}
+
+// "Needs you" (16 Oct, the Onvlee test): only what the PM must fix or decide, each one click from its fix.
+// Blockers first (they lock Approve), then jobs whose words need a look, then what's worth deciding.
+function NeedsYouPanel({
+  state,
+  plan,
+  busy,
+  onEdit,
+  onReveal,
+}: {
+  state: BuildState
+  plan: Plan
+  busy: string | null
+  onEdit: Props['onEdit']
+  onReveal: (id: string, jobIndex?: number) => void
+}) {
+  const jobIndex = (name?: string) => plan.assets.findIndex((a) => a.name === name)
+  const flagged = plan.assets.map((a, i) => ({ a, i })).filter(({ a }) => a.final_words?.status === 'flagged')
+  const asks = (plan.decisions.ask_pm ?? []).map((q) => (typeof q === 'string' ? { question: q } : q))
+  const lookAt = plan.review?.scorecard?.look_at ?? []
+  const datesPassed = state.blockers.some((b) => b.what.includes('which has passed'))
+  const must = state.blockers.length + flagged.length
+  return (
+    <Card warn={must > 0} className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="subheading-md text-primary">{must ? `Needs you · ${must}` : 'Nothing needs you'}</h2>
+        {!must ? <p className="paragraph-xs text-tertiary">Read the plan below, then approve at the end.</p> : null}
+      </div>
+      {state.blockers.length ? (
+        <ul className="flex flex-col gap-1">
+          {state.blockers.map((b, k) => {
+            const ji = jobIndex(b.key)
+            const target = plan.decisions.kpi_targets.find((t) => t.key === b.key)
+            return (
+              <li key={k} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+                <span className="min-w-0">🔒 {b.what}</span>
+                {target || ji >= 0 ? (
+                  <button type="button" className="paragraph-xs underline text-primary"
+                    onClick={() => (target ? onReveal(`t-${target.key}`) : onReveal(`job-${ji}`, ji))}>
+                    Show me
+                  </button>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+      {datesPassed ? (
+        <Button size="sm" loading={busy === 'edit'} onClick={() => onEdit([{ op: 'shift_dates', days: 7 }])}>
+          Move all job dates a week later
+        </Button>
+      ) : null}
+      {flagged.length ? (
+        <ul className="flex flex-col gap-1">
+          {flagged.map(({ a, i }) => (
+            <li key={i} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+              <span className="min-w-0">
+                ✏️ <span className="font-medium">{a.name}</span>
+                <span className="block paragraph-xs text-secondary">{a.final_words?.flags[0]?.problem}</span>
+              </span>
+              <button type="button" className="paragraph-xs underline text-primary" onClick={() => onReveal(`job-${i}`, i)}>
+                Fix the words
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {asks.length || lookAt.length ? (
+        <details>
+          <summary className="cursor-pointer paragraph-sm text-secondary">
+            Worth deciding ({asks.length + lookAt.length}): Mia's questions and her self-check's notes
+          </summary>
+          <ul className="mt-2 flex flex-col gap-2 paragraph-sm text-primary">
+            {asks.map((q, k) => (
+              <li key={`q${k}`}>
+                {'about' in q && q.about ? <span className="label-xs text-secondary block">{String(q.about)}</span> : null}
+                {q.question}
+              </li>
+            ))}
+            {lookAt.map((x) => (
+              <li key={x} className="text-secondary">
+                <span className="label-xs block">Self-check</span>
+                {x}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 paragraph-xs text-tertiary">Answer in the chat on the right; Mia changes the plan from there.</p>
+        </details>
+      ) : null}
+    </Card>
+  )
+}
+
+// The plan at a glance: the idea in one line, the money by phase, the studio work and the self-check grade.
+function Summary({ plan, state, currency }: { plan: Plan; state: BuildState; currency: string }) {
+  const sc = plan.review?.scorecard
+  const split = plan.decisions.budget_split?.value ?? {}
+  const credits = plan.credits
+  const words = plan.assets.filter((a) => a.final_words).length
+  return (
+    <Card className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="subheading-md text-primary">{plan.concept.name}</p>
+        {sc && !sc.thin_history ? (
+          <span className="rounded-full bg-brand-solid px-3 py-0.5 subheading-sm text-primary-onbrand">
+            Self-check {sc.grade} · {sc.overall}
+          </span>
+        ) : null}
+      </div>
+      {plan.concept.big_idea ? <p className="paragraph-sm text-secondary line-clamp-2">{plan.concept.big_idea}</p> : null}
+      <dl className="grid gap-x-6 gap-y-1 paragraph-sm @xl:grid-cols-3">
+        <div>
+          <dt className="label-xs text-tertiary">Budget by phase</dt>
+          <dd className="text-primary">
+            {Object.entries(split).filter(([, v]) => v).map(([k, v]) => `${k} ${money(v, currency)}`).join(' · ') || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="label-xs text-tertiary">Studio</dt>
+          <dd className="text-primary">
+            {plan.assets.length} jobs · {num(credits?.total_planned ?? 0)} credits ·{' '}
+            {credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in some sprints' : 'room unknown'}
+          </dd>
+        </div>
+        <div>
+          <dt className="label-xs text-tertiary">Final words</dt>
+          <dd className="text-primary">
+            {words ? `${words} of ${plan.assets.length} written` : 'not written yet'}
+            {state.words_run?.status === 'running' ? ' · writing now' : ''}
+          </dd>
+        </div>
+      </dl>
+    </Card>
+  )
+}
+
+// One job as one line; opens to the full job (words, designer brief, audience).
+function JobRow({
+  a,
+  index,
+  open,
+  onToggle,
+  children,
+}: {
+  a: PlanAsset
+  index: number
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  const status = a.final_words?.status
+  const dot = a.credits == null || status === 'flagged' ? 'bg-utility-warning-500' : status === 'ready' ? 'bg-utility-success-500' : 'bg-tertiary'
+  const label = a.credits == null ? 'no rate yet' : status === 'flagged' ? 'words need a look' : status === 'ready' ? 'words ready' : 'no words yet'
+  return (
+    <li id={`job-${index}`}>
+      <button type="button" onClick={onToggle} aria-expanded={open}
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-primary">
+        <span className={`size-2.5 shrink-0 rounded-full ${dot}`} title={label} aria-label={label} />
+        <span className="min-w-0 flex-1 paragraph-sm text-primary">{a.name}</span>
+        <span className="paragraph-xs text-tertiary">
+          {channelLabel(a.channel)} · {a.ledger_type ?? '—'}
+          {a.ledger_tier ? ` ${a.ledger_tier}` : ''}
+        </span>
+        <span className="paragraph-xs text-secondary tabular-nums">{a.credits == null ? '? credits' : `${num(a.credits)} cr`}</span>
+        <span className="paragraph-xs text-tertiary whitespace-nowrap">
+          {day(a.due_date)} → {day(a.launch_date)}
+        </span>
+        <span className="paragraph-xs text-tertiary">{open ? '▴' : '▾'}</span>
+      </button>
+      {open ? <div className="px-3 pb-3">{children}</div> : null}
+    </li>
   )
 }
 
@@ -238,7 +441,10 @@ function Shape({
               {pb.blend_name ? <span className="paragraph-sm text-secondary">+ {pb.blend_name}</span> : null}
               <Chip tone={pb.made_by === 'pm' ? 'pm' : 'mia'}>{pb.made_by === 'pm' ? 'your choice' : `${pb.confidence} confidence`}</Chip>
             </p>
-            <p className="paragraph-xs text-secondary mt-0.5">{pb.chosen_because}</p>
+            <details className="paragraph-xs text-secondary mt-0.5">
+              <summary className="cursor-pointer line-clamp-2">{pb.chosen_because}</summary>
+              <p className="mt-1">{pb.chosen_because}</p>
+            </details>
           </>
         ) : (
           <p className="paragraph-sm text-secondary mt-0.5">This plan was made before playbooks were used. Pick one and make the plan again.</p>
@@ -299,57 +505,7 @@ function Concept({ plan }: { plan: Plan }) {
   )
 }
 
-function Credits({ plan }: { plan: Plan }) {
-  const c = plan.credits
-  const text =
-    c.status === 'fits'
-      ? 'Fits the sprints Flex knows.'
-      : c.status === 'over'
-        ? `Over in ${c.over?.join(', ')}.`
-        : c.reason ?? 'Some jobs fall in sprints whose credits Flex doesn’t know yet.'
-  return (
-    <Card warn={c.status === 'over'} className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      <p className="subheading-sm text-primary">{num(c.total_planned ?? 0)} credits</p>
-      <p className="paragraph-sm text-secondary">{text}</p>
-      {c.sprints?.length ? (
-        <p className="paragraph-xs text-tertiary">
-          {c.sprints.map((s) => `${s.label}: ${num(s.planned)}${s.free == null ? ' (room unknown)' : ` of ${num(s.free)} free`}`).join(' · ')}
-        </p>
-      ) : null}
-    </Card>
-  )
-}
 
-function AskPm({ plan }: { plan: Plan }) {
-  const qs = (plan.decisions.ask_pm ?? []).map((q) => (typeof q === 'string' ? { question: q } : q))
-  if (!qs.length) return null
-  const top = qs.slice(0, 3)
-  return (
-    <Card>
-      <h2 className="subheading-md text-primary">Worth deciding before you approve</h2>
-      <ul className="mt-2 flex flex-col gap-2">
-        {top.map((q, i) => (
-          <li key={i} className="paragraph-sm text-primary">
-            {'about' in q && q.about ? <span className="label-xs text-secondary block">{String(q.about)}</span> : null}
-            {q.question}
-          </li>
-        ))}
-      </ul>
-      {qs.length > 3 ? (
-        <details className="mt-2">
-          <summary className="cursor-pointer paragraph-xs text-tertiary">{qs.length - 3} more</summary>
-          <ul className="mt-2 flex flex-col gap-2">
-            {qs.slice(3).map((q, i) => (
-              <li key={i} className="paragraph-sm text-secondary">
-                {q.question}
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-    </Card>
-  )
-}
 
 function useField(value: string) {
   const [v, setV] = useState(value)
@@ -466,7 +622,7 @@ function Target({
       <NeedsYou>no basis: you set it</NeedsYou>
     )
   return (
-    <div className={`rounded-lg bg-primary p-2 ${missing ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
+    <div id={`t-${t.key}`} className={`rounded-lg bg-primary px-2 py-1.5 ${missing ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="label-sm text-primary min-w-0">
           {t.kpi_name}
@@ -509,10 +665,14 @@ function Target({
           </label>
         ) : null}
       </div>
-      {t.reason ? <p className="paragraph-xs text-tertiary mt-1">{t.reason}</p> : null}
-      {t.account_reference ? <p className="paragraph-xs text-tertiary">For reference: {t.account_reference}</p> : null}
-      {needsSource ? (
-        <p className="paragraph-xs text-tertiary">Tracked once its source (a HubSpot or Brevo list) is set, after approval.</p>
+      {t.reason || t.account_reference || needsSource ? (
+        // The reason opens on click (it was a paragraph under every target).
+        <details className="mt-0.5 paragraph-xs text-tertiary">
+          <summary className="cursor-pointer">Why</summary>
+          {t.reason ? <p className="mt-0.5">{t.reason}</p> : null}
+          {t.account_reference ? <p>For reference: {t.account_reference}</p> : null}
+          {needsSource ? <p>Tracked once its source (a HubSpot or Brevo list) is set, after approval.</p> : null}
+        </details>
       ) : null}
     </div>
   )

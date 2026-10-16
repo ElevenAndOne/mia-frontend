@@ -10,7 +10,7 @@ import { Card, Chip, NeedsYou, NeedsYouBanner, channelLabel, day, num } from './
 // client's sprints, sent to Flex in one go. After that, Flex is where the work is managed; this tab
 // shows each job's stage and review round and links to it.
 
-export function StudioTab({ campaignId, approved }: { campaignId: string; approved: boolean }) {
+export function StudioTab({ campaignId, approved, onChanged }: { campaignId: string; approved: boolean; onChanged?: () => void }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const qc = useQueryClient()
@@ -35,6 +35,7 @@ export function StudioTab({ campaignId, approved }: { campaignId: string; approv
     try {
       const out = await fn()
       await qc.invalidateQueries({ queryKey: key })
+      onChanged?.() // the page header's next step follows a send (it said "Send the jobs" after sending, 16 Oct)
       after?.(out)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong')

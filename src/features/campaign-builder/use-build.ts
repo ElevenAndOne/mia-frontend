@@ -81,6 +81,7 @@ export function useBuild(campaignId: string | undefined) {
         return next
       }),
     approve: () => run('approve', () => api.approvePlan(...ids())),
+    reload: () => queryClient.invalidateQueries({ queryKey: key }),
     reprice: () => run('reprice', () => api.repricePlan(...ids())),
     writeWords: (jobIds?: string[], rewrite = false) => run('words', () => api.writeWords(...ids(), jobIds, rewrite)),
     discard: async () => {
