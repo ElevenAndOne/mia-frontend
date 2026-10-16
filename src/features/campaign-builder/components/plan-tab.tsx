@@ -459,6 +459,9 @@ function Target({
       <Chip tone="mia">from history</Chip>
     ) : t.basis === 'account' ? (
       <Chip tone="mia">from the last 90 days</Chip>
+    ) : t.basis === 'budget' ? (
+      // What the phase's money buys at the client's past rates (A2); "a ceiling" when spend outscales history.
+      <Chip tone="mia">{t.confidence === 'low' ? 'from the budget · a ceiling' : 'from the budget'}</Chip>
     ) : (
       <NeedsYou>no basis: you set it</NeedsYou>
     )

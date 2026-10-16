@@ -99,7 +99,8 @@ export interface KpiTarget {
   lower_is_better?: boolean
   made_by: string
   value: number | null
-  basis: 'history' | 'no_basis' | 'pm' | string
+  basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | string
+  confidence?: 'high' | 'medium' | 'low'
   reason?: string
   account_reference?: string | null
   no_target?: boolean
