@@ -209,7 +209,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 <p className="paragraph-sm text-secondary">
                   {s.campaign.client} · {day(s.campaign.start_date)} – {day(s.campaign.end_date)} ·{' '}
                   {money(s.campaign.budget_total, s.campaign.currency)}
-                  {s.campaign.building ? ' · draft' : ' · approved, not live yet'}
+                  {s.campaign.building ? ' · draft' : s.campaign.status === 'live' ? ' · live' : ' · approved, not live yet'}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">

@@ -21,8 +21,8 @@ import { Card, NeedsYou, channelLabel, day } from './parts'
 const SECTIONS: { state: LaunchJob['state']; title: string; hint: string }[] = [
   { state: 'taken_in', title: 'Ready to launch', hint: 'Artwork and link are in. Launch each one.' },
   { state: 'ready', title: 'Back from the studio', hint: 'Check the artwork and add the link people land on.' },
-  { state: 'in_studio', title: 'Still in the studio', hint: 'These appear above when Flex marks them ready to launch.' },
   { state: 'launched', title: 'Launched', hint: '' },
+  { state: 'in_studio', title: 'Still in the studio', hint: 'These appear above when Flex marks them ready to launch.' },
 ]
 
 export function LaunchTab({ campaignId, approved, onChanged }: { campaignId: string; approved: boolean; onChanged?: () => void }) {
