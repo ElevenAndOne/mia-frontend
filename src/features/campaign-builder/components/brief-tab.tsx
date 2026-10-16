@@ -251,7 +251,9 @@ function Questions({
 }) {
   const qs = (brief.open_questions ?? []).slice(0, 3)
   const [answers, setAnswers] = useState<string[]>(() => qs.map(() => ''))
-  useEffect(() => setAnswers(qs.map(() => '')), [qs.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  // New questions (a redraft asks different ones) clear the boxes: answers stayed under the wrong question (16 Oct).
+  const asked = qs.map((q) => q.question).join('|')
+  useEffect(() => setAnswers(qs.map(() => '')), [asked]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!qs.length) return null
   const filled = answers.some((a) => a.trim())
   return (
