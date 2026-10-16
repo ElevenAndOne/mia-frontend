@@ -173,8 +173,15 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}
+          {j.state === 'in_studio' ? (
+            <p className="paragraph-sm text-secondary">
+              In Flex: <span className="text-primary">{j.stage_label ?? 'Open'}</span>. It moves up to "Back from the studio" once
+              the job is set to Ready to launch in Flex with its final artwork linked (a Drive file or image link).
+            </p>
+          ) : null}
           {j.flex_url ? (
-            <a href={j.flex_url} target="_blank" rel="noreferrer" className="self-start paragraph-xs text-tertiary underline">
+            <a href={j.flex_url} target="_blank" rel="noreferrer"
+              className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary">
               Open the job in Flex ↗
             </a>
           ) : null}
