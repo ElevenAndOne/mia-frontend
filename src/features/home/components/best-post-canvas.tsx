@@ -75,11 +75,15 @@ export const BestPostCanvas = ({
       {/* Close, top-left, on the phone too. It used to be desktop-only on the grounds that
           "the sheet has its own" — but the sheet's only affordance is the grey handle, and
           on a phone this panel covers almost everything, so the way out has to be labelled. */}
+      {/* On the phone the two buttons sit in a row in the flow, not pinned in the corners:
+          pinned, they grew into each other and over the sticker with the text size turned up
+          (15 Oct 2026). A wrapping row just takes a second line instead. */}
+      <div className={compact ? 'mb-3 flex flex-wrap items-center justify-between gap-2' : 'contents'}>
       <button
         type="button"
         onClick={onClose}
-        className={`absolute inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70 ${
-          compact ? 'left-4 top-4' : 'left-9 top-5'
+        className={`inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70 ${
+          compact ? 'py-1' : 'absolute left-9 top-5'
         }`}
       >
         <span>Close</span>
@@ -98,8 +102,8 @@ export const BestPostCanvas = ({
           href={startChatUrl}
           target="_blank"
           rel="noreferrer"
-          className={`absolute inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink hover:opacity-80 ${
-            compact ? 'right-4 top-3' : 'right-5 top-3.5'
+          className={`inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink hover:opacity-80 ${
+            compact ? '' : 'absolute right-5 top-3.5'
           }`}
         >
           <MessageChatSquare size={14} />
@@ -115,8 +119,9 @@ export const BestPostCanvas = ({
           <span>Make another like it</span>
         </button>
       ) : null}
+      </div>
 
-      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full pt-6 gap-2.5' : 'max-w-[26.875rem]'}`}>
+      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full pt-2 gap-2.5' : 'max-w-[26.875rem]'}`}>
         {/* stamp — the Figma sticker. The wrapper owns the rotation and the shine so the
             highlight can be masked to the sticker's own shape (see .mia-sticker). */}
         <span

@@ -121,6 +121,22 @@ interface SessionProviderProps {
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
   const { showToast } = useToast()
+
+  // A Facebook connect that came back without finishing. It used to be a console warning
+  // and nothing else, so a timed-out sign-in looked like the app sending them back to the
+  // start for no reason (15 Oct 2026).
+  const sayWhyMetaFailed = useCallback(
+    (metaError: string) => {
+      if (metaError === 'access_denied') {
+        showToast('info', "Facebook wasn't connected. Tap Continue with Facebook when you're ready.", 8000)
+      } else if (metaError === 'state_expired') {
+        showToast('error', 'Facebook took too long to come back, so we stopped waiting. Please try again.', 10000)
+      } else {
+        showToast('error', "Facebook didn't finish connecting. Please try again.", 8000)
+      }
+    },
+    [showToast]
+  )
   const [state, setState] = useState<SessionState>(getInitialState)
 
   // Refs for OAuth timer cleanup on unmount
@@ -221,6 +237,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           storeSessionId(sessionId)
         }
 
+        // A Facebook return with nothing pending here: the second of two taps, or a tab the
+        // phone reloaded. Still say what happened rather than landing silently (15 Oct 2026).
+        const strayMetaError = redirectParams.get('meta_error')
+        if (strayMetaError && oauthPending !== 'meta') {
+          sayWhyMetaFailed(strayMetaError)
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+
         // Handle mobile OAuth redirect - set connectingPlatform IMMEDIATELY to hide video
         if (oauthPending === 'google' || oauthPending === 'meta') {
           logger.log(
@@ -307,6 +331,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               logger.warn(
                 `[SESSION] Meta OAuth cancelled (meta_error=${metaError}) - restoring session`
               )
+              sayWhyMetaFailed(metaError)
               window.history.replaceState({}, '', window.location.pathname)
               setState((prev) => ({ ...prev, connectingPlatform: null }))
               // Fall through to session validation — no return
@@ -478,8 +503,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
 
     initializeSession()
-    // showToast is stable (memoised in ToastProvider), so this still runs once on mount.
-  }, [showToast])
+    // showToast is stable (memoised in ToastProvider), and so is sayWhyMetaFailed built on
+    // it, so this still runs once on mount.
+  }, [showToast, sayWhyMetaFailed])
 
   // Google Login (FEB 2026: Simplified to redirect flow only, popup flow removed)
   const login = useCallback(async (_onPopupClosed?: () => void): Promise<boolean> => {

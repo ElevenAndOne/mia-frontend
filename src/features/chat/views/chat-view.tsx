@@ -495,15 +495,15 @@ export const ChatView = ({
                           }}
                           className="md:hidden flex w-full items-center gap-3 rounded-2xl bg-secondary p-2.5 text-left"
                         >
-                          <span
-                            className="shrink-0 rounded-lg bg-gradient-to-br from-utility-success-600 to-utility-success-200"
-                            style={{ width: 52, height: 52 }}
-                          />
+                          {/* rem, not px, and the line wraps instead of truncating: with the
+                              phone's text size up, "× your usual reach · Tue" was cut off
+                              mid-sentence (15 Oct 2026). */}
+                          <span className="h-[3.25rem] w-[3.25rem] shrink-0 rounded-lg bg-gradient-to-br from-utility-success-600 to-utility-success-200" />
                           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="mia-mono text-[0.5625rem] text-placeholder">
+                            <span className="mia-mono text-[0.625rem] text-placeholder">
                               Your best post
                             </span>
-                            <span className="paragraph-sm text-primary truncate">
+                            <span className="paragraph-sm text-primary break-words">
                               {brief.best_post.lift >= 2
                                 ? Math.round(brief.best_post.lift)
                                 : brief.best_post.lift.toFixed(1)}
@@ -511,7 +511,7 @@ export const ChatView = ({
                               {brief.best_post.weekday ? ` · ${brief.best_post.weekday}` : ''}
                             </span>
                           </span>
-                          <span className="rounded-md border border-primary px-2.5 py-1.5 paragraph-xs text-primary">
+                          <span className="shrink-0 rounded-md border border-primary px-2.5 py-1.5 paragraph-xs text-primary">
                             Open
                           </span>
                         </button>
@@ -801,7 +801,7 @@ export const ChatView = ({
             setBestPost(false)
           }}
           position="bottom"
-          className="h-[88%]"
+          className="h-[85dvh]"
         >
           <BestPostCanvas
             compact
