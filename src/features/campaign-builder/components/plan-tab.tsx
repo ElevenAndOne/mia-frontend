@@ -63,7 +63,8 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
       ) : null}
       {state.plan_from_older_brief && !locked ? (
         <Card warn className="paragraph-sm text-primary">
-          The brief changed after this plan was made. Make the plan again from the Brief tab to use it.
+          The brief changed after this plan was made, so it can't be approved yet: it would go out with the old
+          brief. Make the plan again from the Brief tab.
         </Card>
       ) : null}
       {!locked && plan.assets.length && plan.assets.every((a) => a.credits == null) ? (
@@ -220,7 +221,17 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
               ))}
             </ul>
           ) : null}
-          <Button variant="primary" disabled={!!state.blockers.length} loading={busy === 'approve'} onClick={() => onApprove()}>
+          {state.plan_from_older_brief ? (
+            <p className="w-full paragraph-xs text-utility-warning-700">
+              The brief changed after this plan was made. Make the plan again from the Brief tab first.
+            </p>
+          ) : null}
+          <Button
+            variant="primary"
+            disabled={!!state.blockers.length || state.plan_from_older_brief}
+            loading={busy === 'approve'}
+            onClick={() => onApprove()}
+          >
             Approve the plan
           </Button>
         </Card>

@@ -119,7 +119,10 @@ function BriefCard({
       if (draft[k] !== initial[k]) changed[k] = fromDraft(k, draft[k])
     })
     const name = draft.name !== initial.name ? draft.name : undefined
-    if (Object.keys(changed).length || name) await onSave(changed, name)
+    if (Object.keys(changed).length || name) {
+      // A failed save keeps the form open with what the PM typed (the error shows above).
+      if ((await onSave(changed, name)) === undefined) return
+    }
     setEditing(false)
   }
 
