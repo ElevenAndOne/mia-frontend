@@ -68,8 +68,8 @@ export function CostsPanel({ sessionId, range }: { sessionId: string | null; ran
               <div className="plz-lab">Usage</div>
               <div className="plz-val plz-num"><Money m={d.totals.usage} /></div>
             </div>
-            <div className="plz-card plz-kpi" title="The servers Basic runs on, shared across every workspace active in the window, incl. VAT">
-              <div className="plz-lab">Hosting share</div>
+            <div className="plz-card plz-kpi" title="The servers Basic runs on, split evenly across every workspace active in the window, incl. VAT. Allocated, not metered.">
+              <div className="plz-lab">Hosting share (allocated)</div>
               <div className="plz-val plz-num"><Money m={d.totals.hosting_share} /></div>
             </div>
             <div className="plz-card plz-kpi" title="Usage + hosting share, minus Meta's 1,000 free service messages a month">
