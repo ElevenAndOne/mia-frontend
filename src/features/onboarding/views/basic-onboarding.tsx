@@ -699,6 +699,28 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               About a minute. You can close this and come back: whatever is ticked is saved,
               and the rest finishes on its own.
             </p>
+            {/* Say hi while the read runs (review, 18 Oct): the most eager moment shouldn't be a
+                spinner. Mia answers "I'm still reading" and comes back with the first posts. */}
+            {sayHiUrl && (
+              <div className="flex flex-col gap-2 pt-2 border-t border-primary">
+                <p className="paragraph-sm text-secondary">Say hi while I read your Page.</p>
+                <a
+                  className={`${PRIMARY} text-center`}
+                  href={sayHiUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setSaidHi(true)}
+                >
+                  {saidHi ? 'Opened WhatsApp' : 'Say hi to Mia on WhatsApp'}
+                </a>
+                <div className="hidden sm:flex flex-col items-center gap-2 pt-1">
+                  <div className="rounded-lg bg-white p-3">
+                    <QRCodeSVG value={sayHiUrl} size={132} />
+                  </div>
+                  <p className="paragraph-xs text-tertiary">On a computer? Scan this with your phone.</p>
+                </div>
+              </div>
+            )}
             {/* Never a dead end. If the read is slow or has failed, the workspace still
                 works — the drafting reads their post history directly either way — so
                 holding them here helps nobody. */}
