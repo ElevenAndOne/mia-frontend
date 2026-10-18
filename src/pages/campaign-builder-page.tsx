@@ -210,7 +210,14 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 <p className="paragraph-sm text-secondary">
                   {s.campaign.client} · {day(s.campaign.start_date)} – {day(s.campaign.end_date)} ·{' '}
                   {money(s.campaign.budget_total, s.campaign.currency)}
-                  {s.campaign.building ? ' · draft' : s.campaign.status === 'live' ? ' · live' : ' · approved, not live yet'}
+                  {s.campaign.building
+                    ? ' · draft'
+                    : s.campaign.status === 'live'
+                      ? // launched before its start date: it isn't running yet (live test 18 Oct)
+                        s.campaign.start_date && s.campaign.start_date > new Date().toISOString().slice(0, 10)
+                        ? ` · launched, starts ${s.campaign.start_date}`
+                        : ' · live'
+                      : ' · approved, not live yet'}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -274,9 +281,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
               <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async () => {
-                  // Approve sits at the bottom of a long page: show the result at the top (16 Oct).
+                  // Approved: the next step is sending the jobs, so go to the Studio tab (live test 18 Oct).
                   const out = await build.approve()
                   pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
+                  if (out !== undefined) go('studio')
                   return out
                 }} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} onReprice={build.reprice} />
             ) : (

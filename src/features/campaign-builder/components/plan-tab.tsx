@@ -673,6 +673,10 @@ function Target({
           </label>
         ) : null}
       </div>
+      {t.value == null && !t.no_target && t.account_reference ? (
+        // What the account did is the PM's starting point, so it sits on the target, not under "Why".
+        <p className="mt-0.5 paragraph-xs text-secondary">{t.account_reference}</p>
+      ) : null}
       {t.reason || t.account_reference || needsSource ? (
         // The reason opens on click (it was a paragraph under every target).
         <details className="mt-0.5 paragraph-xs text-tertiary">
@@ -748,6 +752,7 @@ function Job({
       </div>
       <p className="paragraph-xs text-tertiary">
         Due to the studio {day(a.due_date)} · goes live {day(a.launch_date)}
+        {a.due_date_moved_from ? ` · moved earlier from ${day(a.due_date_moved_from)} (its sprint was full)` : ''}
       </p>
       {a.audience && (a.audience.locations?.length || a.audience.interests_or_keywords?.length || a.audience.custom_audiences?.length) ? (
         <details className="paragraph-xs text-secondary">
@@ -767,6 +772,7 @@ function Job({
           fw={a.final_words}
           index={index}
           jobId={a.job_id}
+          moving={/video|animation|motion/i.test(`${a.ledger_type ?? ''} ${a.format ?? ''}`)}
           disabled={disabled}
           running={wordsRunning}
           onEdit={onEdit}

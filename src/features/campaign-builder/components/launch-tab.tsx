@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
@@ -34,8 +34,16 @@ export function LaunchTab({ campaignId, approved, onChanged }: { campaignId: str
     queryKey: key,
     queryFn: () => api.fetchLaunch(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId && approved,
-    refetchInterval: 15 * 60 * 1000, // Flex is read every 15 minutes while the tab is open
+    // Flex is read every 45 seconds while the tab is open and in view, and when the PM comes back to the tab, so a
+    // job marked ready in Flex shows up without a click (live test 18 Oct).
+    refetchInterval: 45 * 1000,
+    refetchOnWindowFocus: true,
   })
+  const seen = q.dataUpdatedAt
+  useEffect(() => {
+    if (seen) onChanged?.() // the header's next step follows what Flex says
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seen])
   const reload = async () => {
     await qc.invalidateQueries({ queryKey: key })
     onChanged?.()
@@ -170,6 +178,14 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
                 <NeedsYou>Only a Figma link: ad platforms need the exported file. Add a Drive link in Flex, or paste an image link below.</NeedsYou>
               ) : null}
             </div>
+          ) : j.state !== 'in_studio' && j.creative ? (
+            // The PM added the artwork here instead of in Flex: that is fine, say where it is (live test 18 Oct).
+            <p className="paragraph-xs text-secondary [overflow-wrap:anywhere]">
+              Artwork added in Mia:{' '}
+              <a className="underline" href={j.creative} target="_blank" rel="noreferrer">
+                {j.creative}
+              </a>
+            </p>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}
@@ -199,7 +215,7 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
                 <label className="flex flex-col gap-1 paragraph-xs text-tertiary">
                   The link people land on
                   <input className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" value={link}
-                    onChange={(e) => setLink(e.target.value)} placeholder="https://… (with its UTM tags)" />
+                    onChange={(e) => setLink(e.target.value)} placeholder="https://… the page people land on (Mia adds the UTM tags)" />
                 </label>
               )}
               <Button size="sm" variant="primary" className="self-start" loading={busy === 'take'} onClick={() => void takeIn()}>
@@ -216,6 +232,10 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
                 </Button>
                 <Button size="sm" variant="primary" loading={busy === 'push'} disabled={!!blocking.length} onClick={push}>
                   Push to {j.route === 'meta' ? 'Meta' : 'Google'}, paused
+                </Button>
+                {/* The PM built the ad in Ads Manager themselves: it still counts as launched (live test 18 Oct). */}
+                <Button size="sm" loading={busy === 'mark'} onClick={mark}>
+                  I set it up myself
                 </Button>
               </div>
               {checks ? (

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import * as api from '../api'
-import type { StudioJob } from '../types'
-import { Card, Chip, NeedsYou, NeedsYouBanner, channelLabel, day, num } from './parts'
+import type { StudioJob, StudioState } from '../types'
+import { Card, NeedsYou, NeedsYouBanner, channelLabel, day, num } from './parts'
 
 // The Studio tab (plan §8.2): the approved jobs, priced from the Credit Ledger and placed in the
 // client's sprints, sent to Flex in one go. After that, Flex is where the work is managed; this tab
@@ -28,6 +28,31 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
   useEffect(() => {
     if (s && !sender) setSender(s.you ?? '')
   }, [s, sender])
+  // Read Flex every 45 seconds while the tab is in view (and on coming back to it), so stage changes made in Flex
+  // show here without pressing Refresh (live test 18 Oct).
+  const anySent = !!s?.jobs.some((j) => j.flex.task_id)
+  useEffect(() => {
+    if (!approved || !anySent || !sessionId || !tenantId) return
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return
+      api
+        .refreshFromFlex(sessionId, tenantId, campaignId)
+        .then((out) => {
+          if (out.updated) {
+            qc.invalidateQueries({ queryKey: key })
+            onChanged?.()
+          }
+        })
+        .catch(() => undefined) // the Refresh button still shows errors
+    }
+    const t = window.setInterval(tick, 45 * 1000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(t)
+      document.removeEventListener('visibilitychange', tick)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approved, anySent, sessionId, tenantId, campaignId])
 
   const act = async (label: string, fn: () => Promise<unknown>, after?: (out: unknown) => void) => {
     setBusy(label)
@@ -52,6 +77,25 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
   if (!s) return <p className="paragraph-sm text-error">{q.error instanceof Error ? q.error.message : 'Could not load the studio.'}</p>
 
   const toSend = s.jobs.filter((j) => j.include && !j.flex.task_id)
+  // Show the tick at once and save in the background: waiting for the round trip made every box flash (18 Oct).
+  const setJobs = (jobs: StudioJob[], change: { credits?: number | null; include?: boolean }) => {
+    const idsToSet = new Set(jobs.map((x) => x.asset_id))
+    qc.setQueryData<StudioState>(key, (old) =>
+      old ? { ...old, jobs: old.jobs.map((x) => (idsToSet.has(x.asset_id) ? { ...x, ...change } : x)) } : old,
+    )
+    api
+      .editStudio(...ids, jobs.map((x) => ({ asset_id: x.asset_id, ...change })))
+      .then(() => qc.invalidateQueries({ queryKey: key }))
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : 'Could not save that')
+        qc.invalidateQueries({ queryKey: key })
+      })
+  }
+  const setAll = (jobs: StudioJob[], include: boolean) => setJobs(jobs.filter((x) => x.include !== include), { include })
+  const groups = [
+    { title: 'In Flex', jobs: s.jobs.filter((j) => j.flex.task_id), pick: false },
+    { title: 'Not sent yet', jobs: s.jobs.filter((j) => !j.flex.task_id), pick: true },
+  ]
   return (
     <div className="flex flex-col gap-4">
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
@@ -90,14 +134,35 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
             </tr>
           </thead>
           <tbody>
-            {s.jobs.map((j) => (
-              <Row
-                key={j.asset_id}
-                j={j}
-                disabled={!!busy}
-                onChange={(change) => act('edit', () => api.editStudio(...ids, [{ asset_id: j.asset_id, ...change }]))}
-              />
-            ))}
+            {/* Two groups, sent first (live test 18 Oct: one long mixed table was hard to read). */}
+            {groups.map((g) =>
+              g.jobs.length ? (
+                <Fragment key={g.title}>
+                  <tr>
+                    <td colSpan={7} className="pt-4 pb-1">
+                      <span className="flex flex-wrap items-center gap-3">
+                        <span className="subheading-sm text-primary">
+                          {g.title} ({g.jobs.length})
+                        </span>
+                        {g.pick ? (
+                          <>
+                            <button type="button" className="paragraph-xs text-tertiary hover:text-primary" onClick={() => setAll(g.jobs, true)}>
+                              Tick all
+                            </button>
+                            <button type="button" className="paragraph-xs text-tertiary hover:text-primary" onClick={() => setAll(g.jobs, false)}>
+                              Untick all
+                            </button>
+                          </>
+                        ) : null}
+                      </span>
+                    </td>
+                  </tr>
+                  {g.jobs.map((j) => (
+                    <Row key={j.asset_id} j={j} disabled={busy === 'send'} onChange={(change) => setJobs([j], change)} />
+                  ))}
+                </Fragment>
+              ) : null,
+            )}
           </tbody>
         </table>
       </Card>
@@ -219,12 +284,24 @@ function Row({ j, disabled, onChange }: { j: StudioJob; disabled: boolean; onCha
                 if (v !== j.credits) onChange({ credits: v })
               }}
             />
-            {missing ? <NeedsYou>no rate: set it</NeedsYou> : j.credits_confirmed ? <Chip>confirmed</Chip> : null}
+            {missing ? <NeedsYou>no rate: set it</NeedsYou> : null}
           </span>
         )}
       </td>
       <td className="py-2 pr-2 text-secondary">{day(j.due_date)}</td>
-      <td className="py-2 pr-2 text-secondary">{j.flex.sprint_name ?? j.sprint ?? '—'}</td>
+      <td className="py-2 pr-2 text-secondary">
+        {(() => {
+          const sp = j.flex.sprint_name ?? j.sprint ?? '—'
+          const m = /^(.*?)\s*\(projected\)$/.exec(sp)
+          return m ? (
+            <>
+              {m[1]} <span className="paragraph-xs text-tertiary">projected</span>
+            </>
+          ) : (
+            sp
+          )
+        })()}
+      </td>
       <td className="py-2 pr-2">
         {inFlex ? (
           <span className="flex flex-col gap-0.5">

@@ -72,6 +72,7 @@ export interface PlanAsset {
   credits: number | null
   credits_source?: 'ledger' | 'pm' | 'no_rate'
   due_date?: string | null
+  due_date_moved_from?: string | null
   launch_date?: string | null
   creative_brief?: CreativeBrief
   audience?: { locations?: string[]; age_range?: string; interests_or_keywords?: string[]; custom_audiences?: string[]; notes?: string }

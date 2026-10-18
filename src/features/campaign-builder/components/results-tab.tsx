@@ -112,7 +112,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                         <span className="label-sm text-primary">{k.kpi_name}</span>
                         <span className="paragraph-sm text-primary tabular-nums">
                           {a?.actual_label ?? (value != null ? num(value) : '—')}
-                          <span className="text-tertiary"> / {k.target != null ? num(k.target) : 'no target'}</span>
+                          <span className="text-tertiary"> / {k.target != null ? targetLabel(k) : 'no target'}</span>
                         </span>
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
@@ -203,3 +203,14 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   )
 }
 
+
+// A target as the PM typed it means it: R5 for a cost, 2.5% for a rate, 2,000 for a count (live test 18 Oct).
+const MONEY_KEYS = new Set(['cpc', 'cpm', 'cpa', 'cost_per_conversion', 'cost_per_lead', 'spend'])
+const PERCENT_KEYS = new Set(['ctr', 'conversion_rate', 'email_open_rate', 'email_click_rate', 'web_engagement_rate',
+  'website_engagement_rate', 'organic_engagement_rate', 'email_unsubscribe_rate', 'email_bounce_rate'])
+function targetLabel(k: ResultsKpi): string {
+  const key = k.kpi_key ?? ''
+  if (MONEY_KEYS.has(key)) return money(k.target as number, 'ZAR')
+  if (PERCENT_KEYS.has(key)) return `${num(k.target as number)}%`
+  return num(k.target as number)
+}
