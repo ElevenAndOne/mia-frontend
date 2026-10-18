@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../contexts/session-context'
+import { CostsPanel } from './costs-panel'
 import { AskPulse } from './ask-pulse'
 import { usePulseDashboard, useTesterDetail, useWorkspaces } from './hooks/use-pulse'
 import { PulseError } from './services/pulse-service'
@@ -975,6 +976,9 @@ export function PulseView() {
             {ov && <DeltaLine metric={ov.est_cost_usd} unit="usd" />}
           </div>
         </div>
+
+        {/* what Mia costs: the cost meter (P0) */}
+        <CostsPanel sessionId={sessionId} range={range} />
 
         {/* main columns */}
         <div className="plz-cols">
