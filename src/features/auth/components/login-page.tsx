@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { fetchInviter, pendingReferral, type Inviter } from '../../referrals/referral'
 import { LoginPageDesktop } from './login-page-desktop'
 import { LoginPageMobile } from './login-page-mobile'
 import { useLoginPage, type LoginMethod } from '../hooks/use-login-page'
@@ -88,6 +89,13 @@ export const LoginPage = ({
 
   const makeHandler = (method: LoginMethod) => () => void handleLogin(method)
 
+  // Came through someone's invite (referrals, P2): say who, above the buttons.
+  const [inviter, setInviter] = useState<Inviter | null>(null)
+  useEffect(() => {
+    const code = pendingReferral()
+    if (code) void fetchInviter(code).then(setInviter)
+  }, [])
+
   const authButtons: AuthButtonConfig[] = [
     {
       id: 'google',
@@ -118,6 +126,11 @@ export const LoginPage = ({
 
   return (
     <div className="relative w-full h-full">
+      {inviter?.first_name && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 max-w-[calc(100%-2rem)] rounded-full bg-primary/90 px-4 py-2 paragraph-sm text-primary shadow">
+          {inviter.first_name} from {inviter.business} invited you to Mia
+        </div>
+      )}
       <LoginPageMobile actionButtons={renderAuthButtons('mobile', authButtons, isBusy)} />
       <LoginPageDesktop actionButtons={renderAuthButtons('desktop', authButtons, isBusy)} />
     </div>

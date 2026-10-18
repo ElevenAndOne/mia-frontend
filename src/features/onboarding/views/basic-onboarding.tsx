@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { QRCodeSVG } from 'qrcode.react'
 import { Spinner } from '../../../components/spinner'
 import { useSession } from '../../../contexts/session-context'
 import { fetchHomeBrief } from '../../home/services/home-brief-api'
@@ -36,7 +37,7 @@ import { StorageKey } from '../../../constants/storage-keys'
  * generic, which is the one promise the tier makes.
  */
 
-type StepId = 'pages' | 'details' | 'reading' | 'done'
+type StepId = 'pages' | 'details' | 'reading' | 'hi' | 'done'
 
 const CARD = 'rounded-xl border border-primary bg-secondary p-4 flex flex-col gap-3'
 const FIELD =
@@ -132,6 +133,10 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   const queryClient = useQueryClient()
   const [checking, setChecking] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
+  // The Say hi step (P2): WhatsApp with "Hi Mia!" typed in, and whether they tapped it.
+  const [sayHiUrl, setSayHiUrl] = useState<string | null>(null)
+  const [saidHi, setSaidHi] = useState(false)
+  const [numberChecked, setNumberChecked] = useState(false)
   // Several Pages found at sign-up: which one they tapped. Nothing is attached until they
   // confirm, same as the one-Page case.
   const [picked, setPicked] = useState<string | null>(null)
@@ -183,8 +188,13 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
     try {
       const res = await startWhatsAppVerification(sessionId, whatsapp.trim())
       setCode('')
-      setNotDelivered(res?.delivered === false)
       setCodeSent(true)
+      if (res?.verified) {
+        // Already confirmed on their other business (D17): nothing to type.
+        setConfirmed(true)
+      } else {
+        setNotDelivered(res?.delivered === false)
+      }
     } catch (e) {
       // Stay here and say so. Moving on after a failed send left the screen
       // promising a code that was never sent (29 Sep 2026: the backend was down
@@ -215,7 +225,9 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
     let live = true
     fetchWhatsAppNumber(sessionId)
       .then((state) => {
+        if (live) setNumberChecked(true)
         if (!live || !state || state.unavailable) return
+        setSayHiUrl(state.say_hi_url || state.start_chat_url || null)
         if (state.whatsapp_number) setWhatsapp((w) => w || state.whatsapp_number || '')
         if (state.verified) {
           setCodeSent(true)
@@ -226,6 +238,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
       })
       .catch(() => {
         // Nothing to restore. The screen still works from scratch.
+        if (live) setNumberChecked(true)
       })
     return () => {
       live = false
@@ -286,8 +299,10 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   useEffect(() => {
     if (step !== 'reading') return
     // A resumed tab whose read already finished goes straight through: no rows to watch.
-    if (readFinished || waited > STOP_WAITING_MS) setStep('done')
-  }, [step, readFinished, waited])
+    // The read is over: one last step, saying hi on WhatsApp (P2). With no link to offer
+    // (WhatsApp not on for this workspace) they go straight in, as before.
+    if ((readFinished || waited > STOP_WAITING_MS) && numberChecked) setStep(sayHiUrl ? 'hi' : 'done')
+  }, [step, readFinished, waited, sayHiUrl, numberChecked])
 
   // The end takes them in by itself (Josh, 29 Sep 2026). Two people reach this screen: one
   // watching the read finish, one coming back from WhatsApp. Neither should have to find a
@@ -321,6 +336,11 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
     onComplete()
   }, [sessionId, activeWorkspace?.tenant_id, queryClient, onComplete])
 
+  // A resumed tab on the Say hi step with no link to offer (WhatsApp off here) goes in.
+  useEffect(() => {
+    if (step === 'hi' && numberChecked && !sayHiUrl) setStep('done')
+  }, [step, numberChecked, sayHiUrl])
+
   useEffect(() => {
     if (step === 'done' && !loading) void finish()
   }, [step, loading, finish])
@@ -344,6 +364,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               (page ? 'We found your pages' : choices.length ? 'Which Page is this for?' : 'Connect your Page')}
             {step === 'details' && 'Two quick things'}
             {step === 'reading' && 'Reading your pages…'}
+            {step === 'hi' && 'Say hi to Mia'}
           </h1>
         </header>
         )}
@@ -687,11 +708,41 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   This is taking longer than usual. Everything below that's already ticked is
                   saved, and the rest will finish on its own.
                 </p>
-                <button type="button" className={QUIET} onClick={() => setStep('done')}>
+                <button type="button" className={QUIET} onClick={() => setStep(sayHiUrl ? 'hi' : 'done')}>
                   Carry on without waiting
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* ---- hi: the first chat starts on WhatsApp (P2, BASIC_FLOWS_FINAL_PLAN 18 Oct) ----
+            The welcome is held for new sign-ups, so this button is how the chat begins: it
+            opens WhatsApp with "Hi Mia!" typed for them. On a computer, wa.me opens WhatsApp
+            Web, which many people don't have, so the QR code sits beside it. */}
+        {!loading && step === 'hi' && sayHiUrl && (
+          <div className={CARD}>
+            <p className="paragraph-sm text-secondary">
+              I've read your Page. Say hi on WhatsApp and I'll make your first three posts there.
+            </p>
+            <a
+              className={`${PRIMARY} text-center`}
+              href={sayHiUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setSaidHi(true)}
+            >
+              {saidHi ? 'Opened WhatsApp' : 'Say hi to Mia on WhatsApp'}
+            </a>
+            <div className="hidden sm:flex flex-col items-center gap-2 pt-2">
+              <div className="rounded-lg bg-white p-3">
+                <QRCodeSVG value={sayHiUrl} size={152} />
+              </div>
+              <p className="paragraph-xs text-tertiary">On a computer? Scan this with your phone.</p>
+            </div>
+            <button type="button" className={QUIET} onClick={() => setStep('done')}>
+              {saidHi ? "I've said hi, take me to Mia" : 'Skip for now'}
+            </button>
           </div>
         )}
 

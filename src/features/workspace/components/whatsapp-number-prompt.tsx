@@ -123,6 +123,12 @@ export const WhatsAppNumberPrompt = () => {
     run(async () => {
       if (!sessionId) return
       const res = await startWhatsAppVerification(sessionId, number.trim())
+      if (res.verified) {
+        // Already confirmed on their other business: nothing to type (D17).
+        setNotice(res.message)
+        setState(await fetchWhatsAppNumber(sessionId))
+        return
+      }
       setNotice(
         res.delivered
           ? `Code sent to ${number.trim()} on WhatsApp. It expires in 10 minutes.`

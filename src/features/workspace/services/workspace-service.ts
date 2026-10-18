@@ -5,6 +5,7 @@
 import { apiFetch, API_BASE_URL } from '../../../utils/api'
 import type { Workspace, WorkspaceRole } from '../types'
 import type { Experience, FeatureFlags } from '../feature-keys'
+import { clearReferral, pendingReferral } from '../../referrals/referral'
 
 /**
  * Raw API response type (role is string from backend)
@@ -206,12 +207,14 @@ export const createWorkspace = async (
       'Content-Type': 'application/json',
       'X-Session-ID': sessionId,
     },
-    body: JSON.stringify({ name }),
+    // The invite code they arrived with, if any (referrals, P2): spent on this first workspace.
+    body: JSON.stringify({ name, referral_code: pendingReferral() || undefined }),
   })
 
   if (!response.ok) {
     throw new Error(`Create workspace failed: ${response.status}`)
   }
+  clearReferral()
 
   const data: CreateWorkspaceResponse = await response.json()
   return {

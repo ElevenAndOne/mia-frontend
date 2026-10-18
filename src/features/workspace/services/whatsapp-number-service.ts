@@ -22,6 +22,8 @@ export interface WhatsAppNumberState {
   unavailable?: boolean
   /** A wa.me link that opens WhatsApp with Mia's number and a message ready to send. */
   start_chat_url?: string | null
+  /** The same link with "Hi Mia!" typed in: the Say hi step at the end of a Basic sign-up. */
+  say_hi_url?: string | null
 }
 
 const headers = (sessionId: string) => ({
@@ -63,7 +65,7 @@ export const fetchWhatsAppNumber = async (
 export const startWhatsAppVerification = async (
   sessionId: string,
   whatsappNumber: string
-): Promise<{ delivered: boolean; message: string }> => {
+): Promise<{ delivered: boolean; message: string; verified?: boolean }> => {
   const response = await apiFetch('/api/whatsapp/me/number/start', {
     method: 'POST',
     headers: headers(sessionId),
