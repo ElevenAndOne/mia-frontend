@@ -25,7 +25,7 @@ export const DoThisNext = ({ cards, stamp, onCta, onDismiss, busyCardId }: DoThi
     <section className="w-full flex flex-col gap-2.5" aria-label="Do this next">
       <div className="flex items-center justify-between">
         <span className="mia-mono text-primary">Do this next</span>
-        <span className="mia-mono text-[0.5625rem] font-normal text-placeholder">{stamp}</span>
+        <span className="mia-mono text-[0.625rem] font-normal text-placeholder">{stamp}</span>
       </div>
       {cards.map((card) => {
         const done = card.state === 'scheduled' || card.state === 'done'
@@ -57,20 +57,23 @@ export const DoThisNext = ({ cards, stamp, onCta, onDismiss, busyCardId }: DoThi
         return (
           <div
             key={card.id}
-            className={`group relative flex items-center justify-between gap-4 rounded-2xl bg-secondary p-3 ${ring}`}
+            // Wraps rather than squeezes. With the phone's text size turned up the button kept
+            // its full width and the title was left a one-word-wide column (15 Oct 2026); the
+            // rem floor on the text means bigger text drops the button onto its own line.
+            className={`group relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-secondary p-3 ${ring}`}
           >
-            <div className="flex items-start gap-3 min-w-0">
+            <div className="flex flex-1 basis-[12rem] items-start gap-3 min-w-0">
               <span
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${iconTone}`}
               >
                 <Icon size={15} />
               </span>
               <div className="flex flex-col gap-1 min-w-0">
-                <span className="paragraph-sm text-primary">{card.title}</span>
-                <span className="paragraph-xs text-quaternary">{card.sub}</span>
+                <span className="paragraph-sm text-primary break-words">{card.title}</span>
+                <span className="paragraph-xs text-quaternary break-words">{card.sub}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="ml-auto flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => onCta(card)}
@@ -89,7 +92,8 @@ export const DoThisNext = ({ cards, stamp, onCta, onDismiss, busyCardId }: DoThi
                   aria-label="Hide this for a week"
                   title="Hide this for a week"
                   onClick={() => onDismiss(card)}
-                  className="rounded-full p-1 text-quaternary opacity-0 transition-opacity hover:bg-tertiary hover:text-secondary group-hover:opacity-100 focus:opacity-100"
+                  // Hover-only reveal left it invisible on a phone, where nothing hovers.
+                  className="rounded-full p-1 text-quaternary transition-opacity hover:bg-tertiary hover:text-secondary [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus:opacity-100"
                 >
                   <XClose size={14} />
                 </button>

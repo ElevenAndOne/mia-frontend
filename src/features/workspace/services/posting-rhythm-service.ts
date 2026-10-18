@@ -34,6 +34,8 @@ export interface CreativeWatch {
   seen: number
   last_polled_at: string | null
   last_error: string | null
+  /** drafts: posts on WhatsApp the day a picture lands. ideas: saved for the Friday posts. */
+  mode?: 'drafts' | 'ideas'
 }
 
 const headers = (sessionId: string) => ({

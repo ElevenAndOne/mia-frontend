@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/button'
 import { TopBar } from '../../components/top-bar'
 import { Edit03 } from '../../components/icon/edit-03'
+import { UploadCloud01 } from '../../components/icon/upload-cloud-01'
+import { creativeStudioApi, miaCreateApi } from '../creative-studio/creative-studio-api'
+import type { CreativeAsset } from '../creative-studio/creative-studio-api'
 import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
@@ -20,8 +23,16 @@ import {
   markPosted,
   reschedulePost,
   retryPost,
+  submitDesign,
+  buildWeeklyPlan,
+  decideWeeklyItem,
+  fetchWeeklyPlan,
+  type DeletePostResult,
+  type WeeklyPlan,
+  type WeeklyPlanItem,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
+import { SwipeReview } from './swipe-review'
 
 /**
  * Posts — the Quick Posts home. For basic-tier workspaces this IS the content
@@ -124,11 +135,25 @@ const removedToast = (post: ScheduledPost) =>
     ? 'Instagram doesn’t let apps delete posts. Open it in Instagram, delete it there, then tap “I’ve deleted it”.'
     : 'Post removed'
 
-const awaitingInstagramDelete = (post: ScheduledPost) =>
-  post.status === 'published' && post.platform === 'instagram' && Boolean(post.manual_delete_at)
+// A published post Mia couldn't delete: Instagram never lets apps delete, and Facebook sometimes
+// refuses (the Page's settings or permissions). The owner deletes it there, with the link, then
+// clears it here (Sean, 14 Oct 2026: a Facebook remove ended in a raw Graph error).
+const awaitingManualDelete = (post: ScheduledPost) =>
+  post.status === 'published' && Boolean(post.manual_delete_at)
 
-/** The two-step Instagram removal: open the post in Instagram, then confirm it is gone. */
-const InstagramDeleteActions = ({
+const networkName = (post: ScheduledPost) => PLATFORM_LABEL[post.platform] ?? post.platform
+
+const FACEBOOK_REFUSED =
+  'Facebook didn’t let Mia delete this post (that’s a Facebook Page setting, not Mia). Open it on Facebook, delete it there, then tap “I’ve deleted it”.'
+
+// The Instagram copy of the same post is live too, and only the Instagram app can delete it.
+const facebookRefused = (r: DeletePostResult) =>
+  r.instagram_still_live
+    ? `${FACEBOOK_REFUSED} The Instagram copy is still live too: delete it in the Instagram app.`
+    : FACEBOOK_REFUSED
+
+/** The two-step removal: open the post on its network, then confirm it is gone. */
+const ManualDeleteActions = ({
   post,
   busy,
   onConfirm,
@@ -145,7 +170,7 @@ const InstagramDeleteActions = ({
         rel="noreferrer"
         className="inline-flex items-center h-8 px-3 rounded-lg bg-secondary paragraph-xs text-primary hover:bg-tertiary whitespace-nowrap"
       >
-        Open in Instagram ↗
+        Open in {networkName(post)} ↗
       </a>
     )}
     <Button size="sm" variant="secondary" disabled={busy} onClick={onConfirm}>
@@ -315,8 +340,8 @@ const PostDetailModal = ({
                 Mark as posted
               </Button>
             )}
-            {awaitingInstagramDelete(post) ? (
-              <InstagramDeleteActions
+            {awaitingManualDelete(post) ? (
+              <ManualDeleteActions
                 post={post}
                 busy={busy}
                 onConfirm={() =>
@@ -346,7 +371,8 @@ const PostDetailModal = ({
                       async (s, t) => {
                         const r = await deletePost(s, t, post.post_id)
                         if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
-                        if (r.instagram_manual) {
+                        if (r.manual_delete || r.instagram_manual) {
+                          if (r.manual_delete?.platform === 'facebook') msg = facebookRefused(r)
                           marked = true
                           return { ...post, manual_delete_at: new Date().toISOString() }
                         }
@@ -425,9 +451,9 @@ const PostRow = ({
             {post.error}
           </p>
         )}
-        {awaitingInstagramDelete(post) && (
+        {awaitingManualDelete(post) && (
           <p className="paragraph-xs text-utility-warning-700 truncate">
-            Still live on Instagram — delete it in the Instagram app, then clear it here.
+            Still live on {networkName(post)}. Delete it there, then clear it here.
           </p>
         )}
       </div>
@@ -436,8 +462,8 @@ const PostRow = ({
 
       {/* Quick actions — clicks must not open the detail view */}
       <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-        {awaitingInstagramDelete(post) ? (
-          <InstagramDeleteActions
+        {awaitingManualDelete(post) ? (
+          <ManualDeleteActions
             post={post}
             busy={busy}
             onConfirm={() =>
@@ -464,7 +490,8 @@ const PostRow = ({
                   async (s, t) => {
                     const r = await deletePost(s, t, post.post_id)
                     if (r.instagram_still_live) msg = INSTAGRAM_STILL_LIVE
-                    if (r.instagram_manual) {
+                    if (r.manual_delete || r.instagram_manual) {
+                      if (r.manual_delete?.platform === 'facebook') msg = facebookRefused(r)
                       marked = true
                       return { ...post, manual_delete_at: new Date().toISOString() }
                     }
@@ -481,7 +508,7 @@ const PostRow = ({
             Remove
           </Button>
         )}
-        {!awaitingInstagramDelete(post) && post.permalink && (
+        {!awaitingManualDelete(post) && post.permalink && (
           <a
             href={post.permalink}
             target="_blank"
@@ -585,7 +612,11 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
-  const items = data ?? []
+  const [sender, setSender] = useState<string | null>(null)
+  const all = data ?? []
+  // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
+  const senders = Array.from(new Set(all.map(itemWho)))
+  const items = sender ? all.filter((i) => itemWho(i) === sender) : all
   const onDropped = (id: string) =>
     queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'ideas'], (prev) => prev?.filter((i) => i.id !== id) ?? prev)
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
@@ -595,16 +626,34 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
         <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
-          Photos your team sends Mia on WhatsApp land here, and so does anything you tell her to save for later.
+          Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent.
           Say “what did the team send” on WhatsApp to see them there too.
         </p>
       </div>
     )
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {items.map((item) => (
-        <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
-      ))}
+    <div className="flex flex-col gap-3">
+      {senders.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {[null, ...senders].map((name) => (
+            <button
+              key={name ?? 'everyone'}
+              type="button"
+              onClick={() => setSender(name)}
+              className={`px-2.5 py-1 rounded-full label-xs font-semibold border ${
+                sender === name ? 'bg-brand-solid text-white border-transparent' : 'bg-primary text-secondary border-secondary'
+              }`}
+            >
+              {name ?? 'Everyone'}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {items.map((item) => (
+          <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -661,7 +710,7 @@ const WaitingCard = ({ item, onChanged }: { item: PostItem; onChanged: (item: Po
                   <span className="paragraph-xs text-quaternary">· {PLATFORM_LABEL[d.platform] ?? d.platform}{d.scheduled_at ? ` · ${fmtWhen(d.scheduled_at)}` : ''}</span>
                   {!open && decision && (
                     <span className={`ml-auto inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${decision.decision === 'approved' ? ITEM_STATE.approved.cls : ITEM_STATE.not_used.cls}`}>
-                      {decision.decision === 'approved' ? `Approved by ${decision.by_name ?? 'you'}` : `Held back${decision.by_name ? ` by ${decision.by_name}` : ''}`}
+                      {decision.decision === 'approved' ? `Approved by ${decision.by_name ?? 'you'}` : decision.decision === 'withdrawn' ? `Taken back by ${itemWho(item)}` : `Held back${decision.by_name ? ` by ${decision.by_name}` : ''}`}
                     </span>
                   )}
                 </div>
@@ -732,7 +781,301 @@ const WaitingPanel = () => {
   )
 }
 
-type PostsTab = 'ideas' | 'waiting' | 'scheduled' | 'posted'
+/**
+ * Send a design for approval (staff plan slice 6): a picture already in the library (a Canva
+ * design, a Figma frame, an upload) goes to the owner with the words written, as one request
+ * on WhatsApp and on Waiting for you. The designer's own words win; left empty, Mia writes them.
+ */
+const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (line: string) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  const { showToast } = useToast()
+  const [library, setLibrary] = useState<CreativeAsset[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [picked, setPicked] = useState<string[]>([])
+  const [caption, setCaption] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!sessionId || !tenantId) return
+    creativeStudioApi
+      .listAssets(tenantId, sessionId, { asset_type: 'reference', media_type: 'image', limit: 24 })
+      .then((r) => setLibrary(r.assets))
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Couldn’t load the library'))
+  }, [sessionId, tenantId])
+
+  const toggle = (id: string) =>
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 10 ? prev : [...prev, id]))
+
+  const upload = async (files: FileList | null) => {
+    if (!files || !files.length || !sessionId || !tenantId) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files).slice(0, 10)) {
+        const r = await miaCreateApi.uploadReference(sessionId, tenantId, file)
+        const asset: CreativeAsset = {
+          asset_id: r.asset_id,
+          tenant_id: tenantId,
+          type: 'reference',
+          media_type: 'image',
+          cdn_url: r.cdn_url,
+          filename: file.name,
+          source: 'upload',
+          status: 'completed',
+          created_at: new Date().toISOString(),
+        }
+        setLibrary((prev) => [asset, ...(prev ?? [])])
+        setPicked((prev) => (prev.length >= 10 ? prev : [...prev, r.asset_id]))
+      }
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const send = () => {
+    if (!sessionId || !tenantId || !picked.length || sending) return
+    setSending(true)
+    submitDesign(sessionId, tenantId, { asset_ids: picked, caption: caption.trim() || undefined })
+      .then((r) => {
+        onSent(r.sent[0] ?? 'Sent for approval')
+        onClose()
+      })
+      .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+      .finally(() => setSending(false))
+  }
+
+  const order = (id: string) => picked.indexOf(id) + 1
+  return (
+    <Modal isOpen onClose={onClose} title="Send a design for approval" size="lg">
+      <div className="flex flex-col gap-4">
+        <p className="paragraph-xs text-quaternary">
+          Pick the finished picture (or the pages of a carousel, in order). The owner gets it with the words written,
+          on WhatsApp and here under Waiting for you, and sends it out with a tap.
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="paragraph-sm font-semibold text-primary">
+            {picked.length ? `${picked.length} picked` : 'From the library'}
+          </p>
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void upload(e.target.files)} />
+          <Button size="sm" variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()}>
+            <UploadCloud01 size={14} />
+            {uploading ? 'Uploading…' : 'Upload a picture'}
+          </Button>
+        </div>
+        {loadError && <p className="paragraph-xs text-utility-error-600">{loadError}</p>}
+        {library === null && !loadError && (
+          <div className="flex justify-center py-8">
+            <Spinner />
+          </div>
+        )}
+        {library !== null && library.length === 0 && (
+          <p className="paragraph-xs text-quaternary">
+            Nothing in the library yet. Upload a picture, or import a design from Canva or Figma in chat first.
+          </p>
+        )}
+        {library !== null && library.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+            {library.map((a) => {
+              const n = order(a.asset_id)
+              return (
+                <button
+                  key={a.asset_id}
+                  type="button"
+                  onClick={() => toggle(a.asset_id)}
+                  className={`relative rounded-lg overflow-hidden border-2 aspect-square bg-tertiary ${n ? 'border-utility-brand-600' : 'border-transparent hover:border-tertiary'}`}
+                  title={a.filename || ''}
+                >
+                  <img src={a.cdn_url} alt="" className="w-full h-full object-cover" />
+                  {n > 0 && (
+                    <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-brand-solid text-primary-onbrand label-xs font-semibold flex items-center justify-center">
+                      {n}
+                    </span>
+                  )}
+                  {a.source && (
+                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-primary/80 label-xs text-quaternary capitalize">
+                      {a.source}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="design-caption" className="paragraph-sm font-semibold text-primary">
+            The words <span className="font-normal text-quaternary">(optional: leave it empty and Mia writes them)</span>
+          </label>
+          <textarea
+            id="design-caption"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            rows={4}
+            placeholder="The caption as it should go out"
+            className="px-2.5 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-primary outline-none focus:border-utility-brand-400 resize-y"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="secondary" onClick={onClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button onClick={send} disabled={!picked.length || sending || uploading}>
+            {sending ? 'Sending…' : 'Send for approval'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+type PostsTab = 'ideas' | 'waiting' | 'next' | 'scheduled' | 'posted'
+
+// ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
+// The same week the owner reviews on WhatsApp on Friday; whichever is used first wins.
+
+const useWeeklyPlan = (enabled: boolean) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  return useQuery({
+    queryKey: ['weekly-plan', tenantId],
+    queryFn: () => fetchWeeklyPlan(sessionId!, tenantId!),
+    enabled: enabled && !!sessionId && !!tenantId,
+    refetchInterval: 60_000,
+  })
+}
+
+const NextWeekItem = ({ plan, item, onPlan }: { plan: WeeklyPlan; item: WeeklyPlanItem; onPlan: (p: WeeklyPlan) => void }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const [busy, setBusy] = useState(false)
+  const [askKeep, setAskKeep] = useState(false)
+  const act = (body: { action: 'book' | 'skip'; keep_idea?: boolean }) => {
+    if (!sessionId || !activeWorkspace) return
+    setBusy(true)
+    decideWeeklyItem(sessionId, activeWorkspace.tenant_id, plan.id, item.i, body)
+      .then((r) => {
+        showToast('success', r.message)
+        onPlan(r.plan)
+      })
+      .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col sm:flex-row">
+      {item.photo_url && (
+        <img src={item.photo_url} alt="" className="w-full sm:w-40 aspect-square object-cover bg-tertiary shrink-0" />
+      )}
+      <div className="p-3 flex flex-col gap-2 min-w-0 flex-1">
+        <p className="label-xs font-semibold text-quaternary">
+          {fmtWhen(item.slot_at)} · {PLATFORM_LABEL[item.platform] ?? item.platform}
+          {item.source === 'idea' ? ' · from a saved idea' : item.source === 'drawn' ? ' · a picture Mia drew' : ''}
+        </p>
+        <p className="paragraph-sm text-primary whitespace-pre-wrap break-words">
+          {item.copy}
+          {item.hashtags ? `\n\n${item.hashtags}` : ''}
+        </p>
+        {item.decision === 'pending' && askKeep ? (
+          // Skipped: keep the photo for another week? Two taps here, not a browser dialog (review).
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="paragraph-xs text-tertiary">Keep the photo as an idea for another week?</span>
+            <Button size="sm" disabled={busy} onClick={() => act({ action: 'skip', keep_idea: true })}>
+              Keep as an idea
+            </Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => act({ action: 'skip', keep_idea: false })}>
+              No thanks
+            </Button>
+          </div>
+        ) : item.decision === 'pending' ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" disabled={busy} onClick={() => act({ action: 'book' })}>
+              Book it
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => (item.source === 'drawn' ? act({ action: 'skip', keep_idea: false }) : setAskKeep(true))}
+            >
+              Skip
+            </Button>
+          </div>
+        ) : (
+          <span className="paragraph-xs text-quaternary">{item.decision === 'booked' ? 'Booked' : 'Skipped'}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const NextWeekPanel = () => {
+  const { sessionId, activeWorkspace } = useSession()
+  const queryClient = useQueryClient()
+  const { showToast } = useToast()
+  const { data, isLoading, error } = useWeeklyPlan(true)
+  const [building, setBuilding] = useState(false)
+  const [swiping, setSwiping] = useState(false)
+  const setPlan = (plan: WeeklyPlan | null) =>
+    queryClient.setQueryData(['weekly-plan', activeWorkspace?.tenant_id], (prev: { enabled: boolean; plan: WeeklyPlan | null } | undefined) =>
+      prev ? { ...prev, plan } : prev,
+    )
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load next week’s posts.</p>
+  const plan = data?.plan
+  if (!plan || plan.status === 'empty')
+    return (
+      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-3">
+        <p className="paragraph-sm font-semibold text-primary">Nothing for next week yet</p>
+        <p className="paragraph-xs text-quaternary max-w-sm">
+          Every Friday morning Mia makes next week’s posts from your saved ideas and the photos you’ve sent, and
+          sends them to you on WhatsApp. They show here too.
+        </p>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={building}
+          onClick={() => {
+            if (!sessionId || !activeWorkspace) return
+            setBuilding(true)
+            buildWeeklyPlan(sessionId, activeWorkspace.tenant_id)
+              .then((r) => setPlan(r.plan))
+              .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+              .finally(() => setBuilding(false))
+          }}
+        >
+          {building ? 'Making them…' : 'Make them now'}
+        </Button>
+      </div>
+    )
+  const pendingCount = plan.items.filter((i) => i.decision === 'pending').length
+  return (
+    <div className="flex flex-col gap-3">
+      {pendingCount > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-secondary bg-primary p-3">
+          <p className="paragraph-sm text-primary">
+            {pendingCount} post{pendingCount === 1 ? '' : 's'} to go through
+          </p>
+          <Button size="sm" onClick={() => setSwiping(true)}>
+            Go through them
+          </Button>
+        </div>
+      )}
+      {swiping && <SwipeReview plan={plan} onPlan={setPlan} onClose={() => setSwiping(false)} />}
+      {plan.missing.length > 0 && (
+        <p className="paragraph-xs text-quaternary">
+          {plan.missing.length} more slot{plan.missing.length === 1 ? '' : 's'} next week had no photo. Send Mia one on
+          WhatsApp and it can go in.
+        </p>
+      )}
+      {plan.items.map((item) => (
+        <NextWeekItem key={item.i} plan={plan} item={item} onPlan={setPlan} />
+      ))}
+    </div>
+  )
+}
 const SCHEDULED_STATUSES: PostStatus[] = ['scheduled', 'reminded', 'publishing', 'failed', 'draft']
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -811,7 +1154,11 @@ const PostsView = () => {
   const teamOn = useFeature('staff_whatsapp')
   const canManage = activeWorkspace?.role === 'owner' || activeWorkspace?.role === 'admin'
   const [tab, setTab] = useState<PostsTab>('scheduled')
+  const [sendingDesign, setSendingDesign] = useState(false)
   const { data: waitingItems } = useItems('waiting', teamOn && canManage)
+  const isOwner = activeWorkspace?.role === 'owner'
+  const { data: weekly } = useWeeklyPlan(teamOn && isOwner)
+  const nextOn = Boolean(weekly?.enabled || weekly?.plan)
   const waitingCount = waitingItems?.length ?? 0
   const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
   const shown = useMemo(() => {
@@ -844,6 +1191,7 @@ const PostsView = () => {
               options={[
                 { value: 'ideas', label: 'Ideas' },
                 ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
+                ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
@@ -856,8 +1204,32 @@ const PostsView = () => {
                 : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
             </p>
           )}
+          {teamOn && (tab === 'ideas' || tab === 'waiting') && (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="paragraph-xs text-quaternary">
+                {tab === 'ideas'
+                  ? 'What the team sent Mia on WhatsApp, and anything saved for later.'
+                  : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
+              </p>
+              <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
+                <UploadCloud01 size={14} />
+                Send a design for approval
+              </Button>
+            </div>
+          )}
+          {sendingDesign && (
+            <SendDesignDialog
+              onClose={() => setSendingDesign(false)}
+              onSent={(line) => {
+                notify('success', line)
+                void queryClient.invalidateQueries({ queryKey: ['post-items', tenantId] })
+                if (canManage) setTab('waiting')
+              }}
+            />
+          )}
           {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
+          {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
 
         {error && (
           <div className="flex items-center gap-3">

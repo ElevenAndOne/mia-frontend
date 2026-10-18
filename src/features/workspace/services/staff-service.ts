@@ -54,7 +54,7 @@ export const addStaff = async (
   sessionId: string,
   tenantId: string,
   body: { name: string; whatsapp_number: string; role?: 'viewer' | 'admin' },
-): Promise<{ ok: boolean; member: StaffMember | null; delivery: 'sent' | 'template' | 'undelivered'; message: string }> => {
+): Promise<{ ok: boolean; member: StaffMember | null; delivery: 'sent' | 'template' | 'undelivered' | 'already_joined'; message: string }> => {
   const response = await apiFetch(base(tenantId), { method: 'POST', headers: headers(sessionId), body: JSON.stringify(body) })
   if (!response.ok) throw new Error(await detailOf(response, 'Could not add them'))
   return response.json()

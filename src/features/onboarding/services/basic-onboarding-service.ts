@@ -8,6 +8,13 @@ export interface ReadinessStep {
   detail: string
 }
 
+export interface FoundPage {
+  id: string
+  name: string
+  linked: boolean
+  instagram: { id: string | null; username: string | null; publishable: boolean }
+}
+
 export interface Readiness {
   experience: 'basic' | 'team' | 'agency'
   /** `linked: false` means we found it at sign-up but it is not attached to this workspace
@@ -16,6 +23,9 @@ export interface Readiness {
   /** `publishable: false` means no Business Instagram is linked to the Page — which is also
    *  what a personal account looks like from here, and no permission can post to one. */
   instagram: { id: string | null; username: string | null; publishable: boolean } | null
+  /** Every Page found at sign-up when there is more than one and none is attached yet. A
+   *  choice for the first screen, not a missing Page (15 Oct 2026). */
+  pages?: FoundPage[]
   steps: ReadinessStep[]
   can_make_posts: boolean
   /** Enough in place to move on — only a Page is required. */

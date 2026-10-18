@@ -109,6 +109,30 @@ export const useAuthRedirects = ({
         'workspaces:',
         availableWorkspaces.length
       )
+      // A Meta sign-up gets a placeholder account mapping, so selectedAccount alone does not
+      // mean they finished. Without this a cancel on Facebook landed here and went straight
+      // to /home, skipping the Page and the WhatsApp number (15 Oct 2026). Basic owners only:
+      // the user-level flag is false for most long-standing Google accounts, and their
+      // workspaces predate the flag being written reliably, so a wider test would send
+      // established people back through onboarding.
+      if (
+        hasSeenIntro &&
+        isAnyAuthenticated &&
+        selectedAccount &&
+        activeWorkspace &&
+        !justAcceptedInvite &&
+        activeWorkspace.experience_profile === 'basic' &&
+        activeWorkspace.role === 'owner' &&
+        !(
+          activeWorkspace.onboarding_completed ||
+          localStorage.getItem(
+            `${StorageKey.ONBOARDING_COMPLETED_PREFIX}${activeWorkspace.tenant_id}`
+          ) === 'true'
+        )
+      ) {
+        navigate('/onboarding')
+        return
+      }
       if (hasSeenIntro && isAnyAuthenticated && selectedAccount) {
         const returnUrl = consumeReturnUrl()
         navigate(returnUrl || '/home')

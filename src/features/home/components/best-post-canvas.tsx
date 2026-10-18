@@ -75,11 +75,15 @@ export const BestPostCanvas = ({
       {/* Close, top-left, on the phone too. It used to be desktop-only on the grounds that
           "the sheet has its own" — but the sheet's only affordance is the grey handle, and
           on a phone this panel covers almost everything, so the way out has to be labelled. */}
+      {/* On the phone the two buttons sit in a row in the flow, not pinned in the corners:
+          pinned, they grew into each other and over the sticker with the text size turned up
+          (15 Oct 2026). A wrapping row just takes a second line instead. */}
+      <div className={compact ? 'mb-3 flex flex-wrap items-center justify-between gap-2' : 'contents'}>
       <button
         type="button"
         onClick={onClose}
-        className={`absolute inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70 ${
-          compact ? 'left-4 top-4' : 'left-9 top-5'
+        className={`inline-flex items-center gap-1.5 mia-mono text-paper-ink hover:opacity-70 ${
+          compact ? 'py-1' : 'absolute left-9 top-5'
         }`}
       >
         <span>Close</span>
@@ -98,8 +102,8 @@ export const BestPostCanvas = ({
           href={startChatUrl}
           target="_blank"
           rel="noreferrer"
-          className={`absolute inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink hover:opacity-80 ${
-            compact ? 'right-4 top-3' : 'right-5 top-3.5'
+          className={`inline-flex items-center gap-2 rounded-md border border-paper-cta-border bg-paper-cta-bg px-3 py-2 paragraph-xs font-semibold text-paper-cta-ink hover:opacity-80 ${
+            compact ? '' : 'absolute right-5 top-3.5'
           }`}
         >
           <MessageChatSquare size={14} />
@@ -115,8 +119,9 @@ export const BestPostCanvas = ({
           <span>Make another like it</span>
         </button>
       ) : null}
+      </div>
 
-      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full pt-6 gap-2.5' : 'max-w-[26.875rem]'}`}>
+      <div className={`flex flex-col gap-3.5 ${compact ? 'max-w-full pt-2 gap-2.5' : 'max-w-[26.875rem]'}`}>
         {/* stamp — the Figma sticker. The wrapper owns the rotation and the shine so the
             highlight can be masked to the sticker's own shape (see .mia-sticker). */}
         <span
@@ -135,7 +140,7 @@ export const BestPostCanvas = ({
         </span>
 
         <p className="mia-mono font-normal text-paper-ink">
-          This post outperformed your usual by{' '}
+          {post.window_label ? `Your best post ${post.window_label}. ` : ''}It outperformed your usual by{' '}
           <mark className="rounded-sm bg-[#F4C247] px-1 font-bold text-[#040B1D]">{lift}</mark>
         </p>
 
@@ -190,8 +195,32 @@ export const BestPostCanvas = ({
         )}
 
         <p className="paragraph-xs text-paper-sub">
-          Compared against your other {post.compared_against} {platform} posts from {windowLabel}.
+          Compared against your other {post.compared_against} {platform} posts from {windowLabel}, on how many
+          people it reached and how many reacted, commented, shared or saved.
         </p>
+
+        {post.weak_post && (
+          <div className="flex gap-3 rounded border border-paper-tile-border bg-paper-tile p-2.5">
+            {post.weak_post.image_url && (
+              <img src={post.weak_post.image_url} alt="" className="h-16 w-16 shrink-0 rounded-sm object-cover" loading="lazy" />
+            )}
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="mia-mono text-paper-ink">Didn’t land {post.window_label ?? ''}</span>
+              <span className="paragraph-xs text-paper-sub line-clamp-2">“{post.weak_post.text}”</span>
+              <span className="text-[0.625rem] leading-snug text-paper-sub">
+                {post.weak_post.why}
+                {post.weak_post.permalink && (
+                  <>
+                    {' '}
+                    <a href={post.weak_post.permalink} target="_blank" rel="noreferrer" className="underline hover:opacity-70">
+                      open
+                    </a>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
 
       </div>
     </section>

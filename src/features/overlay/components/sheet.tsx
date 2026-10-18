@@ -13,7 +13,7 @@ interface PositionVariant {
 const POSITION_VARIANTS: Record<SheetPosition, PositionVariant> = {
   bottom: {
     closedTransform: 'translateY(100%)',
-    className: 'fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[85vh]',
+    className: 'fixed bottom-0 left-0 right-0 rounded-t-2xl max-h-[85dvh]',
   },
   right: {
     closedTransform: 'translateX(100%)',

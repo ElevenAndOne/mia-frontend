@@ -9,6 +9,7 @@ import {
   fetchReadiness,
   linkFoundPage,
   startReading,
+  type FoundPage,
   type Readiness,
 } from '../services/basic-onboarding-service'
 import {
@@ -131,6 +132,37 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   const queryClient = useQueryClient()
   const [checking, setChecking] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
+  // Several Pages found at sign-up: which one they tapped. Nothing is attached until they
+  // confirm, same as the one-Page case.
+  const [picked, setPicked] = useState<string | null>(null)
+  // Set while the browser is on its way to Facebook. Two taps used to mint two consent URLs
+  // three seconds apart, and the second return landed with nothing waiting for it.
+  const [leaving, setLeaving] = useState(false)
+  const toFacebook = () => {
+    if (leaving) return
+    setLeaving(true)
+    onConnectPlatform('meta')
+    // Desktop opens a popup and comes back here; let them try again if they closed it.
+    window.setTimeout(() => setLeaving(false), 10_000)
+  }
+  const attach = async (found: { id: string; name: string }, ig: Readiness['instagram']) => {
+    setConfirming(true)
+    setLinkFailed(false)
+    const ok = await linkFoundPage(sessionId || '', found, ig)
+    // A failed link used to move on as if it had worked, and the drafts later had no Page
+    // to read or post to. Say so and let them retry.
+    if (!ok) {
+      setConfirming(false)
+      setLinkFailed(true)
+      return
+    }
+    // "Connecting…" stays up until the next step shows. It used to drop as soon as the link
+    // returned, and the readiness refresh after it (5 s in testing, 16 Oct 2026) left
+    // "That's them" sitting there looking like the tap did nothing.
+    await refresh()
+    setStep('details')
+    setConfirming(false)
+  }
 
   const refresh = useCallback(async () => {
     if (!sessionId) return
@@ -291,6 +323,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
 
   const page = readiness?.page
   const instagram = readiness?.instagram
+  const choices: FoundPage[] = !page ? readiness?.pages ?? [] : []
 
   return (
     <div className="min-h-full bg-primary px-4 py-8 flex justify-center">
@@ -303,7 +336,8 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
           <h1 className="heading-sm text-primary">
             {/* Only say we found them when we did. The heading used to claim a find over a
                 screen asking them to connect, which reads as the app being broken. */}
-            {step === 'pages' && (page ? 'We found your pages' : 'Connect your Page')}
+            {step === 'pages' &&
+              (page ? 'We found your pages' : choices.length ? 'Which Page is this for?' : 'Connect your Page')}
             {step === 'details' && 'Two quick things'}
             {step === 'reading' && 'Reading your pages…'}
           </h1>
@@ -349,18 +383,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                       setStep('details')
                       return
                     }
-                    setConfirming(true)
-                    setLinkFailed(false)
-                    const ok = await linkFoundPage(sessionId || '', page, instagram)
-                    setConfirming(false)
-                    // A failed link used to move on as if it had worked, and the drafts
-                    // later had no Page to read or post to. Say so and let them retry.
-                    if (!ok) {
-                      setLinkFailed(true)
-                      return
-                    }
-                    await refresh()
-                    setStep('details')
+                    await attach(page, instagram ?? null)
                   }}
                 >
                   {confirming ? 'Connecting…' : linkFailed ? 'Try again' : "That's them"}
@@ -371,10 +394,73 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   </p>
                 )}
                 {linkFailed && (
-                  <button type="button" className={QUIET} onClick={() => onConnectPlatform('meta')}>
+                  <button type="button" className={QUIET} disabled={leaving} onClick={toFacebook}>
                     Reconnect with Facebook
                   </button>
                 )}
+              </>
+            ) : choices.length ? (
+              <>
+                {/* Several Pages came back from Facebook. Sending them to Facebook again
+                    here (what this screen used to do) grants the same Pages and lands back
+                    on the same screen — a real sign-up went round that loop on 15 Oct 2026. */}
+                <p className="paragraph-sm text-tertiary">
+                  You manage {choices.length} Pages. Pick the one Mia should post to. You can
+                  change it later in Settings.
+                </p>
+                <div role="radiogroup" aria-label="Your Facebook Pages" className="flex flex-col gap-2">
+                  {choices.map((c) => {
+                    const on = picked === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setPicked(c.id)}
+                        className={`flex items-start gap-3 rounded-lg border p-3 text-left ${
+                          on ? 'border-brand-solid bg-brand-primary' : 'border-primary'
+                        }`}
+                      >
+                        <span
+                          aria-hidden
+                          className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border ${
+                            on ? 'border-transparent bg-brand-solid' : 'border-primary'
+                          }`}
+                        />
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="paragraph-sm text-primary break-words">{c.name}</span>
+                          <span className="paragraph-xs text-tertiary break-words">
+                            {c.instagram.publishable && c.instagram.username
+                              ? `Instagram: ${c.instagram.username}`
+                              : 'Facebook only (no Business Instagram linked)'}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className={PRIMARY}
+                  disabled={!picked || confirming}
+                  onClick={async () => {
+                    const c = choices.find((x) => x.id === picked)
+                    if (c) await attach(c, c.instagram)
+                  }}
+                >
+                  {confirming ? 'Connecting…' : linkFailed ? 'Try again' : 'Use this Page'}
+                </button>
+                {linkFailed && (
+                  <p className="paragraph-xs text-error-primary" role="alert">
+                    That didn't connect. Try again, or reconnect with Facebook below.
+                  </p>
+                )}
+                {/* Facebook asks which Pages to share; one left unticked there is missing
+                    here, and going back is the only way to add it. */}
+                <button type="button" className={QUIET} disabled={leaving} onClick={toFacebook}>
+                  {leaving ? 'Opening Facebook…' : 'Not listed? Reconnect with Facebook'}
+                </button>
               </>
             ) : (
               <>
@@ -396,12 +482,8 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   Facebook asks separately for permission to read a Page — signing in only
                   told us who you are.
                 </p>
-                <button
-                  type="button"
-                  className={PRIMARY}
-                  onClick={() => onConnectPlatform('meta')}
-                >
-                  Continue with Facebook
+                <button type="button" className={PRIMARY} disabled={leaving} onClick={toFacebook}>
+                  {leaving ? 'Opening Facebook…' : 'Continue with Facebook'}
                 </button>
               </>
             )}

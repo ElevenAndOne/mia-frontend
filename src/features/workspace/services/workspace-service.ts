@@ -365,3 +365,14 @@ export const deleteWorkspace = async (
 // Feature flags (Sep 2026). Registry lives in mia-backend/constants/features.py.
 // ---------------------------------------------------------------------------
 
+
+/** Whether this account may add another business profile (Basic: one, unless switched on). */
+export const fetchWorkspaceAllowance = async (
+  sessionId: string
+): Promise<{ basic_only: boolean; owned: number; max: number; can_add: boolean }> => {
+  const response = await apiFetch('/api/tenants/allowance', {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!response.ok) throw new Error(`Allowance failed: ${response.status}`)
+  return response.json()
+}

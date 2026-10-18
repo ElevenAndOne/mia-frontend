@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useExperience } from '../hooks/use-experience'
 import {
   addCreativeWatch,
   fetchCreativeWatches,
@@ -26,6 +27,8 @@ export const CreativeWatchCard = ({
   tenantId: string
 }) => {
   const [watches, setWatches] = useState<CreativeWatch[]>([])
+  // Basic: the folder feeds next week's posts. Agency: each picture becomes drafts that day.
+  const { isBasic } = useExperience()
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,11 +62,11 @@ export const CreativeWatchCard = ({
   return (
     <div className="p-4 bg-secondary rounded-xl border border-tertiary space-y-3">
       <div>
-        <p className="subheading-md text-primary">Watch a creative folder</p>
+        <p className="subheading-md text-primary">{isBasic ? 'Your photo folder' : 'Watch a creative folder'}</p>
         <p className="paragraph-sm text-tertiary mt-0.5">
-          Share a Google Drive folder with “Anyone with the link” and paste it here. Each new
-          image dropped in becomes drafts in the approver’s WhatsApp, once a day. What’s already
-          there is left alone.
+          {isBasic
+            ? 'Make a Google Drive folder just for Mia, share it with “Anyone with the link” and paste its link here. New photos you put in it become ideas, and Mia makes your Friday posts from them. Mia only reads photos in that one folder; nothing in it is changed.'
+            : 'Share a Google Drive folder with “Anyone with the link” and paste it here. Each new image dropped in becomes drafts in the approver’s WhatsApp, once a day. What’s already there is left alone.'}
         </p>
       </div>
 
@@ -81,6 +84,7 @@ export const CreativeWatchCard = ({
                     : w.last_polled_at
                       ? `Checked ${new Date(w.last_polled_at).toLocaleDateString()} · ${w.seen} seen`
                       : 'Not checked yet · runs each morning'}
+                  {w.mode === 'ideas' ? ' · new photos become ideas' : ''}
                 </p>
               </div>
               <button
