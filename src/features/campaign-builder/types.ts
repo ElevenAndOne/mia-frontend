@@ -126,6 +126,7 @@ export interface CreditFit {
   total_planned?: number
   over?: string[]
   unknown_pool?: string[]
+  estimated?: string[]
   outside_known_sprints?: number
   no_rate?: string[]
   sprints?: { label: string; start: string; end: string; free: number | null; planned: number; assets: number }[]

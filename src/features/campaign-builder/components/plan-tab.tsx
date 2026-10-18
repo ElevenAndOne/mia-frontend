@@ -357,6 +357,7 @@ function Summary({ plan, state, currency }: { plan: Plan; state: BuildState; cur
           <dd className="text-primary">
             {plan.assets.length} jobs · {num(credits?.total_planned ?? 0)} credits ·{' '}
             {credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in some sprints' : 'room unknown'}
+            {credits?.estimated?.length && credits.status !== 'unknown' ? ' (estimate: no seats in Flex yet)' : ''}
           </dd>
         </div>
         <div>
