@@ -276,7 +276,11 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
 
   const stepDone = (key: string) => !!readiness?.steps?.find((s) => s.key === key)?.done
   const askedForWebsite = website.trim().length > 0
-  const readFinished = stepDone('brand') && (!askedForWebsite || stepDone('website'))
+  // The server says when the read is over ("read"), whatever it managed to learn. Waiting only on
+  // "brand" left a Page with almost no posts and no website spinning for the full two minutes
+  // (Blue Square sign-up, 17 Oct 2026). Older servers don't send "read": the old rule still applies.
+  const readFinished =
+    stepDone('read') || (stepDone('brand') && (!askedForWebsite || stepDone('website')))
   const slow = readingSince !== null && waited > SAY_ITS_SLOW_MS
 
   useEffect(() => {
@@ -659,6 +663,8 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               // voice comes from the Page alone (9 Oct 2026: a spinner sat on "Read your
               // website" for a workspace that never had one).
               .filter((s) => s.key !== 'website' || askedForWebsite)
+              // "read" is the server saying the read is over: a signal, not a row to show.
+              .filter((s) => s.key !== 'read')
               .map((s) => (
                 <Row
                   key={s.key}

@@ -2,7 +2,7 @@ import { apiFetch } from '../../../utils/api'
 
 /** One thing that either is or is not in place, in words a client would use. */
 export interface ReadinessStep {
-  key: 'page' | 'history' | 'brand' | 'website'
+  key: 'page' | 'history' | 'brand' | 'website' | 'read'
   done: boolean
   label: string
   detail: string
