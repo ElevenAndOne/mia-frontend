@@ -6,6 +6,7 @@ import { useHomeBrief } from '../hooks/use-home-brief'
 import { setHomeCardInFlight } from '../in-flight'
 import type { BriefCard } from '../types'
 import { DoThisNext } from './do-this-next'
+import { SayHiCard } from './say-hi-card'
 
 interface BasicHomeProps {
   userName?: string
@@ -67,6 +68,8 @@ export const BasicHome = ({ userName, onPrompt, peek }: BasicHomeProps) => {
             Here’s what’s happening this week.
           </p>
         </div>
+
+        <SayHiCard />
 
         {peek}
 

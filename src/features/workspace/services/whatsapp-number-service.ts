@@ -24,6 +24,10 @@ export interface WhatsAppNumberState {
   start_chat_url?: string | null
   /** The same link with "Hi Mia!" typed in: the Say hi step at the end of a Basic sign-up. */
   say_hi_url?: string | null
+  /** The same chat opened straight in the WhatsApp app (whatsapp://), for phones. */
+  say_hi_app_url?: string | null
+  /** The owner's first day: "not_started" until they say hi (the home "Say hi" card). */
+  first_run?: string | null
 }
 
 const headers = (sessionId: string) => ({
@@ -94,4 +98,13 @@ export const removeWhatsAppNumber = async (sessionId: string): Promise<void> => 
     headers: { 'X-Session-ID': sessionId },
   })
   if (!response.ok) throw new Error(await detailOf(response, 'Could not remove your number'))
+}
+
+/** "I'll do it later" on the Say hi screen: Mia's welcome message goes now, not in 30 minutes. */
+export const sendWelcomeNow = async (sessionId: string): Promise<void> => {
+  try {
+    await apiFetch('/api/whatsapp/me/welcome-now', { method: 'POST', headers: headers(sessionId) })
+  } catch {
+    // Best effort: the held welcome still goes on its own within 30 minutes.
+  }
 }

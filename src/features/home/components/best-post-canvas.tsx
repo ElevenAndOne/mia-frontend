@@ -149,7 +149,9 @@ export const BestPostCanvas = ({
             <img
               src={post.image_url}
               alt=""
-              className={`block w-full object-cover ${compact ? 'max-h-[32vh]' : 'max-h-[26.25rem]'}`}
+              // Cropped from near the top, not the middle: a tall photo lost its people's heads on
+              // a phone (phone test, 18 Oct).
+              className={`block w-full object-cover object-[50%_20%] ${compact ? 'max-h-[32vh]' : 'max-h-[26.25rem]'}`}
               loading="lazy"
             />
           ) : (

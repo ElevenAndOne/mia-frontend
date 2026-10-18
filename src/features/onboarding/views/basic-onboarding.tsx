@@ -16,8 +16,10 @@ import {
 import {
   confirmWhatsAppVerification,
   fetchWhatsAppNumber,
+  sendWelcomeNow,
   startWhatsAppVerification,
 } from '../../workspace/services/whatsapp-number-service'
+import { openWhatsAppChat } from '../../../utils/whatsapp-share'
 import { StorageKey } from '../../../constants/storage-keys'
 
 /**
@@ -135,6 +137,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
   const [confirmed, setConfirmed] = useState(false)
   // The Say hi step (P2): WhatsApp with "Hi Mia!" typed in, and whether they tapped it.
   const [sayHiUrl, setSayHiUrl] = useState<string | null>(null)
+  const [sayHiAppUrl, setSayHiAppUrl] = useState<string | null>(null)
   const [saidHi, setSaidHi] = useState(false)
   const [numberChecked, setNumberChecked] = useState(false)
   // Several Pages found at sign-up: which one they tapped. Nothing is attached until they
@@ -228,6 +231,7 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
         if (live) setNumberChecked(true)
         if (!live || !state || state.unavailable) return
         setSayHiUrl(state.say_hi_url || state.start_chat_url || null)
+        setSayHiAppUrl(state.say_hi_app_url || null)
         if (state.whatsapp_number) setWhatsapp((w) => w || state.whatsapp_number || '')
         if (state.verified) {
           setCodeSent(true)
@@ -709,7 +713,10 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   href={sayHiUrl}
                   target="_blank"
                   rel="noreferrer"
-                  onClick={() => setSaidHi(true)}
+                  onClick={(e) => {
+                    setSaidHi(true)
+                    if (openWhatsAppChat(sayHiAppUrl, sayHiUrl)) e.preventDefault()
+                  }}
                 >
                   {saidHi ? 'Opened WhatsApp' : 'Say hi to Mia on WhatsApp'}
                 </a>
@@ -752,7 +759,10 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               href={sayHiUrl}
               target="_blank"
               rel="noreferrer"
-              onClick={() => setSaidHi(true)}
+              onClick={(e) => {
+                setSaidHi(true)
+                if (openWhatsAppChat(sayHiAppUrl, sayHiUrl)) e.preventDefault()
+              }}
             >
               {saidHi ? 'Opened WhatsApp' : 'Say hi to Mia on WhatsApp'}
             </a>
@@ -762,8 +772,21 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
               </div>
               <p className="paragraph-xs text-tertiary">On a computer? Scan this with your phone.</p>
             </div>
-            <button type="button" className={QUIET} onClick={() => setStep('done')}>
-              {saidHi ? "I've said hi, take me to Mia" : 'Skip for now'}
+            {!saidHi && (
+              <p className="paragraph-xs text-tertiary">
+                Not now? I'll message you on WhatsApp so it's there when you're ready.
+              </p>
+            )}
+            <button
+              type="button"
+              className={QUIET}
+              onClick={() => {
+                // Skipping sends Mia's welcome now, so the thread isn't silent (phone test, 18 Oct).
+                if (!saidHi && sessionId) void sendWelcomeNow(sessionId)
+                setStep('done')
+              }}
+            >
+              {saidHi ? "I've said hi, take me to Mia" : "I'll do it later"}
             </button>
           </div>
         )}
