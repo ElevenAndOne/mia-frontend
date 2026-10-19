@@ -4,6 +4,7 @@ import { Button } from '../../../components/button'
 import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
+import { AskMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -53,6 +54,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
+  const [folds, setFolds] = useState<Set<string>>(() => new Set()) // detail sections, closed until wanted
 
   if (!state.brief) {
     if (run?.status === 'running') return <RunProgress run={run} what="brief" />
@@ -60,35 +62,105 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     return null
   }
 
+  const qs = (b?.open_questions ?? []).slice(0, 3)
+  const emptyRules = !(b?.must_haves?.length || b?.constraints?.length)
+  const planFresh = !!state.plan && !state.plan_from_older_brief
+  const toggle = (f: string) => setFolds((o) => { const n = new Set(o); if (n.has(f)) n.delete(f); else n.add(f); return n })
+  const toBrief = () => document.getElementById('brief-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const items: TurnItem[] = []
+  if (state.campaign.building) {
+    if (qs.length) {
+      items.push({
+        key: 'questions',
+        title: `Answer Mia's ${qs.length} question${qs.length === 1 ? '' : 's'} (optional)`,
+        detail: 'Only what would change the plan. Answer any you can, or skip them.',
+        done: planFresh,
+        openByDefault: true,
+        more: <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />,
+      })
+    }
+    if (emptyRules) {
+      items.push({
+        key: 'rules',
+        title: "Add must-haves and don'ts (optional)",
+        detail: 'Legal lines, words to avoid, things the client insists on. Mia keeps them in every job.',
+        done: planFresh,
+        actions: (
+          <>
+            <Button size="sm" onClick={toBrief}>Edit the brief</Button>
+            <AskMia label="Must-haves and don'ts" detail="The brief has no must-haves or don'ts yet" />
+          </>
+        ),
+      })
+    }
+    items.push({
+      key: 'plan',
+      title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
+      done: planFresh && !planRunning,
+      detail: planRunning
+        ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
+        : state.plan_from_older_brief
+          ? 'The brief changed since the plan was made. Make it again to use the new brief.'
+          : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
+      actions: planRunning ? null : (
+        <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running'} onClick={() => onMakePlan()}>
+          {state.plan ? 'Make it again' : 'Make the plan'}
+        </PrimaryAction>
+      ),
+    })
+  }
+  const read = state.what_mia_read
+  const caveats = Object.values(read?.layers ?? {}).reduce((n, l) => n + (l.caveats?.length ?? 0), 0)
+  const facts = Array.isArray(read?.headline) ? (read?.headline as string[]).length : 0
+
   return (
     <div className="flex flex-col gap-4">
       {run?.status === 'running' ? <RunProgress run={run} what="brief" /> : null}
       {run?.status === 'failed' ? (
         <RunFailed run={run} what="brief" busy={!!busy} onRetry={() => onRedraft([])} />
       ) : null}
+      {items.length ? <YourTurn items={items} /> : null}
       <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} />
-      <WhereTheyStand client={state.campaign.client} groups={kpiGroups} />
-      <PmWords brief={b!} />
-      <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
-      <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />
-      <WhatMiaRead state={state} />
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="paragraph-sm text-secondary">
-          {state.plan
-            ? state.plan_from_older_brief
-              ? 'The brief changed since the plan was made. Make it again to use the new brief.'
-              : 'The plan was made from this brief.'
-            : 'When the brief looks right, Mia makes the plan: concept, phases, targets, budget split and the jobs for the studio.'}
-        </p>
-        <Button
-          variant="primary"
-          loading={busy === 'plan'}
-          disabled={planRunning || run?.status === 'running' || !state.campaign.building}
-          onClick={() => onMakePlan()}
+      <Fold
+        id="fold-stand"
+        title={`Where ${state.campaign.client} stands on the KPI list`}
+        summary="last results and the last 90 days, where targets start from"
+        open={folds.has('stand')}
+        onToggle={() => toggle('stand')}
+      >
+        <WhereTheyStand groups={kpiGroups} />
+      </Fold>
+      {b?.pm_words?.length ? (
+        <Fold
+          id="fold-words"
+          title="Your words, kept exactly"
+          summary={`${b.pm_words.length} quote${b.pm_words.length === 1 ? '' : 's'} Mia never changes`}
+          open={folds.has('words')}
+          onToggle={() => toggle('words')}
         >
-          {planRunning ? 'Making the plan…' : state.plan ? 'Make the plan again' : 'Make the plan'}
-        </Button>
-      </Card>
+          <PmWords brief={b} />
+        </Fold>
+      ) : null}
+      <Fold
+        id="fold-rules"
+        title={`Rules for ${state.campaign.client}`}
+        summary="followed in every plan and every word, for every campaign of this client"
+        open={folds.has('rules')}
+        onToggle={() => toggle('rules')}
+      >
+        <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
+      </Fold>
+      {read ? (
+        <Fold
+          id="fold-read"
+          title="What Mia read"
+          summary={`${facts} facts · ${caveats} things to know`}
+          open={folds.has('read')}
+          onToggle={() => toggle('read')}
+        >
+          <WhatMiaRead state={state} />
+        </Fold>
+      ) : null}
     </div>
   )
 }
@@ -136,7 +208,7 @@ function BriefCard({
   }
 
   return (
-    <Card>
+    <Card id="brief-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="subheading-md text-primary">The brief</h2>
         <div className="flex items-center gap-2">
@@ -204,9 +276,15 @@ function BriefCard({
           ))}
         </form>
       ) : (
-        <dl className="mt-3 grid gap-x-6 gap-y-3 @xl:grid-cols-2">
+        // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct).
+        <dl className="mt-3 grid grid-cols-2 @3xl:grid-cols-4 gap-x-6 gap-y-3">
           {(Object.keys(LABELS) as BriefField[]).map((k) => (
-            <div key={k} className={`min-w-0 ${['goal', 'audience', ...LIST_FIELDS].includes(k) ? 'sm:col-span-2' : ''}`}>
+            <div
+              key={k}
+              className={`min-w-0 ${
+                k === 'goal' || k === 'audience' ? 'col-span-2 @3xl:col-span-4' : k === 'must_haves' || k === 'constraints' ? 'col-span-2' : ''
+              }`}
+            >
               <dt className="label-xs text-tertiary flex flex-wrap items-center gap-2">
                 {LABELS[k]}
                 {setByPm.has(k) ? <Chip tone="pm">set by you</Chip> : null}
@@ -227,17 +305,16 @@ function BriefCard({
 function PmWords({ brief }: { brief: Brief }) {
   if (!brief.pm_words?.length) return null
   return (
-    <Card>
-      <h2 className="subheading-md text-primary">Your words, kept exactly</h2>
-      <p className="paragraph-xs text-tertiary mt-1">Mia follows these as written and never changes them.</p>
-      <ul className="mt-2 flex flex-col gap-2">
+    <>
+      <p className="paragraph-xs text-tertiary">Mia follows these as written and never changes them.</p>
+      <ul className="flex flex-col gap-2">
         {brief.pm_words.map((w, i) => (
           <li key={i} className="paragraph-sm text-primary">
             <span className="text-secondary">“{w.text}”</span> <Chip>{w.sets}</Chip>
           </li>
         ))}
       </ul>
-    </Card>
+    </>
   )
 }
 
@@ -260,10 +337,8 @@ function Questions({
   if (!qs.length) return null
   const filled = answers.some((a) => a.trim())
   return (
-    <Card>
-      <h2 className="subheading-md text-primary">Mia's questions</h2>
-      <p className="paragraph-xs text-tertiary mt-1">Only what would change the plan. Answer any you can, or skip them.</p>
-      <ol className="mt-3 flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
+      <ol className="flex flex-col gap-3">
         {qs.map((q, i) => (
           <li key={i} className="flex flex-col gap-1">
             <label htmlFor={`q-${i}`} className="paragraph-sm text-primary">
@@ -289,7 +364,7 @@ function Questions({
           Update the brief with my answers
         </Button>
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -308,14 +383,10 @@ function WhatMiaRead({ state }: { state: BuildState }) {
   if (!read) return null
   const facts = Array.isArray(read.headline) ? (read.headline as string[]) : []
   const layers = Object.entries(read.layers ?? {})
-  const caveats = layers.reduce((n, [, l]) => n + (l.caveats?.length ?? 0), 0)
   return (
-    <details className="rounded-xl border border-secondary bg-primary p-4">
-      <summary className="cursor-pointer subheading-sm text-primary">
-        What Mia read · {facts.length} facts · {caveats} caveats
-      </summary>
+    <>
       {facts.length ? (
-        <ul className="mt-3 list-disc pl-5 paragraph-sm text-primary flex flex-col gap-1">
+        <ul className="list-disc pl-5 paragraph-sm text-primary flex flex-col gap-1">
           {facts.map((f) => (
             <li key={f}>{f}</li>
           ))}
@@ -343,21 +414,20 @@ function WhatMiaRead({ state }: { state: BuildState }) {
           </div>
         ))}
       </div>
-    </details>
+    </>
   )
 }
 
 // Where the client stands on mia-cube's KPI list before the plan is made: the last campaign
 // result for each KPI (and its target then), else the account's own last-90-days figure.
-function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[] }) {
+function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
   const rows = groups
     .map((g) => ({ ...g, kpis: g.kpis.filter((k) => k.last_result || k.account_90d != null) }))
     .filter((g) => g.kpis.length)
-  if (!rows.length) return null
+  if (!rows.length) return <p className="paragraph-sm text-tertiary">No past results for this client yet.</p>
   return (
-    <details className="rounded-xl border border-secondary bg-primary p-4" open>
-      <summary className="cursor-pointer subheading-sm text-primary">Where {client} stands on the KPI list</summary>
-      <p className="paragraph-xs text-tertiary mt-1">
+    <>
+      <p className="paragraph-xs text-tertiary">
         The last campaign result for each KPI, or the account's last 90 days. Targets in the plan start from these.
       </p>
       <div className="mt-3 grid gap-3 @xl:grid-cols-2">
@@ -380,6 +450,6 @@ function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[]
           </div>
         ))}
       </div>
-    </details>
+    </>
   )
 }

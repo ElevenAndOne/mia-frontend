@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
-import { JobWords, WordsCard } from './final-words'
+import { JobWords } from './final-words'
+import { AskMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
@@ -27,6 +28,7 @@ interface Props {
 export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
+  const [folds, setFolds] = useState<Set<string>>(() => new Set()) // detail sections, closed until wanted
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
@@ -46,44 +48,50 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
   const sp = plan.decisions.budget_split
   const split = sp?.value ?? {}
   const pmPhases = new Set(sp?.pm_phases ?? [])
-  // Opening a job (or a target) from "Needs you": the row expands and scrolls into view.
-  const reveal = (id: string, jobIndex?: number) => {
+  // "Show me" from Your turn: open the fold (and the job), then scroll to the item.
+  const reveal = (id: string, fold?: string, jobIndex?: number) => {
+    if (fold) setFolds((f) => new Set(f).add(fold))
     if (jobIndex != null) setOpenJobs((o) => new Set(o).add(jobIndex))
-    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
   }
+  const toggle = (f: string) => setFolds((o) => { const n = new Set(o); if (n.has(f)) n.delete(f); else n.add(f); return n })
+  const targets = plan.decisions.kpi_targets
+  const toSet = targets.filter((t) => t.value == null && !t.no_target)
+  const flaggedJobs = plan.assets.filter((a) => a.final_words?.status === 'flagged')
+  const sc = plan.review?.scorecard
   return (
     <div className="flex flex-col gap-4">
       {run?.status === 'failed' ? <RunFailed run={run} what="plan" busy={!!busy} onRetry={() => onMakePlan()} /> : null}
       {locked ? (
         <Card className="paragraph-sm text-primary">
           Approved{state.approved?.at ? ` ${day(state.approved.at)}` : ''}
-          {state.approved?.by ? ` by ${state.approved.by}` : ''}. It's saved as a draft campaign: it goes live when you
-          launch it, so nothing is tracked or counted before then. Next: the Studio tab sends the jobs to Flex.
+          {state.approved?.by ? ` by ${state.approved.by}` : ''}. It goes live when you launch it, so nothing is tracked
+          or counted before then. Next: send the jobs to Flex from the Studio tab.
         </Card>
-      ) : null}
-      {state.plan_from_older_brief && !locked ? (
-        <Card warn className="paragraph-sm text-primary">
-          The brief changed after this plan was made, so it can't be approved yet: it would go out with the old
-          brief. Make the plan again from the Brief tab.
-        </Card>
-      ) : null}
-      {!locked && plan.assets.length && plan.assets.every((a) => a.credits == null) ? (
-        // The plan was made while Flex couldn't be reached: no Credit Ledger, so no job has credits.
-        <Card warn className="flex flex-wrap items-center justify-between gap-3">
-          <p className="paragraph-sm text-primary">Flex couldn't be reached when Mia made this plan, so the jobs have no credits yet.</p>
-          <Button size="sm" variant="primary" loading={busy === 'reprice'} onClick={() => onReprice()}>
-            Get prices from Flex
-          </Button>
-        </Card>
-      ) : null}
+      ) : (
+        <YourTurn items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal })} />
+      )}
 
-      {locked ? null : <NeedsYouPanel state={state} plan={plan} busy={busy} onEdit={onEdit} onReveal={reveal} onFix={(id) => onWriteWords([id], true)} />}
-      <Summary plan={plan} state={state} currency={currency} />
-      <WordsCard state={state} busy={busy} locked={locked} onWrite={onWriteWords} />
-      <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
+      <FactStrip state={state} plan={plan} />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="subheading-md text-primary">Phases, budget and targets</h2>
+      <Fold
+        id="fold-idea"
+        title="The idea"
+        summary={<>{plan.concept.name}{sc && !sc.thin_history ? ` · self-check ${sc.grade} (${sc.overall})` : ''}</>}
+        open={folds.has('idea')}
+        onToggle={() => toggle('idea')}
+      >
+        {plan.concept.big_idea ? <p className="paragraph-sm text-primary">{plan.concept.big_idea}</p> : null}
+        <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
+      </Fold>
+
+      <Fold
+        id="fold-phases"
+        title="Phases, budget and targets"
+        summary={`${plan.phases.length} phases · ${targets.length} targets${toSet.length && !locked ? `, ${toSet.length} to set` : ''}`}
+        open={folds.has('phases')}
+        onToggle={() => toggle('phases')}
+      >
         {sp?.reason ? (
           <details className="paragraph-xs text-tertiary">
             <summary className="cursor-pointer">How the budget is split</summary>
@@ -127,7 +135,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
                 ) : null}
               </header>
               <div className="flex flex-col gap-1.5">
-                {plan.decisions.kpi_targets
+                {targets
                   .filter((t) => t.phase === p.phase)
                   .map((t) => (
                     <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} />
@@ -136,7 +144,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
                   <KpiPicker
                     groups={kpiGroups}
                     busy={busy === 'edit'}
-                    taken={new Set(plan.decisions.kpi_targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
+                    taken={new Set(targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
                     onClose={() => setPicking(null)}
                     onPick={async (key) => {
                       await onEdit([{ op: 'add_kpi', phase: p.phase, kpi_key: key }])
@@ -156,13 +164,18 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
             </section>
           ))}
         </div>
-      </section>
+      </Fold>
 
-      <section className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="subheading-md text-primary">Jobs for the studio ({plan.assets.length})</h2>
-          <p className="paragraph-xs text-tertiary">Open a job for its words, designer brief and audience.</p>
-        </div>
+      <Fold
+        id="fold-jobs"
+        title="Jobs for the studio"
+        summary={`${plan.assets.length} jobs · ${num(plan.credits?.total_planned ?? 0)} credits · words: ${
+          plan.assets.filter((a) => a.final_words?.status === 'ready').length
+        } ready${flaggedJobs.length ? `, ${flaggedJobs.length} to fix` : ''}`}
+        open={folds.has('jobs')}
+        onToggle={() => toggle('jobs')}
+      >
+        <p className="paragraph-xs text-tertiary">Open a job for its words, designer brief and audience.</p>
         {plan.phases.map((p) => {
           const jobs = plan.assets.map((a, i) => ({ a, i })).filter(({ a }) => a.phase === p.phase)
           if (!jobs.length) return null
@@ -194,193 +207,281 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
             </div>
           )
         })}
-      </section>
+      </Fold>
 
-      <details className="rounded-xl border border-secondary bg-primary px-4 py-3">
-        <summary className="cursor-pointer subheading-sm text-primary">
-          The idea in full, Mia's self-check and checks
-        </summary>
-        <div className="mt-3 flex flex-col gap-3">
-          <Concept plan={plan} />
-          {plan.review ? <SelfCheck review={plan.review} /> : null}
-          <Checks plan={plan} />
-        </div>
-      </details>
-
-      {locked ? null : (
-        <Card className="flex flex-wrap items-center justify-between gap-3">
-          <p className="paragraph-sm text-secondary">
-            {state.blockers.length
-              ? `Approve is locked: ${state.blockers.length} thing${state.blockers.length === 1 ? '' : 's'} in "Needs you" first.`
-              : 'Approving saves this plan to the campaign. The jobs are sent to the studio in the next step.'}
-          </p>
-          {state.warnings?.length ? (
-            <ul className="w-full paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
-              {state.warnings.map((w) => (
-                <li key={w}>⚠ {w}</li>
-              ))}
-            </ul>
-          ) : null}
-          {state.plan_from_older_brief ? (
-            <p className="w-full paragraph-xs text-utility-warning-700">
-              The brief changed after this plan was made. Make the plan again from the Brief tab first.
-            </p>
-          ) : null}
-          <Button
-            variant="primary"
-            disabled={!!state.blockers.length || state.plan_from_older_brief}
-            loading={busy === 'approve'}
-            onClick={() => onApprove()}
-          >
-            Approve the plan
-          </Button>
-        </Card>
-      )}
+      <Fold
+        id="fold-how"
+        title="How Mia got here"
+        summary="her self-check, the checks and the idea in full"
+        open={folds.has('how')}
+        onToggle={() => toggle('how')}
+      >
+        <Concept plan={plan} />
+        {plan.review ? <SelfCheck review={plan.review} /> : null}
+        <Checks plan={plan} />
+      </Fold>
     </div>
   )
 }
 
-// "Needs you" (16 Oct, the Onvlee test): only what the PM must fix or decide, each one click from its fix.
-// Blockers first (they lock Approve), then jobs whose words need a look, then what's worth deciding.
-function NeedsYouPanel({
+// Your turn on the Plan tab: everything the PM has to do before approving, in the order to do it. Built from
+// the same state the page already had (blockers, flagged words, Mia's questions, the self-check's notes), so no
+// logic moved: only where it shows.
+function planTurnItems({
   state,
   plan,
   busy,
   onEdit,
-  onReveal,
-  onFix,
+  onApprove,
+  onWriteWords,
+  onReprice,
+  reveal,
 }: {
   state: BuildState
   plan: Plan
   busy: string | null
   onEdit: Props['onEdit']
-  onReveal: (id: string, jobIndex?: number) => void
-  onFix: (jobId: string) => void
-}) {
-  const jobIndex = (name?: string) => plan.assets.findIndex((a) => a.name === name)
-  const flagged = plan.assets.map((a, i) => ({ a, i })).filter(({ a }) => a.final_words?.status === 'flagged')
-  const asks = (plan.decisions.ask_pm ?? []).map((q) => (typeof q === 'string' ? { question: q } : q))
+  onApprove: Props['onApprove']
+  onWriteWords: Props['onWriteWords']
+  onReprice: Props['onReprice']
+  reveal: (id: string, fold?: string, jobIndex?: number) => void
+}): TurnItem[] {
+  const items: TurnItem[] = []
+  const jobs = plan.assets
+  const wordsRun = state.words_run
+  const without = jobs.filter((a) => !a.final_words).length
+  const flaggedAll = jobs.map((a, i) => ({ a, i })).filter(({ a }) => a.final_words?.status === 'flagged')
+  // A note left for the PM ("[PM to add the link]") needs a fact only the PM has: rewriting can't fix it.
+  // By the flag's kind; the wording is only a fallback for words checked before kinds existed (review 19 Oct).
+  const isNote = (f: { problem: string; kind?: string }) => f.kind === 'note' || (!f.kind && f.problem.startsWith('a note left in the words'))
+  const notes = flaggedAll.flatMap(({ a, i }) =>
+    (a.final_words?.flags ?? [])
+      .filter(isNote)
+      .map((f) => ({ a, i, where: f.where, note: f.note ?? (f.problem.match(/\((.*)\)$/) ?? [])[1] ?? f.problem })),
+  )
+  const flagged = flaggedAll.filter(({ a }) => (a.final_words?.flags ?? []).some((f) => !isNote(f)))
+  const targets = plan.decisions.kpi_targets
+  const toSet = targets.filter((t) => t.value == null && !t.no_target)
+  const targetKeys = new Set(targets.map((t) => t.key))
+  const otherBlockers = state.blockers.filter((b) => !(b.key && targetKeys.has(b.key)))
+  // The "set these targets" question is the Targets item below; once none are left it's stale.
+  const asks = (plan.decisions.ask_pm ?? [])
+    .map((q) => (typeof q === 'string' ? { question: q } : q))
+    .filter((q) => !('about' in q && q.about === 'Targets'))
   const lookAt = plan.review?.scorecard?.look_at ?? []
-  const datesPassed = state.blockers.some((b) => b.what.includes('which has passed'))
-  const must = state.blockers.length + flagged.length
-  return (
-    <Card warn={must > 0} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="subheading-md text-primary">{must ? `Needs you · ${must}` : 'Nothing needs you'}</h2>
-        {!must ? <p className="paragraph-xs text-tertiary">Read the plan below, then approve at the end.</p> : null}
-      </div>
-      {state.blockers.length ? (
-        <ul className="flex flex-col gap-1">
-          {state.blockers.map((b, k) => {
-            const ji = jobIndex(b.key)
-            const target = plan.decisions.kpi_targets.find((t) => t.key === b.key)
-            return (
-              <li key={k} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-                <span className="min-w-0">🔒 {b.what}</span>
-                {target || ji >= 0 ? (
-                  <button type="button" className="paragraph-xs underline text-primary"
-                    onClick={() => (target ? onReveal(`t-${target.key}`) : onReveal(`job-${ji}`, ji))}>
-                    Show me
-                  </button>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
-      {datesPassed ? (
-        <Button size="sm" loading={busy === 'edit'} onClick={() => onEdit([{ op: 'shift_dates', days: 7 }])}>
-          Move all job dates a week later
-        </Button>
-      ) : null}
-      {flagged.length ? (
-        <ul className="flex flex-col gap-1">
+
+  if (state.plan_from_older_brief) {
+    items.push({
+      key: 'older-brief',
+      title: 'Make the plan again',
+      detail: 'The brief changed after this plan was made, so it would go out with the old brief. Do it from the Brief tab.',
+    })
+  }
+  if (jobs.length && jobs.every((a) => a.credits == null)) {
+    items.push({
+      key: 'reprice',
+      title: 'Get the prices from Flex',
+      detail: "Flex couldn't be reached when Mia made this plan, so the jobs have no credits yet.",
+      actions: (
+        <PrimaryAction loading={busy === 'reprice'} onClick={() => onReprice()}>
+          Get prices
+        </PrimaryAction>
+      ),
+    })
+  }
+  items.push({
+    key: 'words',
+    title: wordsRun?.status === 'running' ? 'Mia is writing the final words' : without ? 'Write the final words' : 'Final words written',
+    done: !without && wordsRun?.status !== 'running',
+    detail:
+      wordsRun?.status === 'running'
+        ? `${wordsRun.stage_label ?? 'Writing'}… about a minute a job. You can keep working.`
+        : `${without} of ${jobs.length} jobs have draft words. Mia writes the finished copy for each and checks it.` +
+          (wordsRun?.status === 'failed' ? ` The last run stopped: ${wordsRun.error ?? 'try again'}.` : ''),
+    actions:
+      wordsRun?.status === 'running' ? null : (
+        <>
+          <PrimaryAction loading={busy === 'words'} onClick={() => onWriteWords()}>
+            Write them
+          </PrimaryAction>
+          <AskMia label="Final words" detail="Writing the final words for the jobs" />
+        </>
+      ),
+  })
+  if (flagged.length) {
+    items.push({
+      key: 'fix-words',
+      title: `Fix the words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`,
+      detail: 'Mia checked the words and found something on each. Fix it rewrites with her notes.',
+      actions: (
+        <PrimaryAction
+          disabled={busy === 'words'}
+          onClick={() => onWriteWords(flagged.map(({ a }) => a.job_id).filter((x): x is string => !!x), true)}
+        >
+          Fix all
+        </PrimaryAction>
+      ),
+      more: (
+        <ul className="flex flex-col gap-2">
           {flagged.map(({ a, i }) => (
             <li key={i} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
               <span className="min-w-0">
-                ✏️ <span className="font-medium">{a.name}</span>
+                <span className="font-medium">{a.name}</span>
                 <span className="block paragraph-xs text-secondary">{a.final_words?.flags[0]?.problem}</span>
               </span>
-              <span className="flex items-center gap-2">
-                <Button size="sm" variant="primary" disabled={!a.job_id || busy === 'words'} onClick={() => a.job_id && onFix(a.job_id)}>
+              <span className="flex flex-wrap items-center gap-2">
+                <Button size="sm" disabled={!a.job_id || busy === 'words'} onClick={() => a.job_id && onWriteWords([a.job_id], true)}>
                   Fix it
                 </Button>
-                <button type="button" className="paragraph-xs underline text-primary" onClick={() => onReveal(`job-${i}`, i)}>
+                <button type="button" className="paragraph-xs underline text-primary" onClick={() => reveal(`job-${i}`, 'jobs', i)}>
                   Look first
                 </button>
+                <AskMia
+                  label={`Words · ${a.name}`}
+                  detail={a.final_words?.flags.map((f) => `${f.where}: ${f.problem}`).join('; ')}
+                />
               </span>
             </li>
           ))}
         </ul>
-      ) : null}
-      {asks.length || lookAt.length ? (
-        <details>
-          <summary className="cursor-pointer paragraph-sm text-secondary">
-            Worth deciding ({asks.length + lookAt.length}): Mia's questions and her self-check's notes
-          </summary>
-          <ul className="mt-2 flex flex-col gap-2 paragraph-sm text-primary">
-            {asks.map((q, k) => (
-              <li key={`q${k}`}>
-                {'about' in q && q.about ? <span className="label-xs text-secondary block">{String(q.about)}</span> : null}
-                {q.question}
-              </li>
-            ))}
-            {lookAt.map((x) => (
-              <li key={x} className="text-secondary">
-                <span className="label-xs block">Self-check</span>
-                {x}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 paragraph-xs text-tertiary">Answer in the chat on the right; Mia changes the plan from there.</p>
-        </details>
-      ) : null}
-    </Card>
-  )
-}
-
-// The plan at a glance: the idea in one line, the money by phase, the studio work and the self-check grade.
-function Summary({ plan, state, currency }: { plan: Plan; state: BuildState; currency: string }) {
-  const sc = plan.review?.scorecard
-  const split = plan.decisions.budget_split?.value ?? {}
-  const credits = plan.credits
-  const words = plan.assets.filter((a) => a.final_words).length
-  return (
-    <Card className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="subheading-md text-primary">{plan.concept.name}</p>
-        {sc && !sc.thin_history ? (
-          <span className="rounded-full bg-brand-solid px-3 py-0.5 subheading-sm text-primary-onbrand">
-            Self-check {sc.grade} · {sc.overall}
-          </span>
-        ) : null}
-      </div>
-      {plan.concept.big_idea ? <p className="paragraph-sm text-secondary line-clamp-2">{plan.concept.big_idea}</p> : null}
-      <dl className="grid gap-x-6 gap-y-1 paragraph-sm @xl:grid-cols-3">
-        <div>
-          <dt className="label-xs text-tertiary">Budget by phase</dt>
-          <dd className="text-primary">
-            {Object.entries(split).filter(([, v]) => v).map(([k, v]) => `${k} ${money(v, currency)}`).join(' · ') || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="label-xs text-tertiary">Studio</dt>
-          <dd className="text-primary">
-            {plan.assets.length} jobs · {num(credits?.total_planned ?? 0)} credits ·{' '}
-            {credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in some sprints' : 'room unknown'}
-            {credits?.estimated?.length && credits.status !== 'unknown' ? ' (estimate: no seats in Flex yet)' : ''}
-          </dd>
-        </div>
-        <div>
-          <dt className="label-xs text-tertiary">Final words</dt>
-          <dd className="text-primary">
-            {words ? `${words} of ${plan.assets.length} written` : 'not written yet'}
-            {state.words_run?.status === 'running' ? ' · writing now' : ''}
-          </dd>
-        </div>
-      </dl>
-    </Card>
-  )
+      ),
+    })
+  }
+  if (notes.length) {
+    items.push({
+      key: 'fill-in',
+      title: `Fill in ${notes.length} fact${notes.length === 1 ? '' : 's'} only you have`,
+      detail: "Mia left a clear gap rather than inventing these. Type them into the job's words, or tell Mia in the chat.",
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {notes.map((n, k) => (
+            <li key={k} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="paragraph-sm text-primary font-medium">{n.note.replace(/^\[|\]$/g, '')}</span>
+                <span className="block paragraph-xs text-tertiary">{n.a.name}</span>
+              </span>
+              <span className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => reveal(`job-${n.i}`, 'jobs', n.i)}>
+                  Open the words
+                </Button>
+                <AskMia label={`Missing fact · ${n.a.name}`} detail={n.note} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    })
+  }
+  if (toSet.length) {
+    const first = toSet[0]
+    items.push({
+      key: 'targets',
+      title: `Set ${toSet.length} target${toSet.length === 1 ? '' : 's'}`,
+      detail: 'Type a number for each, or "No target". The grey line is what the account did, to start from.',
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {toSet.map((t) => (
+            <TargetToSet
+              key={t.key}
+              name={t.kpi_name}
+              phase={t.phase}
+              reference={t.account_reference}
+              onSet={(v) => onEdit([{ op: 'set_target', key: t.key, value: v }])}
+              onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
+            />
+          ))}
+        </ul>
+      ),
+      actions: (
+        <>
+          <Button size="sm" onClick={() => reveal(`t-${first.key}`, 'phases')}>
+            See them in the plan
+          </Button>
+          <AskMia
+            label={`Targets to set (${toSet.length})`}
+            detail={toSet.map((t) => `${t.phase} ${t.kpi_name}${t.account_reference ? ` (${t.account_reference})` : ''}`).join('; ')}
+          />
+        </>
+      ),
+    })
+  }
+  otherBlockers.forEach((b, k) => {
+    const ji = jobs.findIndex((a) => a.name === b.key)
+    const passed = b.what.includes('which has passed')
+    items.push({
+      key: `blocker-${k}`,
+      title: b.what,
+      actions: (
+        <>
+          {passed ? (
+            <Button size="sm" loading={busy === 'edit'} onClick={() => onEdit([{ op: 'shift_dates', days: 7 }])}>
+              Move all dates a week later
+            </Button>
+          ) : ji >= 0 ? (
+            <Button size="sm" onClick={() => reveal(`job-${ji}`, 'jobs', ji)}>
+              Show me
+            </Button>
+          ) : null}
+          <AskMia label="Needs fixing" detail={b.what} />
+        </>
+      ),
+    })
+  })
+  if (asks.length) {
+    items.push({
+      key: 'questions',
+      title: `Answer ${asks.length} question${asks.length === 1 ? '' : 's'} from Mia`,
+      detail: "These don't block approving, but each answer can change the plan. Ask Mia about one to answer it in the chat.",
+      more: (
+        <ul className="flex flex-col gap-2">
+          {asks.map((q, k) => (
+            <li key={k} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
+              <details className="min-w-0 flex-1 group">
+                <summary className="cursor-pointer list-none">
+                  <span className="paragraph-sm text-primary font-medium">{'about' in q && q.about ? String(q.about) : 'Question'}</span>
+                  <span className="block paragraph-xs text-secondary line-clamp-1 group-open:line-clamp-none">{q.question}</span>
+                </summary>
+              </details>
+              <AskMia label={`Question${'about' in q && q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
+            </li>
+          ))}
+        </ul>
+      ),
+    })
+  }
+  if (lookAt.length) {
+    items.push({
+      key: 'notes',
+      title: `Look at ${lookAt.length} note${lookAt.length === 1 ? '' : 's'} from Mia's self-check`,
+      detail: lookAt[0],
+      more: (
+        <ul className="flex flex-col gap-2">
+          {lookAt.map((x) => (
+            <li key={x} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary">
+              <span className="min-w-0 flex-1">{x}</span>
+              <AskMia label="Self-check note" detail={x} />
+            </li>
+          ))}
+        </ul>
+      ),
+    })
+  }
+  const canApprove = !state.blockers.length && !state.plan_from_older_brief
+  items.push({
+    key: 'approve',
+    title: 'Approve the plan',
+    detail: canApprove
+      ? 'Saves the plan to the campaign. Next you send the jobs to Flex.' + (state.warnings?.length ? ` Note: ${state.warnings.join(' ')}` : '')
+      : 'Unlocks once the steps above that block it are done.',
+    actions: (
+      <PrimaryAction disabled={!canApprove} loading={busy === 'approve'} onClick={() => onApprove()}>
+        Approve
+      </PrimaryAction>
+    ),
+  })
+  return items
 }
 
 // One job as one line; opens to the full job (words, designer brief, audience).

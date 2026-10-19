@@ -12,6 +12,7 @@ import type { PushCheck } from '../../campaigns/types'
 import * as api from '../api'
 import type { LaunchJob } from '../types'
 import { Card, NeedsYou, channelLabel, day } from './parts'
+import { PrimaryAction, YourTurn, type TurnItem } from './your-turn'
 
 // The Launch tab (plan §8.2): a job is ready when Flex says so and its final artwork is linked. The PM takes it in
 // (artwork + the link people land on), then launches it the way its channel allows: Meta and Google ads go up
@@ -53,25 +54,45 @@ export function LaunchTab({ campaignId, approved, onChanged }: { campaignId: str
   if (!q.data) return <p className="paragraph-sm text-error">{(q.error as Error)?.message ?? 'Could not load the launch.'}</p>
   const s = q.data
   if (!s.jobs.length) return <Card className="paragraph-sm text-secondary">No jobs have gone to the studio yet. Send them from the Studio tab.</Card>
+  const go = (state: string) => document.getElementById(`launch-${state}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const n = (k: string) => s.counts[k as keyof typeof s.counts] ?? 0
+  const items: TurnItem[] = []
+  if (n('ready'))
+    items.push({
+      key: 'take',
+      title: `Check ${n('ready')} job${n('ready') === 1 ? '' : 's'} back from the studio`,
+      detail: 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
+      actions: <PrimaryAction onClick={() => go('ready')}>Check them</PrimaryAction>,
+    })
+  if (n('taken_in'))
+    items.push({
+      key: 'launch',
+      title: `Launch ${n('taken_in')} job${n('taken_in') === 1 ? '' : 's'}`,
+      detail: 'Push ads up paused, schedule posts, or mark them launched if you set them up yourself.',
+      actions: <PrimaryAction onClick={() => go('taken_in')}>Launch them</PrimaryAction>,
+    })
+  items.push({
+    key: 'wait',
+    title: n('in_studio') ? `${n('in_studio')} still in the studio` : 'Nothing left in the studio',
+    done: !n('in_studio'),
+    detail: 'They appear here when Flex marks them ready to launch. Mia checks every 45 seconds.',
+    actions: (
+      <Button size="sm" onClick={() => void reload()} loading={q.isFetching}>
+        Check Flex now
+      </Button>
+    ),
+  })
   return (
     <div className="flex flex-col gap-4">
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="paragraph-sm text-primary">
-          {s.live ? 'The campaign is live.' : 'Not live yet: the first job you launch makes it live.'}{' '}
-          <span className="text-secondary">
-            {s.counts.taken_in ?? 0} ready to launch · {s.counts.ready ?? 0} back from the studio · {s.counts.in_studio ?? 0} in the
-            studio · {s.counts.launched ?? 0} launched
-          </span>
-        </p>
-        <Button size="sm" onClick={() => void reload()} loading={q.isFetching}>
-          Check Flex now
-        </Button>
-      </Card>
+      <YourTurn items={items} />
+      <p className="paragraph-xs text-tertiary">
+        {s.live ? 'The campaign is live.' : 'Not live yet: the first job you launch makes it live.'} {n('launched')} launched so far.
+      </p>
       {SECTIONS.map((sec) => {
         const jobs = s.jobs.filter((j) => j.state === sec.state)
         if (!jobs.length) return null
         return (
-          <section key={sec.state} className="flex flex-col gap-2">
+          <section key={sec.state} id={`launch-${sec.state}`} className="flex flex-col gap-2 scroll-mt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="subheading-md text-primary">
                 {sec.title} ({jobs.length})
@@ -90,7 +111,9 @@ export function LaunchTab({ campaignId, approved, onChanged }: { campaignId: str
   )
 }
 
-function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; onDone: () => Promise<void> }) {
+// One job's launch work (artwork, landing page, push / schedule / mark). `bare`: just the body, for the drop-down
+// under the job's row on the Studio page (Studio and Launch are one page since 19 Oct).
+export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob; campaignId: string; onDone: () => Promise<void>; bare?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id ?? ''
   const [open, setOpen] = useState(j.state === 'ready' || j.state === 'taken_in')
@@ -142,25 +165,9 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
   const mark = () => run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null }))
   const blocking = (checks ?? []).filter((c) => c.severity === 'block')
 
-  return (
-    <li className="rounded-xl border border-secondary bg-primary">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
-        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-secondary">
-        <span className="min-w-0 flex-1 paragraph-sm text-primary">{j.name}</span>
-        <span className="paragraph-xs text-tertiary">
-          {j.phase} · {channelLabel(j.channel)}
-        </span>
-        <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
-        {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
-        {j.state === 'launched' ? (
-          <span className="label-xs text-utility-success-700 whitespace-nowrap">
-            ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : 'pushed, paused'}
-          </span>
-        ) : null}
-        <span className="paragraph-xs text-tertiary">{open ? '▴' : '▾'}</span>
-      </button>
-      {open ? (
-        <div className="flex flex-col gap-3 border-t border-secondary px-3 py-3">
+  const body = (
+    <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
+
           {j.artwork.length ? (
             <div className="flex flex-col gap-1">
               <p className="label-xs text-secondary">Artwork from the studio</p>
@@ -291,8 +298,27 @@ function JobCard({ j, campaignId, onDone }: { j: LaunchJob; campaignId: string; 
           ) : null}
           {note ? <p className="paragraph-xs text-utility-success-700">{note}</p> : null}
           {error ? <p className="paragraph-xs text-utility-warning-700">{error}</p> : null}
-        </div>
-      ) : null}
+    </div>
+  )
+  if (bare) return body
+  return (
+    <li className="rounded-xl border border-secondary bg-primary">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-secondary">
+        <span className="min-w-0 flex-1 paragraph-sm text-primary">{j.name}</span>
+        <span className="paragraph-xs text-tertiary">
+          {j.phase} · {channelLabel(j.channel)}
+        </span>
+        <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
+        {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
+        {j.state === 'launched' ? (
+          <span className="label-xs text-utility-success-700 whitespace-nowrap">
+            ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : 'pushed, paused'}
+          </span>
+        ) : null}
+        <span className="paragraph-xs text-tertiary">{open ? '▴' : '▾'}</span>
+      </button>
+      {open ? body : null}
     </li>
   )
 }

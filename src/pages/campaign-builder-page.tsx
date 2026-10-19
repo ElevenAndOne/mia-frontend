@@ -9,7 +9,6 @@ import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab } from '../features/campaign-builder/components/plan-tab'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
-import { LaunchTab } from '../features/campaign-builder/components/launch-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
 
@@ -21,8 +20,7 @@ import { useBuild } from '../features/campaign-builder/use-build'
 const TABS = [
   { key: 'brief', label: 'Brief' },
   { key: 'plan', label: 'Plan' },
-  { key: 'studio', label: 'Studio' },
-  { key: 'launch', label: 'Launch' },
+  { key: 'studio', label: 'Studio & launch' }, // one page since 19 Oct: each job's launch opens under its row
   { key: 'results', label: 'Results' },
 ] as const
 
@@ -238,7 +236,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     Discard draft
                   </Button>
                 ) : null}
-                <Button variant="primary" onClick={() => go(s.next_step.tab)}>
+                <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
                   Next: {s.next_step.label}
                 </Button>
               </div>
@@ -254,10 +252,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   key={t.key}
                   type="button"
                   disabled={'soon' in t}
-                  aria-current={tab === t.key ? 'page' : undefined}
+                  aria-current={tab === t.key || (t.key === 'studio' && tab === 'launch') ? 'page' : undefined}
                   onClick={() => go(t.key)}
                   className={`px-3 py-2 paragraph-sm border-b-2 -mb-px ${
-                    tab === t.key ? 'border-brand text-primary' : 'border-transparent text-tertiary hover:text-primary'
+                    tab === t.key || (t.key === 'studio' && tab === 'launch') ? 'border-brand text-primary' : 'border-transparent text-tertiary hover:text-primary'
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                   title={'soon' in t ? 'Coming in the next build step' : undefined}
                 >
@@ -275,9 +273,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             ) : null}
             {tab === 'results' ? (
               <ResultsTab campaignId={campaignId} approved={!s.campaign.building} />
-            ) : tab === 'launch' ? (
-              <LaunchTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
-            ) : tab === 'studio' ? (
+            ) : tab === 'studio' || tab === 'launch' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
               <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async () => {

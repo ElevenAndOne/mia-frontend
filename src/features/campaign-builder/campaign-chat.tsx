@@ -1,18 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChatMarkdown } from '../../components/chat-markdown'
 import { useSession } from '../../contexts/session-context'
 import { fetchConversationMessages, sendChatMessageStreaming } from '../chat/services/chat-service'
 import { buildKey } from './use-build'
+import { ASK_EVENT, clearFocus, type AskFocus } from './components/your-turn'
 
 // The chat docked beside the campaign page (plan §8.3). It is the campaign's own chat: one
 // conversation per campaign, reopened from the page. Mia sees the brief and the draft plan and
 // can change them; after each reply the page re-reads its state, so her edits show at once.
+// Streaming and scrolling work like the main Mia chat (use-chat-view): the text is revealed at a steady
+// pace, and the view only follows the reply while the PM is at the bottom (19 Oct).
 
 interface Msg {
   role: 'user' | 'assistant'
   content: string
 }
+
+const PIN_PREFIX = '📌 About: '
+const REVEAL_INTERVAL_MS = 40 // same pace as the main chat: ~125 characters a second
+const CHARS_PER_TICK = 5
+// "Ask Mia" with nothing typed: the question that goes with the item (Mia answers short and offers the fix).
+const DEFAULT_ASK = 'What is this, and how would you fix it?'
+const YES = 'Yes, fix it.'
 
 export function CampaignChat({
   campaignId,
@@ -30,7 +40,12 @@ export function CampaignChat({
   const [status, setStatus] = useState('')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const follow = useRef(true) // follow the reply only while the PM is parked at the bottom
+  const prevTop = useRef(0)
+  const messagesRef = useRef<Msg[]>([])
+  messagesRef.current = messages
 
   useEffect(() => {
     if (!sessionId) return
@@ -39,73 +54,137 @@ export function CampaignChat({
       .catch(() => setMessages([])) // a new campaign has no conversation yet
   }, [sessionId, conversationId])
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages, streaming])
+  const toBottom = () => {
+    if (follow.current) endRef.current?.scrollIntoView({ behavior: 'auto' })
+  }
+  useEffect(toBottom, [messages])
 
-  const send = async () => {
-    const text = input.trim()
-    if (!text || !sessionId || loading) return
-    const history = [...messages, { role: 'user' as const, content: text }]
-    setMessages(history)
-    setInput('')
-    setLoading(true)
-    setStreaming('')
-    setStatus('')
-    let received = ''
-    let afterTool = false // Mia's reply resumes after a tool call: start a new paragraph
-    try {
-      await sendChatMessageStreaming(
-        {
-          message: text,
-          session_id: sessionId,
-          user_id: user?.google_user_id ?? '',
-          date_range: '30_days',
-          conversation_history: history.slice(-40),
-          conversation_id: conversationId,
-          campaign_page_id: campaignId,
-        },
-        (chunk) => {
-          if (chunk.text) {
-            if (afterTool && received && !received.endsWith('\n')) received += '\n\n'
-            afterTool = false
-            received += chunk.text
-            setStreaming(received)
-          } else if (chunk.status && chunk.status !== 'thinking') {
-            afterTool = true
-            setStatus(chunk.status)
-          }
-        },
-      )
-      setMessages((prev) => [...prev, { role: 'assistant', content: received || 'Something went wrong. Try again.' }])
-    } catch {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Connection error. Please try again.' }])
-    } finally {
-      setLoading(false)
+  const onScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+    if (el.scrollTop < prevTop.current - 1) follow.current = false // scrolling up always wins
+    else if (atBottom) follow.current = true
+    prevTop.current = el.scrollTop
+  }
+
+  const send = useCallback(
+    async (typed: string, pin: AskFocus | null) => {
+      if (!typed.trim() || !sessionId) return
+      // The pin travels in the message itself, so Mia (and the saved history) knows what was asked about.
+      const text = pin ? `${PIN_PREFIX}${pin.label}${pin.detail ? `\n${pin.detail}` : ''}\n\n${typed.trim()}` : typed.trim()
+      const history = [...messagesRef.current, { role: 'user' as const, content: text }]
+      setMessages(history)
+      setInput('')
+      setLoading(true)
       setStreaming('')
       setStatus('')
-      onChanged?.() // before the refetch, so the page can tell this change came from the chat
-      await queryClient.invalidateQueries({ queryKey: buildKey(activeWorkspace?.tenant_id, campaignId) })
+      follow.current = true
+      // Steady reveal, independent of how the chunks arrive (the main chat's mechanism).
+      let received = ''
+      let shown = 0
+      let done = false
+      let afterTool = false // Mia's reply resumes after a tool call: start a new paragraph
+      let finish: () => void = () => undefined
+      const revealed = new Promise<void>((r) => (finish = r))
+      const tick = setInterval(() => {
+        const remaining = received.length - shown
+        if (done) {
+          shown = received.length
+          setStreaming(received)
+          clearInterval(tick)
+          finish()
+        } else if (remaining > 0) {
+          shown += Math.min(CHARS_PER_TICK, remaining)
+          setStreaming(received.slice(0, shown))
+        }
+        toBottom()
+      }, REVEAL_INTERVAL_MS)
+      try {
+        await sendChatMessageStreaming(
+          {
+            message: text,
+            session_id: sessionId,
+            user_id: user?.google_user_id ?? '',
+            date_range: '30_days',
+            conversation_history: history.slice(-40),
+            conversation_id: conversationId,
+            campaign_page_id: campaignId,
+          },
+          (chunk) => {
+            if (chunk.text) {
+              if (afterTool && received && !received.endsWith('\n')) received += '\n\n'
+              afterTool = false
+              received += chunk.text
+            } else if (chunk.status && chunk.status !== 'thinking') {
+              afterTool = true
+              setStatus(chunk.status)
+            }
+          },
+        )
+      } catch {
+        received = received || 'Connection error. Please try again.'
+      } finally {
+        done = true
+        await revealed
+        setMessages((prev) => [...prev, { role: 'assistant', content: received || 'Something went wrong. Try again.' }])
+        setLoading(false)
+        setStreaming('')
+        setStatus('')
+        onChanged?.() // before the refetch, so the page can tell this change came from the chat
+        await queryClient.invalidateQueries({ queryKey: buildKey(activeWorkspace?.tenant_id, campaignId) })
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessionId, conversationId, campaignId, user?.google_user_id, activeWorkspace?.tenant_id],
+  )
+
+  // "Ask Mia" on the page: send straight away with the item pinned (no typing needed).
+  const loadingRef = useRef(false)
+  loadingRef.current = loading
+  useEffect(() => {
+    const on = (e: Event) => {
+      if (loadingRef.current) return
+      void send(DEFAULT_ASK, (e as CustomEvent<AskFocus>).detail)
     }
-  }
+    window.addEventListener(ASK_EVENT, on)
+    return () => window.removeEventListener(ASK_EVENT, on)
+  }, [send])
+
+  const last = messages[messages.length - 1]
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user')
+  // After Mia answers a pinned question with a real fix, the PM confirms with one click (not after "Nothing to
+  // fix" or an error, review 19 Oct).
+  const offerConfirm =
+    !loading &&
+    last?.role === 'assistant' &&
+    !!lastUser?.content.startsWith(PIN_PREFIX) &&
+    /\*\*Fix:\*\*/.test(last.content) &&
+    !/nothing to fix/i.test(last.content) &&
+    !/^(Connection error|Something went wrong)/.test(last.content)
 
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-secondary bg-primary" aria-label="Chat with Mia about this campaign">
       <header className="border-b border-secondary px-4 py-3">
         <p className="subheading-sm text-primary">Mia</p>
-        <p className="paragraph-xs text-tertiary">Ask her to change the brief or the plan. Changes show on the page.</p>
+        <p className="paragraph-xs text-tertiary">Ask her about anything on the page, or to change it. Changes show on the page.</p>
       </header>
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        onWheel={(e) => {
+          if (e.deltaY < 0) follow.current = false
+        }}
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-3"
+      >
         {messages.length === 0 && !streaming ? (
           <p className="paragraph-sm text-tertiary">
-            Try: “Make the budget R80k”, “Drop the emailer”, or “Why this concept?”
+            Press “Ask Mia” on anything in the list, or try: “Make the budget R80k”, “Drop the emailer”, “Why this idea?”
           </p>
         ) : null}
         {messages.map((m, i) =>
           m.role === 'user' ? (
-            <p key={i} className="self-end max-w-[85%] rounded-xl bg-secondary px-3 py-2 paragraph-sm text-primary whitespace-pre-wrap">
-              {m.content}
-            </p>
+            <UserMessage key={i} content={m.content} />
           ) : (
             <ChatMarkdown key={i} content={m.content} className="paragraph-sm text-primary" />
           ),
@@ -117,13 +196,37 @@ export function CampaignChat({
             <p className="paragraph-xs text-tertiary">{status || 'Mia is thinking…'}</p>
           )
         ) : null}
+        {offerConfirm ? (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand"
+              onClick={() => {
+                clearFocus()
+                void send(YES, null)
+              }}
+            >
+              Yes, fix it
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary"
+              onClick={() => {
+                clearFocus()
+                void send('Not now.', null) // sent and saved, so a later "yes" can't apply this old fix
+              }}
+            >
+              Not now
+            </button>
+          </div>
+        ) : null}
         <div ref={endRef} />
       </div>
       <form
         className="border-t border-secondary p-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          void send()
+          if (!loading) void send(input, null)
         }}
       >
         <label htmlFor="campaign-chat-input" className="sr-only">
@@ -139,7 +242,7 @@ export function CampaignChat({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
-              void send()
+              if (!loading) void send(input, null)
             }
           }}
         />
@@ -152,5 +255,20 @@ export function CampaignChat({
         </button>
       </form>
     </aside>
+  )
+}
+
+// A message sent with a pin shows the pin as a chip and the PM's own words as the bubble.
+function UserMessage({ content }: { content: string }) {
+  if (!content.startsWith(PIN_PREFIX)) {
+    return <p className="self-end max-w-[85%] rounded-xl bg-secondary px-3 py-2 paragraph-sm text-primary whitespace-pre-wrap">{content}</p>
+  }
+  const [head, ...rest] = content.split('\n\n')
+  const label = head.slice(PIN_PREFIX.length).split('\n')[0]
+  return (
+    <div className="self-end max-w-[85%] flex flex-col items-end gap-1">
+      <span className="rounded-md bg-brand-primary px-2 py-0.5 paragraph-xs text-brand-secondary">About: {label}</span>
+      <p className="rounded-xl bg-secondary px-3 py-2 paragraph-sm text-primary whitespace-pre-wrap">{rest.join('\n\n')}</p>
+    </div>
   )
 }

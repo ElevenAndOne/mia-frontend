@@ -87,7 +87,7 @@ export interface FinalWords {
   rsa: { headlines: string[]; descriptions: string[] } | null
   email: { subject: string; preheader: string; body: string } | null
   status: 'ready' | 'flagged'
-  flags: { where: string; problem: string; fix: string }[]
+  flags: { where: string; problem: string; fix: string; kind?: string; note?: string }[]
   set_by_pm?: string[]
 }
 
@@ -251,7 +251,7 @@ export interface BuildState {
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
-  next_step: { label: string; tab: 'brief' | 'plan' | 'studio' }
+  next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
 export interface KpiOption {
