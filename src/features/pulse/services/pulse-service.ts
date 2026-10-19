@@ -15,6 +15,7 @@ import type {
   Topics,
   WorkspaceList,
   SessionFeedbackSummary,
+  CostsResponse,
 } from '../types'
 
 /** Thrown so the UI can distinguish "not on the allowlist" (403) from other failures. */
@@ -184,3 +185,7 @@ export const fetchFeedbackRecent = (
     `${BASE}/feedback/recent?range=${encodeURIComponent(range)}&rating=${rating}${scopeParams(filter)}`,
     sessionId
   )
+
+/** What Mia spent (the cost meter): by provider, feature and workspace, in rand and dollars. */
+export const fetchCosts = (sessionId: string | null, days: number, tier: string | null) =>
+  get<CostsResponse>(`${BASE}/costs?days=${days}${tier ? `&tier=${encodeURIComponent(tier)}` : ''}`, sessionId)

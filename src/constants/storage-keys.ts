@@ -16,6 +16,8 @@ export const StorageKey = {
 
   // Invite flow
   PENDING_INVITE: 'mia_pending_invite',
+  // The ?ref= invite code, kept through the Meta sign-in redirect (referrals, P2).
+  PENDING_REFERRAL: 'mia_pending_referral',
   AUTO_ACCEPT_INVITE: 'mia_auto_accept_invite',
 
   // Auth return

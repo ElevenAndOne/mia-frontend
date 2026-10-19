@@ -927,3 +927,12 @@
   opacity: 0.4;
   cursor: default;
 }
+
+/* What Mia costs (cost meter, P0) */
+.plz-costs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.plz-costs .plz-kpis { margin: 0; }
+.plz-costs .plz-table { width: 100%; }
+.plz-costs .plz-val small { font-size: 0.6em; opacity: 0.6; font-weight: 500; }
+@media (max-width: 720px) {
+  .plz-costs .plz-cols { grid-template-columns: 1fr; }
+}

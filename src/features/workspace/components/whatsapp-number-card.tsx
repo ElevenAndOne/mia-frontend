@@ -98,6 +98,12 @@ export const WhatsAppNumberCard = ({
       if (!sessionId) return
       const target = mode === 'confirm' ? state?.whatsapp_number || number : number
       const res = await startWhatsAppVerification(sessionId, target)
+      if (res.verified) {
+        // Already confirmed on their other business: nothing to type (D17).
+        setNotice(res.message)
+        await load()
+        return
+      }
       setNotice(
         res.delivered
           ? `Code sent to ${target}. It expires in 10 minutes.`

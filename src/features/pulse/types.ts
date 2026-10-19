@@ -271,3 +271,35 @@ export interface PostsProvenance {
   }
   workspaces: PostsWorkspaceRow[]
 }
+
+// ---------- costs (the backend cost meter, P0) ----------
+export interface CostMoney {
+  usd: number
+  zar: number
+}
+
+export interface CostsResponse {
+  days: number
+  tier: string | null
+  rate: { usd_zar: number; as_of: string }
+  prices_checked: string
+  totals: {
+    usage: CostMoney
+    free_service_credit: CostMoney
+    hosting_share: CostMoney
+    all_in: CostMoney
+    untagged: CostMoney
+    unpriced_calls: number
+  }
+  per_workspace: {
+    workspaces: number
+    usage_avg: CostMoney
+    hosting_each: CostMoney
+    all_in_avg_month: CostMoney
+  }
+  by_provider: (CostMoney & { provider: string; calls: number })[]
+  by_feature: (CostMoney & { feature: string; calls: number })[]
+  by_workspace: (CostMoney & { tenant_id: string; name: string; tier: string | null; calls: number })[]
+  first_day: (CostMoney & { tenant_id: string; name: string | null; tier: string | null; created_at: string | null; calls: number })[]
+  hosting: { monthly_usd_incl_vat: number; lines: Record<string, number>; checked: string }
+}

@@ -86,6 +86,7 @@ void import('./sentry-replay').then((m) => m.installReplay()).catch(() => {})
 // =============================================================================
 
 import ReactDOM from 'react-dom/client'
+import { captureReferral } from './features/referrals/referral'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/query-client'
@@ -114,6 +115,9 @@ if (viewport) {
 
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('Root element not found')
+
+// A ?ref= invite code is kept before anything can redirect it away (referrals, P2).
+captureReferral()
 
 ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
