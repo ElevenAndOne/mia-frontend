@@ -433,7 +433,7 @@ function planTurnItems({
     items.push({
       key: 'questions',
       title: `Answer ${asks.length} question${asks.length === 1 ? '' : 's'} from Mia`,
-      detail: "These don't block approving, but each answer can change the plan. Ask Mia about one to answer it in the chat.",
+      detail: "These don't block approving. Ask Mia for her recommended answer and use it, or skip the ones that don't matter.",
       more: (
         <ul className="flex flex-col gap-2">
           {asks.map((q, k) => (
@@ -444,7 +444,17 @@ function planTurnItems({
                   <span className="block paragraph-xs text-secondary line-clamp-1 group-open:line-clamp-none">{q.question}</span>
                 </summary>
               </details>
-              <AskMia label={`Question${'about' in q && q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
+              <span className="flex items-center gap-2">
+                <AskMia label={`Question${'about' in q && q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
+                <button
+                  type="button"
+                  disabled={busy === 'edit'}
+                  onClick={() => onEdit([{ op: 'answer_question', question: q.question, answer: null }])}
+                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+                >
+                  Skip
+                </button>
+              </span>
             </li>
           ))}
         </ul>

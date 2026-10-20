@@ -13,7 +13,11 @@ interface Props {
   state: BuildState
   kpiGroups: KpiGroup[]
   busy: string | null
-  onSave: (fields: Partial<Record<BriefField, unknown>>, name?: string) => Promise<unknown>
+  onSave: (
+    fields: Partial<Record<BriefField, unknown>>,
+    name?: string,
+    answered?: { question: string; answer: string | null }[],
+  ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
 }
@@ -76,7 +80,15 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         detail: 'Only what would change the plan. Answer any you can, or skip them.',
         done: planFresh,
         openByDefault: true,
-        more: <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />,
+        more: (
+          <Questions
+            brief={b!}
+            busy={busy}
+            running={run?.status === 'running'}
+            onRedraft={onRedraft}
+            onSkip={(question) => onSave({}, undefined, [{ question, answer: null }])}
+          />
+        ),
       })
     }
     if (emptyRules) {
@@ -323,11 +335,13 @@ function Questions({
   busy,
   running,
   onRedraft,
+  onSkip,
 }: {
   brief: Brief
   busy: string | null
   running: boolean
   onRedraft: Props['onRedraft']
+  onSkip: (question: string) => Promise<unknown>
 }) {
   const qs = (brief.open_questions ?? []).slice(0, 3)
   const [answers, setAnswers] = useState<string[]>(() => qs.map(() => ''))
@@ -341,10 +355,23 @@ function Questions({
       <ol className="flex flex-col gap-3">
         {qs.map((q, i) => (
           <li key={i} className="flex flex-col gap-1">
-            <label htmlFor={`q-${i}`} className="paragraph-sm text-primary">
-              {q.question}
-              <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
-            </label>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <label htmlFor={`q-${i}`} className="min-w-0 flex-1 paragraph-sm text-primary">
+                {q.question}
+                <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
+              </label>
+              <span className="flex items-center gap-2">
+                <AskMia label="Brief question" detail={q.question} />
+                <button
+                  type="button"
+                  disabled={!!busy || running}
+                  onClick={() => onSkip(q.question)}
+                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+                >
+                  Skip
+                </button>
+              </span>
+            </div>
             <input
               id={`q-${i}`}
               className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"

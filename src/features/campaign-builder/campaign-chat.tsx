@@ -163,6 +163,9 @@ export function CampaignChat({
     !/nothing to fix/i.test(last.content) &&
     !/^(Connection error|Something went wrong)/.test(last.content)
 
+  // A target or a question gets Mia's recommendation, so the PM uses it (or types their own number or answer).
+  const useLabel = offerConfirm && /^📌 About: (Target|Question|Brief question)/.test(lastUser?.content ?? '')
+
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-secondary bg-primary" aria-label="Chat with Mia about this campaign">
       <header className="border-b border-secondary px-4 py-3">
@@ -197,7 +200,7 @@ export function CampaignChat({
           )
         ) : null}
         {offerConfirm ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand"
@@ -206,7 +209,7 @@ export function CampaignChat({
                 void send(YES, null)
               }}
             >
-              Yes, fix it
+              {useLabel ? 'Use this' : 'Yes, fix it'}
             </button>
             <button
               type="button"
@@ -218,6 +221,7 @@ export function CampaignChat({
             >
               Not now
             </button>
+            {useLabel ? <span className="paragraph-xs text-tertiary">or type your own below</span> : null}
           </div>
         ) : null}
         <div ref={endRef} />

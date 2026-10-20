@@ -70,8 +70,11 @@ export function useBuild(campaignId: string | undefined) {
     busy,
     error,
     clearError: () => setError(null),
-    saveBrief: (fields: Partial<Record<BriefField | 'playbook', unknown>>, name?: string) =>
-      run('brief', () => api.saveBrief(...ids(), fields, name)),
+    saveBrief: (
+      fields: Partial<Record<BriefField | 'playbook', unknown>>,
+      name?: string,
+      answered?: { question: string; answer: string | null }[],
+    ) => run('brief', () => api.saveBrief(...ids(), fields, name, answered)),
     redraft: (answers: string[]) => run('redraft', () => api.redraftBrief(...ids(), answers)),
     makePlan: () => run('plan', () => api.makePlan(...ids())),
     editPlan: (ops: PlanOp[]) =>

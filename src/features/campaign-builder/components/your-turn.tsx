@@ -160,19 +160,18 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
     <Card className="!p-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
         <div className="min-w-0">
-          <h2 className="subheading-md text-primary">{open.length ? 'Your turn' : 'All done for now'}</h2>
+          <h2 className="subheading-md text-primary">Your turn</h2>
           <p className="paragraph-xs text-tertiary">
-            {open.length
-              ? 'Work down the list. Everything else on this page is there to read when you want it.'
-              : 'Nothing needs you on this tab.'}
+            Work down the list. Each item leaves it once it's done, so the next one is always at the top.
           </p>
         </div>
         <span className="paragraph-xs text-tertiary tabular-nums">
-          {items.length - open.length} of {items.length} done
+          {open.length} to do{items.length > open.length ? ` · ${items.length - open.length} done` : ''}
         </span>
       </div>
       <ol className="flex flex-col">
-        {items.map((it, n) => {
+        {/* Done items leave the list (19 Oct): a checklist that clears, not one that fills with crossed-out steps. */}
+        {open.map((it, n) => {
           const next = it.key === nextKey
           return (
             <li
