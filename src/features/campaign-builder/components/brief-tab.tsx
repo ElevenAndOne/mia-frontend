@@ -84,16 +84,16 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     if (qs.length) {
       items.push({
         key: 'questions',
-        title: `Answer Mia's ${qs.length} question${qs.length === 1 ? '' : 's'} (optional)`,
-        detail: 'Only what would change the plan. Answer any you can, or skip them.',
-        done: planFresh,
+        title: `Answer or skip Mia's ${qs.length} question${qs.length === 1 ? '' : 's'}`,
+        detail: 'Most important first. Type your answer and press Send, or skip it and Mia decides. Approve waits for these.',
+        done: !qs.length,
         openByDefault: true,
         more: (
           <Questions
             brief={b!}
             busy={busy}
             running={run?.status === 'running'}
-            onRedraft={onRedraft}
+            onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
             onSkip={(id) => onSave({}, undefined, [{ id, answer: null }])}
           />
         ),
@@ -342,64 +342,70 @@ function Questions({
   brief,
   busy,
   running,
-  onRedraft,
+  onAnswer,
   onSkip,
 }: {
   brief: Brief
   busy: string | null
   running: boolean
-  onRedraft: Props['onRedraft']
+  onAnswer: (id: string, answer: string) => Promise<unknown>
   onSkip: (id: string) => Promise<unknown>
 }) {
   const qs = (brief.open_questions ?? []).slice(0, 3)
-  const [answers, setAnswers] = useState<string[]>(() => qs.map(() => ''))
-  // New questions (a redraft asks different ones) clear the boxes: answers stayed under the wrong question (16 Oct).
-  const asked = qs.map((q) => q.question).join('|')
-  useEffect(() => setAnswers(qs.map(() => '')), [asked]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Kept by question id: a question that closes moves the others up, and answers stayed under the wrong one (16 Oct).
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   if (!qs.length) return null
-  const filled = answers.some((a) => a.trim())
+  // Each answer goes in on its own: Send (or Enter) saves it and closes the question at once. The plan and the words
+  // read it from the brief; no redraft needed (live test 20 Oct).
+  const send = (id: string) => {
+    const a = (answers[id] ?? '').trim()
+    if (!a || busy || running) return
+    void onAnswer(id, a).then((ok) => {
+      if (ok !== undefined) setAnswers(({ [id]: _, ...rest }) => rest)
+    })
+  }
   return (
-    <div className="flex flex-col gap-3">
-      <ol className="flex flex-col gap-3">
-        {qs.map((q, i) => (
-          <li key={i} className="flex flex-col gap-1">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <label htmlFor={`q-${i}`} className="min-w-0 flex-1 paragraph-sm text-primary">
-                {q.question}
-                <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
-              </label>
-              <span className="flex items-center gap-2">
-                <AskMia label="Brief question" detail={q.question} />
-                <button
-                  type="button"
-                  disabled={!!busy || running}
-                  onClick={() => onSkip(q.id)}
-                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
-                >
-                  Skip
-                </button>
-              </span>
-            </div>
+    <ol className="flex flex-col gap-3">
+      {qs.map((q) => (
+        <li key={q.id} className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <label htmlFor={`q-${q.id}`} className="min-w-0 flex-1 paragraph-sm text-primary">
+              {q.question}
+              <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
+            </label>
+            <span className="flex items-center gap-2">
+              <AskMia label="Brief question" detail={q.question} />
+              <button
+                type="button"
+                disabled={!!busy || running}
+                onClick={() => onSkip(q.id)}
+                className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+              >
+                Skip
+              </button>
+            </span>
+          </div>
+          <div className="flex gap-2">
             <input
-              id={`q-${i}`}
-              className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
-              value={answers[i] ?? ''}
-              onChange={(e) => setAnswers(answers.map((a, j) => (j === i ? e.target.value : a)))}
+              id={`q-${q.id}`}
+              placeholder="Your answer"
+              className="min-w-0 flex-1 rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
+              value={answers[q.id] ?? ''}
+              onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  send(q.id)
+                }
+              }}
             />
-          </li>
-        ))}
-      </ol>
-      <div className="mt-3 flex justify-end">
-        <Button
-          size="sm"
-          disabled={!filled || running}
-          loading={busy === 'redraft'}
-          onClick={() => onRedraft(qs.map((q, i) => (answers[i]?.trim() ? `${q.question} ${answers[i].trim()}` : '')).filter(Boolean))}
-        >
-          Update the brief with my answers
-        </Button>
-      </div>
-    </div>
+            <Button size="sm" disabled={!(answers[q.id] ?? '').trim() || running} loading={busy === 'brief'} onClick={() => send(q.id)}>
+              Send
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ol>
   )
 }
 
