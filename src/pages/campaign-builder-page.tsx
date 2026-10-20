@@ -282,7 +282,8 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
                   if (out !== undefined) go('studio')
                   return out
-                }} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} onReprice={build.reprice} />
+                }} onWriteWords={build.writeWords} onSaveBrief={build.saveBrief} onReprice={build.reprice}
+                onKeepPlan={build.keepPlan} />
             ) : (
               <BriefTab
                 state={s}
@@ -316,6 +317,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             <CampaignChat
               campaignId={campaignId}
               conversationId={s.conversation_id}
+              pending={s.pending ?? []}
+              busy={build.busy}
+              onApply={build.applyChange}
+              onDrop={build.dropChange}
               onChanged={() => {
                 fromChat.current = true
               }}

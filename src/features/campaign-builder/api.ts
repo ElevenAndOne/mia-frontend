@@ -63,6 +63,26 @@ export async function makePlan(sessionId: string, tenantId: string, campaignId: 
   )
 }
 
+// After a big brief change: keep this plan with the new brief instead of remaking it.
+export async function keepPlan(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/plan/keep`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// A change the chat proposed: Apply applies exactly the stored edits; Not now drops them.
+export async function applyChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}/apply`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+export async function dropChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}`, { method: 'DELETE', headers: json(sessionId) }),
+  )
+}
+
 export async function editPlan(sessionId: string, tenantId: string, campaignId: string, ops: PlanOp[]) {
   return check<BuildState>(
     await apiFetch(`${base(tenantId)}/${campaignId}/plan`, {

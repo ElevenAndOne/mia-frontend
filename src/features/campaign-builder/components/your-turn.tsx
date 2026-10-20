@@ -90,7 +90,11 @@ export function Fold({
 
 export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
   const c = state.campaign
-  const split = plan.decisions.budget_split?.value ?? {}
+  // In the campaign's own phase order (the database returns the keys in any order; live test 20 Oct).
+  const raw = plan.decisions.budget_split?.value ?? {}
+  const split = Object.fromEntries(
+    [...plan.phases.map((p) => p.phase).filter((p) => p in raw), ...Object.keys(raw).filter((k) => !plan.phases.some((p) => p.phase === k))].map((k) => [k, raw[k]]),
+  )
   const total = Object.values(split).reduce<number>((acc, v) => acc + (v ?? 0), 0) || c.budget_total || 0
   const shares = Object.entries(split)
     .filter(([, v]) => v)
@@ -236,6 +240,7 @@ export function TargetToSet({
   suggested,
   suggestedFrom,
   suggestedLabel,
+  byMia,
   onSet,
   onNoTarget,
 }: {
@@ -245,13 +250,15 @@ export function TargetToSet({
   suggested?: number | null
   suggestedFrom?: string | null
   suggestedLabel?: string | null
-  onSet: (v: number, estimateNote?: string) => void
+  byMia?: boolean
+  onSet: (v: number | string, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
   const [v, setV] = useState('')
+  // Sent as typed: the server reads "R124", "5%", "60k" and says plainly when it can't (live test 20 Oct: these
+  // were silently ignored).
   const commit = () => {
-    const n = Number(v.replace(/\s/g, '').replace(',', '.'))
-    if (v.trim() && Number.isFinite(n)) onSet(n)
+    if (v.trim()) onSet(v.trim())
   }
   return (
     <li className="grid grid-cols-1 @2xl:grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
@@ -262,7 +269,7 @@ export function TargetToSet({
         {reference ? <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">{reference}</p> : null}
         {suggested != null ? (
           <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
-            Starting point: {suggestedLabel ?? num(suggested)}
+            {byMia ? "Mia's estimate" : 'From your account'}: {suggestedLabel ?? num(suggested)}
             {suggestedFrom ? ` (${suggestedFrom})` : ''}
           </p>
         ) : null}
@@ -284,7 +291,7 @@ export function TargetToSet({
         {suggested != null ? (
           // One target at a time: the PM looks at each starting point and takes it, or types their own.
           <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
-            Use {suggestedLabel ?? num(suggested)}
+            Keep {suggestedLabel ?? num(suggested)}
           </Button>
         ) : null}
         <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">

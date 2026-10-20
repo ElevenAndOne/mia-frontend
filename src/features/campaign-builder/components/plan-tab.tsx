@@ -23,9 +23,10 @@ interface Props {
   onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
   onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
   onReprice: () => Promise<unknown>
+  onKeepPlan: () => Promise<unknown>
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice }: Props) {
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice, onKeepPlan }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
   const [folds, setFolds] = useState<Set<string>>(() => new Set()) // detail sections, closed until wanted
@@ -69,7 +70,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
           or counted before then. Next: send the jobs to Flex from the Studio tab.
         </Card>
       ) : (
-        <YourTurn items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal })} />
+        <YourTurn items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, onMakePlan, onKeepPlan, reveal })} />
       )}
 
       <FactStrip state={state} plan={plan} />
@@ -235,6 +236,8 @@ function planTurnItems({
   onApprove,
   onWriteWords,
   onReprice,
+  onMakePlan,
+  onKeepPlan,
   reveal,
 }: {
   state: BuildState
@@ -244,9 +247,14 @@ function planTurnItems({
   onApprove: Props['onApprove']
   onWriteWords: Props['onWriteWords']
   onReprice: Props['onReprice']
+  onMakePlan: Props['onMakePlan']
+  onKeepPlan: Props['onKeepPlan']
   reveal: (id: string, fold?: string, jobIndex?: number) => void
 }): TurnItem[] {
+  // Order (live test 20 Oct): what changes the plan first, then targets, questions and notes; the final words come
+  // last, right before Approve, because they depend on everything above.
   const items: TurnItem[] = []
+  const wordItems: TurnItem[] = []
   const jobs = plan.assets
   const wordsRun = state.words_run
   const without = jobs.filter((a) => !a.final_words).length
@@ -263,18 +271,32 @@ function planTurnItems({
   const targets = plan.decisions.kpi_targets
   const toSet = targets.filter((t) => t.value == null && !t.no_target)
   const targetKeys = new Set(targets.map((t) => t.key))
-  const otherBlockers = state.blockers.filter((b) => !(b.key && targetKeys.has(b.key)))
+  const otherBlockers = state.blockers.filter((b) => !(b.key && (targetKeys.has(b.key) || b.key === 'words' || b.key === 'questions')))
+  const recheck = targets.filter((t) => t.recheck && t.value != null)
+  const mias = toSet.filter((t) => t.suggested != null && t.suggested_by === 'mia')
   // The "set these targets" question is the Targets item below; once none are left it's stale.
   const asks = (plan.decisions.ask_pm ?? [])
     .map((q) => (typeof q === 'string' ? { question: q } : q))
     .filter((q) => !('about' in q && q.about === 'Targets'))
-  const lookAt = plan.review?.scorecard?.look_at ?? []
+  const done = new Set(plan.decisions.notes_done ?? [])
+  const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
 
   if (state.plan_from_older_brief) {
     items.push({
       key: 'older-brief',
-      title: 'Make the plan again',
-      detail: 'The brief changed after this plan was made, so it would go out with the old brief. Do it from the Brief tab.',
+      title: 'The budget, dates, channels or goal changed',
+      detail:
+        'Update the plan for it (your targets and answers are kept), or keep this plan and fix what no longer fits below.',
+      actions: (
+        <>
+          <PrimaryAction loading={busy === 'plan'} onClick={() => onMakePlan()}>
+            Update the plan
+          </PrimaryAction>
+          <Button size="sm" loading={busy === 'keep'} onClick={() => onKeepPlan()}>
+            Keep this plan
+          </Button>
+        </>
+      ),
     })
   }
   if (jobs.length && jobs.every((a) => a.credits == null)) {
@@ -289,7 +311,7 @@ function planTurnItems({
       ),
     })
   }
-  items.push({
+  wordItems.push({
     key: 'words',
     title: wordsRun?.status === 'running' ? 'Mia is writing the final words' : without ? 'Write the final words' : 'Final words written',
     done: !without && wordsRun?.status !== 'running',
@@ -309,7 +331,7 @@ function planTurnItems({
       ),
   })
   if (flagged.length) {
-    items.push({
+    wordItems.push({
       key: 'fix-words',
       title: `Fix the words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`,
       detail: 'Mia checked the words and found something on each. Fix it rewrites with her notes.',
@@ -348,7 +370,7 @@ function planTurnItems({
     })
   }
   if (notes.length) {
-    items.push({
+    wordItems.push({
       key: 'fill-in',
       title: `Fill in ${notes.length} fact${notes.length === 1 ? '' : 's'} only you have`,
       detail: "Mia left a clear gap rather than inventing these. Type them into the job's words, or tell Mia in the chat.",
@@ -378,7 +400,9 @@ function planTurnItems({
     items.push({
       key: 'targets',
       title: `Set ${toSet.length} target${toSet.length === 1 ? '' : 's'}`,
-      detail: 'Type a number for each, or "No target". The grey line is what the account did, to start from.',
+      detail: mias.length
+        ? `Mia estimated ${mias.length}. Keep hers one by one or all at once, or type your own. Estimates show as Mia's, not your data.`
+        : 'Type a number for each, or "No target". Ask Mia to fill the boxes with her estimates.',
       openByDefault: true,
       more: (
         <ul className="flex flex-col gap-2">
@@ -391,6 +415,7 @@ function planTurnItems({
               suggested={t.suggested}
               suggestedFrom={t.suggested_from}
               suggestedLabel={t.suggested_label}
+              byMia={t.suggested_by === 'mia'}
               onSet={(v, note) => onEdit([{ op: 'set_target', key: t.key, value: v, ...(note ? { estimate_note: note } : {}) }])}
               onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
             />
@@ -399,6 +424,16 @@ function planTurnItems({
       ),
       actions: (
         <>
+          {mias.length ? (
+            <PrimaryAction
+              loading={busy === 'edit'}
+              onClick={() =>
+                onEdit(mias.map((t) => ({ op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" })))
+              }
+            >
+              Keep all {mias.length} of Mia's estimates
+            </PrimaryAction>
+          ) : null}
           <Button size="sm" onClick={() => reveal(`t-${first.key}`, 'phases')}>
             See them in the plan
           </Button>
@@ -407,6 +442,31 @@ function planTurnItems({
             detail={toSet.map((t) => `${t.phase} ${t.kpi_name}${t.account_reference ? ` (${t.account_reference})` : ''}`).join('; ')}
           />
         </>
+      ),
+    })
+  }
+  if (recheck.length) {
+    items.push({
+      key: 'recheck',
+      title: `Recheck ${recheck.length} target${recheck.length === 1 ? '' : 's'} set before the budget or dates changed`,
+      detail: 'Keep each one, or type a new number.',
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {recheck.map((t) => (
+            <li key={t.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+              <span className="min-w-0">
+                <span className="font-medium">{t.kpi_name}</span> <span className="text-tertiary">· {t.phase} · {num(t.value)}</span>
+              </span>
+              <Button
+                size="sm"
+                onClick={() => onEdit([{ op: 'set_target', key: t.key, value: t.value, ...(t.estimate_note ? { estimate_note: t.estimate_note } : {}) }])}
+              >
+                Keep {num(t.value)}
+              </Button>
+            </li>
+          ))}
+        </ul>
       ),
     })
   }
@@ -436,7 +496,7 @@ function planTurnItems({
     items.push({
       key: 'questions',
       title: `Answer ${asks.length} question${asks.length === 1 ? '' : 's'} from Mia`,
-      detail: "These don't block approving. Ask Mia for her recommended answer and use it, or skip the ones that don't matter.",
+      detail: 'Most important first. Answer each, take Mia\'s suggestion, or skip it and she decides. Approve waits for all of them.',
       more: (
         <ul className="flex flex-col gap-2">
           {asks.map((q, k) => (
@@ -474,20 +534,32 @@ function planTurnItems({
           {lookAt.map((x) => (
             <li key={x} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary">
               <span className="min-w-0 flex-1">{x}</span>
-              <AskMia label="Self-check note" detail={x} />
+              <span className="flex items-center gap-2">
+                <AskMia label="Self-check note" detail={x} />
+                <button
+                  type="button"
+                  disabled={busy === 'edit'}
+                  onClick={() => onEdit([{ op: 'close_note', text: x }])}
+                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+                >
+                  Done
+                </button>
+              </span>
             </li>
           ))}
         </ul>
       ),
     })
   }
+  items.push(...wordItems)
   const canApprove = !state.blockers.length && !state.plan_from_older_brief
   items.push({
     key: 'approve',
     title: 'Approve the plan',
     detail: canApprove
       ? 'Saves the plan to the campaign. Next you send the jobs to Flex.' + (state.warnings?.length ? ` Note: ${state.warnings.join(' ')}` : '')
-      : 'Unlocks once the steps above that block it are done.',
+      : 'Waiting on: ' +
+        [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · '),
     actions: (
       <PrimaryAction disabled={!canApprove} loading={busy === 'approve'} onClick={() => onApprove()}>
         Approve

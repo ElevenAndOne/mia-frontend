@@ -22,7 +22,7 @@ interface Props {
   onMakePlan: () => Promise<unknown>
 }
 
-const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints']
+const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
 const LABELS: Record<BriefField, string> = {
   goal: 'Goal',
   audience: 'Audience',
@@ -32,6 +32,9 @@ const LABELS: Record<BriefField, string> = {
   channels_requested: 'Channels you asked for',
   must_haves: 'Must haves',
   constraints: "Don'ts and limits",
+  offer: 'Offer',
+  landing_page: 'Landing page',
+  already_made: 'Already made (not made again)',
 }
 
 type Draft = Record<BriefField, string>
@@ -46,11 +49,16 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   channels_requested: (b.channels_requested ?? []).join('\n'),
   must_haves: (b.must_haves ?? []).join('\n'),
   constraints: (b.constraints ?? []).join('\n'),
+  offer: b.offer ?? '',
+  landing_page: b.landing_page ?? '',
+  already_made: (b.already_made ?? []).join('\n'),
 })
 
 const fromDraft = (k: BriefField, v: string): unknown => {
   if (LIST_FIELDS.includes(k)) return v.split('\n').map((s) => s.trim()).filter(Boolean)
-  if (k === 'budget_total') return v.trim() === '' ? null : Number(v.replace(/[^\d.]/g, ''))
+  // Sent as typed: the server reads "R60k", "60 000" and "1.2m", and refuses what it can't read (live test 20 Oct:
+  // "R60k" saved as R60 when this stripped every letter).
+  if (k === 'budget_total') return v.trim() === '' ? null : v.trim()
   return v.trim() === '' ? null : v.trim()
 }
 
@@ -278,7 +286,7 @@ function BriefCard({
                 <input
                   id={`brief-${k}`}
                   type={k.endsWith('_date') ? 'date' : 'text'}
-                  inputMode={k === 'budget_total' ? 'numeric' : undefined}
+                  placeholder={k === 'budget_total' ? 'e.g. 60000 or 60k' : k === 'landing_page' ? 'https://' : undefined}
                   className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
                   value={draft[k]}
                   onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}

@@ -30,8 +30,11 @@ export interface Brief {
   channels_requested?: string[]
   must_haves?: string[]
   constraints?: string[]
+  offer?: string | null
+  landing_page?: string | null
+  already_made?: string[]
   pm_words?: PmWords[]
-  open_questions?: { id: string; question: string; why_it_matters: string }[]
+  open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
 }
@@ -45,6 +48,9 @@ export type BriefField =
   | 'channels_requested'
   | 'must_haves'
   | 'constraints'
+  | 'offer'
+  | 'landing_page'
+  | 'already_made'
 
 export interface CreativeBrief {
   objective?: string
@@ -108,6 +114,8 @@ export interface KpiTarget {
   suggested_from?: string | null
   suggested_label?: string | null // the starting number as a PM reads it (1.60%, R4.20, 12,000)
   estimate_note?: string | null // a target that is Mia's estimate, accepted by the PM
+  suggested_by?: 'mia' | string | null // the starting number is Mia's estimate (not the account's own)
+  recheck?: string | null // set before the budget or dates changed
   no_target?: boolean
   missed_twice?: string[]
 }
@@ -178,6 +186,7 @@ export interface Plan {
       history_notes?: string[]
     }
     ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
+    notes_done?: string[] // self-check notes the PM marked Done
   }
   checks: PlanCheck[]
   review?: PlanReview
@@ -255,6 +264,7 @@ export interface BuildState {
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
+  pending?: { id: string; summary: string[]; at?: string }[] // changes the chat proposed, waiting for Apply
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
@@ -276,7 +286,8 @@ export interface KpiGroup {
 }
 
 export type PlanOp =
-  | { op: 'set_target'; key: string; value: number | null; no_target?: boolean; estimate_note?: string }
+  | { op: 'set_target'; key: string; value: number | string | null; no_target?: boolean; estimate_note?: string }
+  | { op: 'close_note'; text: string }
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }

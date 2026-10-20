@@ -20,17 +20,28 @@ interface Msg {
 const PIN_PREFIX = '📌 About: '
 const REVEAL_INTERVAL_MS = 40 // same pace as the main chat: ~125 characters a second
 const CHARS_PER_TICK = 5
-// "Ask Mia" with nothing typed: the question that goes with the item (Mia answers short and offers the fix).
+// "Ask Mia" with nothing typed: the question that goes with the item (Mia answers short and proposes the fix).
 const DEFAULT_ASK = 'What is this, and how would you fix it?'
-const YES = 'Yes, fix it.'
+
+type Pending = { id: string; summary: string[]; at?: string }
 
 export function CampaignChat({
   campaignId,
   conversationId,
+  pending = [],
+  busy = null,
+  onApply,
+  onDrop,
   onChanged,
 }: {
   campaignId: string
   conversationId: string
+  // Changes Mia proposed. Apply applies exactly these stored edits; Not now drops them (review 20 Oct: a "yes"
+  // used to ask Mia to make the change again, and her second attempt could differ).
+  pending?: Pending[]
+  busy?: string | null
+  onApply?: (id: string) => Promise<unknown>
+  onDrop?: (id: string) => Promise<unknown>
   onChanged?: () => void
 }) {
   const { sessionId, activeWorkspace, user } = useSession()
@@ -54,10 +65,12 @@ export function CampaignChat({
       .catch(() => setMessages([])) // a new campaign has no conversation yet
   }, [sessionId, conversationId])
 
+  // Scroll the chat box itself: scrollIntoView also scrolled the whole page (live test 20 Oct).
   const toBottom = () => {
-    if (follow.current) endRef.current?.scrollIntoView({ behavior: 'auto' })
+    const el = scrollRef.current
+    if (follow.current && el) el.scrollTop = el.scrollHeight
   }
-  useEffect(toBottom, [messages])
+  useEffect(toBottom, [messages, pending.length])
 
   const onScroll = () => {
     const el = scrollRef.current
@@ -151,23 +164,6 @@ export function CampaignChat({
     return () => window.removeEventListener(ASK_EVENT, on)
   }, [send])
 
-  const last = messages[messages.length - 1]
-  const lastUser = [...messages].reverse().find((m) => m.role === 'user')
-  // After Mia answers a pinned question with a real fix, the PM confirms with one click (not after "Nothing to
-  // fix" or an error, review 19 Oct).
-  const offerConfirm =
-    !loading &&
-    last?.role === 'assistant' &&
-    !!lastUser?.content.startsWith(PIN_PREFIX) &&
-    /\*\*Fix:\*\*/.test(last.content) &&
-    !/nothing to fix/i.test(last.content) &&
-    !/^(Connection error|Something went wrong)/.test(last.content) &&
-    // A list of targets is confirmed one box at a time on the page, never all at once from the chat.
-    !lastUser.content.startsWith(`${PIN_PREFIX}Targets to set`)
-
-  // A target or a question gets Mia's recommendation, so the PM uses it (or types their own number or answer).
-  const useLabel = offerConfirm && /^📌 About: (Target|Question|Brief question)/.test(lastUser?.content ?? '')
-
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-secondary bg-primary" aria-label="Chat with Mia about this campaign">
       <header className="border-b border-secondary px-4 py-3">
@@ -201,31 +197,42 @@ export function CampaignChat({
             <p className="paragraph-xs text-tertiary">{status || 'Mia is thinking…'}</p>
           )
         ) : null}
-        {offerConfirm ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand"
-              onClick={() => {
-                clearFocus()
-                void send(YES, null)
-              }}
-            >
-              {useLabel ? 'Use this' : 'Yes, fix it'}
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary"
-              onClick={() => {
-                clearFocus()
-                void send('Not now.', null) // sent and saved, so a later "yes" can't apply this old fix
-              }}
-            >
-              Not now
-            </button>
-            {useLabel ? <span className="paragraph-xs text-tertiary">or type your own below</span> : null}
-          </div>
-        ) : null}
+        {!loading
+          ? pending.map((p) => (
+              <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-brand bg-brand-primary px-3 py-2">
+                <p className="label-xs text-brand-secondary">Mia proposes</p>
+                <ul className="flex flex-col gap-1 paragraph-sm text-primary">
+                  {p.summary.map((line, k) => (
+                    <li key={k} className="[overflow-wrap:anywhere]">{line}</li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!!busy}
+                    className="rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand disabled:opacity-50"
+                    onClick={() => {
+                      clearFocus()
+                      void onApply?.(p.id)
+                    }}
+                  >
+                    Apply
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!!busy}
+                    className="rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary disabled:opacity-50"
+                    onClick={() => {
+                      clearFocus()
+                      void onDrop?.(p.id)
+                    }}
+                  >
+                    Not now
+                  </button>
+                </div>
+              </div>
+            ))
+          : null}
         <div ref={endRef} />
       </div>
       <form
