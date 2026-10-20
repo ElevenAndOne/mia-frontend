@@ -388,7 +388,10 @@ function planTurnItems({
               name={t.kpi_name}
               phase={t.phase}
               reference={t.account_reference}
-              onSet={(v) => onEdit([{ op: 'set_target', key: t.key, value: v }])}
+              suggested={t.suggested}
+              suggestedFrom={t.suggested_from}
+              suggestedLabel={t.suggested_label}
+              onSet={(v, note) => onEdit([{ op: 'set_target', key: t.key, value: v, ...(note ? { estimate_note: note } : {}) }])}
               onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
             />
           ))}
@@ -448,8 +451,8 @@ function planTurnItems({
                 <AskMia label={`Question${'about' in q && q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
                 <button
                   type="button"
-                  disabled={busy === 'edit'}
-                  onClick={() => onEdit([{ op: 'answer_question', question: q.question, answer: null }])}
+                  disabled={busy === 'edit' || !('id' in q && q.id)}
+                  onClick={() => 'id' in q && q.id && onEdit([{ op: 'answer_question', id: String(q.id), answer: null }])}
                   className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
                 >
                   Skip
@@ -737,7 +740,9 @@ function Target({
   const [v, setV] = useField(t.value == null ? '' : String(t.value))
   const missing = t.value == null && !t.no_target
   const basis =
-    t.made_by === 'pm' && t.value != null ? (
+    t.basis === 'mia_estimate' && t.value != null ? (
+      <Chip tone="mia">Mia's estimate · you accepted it</Chip>
+    ) : t.made_by === 'pm' && t.value != null ? (
       <Chip tone="pm">set by you</Chip>
     ) : t.no_target ? (
       <Chip>no target</Chip>

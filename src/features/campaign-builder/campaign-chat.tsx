@@ -161,7 +161,9 @@ export function CampaignChat({
     !!lastUser?.content.startsWith(PIN_PREFIX) &&
     /\*\*Fix:\*\*/.test(last.content) &&
     !/nothing to fix/i.test(last.content) &&
-    !/^(Connection error|Something went wrong)/.test(last.content)
+    !/^(Connection error|Something went wrong)/.test(last.content) &&
+    // A list of targets is confirmed one box at a time on the page, never all at once from the chat.
+    !lastUser.content.startsWith(`${PIN_PREFIX}Targets to set`)
 
   // A target or a question gets Mia's recommendation, so the PM uses it (or types their own number or answer).
   const useLabel = offerConfirm && /^📌 About: (Target|Question|Brief question)/.test(lastUser?.content ?? '')

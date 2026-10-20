@@ -36,7 +36,7 @@ export async function saveBrief(
   campaignId: string,
   fields: Partial<Record<BriefField | 'playbook', unknown>>,
   name?: string,
-  answered?: { question: string; answer: string | null }[],
+  answered?: { id: string; answer: string | null }[],
 ): Promise<{ version: number }> {
   return check(
     await apiFetch(`${base(tenantId)}/${campaignId}/brief`, {

@@ -121,7 +121,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                             {k.basis === 'budget' && !k.rate ? (pc === 'behind' ? 'buying less than before' : 'buying what it bought before') : PACE_STYLE[pc].label}
                           </span>
                         ) : null}
-                        {k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : null}
+                        {k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
                         {a?.state === 'none' ? <span className="paragraph-xs text-tertiary">not tracked yet: set its source on the campaign</span> : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
                       </div>

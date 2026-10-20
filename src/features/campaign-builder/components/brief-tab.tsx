@@ -16,7 +16,7 @@ interface Props {
   onSave: (
     fields: Partial<Record<BriefField, unknown>>,
     name?: string,
-    answered?: { question: string; answer: string | null }[],
+    answered?: { id: string; answer: string | null }[],
   ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
@@ -86,7 +86,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             busy={busy}
             running={run?.status === 'running'}
             onRedraft={onRedraft}
-            onSkip={(question) => onSave({}, undefined, [{ question, answer: null }])}
+            onSkip={(id) => onSave({}, undefined, [{ id, answer: null }])}
           />
         ),
       })
@@ -341,7 +341,7 @@ function Questions({
   busy: string | null
   running: boolean
   onRedraft: Props['onRedraft']
-  onSkip: (question: string) => Promise<unknown>
+  onSkip: (id: string) => Promise<unknown>
 }) {
   const qs = (brief.open_questions ?? []).slice(0, 3)
   const [answers, setAnswers] = useState<string[]>(() => qs.map(() => ''))
@@ -365,7 +365,7 @@ function Questions({
                 <button
                   type="button"
                   disabled={!!busy || running}
-                  onClick={() => onSkip(q.question)}
+                  onClick={() => onSkip(q.id)}
                   className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
                 >
                   Skip

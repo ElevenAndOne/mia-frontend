@@ -31,7 +31,7 @@ export interface Brief {
   must_haves?: string[]
   constraints?: string[]
   pm_words?: PmWords[]
-  open_questions?: { question: string; why_it_matters: string }[]
+  open_questions?: { id: string; question: string; why_it_matters: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
 }
@@ -100,10 +100,14 @@ export interface KpiTarget {
   lower_is_better?: boolean
   made_by: string
   value: number | null
-  basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | string
+  basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | 'mia_estimate' | string
   confidence?: 'high' | 'medium' | 'low'
   reason?: string
   account_reference?: string | null
+  suggested?: number | null // code's starting number for an empty target (the account's own figures)
+  suggested_from?: string | null
+  suggested_label?: string | null // the starting number as a PM reads it (1.60%, R4.20, 12,000)
+  estimate_note?: string | null // a target that is Mia's estimate, accepted by the PM
   no_target?: boolean
   missed_twice?: string[]
 }
@@ -173,7 +177,7 @@ export interface Plan {
       history_sources?: string[]
       history_notes?: string[]
     }
-    ask_pm: { question: string; why?: string; [k: string]: unknown }[] | string[]
+    ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
   }
   checks: PlanCheck[]
   review?: PlanReview
@@ -272,7 +276,7 @@ export interface KpiGroup {
 }
 
 export type PlanOp =
-  | { op: 'set_target'; key: string; value: number | null; no_target?: boolean }
+  | { op: 'set_target'; key: string; value: number | null; no_target?: boolean; estimate_note?: string }
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }
@@ -282,7 +286,7 @@ export type PlanOp =
   | { op: 'set_budget'; phase: string; value: number | null }
   | { op: 'set_channel_budget'; phase: string; channel: string; value: number | null }
   | { op: 'accept_words'; index: number }
-  | { op: 'answer_question'; question: string; answer: string | null }
+  | { op: 'answer_question'; id: string; answer: string | null }
 
 // One paid channel's money inside a phase (A2): from the client's own history, a test share, or the PM's.
 export interface BudgetChannel {

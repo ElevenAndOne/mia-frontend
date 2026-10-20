@@ -233,13 +233,19 @@ export function TargetToSet({
   name,
   phase,
   reference,
+  suggested,
+  suggestedFrom,
+  suggestedLabel,
   onSet,
   onNoTarget,
 }: {
   name: string
   phase: string
   reference?: string | null
-  onSet: (v: number) => void
+  suggested?: number | null
+  suggestedFrom?: string | null
+  suggestedLabel?: string | null
+  onSet: (v: number, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
   const [v, setV] = useState('')
@@ -254,6 +260,12 @@ export function TargetToSet({
           <span className="font-medium">{name}</span> <span className="text-tertiary">· {phase}</span>
         </p>
         {reference ? <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">{reference}</p> : null}
+        {suggested != null ? (
+          <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
+            Starting point: {suggestedLabel ?? num(suggested)}
+            {suggestedFrom ? ` (${suggestedFrom})` : ''}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="sr-only" htmlFor={`set-${phase}-${name}`}>
@@ -269,6 +281,12 @@ export function TargetToSet({
           onKeyDown={(e) => e.key === 'Enter' && commit()}
           className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
         />
+        {suggested != null ? (
+          // One target at a time: the PM looks at each starting point and takes it, or types their own.
+          <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
+            Use {suggestedLabel ?? num(suggested)}
+          </Button>
+        ) : null}
         <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">
           No target
         </button>
