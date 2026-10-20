@@ -4,7 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
 import { JobWords } from './final-words'
-import { AskMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
+import { AskMia, askMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
@@ -24,12 +24,37 @@ interface Props {
   onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
   onReprice: () => Promise<unknown>
   onKeepPlan: () => Promise<unknown>
+  // The step-by-step page shows one part at a time (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md).
+  part?: PlanPart
+  onSkipQuestion?: (id: string) => Promise<unknown>
+  onFinalCheck?: () => Promise<unknown>
+  onFillTargets?: () => Promise<unknown>
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice, onKeepPlan }: Props) {
+export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
+// Which of "Your turn" each step holds, and which detail sections it opens.
+const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
+  questions: (k) => ['older-brief', 'questions', 'answered', 'notes'].includes(k),
+  targets: (k) => ['older-brief', 'targets', 'recheck', 'fill-targets'].includes(k),
+  jobs: (k) => ['older-brief', 'reprice', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
+  words: (k) => ['older-brief', 'words', 'stale-words', 'fix-words', 'fill-in'].includes(k),
+  check: (k) => ['final-check', 'notes', 'approve'].includes(k),
+}
+const PART_FOLDS: Record<PlanPart, string[]> = {
+  questions: ['idea'],
+  targets: ['phases'],
+  jobs: ['phases', 'jobs'],
+  words: ['jobs'],
+  check: ['how'],
+}
+
+export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice, onKeepPlan,
+  part, onSkipQuestion, onFinalCheck, onFillTargets }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
-  const [folds, setFolds] = useState<Set<string>>(() => new Set()) // detail sections, closed until wanted
+  // Detail sections: closed until wanted; a step opens the ones it is about.
+  const [folds, setFolds] = useState<Set<string>>(() => new Set(part ? PART_FOLDS[part] : []))
+  const shows = (f: string) => !part || part === 'check' || PART_FOLDS[part].includes(f)
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
@@ -70,12 +95,16 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
           or counted before then. Next: send the jobs to Flex from the Studio tab.
         </Card>
       ) : (
-        <YourTurn items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, onMakePlan, onKeepPlan, reveal })} />
+        <YourTurn
+          key={part}
+          items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, onMakePlan, onKeepPlan, reveal,
+            onSkipQuestion, onFinalCheck, onFillTargets, part }).filter((i) => !part || PART_ITEMS[part](i.key))}
+        />
       )}
 
       <FactStrip state={state} plan={plan} />
 
-      <Fold
+      {shows('idea') ? (<Fold
         id="fold-idea"
         title="The idea"
         summary={<>{plan.concept.name}{sc && !sc.thin_history ? ` · self-check ${sc.grade} (${sc.overall})` : ''}</>}
@@ -84,9 +113,9 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
       >
         {plan.concept.big_idea ? <p className="paragraph-sm text-primary">{plan.concept.big_idea}</p> : null}
         <Shape plan={plan} state={state} locked={locked} busy={busy} onSaveBrief={onSaveBrief} onMakePlan={onMakePlan} />
-      </Fold>
+      </Fold>) : null}
 
-      <Fold
+      {shows('phases') ? (<Fold
         id="fold-phases"
         title="Phases, budget and targets"
         summary={`${plan.phases.length} phases · ${targets.length} targets${toSet.length && !locked ? `, ${toSet.length} to set` : ''}`}
@@ -165,9 +194,9 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
             </section>
           ))}
         </div>
-      </Fold>
+      </Fold>) : null}
 
-      <Fold
+      {shows('jobs') ? (<Fold
         id="fold-jobs"
         title="Jobs for the studio"
         summary={`${plan.assets.length} jobs · ${num(plan.credits?.total_planned ?? 0)} credits · words: ${
@@ -208,9 +237,9 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
             </div>
           )
         })}
-      </Fold>
+      </Fold>) : null}
 
-      <Fold
+      {shows('how') ? (<Fold
         id="fold-how"
         title="How Mia got here"
         summary="her self-check, the checks and the idea in full"
@@ -220,7 +249,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         <Concept plan={plan} />
         {plan.review ? <SelfCheck review={plan.review} /> : null}
         <Checks plan={plan} />
-      </Fold>
+      </Fold>) : null}
     </div>
   )
 }
@@ -239,6 +268,10 @@ function planTurnItems({
   onMakePlan,
   onKeepPlan,
   reveal,
+  onSkipQuestion,
+  onFinalCheck,
+  onFillTargets,
+  part,
 }: {
   state: BuildState
   plan: Plan
@@ -250,6 +283,10 @@ function planTurnItems({
   onMakePlan: Props['onMakePlan']
   onKeepPlan: Props['onKeepPlan']
   reveal: (id: string, fold?: string, jobIndex?: number) => void
+  onSkipQuestion?: Props['onSkipQuestion']
+  onFinalCheck?: Props['onFinalCheck']
+  onFillTargets?: Props['onFillTargets']
+  part?: PlanPart
 }): TurnItem[] {
   // Order (live test 20 Oct): what changes the plan first, then targets, questions and notes; the final words come
   // last, right before Approve, because they depend on everything above.
@@ -395,6 +432,18 @@ function planTurnItems({
       ),
     })
   }
+  if (toSet.length && !mias.length && onFillTargets) {
+    items.push({
+      key: 'fill-targets',
+      title: "Fill the boxes with Mia's estimates",
+      detail: 'Mia works out a number for each empty target from the budget and your history. Nothing is set until you keep it.',
+      actions: (
+        <PrimaryAction loading={busy === 'fill'} onClick={() => onFillTargets()}>
+          Fill them
+        </PrimaryAction>
+      ),
+    })
+  }
   if (toSet.length) {
     const first = toSet[0]
     items.push({
@@ -416,6 +465,8 @@ function planTurnItems({
               suggestedFrom={t.suggested_from}
               suggestedLabel={t.suggested_label}
               byMia={t.suggested_by === 'mia'}
+              kind={t.suggested_kind}
+              source={t.suggested_by}
               onSet={(v, note) => onEdit([{ op: 'set_target', key: t.key, value: v, ...(note ? { estimate_note: note } : {}) }])}
               onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
             />
@@ -493,35 +544,41 @@ function planTurnItems({
     })
   })
   if (asks.length) {
+    const showing = asks.slice(0, 3) // three at a time, most important first; the next appears as one closes
     items.push({
       key: 'questions',
-      title: `Answer ${asks.length} question${asks.length === 1 ? '' : 's'} from Mia`,
-      detail: 'Most important first. Answer each, take Mia\'s suggestion, or skip it and she decides. Approve waits for all of them.',
+      title: `Answer or skip ${asks.length} question${asks.length === 1 ? '' : 's'} from Mia`,
+      detail:
+        'Most important first. Send your answer and Mia proposes what it changes, or skip and she decides. Approve waits for all of them.' +
+        (asks.length > 3 ? ` ${asks.length - 3} more after these.` : ''),
+      openByDefault: true,
       more: (
         <ul className="flex flex-col gap-2">
-          {asks.map((q, k) => (
-            <li key={k} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
-              <details className="min-w-0 flex-1 group">
-                <summary className="cursor-pointer list-none">
-                  <span className="paragraph-sm text-primary font-medium">{'about' in q && q.about ? String(q.about) : 'Question'}</span>
-                  <span className="block paragraph-xs text-secondary line-clamp-1 group-open:line-clamp-none">{q.question}</span>
-                </summary>
-              </details>
-              <span className="flex items-center gap-2">
-                <AskMia label={`Question${'about' in q && q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
-                <button
-                  type="button"
-                  disabled={busy === 'edit' || !('id' in q && q.id)}
-                  onClick={() => 'id' in q && q.id && onEdit([{ op: 'answer_question', id: String(q.id), answer: null }])}
-                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
-                >
-                  Skip
-                </button>
-              </span>
-            </li>
+          {showing.map((q) => (
+            <PlanQuestion
+              key={String(q.id ?? q.question)}
+              q={q as { id?: string; about?: string; question: string; impact?: string }}
+              busy={busy}
+              onAnswer={async (answer) => {
+                if (!q.id) return
+                const ok = await onEdit([{ op: 'answer_question', id: String(q.id), answer }])
+                // Mia reads the answer and proposes what it changes in the plan (with Apply), or says nothing does.
+                if (ok !== undefined)
+                  askMia({ label: `Your answer · ${String(q.about ?? 'Question')}`, detail: q.question, text: `My answer: ${answer}` })
+              }}
+              onSkip={() => (q.id && onSkipQuestion ? onSkipQuestion(String(q.id)) : Promise.resolve())}
+            />
           ))}
         </ul>
       ),
+    })
+  }
+  const answered = plan.decisions.answered ?? []
+  if (answered.length && (part === 'questions' || part === 'check')) {
+    items.push({
+      key: 'answered',
+      title: `${answered.length} answered or skipped`,
+      done: true,
     })
   }
   if (lookAt.length) {
@@ -551,7 +608,48 @@ function planTurnItems({
       ),
     })
   }
+  if (part === 'jobs' || part === 'check') {
+    items.push({
+      key: 'confirm-jobs',
+      title: 'Check the jobs and the money',
+      done: !!plan.decisions.jobs_confirmed,
+      detail: `${jobs.length} jobs, ${num(jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits. Change anything below, then confirm. A change later brings this back.`,
+      actions: (
+        <PrimaryAction loading={busy === 'edit'} onClick={() => onEdit([{ op: 'confirm_jobs' }])}>
+          Looks right
+        </PrimaryAction>
+      ),
+    })
+  }
+  const stale = jobs.filter((a) => a.words_stale && a.job_id)
+  if (stale.length) {
+    wordItems.unshift({
+      key: 'stale-words',
+      title: `Rewrite the words for ${stale.length} changed job${stale.length === 1 ? '' : 's'}`,
+      detail: 'These jobs changed after their words were written. Only these are rewritten; your own words stay.',
+      actions: (
+        <PrimaryAction disabled={busy === 'words'} onClick={() => onWriteWords(stale.map((a) => a.job_id as string), true)}>
+          Rewrite {stale.length}
+        </PrimaryAction>
+      ),
+    })
+  }
   items.push(...wordItems)
+  if (onFinalCheck && (part === 'check' || !part)) {
+    const at = plan.review?.checked_at
+    items.push({
+      key: 'final-check',
+      title: at ? `Mia checked the campaign ${day(at)}` : "Run Mia's final check",
+      detail: at
+        ? 'Run it again after any change. Her notes are in "How Mia got here" below.'
+        : 'Mia reads the whole campaign as it is now and flags only what really matters.',
+      actions: (
+        <PrimaryAction loading={busy === 'check'} onClick={() => onFinalCheck()}>
+          {at ? 'Check again' : 'Run the check'}
+        </PrimaryAction>
+      ),
+    })
+  }
   const canApprove = !state.blockers.length && !state.plan_from_older_brief
   items.push({
     key: 'approve',
@@ -567,6 +665,68 @@ function planTurnItems({
     ),
   })
   return items
+}
+
+// One of Mia's questions: an answer box with Send (Enter works), Ask Mia, and Skip (Mia decides and says what she
+// assumed).
+function PlanQuestion({
+  q,
+  busy,
+  onAnswer,
+  onSkip,
+}: {
+  q: { id?: string; about?: string; question: string; impact?: string }
+  busy: string | null
+  onAnswer: (answer: string) => Promise<unknown>
+  onSkip: () => Promise<unknown>
+}) {
+  const [v, setV] = useState('')
+  const send = () => {
+    if (v.trim() && !busy) void onAnswer(v.trim())
+  }
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <span className="paragraph-sm text-primary font-medium">{q.about ? String(q.about) : 'Question'}</span>
+          {q.impact === 'changes_the_plan' ? <Chip tone="mia">changes the plan</Chip> : null}
+          <span className="block paragraph-xs text-secondary">{q.question}</span>
+        </div>
+        <span className="flex items-center gap-2">
+          <AskMia label={`Question${q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />
+          <button
+            type="button"
+            disabled={!!busy || !q.id}
+            onClick={() => onSkip()}
+            className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+          >
+            Skip
+          </button>
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <label className="sr-only" htmlFor={`pq-${q.id}`}>
+          Your answer
+        </label>
+        <input
+          id={`pq-${q.id}`}
+          placeholder="Your answer"
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              send()
+            }
+          }}
+          className="min-w-0 flex-1 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary"
+        />
+        <Button size="sm" disabled={!v.trim() || !!busy} onClick={send}>
+          Send
+        </Button>
+      </div>
+    </li>
+  )
 }
 
 // One job as one line; opens to the full job (words, designer brief, audience).

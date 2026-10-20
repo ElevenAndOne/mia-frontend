@@ -35,6 +35,7 @@ export interface Brief {
   already_made?: string[]
   pm_words?: PmWords[]
   open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
+  answered_questions?: { question: string; answer: string | null; assumed?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
 }
@@ -67,6 +68,7 @@ export interface CreativeBrief {
 }
 
 export interface PlanAsset {
+  words_stale?: boolean // the job changed after its words were written
   phase: string
   channel: string
   name: string
@@ -116,6 +118,7 @@ export interface KpiTarget {
   estimate_note?: string | null // a target that is Mia's estimate, accepted by the PM
   suggested_by?: 'mia' | string | null // the starting number is Mia's estimate (not the account's own)
   recheck?: string | null // set before the budget or dates changed
+  suggested_kind?: 'estimate' | 'rule_of_thumb' | null
   no_target?: boolean
   missed_twice?: string[]
 }
@@ -187,6 +190,8 @@ export interface Plan {
     }
     ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
     notes_done?: string[] // self-check notes the PM marked Done
+    answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
+    jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
   checks: PlanCheck[]
   review?: PlanReview
@@ -200,6 +205,7 @@ export interface ScorePart {
 
 export interface PlanReview {
   error?: string
+  checked_at?: string // Mia's final check, run on the campaign as it stood then
   fact_check?: {
     numbers_checked: number
     numbers_supported: number
@@ -265,6 +271,7 @@ export interface BuildState {
   blockers: Blocker[]
   warnings: string[]
   pending?: { id: string; summary: string[]; at?: string }[] // changes the chat proposed, waiting for Apply
+  decision_log?: { summary: string[]; outcome: string; by?: string; at?: string }[]
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
@@ -288,6 +295,7 @@ export interface KpiGroup {
 export type PlanOp =
   | { op: 'set_target'; key: string; value: number | string | null; no_target?: boolean; estimate_note?: string }
   | { op: 'close_note'; text: string }
+  | { op: 'confirm_jobs' }
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }

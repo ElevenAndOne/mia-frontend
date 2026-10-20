@@ -20,6 +20,10 @@ interface Props {
   ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
+  // The step-by-step page: "start" shows what Mia read; "facts" is the brief to check and its questions.
+  part?: 'start' | 'facts'
+  onSkipQuestion?: (id: string) => Promise<unknown>
+  onKeepPlan?: () => Promise<unknown>
 }
 
 const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
@@ -62,11 +66,13 @@ const fromDraft = (k: BriefField, v: string): unknown => {
   return v.trim() === '' ? null : v.trim()
 }
 
-export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan }: Props) {
+export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan }: Props) {
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
-  const [folds, setFolds] = useState<Set<string>>(() => new Set()) // detail sections, closed until wanted
+  // Detail sections: closed until wanted; the Start step opens what Mia read.
+  const [folds, setFolds] = useState<Set<string>>(() => new Set(part === 'start' ? ['read', 'words'] : []))
+  const shows = (f: string) => !part || (part === 'start' ? ['read', 'words'] : ['stand', 'rules']).includes(f)
 
   if (!state.brief) {
     if (run?.status === 'running') return <RunProgress run={run} what="brief" />
@@ -94,7 +100,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             busy={busy}
             running={run?.status === 'running'}
             onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
-            onSkip={(id) => onSave({}, undefined, [{ id, answer: null }])}
+            onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
           />
         ),
       })
@@ -120,12 +126,19 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       detail: planRunning
         ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
         : state.plan_from_older_brief
-          ? 'The brief changed since the plan was made. Make it again to use the new brief.'
+          ? 'The budget, dates, channels or goal changed. Update the plan (your targets and answers are kept), or keep it and fix what no longer fits.'
           : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
       actions: planRunning ? null : (
-        <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running'} onClick={() => onMakePlan()}>
-          {state.plan ? 'Make it again' : 'Make the plan'}
-        </PrimaryAction>
+        <>
+          <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running'} onClick={() => onMakePlan()}>
+            {state.plan ? 'Update the plan' : 'Make the plan'}
+          </PrimaryAction>
+          {state.plan_from_older_brief && onKeepPlan ? (
+            <Button size="sm" loading={busy === 'keep'} onClick={() => onKeepPlan()}>
+              Keep this plan
+            </Button>
+          ) : null}
+        </>
       ),
     })
   }
@@ -139,9 +152,31 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       {run?.status === 'failed' ? (
         <RunFailed run={run} what="brief" busy={!!busy} onRetry={() => onRedraft([])} />
       ) : null}
-      {items.length ? <YourTurn items={items} /> : null}
-      <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} />
-      <Fold
+      {part === 'start' ? (
+        <Card className="flex flex-col gap-2">
+          <h2 className="subheading-md text-primary">What you gave Mia</h2>
+          <p className="paragraph-sm text-primary whitespace-pre-wrap [overflow-wrap:anywhere]">{state.brief?.pm_text || '—'}</p>
+          {b?.mode === 'brief_and_deck' ? <Chip tone="good">Guide or deck read in full</Chip> : null}
+          <p className="paragraph-xs text-tertiary">
+            Mia drafted the key facts from this and from what she knows about {state.campaign.client}. Check them in the next step.
+          </p>
+        </Card>
+      ) : null}
+      {part !== 'start' && items.length ? <YourTurn items={items} /> : null}
+      {part === 'facts' && (b?.answered_questions ?? []).some((q) => !q.answer) ? (
+        <Card className="flex flex-col gap-1">
+          <h3 className="subheading-sm text-primary">Skipped, so Mia decides</h3>
+          <ul className="flex flex-col gap-1">
+            {(b?.answered_questions ?? []).filter((q) => !q.answer).map((q, i) => (
+              <li key={i} className="paragraph-xs text-secondary">
+                <span className="text-primary">{q.question}</span> {q.assumed ? `Mia assumed: ${q.assumed}` : 'Mia decides as she plans.'}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+      {part !== 'start' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
+      {shows('stand') ? (<Fold
         id="fold-stand"
         title={`Where ${state.campaign.client} stands on the KPI list`}
         summary="last results and the last 90 days, where targets start from"
@@ -149,8 +184,8 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         onToggle={() => toggle('stand')}
       >
         <WhereTheyStand groups={kpiGroups} />
-      </Fold>
-      {b?.pm_words?.length ? (
+      </Fold>) : null}
+      {shows('words') && b?.pm_words?.length ? (
         <Fold
           id="fold-words"
           title="Your words, kept exactly"
@@ -161,7 +196,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           <PmWords brief={b} />
         </Fold>
       ) : null}
-      <Fold
+      {shows('rules') ? (<Fold
         id="fold-rules"
         title={`Rules for ${state.campaign.client}`}
         summary="followed in every plan and every word, for every campaign of this client"
@@ -169,8 +204,8 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         onToggle={() => toggle('rules')}
       >
         <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
-      </Fold>
-      {read ? (
+      </Fold>) : null}
+      {shows('read') && read ? (
         <Fold
           id="fold-read"
           title="What Mia read"

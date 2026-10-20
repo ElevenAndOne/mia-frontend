@@ -78,6 +78,9 @@ export function useBuild(campaignId: string | undefined) {
     redraft: (answers: string[]) => run('redraft', () => api.redraftBrief(...ids(), answers)),
     makePlan: () => run('plan', () => api.makePlan(...ids())),
     keepPlan: () => run('keep', () => api.keepPlan(...ids())),
+    skipQuestion: (id: string) => run(`skip:${id}`, () => api.skipQuestion(...ids(), id)),
+    fillTargets: () => run('fill', () => api.fillTargets(...ids())),
+    finalCheck: () => run('check', () => api.finalCheck(...ids())),
     applyChange: (id: string) => run(`apply:${id}`, () => api.applyChange(...ids(), id)),
     dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
     editPlan: (ops: PlanOp[]) =>

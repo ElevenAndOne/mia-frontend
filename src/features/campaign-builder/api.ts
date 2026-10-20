@@ -70,6 +70,27 @@ export async function keepPlan(sessionId: string, tenantId: string, campaignId: 
   )
 }
 
+// Skip a question: Mia decides and says what she assumed.
+export async function skipQuestion(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ assumed: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/questions/${id}/skip`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Mia's numbers into every empty target box (for plans made before she did it while planning).
+export async function fillTargets(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ filled: number }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/targets/fill`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Mia checks the campaign as it stands now.
+export async function finalCheck(sessionId: string, tenantId: string, campaignId: string) {
+  return check<Record<string, unknown>>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/plan/check`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
 // A change the chat proposed: Apply applies exactly the stored edits; Not now drops them.
 export async function applyChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
   return check<{ ok: boolean }>(

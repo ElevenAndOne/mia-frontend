@@ -12,6 +12,7 @@ import { Card, day, money, num } from './parts'
 export interface AskFocus {
   label: string // what the PM clicked, as the chip shows it ("Target · Reach · Click-through rate")
   detail?: string // the text of the item, so Mia knows exactly what is meant
+  text?: string // what to send instead of the default question (an answer: "My answer: …")
 }
 export const ASK_EVENT = 'campaign-ask'
 export const askMia = (focus: AskFocus) => window.dispatchEvent(new CustomEvent<AskFocus>(ASK_EVENT, { detail: focus }))
@@ -241,6 +242,8 @@ export function TargetToSet({
   suggestedFrom,
   suggestedLabel,
   byMia,
+  kind,
+  source,
   onSet,
   onNoTarget,
 }: {
@@ -251,6 +254,8 @@ export function TargetToSet({
   suggestedFrom?: string | null
   suggestedLabel?: string | null
   byMia?: boolean
+  kind?: string | null
+  source?: string | null // where a starting number comes from: "account" (last 90 days) or "history" (a past campaign)
   onSet: (v: number | string, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
@@ -269,7 +274,15 @@ export function TargetToSet({
         {reference ? <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">{reference}</p> : null}
         {suggested != null ? (
           <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
-            {byMia ? "Mia's estimate" : 'From your account'}: {suggestedLabel ?? num(suggested)}
+            {byMia
+              ? kind === 'rule_of_thumb'
+                ? 'Rule of thumb (no account data)'
+                : "Mia's estimate"
+              : source === 'history'
+                ? 'From a past campaign'
+                : 'From your account'}
+            :{' '}
+            {suggestedLabel ?? num(suggested)}
             {suggestedFrom ? ` (${suggestedFrom})` : ''}
           </p>
         ) : null}

@@ -7,7 +7,9 @@ import { readDeck, startBuild, type DeckRead } from '../features/campaign-builde
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
-import { PlanTab } from '../features/campaign-builder/components/plan-tab'
+import { PlanTab, type PlanPart } from '../features/campaign-builder/components/plan-tab'
+import { StepRail } from '../features/campaign-builder/components/builder-steps'
+import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
@@ -169,6 +171,23 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
   const pageScroll = useRef<HTMLDivElement>(null)
+  // While the campaign is a draft, the page is seven steps; after Approve, the tabs (Studio & launch, Results).
+  const states = s ? stepStates(s) : null
+  const stepKeys = STEPS.map((st) => st.key) as string[]
+  const step: StepKey | null =
+    s && s.campaign.building && states
+      ? stepKeys.includes(tab)
+        ? (tab as StepKey)
+        : tab === 'brief'
+          ? s.plan
+            ? 'facts'
+            : 'start'
+          : currentStep(states)
+      : null
+  const goStep = (k: StepKey) => {
+    go(k)
+    pageScroll.current?.scrollTo({ top: 0 })
+  }
 
   // After a chat reply, say what Mia changed (the page has already re-read it).
   useEffect(() => {
@@ -236,9 +255,15 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     Discard draft
                   </Button>
                 ) : null}
-                <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
-                  Next: {s.next_step.label}
-                </Button>
+                {step && states ? (
+                  <Button variant="primary" onClick={() => goStep(currentStep(states))}>
+                    Next: {STEPS.find((st) => st.key === currentStep(states))?.label}
+                  </Button>
+                ) : (
+                  <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
+                    Next: {s.next_step.label}
+                  </Button>
+                )}
               </div>
             </header>
             {flash ? (
@@ -246,6 +271,9 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 {flash}
               </p>
             ) : null}
+            {step && states ? (
+              <StepRail states={states} step={step} onGo={goStep} />
+            ) : (
             <nav className="flex flex-wrap gap-1 border-b border-secondary" aria-label="Campaign">
               {TABS.map((t) => (
                 <button
@@ -263,6 +291,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 </button>
               ))}
             </nav>
+            )}
             {build.error ? (
               <Card warn className="flex items-center justify-between gap-3 paragraph-sm text-primary">
                 {build.error}
@@ -271,7 +300,17 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 </button>
               </Card>
             ) : null}
-            {tab === 'results' ? (
+            {step && states ? (
+              <StepView
+                step={step}
+                states={states}
+                s={s}
+                build={build}
+                onGo={goStep}
+                onApproved={() => go('studio')}
+                scrollTop={() => pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+              />
+            ) : tab === 'results' ? (
               <ResultsTab campaignId={campaignId} approved={!s.campaign.building} />
             ) : tab === 'studio' || tab === 'launch' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
@@ -329,6 +368,115 @@ function BuildPage({ campaignId }: { campaignId: string }) {
         </div>
       ) : null}
       </div>
+    </div>
+  )
+}
+
+// One step of the draft: its part of the brief or the plan, then the way on.
+function StepView({
+  step,
+  states,
+  s,
+  build,
+  onGo,
+  onApproved,
+  scrollTop,
+}: {
+  step: StepKey
+  states: ReturnType<typeof stepStates>
+  s: NonNullable<ReturnType<typeof useBuild>['state']>
+  build: ReturnType<typeof useBuild>
+  onGo: (k: StepKey) => void
+  onApproved: () => void
+  scrollTop: () => void
+}) {
+  const i = STEPS.findIndex((st) => st.key === step)
+  const meta = STEPS[i]
+  const next = STEPS[i + 1]
+  const nextOpen = next && states[step] === 'done'
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="paragraph-xs text-tertiary">
+          Step {i + 1} of 7{states[step] === 'recheck' ? ' · something earlier changed, check this again' : ''}
+        </p>
+        <h2 className="subheading-lg text-primary">{meta.label}</h2>
+        <p className="paragraph-sm text-secondary">{meta.help}</p>
+      </div>
+      {step === 'check' ? (
+        // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
+        <Card className="flex flex-col gap-2">
+          <h3 className="subheading-sm text-primary">Still to do</h3>
+          {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').length ? (
+            <ul className="flex flex-col gap-1">
+              {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').map((st) => (
+                <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+                  <span>
+                    {st.label}
+                    {states[st.key] === 'recheck' ? ' · recheck: something earlier changed' : states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
+                  </span>
+                  <Button size="sm" onClick={() => onGo(st.key)}>
+                    Go to {st.label}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="paragraph-sm text-secondary">Every step is done. Run Mia's final check, then approve.</p>
+          )}
+        </Card>
+      ) : null}
+      {step === 'start' || step === 'facts' ? (
+        <BriefTab
+          key={step}
+          part={step}
+          state={s}
+          kpiGroups={build.kpiGroups}
+          busy={build.busy}
+          onSave={build.saveBrief}
+          onRedraft={build.redraft}
+          onSkipQuestion={build.skipQuestion}
+          onKeepPlan={build.keepPlan}
+          onMakePlan={async () => {
+            const out = await build.makePlan()
+            if (out) onGo('questions')
+            return out
+          }}
+        />
+      ) : (
+        <PlanTab
+          key={step}
+          part={step as PlanPart}
+          state={s}
+          kpiGroups={build.kpiGroups}
+          busy={build.busy}
+          onEdit={build.editPlan}
+          onMakePlan={build.makePlan}
+          onApprove={async () => {
+            const out = await build.approve()
+            scrollTop()
+            if (out !== undefined) onApproved()
+            return out
+          }}
+          onWriteWords={build.writeWords}
+          onSaveBrief={build.saveBrief}
+          onReprice={build.reprice}
+          onKeepPlan={build.keepPlan}
+          onSkipQuestion={build.skipQuestion}
+          onFinalCheck={build.finalCheck}
+          onFillTargets={build.fillTargets}
+        />
+      )}
+      {next ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
+          <p className="paragraph-xs text-tertiary">
+            {nextOpen ? 'Done here. Go back to change anything; later steps follow.' : 'Finish this step to go on.'}
+          </p>
+          <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
+            Next: {next.label}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

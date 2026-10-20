@@ -158,7 +158,8 @@ export function CampaignChat({
   useEffect(() => {
     const on = (e: Event) => {
       if (loadingRef.current) return
-      void send(DEFAULT_ASK, (e as CustomEvent<AskFocus>).detail)
+      const focus = (e as CustomEvent<AskFocus>).detail
+      void send(focus.text ?? DEFAULT_ASK, { label: focus.label, detail: focus.detail })
     }
     window.addEventListener(ASK_EVENT, on)
     return () => window.removeEventListener(ASK_EVENT, on)
