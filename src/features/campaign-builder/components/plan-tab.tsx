@@ -102,6 +102,22 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
             onSkipQuestion, onFinalCheck, onFillTargets, part }).filter((i) => !part || PART_ITEMS[part](i.key))}
         />
       )}
+      {(part === 'questions' || part === 'check') && (plan.decisions.answered ?? []).some((q) => !q.answer) ? (
+        // A skipped question's assumption is shown, so the PM sees what Mia decided for them (live test 21 Oct, gap 38).
+        <Card className="flex flex-col gap-1">
+          <h3 className="subheading-sm text-primary">Skipped, so Mia decides</h3>
+          <ul className="flex flex-col gap-1">
+            {(plan.decisions.answered ?? []).filter((q) => !q.answer).map((q, i) => (
+              <li key={i} className="flex flex-wrap items-start justify-between gap-2 paragraph-xs text-secondary">
+                <span className="min-w-0 flex-1">
+                  <span className="text-primary">{q.question}</span> {q.assumed ? `Mia assumed: ${q.assumed}` : 'Mia decides as she plans.'}
+                </span>
+                {locked ? null : <AskMia label="Change what Mia assumed" detail={`${q.question} Mia assumed: ${q.assumed ?? 'nothing yet'}`} />}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       <FactStrip state={state} plan={plan} />
 
@@ -500,22 +516,40 @@ function planTurnItems({
   if (recheck.length) {
     items.push({
       key: 'recheck',
-      title: `Recheck ${recheck.length} target${recheck.length === 1 ? '' : 's'} set before the budget or dates changed`,
-      detail: 'Keep each one, or type a new number.',
+      title: `Recheck ${recheck.length} target${recheck.length === 1 ? '' : 's'}: what ${recheck.length === 1 ? 'it was' : 'they were'} worked from changed`,
+      detail: recheck.length === 1 ? (recheck[0].recheck ?? undefined) : 'Keep yours, or use Mia\'s new number.',
       openByDefault: true,
       more: (
         <ul className="flex flex-col gap-2">
           {recheck.map((t) => (
-            <li key={t.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-              <span className="min-w-0">
-                <span className="font-medium">{t.kpi_name}</span> <span className="text-tertiary">· {t.phase} · {num(t.value)}</span>
+            <li key={t.key} className="flex flex-col gap-1 paragraph-sm text-primary">
+              <span className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="font-medium">{t.kpi_name}</span> <span className="text-tertiary">· {t.phase} · {num(t.value)}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    disabled={busy === 'edit'}
+                    onClick={() => onEdit([{ op: 'set_target', key: t.key, value: t.value, ...(t.estimate_note ? { estimate_note: t.estimate_note } : {}) }])}
+                  >
+                    Keep {num(t.value)}
+                  </Button>
+                  {t.recheck_value != null ? (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={busy === 'edit'}
+                      onClick={() =>
+                        onEdit([{ op: 'set_target', key: t.key, value: t.recheck_value ?? null, estimate_note: t.recheck ?? "Mia's estimate" }])
+                      }
+                    >
+                      Use {num(t.recheck_value)}
+                    </Button>
+                  ) : null}
+                </span>
               </span>
-              <Button
-                size="sm"
-                onClick={() => onEdit([{ op: 'set_target', key: t.key, value: t.value, ...(t.estimate_note ? { estimate_note: t.estimate_note } : {}) }])}
-              >
-                Keep {num(t.value)}
-              </Button>
+              {recheck.length > 1 && t.recheck ? <span className="paragraph-xs text-secondary">{t.recheck}</span> : null}
             </li>
           ))}
         </ul>
@@ -586,7 +620,14 @@ function planTurnItems({
     items.push({
       key: 'notes',
       title: `Look at ${lookAt.length} note${lookAt.length === 1 ? '' : 's'} from Mia's self-check`,
-      detail: lookAt[0],
+      // Notes are about the plan Mia checked: after a change they say so, and Check again reads it as it is now.
+      detail: plan.review?.stale ? 'Mia wrote these before your latest changes, so some may no longer apply.' : lookAt[0],
+      actions:
+        plan.review?.stale && onFinalCheck ? (
+          <Button size="sm" loading={busy === 'check'} onClick={() => onFinalCheck()}>
+            Check again
+          </Button>
+        ) : undefined,
       more: (
         <ul className="flex flex-col gap-2">
           {lookAt.map((x) => (
