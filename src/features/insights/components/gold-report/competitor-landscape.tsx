@@ -86,6 +86,10 @@ const PlatformChecks = ({ platforms }: { platforms: GoldCompetitorAdPlatform[] }
   </ul>
 )
 
+/** False exactly when AdsBlock renders nothing, so a caller can drop its own label too. */
+const adsHaveSomethingToSay = (ads: GoldCompetitorAds): boolean =>
+  ads.status === 'ok' || ads.status === 'no_ads' || (ads.platforms?.length ?? 0) > 0
+
 const AdsBlock = ({ ads }: { ads: GoldCompetitorAds }) => {
   const platforms = ads.platforms ?? []
   if (ads.status !== 'ok') {
@@ -309,14 +313,31 @@ export const CompetitorLandscape = ({
         </div>
       )}
       {unreadable.length > 0 && (
-        <p
-          className="px-4 sm:px-5 py-2.5 text-[0.75rem] leading-[1.125rem] border-t"
-          style={{ borderColor: 'var(--gr-line)', color: 'var(--gr-muted)' }}
+        <div
+          className="px-4 sm:px-5 py-2.5 space-y-2.5 border-t"
+          style={{ borderColor: 'var(--gr-line)' }}
         >
-          Not covered: {unreadable.map((u) => u.name).join(', ')}.{' '}
-          {unreadable.length === 1 ? 'Its website' : 'Their websites'} could not be read, so this
-          picture is incomplete.
-        </p>
+          <p className="text-[0.75rem] leading-[1.125rem]" style={{ color: 'var(--gr-muted)' }}>
+            Not covered: {unreadable.map((u) => u.name).join(', ')}.{' '}
+            {unreadable.length === 1 ? 'Its website' : 'Their websites'} could not be read, so this
+            picture is incomplete.
+          </p>
+          {/* Their sites were not read, but the ad libraries were still searched: show what
+              that search found, labelled so nothing here reads as coming from their site. */}
+          {unreadable
+            .filter((u) => u.ads && adsHaveSomethingToSay(u.ads))
+            .map((u, i) => (
+              <div key={`${u.name}-${i}`} className="space-y-1">
+                <p className="text-[0.75rem] leading-[1.125rem]" style={{ color: 'var(--gr-muted)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--gr-heading)' }}>
+                    {u.name}
+                  </span>{' '}
+                  — from the ad libraries only, not their website:
+                </p>
+                <AdsBlock ads={u.ads!} />
+              </div>
+            ))}
+        </div>
       )}
       {landscape?.territory_summary && (
         <p

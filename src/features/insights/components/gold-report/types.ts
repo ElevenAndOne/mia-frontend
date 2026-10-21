@@ -309,8 +309,10 @@ export interface GoldCompetitorLandscape {
   brands: GoldCompetitorBrand[]
   territory_summary: string | null
   /** Competitors whose website could not be read — named so the picture does not look
-   *  complete when it is not. */
-  unreadable?: { name: string; reason: string | null }[]
+   *  complete when it is not. Their ads are still looked up in the ad libraries, so
+   *  `ads` follows the same rules as a brand's (null when no lookup was made; no items
+   *  unless the advertiser was confirmed). Older blocks carry no `ads`. */
+  unreadable?: { name: string; reason: string | null; ads?: GoldCompetitorAds | null }[]
   /** Present only when the client's own site was read and shows no shop, so competitors'
    *  delivery terms are not read as the client's. */
   client_site?: { website: string | null; shows_shop: false } | null
