@@ -8,7 +8,15 @@ import type { GoldEmailDigest } from './types'
 const isCpmOnly = (t: { label: string; note: string }) =>
   /\bCPM\b/i.test(t.label) && !/\bCTR\b|\bCPC\b|click/i.test(t.note)
 
-export const AtAGlance = ({ digest }: { digest: GoldEmailDigest }) => {
+export const AtAGlance = ({
+  digest,
+  onReadFull,
+}: {
+  digest: GoldEmailDigest
+  /** Opens the full written report — the headline is a condensation, and a caveat the
+   *  summary carries must stay one click away. */
+  onReadFull?: () => void
+}) => {
   const all = digest.stat_tiles ?? []
   const kept = all.filter((t) => !isCpmOnly(t))
   const tiles = (kept.length > 0 ? kept : all).slice(0, 3)
@@ -28,6 +36,16 @@ export const AtAGlance = ({ digest }: { digest: GoldEmailDigest }) => {
               .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:var(--gr-heading)">$1</strong>'),
           }}
         />
+      )}
+      {onReadFull && (
+        <button
+          type="button"
+          onClick={onReadFull}
+          className="text-[0.75rem] font-semibold underline underline-offset-2"
+          style={{ color: 'var(--gr-purple-text)' }}
+        >
+          Read the full summary
+        </button>
       )}
       {tiles.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-[0.625rem]">

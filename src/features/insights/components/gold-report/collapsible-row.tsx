@@ -20,9 +20,13 @@ interface CollapsibleRowProps {
   subtitle?: string
   /** Right-aligned figure — the number that makes the row worth opening. */
   stat?: string | null
+  /** What the figure is measured against ("vs 39.11 Google Ads avg"), shown with it. */
+  statDetail?: string | null
   children: ReactNode
   /** Drives open state when "Expand all" is toggled at the report level. */
   forceOpen?: boolean
+  /** Opens the row each time it changes (a link elsewhere on the page points here). */
+  openSignal?: number
 }
 
 // One disclosure row: everything scannable on the closed line, the prose inside.
@@ -31,14 +35,19 @@ export const CollapsibleRow = ({
   title,
   subtitle,
   stat,
+  statDetail,
   children,
   forceOpen,
+  openSignal,
 }: CollapsibleRowProps) => {
   const [open, setOpen] = useState(false)
   // Follow the report-level toggle, while still allowing per-row clicks after.
   useEffect(() => {
     if (forceOpen !== undefined) setOpen(forceOpen)
   }, [forceOpen])
+  useEffect(() => {
+    if (openSignal) setOpen(true)
+  }, [openSignal])
 
   return (
     <div className="border-t first:border-t-0" style={{ borderColor: 'var(--gr-line)' }}>
@@ -64,13 +73,36 @@ export const CollapsibleRow = ({
               {subtitle}
             </span>
           )}
+          {/* Narrow screens have no room on the right: the figure goes under the title. */}
+          {stat && (
+            <span
+              className="sm:hidden block text-[0.75rem] leading-[1.0625rem] mt-0.5 tabular-nums"
+              style={{ fontFamily: 'var(--gr-mono)' }}
+            >
+              <span style={{ color: 'var(--gr-green)' }}>{stat}</span>
+              {statDetail && <span style={{ color: 'var(--gr-muted)' }}> {statDetail}</span>}
+            </span>
+          )}
         </span>
         {stat && (
           <span
-            className="text-[0.8125rem] whitespace-nowrap tabular-nums hidden sm:block"
-            style={{ fontFamily: 'var(--gr-mono)', color: 'var(--gr-green)' }}
+            className="hidden sm:block shrink-0 max-w-[15rem] text-right tabular-nums"
+            style={{ fontFamily: 'var(--gr-mono)' }}
           >
-            {stat}
+            <span
+              className="block text-[0.8125rem] whitespace-nowrap"
+              style={{ color: 'var(--gr-green)' }}
+            >
+              {stat}
+            </span>
+            {statDetail && (
+              <span
+                className="block text-[0.6875rem] leading-4"
+                style={{ color: 'var(--gr-muted)' }}
+              >
+                {statDetail}
+              </span>
+            )}
           </span>
         )}
         <span className={open ? 'rotate-180 transition-transform' : 'transition-transform'}>

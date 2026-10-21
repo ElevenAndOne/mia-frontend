@@ -1,3 +1,4 @@
+import { groupDrivers } from './section-rows'
 import type { GoldStructuredRecommendation } from './types'
 
 // The pipeline's typed drivers, rendered from the numbers rather than from prose.
@@ -16,8 +17,6 @@ import type { GoldStructuredRecommendation } from './types'
 //      with two different numbers. The figure says above/below in words, and the verdict
 //      is separate: "59.6% below average · better", never "-59.6% better than average".
 
-const MEASURED_KIND = 'pct_vs_portfolio_average'
-const IMPORTANCE_KIND = 'share_of_model_importance_pct'
 
 // More spend is not a better result, whatever the row's metric_direction says — shown
 // with no verdict until the analytics team settles what one would mean (2026-10-18).
@@ -72,7 +71,14 @@ const EvidenceNote = ({ row }: { row: GoldStructuredRecommendation }) => {
   )
 }
 
-const Row = ({ row, measured }: { row: GoldStructuredRecommendation; measured: boolean }) => {
+type GroupKind = 'measured' | 'importance' | 'other'
+
+// "pct_change_vs_prior" → "pct change vs prior": an unfamiliar unit is named, not guessed.
+const kindLabel = (kind: string | null | undefined) =>
+  (kind || 'unlabelled figure').replace(/_/g, ' ')
+
+const Row = ({ row, kind }: { row: GoldStructuredRecommendation; kind: GroupKind }) => {
+  const measured = kind === 'measured'
   const kpi = kpiOf(row)
   const magnitude = typeof row.magnitude === 'number' ? row.magnitude : null
   // Colour only where there is a verdict to show. Model-importance rows are neither good
@@ -104,12 +110,17 @@ const Row = ({ row, measured }: { row: GoldStructuredRecommendation; measured: b
                       : 'var(--gr-heading)',
               }}
             >
-              {Math.abs(magnitude).toFixed(1)}%
+              {kind === 'other' ? magnitude.toFixed(1) : `${Math.abs(magnitude).toFixed(1)}%`}
             </p>
             {measured && (
               <p className="text-[0.6563rem] leading-3" style={{ color: 'var(--gr-muted)' }}>
                 {magnitude >= 0 ? 'above' : 'below'} average
                 {verdict && ` · ${verdict}`}
+              </p>
+            )}
+            {kind === 'other' && (
+              <p className="text-[0.6563rem] leading-3" style={{ color: 'var(--gr-muted)' }}>
+                {kindLabel(row.magnitude_kind)}
               </p>
             )}
           </div>
@@ -123,30 +134,31 @@ const Group = ({
   title,
   note,
   rows,
-  measured,
+  kind,
 }: {
   title: string
   note: string
   rows: GoldStructuredRecommendation[]
-  measured: boolean
+  kind: GroupKind
 }) => (
   <div className="gr-card overflow-hidden">
     <div className="px-4 sm:px-5 pt-3.5 pb-2">
-      <p className="gr-eyebrow">{title}</p>
+      <p className="gr-eyebrow">
+        {title} · {rows.length}
+      </p>
       <p className="text-[0.7188rem] leading-[1.0625rem] mt-1" style={{ color: 'var(--gr-muted)' }}>
         {note}
       </p>
     </div>
     {rows.map((row, i) => (
-      <Row key={i} row={row} measured={measured} />
+      <Row key={i} row={row} kind={kind} />
     ))}
   </div>
 )
 
 export const MeasuredDrivers = ({ rows }: { rows: GoldStructuredRecommendation[] }) => {
-  const measured = rows.filter((r) => r.magnitude_kind === MEASURED_KIND)
-  const importance = rows.filter((r) => r.magnitude_kind === IMPORTANCE_KIND)
-  if (measured.length === 0 && importance.length === 0) return null
+  const { measured, importance, other } = groupDrivers(rows)
+  if (rows.length === 0) return null
   const asOf = rows.find((r) => r.as_of_date)?.as_of_date ?? null
 
   return (
@@ -156,7 +168,7 @@ export const MeasuredDrivers = ({ rows }: { rows: GoldStructuredRecommendation[]
           title="Against your portfolio average"
           note="The campaign that led each KPI, against your portfolio average. For cost metrics, coming in below the average is the win."
           rows={measured}
-          measured
+          kind="measured"
         />
       )}
       {importance.length > 0 && (
@@ -164,7 +176,15 @@ export const MeasuredDrivers = ({ rows }: { rows: GoldStructuredRecommendation[]
           title="What the model weighted most"
           note="Share of the model's importance, not a performance score — a high share means the factor moved predictions, not that it performed well."
           rows={importance}
-          measured={false}
+          kind="importance"
+        />
+      )}
+      {other.length > 0 && (
+        <Group
+          title="Other figures"
+          note="Figures in a unit this page does not compare, shown as the analysis gave them, with no verdict."
+          rows={other}
+          kind="other"
         />
       )}
       {asOf && (

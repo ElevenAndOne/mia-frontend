@@ -1,4 +1,5 @@
-import { count, isMoneyMetric, isRateMetric, metricName, pct } from './format'
+import { count, isMoneyMetric, isRateMetric, metricName, money, pct } from './format'
+import { shownCreativeFindings } from './section-rows'
 import type { GoldCreativeFinding } from './types'
 
 // Measured comparisons between the client's own ads, straight from the pipeline
@@ -7,9 +8,11 @@ import type { GoldCreativeFinding } from './types'
 // causally ("ads using X ran at higher CTR", not "X increases CTR").
 
 // Rates arrive as fractions — `link_ctr` 0.0444 is 4.44%, which once printed as "0.04".
-const formatValue = (metric: string, v: number): string => {
+// Money is in the tenant's ad currency (diagnostics.currency_iso), unconverted.
+const formatValue = (metric: string, v: number, currency?: string | null): string => {
   if (isRateMetric(metric)) return pct(v)
-  if (isMoneyMetric(metric) || metric.toLowerCase() === 'roas') return v.toFixed(2)
+  if (isMoneyMetric(metric)) return money(v, currency)
+  if (metric.toLowerCase() === 'roas') return v.toFixed(2)
   if (Math.abs(v) >= 1000) return count(v)
   return v.toFixed(v % 1 === 0 ? 0 : 2)
 }
@@ -28,7 +31,15 @@ const rowClass = (i: number) => `px-4 sm:px-5 py-3.5 ${i > 0 ? 'border-t' : ''}`
 // One ad against the ads it ran alongside. `without_value` is the peers' MEDIAN and the
 // impressions are counted separately — adding the peers' to the standout's is how the
 // page once claimed 1,604,464 impressions for a 154,175-impression ad.
-const StandoutRow = ({ f, i }: { f: GoldCreativeFinding; i: number }) => (
+const StandoutRow = ({
+  f,
+  i,
+  currency,
+}: {
+  f: GoldCreativeFinding
+  i: number
+  currency?: string | null
+}) => (
   <div className={rowClass(i)} style={{ borderColor: 'var(--gr-line)' }}>
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <p className="text-[0.8438rem] leading-5 min-w-0 break-words" style={{ color: 'var(--gr-heading)' }}>
@@ -39,30 +50,37 @@ const StandoutRow = ({ f, i }: { f: GoldCreativeFinding; i: number }) => (
         className="text-[0.9375rem] font-bold tabular-nums"
         style={{ fontFamily: 'var(--gr-mono)', color: 'var(--gr-green)' }}
       >
-        {formatValue(f.metric, f.with_value)}
+        {formatValue(f.metric, f.with_value, currency)}
       </p>
     </div>
     <p
       className="mt-1 text-[0.75rem] leading-[1.125rem] tabular-nums"
       style={{ color: 'var(--gr-muted)', fontFamily: 'var(--gr-mono)' }}
     >
-      vs a median {formatValue(f.metric, f.without_value)} across {f.without_ads} other ad
+      vs a median {formatValue(f.metric, f.without_value, currency)} across {f.without_ads} other ad
       {f.without_ads === 1 ? '' : 's'}
       {typeof f.best_peer_value === 'number' && (
-        <> · best of them {formatValue(f.metric, f.best_peer_value)}</>
+        <> · best of them {formatValue(f.metric, f.best_peer_value, currency)}</>
       )}{' '}
       · {count(f.with_impressions)} impressions
     </p>
   </div>
 )
 
-export const CreativeFindings = ({ findings }: { findings: GoldCreativeFinding[] }) => {
-  const shown = findings.filter((f) => f.evidence_basis !== 'model')
+export const CreativeFindings = ({
+  findings,
+  currency,
+}: {
+  findings: GoldCreativeFinding[]
+  currency?: string | null
+}) => {
+  const shown = shownCreativeFindings(findings)
   if (shown.length === 0) return null
   return (
     <div className="gr-card overflow-hidden">
       {shown.map((f, i) => {
-        if (f.kind === 'standout_creative') return <StandoutRow key={i} f={f} i={i} />
+        if (f.kind === 'standout_creative')
+          return <StandoutRow key={i} f={f} i={i} currency={currency} />
         const win = isWin(f)
         return (
           <div key={i} className={rowClass(i)} style={{ borderColor: 'var(--gr-line)' }}>
@@ -85,8 +103,8 @@ export const CreativeFindings = ({ findings }: { findings: GoldCreativeFinding[]
               className="mt-1 text-[0.75rem] leading-[1.125rem] tabular-nums"
               style={{ color: 'var(--gr-muted)', fontFamily: 'var(--gr-mono)' }}
             >
-              {formatValue(f.metric, f.with_value)} across {f.with_ads} ad
-              {f.with_ads === 1 ? '' : 's'} vs {formatValue(f.metric, f.without_value)} across{' '}
+              {formatValue(f.metric, f.with_value, currency)} across {f.with_ads} ad
+              {f.with_ads === 1 ? '' : 's'} vs {formatValue(f.metric, f.without_value, currency)} across{' '}
               {f.without_ads} ad{f.without_ads === 1 ? '' : 's'} ·{' '}
               {Math.round(f.with_impressions + f.without_impressions).toLocaleString()} impressions
             </p>

@@ -15,13 +15,14 @@ export const pct = (fraction: number): string => `${(fraction * 100).toFixed(2)}
 
 export const count = (n: number): string => Math.round(n).toLocaleString()
 
+// No currency on the payload (older reports) means no symbol, never a guessed rand.
 export const money = (n: number, currency?: string | null): string => {
-  const code = currency || 'ZAR'
   const amount = n.toLocaleString(undefined, {
     minimumFractionDigits: n < 100 ? 2 : 0,
     maximumFractionDigits: n < 100 ? 2 : 0,
   })
-  return `${code === 'ZAR' ? 'R' : `${code} `}${amount}`
+  if (!currency) return amount
+  return `${currency === 'ZAR' ? 'R' : `${currency} `}${amount}`
 }
 
 /** A metric value in its own unit. */

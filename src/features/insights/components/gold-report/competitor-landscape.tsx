@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type {
+  GoldCompetitorAdPlatform,
   GoldCompetitorAds,
   GoldCompetitorBrand,
   GoldCompetitorFinding,
@@ -65,12 +66,44 @@ const SmallLabel = ({ children }: { children: React.ReactNode }) => (
   </p>
 )
 
+/** "Google: none found", "Meta: not checked: their website links no Facebook page",
+ *  "Meta: 30 found, 23 live" — so "no ads" never implies a platform that was not searched. */
+const platformResult = (p: GoldCompetitorAdPlatform): string => {
+  if (p.status === 'ok') {
+    if (typeof p.total !== 'number') return 'ads found'
+    return `${p.total} found${typeof p.live === 'number' && p.live > 0 ? `, ${p.live} live` : ''}`
+  }
+  return p.note ?? (p.status === 'no_ads' ? 'none found' : 'not checked')
+}
+
+const PlatformChecks = ({ platforms }: { platforms: GoldCompetitorAdPlatform[] }) => (
+  <ul className="text-[0.75rem] leading-[1.125rem]" style={{ color: 'var(--gr-muted)' }}>
+    {platforms.map((p) => (
+      <li key={p.platform}>
+        <span style={{ color: 'var(--gr-body)' }}>{p.platform}</span>: {platformResult(p)}
+      </li>
+    ))}
+  </ul>
+)
+
 const AdsBlock = ({ ads }: { ads: GoldCompetitorAds }) => {
-  if (ads.status === 'no_ads') {
+  const platforms = ads.platforms ?? []
+  if (ads.status !== 'ok') {
+    if (platforms.length === 0 && ads.status !== 'no_ads') return null
     return (
-      <p className="text-[0.75rem] leading-[1.125rem]" style={{ color: 'var(--gr-muted)' }}>
-        No ads found in the ad libraries.
-      </p>
+      <div className="space-y-0.5">
+        <SmallLabel>Ads</SmallLabel>
+        {platforms.length > 0 ? (
+          <PlatformChecks platforms={platforms} />
+        ) : (
+          // Blocks built before per-platform results: say only what is known.
+          ads.status === 'no_ads' && (
+            <p className="text-[0.75rem] leading-[1.125rem]" style={{ color: 'var(--gr-muted)' }}>
+              No ads found.
+            </p>
+          )
+        )}
+      </div>
     )
   }
   return (
@@ -78,6 +111,7 @@ const AdsBlock = ({ ads }: { ads: GoldCompetitorAds }) => {
       <SmallLabel>
         Ads · {ads.total} found{ads.live > 0 && `, ${ads.live} live`}
       </SmallLabel>
+      {platforms.length > 0 && <PlatformChecks platforms={platforms} />}
       <ul className="space-y-1.5">
         {ads.items.map((ad, i) => {
           const meta = [

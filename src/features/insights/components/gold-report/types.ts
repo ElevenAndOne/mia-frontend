@@ -260,8 +260,8 @@ export interface GoldCompetitorBrand {
   hero_image_url: string | null
   /** Every hero image the site leads with (capped), with its alt text. */
   hero_images?: { url: string; alt: string | null }[]
-  /** Their ads from the ad libraries. Null when the lookup was unconfirmed or failed —
-   *  those say nothing rather than claim ads that may be someone else's. */
+  /** Their ads from the ad libraries, with which platforms were checked. Null when no
+   *  lookup was made. Unconfirmed or failed lookups carry no items. */
   ads?: GoldCompetitorAds | null
   /** The report's promotion signal for this competitor (a new promo image on their site). */
   promotion?: { title: string; uploaded: string | null; url: string | null } | null
@@ -280,11 +280,26 @@ export interface GoldCompetitorAd {
   link: string | null
 }
 
+/** One ad platform's lookup for a competitor. `note` is the page's wording for anything
+ *  other than ads found: "none found", "could not be checked this period", "not checked:
+ *  their website links no Facebook page", or an unconfirmed advertiser. */
+export interface GoldCompetitorAdPlatform {
+  platform: 'Google' | 'Meta' | string
+  status: 'ok' | 'no_ads' | 'needs_review' | 'unavailable' | 'not_checked' | string
+  total: number | null
+  live: number | null
+  note: string | null
+}
+
 export interface GoldCompetitorAds {
-  status: 'ok' | 'no_ads'
+  /** needs_review / unavailable list no ads (they may be someone else's) but still say
+   *  which platforms were checked. */
+  status: 'ok' | 'no_ads' | 'needs_review' | 'unavailable' | string
   total: number
   live: number
   items: GoldCompetitorAd[]
+  /** Which platforms were checked and with what result. Absent on blocks built before it. */
+  platforms?: GoldCompetitorAdPlatform[]
 }
 
 export interface GoldCompetitorLandscape {

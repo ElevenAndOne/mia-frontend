@@ -6,10 +6,25 @@ import type { GoldDeliverable, GoldInsight, GoldRecommendation } from './types'
 // Compact disclosure rows for the three long-form sections. Each closed row
 // carries the finding and its key number; the prose lives inside.
 
-/** The stat worth showing on a closed row — the first callout figure. */
-const leadStat = (insight: GoldInsight): string | null => {
-  const first = insight.stat_callout?.stats?.[0]
-  return first ? first.value : null
+// A bare decimal of 100 or more with no unit — "79,931.47" impressions, "432.13" clicks —
+// is a mean the report did not label (per campaign-day, on the pipeline side). It is kept
+// as written, but never shown without the callout's own label beside it. No unit is
+// invented for it ("per day" only if the report says so).
+const isBareFractionalCount = (value: string): boolean =>
+  /^(\d{1,3}(,\d{3})+|\d{3,})\.\d+$/.test(value.trim())
+
+/** The stat worth showing on a closed row — the first callout figure — with what it is
+ *  measured against, so "52.70" reads "52.70 vs 39.11 Google Ads avg". */
+const leadStat = (insight: GoldInsight): { value: string; detail: string | null } | null => {
+  const callout = insight.stat_callout
+  const first = callout?.stats?.[0]
+  if (!first?.value) return null
+  const comparison = first.comparison?.trim().replace(/^vs\.?\s+/i, '')
+  const parts: string[] = []
+  if (comparison) parts.push(`vs ${comparison}`)
+  if ((!comparison || isBareFractionalCount(first.value)) && callout?.label?.trim())
+    parts.push(callout.label.trim())
+  return { value: first.value, detail: parts.length ? parts.join(' · ') : null }
 }
 
 const Rank = ({ rank }: { rank: number | null }) =>
@@ -38,62 +53,66 @@ export const InsightRows = ({
   forceOpen?: boolean
 }) => (
   <div className="gr-card overflow-hidden">
-    {insights.map((insight, i) => (
-      <CollapsibleRow
-        key={i}
-        lead={<Rank rank={insight.driver_rank} />}
-        title={insight.title}
-        stat={leadStat(insight)}
-        forceOpen={forceOpen}
-      >
-        <div className="space-y-2.5">
-          <Badge label={insight.category} />
-          <p className="text-[0.8438rem] leading-5" style={{ color: 'var(--gr-body)' }}>
-            <InlineMd text={insight.body} />
-          </p>
-          {insight.aside && (
-            <p className="text-xs leading-[1.125rem] italic" style={{ color: 'var(--gr-muted)' }}>
-              {insight.aside}
+    {insights.map((insight, i) => {
+      const stat = leadStat(insight)
+      return (
+        <CollapsibleRow
+          key={i}
+          lead={<Rank rank={insight.driver_rank} />}
+          title={insight.title}
+          stat={stat?.value}
+          statDetail={stat?.detail}
+          forceOpen={forceOpen}
+        >
+          <div className="space-y-2.5">
+            <Badge label={insight.category} />
+            <p className="text-[0.8438rem] leading-5" style={{ color: 'var(--gr-body)' }}>
+              <InlineMd text={insight.body} />
             </p>
-          )}
-          {insight.stat_callout && (
-            <div className="gr-inner rounded-[0.625rem] p-3">
-              <p
-                className="text-[0.6563rem] font-bold tracking-[0.06em] uppercase mb-1.5"
-                style={{ color: 'var(--gr-muted)' }}
-              >
-                {insight.stat_callout.label}
+            {insight.aside && (
+              <p className="text-xs leading-[1.125rem] italic" style={{ color: 'var(--gr-muted)' }}>
+                {insight.aside}
               </p>
-              {insight.stat_callout.stats.map((s, j) => (
-                <p key={j} style={{ fontFamily: 'var(--gr-mono)' }}>
-                  <span
-                    className="text-[1.0625rem] leading-6 font-bold"
-                    style={{ color: 'var(--gr-green)' }}
-                  >
-                    {s.value}
-                  </span>
-                  {s.comparison && (
-                    <span className="text-xs" style={{ color: 'var(--gr-muted)' }}>
-                      {' '}
-                      vs {s.comparison.replace(/^vs\.?\s+/i, '')}
-                    </span>
-                  )}
+            )}
+            {insight.stat_callout && (
+              <div className="gr-inner rounded-[0.625rem] p-3">
+                <p
+                  className="text-[0.6563rem] font-bold tracking-[0.06em] uppercase mb-1.5"
+                  style={{ color: 'var(--gr-muted)' }}
+                >
+                  {insight.stat_callout.label}
                 </p>
-              ))}
-            </div>
-          )}
-          {insight.kpis.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {insight.kpis.map((kpi) => (
-                <span key={kpi} className="gr-inner gr-chip uppercase">
-                  {kpi}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </CollapsibleRow>
-    ))}
+                {insight.stat_callout.stats.map((s, j) => (
+                  <p key={j} style={{ fontFamily: 'var(--gr-mono)' }}>
+                    <span
+                      className="text-[1.0625rem] leading-6 font-bold"
+                      style={{ color: 'var(--gr-green)' }}
+                    >
+                      {s.value}
+                    </span>
+                    {s.comparison && (
+                      <span className="text-xs" style={{ color: 'var(--gr-muted)' }}>
+                        {' '}
+                        vs {s.comparison.replace(/^vs\.?\s+/i, '')}
+                      </span>
+                    )}
+                  </p>
+                ))}
+              </div>
+            )}
+            {insight.kpis.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {insight.kpis.map((kpi) => (
+                  <span key={kpi} className="gr-inner gr-chip uppercase">
+                    {kpi}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </CollapsibleRow>
+      )
+    })}
   </div>
 )
 

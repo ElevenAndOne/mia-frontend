@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ChatMarkdown } from '../../../../components/chat-markdown'
 import { ActionRecommendationRows } from './action-recommendations'
 import { AtAGlance } from './at-a-glance'
@@ -10,6 +10,7 @@ import { DeliverableRows, InsightRows, RecommendationRows } from './report-rows'
 import { TopPosts } from './top-posts'
 import { CreativeFindings } from './creative-findings'
 import { MeasuredDrivers } from './measured-drivers'
+import { shownCreativeFindings } from './section-rows'
 import { StaleFeedsBanner } from './stale-feeds-banner'
 import type {
   GoldAnalysisPayload,
@@ -24,12 +25,14 @@ const Section = ({
   label,
   count,
   children,
+  sectionRef,
 }: {
   label: string
   count?: number
   children: React.ReactNode
+  sectionRef?: React.Ref<HTMLElement>
 }) => (
-  <section>
+  <section ref={sectionRef} className="scroll-mt-4">
     <p className="gr-eyebrow mb-2">
       {label}
       {count != null && ` · ${count}`}
@@ -79,11 +82,18 @@ export const StructuredReport = ({
   const competitorChanges = analysis?.competitor_findings ?? []
   const [expandAll, setExpandAll] = useState<boolean | undefined>(undefined)
   const staleFeeds = analysis?.diagnostics?.stale_feeds ?? []
-  const creativeFindings = analysis?.creative_findings ?? []
+  const creativeFindings = shownCreativeFindings(analysis?.creative_findings ?? [])
   const measuredDrivers = analysis?.structured_recommendations ?? []
   // The report's own recommendations when the pipeline sent them; the LLM re-parse only
   // for reports that predate them.
   const actionRecs = analysis?.action_recommendations ?? []
+  // "Read the full summary" from the at-a-glance card: open the full report and go to it.
+  const fullSummaryRef = useRef<HTMLElement>(null)
+  const [fullSummaryOpen, setFullSummaryOpen] = useState(0)
+  const openFullSummary = () => {
+    setFullSummaryOpen((n) => n + 1)
+    fullSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="gold-report space-y-7">
@@ -129,7 +139,7 @@ export const StructuredReport = ({
       <StaleFeedsBanner feeds={staleFeeds} />
 
       {email_digest ? (
-        <AtAGlance digest={email_digest} />
+        <AtAGlance digest={email_digest} onReadFull={openFullSummary} />
       ) : (
         // Reports structured before the digest existed still get a summary.
         <ExecSummary summary={executive_summary} />
@@ -164,14 +174,18 @@ export const StructuredReport = ({
       )}
 
       {measuredDrivers.length > 0 && (
-        <Section label="The numbers behind the ranking" count={measuredDrivers.length}>
+        // Each card carries its own count: the rows split by unit across up to three cards.
+        <Section label="The numbers behind the ranking">
           <MeasuredDrivers rows={measuredDrivers} />
         </Section>
       )}
 
       {creativeFindings.length > 0 && (
         <Section label="What your own ads show" count={creativeFindings.length}>
-          <CreativeFindings findings={creativeFindings} />
+          <CreativeFindings
+            findings={creativeFindings}
+            currency={analysis?.diagnostics?.currency_iso}
+          />
         </Section>
       )}
 
@@ -197,9 +211,13 @@ export const StructuredReport = ({
       )}
 
       {email_digest && (
-        <Section label="Full summary">
+        <Section label="Full summary" sectionRef={fullSummaryRef}>
           <div className="gr-card overflow-hidden">
-            <CollapsibleRow title="Read the full written report" forceOpen={expandAll}>
+            <CollapsibleRow
+              title="Read the full written report"
+              forceOpen={expandAll}
+              openSignal={fullSummaryOpen}
+            >
               {summary ? (
                 <ChatMarkdown content={summary} className="paragraph-sm text-secondary leading-relaxed" />
               ) : (
