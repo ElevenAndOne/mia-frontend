@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ChatMarkdown } from '../../../../components/chat-markdown'
+import { ActionRecommendationRows } from './action-recommendations'
 import { AtAGlance } from './at-a-glance'
 import { CampaignEvidence } from './campaign-evidence'
 import { CompetitorLandscape } from './competitor-landscape'
@@ -49,6 +51,8 @@ interface StructuredReportProps {
   campaignEvidence?: GoldCampaignEvidence | null
   /** Paid tier: the pipeline's typed payload (measured creative findings, stale feeds). */
   analysis?: GoldAnalysisPayload | null
+  /** The whole written report (markdown) — shown in full under "Full summary". */
+  summary?: string | null
 }
 
 /**
@@ -68,6 +72,7 @@ export const StructuredReport = ({
   topPosts = [],
   campaignEvidence,
   analysis,
+  summary,
 }: StructuredReportProps) => {
   const { executive_summary, insights, recommendations, deliverables, email_digest } = report
   const competitorLandscape = report.competitor_landscape
@@ -76,6 +81,9 @@ export const StructuredReport = ({
   const staleFeeds = analysis?.diagnostics?.stale_feeds ?? []
   const creativeFindings = analysis?.creative_findings ?? []
   const measuredDrivers = analysis?.structured_recommendations ?? []
+  // The report's own recommendations when the pipeline sent them; the LLM re-parse only
+  // for reports that predate them.
+  const actionRecs = analysis?.action_recommendations ?? []
 
   return (
     <div className="gold-report space-y-7">
@@ -127,10 +135,20 @@ export const StructuredReport = ({
         <ExecSummary summary={executive_summary} />
       )}
 
-      {recommendations.length > 0 && (
-        <Section label="Do this next" count={recommendations.length}>
-          <RecommendationRows recommendations={recommendations} forceOpen={expandAll} />
+      {actionRecs.length > 0 ? (
+        <Section label="Do this next" count={actionRecs.length}>
+          <ActionRecommendationRows
+            recommendations={actionRecs}
+            currency={analysis?.diagnostics?.currency_iso}
+            forceOpen={expandAll}
+          />
         </Section>
+      ) : (
+        recommendations.length > 0 && (
+          <Section label="Do this next" count={recommendations.length}>
+            <RecommendationRows recommendations={recommendations} forceOpen={expandAll} />
+          </Section>
+        )
       )}
 
       {topPosts.length > 0 && (
@@ -181,8 +199,12 @@ export const StructuredReport = ({
       {email_digest && (
         <Section label="Full summary">
           <div className="gr-card overflow-hidden">
-            <CollapsibleRow title="Read the full written summary" forceOpen={expandAll}>
-              <ExecSummary summary={executive_summary} showNextSteps={false} />
+            <CollapsibleRow title="Read the full written report" forceOpen={expandAll}>
+              {summary ? (
+                <ChatMarkdown content={summary} className="paragraph-sm text-secondary leading-relaxed" />
+              ) : (
+                <ExecSummary summary={executive_summary} showNextSteps={false} />
+              )}
             </CollapsibleRow>
           </div>
         </Section>

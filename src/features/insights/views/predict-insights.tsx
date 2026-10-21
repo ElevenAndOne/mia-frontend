@@ -139,6 +139,7 @@ const PredictInsights = ({ onBack }: PredictInsightsProps) => {
                     topPosts={data.top_posts ?? []}
                     campaignEvidence={data.campaign_evidence}
                     analysis={data.analysis}
+                    summary={data.summary}
                   />
                 ) : (
                   // Fallback: structured rendition is still being built server-side

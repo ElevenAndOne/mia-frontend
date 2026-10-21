@@ -75,7 +75,7 @@ export const InsightRows = ({
                   {s.comparison && (
                     <span className="text-xs" style={{ color: 'var(--gr-muted)' }}>
                       {' '}
-                      vs {s.comparison}
+                      vs {s.comparison.replace(/^vs\.?\s+/i, '')}
                     </span>
                   )}
                 </p>
