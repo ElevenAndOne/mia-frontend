@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Button } from '../../../components/button'
 import type { BuildState, Plan } from '../types'
+import { Field } from './field'
 import { Card, day, money, num } from './parts'
 
 // The calmer page (19 Oct, docs2/CAMPAIGN_BUILDER_CALMER_UI_PLAN_2026-10-19.md): what the PM has to do comes
@@ -259,12 +260,6 @@ export function TargetToSet({
   onSet: (v: number | string, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
-  const [v, setV] = useState('')
-  // Sent as typed: the server reads "R124", "5%", "60k" and says plainly when it can't (live test 20 Oct: these
-  // were silently ignored).
-  const commit = () => {
-    if (v.trim()) onSet(v.trim())
-  }
   return (
     <li className="grid grid-cols-1 @2xl:grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
       <div className="min-w-0">
@@ -291,14 +286,11 @@ export function TargetToSet({
         <label className="sr-only" htmlFor={`set-${phase}-${name}`}>
           {name} target
         </label>
-        <input
+        <Field
           id={`set-${phase}-${name}`}
-          inputMode="decimal"
           placeholder="target"
-          value={v}
-          onChange={(e) => setV(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => e.key === 'Enter' && commit()}
+          value=""
+          onCommit={(typed) => typed && onSet(typed)}
           className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
         />
         {suggested != null ? (

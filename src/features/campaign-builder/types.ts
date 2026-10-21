@@ -300,10 +300,10 @@ export type PlanOp =
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }
   | { op: 'update_words'; index: number; where: string; value: string }
-  | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
+  | { op: 'update_asset'; index: number; fields: Partial<Omit<PlanAsset, 'credits'>> & { credits?: number | string | null } }
   | { op: 'remove_asset'; index: number }
-  | { op: 'set_budget'; phase: string; value: number | null }
-  | { op: 'set_channel_budget'; phase: string; channel: string; value: number | null }
+  | { op: 'set_budget'; phase: string; value: number | string | null }
+  | { op: 'set_channel_budget'; phase: string; channel: string; value: number | string | null }
   | { op: 'accept_words'; index: number }
   | { op: 'answer_question'; id: string; answer: string | null }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
@@ -7,6 +7,7 @@ import { JobWords } from './final-words'
 import { AskMia, askMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
+import { Field } from './field'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
@@ -872,17 +873,6 @@ function Concept({ plan }: { plan: Plan }) {
 
 
 
-function useField(value: string) {
-  const [v, setV] = useState(value)
-  useEffect(() => setV(value), [value])
-  return [v, setV] as const
-}
-
-const asNumber = (s: string): number | null => {
-  const t = s.replace(/[^\d.]/g, '')
-  return t === '' ? null : Number(t)
-}
-
 const BASIS_LABEL: Record<BudgetChannel['basis'], string> = {
   history: 'from results',
   account: 'past rate',
@@ -902,7 +892,7 @@ function ChannelMoney({
   rows: BudgetChannel[]
   currency: string
   disabled: boolean
-  onCommit: (channel: string, v: number | null) => void
+  onCommit: (channel: string, v: string | null) => void
 }) {
   if (!rows.length || (rows.length === 1 && !rows[0].buys)) return null
   return (
@@ -939,20 +929,17 @@ function BudgetField({
   value: number | null
   currency: string
   disabled: boolean
-  onCommit: (v: number | null) => void
+  onCommit: (v: string | null) => void
 }) {
-  const [v, setV] = useField(value == null ? '' : String(value))
   if (disabled) return <span className="paragraph-sm text-primary">{money(value, currency)}</span>
   return (
     <label className="flex items-center gap-1 paragraph-xs text-tertiary">
       <span className="sr-only">Budget</span>R
-      <input
+      <Field
         className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
-        inputMode="numeric"
-        value={v}
+        value={value}
         placeholder="budget"
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => asNumber(v) !== value && onCommit(asNumber(v))}
+        onCommit={(typed) => onCommit(typed || null)}
       />
     </label>
   )
@@ -969,7 +956,6 @@ function Target({
   onEdit: Props['onEdit']
   needsSource?: boolean
 }) {
-  const [v, setV] = useField(t.value == null ? '' : String(t.value))
   const missing = t.value == null && !t.no_target
   const basis =
     t.basis === 'mia_estimate' && t.value != null ? (
@@ -1007,14 +993,12 @@ function Target({
         {disabled ? (
           <span className="paragraph-sm text-primary">{t.value == null ? '—' : num(t.value)}</span>
         ) : (
-          <input
+          <Field
             aria-label={`${t.kpi_name} target`}
             className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
-            inputMode="decimal"
             placeholder="target"
-            value={v}
-            onChange={(e) => setV(e.target.value)}
-            onBlur={() => asNumber(v) !== t.value && onEdit([{ op: 'set_target', key: t.key, value: asNumber(v) }])}
+            value={t.value}
+            onCommit={(typed) => onEdit([{ op: 'set_target', key: t.key, value: typed || null }])}
           />
         )}
       </div>
@@ -1064,17 +1048,41 @@ function Job({
   wordsRunning: boolean
   onRewrite: (jobIds: string[]) => Promise<unknown>
 }) {
-  const [credits, setCredits] = useField(a.credits == null ? '' : String(a.credits))
   const noRate = a.credits == null
+  const set = (fields: Record<string, string | null>) => onEdit([{ op: 'update_asset', index, fields }])
   return (
     <article className={`rounded-lg bg-primary p-3 flex flex-col gap-2 ${noRate ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="subheading-sm text-primary break-words">{a.name}</p>
-          <p className="paragraph-xs text-tertiary">
-            {channelLabel(a.channel)}
-            {a.format ? ` · ${a.format}` : ''}
-          </p>
+        <div className="min-w-0 flex-1">
+          {disabled ? (
+            <>
+              <p className="subheading-sm text-primary break-words">{a.name}</p>
+              <p className="paragraph-xs text-tertiary">
+                {channelLabel(a.channel)}
+                {a.format ? ` · ${a.format}` : ''}
+              </p>
+            </>
+          ) : (
+            // Every field a PM changes, on the page (live test 21 Oct: only credits could be edited here).
+            <>
+              <Field
+                aria-label="Job name"
+                className="w-full rounded-md border border-transparent hover:border-secondary bg-primary px-1 subheading-sm text-primary"
+                value={a.name}
+                onCommit={(typed) => typed && set({ name: typed })}
+              />
+              <div className="flex flex-wrap items-center gap-1 paragraph-xs text-tertiary">
+                {channelLabel(a.channel)} ·
+                <Field
+                  aria-label="Format"
+                  className="min-w-0 flex-1 rounded-md border border-transparent hover:border-secondary bg-primary px-1 paragraph-xs text-tertiary"
+                  value={a.format ?? ''}
+                  placeholder="format"
+                  onCommit={(typed) => set({ format: typed || null })}
+                />
+              </div>
+            </>
+          )}
         </div>
         {disabled ? null : (
           <button
@@ -1096,20 +1104,32 @@ function Job({
           <span>{a.credits == null ? '—' : `${num(a.credits)} credits`}</span>
         ) : (
           <label className="flex items-center gap-1">
-            <input
+            <Field
               aria-label={`${a.name} credits`}
               className={`w-16 rounded-md bg-primary px-2 py-1 text-right paragraph-sm text-primary ${noRate ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}
-              inputMode="decimal"
               placeholder="?"
-              value={credits}
-              onChange={(e) => setCredits(e.target.value)}
-              onBlur={() => asNumber(credits) !== a.credits && onEdit([{ op: 'update_asset', index, fields: { credits: asNumber(credits) } }])}
+              value={a.credits}
+              onCommit={(typed) => set({ credits: typed || null })}
             />
             credits
           </label>
         )}
       </div>
-      <p className="paragraph-xs text-tertiary">
+      {disabled ? null : (
+        <div className="flex flex-wrap items-center gap-2 paragraph-xs text-tertiary">
+          <label className="flex items-center gap-1">
+            Due to the studio
+            <Field type="date" className="rounded-md border border-secondary bg-primary px-1 paragraph-xs text-primary"
+              value={a.due_date ?? ''} onCommit={(typed) => typed && set({ due_date: typed })} />
+          </label>
+          <label className="flex items-center gap-1">
+            goes live
+            <Field type="date" className="rounded-md border border-secondary bg-primary px-1 paragraph-xs text-primary"
+              value={a.launch_date ?? ''} onCommit={(typed) => set({ launch_date: typed || null })} />
+          </label>
+        </div>
+      )}
+      <p className={`paragraph-xs text-tertiary ${disabled ? '' : 'hidden'}`}>
         Due to the studio {day(a.due_date)} · goes live {day(a.launch_date)}
         {a.due_date_moved_from ? ` · moved earlier from ${day(a.due_date_moved_from)} (its sprint was full)` : ''}
       </p>
