@@ -59,6 +59,7 @@ export function JobWords({
   fw,
   index,
   jobId,
+  moving = false,
   disabled,
   running,
   onEdit,
@@ -67,6 +68,7 @@ export function JobWords({
   fw: FinalWords
   index: number
   jobId?: string
+  moving?: boolean // a video or animation: its words are per frame, not per slide
   disabled: boolean
   running: boolean
   onEdit: (ops: PlanOp[]) => Promise<unknown>
@@ -74,7 +76,7 @@ export function JobWords({
 }) {
   const mine = new Set((fw.set_by_pm ?? []).map((w) => (w.startsWith('captions[') ? w.toLowerCase() : w)))
   const flagFor = (where: string) => fw.flags.filter((f) => f.where === where || where.startsWith(`${f.where}[`))
-  const piece = (where: string, label: string, value: string, multiline = false) => (
+  const piece = (where: string, label: string, value: string, multiline = false, prefix = '') => (
     <Piece
       key={where}
       where={where}
@@ -84,9 +86,17 @@ export function JobWords({
       mine={mine.has(where)}
       flags={flagFor(where)}
       disabled={disabled}
-      onCommit={(v) => onEdit([{ op: 'update_words', index, where, value: v }])}
+      onCommit={(v) => onEdit([{ op: 'update_words', index, where, value: prefix + v }])}
     />
   )
+  // An extra ad version is stored as a caption starting "Variant B:". The label says so beside the box, so the
+  // copy a designer lifts from the box is only the copy (live test 18 Oct).
+  const caption = (key: string, c: { platform: string; text: string }) => {
+    const m = /^\s*(variant\s+[a-z])\s*[:\-–]\s*/i.exec(c.text)
+    return m
+      ? piece(key, `Caption · ${c.platform} · ${m[1].replace(/^v/, 'V')}`, c.text.slice(m[0].length), true, `${m[1]}: `)
+      : piece(key, `Caption · ${c.platform}`, c.text, true)
+  }
   return (
     <details open={fw.status === 'flagged'}>
       <summary className="cursor-pointer paragraph-xs text-secondary flex flex-wrap items-center gap-2">
@@ -117,7 +127,9 @@ export function JobWords({
           </div>
         ) : null}
         {/* Slide words often have a line break (headline + line): a one-line box glued them together (16 Oct). */}
-        {fw.slides.map((s) => piece(`slides[${s.n}]`, `Slide ${s.n}`, s.words, s.words.includes('\n') || s.words.length > 60))}
+        {fw.slides.map((s) =>
+          piece(`slides[${s.n}]`, `${moving ? 'Frame' : 'Slide'} ${s.n}`, s.words, s.words.includes('\n') || s.words.length > 60),
+        )}
         {fw.ad ? (
           <>
             {piece('ad.primary_text', 'Primary text', fw.ad.primary_text, true)}
@@ -139,7 +151,7 @@ export function JobWords({
             {piece('email.body', 'Body', fw.email.body, true)}
           </>
         ) : null}
-        {captionKeys(fw.captions).map(([key, c]) => piece(key, `Caption · ${c.platform}`, c.text, true))}
+        {captionKeys(fw.captions).map(([key, c]) => caption(key, c))}
         {disabled || !jobId ? null : (
           <button
             type="button"

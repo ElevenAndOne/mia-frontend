@@ -71,9 +71,10 @@ export const DeleteWorkspaceModal = ({
             </p>
           ) : (
             <p className="paragraph-sm text-error">
-              This action cannot be undone. This will permanently delete the workspace
-              <span className="font-semibold"> {workspace.name}</span>, all its settings, cancel its
-              scheduled posts, and remove all members.
+              This deletes the workspace
+              <span className="font-semibold"> {workspace.name}</span> now: it disappears for everyone, its
+              connected accounts are disconnected and its scheduled posts are cancelled. All its data is erased
+              for good after 30 days. Until then, the 11&amp;1 team can restore it.
             </p>
           )}
         </div>

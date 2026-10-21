@@ -36,12 +36,13 @@ export async function saveBrief(
   campaignId: string,
   fields: Partial<Record<BriefField | 'playbook', unknown>>,
   name?: string,
+  answered?: { id: string; answer: string | null }[],
 ): Promise<{ version: number }> {
   return check(
     await apiFetch(`${base(tenantId)}/${campaignId}/brief`, {
       method: 'PUT',
       headers: json(sessionId),
-      body: JSON.stringify({ fields, name }),
+      body: JSON.stringify({ fields, name, answered }),
     }),
   )
 }
@@ -59,6 +60,47 @@ export async function redraftBrief(sessionId: string, tenantId: string, campaign
 export async function makePlan(sessionId: string, tenantId: string, campaignId: string) {
   return check<{ run_id: string }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/plan`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// After a big brief change: keep this plan with the new brief instead of remaking it.
+export async function keepPlan(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/plan/keep`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Skip a question: Mia decides and says what she assumed.
+export async function skipQuestion(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ assumed: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/questions/${id}/skip`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Mia's numbers into every empty target box (for plans made before she did it while planning).
+export async function fillTargets(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ filled: number }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/targets/fill`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Mia checks the campaign as it stands now.
+export async function finalCheck(sessionId: string, tenantId: string, campaignId: string) {
+  return check<Record<string, unknown>>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/plan/check`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// A change the chat proposed: Apply applies exactly the stored edits; Not now drops them.
+export async function applyChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}/apply`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+export async function dropChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
+  return check<{ ok: boolean }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}`, { method: 'DELETE', headers: json(sessionId) }),
   )
 }
 

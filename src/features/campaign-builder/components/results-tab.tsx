@@ -112,7 +112,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                         <span className="label-sm text-primary">{k.kpi_name}</span>
                         <span className="paragraph-sm text-primary tabular-nums">
                           {a?.actual_label ?? (value != null ? num(value) : '—')}
-                          <span className="text-tertiary"> / {k.target != null ? num(k.target) : 'no target'}</span>
+                          <span className="text-tertiary"> / {k.target != null ? targetLabel(k) : 'no target'}</span>
                         </span>
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
@@ -121,7 +121,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                             {k.basis === 'budget' && !k.rate ? (pc === 'behind' ? 'buying less than before' : 'buying what it bought before') : PACE_STYLE[pc].label}
                           </span>
                         ) : null}
-                        {k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : null}
+                        {k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
                         {a?.state === 'none' ? <span className="paragraph-xs text-tertiary">not tracked yet: set its source on the campaign</span> : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
                       </div>
@@ -203,3 +203,14 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   )
 }
 
+
+// A target as the PM typed it means it: R5 for a cost, 2.5% for a rate, 2,000 for a count (live test 18 Oct).
+const MONEY_KEYS = new Set(['cpc', 'cpm', 'cpa', 'cost_per_conversion', 'cost_per_lead', 'spend'])
+const PERCENT_KEYS = new Set(['ctr', 'conversion_rate', 'email_open_rate', 'email_click_rate', 'web_engagement_rate',
+  'website_engagement_rate', 'organic_engagement_rate', 'email_unsubscribe_rate', 'email_bounce_rate'])
+function targetLabel(k: ResultsKpi): string {
+  const key = k.kpi_key ?? ''
+  if (MONEY_KEYS.has(key)) return money(k.target as number, 'ZAR')
+  if (PERCENT_KEYS.has(key)) return `${num(k.target as number)}%`
+  return num(k.target as number)
+}

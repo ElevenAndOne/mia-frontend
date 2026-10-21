@@ -73,9 +73,10 @@ export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 label-xs ${cls}`}>{children}</span>
 }
 
-export function Card({ children, className = '', warn = false }: { children: ReactNode; className?: string; warn?: boolean }) {
+export function Card({ children, className = '', warn = false, id }: { children: ReactNode; className?: string; warn?: boolean; id?: string }) {
   return (
     <section
+      id={id}
       className={`rounded-xl bg-primary p-4 ${warn ? 'border-2 border-utility-warning-300' : 'border border-secondary'} ${className}`}
     >
       {children}

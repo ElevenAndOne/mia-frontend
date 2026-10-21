@@ -30,8 +30,12 @@ export interface Brief {
   channels_requested?: string[]
   must_haves?: string[]
   constraints?: string[]
+  offer?: string | null
+  landing_page?: string | null
+  already_made?: string[]
   pm_words?: PmWords[]
-  open_questions?: { question: string; why_it_matters: string }[]
+  open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
+  answered_questions?: { question: string; answer: string | null; assumed?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
 }
@@ -45,6 +49,9 @@ export type BriefField =
   | 'channels_requested'
   | 'must_haves'
   | 'constraints'
+  | 'offer'
+  | 'landing_page'
+  | 'already_made'
 
 export interface CreativeBrief {
   objective?: string
@@ -61,6 +68,7 @@ export interface CreativeBrief {
 }
 
 export interface PlanAsset {
+  words_stale?: boolean // the job changed after its words were written
   phase: string
   channel: string
   name: string
@@ -72,6 +80,7 @@ export interface PlanAsset {
   credits: number | null
   credits_source?: 'ledger' | 'pm' | 'no_rate'
   due_date?: string | null
+  due_date_moved_from?: string | null
   launch_date?: string | null
   creative_brief?: CreativeBrief
   audience?: { locations?: string[]; age_range?: string; interests_or_keywords?: string[]; custom_audiences?: string[]; notes?: string }
@@ -86,7 +95,7 @@ export interface FinalWords {
   rsa: { headlines: string[]; descriptions: string[] } | null
   email: { subject: string; preheader: string; body: string } | null
   status: 'ready' | 'flagged'
-  flags: { where: string; problem: string; fix: string }[]
+  flags: { where: string; problem: string; fix: string; kind?: string; note?: string }[]
   set_by_pm?: string[]
 }
 
@@ -99,10 +108,17 @@ export interface KpiTarget {
   lower_is_better?: boolean
   made_by: string
   value: number | null
-  basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | string
+  basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | 'mia_estimate' | string
   confidence?: 'high' | 'medium' | 'low'
   reason?: string
   account_reference?: string | null
+  suggested?: number | null // code's starting number for an empty target (the account's own figures)
+  suggested_from?: string | null
+  suggested_label?: string | null // the starting number as a PM reads it (1.60%, R4.20, 12,000)
+  estimate_note?: string | null // a target that is Mia's estimate, accepted by the PM
+  suggested_by?: 'mia' | string | null // the starting number is Mia's estimate (not the account's own)
+  recheck?: string | null // set before the budget or dates changed
+  suggested_kind?: 'estimate' | 'rule_of_thumb' | null
   no_target?: boolean
   missed_twice?: string[]
 }
@@ -126,6 +142,7 @@ export interface CreditFit {
   total_planned?: number
   over?: string[]
   unknown_pool?: string[]
+  estimated?: string[]
   outside_known_sprints?: number
   no_rate?: string[]
   sprints?: { label: string; start: string; end: string; free: number | null; planned: number; assets: number }[]
@@ -171,7 +188,10 @@ export interface Plan {
       history_sources?: string[]
       history_notes?: string[]
     }
-    ask_pm: { question: string; why?: string; [k: string]: unknown }[] | string[]
+    ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
+    notes_done?: string[] // self-check notes the PM marked Done
+    answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
+    jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
   checks: PlanCheck[]
   review?: PlanReview
@@ -185,6 +205,7 @@ export interface ScorePart {
 
 export interface PlanReview {
   error?: string
+  checked_at?: string // Mia's final check, run on the campaign as it stood then
   fact_check?: {
     numbers_checked: number
     numbers_supported: number
@@ -249,7 +270,9 @@ export interface BuildState {
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
-  next_step: { label: string; tab: 'brief' | 'plan' | 'studio' }
+  pending?: { id: string; summary: string[]; at?: string }[] // changes the chat proposed, waiting for Apply
+  decision_log?: { summary: string[]; outcome: string; by?: string; at?: string }[]
+  next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
 export interface KpiOption {
@@ -270,16 +293,19 @@ export interface KpiGroup {
 }
 
 export type PlanOp =
-  | { op: 'set_target'; key: string; value: number | null; no_target?: boolean }
+  | { op: 'set_target'; key: string; value: number | string | null; no_target?: boolean; estimate_note?: string }
+  | { op: 'close_note'; text: string }
+  | { op: 'confirm_jobs' }
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }
   | { op: 'update_words'; index: number; where: string; value: string }
-  | { op: 'update_asset'; index: number; fields: Partial<PlanAsset> }
+  | { op: 'update_asset'; index: number; fields: Partial<Omit<PlanAsset, 'credits'>> & { credits?: number | string | null } }
   | { op: 'remove_asset'; index: number }
-  | { op: 'set_budget'; phase: string; value: number | null }
-  | { op: 'set_channel_budget'; phase: string; channel: string; value: number | null }
+  | { op: 'set_budget'; phase: string; value: number | string | null }
+  | { op: 'set_channel_budget'; phase: string; channel: string; value: number | string | null }
   | { op: 'accept_words'; index: number }
+  | { op: 'answer_question'; id: string; answer: string | null }
 
 // One paid channel's money inside a phase (A2): from the client's own history, a test share, or the PM's.
 export interface BudgetChannel {

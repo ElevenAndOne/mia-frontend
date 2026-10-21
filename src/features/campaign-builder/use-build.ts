@@ -70,10 +70,19 @@ export function useBuild(campaignId: string | undefined) {
     busy,
     error,
     clearError: () => setError(null),
-    saveBrief: (fields: Partial<Record<BriefField | 'playbook', unknown>>, name?: string) =>
-      run('brief', () => api.saveBrief(...ids(), fields, name)),
+    saveBrief: (
+      fields: Partial<Record<BriefField | 'playbook', unknown>>,
+      name?: string,
+      answered?: { id: string; answer: string | null }[],
+    ) => run('brief', () => api.saveBrief(...ids(), fields, name, answered)),
     redraft: (answers: string[]) => run('redraft', () => api.redraftBrief(...ids(), answers)),
     makePlan: () => run('plan', () => api.makePlan(...ids())),
+    keepPlan: () => run('keep', () => api.keepPlan(...ids())),
+    skipQuestion: (id: string) => run(`skip:${id}`, () => api.skipQuestion(...ids(), id)),
+    fillTargets: () => run('fill', () => api.fillTargets(...ids())),
+    finalCheck: () => run('check', () => api.finalCheck(...ids())),
+    applyChange: (id: string) => run(`apply:${id}`, () => api.applyChange(...ids(), id)),
+    dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
     editPlan: (ops: PlanOp[]) =>
       run('edit', async () => {
         const next = await api.editPlan(...ids(), ops)

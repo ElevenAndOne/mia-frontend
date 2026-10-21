@@ -4,6 +4,7 @@ import { Button } from '../../../components/button'
 import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
+import { AskMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -12,12 +13,20 @@ interface Props {
   state: BuildState
   kpiGroups: KpiGroup[]
   busy: string | null
-  onSave: (fields: Partial<Record<BriefField, unknown>>, name?: string) => Promise<unknown>
+  onSave: (
+    fields: Partial<Record<BriefField, unknown>>,
+    name?: string,
+    answered?: { id: string; answer: string | null }[],
+  ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
+  // The step-by-step page: "start" shows what Mia read; "facts" is the brief to check and its questions.
+  part?: 'start' | 'facts'
+  onSkipQuestion?: (id: string) => Promise<unknown>
+  onKeepPlan?: () => Promise<unknown>
 }
 
-const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints']
+const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
 const LABELS: Record<BriefField, string> = {
   goal: 'Goal',
   audience: 'Audience',
@@ -27,6 +36,9 @@ const LABELS: Record<BriefField, string> = {
   channels_requested: 'Channels you asked for',
   must_haves: 'Must haves',
   constraints: "Don'ts and limits",
+  offer: 'Offer',
+  landing_page: 'Landing page',
+  already_made: 'Already made (not made again)',
 }
 
 type Draft = Record<BriefField, string>
@@ -41,18 +53,26 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   channels_requested: (b.channels_requested ?? []).join('\n'),
   must_haves: (b.must_haves ?? []).join('\n'),
   constraints: (b.constraints ?? []).join('\n'),
+  offer: b.offer ?? '',
+  landing_page: b.landing_page ?? '',
+  already_made: (b.already_made ?? []).join('\n'),
 })
 
 const fromDraft = (k: BriefField, v: string): unknown => {
   if (LIST_FIELDS.includes(k)) return v.split('\n').map((s) => s.trim()).filter(Boolean)
-  if (k === 'budget_total') return v.trim() === '' ? null : Number(v.replace(/[^\d.]/g, ''))
+  // Sent as typed: the server reads "R60k", "60 000" and "1.2m", and refuses what it can't read (live test 20 Oct:
+  // "R60k" saved as R60 when this stripped every letter).
+  if (k === 'budget_total') return v.trim() === '' ? null : v.trim()
   return v.trim() === '' ? null : v.trim()
 }
 
-export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan }: Props) {
+export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan }: Props) {
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
+  // Detail sections: closed until wanted; the Start step opens what Mia read.
+  const [folds, setFolds] = useState<Set<string>>(() => new Set(part === 'start' ? ['read', 'words'] : []))
+  const shows = (f: string) => !part || (part === 'start' ? ['read', 'words'] : ['stand', 'rules']).includes(f)
 
   if (!state.brief) {
     if (run?.status === 'running') return <RunProgress run={run} what="brief" />
@@ -60,35 +80,142 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     return null
   }
 
+  const qs = (b?.open_questions ?? []).slice(0, 3)
+  const emptyRules = !(b?.must_haves?.length || b?.constraints?.length)
+  const planFresh = !!state.plan && !state.plan_from_older_brief
+  const toggle = (f: string) => setFolds((o) => { const n = new Set(o); if (n.has(f)) n.delete(f); else n.add(f); return n })
+  const toBrief = () => document.getElementById('brief-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const items: TurnItem[] = []
+  if (state.campaign.building) {
+    if (qs.length) {
+      items.push({
+        key: 'questions',
+        title: `Answer or skip Mia's ${qs.length} question${qs.length === 1 ? '' : 's'}`,
+        detail: 'Most important first. Type your answer and press Send, or skip it and Mia decides. Approve waits for these.',
+        done: !qs.length,
+        openByDefault: true,
+        more: (
+          <Questions
+            brief={b!}
+            busy={busy}
+            running={run?.status === 'running'}
+            onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
+            onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
+          />
+        ),
+      })
+    }
+    if (emptyRules) {
+      items.push({
+        key: 'rules',
+        title: "Add must-haves and don'ts (optional)",
+        detail: 'Legal lines, words to avoid, things the client insists on. Mia keeps them in every job.',
+        done: planFresh,
+        actions: (
+          <>
+            <Button size="sm" onClick={toBrief}>Edit the brief</Button>
+            <AskMia label="Must-haves and don'ts" detail="The brief has no must-haves or don'ts yet" />
+          </>
+        ),
+      })
+    }
+    items.push({
+      key: 'plan',
+      title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
+      done: planFresh && !planRunning,
+      detail: planRunning
+        ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
+        : state.plan_from_older_brief
+          ? 'The budget, dates, channels or goal changed. Update the plan (your targets and answers are kept), or keep it and fix what no longer fits.'
+          : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
+      actions: planRunning ? null : (
+        <>
+          <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running'} onClick={() => onMakePlan()}>
+            {state.plan ? 'Update the plan' : 'Make the plan'}
+          </PrimaryAction>
+          {state.plan_from_older_brief && onKeepPlan ? (
+            <Button size="sm" loading={busy === 'keep'} onClick={() => onKeepPlan()}>
+              Keep this plan
+            </Button>
+          ) : null}
+        </>
+      ),
+    })
+  }
+  const read = state.what_mia_read
+  const caveats = Object.values(read?.layers ?? {}).reduce((n, l) => n + (l.caveats?.length ?? 0), 0)
+  const facts = Array.isArray(read?.headline) ? (read?.headline as string[]).length : 0
+
   return (
     <div className="flex flex-col gap-4">
       {run?.status === 'running' ? <RunProgress run={run} what="brief" /> : null}
       {run?.status === 'failed' ? (
         <RunFailed run={run} what="brief" busy={!!busy} onRetry={() => onRedraft([])} />
       ) : null}
-      <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} />
-      <WhereTheyStand client={state.campaign.client} groups={kpiGroups} />
-      <PmWords brief={b!} />
-      <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
-      <Questions brief={b!} busy={busy} running={run?.status === 'running'} onRedraft={onRedraft} />
-      <WhatMiaRead state={state} />
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="paragraph-sm text-secondary">
-          {state.plan
-            ? state.plan_from_older_brief
-              ? 'The brief changed since the plan was made. Make it again to use the new brief.'
-              : 'The plan was made from this brief.'
-            : 'When the brief looks right, Mia makes the plan: concept, phases, targets, budget split and the jobs for the studio.'}
-        </p>
-        <Button
-          variant="primary"
-          loading={busy === 'plan'}
-          disabled={planRunning || run?.status === 'running' || !state.campaign.building}
-          onClick={() => onMakePlan()}
+      {part === 'start' ? (
+        <Card className="flex flex-col gap-2">
+          <h2 className="subheading-md text-primary">What you gave Mia</h2>
+          <p className="paragraph-sm text-primary whitespace-pre-wrap [overflow-wrap:anywhere]">{state.brief?.pm_text || '—'}</p>
+          {b?.mode === 'brief_and_deck' ? <Chip tone="good">Guide or deck read in full</Chip> : null}
+          <p className="paragraph-xs text-tertiary">
+            Mia drafted the key facts from this and from what she knows about {state.campaign.client}. Check them in the next step.
+          </p>
+        </Card>
+      ) : null}
+      {part !== 'start' && items.length ? <YourTurn items={items} /> : null}
+      {part === 'facts' && (b?.answered_questions ?? []).some((q) => !q.answer) ? (
+        <Card className="flex flex-col gap-1">
+          <h3 className="subheading-sm text-primary">Skipped, so Mia decides</h3>
+          <ul className="flex flex-col gap-1">
+            {(b?.answered_questions ?? []).filter((q) => !q.answer).map((q, i) => (
+              <li key={i} className="paragraph-xs text-secondary">
+                <span className="text-primary">{q.question}</span> {q.assumed ? `Mia assumed: ${q.assumed}` : 'Mia decides as she plans.'}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+      {part !== 'start' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
+      {shows('stand') ? (<Fold
+        id="fold-stand"
+        title={`Where ${state.campaign.client} stands on the KPI list`}
+        summary="last results and the last 90 days, where targets start from"
+        open={folds.has('stand')}
+        onToggle={() => toggle('stand')}
+      >
+        <WhereTheyStand groups={kpiGroups} />
+      </Fold>) : null}
+      {shows('words') && b?.pm_words?.length ? (
+        <Fold
+          id="fold-words"
+          title="Your words, kept exactly"
+          summary={`${b.pm_words.length} quote${b.pm_words.length === 1 ? '' : 's'} Mia never changes`}
+          open={folds.has('words')}
+          onToggle={() => toggle('words')}
         >
-          {planRunning ? 'Making the plan…' : state.plan ? 'Make the plan again' : 'Make the plan'}
-        </Button>
-      </Card>
+          <PmWords brief={b} />
+        </Fold>
+      ) : null}
+      {shows('rules') ? (<Fold
+        id="fold-rules"
+        title={`Rules for ${state.campaign.client}`}
+        summary="followed in every plan and every word, for every campaign of this client"
+        open={folds.has('rules')}
+        onToggle={() => toggle('rules')}
+      >
+        <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
+      </Fold>) : null}
+      {shows('read') && read ? (
+        <Fold
+          id="fold-read"
+          title="What Mia read"
+          summary={`${facts} facts · ${caveats} things to know`}
+          open={folds.has('read')}
+          onToggle={() => toggle('read')}
+        >
+          <WhatMiaRead state={state} />
+        </Fold>
+      ) : null}
     </div>
   )
 }
@@ -119,7 +246,10 @@ function BriefCard({
       if (draft[k] !== initial[k]) changed[k] = fromDraft(k, draft[k])
     })
     const name = draft.name !== initial.name ? draft.name : undefined
-    if (Object.keys(changed).length || name) await onSave(changed, name)
+    if (Object.keys(changed).length || name) {
+      // A failed save keeps the form open with what the PM typed (the error shows above).
+      if ((await onSave(changed, name)) === undefined) return
+    }
     setEditing(false)
   }
 
@@ -133,7 +263,7 @@ function BriefCard({
   }
 
   return (
-    <Card>
+    <Card id="brief-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="subheading-md text-primary">The brief</h2>
         <div className="flex items-center gap-2">
@@ -191,7 +321,7 @@ function BriefCard({
                 <input
                   id={`brief-${k}`}
                   type={k.endsWith('_date') ? 'date' : 'text'}
-                  inputMode={k === 'budget_total' ? 'numeric' : undefined}
+                  placeholder={k === 'budget_total' ? 'e.g. 60000 or 60k' : k === 'landing_page' ? 'https://' : undefined}
                   className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
                   value={draft[k]}
                   onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}
@@ -201,9 +331,15 @@ function BriefCard({
           ))}
         </form>
       ) : (
-        <dl className="mt-3 grid gap-x-6 gap-y-3 @xl:grid-cols-2">
+        // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct).
+        <dl className="mt-3 grid grid-cols-2 @3xl:grid-cols-4 gap-x-6 gap-y-3">
           {(Object.keys(LABELS) as BriefField[]).map((k) => (
-            <div key={k} className={`min-w-0 ${['goal', 'audience', ...LIST_FIELDS].includes(k) ? 'sm:col-span-2' : ''}`}>
+            <div
+              key={k}
+              className={`min-w-0 ${
+                k === 'goal' || k === 'audience' ? 'col-span-2 @3xl:col-span-4' : k === 'must_haves' || k === 'constraints' ? 'col-span-2' : ''
+              }`}
+            >
               <dt className="label-xs text-tertiary flex flex-wrap items-center gap-2">
                 {LABELS[k]}
                 {setByPm.has(k) ? <Chip tone="pm">set by you</Chip> : null}
@@ -224,17 +360,16 @@ function BriefCard({
 function PmWords({ brief }: { brief: Brief }) {
   if (!brief.pm_words?.length) return null
   return (
-    <Card>
-      <h2 className="subheading-md text-primary">Your words, kept exactly</h2>
-      <p className="paragraph-xs text-tertiary mt-1">Mia follows these as written and never changes them.</p>
-      <ul className="mt-2 flex flex-col gap-2">
+    <>
+      <p className="paragraph-xs text-tertiary">Mia follows these as written and never changes them.</p>
+      <ul className="flex flex-col gap-2">
         {brief.pm_words.map((w, i) => (
           <li key={i} className="paragraph-sm text-primary">
             <span className="text-secondary">“{w.text}”</span> <Chip>{w.sets}</Chip>
           </li>
         ))}
       </ul>
-    </Card>
+    </>
   )
 }
 
@@ -242,51 +377,70 @@ function Questions({
   brief,
   busy,
   running,
-  onRedraft,
+  onAnswer,
+  onSkip,
 }: {
   brief: Brief
   busy: string | null
   running: boolean
-  onRedraft: Props['onRedraft']
+  onAnswer: (id: string, answer: string) => Promise<unknown>
+  onSkip: (id: string) => Promise<unknown>
 }) {
   const qs = (brief.open_questions ?? []).slice(0, 3)
-  const [answers, setAnswers] = useState<string[]>(() => qs.map(() => ''))
-  // New questions (a redraft asks different ones) clear the boxes: answers stayed under the wrong question (16 Oct).
-  const asked = qs.map((q) => q.question).join('|')
-  useEffect(() => setAnswers(qs.map(() => '')), [asked]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Kept by question id: a question that closes moves the others up, and answers stayed under the wrong one (16 Oct).
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   if (!qs.length) return null
-  const filled = answers.some((a) => a.trim())
+  // Each answer goes in on its own: Send (or Enter) saves it and closes the question at once. The plan and the words
+  // read it from the brief; no redraft needed (live test 20 Oct).
+  const send = (id: string) => {
+    const a = (answers[id] ?? '').trim()
+    if (!a || busy || running) return
+    void onAnswer(id, a).then((ok) => {
+      if (ok !== undefined) setAnswers(({ [id]: _, ...rest }) => rest)
+    })
+  }
   return (
-    <Card>
-      <h2 className="subheading-md text-primary">Mia's questions</h2>
-      <p className="paragraph-xs text-tertiary mt-1">Only what would change the plan. Answer any you can, or skip them.</p>
-      <ol className="mt-3 flex flex-col gap-3">
-        {qs.map((q, i) => (
-          <li key={i} className="flex flex-col gap-1">
-            <label htmlFor={`q-${i}`} className="paragraph-sm text-primary">
+    <ol className="flex flex-col gap-3">
+      {qs.map((q) => (
+        <li key={q.id} className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <label htmlFor={`q-${q.id}`} className="min-w-0 flex-1 paragraph-sm text-primary">
               {q.question}
               <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
             </label>
+            <span className="flex items-center gap-2">
+              <AskMia label="Brief question" detail={q.question} />
+              <button
+                type="button"
+                disabled={!!busy || running}
+                onClick={() => onSkip(q.id)}
+                className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+              >
+                Skip
+              </button>
+            </span>
+          </div>
+          <div className="flex gap-2">
             <input
-              id={`q-${i}`}
-              className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
-              value={answers[i] ?? ''}
-              onChange={(e) => setAnswers(answers.map((a, j) => (j === i ? e.target.value : a)))}
+              id={`q-${q.id}`}
+              placeholder="Your answer"
+              className="min-w-0 flex-1 rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
+              value={answers[q.id] ?? ''}
+              onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  send(q.id)
+                }
+              }}
             />
-          </li>
-        ))}
-      </ol>
-      <div className="mt-3 flex justify-end">
-        <Button
-          size="sm"
-          disabled={!filled || running}
-          loading={busy === 'redraft'}
-          onClick={() => onRedraft(qs.map((q, i) => (answers[i]?.trim() ? `${q.question} ${answers[i].trim()}` : '')).filter(Boolean))}
-        >
-          Update the brief with my answers
-        </Button>
-      </div>
-    </Card>
+            <Button size="sm" disabled={!(answers[q.id] ?? '').trim() || running} loading={busy === 'brief'} onClick={() => send(q.id)}>
+              Send
+            </Button>
+          </div>
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -305,14 +459,10 @@ function WhatMiaRead({ state }: { state: BuildState }) {
   if (!read) return null
   const facts = Array.isArray(read.headline) ? (read.headline as string[]) : []
   const layers = Object.entries(read.layers ?? {})
-  const caveats = layers.reduce((n, [, l]) => n + (l.caveats?.length ?? 0), 0)
   return (
-    <details className="rounded-xl border border-secondary bg-primary p-4">
-      <summary className="cursor-pointer subheading-sm text-primary">
-        What Mia read · {facts.length} facts · {caveats} caveats
-      </summary>
+    <>
       {facts.length ? (
-        <ul className="mt-3 list-disc pl-5 paragraph-sm text-primary flex flex-col gap-1">
+        <ul className="list-disc pl-5 paragraph-sm text-primary flex flex-col gap-1">
           {facts.map((f) => (
             <li key={f}>{f}</li>
           ))}
@@ -340,21 +490,20 @@ function WhatMiaRead({ state }: { state: BuildState }) {
           </div>
         ))}
       </div>
-    </details>
+    </>
   )
 }
 
 // Where the client stands on mia-cube's KPI list before the plan is made: the last campaign
 // result for each KPI (and its target then), else the account's own last-90-days figure.
-function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[] }) {
+function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
   const rows = groups
     .map((g) => ({ ...g, kpis: g.kpis.filter((k) => k.last_result || k.account_90d != null) }))
     .filter((g) => g.kpis.length)
-  if (!rows.length) return null
+  if (!rows.length) return <p className="paragraph-sm text-tertiary">No past results for this client yet.</p>
   return (
-    <details className="rounded-xl border border-secondary bg-primary p-4" open>
-      <summary className="cursor-pointer subheading-sm text-primary">Where {client} stands on the KPI list</summary>
-      <p className="paragraph-xs text-tertiary mt-1">
+    <>
+      <p className="paragraph-xs text-tertiary">
         The last campaign result for each KPI, or the account's last 90 days. Targets in the plan start from these.
       </p>
       <div className="mt-3 grid gap-3 @xl:grid-cols-2">
@@ -377,6 +526,6 @@ function WhereTheyStand({ client, groups }: { client: string; groups: KpiGroup[]
           </div>
         ))}
       </div>
-    </details>
+    </>
   )
 }
