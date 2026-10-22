@@ -8,6 +8,7 @@ import { AskMia, askMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, 
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Field } from './field'
+import { WhereTheyStand } from './brief-tab'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
@@ -43,7 +44,7 @@ const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
 }
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
-  targets: ['phases'],
+  targets: ['phases', 'stand'],
   jobs: ['phases', 'jobs'],
   words: ['jobs'],
   check: ['how'],
@@ -54,7 +55,8 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
   // Detail sections: closed until wanted; a step opens the ones it is about.
-  const [folds, setFolds] = useState<Set<string>>(() => new Set(part ? PART_FOLDS[part] : []))
+  // Each step opens with only Your turn; its detail sections stay folded until wanted (L8).
+  const [folds, setFolds] = useState<Set<string>>(() => new Set())
   const shows = (f: string) => !part || part === 'check' || PART_FOLDS[part].includes(f)
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
@@ -213,6 +215,18 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
         </div>
       </Fold>) : null}
 
+      {(part === 'targets' || !part) && kpiGroups.length ? (
+        // Where the client stands on the KPI list: what targets start from (moved here from Key facts, L3).
+        <Fold
+          id="fold-stand"
+          title={`Where ${state.campaign.client} stands on the KPI list`}
+          summary="last results and the last 90 days, where targets start from"
+          open={folds.has('stand')}
+          onToggle={() => toggle('stand')}
+        >
+          <WhereTheyStand groups={kpiGroups} />
+        </Fold>
+      ) : null}
       {shows('jobs') ? (<Fold
         id="fold-jobs"
         title="Jobs for the studio"
@@ -1012,8 +1026,11 @@ function Target({
     ) : t.basis === 'budget' ? (
       // What the phase's money buys at the client's past rates (A2); "a ceiling" when spend outscales history.
       <Chip tone="mia">{t.confidence === 'low' ? 'from the budget · a ceiling' : 'from the budget'}</Chip>
+    ) : t.suggested != null ? (
+      // An empty box with Mia's number in it: the same estimate Your turn offers, so the two never disagree.
+      <NeedsYou>Mia suggests {t.suggested_label ?? num(t.suggested)}: keep it or set your own</NeedsYou>
     ) : (
-      <NeedsYou>no basis: you set it</NeedsYou>
+      <NeedsYou>no comparable result: set it</NeedsYou>
     )
   return (
     <div id={`t-${t.key}`} className={`rounded-lg bg-primary px-2 py-1.5 ${missing ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>

@@ -55,6 +55,15 @@ export function WordsCard({
   )
 }
 
+// The copywriting skill Mia used for a job's words (services/campaign_builder/craft.py).
+const CRAFT: Record<string, string> = {
+  'ad-creative': 'the ad creative skill',
+  'social-content': 'the social content skill',
+  'landing-page': 'the landing page skill',
+  copywriting: 'the copywriting skill',
+  'email-sequence': 'the email skill',
+}
+
 export function JobWords({
   fw,
   index,
@@ -101,6 +110,7 @@ export function JobWords({
     <details open={fw.status === 'flagged'}>
       <summary className="cursor-pointer paragraph-xs text-secondary flex flex-wrap items-center gap-2">
         Final words {fw.status === 'flagged' ? <NeedsYou>needs a look</NeedsYou> : <Chip tone="good">ready</Chip>}
+        {fw.craft?.length ? <span className="text-tertiary">written with {fw.craft.map((c) => CRAFT[c] ?? c).join(' + ')}</span> : null}
       </summary>
       <div className="mt-2 flex flex-col gap-2">
         {fw.flags.length ? (

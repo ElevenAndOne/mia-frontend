@@ -284,3 +284,14 @@ export async function attachGuide(
     }),
   )
 }
+
+// "These are right": Mia's drafted brief fields become the PM's (no new brief version, so the plan stays current).
+export async function confirmBrief(sessionId: string, tenantId: string, campaignId: string, fields: string[]) {
+  return check<{ set_by_pm: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/brief/confirm`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ fields }),
+    }),
+  )
+}

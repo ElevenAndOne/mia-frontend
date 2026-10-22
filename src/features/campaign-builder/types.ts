@@ -97,6 +97,7 @@ export interface FinalWords {
   status: 'ready' | 'flagged'
   flags: { where: string; problem: string; fix: string; kind?: string; note?: string }[]
   set_by_pm?: string[]
+  craft?: string[] // the copywriting skills that shaped these words
 }
 
 export interface KpiTarget {
@@ -262,6 +263,7 @@ export interface BuildState {
     edited_by: string | null
     brief: Brief
     pm_text: string | null
+    drafted?: string[] // fields Mia drafted from the PM's material that they haven't confirmed ("These are right")
     saved_at: string | null
   } | null
   brief_run: BuildRun | null
