@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useExperience } from '../hooks/use-experience'
 import {
   addCreativeWatch,
-  fetchCreativeWatches,
+  fetchCreativeWatchSetup,
   removeCreativeWatch,
   type CreativeWatch,
 } from '../services/posting-rhythm-service'
@@ -15,9 +15,11 @@ const ghost =
   'px-2.5 py-1.5 border border-primary rounded-lg paragraph-xs text-secondary hover:bg-tertiary transition-colors disabled:opacity-50'
 
 /**
- * The folder door (loop step 5). Paste a link-shared Google Drive folder; each new image that
- * lands in it becomes a set of drafts in the approver's WhatsApp thread, once a day. Nothing
- * already in the folder is touched — the watch starts from now.
+ * The folder door (loop step 5). Basic: the owner's "Mia" folder in Google Drive, shared with
+ * Mia's own address (or by link), with two folders inside: "Ideas & moodboard" (the look for
+ * pictures Mia draws, never posted) and "Ready to post" (first in the Friday posts). Checked
+ * hourly; teammates who upload are credited. Agency: each new image becomes drafts in the
+ * approver's WhatsApp, once a day, starting from now.
  */
 export const CreativeWatchCard = ({
   sessionId,
@@ -27,6 +29,8 @@ export const CreativeWatchCard = ({
   tenantId: string
 }) => {
   const [watches, setWatches] = useState<CreativeWatch[]>([])
+  const [shareWith, setShareWith] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   // Basic: the folder feeds next week's posts. Agency: each picture becomes drafts that day.
   const { isBasic } = useExperience()
   const [url, setUrl] = useState('')
@@ -36,7 +40,9 @@ export const CreativeWatchCard = ({
   const load = useCallback(async () => {
     if (!sessionId) return
     try {
-      setWatches(await fetchCreativeWatches(sessionId, tenantId))
+      const setup = await fetchCreativeWatchSetup(sessionId, tenantId)
+      setWatches(setup.watches)
+      setShareWith(setup.shareWith)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load watched folders')
     }
@@ -62,12 +68,56 @@ export const CreativeWatchCard = ({
   return (
     <div className="p-4 bg-secondary rounded-xl border border-tertiary space-y-3">
       <div>
-        <p className="subheading-md text-primary">{isBasic ? 'Your photo folder' : 'Watch a creative folder'}</p>
-        <p className="paragraph-sm text-tertiary mt-0.5">
-          {isBasic
-            ? 'Make a Google Drive folder just for Mia, share it with “Anyone with the link” and paste its link here. New photos you put in it become ideas, and Mia makes your Friday posts from them. Mia only reads photos in that one folder; nothing in it is changed.'
-            : 'Share a Google Drive folder with “Anyone with the link” and paste it here. Each new image dropped in becomes drafts in the approver’s WhatsApp, once a day. What’s already there is left alone.'}
-        </p>
+        <p className="subheading-md text-primary">{isBasic ? 'Your Mia folder' : 'Watch a creative folder'}</p>
+        {isBasic ? (
+          <div className="paragraph-sm text-tertiary mt-1 space-y-2">
+            <p>
+              Your team drops pictures into a Google Drive folder and Mia uses them for your posts.
+            </p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>
+                In Google Drive, make a folder called <span className="text-primary">Mia</span> with two
+                folders inside: <span className="text-primary">Ideas &amp; moodboard</span> and{' '}
+                <span className="text-primary">Ready to post</span>.
+              </li>
+              <li>
+                {shareWith ? (
+                  <>
+                    Share the Mia folder with{' '}
+                    <span className="text-primary break-all">{shareWith}</span>{' '}
+                    <button
+                      type="button"
+                      className={ghost}
+                      onClick={() => {
+                        navigator.clipboard
+                          ?.writeText(shareWith)
+                          .then(() => setCopied(true))
+                          .catch(() => setCopied(false))
+                      }}
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>{' '}
+                    as a Viewer, and add your team as editors so they can upload.
+                  </>
+                ) : (
+                  <>Share the Mia folder as “Anyone with the link”, and add your team as editors so they can upload.</>
+                )}
+              </li>
+              <li>Paste the Mia folder’s link below.</li>
+            </ol>
+            <p>
+              Pictures in <span className="text-primary">Ready to post</span> go into your Friday posts first.
+              Pictures in <span className="text-primary">Ideas &amp; moodboard</span> set the look of pictures
+              Mia draws for you, and are never posted themselves. Mia checks every hour and never changes
+              anything in your Drive.
+            </p>
+          </div>
+        ) : (
+          <p className="paragraph-sm text-tertiary mt-0.5">
+            Share a Google Drive folder with “Anyone with the link” and paste it here. Each new image dropped in
+            becomes drafts in the approver’s WhatsApp, once a day. What’s already there is left alone.
+          </p>
+        )}
       </div>
 
       {watches.length > 0 && (
@@ -82,9 +132,10 @@ export const CreativeWatchCard = ({
                   {w.last_error
                     ? `Last check failed: ${w.last_error}`
                     : w.last_polled_at
-                      ? `Checked ${new Date(w.last_polled_at).toLocaleDateString()} · ${w.seen} seen`
-                      : 'Not checked yet · runs each morning'}
-                  {w.mode === 'ideas' ? ' · new photos become ideas' : ''}
+                      ? `Checked ${new Date(w.last_polled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · ${w.seen} picture${w.seen === 1 ? '' : 's'} taken in`
+                      : w.mode === 'ideas'
+                        ? 'Not checked yet · within the hour'
+                        : 'Not checked yet · runs each morning'}
                 </p>
               </div>
               <button
