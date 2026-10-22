@@ -1,15 +1,15 @@
 import type { BuildState } from '../types'
 
-// The builder as seven steps (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md): one at a time, most important first,
+// The builder as six steps (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md; Start folded into Key facts, L1): one at a
+// time, most important first,
 // each one a short checklist. A step's state is worked out from the campaign as it is now, never stored, so it can't
 // drift: "recheck" means something earlier changed what this step was done against.
 
-export type StepKey = 'start' | 'facts' | 'questions' | 'targets' | 'jobs' | 'words' | 'check'
+export type StepKey = 'facts' | 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 export type StepState = 'done' | 'todo' | 'recheck' | 'busy'
 
 export const STEPS: { key: StepKey; label: string; help: string }[] = [
-  { key: 'start', label: 'Start', help: 'What you gave Mia and what she read.' },
-  { key: 'facts', label: 'Key facts', help: 'Check the facts every later step depends on, and answer what only you know.' },
+  { key: 'facts', label: 'Key facts', help: 'Check the facts every later step depends on, answer what only you know, then Mia makes the plan.' },
   { key: 'questions', label: "Mia's questions", help: 'Mia made the plan. Now she asks what would change it most.' },
   { key: 'targets', label: 'Targets', help: "Your own numbers are set. Keep Mia's estimates or type your own." },
   { key: 'jobs', label: 'Jobs & budget', help: 'What the studio makes, what it costs, and how the money splits.' },
@@ -33,8 +33,16 @@ export function stepStates(s: BuildState): Record<StepKey, StepState> {
   const allWords = jobs.length > 0 && jobs.every((a) => a.final_words)
   const wordsRunning = s.words_run?.status === 'running'
   return {
-    start: s.brief_run?.status === 'running' && !s.brief ? 'busy' : s.brief ? 'done' : 'todo',
-    facts: !plan ? 'todo' : s.plan_from_older_brief ? 'recheck' : brief?.open_questions?.length ? 'todo' : 'done',
+    facts:
+      s.brief_run?.status === 'running' && !s.brief
+        ? 'busy'
+        : !plan
+          ? 'todo'
+          : s.plan_from_older_brief
+            ? 'recheck'
+            : brief?.open_questions?.length
+              ? 'todo'
+              : 'done',
     questions: planRunning ? 'busy' : !plan ? 'todo' : asks.length ? 'todo' : 'done',
     targets: !plan ? 'todo' : recheckTargets ? 'recheck' : toSet.length ? 'todo' : 'done',
     jobs: !plan

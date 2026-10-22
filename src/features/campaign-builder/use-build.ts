@@ -79,6 +79,7 @@ export function useBuild(campaignId: string | undefined) {
     makePlan: () => run('plan', () => api.makePlan(...ids())),
     keepPlan: () => run('keep', () => api.keepPlan(...ids())),
     skipQuestion: (id: string) => run(`skip:${id}`, () => api.skipQuestion(...ids(), id)),
+    confirmBrief: (fields: string[]) => run('confirm', () => api.confirmBrief(...ids(), fields)),
     fillTargets: () => run('fill', () => api.fillTargets(...ids())),
     finalCheck: () => run('check', () => api.finalCheck(...ids())),
     applyChange: (id: string) => run(`apply:${id}`, () => api.applyChange(...ids(), id)),

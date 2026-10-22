@@ -171,17 +171,15 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
   const pageScroll = useRef<HTMLDivElement>(null)
-  // While the campaign is a draft, the page is seven steps; after Approve, the tabs (Studio & launch, Results).
+  // While the campaign is a draft, the page is six steps; after Approve, the tabs (Studio & launch, Results).
   const states = s ? stepStates(s) : null
   const stepKeys = STEPS.map((st) => st.key) as string[]
   const step: StepKey | null =
     s && s.campaign.building && states
       ? stepKeys.includes(tab)
         ? (tab as StepKey)
-        : tab === 'brief'
-          ? s.plan
-            ? 'facts'
-            : 'start'
+        : tab === 'brief' || tab === 'start' // links from before Start folded into Key facts (L1)
+          ? 'facts'
           : currentStep(states)
       : null
   const goStep = (k: StepKey) => {
@@ -401,7 +399,7 @@ function StepView({
     <div className="flex flex-col gap-4">
       <div>
         <p className="paragraph-xs text-tertiary">
-          Step {i + 1} of 7{states[step] === 'recheck' ? ' · something earlier changed, check this again' : ''}
+          Step {i + 1} of {STEPS.length}{states[step] === 'recheck' ? ' · something earlier changed, check this again' : ''}
         </p>
         <h2 className="subheading-lg text-primary">{meta.label}</h2>
         <p className="paragraph-sm text-secondary">{meta.help}</p>
@@ -429,10 +427,10 @@ function StepView({
           )}
         </Card>
       ) : null}
-      {step === 'start' || step === 'facts' ? (
+      {step === 'facts' ? (
         <BriefTab
           key={step}
-          part={step}
+          part="facts"
           state={s}
           kpiGroups={build.kpiGroups}
           busy={build.busy}
@@ -440,6 +438,7 @@ function StepView({
           onRedraft={build.redraft}
           onSkipQuestion={build.skipQuestion}
           onKeepPlan={build.keepPlan}
+          onConfirm={build.confirmBrief}
           onMakePlan={async () => {
             const out = await build.makePlan()
             if (out) onGo('questions')
@@ -470,6 +469,18 @@ function StepView({
           onFillTargets={build.fillTargets}
         />
       )}
+      {step === 'check' ? (
+        // What you gave Mia, what she read, your words and the client's rules: folded context for the last look (L2, L4).
+        <BriefTab
+          part="context"
+          state={s}
+          kpiGroups={build.kpiGroups}
+          busy={build.busy}
+          onSave={build.saveBrief}
+          onRedraft={build.redraft}
+          onMakePlan={build.makePlan}
+        />
+      ) : null}
       {next ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
           <p className="paragraph-xs text-tertiary">

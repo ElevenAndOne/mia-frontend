@@ -263,6 +263,7 @@ export interface BuildState {
     edited_by: string | null
     brief: Brief
     pm_text: string | null
+    drafted?: string[] // fields Mia drafted from the PM's material that they haven't confirmed ("These are right")
     saved_at: string | null
   } | null
   brief_run: BuildRun | null

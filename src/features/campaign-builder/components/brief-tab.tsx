@@ -21,10 +21,12 @@ interface Props {
   ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
-  // The step-by-step page: "start" shows what Mia read; "facts" is the brief to check and its questions.
-  part?: 'start' | 'facts'
+  // The step-by-step page: "facts" is the brief to check, its questions and Make the plan (Start folded in, L1);
+  // "context" is what you gave Mia, what she read, your words and the client rules, folded, on Check & approve (L2, L4).
+  part?: 'facts' | 'context'
   onSkipQuestion?: (id: string) => Promise<unknown>
   onKeepPlan?: () => Promise<unknown>
+  onConfirm?: (fields: string[]) => Promise<unknown>
 }
 
 const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
@@ -67,13 +69,16 @@ const fromDraft = (k: BriefField, v: string): unknown => {
   return v.trim() === '' ? null : v.trim()
 }
 
-export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan }: Props) {
+export { WhereTheyStand }
+
+export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan, onConfirm }: Props) {
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
-  // Detail sections: closed until wanted; the Start step opens what Mia read.
-  const [folds, setFolds] = useState<Set<string>>(() => new Set(part === 'start' ? ['read', 'words'] : []))
-  const shows = (f: string) => !part || (part === 'start' ? ['read', 'words'] : ['stand', 'rules']).includes(f)
+  // Detail sections: closed until wanted (each step opens with only Your turn, L8). Key facts has none; the context of
+  // the brief sits folded on Check & approve.
+  const [folds, setFolds] = useState<Set<string>>(() => new Set())
+  const shows = (f: string) => !part || (part === 'context' && ['read', 'words', 'rules'].includes(f))
 
   if (!state.brief) {
     if (run?.status === 'running') return <RunProgress run={run} what="brief" />
@@ -120,18 +125,53 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         ),
       })
     }
+    // "These are right" (review 21 Oct): what Mia read from your material, shown as hers, before you confirm it, so
+    // every later step treats it as decided knowingly, not as a formality.
+    const drafted = (state.brief?.drafted ?? []) as BriefField[]
+    if (drafted.length && onConfirm) {
+      items.push({
+        key: 'confirm',
+        title: `Check ${drafted.length} fact${drafted.length === 1 ? '' : 's'} Mia read from your material`,
+        detail: 'Mia drafted these. Until you confirm them, she treats them as her reading, not your decision.',
+        openByDefault: true,
+        more: (
+          <ul className="flex flex-col gap-1.5">
+            {drafted.map((f) => (
+              <li key={f} className="flex flex-col paragraph-sm">
+                <span className="label-xs text-secondary">{LABELS[f] ?? f} · Mia's reading</span>
+                <span className="text-primary [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
+              </li>
+            ))}
+          </ul>
+        ),
+        actions: (
+          <>
+            <PrimaryAction loading={busy === 'confirm'} onClick={() => onConfirm(drafted)}>
+              These are right
+            </PrimaryAction>
+            <Button size="sm" onClick={toBrief}>
+              Edit the brief
+            </Button>
+          </>
+        ),
+      })
+    }
+    // Make the plan closes the step, once the questions are answered or skipped (L7).
+    const waiting = qs.length > 0 && !state.plan
     items.push({
       key: 'plan',
       title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
       done: planFresh && !planRunning,
       detail: planRunning
         ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
-        : state.plan_from_older_brief
-          ? 'The budget, dates, channels or goal changed. Update the plan (your targets and answers are kept), or keep it and fix what no longer fits.'
-          : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
+        : waiting
+          ? 'Answer or skip the questions above first: Mia plans from your answers.'
+          : state.plan_from_older_brief
+            ? 'The budget, dates, channels or goal changed. Update the plan (your targets and answers are kept), or keep it and fix what no longer fits.'
+            : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
       actions: planRunning ? null : (
         <>
-          <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running'} onClick={() => onMakePlan()}>
+          <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running' || waiting} onClick={() => onMakePlan()}>
             {state.plan ? 'Update the plan' : 'Make the plan'}
           </PrimaryAction>
           {state.plan_from_older_brief && onKeepPlan ? (
@@ -153,17 +193,21 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       {run?.status === 'failed' ? (
         <RunFailed run={run} what="brief" busy={!!busy} onRetry={() => onRedraft([])} />
       ) : null}
-      {part === 'start' ? (
-        <Card className="flex flex-col gap-2">
-          <h2 className="subheading-md text-primary">What you gave Mia</h2>
+      {part === 'context' ? (
+        <Fold
+          id="fold-gave"
+          title="What you gave Mia"
+          summary={b?.mode === 'brief_and_deck' ? 'your message, and a guide or deck read in full' : 'your message'}
+          open={folds.has('gave')}
+          onToggle={() => toggle('gave')}
+        >
           <p className="paragraph-sm text-primary whitespace-pre-wrap [overflow-wrap:anywhere]">{state.brief?.pm_text || '—'}</p>
-          {b?.mode === 'brief_and_deck' ? <Chip tone="good">Guide or deck read in full</Chip> : null}
           <p className="paragraph-xs text-tertiary">
-            Mia drafted the key facts from this and from what she knows about {state.campaign.client}. Check them in the next step.
+            Mia drafted the key facts from this and from what she knows about {state.campaign.client}.
           </p>
-        </Card>
+        </Fold>
       ) : null}
-      {part !== 'start' && items.length ? <YourTurn items={items} /> : null}
+      {part !== 'context' && items.length ? <YourTurn items={items} /> : null}
       {part === 'facts' && (b?.answered_questions ?? []).some((q) => !q.answer) ? (
         <Card className="flex flex-col gap-1">
           <h3 className="subheading-sm text-primary">Skipped, so Mia decides</h3>
@@ -176,8 +220,8 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           </ul>
         </Card>
       ) : null}
-      {part !== 'start' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} /> : null}
-      {part !== 'start' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
+      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} /> : null}
+      {part !== 'context' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"
         title={`Where ${state.campaign.client} stands on the KPI list`}
@@ -220,6 +264,16 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       ) : null}
     </div>
   )
+}
+
+// One brief field as the PM reads it (money, dates and lists formatted), for "These are right".
+function factText(state: BuildState, b: Brief, f: BriefField): string {
+  const v = b[f as keyof Brief]
+  if (f === 'budget_total') return money(b.budget_total ?? null, state.campaign.currency)
+  if (f === 'start_date' || f === 'end_date') return day(v as string | null)
+  if (f === 'channels_requested') return (b.channels_requested ?? []).map(channelLabel).join(' · ') || '—'
+  if (Array.isArray(v)) return v.join(' · ') || '—'
+  return (v as string) || '—'
 }
 
 function BriefCard({

@@ -20,7 +20,7 @@ export function StepRail({
   const cur = currentStep(states)
   return (
     <nav aria-label="Campaign steps" className="flex flex-col gap-2">
-      <ol className="grid grid-cols-7 gap-1.5">
+      <ol className="grid grid-cols-6 gap-2">
         {STEPS.map((st, i) => {
           const state = states[st.key]
           const open = canOpen(states, st.key)
@@ -35,9 +35,9 @@ export function StepRail({
                 title={!open ? 'Finish the steps before this one first' : state === 'recheck' ? 'Something earlier changed: check this again' : undefined}
                 className="flex w-full flex-col gap-1.5 text-left disabled:cursor-not-allowed"
               >
-                <span className={`h-1.5 w-full rounded-full ${BAR[look]}`} />
+                <span className={`h-2.5 w-full rounded-full ${BAR[look]}`} />
                 <span
-                  className={`hidden @3xl:block truncate paragraph-xs ${
+                  className={`hidden @xl:block truncate paragraph-xs ${
                     st.key === step ? 'text-primary font-semibold' : open ? 'text-secondary' : 'text-quaternary'
                   }`}
                 >
@@ -49,8 +49,8 @@ export function StepRail({
           )
         })}
       </ol>
-      <p className="@3xl:hidden paragraph-xs text-secondary">
-        Step {STEPS.findIndex((st) => st.key === step) + 1} of 7: {STEPS.find((st) => st.key === step)?.label}
+      <p className="@xl:hidden paragraph-xs text-secondary">
+        Step {STEPS.findIndex((st) => st.key === step) + 1} of {STEPS.length}: {STEPS.find((st) => st.key === step)?.label}
       </p>
     </nav>
   )
