@@ -60,7 +60,9 @@ export function openWhatsAppChat(appUrl: string | null | undefined, webUrl: stri
     // incognito tab always asks), which landed on the download page (local test, 22 Oct 2026).
     const query = appUrl.slice('whatsapp://send'.length)
     window.location.href =
-      `intent://send${query}#Intent;scheme=whatsapp;package=com.whatsapp;` +
+      // No package: WhatsApp Business takes the same link, and naming com.whatsapp sent a phone
+      // with only Business straight to the download page.
+      `intent://send${query}#Intent;scheme=whatsapp;` +
       `S.browser_fallback_url=${encodeURIComponent(webUrl)};end`
     return true
   }
