@@ -36,6 +36,7 @@ const LABELS: Record<BriefField, string> = {
   start_date: 'Starts',
   end_date: 'Ends',
   budget_total: 'Budget',
+  budget_monthly: 'Budget a month',
   channels_requested: 'Channels you asked for',
   must_haves: 'Must haves',
   constraints: "Don'ts and limits",
@@ -53,6 +54,7 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   start_date: b.start_date ?? '',
   end_date: b.end_date ?? '',
   budget_total: b.budget_total == null ? '' : String(b.budget_total),
+  budget_monthly: b.budget_monthly == null ? '' : String(b.budget_monthly),
   channels_requested: (b.channels_requested ?? []).join('\n'),
   must_haves: (b.must_haves ?? []).join('\n'),
   constraints: (b.constraints ?? []).join('\n'),
@@ -65,7 +67,7 @@ const fromDraft = (k: BriefField, v: string): unknown => {
   if (LIST_FIELDS.includes(k)) return v.split('\n').map((s) => s.trim()).filter(Boolean)
   // Sent as typed: the server reads "R60k", "60 000" and "1.2m", and refuses what it can't read (live test 20 Oct:
   // "R60k" saved as R60 when this stripped every letter).
-  if (k === 'budget_total') return v.trim() === '' ? null : v.trim()
+  if (k === 'budget_total' || k === 'budget_monthly') return v.trim() === '' ? null : v.trim()
   return v.trim() === '' ? null : v.trim()
 }
 
@@ -152,6 +154,22 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             <Button size="sm" onClick={toBrief}>
               Edit the brief
             </Button>
+          </>
+        ),
+      })
+    }
+    const noBudget = state.blockers.find((x) => x.key === 'budget_total')
+    if (noBudget) {
+      items.push({
+        key: 'budget',
+        title: 'Set the budget',
+        detail: noBudget.what,
+        actions: (
+          <>
+            <Button size="sm" onClick={toBrief}>
+              Edit the brief
+            </Button>
+            <AskMia label="Budget" detail={noBudget.what} />
           </>
         ),
       })
@@ -270,6 +288,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
 function factText(state: BuildState, b: Brief, f: BriefField): string {
   const v = b[f as keyof Brief]
   if (f === 'budget_total') return money(b.budget_total ?? null, state.campaign.currency)
+  if (f === 'budget_monthly') return money(b.budget_monthly ?? null, state.campaign.currency)
   if (f === 'start_date' || f === 'end_date') return day(v as string | null)
   if (f === 'channels_requested') return (b.channels_requested ?? []).map(channelLabel).join(' · ') || '—'
   if (Array.isArray(v)) return v.join(' · ') || '—'
@@ -311,7 +330,10 @@ function BriefCard({
 
   const show = (k: BriefField) => {
     const v = brief[k as keyof Brief]
-    if (k === 'budget_total') return money(brief.budget_total ?? null, state.campaign.currency)
+    if (k === 'budget_total')
+      // A monthly budget's total shows its working, so the number is never a mystery (live test 22 Oct).
+      return money(brief.budget_total ?? null, state.campaign.currency) + (brief.budget_working ? ` · ${brief.budget_working}` : '')
+    if (k === 'budget_monthly') return money(brief.budget_monthly ?? null, state.campaign.currency)
     if (k === 'start_date' || k === 'end_date') return day(v as string | null)
     if (k === 'channels_requested') return brief.channels_requested?.length ? brief.channels_requested.map(channelLabel).join(' · ') : '—'
     if (Array.isArray(v)) return v.length ? v.join(' · ') : '—'
@@ -377,7 +399,7 @@ function BriefCard({
                 <input
                   id={`brief-${k}`}
                   type={k.endsWith('_date') ? 'date' : 'text'}
-                  placeholder={k === 'budget_total' ? 'e.g. 60000 or 60k' : k === 'landing_page' ? 'https://' : undefined}
+                  placeholder={k === 'budget_total' ? 'e.g. 60000 or 60k' : k === 'budget_monthly' ? 'e.g. 5k' : k === 'landing_page' ? 'https://' : undefined}
                   className="rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
                   value={draft[k]}
                   onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}
@@ -389,7 +411,7 @@ function BriefCard({
       ) : (
         // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct).
         <dl className="mt-3 grid grid-cols-2 @3xl:grid-cols-4 gap-x-6 gap-y-3">
-          {(Object.keys(LABELS) as BriefField[]).map((k) => (
+          {(Object.keys(LABELS) as BriefField[]).filter((k) => k !== 'budget_monthly' || brief.budget_monthly != null).map((k) => (
             <div
               key={k}
               className={`min-w-0 ${

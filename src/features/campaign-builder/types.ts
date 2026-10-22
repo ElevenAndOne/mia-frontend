@@ -27,6 +27,9 @@ export interface Brief {
   start_date?: string | null
   end_date?: string | null
   budget_total?: number | null
+  budget_monthly?: number | null // money per month; the total is worked out from the dates
+  budget_working?: string | null // how a monthly budget became the total
+  budget_from_monthly?: boolean
   channels_requested?: string[]
   must_haves?: string[]
   constraints?: string[]
@@ -46,6 +49,7 @@ export type BriefField =
   | 'start_date'
   | 'end_date'
   | 'budget_total'
+  | 'budget_monthly'
   | 'channels_requested'
   | 'must_haves'
   | 'constraints'
