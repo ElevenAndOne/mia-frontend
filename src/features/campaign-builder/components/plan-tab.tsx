@@ -708,8 +708,18 @@ function planTurnItems({
   if (stale.length) {
     wordItems.unshift({
       key: 'stale-words',
-      title: `Rewrite the words for ${stale.length} changed job${stale.length === 1 ? '' : 's'}`,
-      detail: 'These jobs changed after their words were written. Only these are rewritten; your own words stay.',
+      title: `Rewrite the words for ${stale.length} job${stale.length === 1 ? '' : 's'} whose basis changed`,
+      // Says what changed, per job (the job itself, or a fact the words used: the offer, a don't, an answer).
+      detail: 'Only these are rewritten; your own words stay.',
+      more: (
+        <ul className="flex flex-col gap-1">
+          {stale.map((a) => (
+            <li key={a.job_id} className="paragraph-sm text-primary">
+              {a.name} <span className="text-tertiary">· {(a.words_stale_why ?? ['the job changed']).join(', ')}</span>
+            </li>
+          ))}
+        </ul>
+      ),
       actions: (
         <PrimaryAction disabled={busy === 'words'} onClick={() => onWriteWords(stale.map((a) => a.job_id as string), true)}>
           Rewrite {stale.length}

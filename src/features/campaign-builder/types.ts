@@ -72,7 +72,8 @@ export interface CreativeBrief {
 }
 
 export interface PlanAsset {
-  words_stale?: boolean // the job changed after its words were written
+  words_stale?: boolean // the job or a fact its words used changed after they were written
+  words_stale_why?: string[] // e.g. "the offer changed", "the job changed"
   phase: string
   channel: string
   name: string
