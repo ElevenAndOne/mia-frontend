@@ -685,7 +685,8 @@ const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | '
   const [sender, setSender] = useState<string | null>(null)
   // Ready to post on its own tab, oldest first (the order the Friday posts use them in); the
   // other ideas newest first, as they came (22 Oct 2026).
-  const all = (data ?? []).filter((i) => (kind === 'ready' ? isReady(i) : !isReady(i)))
+  // A post waiting for the owner lives on Waiting for you, not here (live test, 22 Oct 2026).
+  const all = (data ?? []).filter((i) => i.status !== 'waiting' && (kind === 'ready' ? isReady(i) : !isReady(i)))
   if (kind === 'ready') all.sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
   // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
   const senders = Array.from(new Set(all.map(itemWho)))
@@ -814,16 +815,20 @@ const WaitingCard = ({ item, onChanged }: { item: PostItem; onChanged: (item: Po
                 )}
                 {open && holding === d.index && (
                   <div className="flex flex-col gap-2">
+                    <label htmlFor={`reason-${item.id}-${d.index}`} className="paragraph-xs text-secondary">
+                      Tell {itemWho(item)} why (optional). They get it on WhatsApp.
+                    </label>
                     <input
                       id={`reason-${item.id}-${d.index}`}
                       value={reason}
+                      autoFocus
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder={`Want to tell ${itemWho(item)} why? (optional)`}
+                      placeholder="e.g. Let's keep the bar photos for the weekend"
                       className="px-2.5 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-primary outline-none focus:border-utility-brand-400"
                     />
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" disabled={busy} onClick={() => decide({ decision: 'not_used', index: d.index, reason: reason.trim() || undefined }, `Held back, ${itemWho(item)} told`)}>
-                        {reason.trim() ? 'Send' : 'Skip and hold back'}
+                      <Button size="sm" variant="primary" disabled={busy} onClick={() => decide({ decision: 'not_used', index: d.index, reason: reason.trim() || undefined }, `Held back, ${itemWho(item)} told`)}>
+                        {reason.trim() ? `Hold back and tell ${itemWho(item)}` : 'Hold back'}
                       </Button>
                       <Button size="sm" variant="ghost" disabled={busy} onClick={() => setHolding(null)}>
                         Back
@@ -1281,7 +1286,6 @@ const PostsView = () => {
                 { value: 'ready', label: 'Ready to post' },
                 { value: 'ideas', label: 'Ideas & moodboard' },
                 ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
-                ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
@@ -1325,7 +1329,14 @@ const PostsView = () => {
           {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} kind="ideas" />}
           {teamOn && tab === 'ready' && <IdeasPanel canManage={canManage} kind="ready" />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
-          {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
+          {/* Next week's posts (the Friday plan) wait for the owner's OK too, so they sit here
+              rather than on a tab that looked like a second Scheduled (Josh, 22 Oct 2026). */}
+          {teamOn && tab === 'waiting' && isOwner && nextOn && (
+            <div className="flex flex-col gap-2 pt-2">
+              <p className="subheading-md text-primary">Next week’s posts</p>
+              <NextWeekPanel />
+            </div>
+          )}
 
         {error && (
           <div className="flex items-center gap-3">
