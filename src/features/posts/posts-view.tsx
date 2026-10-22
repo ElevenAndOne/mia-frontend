@@ -32,6 +32,7 @@ import {
   type WeeklyPlanItem,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
+import { fetchMoodboard, removeMoodboardPicture } from '../workspace/services/posting-rhythm-service'
 import { SwipeReview } from './swipe-review'
 
 /**
@@ -539,6 +540,11 @@ const ITEM_STATE: Record<string, { label: string; cls: string }> = {
 
 const itemWhen = (item: PostItem) => (item.created_at ? fmtWhen(item.created_at) : '')
 const itemWho = (item: PostItem) => item.sender_name || 'A team member'
+// From the shared Mia folder in Google Drive (22 Oct 2026): "Ready to post" pictures are finished
+// work, used first in the Friday posts, so they're labelled and listed first.
+const isReady = (item: PostItem) => item.source === 'folder_ready' && item.status === 'idea'
+const fromFolder = (item: PostItem) => item.source === 'folder' || item.source === 'folder_ready'
+const READY_STATE = { label: 'Ready to post', cls: 'bg-utility-success-100 text-utility-success-700' }
 
 const useItems = (view: 'ideas' | 'waiting', enabled: boolean) => {
   const { sessionId, activeWorkspace } = useSession()
@@ -556,7 +562,7 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
   const { sessionId, activeWorkspace } = useSession()
   const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
-  const state = ITEM_STATE[item.status] ?? ITEM_STATE.idea
+  const state = isReady(item) ? READY_STATE : (ITEM_STATE[item.status] ?? ITEM_STATE.idea)
   const photo = item.photo_urls[0]
   const post = item.posts[0]
   return (
@@ -571,7 +577,7 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
       <div className="p-3 flex flex-col gap-1.5 min-w-0">
         <p className="paragraph-sm font-semibold text-primary truncate">{item.note || 'Photo'}</p>
         <p className="paragraph-xs text-quaternary truncate">
-          {itemWho(item)} · {itemWhen(item)}
+          {itemWho(item)}{fromFolder(item) ? ' · Mia folder' : ''} · {itemWhen(item)}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${state.cls}`}>{state.label}</span>
@@ -608,12 +614,73 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
   )
 }
 
+// The moodboard (22 Oct 2026): pictures from the Mia folder's "Ideas & moodboard". They set the
+// look of pictures Mia draws and are never posted, so they aren't ideas; shown here so the owner
+// can see what steers the look and take one out. Hidden when there are none.
+const MoodboardStrip = () => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const queryClient = useQueryClient()
+  const tenantId = activeWorkspace?.tenant_id
+  const { data } = useQuery({
+    queryKey: ['moodboard', tenantId],
+    queryFn: () => fetchMoodboard(sessionId!, tenantId!),
+    enabled: !!sessionId && !!tenantId,
+    refetchInterval: 60_000,
+  })
+  const [busy, setBusy] = useState<string | null>(null)
+  const pictures = data ?? []
+  if (pictures.length === 0) return null
+  return (
+    <div className="rounded-xl border border-secondary bg-primary p-3 flex flex-col gap-2">
+      <div className="min-w-0">
+        <p className="paragraph-sm font-semibold text-primary">Moodboard</p>
+        <p className="paragraph-xs text-quaternary">
+          From your Mia folder’s Ideas &amp; moodboard. Mia uses these for the look of pictures she draws. They are never posted.
+        </p>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {pictures.map((p) => (
+          <div key={p.id} className="relative shrink-0 w-24">
+            <img src={p.url} alt={p.name ?? 'Moodboard picture'} className="w-24 h-24 rounded-lg object-cover bg-tertiary border border-tertiary" />
+            <button
+              type="button"
+              disabled={busy === p.id}
+              aria-label={`Take ${p.name ?? 'this picture'} off the moodboard`}
+              className="absolute top-1 right-1 px-1.5 py-0.5 rounded-md label-xs font-semibold bg-primary/90 text-secondary border border-secondary hover:bg-tertiary disabled:opacity-50"
+              onClick={() => {
+                if (!sessionId || !tenantId) return
+                setBusy(p.id)
+                removeMoodboardPicture(sessionId, tenantId, p.id)
+                  .then(() => {
+                    showToast('success', 'Taken off the moodboard')
+                    queryClient.setQueryData<typeof pictures>(['moodboard', tenantId], (prev) => prev?.filter((x) => x.id !== p.id) ?? prev)
+                  })
+                  .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+                  .finally(() => setBusy(null))
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
   const [sender, setSender] = useState<string | null>(null)
-  const all = data ?? []
+  // "Ready to post" first, oldest first, the order the Friday posts use them in; the rest as they came.
+  const all = [...(data ?? [])].sort((a, b) => {
+    const ra = isReady(a), rb = isReady(b)
+    if (ra !== rb) return ra ? -1 : 1
+    if (ra && rb) return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+    return 0
+  })
   // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
   const senders = Array.from(new Set(all.map(itemWho)))
   const items = sender ? all.filter((i) => itemWho(i) === sender) : all
@@ -623,6 +690,8 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
   if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the ideas.</p>
   if (items.length === 0)
     return (
+      <div className="flex flex-col gap-3">
+      {canManage && <MoodboardStrip />}
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
         <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
@@ -630,9 +699,11 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
           Say “what did the team send” on WhatsApp to see them there too.
         </p>
       </div>
+      </div>
     )
   return (
     <div className="flex flex-col gap-3">
+      {canManage && <MoodboardStrip />}
       {senders.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
           {[null, ...senders].map((name) => (
@@ -1208,7 +1279,7 @@ const PostsView = () => {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="paragraph-xs text-quaternary">
                 {tab === 'ideas'
-                  ? 'What the team sent Mia on WhatsApp, and anything saved for later.'
+                  ? 'What the team sent Mia on WhatsApp or put in the Mia folder, and anything saved for later.'
                   : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
               </p>
               <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>

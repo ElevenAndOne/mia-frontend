@@ -130,3 +130,30 @@ export const removeCreativeWatch = async (
   })
   if (!res.ok) throw new Error(await detailOf(res, 'Could not stop watching that folder'))
 }
+
+/** A picture from the "Ideas & moodboard" folder: the look for pictures Mia draws, never posted. */
+export interface MoodboardPicture {
+  id: string
+  url: string
+  name: string | null
+  subfolder: string | null
+  added_at: string | null
+}
+
+export const fetchMoodboard = async (sessionId: string, tenantId: string): Promise<MoodboardPicture[]> => {
+  const res = await apiFetch(`/api/tenants/${tenantId}/creative-watches/moodboard`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) throw new Error(await detailOf(res, 'Could not load the moodboard'))
+  const data = (await res.json()) as { pictures: MoodboardPicture[] }
+  return data.pictures
+}
+
+/** Out of the moodboard: it stops steering the look. Their Drive file is untouched. */
+export const removeMoodboardPicture = async (sessionId: string, tenantId: string, id: string): Promise<void> => {
+  const res = await apiFetch(`/api/tenants/${tenantId}/creative-watches/moodboard/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) throw new Error(await detailOf(res, 'Could not remove that picture'))
+}
