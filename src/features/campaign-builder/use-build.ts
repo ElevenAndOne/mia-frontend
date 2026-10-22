@@ -99,6 +99,13 @@ export function useBuild(campaignId: string | undefined) {
       setError(null)
       try {
         await api.discardDraft(...ids())
+        // Every list that shows campaigns re-reads, so a discarded draft is gone without a refresh (a PM's report,
+        // 22 Oct: discarded campaigns stayed on screen until the page was reloaded).
+        queryClient.removeQueries({ queryKey: key })
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['campaign-board'] }),
+          queryClient.invalidateQueries({ queryKey: ['campaign-list'] }),
+        ])
         return true
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not discard the draft')
