@@ -131,7 +131,14 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
       )}
 
       {state && (
-        <div className="flex flex-col gap-2 pt-3 border-t border-tertiary">
+        // Tucked away by default (Josh, 22 Oct 2026): most owners never need them.
+        <details className="pt-3 border-t border-tertiary group">
+          <summary className="paragraph-sm text-secondary cursor-pointer select-none list-none flex items-center justify-between">
+            <span>Staff settings</span>
+            <span className="paragraph-xs text-quaternary group-open:hidden">Show</span>
+            <span className="paragraph-xs text-quaternary hidden group-open:inline">Hide</span>
+          </summary>
+        <div className="flex flex-col gap-2 pt-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="paragraph-sm text-primary">Staff can have Mia write posts</p>
@@ -181,6 +188,7 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
             />
           </div>
         </div>
+        </details>
       )}
 
       {notice && <p className="paragraph-xs text-success-primary">{notice}</p>}
