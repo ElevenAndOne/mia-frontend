@@ -614,40 +614,47 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
   )
 }
 
-// The moodboard (22 Oct 2026): pictures from the Mia folder's "Ideas & moodboard". They set the
-// look of pictures Mia draws and are never posted, so they aren't ideas; shown here so the owner
-// can see what steers the look and take one out. Hidden when there are none.
-const MoodboardStrip = () => {
+// The moodboard (22 Oct 2026): pictures from the Mia folder's "Ideas & moodboard" or sent on
+// WhatsApp "for the moodboard". They set the look of pictures Mia draws and are never posted, so
+// they have their own tab; the owner can see what steers the look and take one out.
+const MoodboardPanel = () => {
   const { sessionId, activeWorkspace } = useSession()
   const { showToast } = useToast()
   const queryClient = useQueryClient()
   const tenantId = activeWorkspace?.tenant_id
-  const { data } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['moodboard', tenantId],
     queryFn: () => fetchMoodboard(sessionId!, tenantId!),
     enabled: !!sessionId && !!tenantId,
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   })
   const [busy, setBusy] = useState<string | null>(null)
   const pictures = data ?? []
-  if (pictures.length === 0) return null
-  return (
-    <div className="rounded-xl border border-secondary bg-primary p-3 flex flex-col gap-2">
-      <div className="min-w-0">
-        <p className="paragraph-sm font-semibold text-primary">Moodboard</p>
-        <p className="paragraph-xs text-quaternary">
-          From your Mia folder’s Ideas &amp; moodboard. Mia uses these for the look of pictures she draws. They are never posted.
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
+  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the moodboard.</p>
+  if (pictures.length === 0)
+    return (
+      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
+        <p className="paragraph-sm font-semibold text-primary">No moodboard yet</p>
+        <p className="paragraph-xs text-quaternary max-w-sm">
+          Put pictures of the look you like in the Mia folder’s Ideas &amp; moodboard, or send them on WhatsApp “for the moodboard”.
         </p>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {pictures.map((p) => (
-          <div key={p.id} className="relative shrink-0 w-24">
-            <img src={p.url} alt={p.name ?? 'Moodboard picture'} className="w-24 h-24 rounded-lg object-cover bg-tertiary border border-tertiary" />
-            <button
-              type="button"
+    )
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {pictures.map((p) => (
+        <div key={p.id} className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col">
+          <img src={p.url} alt={p.name ?? 'Moodboard picture'} className="w-full aspect-square object-cover bg-tertiary" />
+          <div className="p-3 flex items-center justify-between gap-2 min-w-0">
+            <p className="paragraph-xs text-quaternary truncate">
+              {p.subfolder ? 'Mia folder' : 'WhatsApp'}{p.added_at ? ` · ${fmtWhen(p.added_at)}` : ''}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
               disabled={busy === p.id}
-              aria-label={`Take ${p.name ?? 'this picture'} off the moodboard`}
-              className="absolute top-1 right-1 px-1.5 py-0.5 rounded-md label-xs font-semibold bg-primary/90 text-secondary border border-secondary hover:bg-tertiary disabled:opacity-50"
               onClick={() => {
                 if (!sessionId || !tenantId) return
                 setBusy(p.id)
@@ -661,26 +668,23 @@ const MoodboardStrip = () => {
               }}
             >
               Remove
-            </button>
+            </Button>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }
 
-const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
+const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | 'ready' }) => {
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
   const [sender, setSender] = useState<string | null>(null)
-  // "Ready to post" first, oldest first, the order the Friday posts use them in; the rest as they came.
-  const all = [...(data ?? [])].sort((a, b) => {
-    const ra = isReady(a), rb = isReady(b)
-    if (ra !== rb) return ra ? -1 : 1
-    if (ra && rb) return (a.created_at ?? '').localeCompare(b.created_at ?? '')
-    return 0
-  })
+  // Ready to post on its own tab, oldest first (the order the Friday posts use them in); the
+  // other ideas newest first, as they came (22 Oct 2026).
+  const all = (data ?? []).filter((i) => (kind === 'ready' ? isReady(i) : !isReady(i)))
+  if (kind === 'ready') all.sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
   // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
   const senders = Array.from(new Set(all.map(itemWho)))
   const items = sender ? all.filter((i) => itemWho(i) === sender) : all
@@ -691,19 +695,18 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
   if (items.length === 0)
     return (
       <div className="flex flex-col gap-3">
-      {canManage && <MoodboardStrip />}
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
-        <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
+        <p className="paragraph-sm font-semibold text-primary">{kind === 'ready' ? 'Nothing ready to post yet' : 'Nothing saved yet'}</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
-          Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent.
-          Say “what did the team send” on WhatsApp to see them there too.
+          {kind === 'ready'
+            ? 'Put finished pictures in the Mia folder’s Ready to post, or send one on WhatsApp saying it’s ready to post. Mia writes the words and uses them first on Fridays.'
+            : 'Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent. Say “what did the team send” on WhatsApp to see them there too.'}
         </p>
       </div>
       </div>
     )
   return (
     <div className="flex flex-col gap-3">
-      {canManage && <MoodboardStrip />}
       {senders.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
           {[null, ...senders].map((name) => (
@@ -1003,7 +1006,7 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
   )
 }
 
-type PostsTab = 'ideas' | 'waiting' | 'next' | 'scheduled' | 'posted'
+type PostsTab = 'ideas' | 'ready' | 'moodboard' | 'waiting' | 'next' | 'scheduled' | 'posted'
 
 // ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
 // The same week the owner reviews on WhatsApp on Friday; whichever is used first wins.
@@ -1255,18 +1258,23 @@ const PostsView = () => {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 flex flex-col gap-4">
           {teamOn && (
+            <div className="overflow-x-auto -mx-1 px-1">
             <SegmentedControl<PostsTab>
               value={tab}
               onChange={setTab}
               fullWidth
+              className="w-max min-w-full whitespace-nowrap"
               options={[
                 { value: 'ideas', label: 'Ideas' },
+                { value: 'ready', label: 'Ready to post' },
+                ...(canManage ? [{ value: 'moodboard' as const, label: 'Moodboard' }] : []),
                 ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
                 ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
             />
+            </div>
           )}
           {isPostsTab && (
             <p className="paragraph-xs text-quaternary">
@@ -1275,11 +1283,18 @@ const PostsView = () => {
                 : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
             </p>
           )}
+          {teamOn && (tab === 'ready' || tab === 'moodboard') && (
+            <p className="paragraph-xs text-quaternary">
+              {tab === 'ready'
+                ? 'Finished pictures the team is happy with. Mia writes the words and uses these first in your Friday posts. From the Mia folder’s Ready to post, or sent on WhatsApp as ready to post.'
+                : 'The look you want. Mia uses these as style for the pictures she draws for you, and never posts them. From the Mia folder’s Ideas & moodboard, or sent on WhatsApp “for the moodboard”.'}
+            </p>
+          )}
           {teamOn && (tab === 'ideas' || tab === 'waiting') && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="paragraph-xs text-quaternary">
                 {tab === 'ideas'
-                  ? 'What the team sent Mia on WhatsApp or put in the Mia folder, and anything saved for later.'
+                  ? 'Photos and ideas the team sent Mia on WhatsApp or put straight in the Mia folder, and anything saved for later. Mia can use them in your Friday posts.'
                   : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
               </p>
               <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
@@ -1298,7 +1313,9 @@ const PostsView = () => {
               }}
             />
           )}
-          {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
+          {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} kind="ideas" />}
+          {teamOn && tab === 'ready' && <IdeasPanel canManage={canManage} kind="ready" />}
+          {teamOn && tab === 'moodboard' && canManage && <MoodboardPanel />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
           {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
 
