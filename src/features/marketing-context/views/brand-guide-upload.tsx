@@ -9,6 +9,10 @@ interface Props {
   onFileSelect: (file: File) => void
 }
 
+// The formats the backend reads (services/campaign_builder/deck.py), as for campaign guides.
+const GUIDE_TYPES = '.pdf,.pptx,.docx,.md,.markdown,.txt'
+const isGuide = (f: File) => /\.(pdf|pptx|docx|md|markdown|txt)$/i.test(f.name)
+
 export function BrandGuideUpload({ uploadStep, existingFilename, onFileSelect }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -16,7 +20,7 @@ export function BrandGuideUpload({ uploadStep, existingFilename, onFileSelect }:
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault()
       const file = e.dataTransfer.files[0]
-      if (file && file.type === 'application/pdf') {
+      if (file && isGuide(file)) {
         onFileSelect(file)
       }
     },
@@ -50,7 +54,7 @@ export function BrandGuideUpload({ uploadStep, existingFilename, onFileSelect }:
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf"
+        accept={GUIDE_TYPES}
         className="hidden"
         onChange={handleChange}
       />
@@ -65,7 +69,7 @@ export function BrandGuideUpload({ uploadStep, existingFilename, onFileSelect }:
           {existingFilename ? 'Replace brand guide' : 'Upload brand guide'}
         </p>
         <p className="paragraph-sm text-secondary mt-1">
-          Drag and drop a PDF, or click to browse
+          Drag and drop a PDF, PowerPoint, Word, Markdown or text file, or click to browse
         </p>
         {existingFilename && (
           <p className="paragraph-xs text-tertiary mt-2">Current: {existingFilename}</p>

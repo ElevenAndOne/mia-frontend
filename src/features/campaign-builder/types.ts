@@ -117,7 +117,9 @@ export interface KpiTarget {
   suggested_label?: string | null // the starting number as a PM reads it (1.60%, R4.20, 12,000)
   estimate_note?: string | null // a target that is Mia's estimate, accepted by the PM
   suggested_by?: 'mia' | string | null // the starting number is Mia's estimate (not the account's own)
-  recheck?: string | null // set before the budget or dates changed
+  recheck?: string | null // what it was worked from changed (the money, or the dates)
+  recheck_value?: number | null // Mia's working now, when the money moved
+  added_by?: 'rules' | string // a measure Mia added so a phase's paid money is measured
   suggested_kind?: 'estimate' | 'rule_of_thumb' | null
   no_target?: boolean
   missed_twice?: string[]
@@ -206,6 +208,7 @@ export interface ScorePart {
 export interface PlanReview {
   error?: string
   checked_at?: string // Mia's final check, run on the campaign as it stood then
+  stale?: boolean // the plan changed after this check: its notes may no longer apply
   fact_check?: {
     numbers_checked: number
     numbers_supported: number

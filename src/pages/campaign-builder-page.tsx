@@ -256,9 +256,12 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   </Button>
                 ) : null}
                 {step && states ? (
-                  <Button variant="primary" onClick={() => goStep(currentStep(states))}>
-                    Next: {STEPS.find((st) => st.key === currentStep(states))?.label}
-                  </Button>
+                  // Only when you're looking at another step: on the step you're on, it would repeat it (L5).
+                  step !== currentStep(states) ? (
+                    <Button variant="primary" onClick={() => goStep(currentStep(states))}>
+                      Back to {STEPS.find((st) => st.key === currentStep(states))?.label}
+                    </Button>
+                  ) : null
                 ) : (
                   <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
                     Next: {s.next_step.label}

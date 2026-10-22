@@ -252,3 +252,35 @@ export async function fetchResults(sessionId: string, tenantId: string, campaign
 export async function writeDebrief(sessionId: string, tenantId: string, campaignId: string): Promise<{ status: string; reason?: string }> {
   return check(await apiFetch(`${base(tenantId)}/${campaignId}/results/debrief`, { method: 'POST', headers: json(sessionId) }))
 }
+
+// The guide attached to this campaign, and the guides uploaded in Settings it could attach (only an attached one is
+// read as this campaign's guide; 22 Oct).
+export interface GuideOption {
+  id: string
+  filename: string
+  uploaded: string | null
+  campaign_name?: string | null
+  attached_to?: string | null
+}
+export async function fetchGuides(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+): Promise<{ attached: GuideOption | null; available: GuideOption[] }> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/guides`, { headers: { 'X-Session-ID': sessionId } }))
+}
+
+export async function attachGuide(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  guideId: string | null,
+): Promise<{ attached: string | null; run_id: string | null }> {
+  return check(
+    await apiFetch(`${base(tenantId)}/${campaignId}/guide`, {
+      method: 'PUT',
+      headers: json(sessionId),
+      body: JSON.stringify({ guide_id: guideId }),
+    }),
+  )
+}

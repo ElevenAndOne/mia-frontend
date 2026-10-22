@@ -143,7 +143,7 @@ export function CampaignGuidesPage({ sessionId, tenantId, canManage = true }: Pr
       <div className="flex flex-col gap-6">
         <div>
           <h2 className="heading-sm text-primary">Campaign Guides</h2>
-          <p className="paragraph-sm text-secondary mt-1">Extracting campaign data from your PDF...</p>
+          <p className="paragraph-sm text-secondary mt-1">Extracting campaign data from your guide...</p>
         </div>
         <CampaignGuideUpload uploadStep="uploading" onFileSelect={handleFileSelect} />
       </div>
@@ -206,7 +206,7 @@ export function CampaignGuidesPage({ sessionId, tenantId, canManage = true }: Pr
         <h2 className="heading-sm text-primary">Campaign Guides</h2>
         <p className="paragraph-sm text-secondary mt-1">
           {canManage
-            ? 'Upload campaign PDFs to extract objectives, channels, key messages, and events. Multiple active campaigns are supported.'
+            ? 'Upload campaign guides (PDF, PowerPoint, Word, Markdown or text) to extract objectives, channels, key messages, and events. Multiple active campaigns are supported.'
             : 'Campaign guides for this workspace — objectives, channels, key messages, and events.'}
         </p>
       </div>
