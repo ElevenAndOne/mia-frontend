@@ -97,6 +97,7 @@ export interface FinalWords {
   status: 'ready' | 'flagged'
   flags: { where: string; problem: string; fix: string; kind?: string; note?: string }[]
   set_by_pm?: string[]
+  craft?: string[] // the copywriting skills that shaped these words
 }
 
 export interface KpiTarget {

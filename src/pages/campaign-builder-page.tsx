@@ -112,7 +112,7 @@ function NewBuild() {
                 <input
                   type="file"
                   className="sr-only"
-                  accept=".pdf,.pptx,.docx,.txt,.md"
+                  accept=".pdf,.pptx,.docx,.txt,.md,.html,.htm"
                   disabled={reading}
                   onChange={async (e) => {
                     const f = e.target.files?.[0]
