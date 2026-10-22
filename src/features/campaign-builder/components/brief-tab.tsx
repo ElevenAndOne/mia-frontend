@@ -246,7 +246,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           </ul>
         </Card>
       ) : null}
-      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} /> : null}
+      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} /> : null}
       {part !== 'context' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"

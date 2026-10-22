@@ -277,6 +277,8 @@ export interface BuildState {
   words_run: BuildRun | null
   plan: Plan | null
   plan_from_older_brief: boolean
+  // The workspace brand guide every step reads (Settings); null when none is saved (22 Oct)
+  brand_guide?: { file?: string | null; uploaded?: string | null; edited_in_settings?: string[]; fields: number; has_words: boolean } | null
   what_mia_read: WhatMiaRead | null
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
