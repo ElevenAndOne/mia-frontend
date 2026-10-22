@@ -47,6 +47,16 @@ export function openWhatsAppChat(appUrl: string | null | undefined, webUrl: stri
     return true
   }
   if (!appUrl) return false
+  if (/android/i.test(navigator.userAgent || '') && appUrl.startsWith('whatsapp://send')) {
+    // Android: Chrome's own intent link opens the app, or the wa.me page when it isn't there.
+    // Our timer used to jump to wa.me while Chrome was still asking "open WhatsApp?" (an
+    // incognito tab always asks), which landed on the download page (local test, 22 Oct 2026).
+    const query = appUrl.slice('whatsapp://send'.length)
+    window.location.href =
+      `intent://send${query}#Intent;scheme=whatsapp;package=com.whatsapp;` +
+      `S.browser_fallback_url=${encodeURIComponent(webUrl)};end`
+    return true
+  }
   let left = false
   const onHide = () => {
     left = true
