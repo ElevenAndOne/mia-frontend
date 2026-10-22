@@ -1253,13 +1253,28 @@ const PostsView = () => {
   const nextOn = Boolean(weekly?.enabled || weekly?.plan)
   const waitingCount = waitingItems?.length ?? 0
   const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
-  const shown = useMemo(() => {
+  const listed = useMemo(() => {
     if (!posts) return null
     if (!teamOn) return posts
     return tab === 'posted'
       ? posts.filter((p) => p.status === 'published' || p.status === 'canceled')
       : posts.filter((p) => SCHEDULED_STATUSES.includes(p.status))
   }, [posts, teamOn, tab])
+  // Scheduled split by network, one sub-tab each, so it's plain what goes out where (Josh, 22 Oct
+  // 2026). Only the networks that have posts; none when there's just one.
+  const networks = useMemo(() => {
+    if (!listed || tab !== 'scheduled') return []
+    const order = ['facebook', 'instagram', 'linkedin', 'tiktok']
+    const seen = Array.from(new Set(listed.map((p) => p.platform)))
+    return seen.sort((a, b) => (order.indexOf(a) + 99 * Number(order.indexOf(a) < 0)) - (order.indexOf(b) + 99 * Number(order.indexOf(b) < 0)))
+  }, [listed, tab])
+  const [network, setNetwork] = useState<string>('')
+  const activeNetwork: string = (networks as string[]).includes(network) ? network : networks[0] ?? ''
+  const shown = useMemo(() => {
+    if (!listed) return null
+    if (networks.length < 2) return listed
+    return listed.filter((p) => p.platform === activeNetwork)
+  }, [listed, networks, activeNetwork])
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -1283,14 +1298,25 @@ const PostsView = () => {
               fullWidth
               className="w-max min-w-full whitespace-nowrap"
               options={[
-                { value: 'ready', label: 'Ready to post' },
-                { value: 'ideas', label: 'Ideas & moodboard' },
-                ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
+                // Short names, so all five fit a phone without scrolling sideways (Josh, 22 Oct 2026).
+                { value: 'ready', label: 'Ready' },
+                { value: 'ideas', label: 'Ideas' },
+                ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting (${waitingCount})` : 'Waiting' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
             />
             </div>
+          )}
+          {isPostsTab && networks.length > 1 && (
+            <SegmentedControl<string>
+              value={activeNetwork}
+              onChange={setNetwork}
+              options={networks.map((n) => ({
+                value: n,
+                label: `${PLATFORM_LABEL[n] ?? n} (${(listed ?? []).filter((p) => p.platform === n).length})`,
+              }))}
+            />
           )}
           {isPostsTab && (
             <p className="paragraph-xs text-quaternary">
