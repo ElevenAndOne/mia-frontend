@@ -72,45 +72,43 @@ export const CreativeWatchCard = ({
         {isBasic ? (
           <div className="paragraph-sm text-tertiary mt-1 space-y-2">
             <p>
-              Your team drops pictures into a Google Drive folder and Mia uses them for your posts.
+              Your team drops pictures in a Google Drive folder. <span className="text-primary">Ready to post</span> pictures
+              go into your Friday posts first; <span className="text-primary">Ideas &amp; moodboard</span> sets the look of
+              pictures Mia draws.
             </p>
-            <ol className="list-decimal pl-5 space-y-1">
-              <li>
-                In Google Drive, make a folder called <span className="text-primary">Mia</span> with two
-                folders inside: <span className="text-primary">Ideas &amp; moodboard</span> and{' '}
-                <span className="text-primary">Ready to post</span>.
-              </li>
-              <li>
-                {shareWith ? (
-                  <>
-                    Share the Mia folder with{' '}
-                    <span className="text-primary break-all">{shareWith}</span>{' '}
-                    <button
-                      type="button"
-                      className={ghost}
-                      onClick={() => {
-                        navigator.clipboard
-                          ?.writeText(shareWith)
-                          .then(() => setCopied(true))
-                          .catch(() => setCopied(false))
-                      }}
-                    >
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>{' '}
-                    as a Viewer, and add your team as editors so they can upload.
-                  </>
-                ) : (
-                  <>Share the Mia folder as “Anyone with the link”, and add your team as editors so they can upload.</>
-                )}
-              </li>
-              <li>Paste the Mia folder’s link below.</li>
-            </ol>
-            <p>
-              Pictures in <span className="text-primary">Ready to post</span> go into your Friday posts first.
-              Pictures in <span className="text-primary">Ideas &amp; moodboard</span> set the look of pictures
-              Mia draws for you, and are never posted themselves. Mia checks every hour and never changes
-              anything in your Drive.
-            </p>
+            {/* The how-to only matters once (22 Oct 2026): open for a new owner, folded away once a folder is connected. */}
+            <details open={watches.length === 0}>
+              <summary className="paragraph-xs text-quaternary cursor-pointer select-none">How to set up the folder</summary>
+              <ol className="list-decimal pl-5 space-y-1 mt-2 paragraph-xs">
+                <li>
+                  Make a folder called <span className="text-primary">Mia</span> with two folders inside:{' '}
+                  <span className="text-primary">Ideas &amp; moodboard</span> and <span className="text-primary">Ready to post</span>.
+                </li>
+                <li>
+                  {shareWith ? (
+                    <>
+                      Share it with <span className="text-primary break-all">{shareWith}</span>{' '}
+                      <button
+                        type="button"
+                        className={ghost}
+                        onClick={() => {
+                          navigator.clipboard
+                            ?.writeText(shareWith)
+                            .then(() => setCopied(true))
+                            .catch(() => setCopied(false))
+                        }}
+                      >
+                        {copied ? 'Copied' : 'Copy'}
+                      </button>{' '}
+                      (Viewer), and your team as editors.
+                    </>
+                  ) : (
+                    <>Share it as “Anyone with the link”, and your team as editors.</>
+                  )}
+                </li>
+                <li>Paste its link below.</li>
+              </ol>
+            </details>
           </div>
         ) : (
           <p className="paragraph-sm text-tertiary mt-0.5">
