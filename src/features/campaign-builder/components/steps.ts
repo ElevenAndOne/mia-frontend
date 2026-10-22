@@ -40,8 +40,8 @@ export function stepStates(s: BuildState): Record<StepKey, StepState> {
           ? 'todo'
           : s.plan_from_older_brief
             ? 'recheck'
-            : brief?.open_questions?.length
-              ? 'todo'
+            : brief?.open_questions?.length || s.blockers.some((b) => b.key === 'budget_total')
+              ? 'todo' // a paid plan with no budget can't be approved: the budget is a key fact (live test 22 Oct)
               : 'done',
     questions: planRunning ? 'busy' : !plan ? 'todo' : asks.length ? 'todo' : 'done',
     targets: !plan ? 'todo' : recheckTargets ? 'recheck' : toSet.length ? 'todo' : 'done',

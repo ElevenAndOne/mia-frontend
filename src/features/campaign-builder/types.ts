@@ -27,6 +27,9 @@ export interface Brief {
   start_date?: string | null
   end_date?: string | null
   budget_total?: number | null
+  budget_monthly?: number | null // money per month; the total is worked out from the dates
+  budget_working?: string | null // how a monthly budget became the total
+  budget_from_monthly?: boolean
   channels_requested?: string[]
   must_haves?: string[]
   constraints?: string[]
@@ -46,6 +49,7 @@ export type BriefField =
   | 'start_date'
   | 'end_date'
   | 'budget_total'
+  | 'budget_monthly'
   | 'channels_requested'
   | 'must_haves'
   | 'constraints'
@@ -68,7 +72,8 @@ export interface CreativeBrief {
 }
 
 export interface PlanAsset {
-  words_stale?: boolean // the job changed after its words were written
+  words_stale?: boolean // the job or a fact its words used changed after they were written
+  words_stale_why?: string[] // e.g. "the offer changed", "the job changed"
   phase: string
   channel: string
   name: string
@@ -193,6 +198,7 @@ export interface Plan {
     }
     ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
     notes_done?: string[] // self-check notes the PM marked Done
+    not_carried?: string[] // the PM's edits a remade plan had no place for
     answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
