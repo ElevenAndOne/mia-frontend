@@ -724,7 +724,10 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                   <div className="rounded-lg bg-white p-3">
                     <QRCodeSVG value={sayHiUrl} size={132} />
                   </div>
-                  <p className="paragraph-xs text-tertiary">On a computer? Scan this with your phone.</p>
+                  <p className="paragraph-xs text-tertiary">
+                On a computer? Scan this with your phone
+                {waNumber(sayHiUrl) ? `, or send "Hi Mia" to ${waNumber(sayHiUrl)} on WhatsApp` : ''}.
+              </p>
                 </div>
               </div>
             )}
@@ -859,3 +862,12 @@ const Row = ({
 )
 
 export default BasicOnboarding
+
+/** Mia's number from a wa.me link, readable: "+27 60 086 5467". Empty when the link has none. */
+function waNumber(url: string): string {
+  const d = /wa\.me\/(\d{8,15})/.exec(url)?.[1]
+  if (!d) return ''
+  return d.startsWith('27') && d.length === 11
+    ? `+27 ${d.slice(2, 4)} ${d.slice(4, 7)} ${d.slice(7)}`
+    : `+${d}`
+}
