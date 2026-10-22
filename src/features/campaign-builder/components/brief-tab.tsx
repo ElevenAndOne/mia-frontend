@@ -185,7 +185,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         : waiting
           ? 'Answer or skip the questions above first: Mia plans from your answers.'
           : state.plan_from_older_brief
-            ? 'The budget, dates, channels or goal changed. Update the plan (your targets and answers are kept), or keep it and fix what no longer fits.'
+            ? 'The budget, dates, channels or goal changed. Update the plan (everything you decided is kept where it still fits), or keep it and fix what no longer fits.'
             : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
       actions: planRunning ? null : (
         <>

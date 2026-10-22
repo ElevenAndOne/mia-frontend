@@ -36,7 +36,7 @@ interface Props {
 export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // Which of "Your turn" each step holds, and which detail sections it opens.
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
-  questions: (k) => ['older-brief', 'questions', 'answered', 'notes'].includes(k),
+  questions: (k) => ['older-brief', 'not-carried', 'questions', 'answered', 'notes'].includes(k),
   targets: (k) => ['older-brief', 'targets', 'recheck', 'fill-targets'].includes(k),
   jobs: (k) => ['older-brief', 'reprice', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
   words: (k) => ['older-brief', 'words', 'stale-words', 'fix-words', 'fill-in'].includes(k),
@@ -354,7 +354,7 @@ function planTurnItems({
       key: 'older-brief',
       title: 'The budget, dates, channels or goal changed',
       detail:
-        'Update the plan for it (your targets and answers are kept), or keep this plan and fix what no longer fits below.',
+        'Update the plan for it (everything you decided is kept where it still fits), or keep this plan and fix what no longer fits below.',
       actions: (
         <>
           <PrimaryAction loading={busy === 'plan'} onClick={() => onMakePlan()}>
@@ -628,6 +628,33 @@ function planTurnItems({
       key: 'answered',
       title: `${answered.length} answered or skipped`,
       done: true,
+    })
+  }
+  // A remade plan keeps everything the PM decided where it fits; what had no place is listed, not lost (audit 22 Oct).
+  const notCarried = (plan.decisions.not_carried ?? []).filter((x) => !done.has(x))
+  if (notCarried.length) {
+    items.push({
+      key: 'not-carried',
+      title: `${notCarried.length} of your edits didn't fit the new plan`,
+      detail: 'Redo them on the new plan if they still matter, or mark them done.',
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {notCarried.map((x) => (
+            <li key={x} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary">
+              <span className="min-w-0 flex-1">{x}</span>
+              <button
+                type="button"
+                disabled={busy === 'edit'}
+                onClick={() => onEdit([{ op: 'close_note', text: x }])}
+                className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+              >
+                Done
+              </button>
+            </li>
+          ))}
+        </ul>
+      ),
     })
   }
   if (lookAt.length) {

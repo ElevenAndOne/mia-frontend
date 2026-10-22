@@ -197,6 +197,7 @@ export interface Plan {
     }
     ask_pm: { id?: string; question: string; why?: string; [k: string]: unknown }[] | string[]
     notes_done?: string[] // self-check notes the PM marked Done
+    not_carried?: string[] // the PM's edits a remade plan had no place for
     answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
