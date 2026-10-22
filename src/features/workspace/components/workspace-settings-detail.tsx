@@ -912,6 +912,14 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
+              {/* The Mia folder (22 Oct 2026): Basic has no WhatsApp settings tab, so the team's
+                  shared Drive folder sits here, with the team it belongs to. */}
+              {canManage && isBasic && sessionId && (
+                <div className="mt-4">
+                  <CreativeWatchCard sessionId={sessionId} tenantId={workspace.tenant_id} />
+                </div>
+              )}
+
               {/* Workspace Settings - Owner and Admin */}
               {canManage && (
                 <div className={isBasic ? '' : 'mt-8 pt-6 border-t border-tertiary'}>
