@@ -1339,6 +1339,7 @@ const PART_LABELS: Record<string, string> = {
   grounded: 'Numbers come from the data',
   learns: 'Learns from the best campaigns',
   builds_on_best: 'Builds on the best ads',
+  on_brand: 'Fits the brand guide',
   targets: 'Targets vs best results so far',
   ready: 'Ready to make',
 }
