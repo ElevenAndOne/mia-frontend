@@ -1012,8 +1012,11 @@ function Target({
     ) : t.basis === 'budget' ? (
       // What the phase's money buys at the client's past rates (A2); "a ceiling" when spend outscales history.
       <Chip tone="mia">{t.confidence === 'low' ? 'from the budget · a ceiling' : 'from the budget'}</Chip>
+    ) : t.suggested != null ? (
+      // An empty box with Mia's number in it: the same estimate Your turn offers, so the two never disagree.
+      <NeedsYou>Mia suggests {t.suggested_label ?? num(t.suggested)}: keep it or set your own</NeedsYou>
     ) : (
-      <NeedsYou>no basis: you set it</NeedsYou>
+      <NeedsYou>no comparable result: set it</NeedsYou>
     )
   return (
     <div id={`t-${t.key}`} className={`rounded-lg bg-primary px-2 py-1.5 ${missing ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
