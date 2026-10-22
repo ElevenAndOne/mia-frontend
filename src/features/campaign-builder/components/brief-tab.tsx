@@ -1,3 +1,4 @@
+import { CampaignGuide } from './campaign-guide'
 import { ClientRules } from './client-rules'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
@@ -175,6 +176,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           </ul>
         </Card>
       ) : null}
+      {part !== 'start' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} /> : null}
       {part !== 'start' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"
