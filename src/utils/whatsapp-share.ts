@@ -27,8 +27,26 @@ const isPhone = (): boolean =>
  * app doesn't take over within a moment (not installed), the wa.me link is the fallback.
  * Returns true when it handled the tap, so the link's own navigation is skipped.
  */
+/**
+ * The same chat in WhatsApp Web, for a computer: wa.me on a computer without the WhatsApp app
+ * (every Linux machine, most work laptops) stops on WhatsApp's download page (local test,
+ * 22 Oct 2026). web.whatsapp.com/send opens the chat with the message typed once they're logged
+ * in to WhatsApp Web. Null when the link carries no number.
+ */
+export function webChatUrl(waMe: string): string | null {
+  const m = /wa\.me\/(\d{8,15})(?:\?text=([^&#]*))?/.exec(waMe || '')
+  if (!m) return null
+  return `https://web.whatsapp.com/send?phone=${m[1]}${m[2] ? `&text=${m[2]}` : ''}`
+}
+
 export function openWhatsAppChat(appUrl: string | null | undefined, webUrl: string): boolean {
-  if (!appUrl || !isPhone()) return false
+  if (!isPhone()) {
+    const web = webChatUrl(webUrl)
+    if (!web) return false
+    window.open(web, '_blank', 'noopener,noreferrer')
+    return true
+  }
+  if (!appUrl) return false
   let left = false
   const onHide = () => {
     left = true
