@@ -47,7 +47,14 @@ export function openWhatsAppChat(appUrl: string | null | undefined, webUrl: stri
     return true
   }
   if (!appUrl) return false
-  if (/android/i.test(navigator.userAgent || '') && appUrl.startsWith('whatsapp://send')) {
+  if (!/android/i.test(navigator.userAgent || '')) {
+    // iPhone: the app link, and nothing after it. Safari asks "Open in WhatsApp?" and waits for
+    // the tap; the old 1.5 s fallback took them to WhatsApp's download page while it asked
+    // (local test, 22 Oct 2026). wa.me on its own stopped on that page too (18 Oct).
+    window.location.href = appUrl
+    return true
+  }
+  if (appUrl.startsWith('whatsapp://send')) {
     // Android: Chrome's own intent link opens the app, or the wa.me page when it isn't there.
     // Our timer used to jump to wa.me while Chrome was still asking "open WhatsApp?" (an
     // incognito tab always asks), which landed on the download page (local test, 22 Oct 2026).
