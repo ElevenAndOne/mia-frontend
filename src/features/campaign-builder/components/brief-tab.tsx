@@ -5,7 +5,7 @@ import { Button } from '../../../components/button'
 import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
-import { AskMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
+import { AskMia, askMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -107,7 +107,15 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             brief={b!}
             busy={busy}
             running={run?.status === 'running'}
-            onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
+            onAnswer={async (id, answer) => {
+              const ok = await onSave({}, undefined, [{ id, answer }])
+              // One answer path on both tabs (audit 22 Oct): the answer fills the fields it settles (server), then Mia
+              // reads it in context and proposes what else it changes, with Apply.
+              const q = qs.find((x) => x.id === id)
+              if (ok !== undefined && q)
+                askMia({ label: 'Your answer · Key facts', detail: q.question, text: `My answer: ${answer}` })
+              return ok
+            }}
             onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
           />
         ),
@@ -324,6 +332,15 @@ function BriefCard({
     if (Object.keys(changed).length || name) {
       // A failed save keeps the form open with what the PM typed (the error shows above).
       if ((await onSave(changed, name)) === undefined) return
+      // With a plan made, Mia reads the change in context and proposes what it moves in the jobs and words, with
+      // Apply (audit 22 Oct: a new don't or "already made" left the plan as it was). The numbers follow in code.
+      const keys = Object.keys(changed) as BriefField[]
+      if (state.plan && keys.length)
+        askMia({
+          label: 'Brief change',
+          detail: keys.map((k) => LABELS[k]).join(', '),
+          text: `I changed the brief: ${keys.map((k) => `${LABELS[k]} → ${draft[k] || '(empty)'}`).join('; ')}. What does this change in the plan, the jobs or the words?`,
+        })
     }
     setEditing(false)
   }
