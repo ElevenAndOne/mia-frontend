@@ -1288,6 +1288,7 @@ export const WorkspaceSettingsDetail = ({
         onCreateInvite={onCreateInvite}
         onCopyInvite={onCopyInvite}
         onComplete={onCompleteInviteFlow}
+        whatsapp={canManage && staffOn && sessionId ? { sessionId, tenantId: workspace.tenant_id } : null}
       />
 
       <RenameWorkspaceModal

@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { addStaff } from '../services/staff-service'
 import { CheckCircle } from '../../../components/icon/check-circle'
 import { Modal } from '../../overlay'
 import { getRoleDescription } from '../utils/role'
@@ -24,6 +25,9 @@ interface CreateInviteModalProps {
   onCreateInvite: () => void
   onCopyInvite: (inviteLink: string) => void
   onComplete: () => void
+  /** Staff on WhatsApp is on for this workspace: they can also be invited by WhatsApp number,
+   *  with no login (22 Oct 2026: one Invite button for both ways, instead of two places). */
+  whatsapp?: { sessionId: string; tenantId: string } | null
 }
 
 const ROLES_WITH_ADMIN = ['admin', 'analyst', 'viewer']
@@ -48,18 +52,61 @@ export const CreateInviteModal = ({
   onCreateInvite,
   onCopyInvite,
   onComplete,
+  whatsapp = null,
 }: CreateInviteModalProps) => {
+  // WhatsApp number (no login: they send photos and ideas on WhatsApp) or email (they sign in to
+  // the app). Basic starts on WhatsApp, the way most of its teams work.
+  const [viaWhatsApp, setViaWhatsApp] = useState<boolean>(!!whatsapp && isBasic)
+  const [waName, setWaName] = useState('')
+  const [waNumber, setWaNumber] = useState('')
+  const [waDriveEmail, setWaDriveEmail] = useState('')
+  const [waBusy, setWaBusy] = useState(false)
+  const [waError, setWaError] = useState<string | null>(null)
+  const [waDone, setWaDone] = useState<string | null>(null)
+  const byWhatsApp = !!whatsapp && viaWhatsApp
+  const sendWhatsApp = async () => {
+    if (!whatsapp) return
+    setWaBusy(true)
+    setWaError(null)
+    try {
+      const res = await addStaff(whatsapp.sessionId, whatsapp.tenantId, {
+        name: waName.trim(),
+        whatsapp_number: waNumber.trim(),
+        role: inviteRole === 'admin' ? 'admin' : 'viewer',
+        ...(waDriveEmail.trim() ? { drive_email: waDriveEmail.trim() } : {}),
+      })
+      setWaDone(res.message)
+      window.dispatchEvent(new Event('mia:staff-changed'))
+    } catch (err) {
+      setWaError(err instanceof Error ? err.message : 'Could not invite them')
+    } finally {
+      setWaBusy(false)
+    }
+  }
+  const closeWhatsApp = () => {
+    setWaDone(null)
+    setWaName('')
+    setWaNumber('')
+    setWaDriveEmail('')
+    onComplete()
+    onClose()
+  }
   // Admin can only be granted by an owner, and never on a shareable link — a link
   // invite skips the email check when redeemed, so an admin link would hand workspace
   // control to whoever the URL reached. The backend rejects both; this keeps the option
   // from being offered in the first place.
-  const availableRoles = isBasic
-    ? canInviteAdmins
-      ? ['admin', 'viewer']
-      : ['viewer']
-    : canInviteAdmins && !isLinkInvite
-      ? ROLES_WITH_ADMIN
-      : ROLES_WITHOUT_ADMIN
+  const simpleRoles = isBasic || (!!whatsapp && viaWhatsApp)
+  const availableRoles = useMemo(
+    () =>
+      simpleRoles
+        ? canInviteAdmins
+          ? ['admin', 'viewer']
+          : ['viewer']
+        : canInviteAdmins && !isLinkInvite
+          ? ROLES_WITH_ADMIN
+          : ROLES_WITHOUT_ADMIN,
+    [simpleRoles, canInviteAdmins, isLinkInvite],
+  )
   // Basic never offers a shareable link; a stale link mode from state is switched off.
   useEffect(() => {
     if (isBasic && isLinkInvite) onInviteTypeChange(false)
@@ -74,6 +121,7 @@ export const CreateInviteModal = ({
   }, [availableRoles, inviteRole, onInviteRoleChange])
 
   const handleClose = () => {
+    if (waDone) return closeWhatsApp()
     if (createdInviteLink) {
       onComplete()
     }
@@ -88,7 +136,118 @@ export const CreateInviteModal = ({
       size="md"
     >
       <div className="p-6 space-y-4">
-        {!createdInviteLink ? (
+        {whatsapp && !createdInviteLink && !waDone && (
+          <div className="flex gap-2" role="group" aria-label="How they join">
+            {[
+              { v: true, label: 'WhatsApp number' },
+              { v: false, label: 'Email' },
+            ].map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                onClick={() => setViaWhatsApp(o.v)}
+                aria-pressed={viaWhatsApp === o.v}
+                className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
+                  viaWhatsApp === o.v ? 'bg-brand-solid text-primary-onbrand' : 'bg-primary text-secondary border border-secondary'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {byWhatsApp && waDone ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle size={20} />
+              <span className="subheading-md">{waDone}</span>
+            </div>
+            <p className="paragraph-sm text-tertiary">
+              They get a WhatsApp invite and tap Yes to join. After that they can send Mia photos and ideas any time.
+            </p>
+            <button
+              type="button"
+              onClick={closeWhatsApp}
+              className="w-full py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover"
+            >
+              Done
+            </button>
+          </div>
+        ) : byWhatsApp ? (
+          <>
+            <p className="paragraph-sm text-tertiary">
+              No login needed. They send Mia photos and ideas on WhatsApp, and you approve what goes out. You can also add
+              someone by sending Mia their contact card, or typing “add [name] [number]” on WhatsApp.
+            </p>
+            <input
+              id="invite-wa-name"
+              value={waName}
+              onChange={(e) => setWaName(e.target.value)}
+              placeholder="Their first name"
+              className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
+            />
+            <input
+              id="invite-wa-number"
+              value={waNumber}
+              onChange={(e) => setWaNumber(e.target.value)}
+              placeholder="WhatsApp number, e.g. 082 123 4567"
+              inputMode="tel"
+              className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
+            />
+            <div>
+              <input
+                id="invite-wa-drive-email"
+                type="email"
+                value={waDriveEmail}
+                onChange={(e) => setWaDriveEmail(e.target.value)}
+                placeholder="Their Google email (optional)"
+                className="w-full px-4 py-3 border border-secondary rounded-lg paragraph-sm"
+              />
+              <p className="paragraph-xs text-quaternary mt-1">
+                If they’ll add pictures to your Mia folder in Google Drive, so Mia knows which ones are theirs. Leave it empty
+                and Mia asks them on WhatsApp.
+              </p>
+            </div>
+            <fieldset>
+              <legend className="block subheading-md text-secondary mb-2">What can they do?</legend>
+              <div className="grid gap-2 grid-cols-1" role="group">
+                {availableRoles.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => onInviteRoleChange(role)}
+                    aria-pressed={inviteRole === role}
+                    className={`py-2 px-3 rounded-lg subheading-md transition-colors text-left ${
+                      inviteRole === role
+                        ? 'bg-brand-solid text-primary-onbrand'
+                        : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
+                    }`}
+                  >
+                    {getRoleDescription(role, true)}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {waError && <p className="paragraph-xs text-error">{waError}</p>}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex-1 py-2 px-4 border border-secondary rounded-lg subheading-md text-secondary hover:bg-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendWhatsApp()}
+                disabled={waBusy || !waName.trim() || !waNumber.trim()}
+                className="flex-1 py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {waBusy ? 'Inviting…' : 'Invite on WhatsApp'}
+              </button>
+            </div>
+          </>
+        ) : !createdInviteLink ? (
           <>
             <div className={`flex gap-2 ${isBasic ? 'hidden' : ''}`} role="group" aria-label="Invite type">
               <button

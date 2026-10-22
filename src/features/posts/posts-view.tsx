@@ -615,63 +615,64 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
 }
 
 // The moodboard (22 Oct 2026): pictures from the Mia folder's "Ideas & moodboard" or sent on
-// WhatsApp "for the moodboard". They set the look of pictures Mia draws and are never posted, so
-// they have their own tab; the owner can see what steers the look and take one out.
-const MoodboardPanel = () => {
+// WhatsApp "for the moodboard". They set the look of pictures Mia draws and are never posted;
+// they share the Ideas & moodboard tab with the team's ideas, the way they share the Drive folder.
+type MoodboardPic = Awaited<ReturnType<typeof fetchMoodboard>>[number]
+
+const useMoodboard = (enabled: boolean) => {
   const { sessionId, activeWorkspace } = useSession()
-  const { showToast } = useToast()
-  const queryClient = useQueryClient()
   const tenantId = activeWorkspace?.tenant_id
-  const { data, isLoading, error } = useQuery({
+  return useQuery({
     queryKey: ['moodboard', tenantId],
     queryFn: () => fetchMoodboard(sessionId!, tenantId!),
-    enabled: !!sessionId && !!tenantId,
+    enabled: enabled && !!sessionId && !!tenantId,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   })
-  const [busy, setBusy] = useState<string | null>(null)
-  const pictures = data ?? []
-  if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
-  if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the moodboard.</p>
-  if (pictures.length === 0)
-    return (
-      <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
-        <p className="paragraph-sm font-semibold text-primary">No moodboard yet</p>
-        <p className="paragraph-xs text-quaternary max-w-sm">
-          Put pictures of the look you like in the Mia folder’s Ideas &amp; moodboard, or send them on WhatsApp “for the moodboard”.
-        </p>
-      </div>
-    )
+}
+
+const MoodboardCard = ({ pic, canManage }: { pic: MoodboardPic; canManage: boolean }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const tenantId = activeWorkspace?.tenant_id
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {pictures.map((p) => (
-        <div key={p.id} className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col">
-          <img src={p.url} alt={p.name ?? 'Moodboard picture'} className="w-full aspect-square object-cover bg-tertiary" />
-          <div className="p-3 flex items-center justify-between gap-2 min-w-0">
-            <p className="paragraph-xs text-quaternary truncate">
-              {p.subfolder ? 'Mia folder' : 'WhatsApp'}{p.added_at ? ` · ${fmtWhen(p.added_at)}` : ''}
-            </p>
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col">
+      <img src={pic.url} alt={pic.name ?? 'Moodboard picture'} className="w-full aspect-square object-cover bg-tertiary" />
+      <div className="p-3 flex flex-col gap-1.5 min-w-0">
+        <p className="paragraph-sm font-semibold text-primary truncate">{pic.name || 'Moodboard picture'}</p>
+        <p className="paragraph-xs text-quaternary truncate">
+          {pic.subfolder ? 'Mia folder' : 'WhatsApp'}{pic.added_at ? ` · ${fmtWhen(pic.added_at)}` : ''}
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex px-2 py-0.5 rounded-full label-xs font-semibold bg-utility-purple-100 text-utility-purple-700">
+            Moodboard · style only
+          </span>
+        </div>
+        {canManage && (
+          <div className="pt-1">
             <Button
               size="sm"
               variant="ghost"
-              disabled={busy === p.id}
+              disabled={busy}
               onClick={() => {
                 if (!sessionId || !tenantId) return
-                setBusy(p.id)
-                removeMoodboardPicture(sessionId, tenantId, p.id)
+                setBusy(true)
+                removeMoodboardPicture(sessionId, tenantId, pic.id)
                   .then(() => {
                     showToast('success', 'Taken off the moodboard')
-                    queryClient.setQueryData<typeof pictures>(['moodboard', tenantId], (prev) => prev?.filter((x) => x.id !== p.id) ?? prev)
+                    queryClient.setQueryData<MoodboardPic[]>(['moodboard', tenantId], (prev) => prev?.filter((x) => x.id !== pic.id) ?? prev)
                   })
                   .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
-                  .finally(() => setBusy(null))
+                  .finally(() => setBusy(false))
               }}
             >
-              Remove
+              Remove from moodboard
             </Button>
           </div>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
   )
 }
@@ -680,6 +681,7 @@ const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | '
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
+  const { data: moodData } = useMoodboard(kind === 'ideas' && canManage)
   const [sender, setSender] = useState<string | null>(null)
   // Ready to post on its own tab, oldest first (the order the Friday posts use them in); the
   // other ideas newest first, as they came (22 Oct 2026).
@@ -690,17 +692,24 @@ const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | '
   const items = sender ? all.filter((i) => itemWho(i) === sender) : all
   const onDropped = (id: string) =>
     queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'ideas'], (prev) => prev?.filter((i) => i.id !== id) ?? prev)
+  const mood = kind === 'ideas' && !sender ? (moodData ?? []) : []
+  // One grid, newest first, like the Drive folder it mirrors: ideas and moodboard pictures together.
+  const grid: Array<{ at: string; idea?: PostItem; pic?: MoodboardPic }> = [
+    ...items.map((i) => ({ at: i.created_at ?? '', idea: i })),
+    ...mood.map((m) => ({ at: m.added_at ?? '', pic: m })),
+  ]
+  if (kind === 'ideas') grid.sort((a, b) => b.at.localeCompare(a.at))
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
   if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the ideas.</p>
-  if (items.length === 0)
+  if (grid.length === 0)
     return (
       <div className="flex flex-col gap-3">
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
-        <p className="paragraph-sm font-semibold text-primary">{kind === 'ready' ? 'Nothing ready to post yet' : 'Nothing saved yet'}</p>
+        <p className="paragraph-sm font-semibold text-primary">{kind === 'ready' ? 'Nothing ready to post yet' : 'No ideas or moodboard pictures yet'}</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
           {kind === 'ready'
             ? 'Put finished pictures in the Mia folder’s Ready to post, or send one on WhatsApp saying it’s ready to post. Mia writes the words and uses them first on Fridays.'
-            : 'Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent. Say “what did the team send” on WhatsApp to see them there too.'}
+            : 'Photos and notes the team sends Mia on WhatsApp land here, and so do pictures in the Mia folder’s Ideas & moodboard. On WhatsApp, saying “for the moodboard” with a photo makes it a style picture.'}
         </p>
       </div>
       </div>
@@ -724,9 +733,13 @@ const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | '
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {items.map((item) => (
-          <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
-        ))}
+        {grid.map((g) =>
+          g.idea ? (
+            <IdeaCard key={g.idea.id} item={g.idea} canManage={canManage} onDropped={onDropped} />
+          ) : g.pic ? (
+            <MoodboardCard key={`m-${g.pic.id}`} pic={g.pic} canManage={canManage} />
+          ) : null,
+        )}
       </div>
     </div>
   )
@@ -1006,7 +1019,7 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
   )
 }
 
-type PostsTab = 'ideas' | 'ready' | 'moodboard' | 'waiting' | 'next' | 'scheduled' | 'posted'
+type PostsTab = 'ideas' | 'ready' | 'waiting' | 'next' | 'scheduled' | 'posted'
 
 // ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
 // The same week the owner reviews on WhatsApp on Friday; whichever is used first wins.
@@ -1265,9 +1278,8 @@ const PostsView = () => {
               fullWidth
               className="w-max min-w-full whitespace-nowrap"
               options={[
-                { value: 'ideas', label: 'Ideas' },
                 { value: 'ready', label: 'Ready to post' },
-                ...(canManage ? [{ value: 'moodboard' as const, label: 'Moodboard' }] : []),
+                { value: 'ideas', label: 'Ideas & moodboard' },
                 ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
                 ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
@@ -1283,24 +1295,21 @@ const PostsView = () => {
                 : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
             </p>
           )}
-          {teamOn && (tab === 'ready' || tab === 'moodboard') && (
-            <p className="paragraph-xs text-quaternary">
-              {tab === 'ready'
-                ? 'Finished pictures the team is happy with. Mia writes the words and uses these first in your Friday posts. From the Mia folder’s Ready to post, or sent on WhatsApp as ready to post.'
-                : 'The look you want. Mia uses these as style for the pictures she draws for you, and never posts them. From the Mia folder’s Ideas & moodboard, or sent on WhatsApp “for the moodboard”.'}
-            </p>
-          )}
-          {teamOn && (tab === 'ideas' || tab === 'waiting') && (
+          {teamOn && (tab === 'ready' || tab === 'ideas' || tab === 'waiting') && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="paragraph-xs text-quaternary">
-                {tab === 'ideas'
-                  ? 'Photos and ideas the team sent Mia on WhatsApp or put straight in the Mia folder, and anything saved for later. Mia can use them in your Friday posts.'
-                  : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
+                {tab === 'ready'
+                  ? 'Finished pictures the team is happy with. Mia writes the words and uses these first in your Friday posts. Same as the Mia folder’s Ready to post.'
+                  : tab === 'ideas'
+                    ? 'Photos, notes and the look you like. Mia uses ideas when there’s nothing ready to post, and the moodboard for the look of pictures she draws (moodboard pictures are never posted). Same as the Mia folder’s Ideas & moodboard.'
+                    : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
               </p>
-              <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
-                <UploadCloud01 size={14} />
-                Send a design for approval
-              </Button>
+              {tab === 'ready' && !canManage && (
+                <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
+                  <UploadCloud01 size={14} />
+                  Send a finished design for approval
+                </Button>
+              )}
             </div>
           )}
           {sendingDesign && (
@@ -1315,7 +1324,6 @@ const PostsView = () => {
           )}
           {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} kind="ideas" />}
           {teamOn && tab === 'ready' && <IdeasPanel canManage={canManage} kind="ready" />}
-          {teamOn && tab === 'moodboard' && canManage && <MoodboardPanel />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
           {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
 
