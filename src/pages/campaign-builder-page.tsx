@@ -28,6 +28,21 @@ const TABS = [
   { key: 'results', label: 'Results' },
 ] as const
 
+// The server's limit on the documents' text (StartRequest.deck_text), and what the brief reads of it (brief.py).
+const MAX_SOURCE_CHARS = 200_000
+const BRIEF_READS_CHARS = 60_000
+
+// The documents as the one text the server reads. One file reads exactly as before; several are each opened by the
+// line services/campaign_builder/deck.py FILE_MARK looks for, so every later step keeps a share of each one.
+function sourceText(files: DeckRead[], pasted: string): string {
+  const paste = pasted.trim()
+  if (files.length < 2) {
+    return [files[0] ? `${files[0].filename}\n\n${files[0].text}` : '', paste].filter(Boolean).join('\n\n')
+  }
+  const docs = [...files.map((f) => ({ name: f.filename, text: f.text })), ...(paste ? [{ name: 'Pasted text', text: paste }] : [])]
+  return docs.map((d, i) => `===== File ${i + 1} of ${docs.length}: ${d.name} =====\n\n${d.text}`).join('\n\n')
+}
+
 const CampaignBuilderPage = () => {
   const { campaignId } = useParams()
   return campaignId ? <BuildPage campaignId={campaignId} /> : <NewBuild />
@@ -39,17 +54,36 @@ function NewBuild() {
   const [text, setText] = useState('')
   const [deck, setDeck] = useState('')
   const [showDeck, setShowDeck] = useState(false)
-  const [file, setFile] = useState<DeckRead | null>(null)
-  const [reading, setReading] = useState(false)
+  const [files, setFiles] = useState<DeckRead[]>([])
+  const [reading, setReading] = useState<string | null>(null) // the file being read now
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const deckText = sourceText(files, deck)
+  const tooLong = deckText.length > MAX_SOURCE_CHARS
+
+  const addFiles = async (picked: File[]) => {
+    if (!sessionId || !activeWorkspace) return
+    setError(null)
+    const failed: string[] = []
+    // One at a time: a PDF of pictures is transcribed by Claude and takes a minute; one that fails keeps the others
+    for (const f of picked) {
+      setReading(f.name)
+      try {
+        const read = await readDeck(sessionId, activeWorkspace.tenant_id, f)
+        setFiles((have) => (have.some((h) => h.filename === read.filename && h.chars === read.chars) ? have : [...have, read]))
+      } catch (err) {
+        failed.push(`${f.name}: ${err instanceof Error ? err.message : 'could not be read'}`)
+      }
+    }
+    setReading(null)
+    if (failed.length) setError(failed.join(' · '))
+  }
 
   const start = async () => {
     if (!sessionId || !activeWorkspace) return
     setBusy(true)
     setError(null)
     try {
-      const deckText = [file ? `${file.filename}\n\n${file.text}` : '', deck.trim()].filter(Boolean).join('\n\n')
       const { campaign_id } = await startBuild(sessionId, activeWorkspace.tenant_id, {
         pm_text: text.trim() || 'Build the campaign from the attached deck.',
         deck_text: deckText || undefined,
@@ -73,7 +107,7 @@ function NewBuild() {
           className="mx-auto flex max-w-2xl flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
-            if (text.trim() || file) start()
+            if ((text.trim() || files.length) && !tooLong) start()
           }}
         >
           <div>
@@ -96,43 +130,56 @@ function NewBuild() {
             onChange={(e) => setText(e.target.value)}
           />
           <div className="flex flex-col gap-1">
-            {file ? (
-              <span className="flex flex-wrap items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary">
-                📎 {file.filename}
+            {files.map((f, i) => (
+              <span
+                key={`${f.filename}-${f.chars}`}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
+              >
+                📎 {f.filename}
                 <span className="paragraph-xs text-tertiary">
-                  {file.pages ? `${file.pages} pages · ` : ''}
-                  {file.how === 'text' ? 'read' : file.how} · {file.chars.toLocaleString()} characters
-                  {file.note ? ` · ${file.note}` : ''}
+                  {f.pages ? `${f.pages} pages · ` : ''}
+                  {f.how === 'text' ? 'read' : f.how} · {f.chars.toLocaleString()} characters
+                  {f.note ? ` · ${f.note}` : ''}
                 </span>
-                <button type="button" className="ml-auto paragraph-xs text-tertiary underline" onClick={() => setFile(null)}>
+                <button
+                  type="button"
+                  className="ml-auto paragraph-xs text-tertiary underline"
+                  onClick={() => setFiles((have) => have.filter((_, j) => j !== i))}
+                >
                   Remove
                 </button>
               </span>
-            ) : (
-              <label className="self-start cursor-pointer paragraph-sm text-secondary underline">
-                {reading ? 'Reading the deck… (slides that are pictures take a minute)' : "Add the client's deck or brief (PDF, PowerPoint or Word)"}
-                <input
-                  type="file"
-                  className="sr-only"
-                  accept=".pdf,.pptx,.docx,.txt,.md,.html,.htm"
-                  disabled={reading}
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0]
-                    e.target.value = ''
-                    if (!f || !sessionId || !activeWorkspace) return
-                    setReading(true)
-                    setError(null)
-                    try {
-                      setFile(await readDeck(sessionId, activeWorkspace.tenant_id, f))
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : 'Could not read that file')
-                    } finally {
-                      setReading(false)
-                    }
-                  }}
-                />
-              </label>
-            )}
+            ))}
+            <label className="self-start cursor-pointer paragraph-sm text-secondary underline">
+              {reading
+                ? `Reading ${reading}… (slides that are pictures take a minute)`
+                : files.length
+                  ? 'Add another document'
+                  : "Add the client's deck or brief (PDF, PowerPoint, Word or Markdown); you can add several"}
+              <input
+                type="file"
+                multiple
+                className="sr-only"
+                accept=".pdf,.pptx,.docx,.txt,.md,.html,.htm"
+                disabled={!!reading}
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? [])
+                  e.target.value = ''
+                  if (picked.length) addFiles(picked)
+                }}
+              />
+            </label>
+            {files.length > 1 && !tooLong && deckText.length > BRIEF_READS_CHARS ? (
+              <p className="paragraph-xs text-tertiary">
+                Together these are long, so Mia reads each one in part (every document gets its share; none is left out).
+              </p>
+            ) : null}
+            {tooLong ? (
+              <p className="paragraph-xs text-error">
+                Together these are {deckText.length.toLocaleString()} characters; the most Mia takes in at once is{' '}
+                {MAX_SOURCE_CHARS.toLocaleString()}. Remove a document, or paste only the parts that matter.
+              </p>
+            ) : null}
           </div>
           {showDeck ? (
             <label className="flex flex-col gap-1">
@@ -152,7 +199,7 @@ function NewBuild() {
           )}
           {error ? <p className="paragraph-sm text-error">{error}</p> : null}
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" loading={busy} disabled={(!text.trim() && !file) || reading}>
+            <Button type="submit" variant="primary" loading={busy} disabled={(!text.trim() && !files.length) || !!reading || tooLong}>
               Start the brief
             </Button>
           </div>
