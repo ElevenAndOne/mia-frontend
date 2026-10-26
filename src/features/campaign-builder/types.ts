@@ -375,6 +375,7 @@ export interface StudioState {
   sent_at?: string | null
   senders: string[]
   you: string | null
+  flex_down?: boolean // Flex didn't answer: said as that, never as "nobody can send" (review 22 Oct, 4.5)
 }
 
 // The campaigns board (plan §8.1).

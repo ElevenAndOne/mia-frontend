@@ -114,7 +114,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
         value={sender}
         onChange={(e) => setSender(e.target.value)}
       >
-        <option value="">Pick a Flex account</option>
+        <option value="">{s.flex_down ? 'Flex isn’t answering: try again soon' : 'Pick a Flex account'}</option>
         {s.senders.map((e) => (
           <option key={e} value={e}>
             {e}
@@ -360,7 +360,12 @@ function Row({
               disabled={disabled}
               onChange={(e) => setC(e.target.value)}
               onBlur={() => {
+                // numbers only, never below zero (review 22 Oct, 5.3: letters cleared the credits, negatives passed)
                 const v = c.trim() === '' ? null : Number(c)
+                if (v != null && (!Number.isFinite(v) || v < 0)) {
+                  setC(j.credits == null ? '' : String(j.credits))
+                  return
+                }
                 if (v !== j.credits) onChange({ credits: v })
               }}
             />

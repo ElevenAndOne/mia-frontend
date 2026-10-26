@@ -152,18 +152,29 @@ export function CampaignChat({
     [sessionId, conversationId, campaignId, user?.google_user_id, activeWorkspace?.tenant_id],
   )
 
-  // "Ask Mia" on the page: send straight away with the item pinned (no typing needed).
+  // "Ask Mia" on the page: send straight away with the item pinned (no typing needed). One sent while Mia is still
+  // replying waits its turn and goes when she's done (review 22 Oct, 5.1: it was dropped, so an answer saved on the
+  // page never got its "what else this changes" card).
   const loadingRef = useRef(false)
   loadingRef.current = loading
+  const queued = useRef<AskFocus[]>([])
   useEffect(() => {
     const on = (e: Event) => {
-      if (loadingRef.current) return
       const focus = (e as CustomEvent<AskFocus>).detail
+      if (loadingRef.current) {
+        queued.current.push(focus)
+        return
+      }
       void send(focus.text ?? DEFAULT_ASK, { label: focus.label, detail: focus.detail })
     }
     window.addEventListener(ASK_EVENT, on)
     return () => window.removeEventListener(ASK_EVENT, on)
   }, [send])
+  useEffect(() => {
+    if (loading) return
+    const next = queued.current.shift()
+    if (next) void send(next.text ?? DEFAULT_ASK, { label: next.label, detail: next.detail })
+  }, [loading, send])
 
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-secondary bg-primary" aria-label="Chat with Mia about this campaign">

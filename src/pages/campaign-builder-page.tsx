@@ -10,6 +10,7 @@ import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab, type PlanPart } from '../features/campaign-builder/components/plan-tab'
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
 import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
+import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
@@ -167,6 +168,12 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const s = build.state
   const go = (t: string) => navigate(`/campaign-builder/${campaignId}/${t}`)
   const [chatOpen, setChatOpen] = useState(false) // phones and narrow windows; always shown on wide screens
+  // Ask Mia on a narrow screen opens the chat, so her reply and its cards are seen (review 22 Oct, 5.2)
+  useEffect(() => {
+    const open = () => setChatOpen(true)
+    window.addEventListener(ASK_EVENT, open)
+    return () => window.removeEventListener(ASK_EVENT, open)
+  }, [])
   const [flash, setFlash] = useState<string | null>(null)
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
@@ -237,7 +244,9 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button className="lg:hidden" onClick={() => setChatOpen(true)}>
-                  Chat with Mia
+                  {s.pending?.length
+                    ? `Mia's ${s.pending.length} change${s.pending.length === 1 ? '' : 's'} to apply`
+                    : 'Chat with Mia'}
                 </Button>
                 {s.campaign.building ? (
                   <Button
