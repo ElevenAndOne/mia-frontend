@@ -29,12 +29,14 @@ export function KpiPicker({
   onPick,
   onClose,
   busy,
+  error = null,
 }: {
   groups: KpiGroup[]
   taken: Set<string>
   onPick: (key: string) => void
   onClose: () => void
   busy: boolean
+  error?: string | null
 }) {
   const [q, setQ] = useState('')
   const shown = useMemo(() => {
@@ -64,7 +66,11 @@ export function KpiPicker({
         </button>
       </div>
       <div className="max-h-72 overflow-y-auto flex flex-col gap-2">
-        {groups.length === 0 ? <p className="paragraph-xs text-tertiary px-1">Loading the KPI list…</p> : null}
+        {groups.length === 0 ? (
+          <p className={`paragraph-xs px-1 ${error ? 'text-error' : 'text-tertiary'}`}>
+            {error ? `The KPI list couldn’t be read (${error}). Mia tries again in a moment.` : 'Loading the KPI list…'}
+          </p>
+        ) : null}
         {shown.map((g) => (
           <div key={g.family}>
             <p className="label-xs text-tertiary px-1">{g.label}</p>

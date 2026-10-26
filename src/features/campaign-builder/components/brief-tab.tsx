@@ -317,18 +317,26 @@ function BriefCard({
   const [editing, setEditing] = useState(false)
   const initial = useMemo(() => toDraft(brief, state.campaign.name), [brief, state.campaign.name])
   const [draft, setDraft] = useState(initial)
+  // What the form showed when Edit was pressed: Save sends only what the PM changed from that, so a change that landed
+  // while the form was open (a chat card, an answer) is never put back (review 26 Oct)
+  const [base, setBase] = useState(initial)
   useEffect(() => {
     if (!editing) setDraft(initial)
   }, [initial, editing])
+  const startEditing = () => {
+    setBase(initial)
+    setDraft(initial)
+    setEditing(true)
+  }
   const setByPm = new Set(brief.set_by_pm ?? [])
   const locked = !state.campaign.building
 
   const save = async () => {
     const changed: Partial<Record<BriefField, unknown>> = {}
     ;(Object.keys(LABELS) as BriefField[]).forEach((k) => {
-      if (draft[k] !== initial[k]) changed[k] = fromDraft(k, draft[k])
+      if (draft[k] !== base[k]) changed[k] = fromDraft(k, draft[k])
     })
-    const name = draft.name !== initial.name ? draft.name : undefined
+    const name = draft.name !== base.name ? draft.name : undefined
     if (Object.keys(changed).length || name) {
       // A failed save keeps the form open with what the PM typed (the error shows above).
       if ((await onSave(changed, name)) === undefined) return
@@ -375,7 +383,7 @@ function BriefCard({
               </Button>
             </>
           ) : (
-            <Button size="sm" onClick={() => setEditing(true)}>
+            <Button size="sm" onClick={startEditing}>
               Edit
             </Button>
           )}

@@ -216,6 +216,12 @@ export interface PlanReview {
   error?: string
   checked_at?: string // Mia's final check, run on the campaign as it stood then
   stale?: boolean // the plan changed after this check: its notes may no longer apply
+  // The close reading (26 Oct): every job's brief and words against what was decided, and the PM's chat messages
+  audit?: {
+    error?: string
+    jobs?: { job: string; where: string; decision: string; how: string }[]
+    chat?: { said: string; missing: string }[]
+  }
   fact_check?: {
     numbers_checked: number
     numbers_supported: number
@@ -312,12 +318,13 @@ export type PlanOp =
   | { op: 'add_kpi'; phase: string; kpi_key: string }
   | { op: 'remove_kpi'; key: string }
   | { op: 'shift_dates'; days: number }
-  | { op: 'update_words'; index: number; where: string; value: string }
-  | { op: 'update_asset'; index: number; fields: Partial<Omit<PlanAsset, 'credits'>> & { credits?: number | string | null } }
-  | { op: 'remove_asset'; index: number }
+  // job_id names the job (review 26 Oct: by place alone, two quick removes could hit the wrong one); index is the fallback
+  | { op: 'update_words'; index: number; job_id?: string; where: string; value: string }
+  | { op: 'update_asset'; index: number; job_id?: string; fields: Partial<Omit<PlanAsset, 'credits'>> & { credits?: number | string | null } }
+  | { op: 'remove_asset'; index: number; job_id?: string }
   | { op: 'set_budget'; phase: string; value: number | string | null }
   | { op: 'set_channel_budget'; phase: string; channel: string; value: number | string | null }
-  | { op: 'accept_words'; index: number }
+  | { op: 'accept_words'; index: number; job_id?: string }
   | { op: 'answer_question'; id: string; answer: string | null }
 
 // One paid channel's money inside a phase (A2): from the client's own history, a test share, or the PM's.
@@ -419,7 +426,8 @@ export interface LaunchJob {
   creative?: string | null
   final_url?: string | null
   launch_date?: string | null
-  launch: { launched_at?: string; how?: string; link?: string | null; launched_by?: string }
+  // unsure: posts Mia couldn't confirm Facebook or Instagram took (the PM checks the Page, review 26 Oct)
+  launch: { launched_at?: string; how?: string; link?: string | null; launched_by?: string; unsure?: string[]; link_note?: string }
   flex_url?: string | null
 }
 
@@ -429,6 +437,7 @@ export interface LaunchState {
   counts: Record<string, number>
   live: boolean
   approved: boolean
+  tag?: string | null // the campaign's tag: in every link Mia tracks, and what results read (26 Oct)
 }
 
 // The Results tab's frame (the actuals come from the campaign tracker).

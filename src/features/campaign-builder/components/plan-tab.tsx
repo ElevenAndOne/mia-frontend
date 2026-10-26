@@ -18,14 +18,15 @@ import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money,
 interface Props {
   state: BuildState
   kpiGroups: KpiGroup[]
+  kpiError?: string | null
   busy: string | null
   onEdit: (ops: PlanOp[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
-  onApprove: () => Promise<unknown>
+  onApprove: (pastFindings?: boolean) => Promise<unknown>
   onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
   onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
   onReprice: () => Promise<unknown>
-  onKeepPlan: () => Promise<unknown>
+  onKeepPlan?: () => Promise<unknown> // offered in Do this next now (do-next.tsx)
   // The step-by-step page shows one part at a time (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md).
   part?: PlanPart
   onSkipQuestion?: (id: string) => Promise<unknown>
@@ -38,9 +39,9 @@ export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   questions: (k) => ['older-brief', 'not-carried', 'questions', 'answered', 'notes'].includes(k),
   targets: (k) => ['older-brief', 'targets', 'recheck', 'fill-targets'].includes(k),
-  jobs: (k) => ['older-brief', 'reprice', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
-  words: (k) => ['older-brief', 'words', 'stale-words', 'fix-words', 'fill-in'].includes(k),
-  check: (k) => ['final-check', 'notes', 'approve'].includes(k),
+  jobs: (k) => ['older-brief', 'reprice', 'confirm-jobs', 'breaks'].includes(k) || k.startsWith('blocker-'),
+  words: (k) => ['older-brief', 'words', 'stale-words', 'fix-words', 'fill-in', 'breaks'].includes(k),
+  check: (k) => ['final-check', 'breaks', 'notes', 'approve'].includes(k),
 }
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
@@ -50,7 +51,7 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
   check: ['how'],
 }
 
-export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice, onKeepPlan,
+export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice,
   part, onSkipQuestion, onFinalCheck, onFillTargets }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
@@ -100,7 +101,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
       ) : (
         <YourTurn
           key={part}
-          items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, onMakePlan, onKeepPlan, reveal,
+          items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
             onSkipQuestion, onFinalCheck, onFillTargets, part }).filter((i) => !part || PART_ITEMS[part](i.key))}
         />
       )}
@@ -192,6 +193,7 @@ export function PlanTab({ state, kpiGroups, busy, onEdit, onMakePlan, onApprove,
                 {locked ? null : picking === p.phase ? (
                   <KpiPicker
                     groups={kpiGroups}
+                    error={kpiError}
                     busy={busy === 'edit'}
                     taken={new Set(targets.filter((t) => t.phase === p.phase).map((t) => t.kpi_key))}
                     onClose={() => setPicking(null)}
@@ -296,8 +298,6 @@ function planTurnItems({
   onApprove,
   onWriteWords,
   onReprice,
-  onMakePlan,
-  onKeepPlan,
   reveal,
   onSkipQuestion,
   onFinalCheck,
@@ -311,8 +311,6 @@ function planTurnItems({
   onApprove: Props['onApprove']
   onWriteWords: Props['onWriteWords']
   onReprice: Props['onReprice']
-  onMakePlan: Props['onMakePlan']
-  onKeepPlan: Props['onKeepPlan']
   reveal: (id: string, fold?: string, jobIndex?: number) => void
   onSkipQuestion?: Props['onSkipQuestion']
   onFinalCheck?: Props['onFinalCheck']
@@ -349,24 +347,7 @@ function planTurnItems({
   const done = new Set(plan.decisions.notes_done ?? [])
   const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
 
-  if (state.plan_from_older_brief) {
-    items.push({
-      key: 'older-brief',
-      title: 'The budget, dates, channels or goal changed',
-      detail:
-        'Update the plan for it (everything you decided is kept where it still fits), or keep this plan and fix what no longer fits below.',
-      actions: (
-        <>
-          <PrimaryAction loading={busy === 'plan'} onClick={() => onMakePlan()}>
-            Update the plan
-          </PrimaryAction>
-          <Button size="sm" loading={busy === 'keep'} onClick={() => onKeepPlan()}>
-            Keep this plan
-          </Button>
-        </>
-      ),
-    })
-  }
+  // A brief that changed under the plan is offered in Do this next, above every step (do-next.tsx, 26 Oct)
   if (jobs.length && jobs.every((a) => a.credits == null)) {
     items.push({
       key: 'reprice',
@@ -657,6 +638,37 @@ function planTurnItems({
       ),
     })
   }
+  // Jobs Mia's close reading found going against what you decided: on Jobs, Final words and Check, so they're fixed
+  // before the words are written and the studio gets them (Creative Seat run 26 Oct: they showed only at the end).
+  const breaks = plan.review?.audit?.jobs ?? []
+  if (breaks.length) {
+    items.push({
+      key: 'breaks',
+      title: `${breaks.length} job${breaks.length === 1 ? '' : 's'} go${breaks.length === 1 ? 'es' : ''} against what you decided`,
+      detail: plan.review?.stale
+        ? 'Mia found these before your latest changes: Check again reads the plan as it is now.'
+        : `${breaks[0].job}: ${breaks[0].how}`,
+      actions:
+        plan.review?.stale && onFinalCheck ? (
+          <Button size="sm" loading={busy === 'check'} onClick={() => onFinalCheck()}>
+            Check again
+          </Button>
+        ) : undefined,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {breaks.map((x) => (
+            <li key={`${x.job}-${x.where}-${x.decision}`} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary">
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{x.job}</span> ({x.where}): {x.how}
+                <span className="block paragraph-xs text-tertiary">Decided: {x.decision}</span>
+              </span>
+              <AskMia label="Fix with Mia" detail={`${x.job} (${x.where}): ${x.how} Decided: ${x.decision}`} />
+            </li>
+          ))}
+        </ul>
+      ),
+    })
+  }
   if (lookAt.length) {
     items.push({
       key: 'notes',
@@ -744,20 +756,70 @@ function planTurnItems({
     })
   }
   const canApprove = !state.blockers.length && !state.plan_from_older_brief
+  // The close reading warns, never blocks (review 26 Oct): open findings are named and approving past them is one
+  // explicit confirmation, logged with who approved. A reading from before the latest changes never counts here.
+  const open = plan.review?.stale ? [] : breaks
+  const outdated = !!plan.review?.stale && breaks.length > 0
   items.push({
     key: 'approve',
     title: 'Approve the plan',
     detail: canApprove
-      ? 'Saves the plan to the campaign. Next you send the jobs to Flex.' + (state.warnings?.length ? ` Note: ${state.warnings.join(' ')}` : '')
+      ? (open.length
+          ? `Mia's final check still flags ${open.length} job${open.length === 1 ? '' : 's'} (above). Fix them, or approve past them: it's noted in the decision log.`
+          : 'Saves the plan to the campaign. Next you send the jobs to Flex.') +
+        (outdated ? " Mia's check is from before your latest changes, so its notes don't count here: Check again reads the plan as it is now." : '') +
+        (state.warnings?.length ? ` Note: ${state.warnings.join(' ')}` : '')
       : 'Waiting on: ' +
         [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · '),
     actions: (
-      <PrimaryAction disabled={!canApprove} loading={busy === 'approve'} onClick={() => onApprove()}>
-        Approve
-      </PrimaryAction>
+      <span className="flex flex-wrap items-center gap-2">
+        {outdated && onFinalCheck ? (
+          <Button size="sm" loading={busy === 'check'} onClick={() => onFinalCheck()}>
+            Check again
+          </Button>
+        ) : null}
+        <ApproveAction open={open.length} disabled={!canApprove} loading={busy === 'approve'} onApprove={onApprove} />
+      </span>
     ),
   })
   return items
+}
+
+// Approve, or with open findings from Mia's final check, "Approve anyway" and then one confirmation naming them.
+function ApproveAction({ open, disabled, loading, onApprove }: {
+  open: number
+  disabled: boolean
+  loading: boolean
+  onApprove: (pastFindings?: boolean) => Promise<unknown>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  if (!open) {
+    return (
+      <PrimaryAction disabled={disabled} loading={loading} onClick={() => onApprove()}>
+        Approve
+      </PrimaryAction>
+    )
+  }
+  if (!confirming) {
+    return (
+      <PrimaryAction disabled={disabled} loading={loading} onClick={() => setConfirming(true)}>
+        Approve anyway
+      </PrimaryAction>
+    )
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <span className="paragraph-xs text-secondary">
+        Approve past {open} open finding{open === 1 ? '' : 's'}?
+      </span>
+      <PrimaryAction disabled={disabled} loading={loading} onClick={() => onApprove(true)}>
+        Yes, approve
+      </PrimaryAction>
+      <button type="button" onClick={() => setConfirming(false)} className="paragraph-xs underline text-secondary hover:text-primary">
+        Not yet
+      </button>
+    </span>
+  )
 }
 
 // One of Mia's questions: an answer box with Send (Enter works), Ask Mia, and Skip (Mia decides and says what she
@@ -1144,7 +1206,7 @@ function Job({
   onRewrite: (jobIds: string[]) => Promise<unknown>
 }) {
   const noRate = a.credits == null
-  const set = (fields: Record<string, string | null>) => onEdit([{ op: 'update_asset', index, fields }])
+  const set = (fields: Record<string, string | null>) => onEdit([{ op: 'update_asset', index, job_id: a.job_id, fields }])
   return (
     <article className={`rounded-lg bg-primary p-3 flex flex-col gap-2 ${noRate ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
       <div className="flex items-start justify-between gap-2">
@@ -1183,7 +1245,7 @@ function Job({
           <button
             type="button"
             className="paragraph-xs text-tertiary hover:text-primary shrink-0"
-            onClick={() => onEdit([{ op: 'remove_asset', index }])}
+            onClick={() => onEdit([{ op: 'remove_asset', index, job_id: a.job_id }])}
           >
             Remove
           </button>
@@ -1398,6 +1460,31 @@ function SelfCheck({ review }: { review: PlanReview }) {
                   <span className="text-primary">{PART_LABELS[k] ?? k}:</span> {p.why}
                 </li>
               ))}
+          </ul>
+        </div>
+      ) : null}
+      {review.audit?.jobs?.length ? (
+        <div className="mt-3 rounded-lg border border-utility-warning-300 bg-utility-warning-100 px-3 py-2 text-utility-warning-700">
+          <p className="label-sm">Jobs that go against what you decided</p>
+          <ul className="mt-1 flex flex-col gap-1 paragraph-sm">
+            {review.audit.jobs.map((x) => (
+              <li key={`${x.job}-${x.where}-${x.decision}`}>
+                <span className="font-medium">{x.job}</span> ({x.where}): {x.how}{' '}
+                <span className="text-tertiary">Decided: {x.decision}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {review.audit?.chat?.length ? (
+        <div className="mt-3 rounded-lg border border-secondary px-3 py-2">
+          <p className="label-sm text-primary">Said in the chat, not in the plan yet</p>
+          <ul className="mt-1 flex flex-col gap-1 paragraph-sm text-secondary">
+            {review.audit.chat.map((x) => (
+              <li key={x.said}>
+                “{x.said}”: {x.missing} Ask Mia to make the change, then press Apply.
+              </li>
+            ))}
           </ul>
         </div>
       ) : null}

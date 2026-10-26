@@ -1,4 +1,4 @@
-import { useEffect, useState, type InputHTMLAttributes } from 'react'
+import { useEffect, useRef, useState, type InputHTMLAttributes } from 'react'
 
 // One input for every editable value on the campaign page (live test 21 Oct: some boxes saved on Enter, some only
 // on leaving, and each read numbers its own way). It saves on Enter or on leaving the box, only when the text changed,
@@ -14,14 +14,32 @@ export function Field({
 >) {
   const shown = value == null ? '' : String(value)
   const [v, setV] = useState(shown)
-  useEffect(() => setV(shown), [shown])
+  // A refresh never overwrites a box the PM is typing in, and typing in a box that disappears (a plan run starting)
+  // is saved, not dropped (review 26 Oct)
+  const focused = useRef(false)
+  const latest = useRef({ v, shown, onCommit })
+  latest.current = { v, shown, onCommit }
+  useEffect(() => {
+    if (!focused.current) setV(shown)
+  }, [shown])
+  useEffect(
+    () => () => {
+      const { v: typed, shown: was, onCommit: save } = latest.current
+      if (focused.current && typed.trim() !== was.trim()) save(typed.trim())
+    },
+    [],
+  )
   const commit = () => {
+    focused.current = false
     if (v.trim() !== shown.trim()) onCommit(v.trim())
   }
   return (
     <input
       {...rest}
       value={v}
+      onFocus={() => {
+        focused.current = true
+      }}
       onChange={(e) => setV(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {

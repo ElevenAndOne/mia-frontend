@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
+import { CopyButton } from './copy-button'
 import * as api from '../api'
 import type { LaunchJob, StudioJob, StudioState } from '../types'
 import { JobCard } from './launch-tab'
@@ -38,7 +39,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     queryKey: lkey,
     queryFn: () => api.fetchLaunch(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId && approved && anySent,
-    refetchInterval: 45 * 1000,
+    refetchInterval: 2 * 60 * 1000, // the server reads Flex at most every 15 minutes (review 22 Oct, 4.6)
     refetchOnWindowFocus: true,
   })
   useEffect(() => {
@@ -196,7 +197,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     items.push({
       key: 'follow',
       title: studioCount ? `${studioCount} still in the studio` : 'Nothing left in the studio',
-      detail: `${backCount} of ${inFlex.length} back from the studio. Mia checks Flex every 45 seconds while this page is open.`,
+      detail: `${backCount} of ${inFlex.length} back from the studio. Mia checks Flex every 15 minutes, or now with Check Flex now.`,
       done: !studioCount,
       actions: (
         <Button size="sm" loading={busy === 'refresh' || lq.isFetching} onClick={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}>
@@ -210,6 +211,21 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
+
+      {lq.data?.tag ? (
+        // The one manual step a PM can get wrong: an ad they set up by hand must carry the tag for its results to come
+        // back (26 Oct). Mia puts it in every link she tracks.
+        <Card className="flex flex-col gap-1">
+          <p className="paragraph-sm text-primary flex flex-wrap items-center gap-2">
+            This campaign’s tag: <code className="rounded bg-secondary px-1.5 py-0.5">{lq.data.tag}</code>
+            <CopyButton value={lq.data.tag} />
+          </p>
+          <p className="paragraph-xs text-secondary">
+            Mia adds it to every link when you take a job in. For ads you set up by hand, like LinkedIn, start the ad
+            campaign’s name with it, or link that campaign to this one, so its results come back here.
+          </p>
+        </Card>
+      ) : null}
 
       {s.credit_fit.length ? (
         <Card className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -316,7 +332,10 @@ function Row({
   onChange: (c: { credits?: number | null; include?: boolean }) => void
 }) {
   const [c, setC] = useState(j.credits == null ? '' : String(j.credits))
-  useEffect(() => setC(j.credits == null ? '' : String(j.credits)), [j.credits])
+  const typing = useRef(false) // a refresh never overwrites the box while the PM is typing (review 26 Oct)
+  useEffect(() => {
+    if (!typing.current) setC(j.credits == null ? '' : String(j.credits))
+  }, [j.credits])
   const inFlex = !!j.flex.task_id
   const missing = j.include && !inFlex && j.credits == null
   return (
@@ -358,8 +377,12 @@ function Row({
               placeholder="?"
               value={c}
               disabled={disabled}
+              onFocus={() => {
+                typing.current = true
+              }}
               onChange={(e) => setC(e.target.value)}
               onBlur={() => {
+                typing.current = false
                 // numbers only, never below zero (review 22 Oct, 5.3: letters cleared the credits, negatives passed)
                 const v = c.trim() === '' ? null : Number(c)
                 if (v != null && (!Number.isFinite(v) || v < 0)) {

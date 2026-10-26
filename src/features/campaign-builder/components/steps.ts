@@ -38,10 +38,10 @@ export function stepStates(s: BuildState): Record<StepKey, StepState> {
         ? 'busy'
         : !plan
           ? 'todo'
-          : s.plan_from_older_brief
-            ? 'recheck'
-            : brief?.open_questions?.length || s.blockers.some((b) => b.key === 'budget_total')
-              ? 'todo' // a paid plan with no budget can't be approved: the budget is a key fact (live test 22 Oct)
+          : brief?.open_questions?.length || s.blockers.some((b) => b.key === 'budget_total')
+            ? 'todo' // a paid plan with no budget can't be approved: the budget is a key fact (live test 22 Oct)
+            : s.plan_from_older_brief
+              ? 'recheck' // a badge only: the choice it needs is in Do this next, wherever the PM is (26 Oct)
               : 'done',
     questions: planRunning ? 'busy' : !plan ? 'todo' : asks.length ? 'todo' : 'done',
     targets: !plan ? 'todo' : recheckTargets ? 'recheck' : toSet.length ? 'todo' : 'done',
@@ -57,9 +57,11 @@ export function stepStates(s: BuildState): Record<StepKey, StepState> {
   }
 }
 
-// The step to work on: the first one not done. Going back is free; going forward is in order (decided 20 Oct).
+// The step to work on: the first one still to do. Going back is free; going forward is in order (decided 20 Oct). A
+// step that only needs a recheck (something earlier changed) never pulls the PM back or locks the steps after it: what
+// it needs shows in Do this next, on every step, with its button there (26 Oct: always moving forward).
 export function currentStep(states: Record<StepKey, StepState>): StepKey {
-  return STEPS.find((st) => states[st.key] !== 'done')?.key ?? 'check'
+  return STEPS.find((st) => states[st.key] === 'todo' || states[st.key] === 'busy')?.key ?? 'check'
 }
 
 export function canOpen(states: Record<StepKey, StepState>, key: StepKey): boolean {

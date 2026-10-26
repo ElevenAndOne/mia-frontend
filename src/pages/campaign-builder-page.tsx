@@ -11,6 +11,7 @@ import { PlanTab, type PlanPart } from '../features/campaign-builder/components/
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
 import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
 import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
+import { DoNext } from '../features/campaign-builder/components/do-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
@@ -223,10 +224,17 @@ function BuildPage({ campaignId }: { campaignId: string }) {
       <div ref={pageScroll} className="@container flex-1 min-w-0 overflow-y-auto">
         {build.loading ? (
           <p className="p-6 paragraph-sm text-tertiary">Loading…</p>
-        ) : build.loadError || !s ? (
+        ) : !s ? (
           <p className="p-6 paragraph-sm text-error">{build.loadError ?? 'Campaign not found'}</p>
         ) : (
           <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4">
+            {build.loadError ? (
+              // A failed refresh keeps the page as last read and says so (review 26 Oct: one 502 replaced the whole
+              // page with the error, and nothing tried again)
+              <p className="rounded-lg border border-utility-warning-300 bg-utility-warning-100 px-3 py-2 paragraph-sm text-utility-warning-700">
+                Couldn’t refresh just now ({build.loadError}). Showing the campaign as last read; Mia tries again in a moment.
+              </p>
+            ) : null}
             <header className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="paragraph-sm text-secondary">
@@ -282,6 +290,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               </p>
             ) : null}
             {step && states ? (
+              <DoNext step={step} state={s} busy={build.busy} onMakePlan={build.makePlan} onKeepPlan={build.keepPlan}
+                onRewrite={(ids) => build.writeWords(ids, true)} onGo={goStep} />
+            ) : null}
+            {step && states ? (
               <StepRail states={states} step={step} onGo={goStep} />
             ) : (
             <nav className="flex flex-wrap gap-1 border-b border-secondary" aria-label="Campaign">
@@ -325,9 +337,9 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             ) : tab === 'studio' || tab === 'launch' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
-              <PlanTab state={s} kpiGroups={build.kpiGroups} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async () => {
+              <PlanTab state={s} kpiGroups={build.kpiGroups} kpiError={build.kpiError} busy={build.busy} onEdit={build.editPlan} onMakePlan={build.makePlan} onApprove={async (pastFindings?: boolean) => {
                   // Approved: the next step is sending the jobs, so go to the Studio tab (live test 18 Oct).
-                  const out = await build.approve()
+                  const out = await build.approve(pastFindings)
                   pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })
                   if (out !== undefined) go('studio')
                   return out
@@ -460,11 +472,12 @@ function StepView({
           part={step as PlanPart}
           state={s}
           kpiGroups={build.kpiGroups}
+          kpiError={build.kpiError}
           busy={build.busy}
           onEdit={build.editPlan}
           onMakePlan={build.makePlan}
-          onApprove={async () => {
-            const out = await build.approve()
+          onApprove={async (pastFindings?: boolean) => {
+            const out = await build.approve(pastFindings)
             scrollTop()
             if (out !== undefined) onApproved()
             return out

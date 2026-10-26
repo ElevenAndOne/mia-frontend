@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import {
@@ -10,106 +9,15 @@ import {
 } from '../../campaigns/services/campaign-api'
 import type { PushCheck } from '../../campaigns/types'
 import * as api from '../api'
+import { CopyButton } from './copy-button'
 import type { LaunchJob } from '../types'
-import { Card, NeedsYou, channelLabel, day } from './parts'
-import { PrimaryAction, YourTurn, type TurnItem } from './your-turn'
+import { NeedsYou, channelLabel, day } from './parts'
 
-// The Launch tab (plan §8.2): a job is ready when Flex says so and its final artwork is linked. The PM takes it in
-// (artwork + the link people land on), then launches it the way its channel allows: Meta and Google ads go up
-// PAUSED through Mia's existing push (checked first), Facebook/Instagram posts are scheduled, and anything Mia
-// can't publish yet is set up where it runs and marked launched here. The first launch makes the campaign live.
-
-const SECTIONS: { state: LaunchJob['state']; title: string; hint: string }[] = [
-  { state: 'taken_in', title: 'Ready to launch', hint: 'Artwork and link are in. Launch each one.' },
-  { state: 'ready', title: 'Back from the studio', hint: 'Check the artwork and add the link people land on.' },
-  { state: 'launched', title: 'Launched', hint: '' },
-  { state: 'in_studio', title: 'Still in the studio', hint: 'These appear above when Flex marks them ready to launch.' },
-]
-
-export function LaunchTab({ campaignId, approved, onChanged }: { campaignId: string; approved: boolean; onChanged?: () => void }) {
-  const { sessionId, activeWorkspace } = useSession()
-  const tenantId = activeWorkspace?.tenant_id
-  const qc = useQueryClient()
-  const key = ['campaign-launch', tenantId, campaignId]
-  const q = useQuery({
-    queryKey: key,
-    queryFn: () => api.fetchLaunch(sessionId!, tenantId!, campaignId),
-    enabled: !!sessionId && !!tenantId && approved,
-    // Flex is read every 45 seconds while the tab is open and in view, and when the PM comes back to the tab, so a
-    // job marked ready in Flex shows up without a click (live test 18 Oct).
-    refetchInterval: 45 * 1000,
-    refetchOnWindowFocus: true,
-  })
-  const seen = q.dataUpdatedAt
-  useEffect(() => {
-    if (seen) onChanged?.() // the header's next step follows what Flex says
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seen])
-  const reload = async () => {
-    await qc.invalidateQueries({ queryKey: key })
-    onChanged?.()
-  }
-  if (!approved) return <Card className="paragraph-sm text-secondary">Approve the plan and send the jobs to the studio first.</Card>
-  if (q.isPending) return <p className="paragraph-sm text-tertiary">Reading Flex…</p>
-  if (!q.data) return <p className="paragraph-sm text-error">{(q.error as Error)?.message ?? 'Could not load the launch.'}</p>
-  const s = q.data
-  if (!s.jobs.length) return <Card className="paragraph-sm text-secondary">No jobs have gone to the studio yet. Send them from the Studio tab.</Card>
-  const go = (state: string) => document.getElementById(`launch-${state}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  const n = (k: string) => s.counts[k as keyof typeof s.counts] ?? 0
-  const items: TurnItem[] = []
-  if (n('ready'))
-    items.push({
-      key: 'take',
-      title: `Check ${n('ready')} job${n('ready') === 1 ? '' : 's'} back from the studio`,
-      detail: 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
-      actions: <PrimaryAction onClick={() => go('ready')}>Check them</PrimaryAction>,
-    })
-  if (n('taken_in'))
-    items.push({
-      key: 'launch',
-      title: `Launch ${n('taken_in')} job${n('taken_in') === 1 ? '' : 's'}`,
-      detail: 'Push ads up paused, schedule posts, or mark them launched if you set them up yourself.',
-      actions: <PrimaryAction onClick={() => go('taken_in')}>Launch them</PrimaryAction>,
-    })
-  items.push({
-    key: 'wait',
-    title: n('in_studio') ? `${n('in_studio')} still in the studio` : 'Nothing left in the studio',
-    done: !n('in_studio'),
-    detail: 'They appear here when Flex marks them ready to launch. Mia checks every 45 seconds.',
-    actions: (
-      <Button size="sm" onClick={() => void reload()} loading={q.isFetching}>
-        Check Flex now
-      </Button>
-    ),
-  })
-  return (
-    <div className="flex flex-col gap-4">
-      <YourTurn items={items} />
-      <p className="paragraph-xs text-tertiary">
-        {s.live ? 'The campaign is live.' : 'Not live yet: the first job you launch makes it live.'} {n('launched')} launched so far.
-      </p>
-      {SECTIONS.map((sec) => {
-        const jobs = s.jobs.filter((j) => j.state === sec.state)
-        if (!jobs.length) return null
-        return (
-          <section key={sec.state} id={`launch-${sec.state}`} className="flex flex-col gap-2 scroll-mt-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="subheading-md text-primary">
-                {sec.title} ({jobs.length})
-              </h2>
-              {sec.hint ? <p className="paragraph-xs text-tertiary">{sec.hint}</p> : null}
-            </div>
-            <ul className="flex flex-col gap-2">
-              {jobs.map((j) => (
-                <JobCard key={j.asset_id} j={j} campaignId={campaignId} onDone={reload} />
-              ))}
-            </ul>
-          </section>
-        )
-      })}
-    </div>
-  )
-}
+// Launching a job (plan §8.2), shown under its row on the Studio page (Studio and Launch are one page since 19 Oct;
+// the old Launch tab was removed as dead code, review 26 Oct). A job is ready when Flex says so and its final artwork
+// is linked. The PM takes it in (artwork + the link people land on), then launches it the way its channel allows:
+// Meta and Google ads go up PAUSED through Mia's existing push (checked first), Facebook/Instagram posts are
+// scheduled, and anything Mia can't publish yet is set up where it runs and marked launched here.
 
 // One job's launch work (artwork, landing page, push / schedule / mark). `bare`: just the body, for the drop-down
 // under the job's row on the Studio page (Studio and Launch are one page since 19 Oct).
@@ -163,6 +71,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
       api.launchAction(sessionId!, tenantId, campaignId, 'schedule', { asset_id: j.asset_id, when: new Date(when).toISOString() }),
     )
   const mark = () => run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null }))
+  const notOnPage = () => run('unsure', () => api.launchAction(sessionId!, tenantId, campaignId, 'not-on-page', { asset_id: j.asset_id }))
+  const unsure = j.launch?.unsure ?? []
   const blocking = (checks ?? []).filter((c) => c.severity === 'block')
 
   const body = (
@@ -189,9 +99,13 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
             // The PM added the artwork here instead of in Flex: that is fine, say where it is (live test 18 Oct).
             <p className="paragraph-xs text-secondary [overflow-wrap:anywhere]">
               Artwork added in Mia:{' '}
-              <a className="underline" href={j.creative} target="_blank" rel="noreferrer">
-                {j.creative}
-              </a>
+              {/^https?:\/\//i.test(j.creative) ? (
+                <a className="underline" href={j.creative} target="_blank" rel="noreferrer">
+                  {j.creative}
+                </a>
+              ) : (
+                <span>{j.creative}</span> // never a link that isn't a web address (review 26 Oct)
+              )}
             </p>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
@@ -201,6 +115,16 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
               In Flex: <span className="text-primary">{j.stage_label ?? 'Open'}</span>. It moves up to "Back from the studio" once
               the job is set to Ready to launch in Flex with its final artwork linked (a Drive file or image link).
             </p>
+          ) : null}
+          {j.final_url && j.state !== 'ready' ? (
+            // the link with Mia's tracking, ready to paste into the ad (26 Oct)
+            <div className="flex flex-col gap-0.5">
+              <p className="paragraph-xs text-secondary flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
+                Tracked link: <span className="text-primary">{j.final_url}</span>
+                <CopyButton value={j.final_url} label="Copy link" />
+              </p>
+              {j.launch?.link_note ? <p className="paragraph-xs text-tertiary">{j.launch.link_note}</p> : null}
+            </div>
           ) : null}
           {j.flex_url ? (
             <a href={j.flex_url} target="_blank" rel="noreferrer"
@@ -259,7 +183,25 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
             </div>
           ) : null}
 
-          {j.state === 'taken_in' && j.route === 'schedule' ? (
+          {unsure.length ? (
+            // Facebook may already have this post: never booked blind (review 26 Oct); the PM checks the Page
+            <div className="flex flex-col gap-2">
+              <NeedsYou>
+                Mia couldn’t tell whether Facebook or Instagram took {unsure.length === 1 ? 'a post' : `${unsure.length} posts`} for
+                this job. Check the Page’s scheduled posts first.
+              </NeedsYou>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" loading={busy === 'unsure'} onClick={() => void notOnPage()}>
+                  It’s not on the Page: book it again
+                </Button>
+                <Button size="sm" variant="ghost" loading={busy === 'mark'} onClick={() => void mark()}>
+                  It’s there: mark it launched
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {j.state === 'taken_in' && j.route === 'schedule' && !unsure.length ? (
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 paragraph-xs text-tertiary">
                 Post on

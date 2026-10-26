@@ -114,9 +114,13 @@ export async function editPlan(sessionId: string, tenantId: string, campaignId: 
   )
 }
 
-export async function approvePlan(sessionId: string, tenantId: string, campaignId: string) {
+// pastFindings: the PM confirmed approving past the open findings of Mia's final check (the server asks once).
+export async function approvePlan(sessionId: string, tenantId: string, campaignId: string, pastFindings = false) {
   return check<{ campaign_id: string; status: string }>(
-    await apiFetch(`${base(tenantId)}/${campaignId}/approve`, { method: 'POST', headers: json(sessionId) }),
+    await apiFetch(`${base(tenantId)}/${campaignId}/approve${pastFindings ? '?past_findings=true' : ''}`, {
+      method: 'POST',
+      headers: json(sessionId),
+    }),
   )
 }
 
@@ -237,7 +241,7 @@ export async function launchAction(
   sessionId: string,
   tenantId: string,
   campaignId: string,
-  what: 'take-in' | 'mark' | 'schedule',
+  what: 'take-in' | 'mark' | 'schedule' | 'not-on-page',
   body: Record<string, unknown>,
 ): Promise<unknown> {
   return check(

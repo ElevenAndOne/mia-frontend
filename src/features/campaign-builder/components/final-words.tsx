@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/button'
 import type { BuildState, FinalWords, PlanOp } from '../types'
 import { Card, Chip, NeedsYou } from './parts'
@@ -95,7 +95,7 @@ export function JobWords({
       mine={mine.has(where)}
       flags={flagFor(where)}
       disabled={disabled}
-      onCommit={(v) => onEdit([{ op: 'update_words', index, where, value: prefix + v }])}
+      onCommit={(v) => onEdit([{ op: 'update_words', index, job_id: jobId, where, value: prefix + v }])}
     />
   )
   // An extra ad version is stored as a caption starting "Variant B:". The label says so beside the box, so the
@@ -128,7 +128,7 @@ export function JobWords({
                 <Button size="sm" variant="primary" disabled={running} onClick={() => onRewrite([jobId])}>
                   Fix it
                 </Button>
-                <Button size="sm" disabled={running} onClick={() => onEdit([{ op: 'accept_words', index }])}>
+                <Button size="sm" disabled={running} onClick={() => onEdit([{ op: 'accept_words', index, job_id: jobId }])}>
                   Looks fine as is
                 </Button>
                 <span className="paragraph-xs text-tertiary">Or edit the words below yourself.</span>
@@ -197,7 +197,27 @@ function Piece({
   onCommit: (v: string) => void
 }) {
   const [v, setV] = useState(value)
-  useEffect(() => setV(value), [value])
+  // never reset while the PM is typing, and typing in a box that disappears is saved (review 26 Oct)
+  const focused = useRef(false)
+  const latest = useRef({ v, value, onCommit })
+  latest.current = { v, value, onCommit }
+  useEffect(() => {
+    if (!focused.current) setV(value)
+  }, [value])
+  useEffect(
+    () => () => {
+      const { v: typed, value: was, onCommit: save } = latest.current
+      if (focused.current && typed !== was) save(typed)
+    },
+    [],
+  )
+  const done = () => {
+    focused.current = false
+    if (v !== value) onCommit(v)
+  }
+  const start = () => {
+    focused.current = true
+  }
   const limit = limitFor(where)
   const over = limit != null && v.length > limit
   const cls = `w-full rounded-md bg-primary px-2 py-1 paragraph-xs text-primary ${
@@ -221,11 +241,12 @@ function Piece({
           rows={Math.min(6, Math.max(2, v.split('\n').length + Math.floor(v.length / 70)))}
           className={cls}
           value={v}
+          onFocus={start}
           onChange={(e) => setV(e.target.value)}
-          onBlur={() => v !== value && onCommit(v)}
+          onBlur={done}
         />
       ) : (
-        <input className={cls} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v !== value && onCommit(v)} />
+        <input className={cls} value={v} onFocus={start} onChange={(e) => setV(e.target.value)} onBlur={done} />
       )}
     </label>
   )

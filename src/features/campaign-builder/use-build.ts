@@ -28,6 +28,7 @@ export function useBuild(campaignId: string | undefined) {
     enabled: !!sessionId && !!tenantId && !!campaignId,
     refetchInterval: (q) => {
       const s = q.state.data as BuildState | undefined
+      if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own
       return s && [s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') ? POLL_MS : false
     },
   })
@@ -39,6 +40,7 @@ export function useBuild(campaignId: string | undefined) {
     queryFn: () => api.fetchKpiOptions(sessionId!, tenantId!, campaignId!),
     enabled: !!sessionId && !!tenantId && !!campaignId && !!query.data?.brief,
     staleTime: 5 * 60 * 1000,
+    refetchInterval: (q) => (q.state.status === 'error' ? 30_000 : false), // a failed read is tried again
   })
 
   const run = useCallback(
@@ -66,6 +68,8 @@ export function useBuild(campaignId: string | undefined) {
     state: query.data,
     loading: query.isPending,
     kpiGroups: kpis.data?.groups ?? [],
+    // said in the picker, not "Loading…" forever (review 26 Oct)
+    kpiError: kpis.error instanceof Error ? kpis.error.message : null,
     loadError: query.error instanceof Error ? query.error.message : null,
     busy,
     error,
@@ -90,7 +94,7 @@ export function useBuild(campaignId: string | undefined) {
         queryClient.setQueryData(key, next)
         return next
       }),
-    approve: () => run('approve', () => api.approvePlan(...ids())),
+    approve: (pastFindings = false) => run('approve', () => api.approvePlan(...ids(), pastFindings)),
     reload: () => queryClient.invalidateQueries({ queryKey: key }),
     reprice: () => run('reprice', () => api.repricePlan(...ids())),
     writeWords: (jobIds?: string[], rewrite = false) => run('words', () => api.writeWords(...ids(), jobIds, rewrite)),
