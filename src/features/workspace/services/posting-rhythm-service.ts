@@ -91,6 +91,20 @@ export const fetchCreativeWatches = async (
   return data.watches
 }
 
+/** The folders, plus the address an owner shares a private Mia folder with (null until Mia's
+ * Google service account is set up, when only "Anyone with the link" folders work). */
+export const fetchCreativeWatchSetup = async (
+  sessionId: string,
+  tenantId: string
+): Promise<{ watches: CreativeWatch[]; shareWith: string | null }> => {
+  const res = await apiFetch(`/api/tenants/${tenantId}/creative-watches`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) throw new Error(await detailOf(res, 'Could not load watched folders'))
+  const data = (await res.json()) as { watches: CreativeWatch[]; share_with?: string | null }
+  return { watches: data.watches, shareWith: data.share_with ?? null }
+}
+
 export const addCreativeWatch = async (
   sessionId: string,
   tenantId: string,
@@ -115,4 +129,31 @@ export const removeCreativeWatch = async (
     headers: { 'X-Session-ID': sessionId },
   })
   if (!res.ok) throw new Error(await detailOf(res, 'Could not stop watching that folder'))
+}
+
+/** A picture from the "Ideas & moodboard" folder: the look for pictures Mia draws, never posted. */
+export interface MoodboardPicture {
+  id: string
+  url: string
+  name: string | null
+  subfolder: string | null
+  added_at: string | null
+}
+
+export const fetchMoodboard = async (sessionId: string, tenantId: string): Promise<MoodboardPicture[]> => {
+  const res = await apiFetch(`/api/tenants/${tenantId}/creative-watches/moodboard`, {
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) throw new Error(await detailOf(res, 'Could not load the moodboard'))
+  const data = (await res.json()) as { pictures: MoodboardPicture[] }
+  return data.pictures
+}
+
+/** Out of the moodboard: it stops steering the look. Their Drive file is untouched. */
+export const removeMoodboardPicture = async (sessionId: string, tenantId: string, id: string): Promise<void> => {
+  const res = await apiFetch(`/api/tenants/${tenantId}/creative-watches/moodboard/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (!res.ok) throw new Error(await detailOf(res, 'Could not remove that picture'))
 }

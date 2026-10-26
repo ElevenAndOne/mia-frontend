@@ -32,6 +32,7 @@ import {
   type WeeklyPlanItem,
 } from './services/posts-api'
 import type { PostItem, PostStatus, ScheduledPost } from './types'
+import { fetchMoodboard, removeMoodboardPicture } from '../workspace/services/posting-rhythm-service'
 import { SwipeReview } from './swipe-review'
 
 /**
@@ -539,6 +540,11 @@ const ITEM_STATE: Record<string, { label: string; cls: string }> = {
 
 const itemWhen = (item: PostItem) => (item.created_at ? fmtWhen(item.created_at) : '')
 const itemWho = (item: PostItem) => item.sender_name || 'A team member'
+// From the shared Mia folder in Google Drive (22 Oct 2026): "Ready to post" pictures are finished
+// work, used first in the Friday posts, so they're labelled and listed first.
+const isReady = (item: PostItem) => item.source === 'folder_ready' && item.status === 'idea'
+const fromFolder = (item: PostItem) => item.source === 'folder' || item.source === 'folder_ready'
+const READY_STATE = { label: 'Ready to post', cls: 'bg-utility-success-100 text-utility-success-700' }
 
 const useItems = (view: 'ideas' | 'waiting', enabled: boolean) => {
   const { sessionId, activeWorkspace } = useSession()
@@ -556,7 +562,7 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
   const { sessionId, activeWorkspace } = useSession()
   const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
-  const state = ITEM_STATE[item.status] ?? ITEM_STATE.idea
+  const state = isReady(item) ? READY_STATE : (ITEM_STATE[item.status] ?? ITEM_STATE.idea)
   const photo = item.photo_urls[0]
   const post = item.posts[0]
   return (
@@ -571,7 +577,7 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
       <div className="p-3 flex flex-col gap-1.5 min-w-0">
         <p className="paragraph-sm font-semibold text-primary truncate">{item.note || 'Photo'}</p>
         <p className="paragraph-xs text-quaternary truncate">
-          {itemWho(item)} · {itemWhen(item)}
+          {itemWho(item)}{fromFolder(item) ? ' · Mia folder' : ''} · {itemWhen(item)}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`inline-flex px-2 py-0.5 rounded-full label-xs font-semibold ${state.cls}`}>{state.label}</span>
@@ -608,27 +614,105 @@ const IdeaCard = ({ item, canManage, onDropped }: { item: PostItem; canManage: b
   )
 }
 
-const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
+// The moodboard (22 Oct 2026): pictures from the Mia folder's "Ideas & moodboard" or sent on
+// WhatsApp "for the moodboard". They set the look of pictures Mia draws and are never posted;
+// they share the Ideas & moodboard tab with the team's ideas, the way they share the Drive folder.
+type MoodboardPic = Awaited<ReturnType<typeof fetchMoodboard>>[number]
+
+const useMoodboard = (enabled: boolean) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  return useQuery({
+    queryKey: ['moodboard', tenantId],
+    queryFn: () => fetchMoodboard(sessionId!, tenantId!),
+    enabled: enabled && !!sessionId && !!tenantId,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+const MoodboardCard = ({ pic, canManage }: { pic: MoodboardPic; canManage: boolean }) => {
+  const { sessionId, activeWorkspace } = useSession()
+  const { showToast } = useToast()
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const tenantId = activeWorkspace?.tenant_id
+  return (
+    <div className="rounded-xl border border-secondary bg-primary overflow-hidden flex flex-col">
+      <img src={pic.url} alt={pic.name ?? 'Moodboard picture'} className="w-full aspect-square object-cover bg-tertiary" />
+      <div className="p-3 flex flex-col gap-1.5 min-w-0">
+        <p className="paragraph-sm font-semibold text-primary truncate">{pic.name || 'Moodboard picture'}</p>
+        <p className="paragraph-xs text-quaternary truncate">
+          {pic.subfolder ? 'Mia folder' : 'WhatsApp'}{pic.added_at ? ` · ${fmtWhen(pic.added_at)}` : ''}
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex px-2 py-0.5 rounded-full label-xs font-semibold bg-utility-purple-100 text-utility-purple-700">
+            Moodboard · style only
+          </span>
+        </div>
+        {canManage && (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                if (!sessionId || !tenantId) return
+                setBusy(true)
+                removeMoodboardPicture(sessionId, tenantId, pic.id)
+                  .then(() => {
+                    showToast('success', 'Taken off the moodboard')
+                    queryClient.setQueryData<MoodboardPic[]>(['moodboard', tenantId], (prev) => prev?.filter((x) => x.id !== pic.id) ?? prev)
+                  })
+                  .catch((e) => showToast('error', e instanceof Error ? e.message : 'Something went wrong'))
+                  .finally(() => setBusy(false))
+              }}
+            >
+              Remove from moodboard
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const IdeasPanel = ({ canManage, kind }: { canManage: boolean; kind: 'ideas' | 'ready' }) => {
   const { activeWorkspace } = useSession()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useItems('ideas', true)
+  const { data: moodData } = useMoodboard(kind === 'ideas' && canManage)
   const [sender, setSender] = useState<string | null>(null)
-  const all = data ?? []
+  // Ready to post on its own tab, oldest first (the order the Friday posts use them in); the
+  // other ideas newest first, as they came (22 Oct 2026).
+  // A post waiting for the owner lives on Waiting for you, not here (live test, 22 Oct 2026).
+  const all = (data ?? []).filter((i) => i.status !== 'waiting' && (kind === 'ready' ? isReady(i) : !isReady(i)))
+  if (kind === 'ready') all.sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
   // Who sent what: owners save ideas too now (with the words they sent), so a filter by sender.
   const senders = Array.from(new Set(all.map(itemWho)))
   const items = sender ? all.filter((i) => itemWho(i) === sender) : all
   const onDropped = (id: string) =>
     queryClient.setQueryData<PostItem[]>(['post-items', activeWorkspace?.tenant_id, 'ideas'], (prev) => prev?.filter((i) => i.id !== id) ?? prev)
+  const mood = kind === 'ideas' && !sender ? (moodData ?? []) : []
+  // One grid, newest first, like the Drive folder it mirrors: ideas and moodboard pictures together.
+  const grid: Array<{ at: string; idea?: PostItem; pic?: MoodboardPic }> = [
+    ...items.map((i) => ({ at: i.created_at ?? '', idea: i })),
+    ...mood.map((m) => ({ at: m.added_at ?? '', pic: m })),
+  ]
+  if (kind === 'ideas') grid.sort((a, b) => b.at.localeCompare(a.at))
   if (isLoading) return <div className="flex justify-center py-16"><Spinner /></div>
   if (error) return <p className="paragraph-sm text-utility-error-600">Couldn’t load the ideas.</p>
-  if (items.length === 0)
+  if (grid.length === 0)
     return (
+      <div className="flex flex-col gap-3">
       <div className="rounded-xl border border-secondary bg-primary p-8 text-center flex flex-col items-center gap-2">
-        <p className="paragraph-sm font-semibold text-primary">Nothing saved yet</p>
+        <p className="paragraph-sm font-semibold text-primary">{kind === 'ready' ? 'Nothing ready to post yet' : 'No ideas or moodboard pictures yet'}</p>
         <p className="paragraph-xs text-quaternary max-w-sm">
-          Photos your team sends Mia on WhatsApp land here, and so does anything you save as an idea, with the words you sent.
-          Say “what did the team send” on WhatsApp to see them there too.
+          {kind === 'ready'
+            ? 'Put finished pictures in the Mia folder’s Ready to post, or send one on WhatsApp saying it’s ready to post. Mia writes the words and uses them first on Fridays.'
+            : 'Photos and notes the team sends Mia on WhatsApp land here, and so do pictures in the Mia folder’s Ideas & moodboard. On WhatsApp, saying “for the moodboard” with a photo makes it a style picture.'}
         </p>
+      </div>
       </div>
     )
   return (
@@ -650,9 +734,13 @@ const IdeasPanel = ({ canManage }: { canManage: boolean }) => {
         </div>
       )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {items.map((item) => (
-          <IdeaCard key={item.id} item={item} canManage={canManage} onDropped={onDropped} />
-        ))}
+        {grid.map((g) =>
+          g.idea ? (
+            <IdeaCard key={g.idea.id} item={g.idea} canManage={canManage} onDropped={onDropped} />
+          ) : g.pic ? (
+            <MoodboardCard key={`m-${g.pic.id}`} pic={g.pic} canManage={canManage} />
+          ) : null,
+        )}
       </div>
     </div>
   )
@@ -727,16 +815,20 @@ const WaitingCard = ({ item, onChanged }: { item: PostItem; onChanged: (item: Po
                 )}
                 {open && holding === d.index && (
                   <div className="flex flex-col gap-2">
+                    <label htmlFor={`reason-${item.id}-${d.index}`} className="paragraph-xs text-secondary">
+                      Tell {itemWho(item)} why (optional). They get it on WhatsApp.
+                    </label>
                     <input
                       id={`reason-${item.id}-${d.index}`}
                       value={reason}
+                      autoFocus
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder={`Want to tell ${itemWho(item)} why? (optional)`}
+                      placeholder="e.g. Let's keep the bar photos for the weekend"
                       className="px-2.5 py-1.5 border border-tertiary rounded-lg paragraph-sm bg-primary text-primary outline-none focus:border-utility-brand-400"
                     />
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" disabled={busy} onClick={() => decide({ decision: 'not_used', index: d.index, reason: reason.trim() || undefined }, `Held back, ${itemWho(item)} told`)}>
-                        {reason.trim() ? 'Send' : 'Skip and hold back'}
+                      <Button size="sm" variant="primary" disabled={busy} onClick={() => decide({ decision: 'not_used', index: d.index, reason: reason.trim() || undefined }, `Held back, ${itemWho(item)} told`)}>
+                        {reason.trim() ? `Hold back and tell ${itemWho(item)}` : 'Hold back'}
                       </Button>
                       <Button size="sm" variant="ghost" disabled={busy} onClick={() => setHolding(null)}>
                         Back
@@ -932,7 +1024,7 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
   )
 }
 
-type PostsTab = 'ideas' | 'waiting' | 'next' | 'scheduled' | 'posted'
+type PostsTab = 'ideas' | 'ready' | 'waiting' | 'next' | 'scheduled' | 'posted'
 
 // ── Next week (the Friday round-up, 14 Oct 2026) ─────────────────────────────
 // The same week the owner reviews on WhatsApp on Friday; whichever is used first wins.
@@ -1161,13 +1253,28 @@ const PostsView = () => {
   const nextOn = Boolean(weekly?.enabled || weekly?.plan)
   const waitingCount = waitingItems?.length ?? 0
   const isPostsTab = !teamOn || tab === 'scheduled' || tab === 'posted'
-  const shown = useMemo(() => {
+  const listed = useMemo(() => {
     if (!posts) return null
     if (!teamOn) return posts
     return tab === 'posted'
       ? posts.filter((p) => p.status === 'published' || p.status === 'canceled')
       : posts.filter((p) => SCHEDULED_STATUSES.includes(p.status))
   }, [posts, teamOn, tab])
+  // Scheduled split by network, one sub-tab each, so it's plain what goes out where (Josh, 22 Oct
+  // 2026). Only the networks that have posts; none when there's just one.
+  const networks = useMemo(() => {
+    if (!listed || tab !== 'scheduled') return []
+    const order = ['facebook', 'instagram', 'linkedin', 'tiktok']
+    const seen = Array.from(new Set(listed.map((p) => p.platform)))
+    return seen.sort((a, b) => (order.indexOf(a) + 99 * Number(order.indexOf(a) < 0)) - (order.indexOf(b) + 99 * Number(order.indexOf(b) < 0)))
+  }, [listed, tab])
+  const [network, setNetwork] = useState<string>('')
+  const activeNetwork: string = (networks as string[]).includes(network) ? network : networks[0] ?? ''
+  const shown = useMemo(() => {
+    if (!listed) return null
+    if (networks.length < 2) return listed
+    return listed.filter((p) => p.platform === activeNetwork)
+  }, [listed, networks, activeNetwork])
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -1184,17 +1291,31 @@ const PostsView = () => {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 flex flex-col gap-4">
           {teamOn && (
+            <div className="overflow-x-auto -mx-1 px-1">
             <SegmentedControl<PostsTab>
               value={tab}
               onChange={setTab}
               fullWidth
+              className="w-max min-w-full whitespace-nowrap"
               options={[
+                // Short names, so all five fit a phone without scrolling sideways (Josh, 22 Oct 2026).
+                { value: 'ready', label: 'Ready' },
                 { value: 'ideas', label: 'Ideas' },
-                ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting for you (${waitingCount})` : 'Waiting for you' }] : []),
-                ...(isOwner && nextOn ? [{ value: 'next' as const, label: 'Next week' }] : []),
+                ...(canManage ? [{ value: 'waiting' as const, label: waitingCount ? `Waiting (${waitingCount})` : 'Waiting' }] : []),
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'posted', label: 'Posted' },
               ]}
+            />
+            </div>
+          )}
+          {isPostsTab && networks.length > 1 && (
+            <SegmentedControl<string>
+              value={activeNetwork}
+              onChange={setNetwork}
+              options={networks.map((n) => ({
+                value: n,
+                label: `${PLATFORM_LABEL[n] ?? n} (${(listed ?? []).filter((p) => p.platform === n).length})`,
+              }))}
             />
           )}
           {isPostsTab && (
@@ -1204,17 +1325,21 @@ const PostsView = () => {
                 : `${(shown ?? posts).length} post${(shown ?? posts).length === 1 ? '' : 's'}${scheduledCount && tab !== 'posted' ? ` · ${scheduledCount} scheduled` : ''}`}
             </p>
           )}
-          {teamOn && (tab === 'ideas' || tab === 'waiting') && (
+          {teamOn && (tab === 'ready' || tab === 'ideas' || tab === 'waiting') && (
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="paragraph-xs text-quaternary">
-                {tab === 'ideas'
-                  ? 'What the team sent Mia on WhatsApp, and anything saved for later.'
-                  : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
+                {tab === 'ready'
+                  ? 'Finished pictures the team is happy with. Mia writes the words and uses these first in your Friday posts. Same as the Mia folder’s Ready to post.'
+                  : tab === 'ideas'
+                    ? 'Photos, notes and the look you like. Mia uses ideas when there’s nothing ready to post, and the moodboard for the look of pictures she draws (moodboard pictures are never posted). Same as the Mia folder’s Ideas & moodboard.'
+                    : 'Posts the team would like to go out. Approving here or on WhatsApp updates the other.'}
               </p>
-              <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
-                <UploadCloud01 size={14} />
-                Send a design for approval
-              </Button>
+              {tab === 'ready' && !canManage && (
+                <Button size="sm" variant="secondary" onClick={() => setSendingDesign(true)}>
+                  <UploadCloud01 size={14} />
+                  Send a finished design for approval
+                </Button>
+              )}
             </div>
           )}
           {sendingDesign && (
@@ -1227,9 +1352,17 @@ const PostsView = () => {
               }}
             />
           )}
-          {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} />}
+          {teamOn && tab === 'ideas' && <IdeasPanel canManage={canManage} kind="ideas" />}
+          {teamOn && tab === 'ready' && <IdeasPanel canManage={canManage} kind="ready" />}
           {teamOn && tab === 'waiting' && canManage && <WaitingPanel />}
-          {teamOn && tab === 'next' && isOwner && <NextWeekPanel />}
+          {/* Next week's posts (the Friday plan) wait for the owner's OK too, so they sit here
+              rather than on a tab that looked like a second Scheduled (Josh, 22 Oct 2026). */}
+          {teamOn && tab === 'waiting' && isOwner && nextOn && (
+            <div className="flex flex-col gap-2 pt-2">
+              <p className="subheading-md text-primary">Next week’s posts</p>
+              <NextWeekPanel />
+            </div>
+          )}
 
         {error && (
           <div className="flex items-center gap-3">

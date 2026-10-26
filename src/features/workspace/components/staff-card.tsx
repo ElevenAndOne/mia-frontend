@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MessageChatSquare } from '../../../components/icon/message-chat-square'
 import {
-  addStaff,
   fetchStaff,
   removeStaff,
   resendStaffAsk,
@@ -12,8 +11,6 @@ import {
 
 const ghost =
   'px-2.5 py-1.5 border border-primary rounded-lg paragraph-xs text-secondary hover:bg-tertiary transition-colors disabled:opacity-50'
-const solid =
-  'px-2.5 py-1.5 rounded-lg paragraph-xs bg-brand-solid text-primary-onbrand hover:opacity-90 transition-opacity disabled:opacity-50'
 const field =
   'w-full px-3 py-2 rounded-lg border border-primary bg-primary paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:ring-2 focus:ring-utility-info-500'
 
@@ -28,13 +25,9 @@ const fmt = (iso: string | null) =>
  */
 export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; tenantId: string }) => {
   const [state, setState] = useState<StaffState | null>(null)
-  const [name, setName] = useState('')
-  const [number, setNumber] = useState('')
-  const [role, setRole] = useState<'viewer' | 'admin'>('viewer')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
     if (!sessionId) return
@@ -47,6 +40,10 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
 
   useEffect(() => {
     void load()
+    // The Invite member dialog adds WhatsApp staff now (22 Oct 2026): show them here straight away.
+    const onChanged = () => void load()
+    window.addEventListener('mia:staff-changed', onChanged)
+    return () => window.removeEventListener('mia:staff-changed', onChanged)
   }, [load])
 
   const run = async (fn: () => Promise<void>) => {
@@ -61,17 +58,6 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
       setBusy(false)
     }
   }
-
-  const add = () =>
-    run(async () => {
-      if (!sessionId) return
-      const res = await addStaff(sessionId, tenantId, { name: name.trim(), whatsapp_number: number.trim(), role })
-      setNotice(res.message)
-      setName('')
-      setNumber('')
-      setShowForm(false)
-      await load()
-    })
 
   const resend = (m: StaffMember) =>
     run(async () => {
@@ -96,6 +82,9 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
       setState({ ...state, ...next })
     })
 
+  // Invited, not joined yet; the joined ones are in the members list above (no double listing).
+  const waiting = (state?.staff ?? []).filter((m) => m.status !== 'joined')
+
   if (state?.unavailable) {
     return (
       <Shell>
@@ -106,9 +95,9 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
 
   return (
     <Shell>
-      {state && state.staff.length > 0 && (
+      {state && waiting.length > 0 && (
         <ul className="flex flex-col divide-y divide-tertiary">
-          {state.staff.map((m) => (
+          {waiting.map((m) => (
             <li key={m.user_id} className="flex items-center gap-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="paragraph-sm text-primary truncate">
@@ -134,50 +123,22 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
           ))}
         </ul>
       )}
-      {state && state.staff.length === 0 && !showForm && (
+      {state && waiting.length === 0 && (
         <p className="paragraph-xs text-quaternary">
-          Nobody yet. Add the people who see the good moments; they send Mia photos on WhatsApp and you approve what goes out.
+          Invite staff with <span className="text-secondary">Invite member</span> above, by WhatsApp number. Once they say yes they
+          show in your members list, and send Mia photos and ideas on WhatsApp.
         </p>
       )}
 
-      {showForm ? (
-        <div className="flex flex-col gap-2">
-          <input
-            id="staff-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Their first name"
-            className={field}
-          />
-          <input
-            id="staff-number"
-            value={number}
-            onChange={(e) => setNumber(e.target.value)}
-            placeholder="WhatsApp number, e.g. 082 123 4567"
-            inputMode="tel"
-            className={field}
-          />
-          <label className="paragraph-xs text-quaternary flex items-center gap-2">
-            <input id="staff-admin" type="checkbox" checked={role === 'admin'} onChange={(e) => setRole(e.target.checked ? 'admin' : 'viewer')} />
-            They may approve posts too (admin)
-          </label>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => void add()} disabled={busy || !name.trim() || !number.trim()} className={solid}>
-              {busy ? 'Asking…' : 'Ask them to join'}
-            </button>
-            <button type="button" onClick={() => setShowForm(false)} disabled={busy} className={ghost}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button type="button" onClick={() => setShowForm(true)} disabled={busy || !state} className={`${ghost} self-start`}>
-          Add a staff member
-        </button>
-      )}
-
       {state && (
-        <div className="flex flex-col gap-2 pt-3 border-t border-tertiary">
+        // Tucked away by default (Josh, 22 Oct 2026): most owners never need them.
+        <details className="pt-3 border-t border-tertiary group">
+          <summary className="paragraph-sm text-secondary cursor-pointer select-none list-none flex items-center justify-between">
+            <span>Staff settings</span>
+            <span className="paragraph-xs text-quaternary group-open:hidden">Show</span>
+            <span className="paragraph-xs text-quaternary hidden group-open:inline">Hide</span>
+          </summary>
+        <div className="flex flex-col gap-2 pt-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="paragraph-sm text-primary">Staff can have Mia write posts</p>
@@ -227,6 +188,7 @@ export const StaffCard = ({ sessionId, tenantId }: { sessionId: string | null; t
             />
           </div>
         </div>
+        </details>
       )}
 
       {notice && <p className="paragraph-xs text-success-primary">{notice}</p>}

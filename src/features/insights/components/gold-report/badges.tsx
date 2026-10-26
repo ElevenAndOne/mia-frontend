@@ -22,10 +22,13 @@ type Accent = keyof typeof ACCENTS
 // Ordered — first match wins, so put narrower patterns first.
 const CATEGORY_ACCENTS: [RegExp, Accent][] = [
   [/CREATIVE|OVERRIDE|FORMAT|ASSET/, 'creative'],
+  // Recommendation tags name the action kind (RETEST, TEST, REPEAT, BUDGET, PAUSE...).
+  [/TEST|REPEAT|REPLICATE/, 'creative'],
+  [/PAUSE|STOP|OFFER|PRICE/, 'efficiency'],
   [/COST|EFFICIENCY|SPEND|BUDGET|CPC|CPM/, 'efficiency'],
   [/LEARNING|MATURITY|PROTECT/, 'learning'],
-  [/TIMING|SCHEDUL|DAY|SEASON/, 'scheduling'],
-  [/STRUCTURAL|CHANNEL|LEVER/, 'structural'],
+  [/TIMING|SCHEDUL|DAY|SEASON|CADENCE/, 'scheduling'],
+  [/STRUCTUR|CHANNEL|LEVER/, 'structural'],
   [/VOLUME|SCALE|REACH|AUDIENCE|SOURCE|PLATFORM/, 'volume'],
 ] as const
 
