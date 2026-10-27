@@ -30,6 +30,7 @@ export function CampaignChat({
   conversationId,
   pending = [],
   busy = null,
+  error = null,
   onApply,
   onDrop,
   onChanged,
@@ -40,6 +41,9 @@ export function CampaignChat({
   // used to ask Mia to make the change again, and her second attempt could differ).
   pending?: Pending[]
   busy?: string | null
+  // Why the last Apply or Not now was refused, said under the cards (DFSA 27 Oct: it showed only at the top of the
+  // page, out of sight, so Apply looked like it did nothing)
+  error?: string | null
   onApply?: (id: string) => Promise<unknown>
   onDrop?: (id: string) => Promise<unknown>
   onChanged?: () => void
@@ -245,6 +249,11 @@ export function CampaignChat({
               </div>
             ))
           : null}
+        {!loading && error && pending.length ? (
+          <p role="alert" className="rounded-lg border border-error bg-error-primary px-3 py-2 paragraph-sm text-error">
+            {error}
+          </p>
+        ) : null}
         <div ref={endRef} />
       </div>
       <form

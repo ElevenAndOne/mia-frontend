@@ -427,6 +427,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               conversationId={s.conversation_id}
               pending={s.pending ?? []}
               busy={build.busy}
+              error={build.error}
               onApply={build.applyChange}
               onDrop={build.dropChange}
               onChanged={() => {
