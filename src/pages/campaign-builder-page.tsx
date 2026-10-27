@@ -28,12 +28,12 @@ const TABS = [
   { key: 'results', label: 'Results' },
 ] as const
 
-// The server's limit on the documents' text (StartRequest.deck_text), and what the brief reads of it (brief.py).
+// The server's limit on the documents' text (StartRequest.deck_text); every step reads up to it whole (deck.py
+// FULL_CHARS, 27 Oct).
 const MAX_SOURCE_CHARS = 200_000
-const BRIEF_READS_CHARS = 60_000
 
 // The documents as the one text the server reads. One file reads exactly as before; several are each opened by the
-// line services/campaign_builder/deck.py FILE_MARK looks for, so every later step keeps a share of each one.
+// line services/campaign_builder/deck.py FILE_MARK looks for.
 function sourceText(files: DeckRead[], pasted: string): string {
   const paste = pasted.trim()
   if (files.length < 2) {
@@ -169,11 +169,6 @@ function NewBuild() {
                 }}
               />
             </label>
-            {files.length > 1 && !tooLong && deckText.length > BRIEF_READS_CHARS ? (
-              <p className="paragraph-xs text-tertiary">
-                Together these are long, so Mia reads each one in part (every document gets its share; none is left out).
-              </p>
-            ) : null}
             {tooLong ? (
               <p className="paragraph-xs text-error">
                 Together these are {deckText.length.toLocaleString()} characters; the most Mia takes in at once is{' '}
