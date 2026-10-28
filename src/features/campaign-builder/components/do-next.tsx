@@ -2,6 +2,14 @@ import { Button } from '../../../components/button'
 import type { BuildState } from '../types'
 import type { StepKey } from './steps'
 
+// "Recipe Intent Display", "Hero carousel and Recipe shoot", "3 jobs (Hero carousel, Recipe shoot, …)"
+const jobsNamed = (jobs: { name: string }[]) =>
+  jobs.length === 1
+    ? jobs[0].name
+    : jobs.length === 2
+      ? `${jobs[0].name} and ${jobs[1].name}`
+      : `${jobs.length} jobs (${jobs.slice(0, 2).map((a) => a.name).join(', ')}, …)`
+
 // Do this next (26 Oct): what an earlier change needs from the PM, shown at the top of whichever step they're on,
 // with its button right there, so a change never sends them back through the steps. Only cross-step items live here;
 // each step's own work stays in its Your turn list.
@@ -45,17 +53,27 @@ export function DoNext({
         </>
       ),
     })
-  else if (stale.length)
+  else if (stale.length && (state.checking || state.words_run?.status === 'running'))
+    // Mia rewrites them by herself after a change (build_service._auto_check, 27 Oct): said, not a button. "Is
+    // rewriting" only once the run is on them; during the short wait before it, "in a moment".
     items.push({
       key: 'words',
-      text: `${stale.length} job${stale.length === 1 ? '' : 's'}’ words were written before something changed (${[
-        ...new Set(stale.flatMap((a) => a.words_stale_why ?? [])),
-      ]
+      text:
+        state.words_run?.status === 'running' && stale.some((a) => a.writing)
+          ? `Mia is rewriting ${jobsNamed(stale.filter((a) => a.writing))} for your change (about a minute a job).`
+          : `Mia rewrites ${jobsNamed(stale)} for your change in a moment.`,
+      actions: null,
+    })
+  else if (stale.length)
+    // which job and what changed, in words (local test 27 Oct: "1 job' words were written before something changed")
+    items.push({
+      key: 'words',
+      text: `${jobsNamed(stale)}: the words were written before ${[...new Set(stale.flatMap((a) => a.words_stale_why ?? []))]
         .slice(0, 3)
-        .join(', ')}).`,
+        .join(', ') || 'a change'}.`,
       actions: (
         <Button size="sm" variant="primary" loading={busy === 'words'} onClick={() => void onRewrite(stale.map((a) => a.job_id!))}>
-          Rewrite their words
+          {stale.length === 1 ? 'Rewrite its words' : 'Rewrite their words'}
         </Button>
       ),
     })

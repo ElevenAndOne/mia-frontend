@@ -249,6 +249,22 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     }
     seen.current = { brief, plan }
   }, [s])
+  // A step that finishes while the PM is on it moves them to the next, and says so (local test 27 Oct: after "Looks
+  // right" the page stayed put, and the PM only knew a step was done when told). Only on the change to done: going
+  // back to a finished step stays there.
+  const shownStates = useRef<ReturnType<typeof stepStates> | null>(null)
+  useEffect(() => {
+    if (!states || !step) return
+    const was = shownStates.current?.[step]
+    shownStates.current = states
+    if (!was || was === 'done' || states[step] !== 'done') return
+    const at = STEPS.findIndex((st) => st.key === step)
+    const nxt = STEPS[at + 1]
+    if (!nxt) return
+    setFlash(`✓ ${STEPS[at].label} done. Next: ${nxt.label}.`)
+    goStep(nxt.key)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [states, step])
   useEffect(() => {
     if (!flash) return
     const t = setTimeout(() => setFlash(null), 8000)
@@ -313,10 +329,12 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   </Button>
                 ) : null}
                 {step && states ? (
-                  // Only when you're looking at another step: on the step you're on, it would repeat it (L5).
+                  // Only when you're looking at another step: on the step you're on, it would repeat it (L5). Named
+                  // for where it goes (local test 27 Oct: "Back to Jobs & budget" from Targets, though it was ahead).
                   step !== currentStep(states) ? (
                     <Button variant="primary" onClick={() => goStep(currentStep(states))}>
-                      Back to {STEPS.find((st) => st.key === currentStep(states))?.label}
+                      {stepKeys.indexOf(currentStep(states)) > stepKeys.indexOf(step) ? 'Continue: ' : 'Back to '}
+                      {STEPS.find((st) => st.key === currentStep(states))?.label}
                     </Button>
                   ) : null
                 ) : (
@@ -423,6 +441,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               pending={s.pending ?? []}
               busy={build.busy}
               error={build.error}
+              errorAt={build.errorAt}
               onApply={build.applyChange}
               onDrop={build.dropChange}
               onChanged={() => {
@@ -459,36 +478,34 @@ function StepView({
   const meta = STEPS[i]
   const next = STEPS[i + 1]
   const nextOpen = next && states[step] === 'done'
+  const left = STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="paragraph-xs text-tertiary">
-          Step {i + 1} of {STEPS.length}{states[step] === 'recheck' ? ' · something earlier changed, check this again' : ''}
-        </p>
-        <h2 className="subheading-lg text-primary">{meta.label}</h2>
-        <p className="paragraph-sm text-secondary">{meta.help}</p>
-      </div>
-      {step === 'check' ? (
+      {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
+          and lagged behind it). The page opens on the thing to do. */}
+      <h2 className="sr-only">{meta.label}</h2>
+      {states[step] === 'recheck' ? (
+        <p className="paragraph-xs text-utility-warning-700">Something earlier changed: check this again.</p>
+      ) : null}
+      {step === 'check' && left.length ? (
         // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
+        // Only while something is left (local test 27 Oct: "Every step is done. Run Mia's final check" showed right
+        // after the check had run)
         <Card className="flex flex-col gap-2">
           <h3 className="subheading-sm text-primary">Still to do</h3>
-          {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').length ? (
-            <ul className="flex flex-col gap-1">
-              {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').map((st) => (
-                <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-                  <span>
-                    {st.label}
-                    {states[st.key] === 'recheck' ? ' · recheck: something earlier changed' : states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
-                  </span>
-                  <Button size="sm" onClick={() => onGo(st.key)}>
-                    Go to {st.label}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="paragraph-sm text-secondary">Every step is done. Run Mia's final check, then approve.</p>
-          )}
+          <ul className="flex flex-col gap-1">
+            {left.map((st) => (
+              <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+                <span>
+                  {st.label}
+                  {states[st.key] === 'recheck' ? ' · something earlier changed' : states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
+                </span>
+                <Button size="sm" onClick={() => onGo(st.key)}>
+                  Go to {st.label}
+                </Button>
+              </li>
+            ))}
+          </ul>
         </Card>
       ) : null}
       {step === 'facts' ? (
@@ -532,6 +549,8 @@ function StepView({
           onSkipQuestion={build.skipQuestion}
           onFinalCheck={build.finalCheck}
           onFillTargets={build.fillTargets}
+          onApplyChange={build.applyChange}
+          onDropChange={build.dropChange}
         />
       )}
       {step === 'check' ? (
@@ -548,8 +567,8 @@ function StepView({
       ) : null}
       {next ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
-          <p className="paragraph-xs text-tertiary">
-            {nextOpen ? 'Done here. Go back to change anything; later steps follow.' : 'Finish this step to go on.'}
+          <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
+            {nextOpen ? `✓ ${meta.label} done` : 'Finish this step to go on.'}
           </p>
           <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
             Next: {next.label}

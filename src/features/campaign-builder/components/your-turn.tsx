@@ -149,7 +149,15 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   const open = items.filter((i) => !i.done)
   const nextKey = open[0]?.key
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(items.filter((i) => i.openByDefault && !i.done).map((i) => i.key)))
-  const toggle = (k: string) => setExpanded((e) => { const n = new Set(e); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  // The item at the top is open unless the PM hides it, so what it needs is on screen (local test 27 Oct: the
+  // self-check note's fix needed "Show" first)
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set())
+  const isOpen = (k: string) => expanded.has(k) || (k === nextKey && !hidden.has(k))
+  const toggle = (k: string) => {
+    const opening = !isOpen(k)
+    setExpanded((e) => { const n = new Set(e); if (opening) n.add(k); else n.delete(k); return n })
+    setHidden((h) => { const n = new Set(h); if (opening) n.delete(k); else n.add(k); return n })
+  }
   if (!open.length) {
     // Nothing left: one quiet line instead of a list of crossed-out steps.
     return (
@@ -165,12 +173,8 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   return (
     <Card className="!p-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="subheading-md text-primary">Your turn</h2>
-          <p className="paragraph-xs text-tertiary">
-            Work down the list. Each item leaves it once it's done, so the next one is always at the top.
-          </p>
-        </div>
+        {/* what to do, not how the list works (local test 27 Oct) */}
+        <h2 className="min-w-0 subheading-md text-primary">Your turn</h2>
         <span className="paragraph-xs text-tertiary tabular-nums">
           {open.length} to do{items.length > open.length ? ` · ${items.length - open.length} done` : ''}
         </span>
@@ -206,17 +210,17 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
                     {it.more ? (
                       <button
                         type="button"
-                        aria-expanded={expanded.has(it.key)}
+                        aria-expanded={isOpen(it.key)}
                         onClick={() => toggle(it.key)}
                         className="paragraph-xs underline text-primary"
                       >
-                        {expanded.has(it.key) ? 'Hide' : 'Show'}
+                        {isOpen(it.key) ? 'Hide' : 'Show'}
                       </button>
                     ) : null}
                   </div>
                 ) : null}
               </div>
-              {it.more && expanded.has(it.key) && !it.done ? <div className="mt-3 @2xl:pl-10">{it.more}</div> : null}
+              {it.more && isOpen(it.key) && !it.done ? <div className="mt-3 @2xl:pl-10">{it.more}</div> : null}
             </li>
           )
         })}
@@ -245,9 +249,11 @@ export function TargetToSet({
   byMia,
   kind,
   source,
+  grouped = false,
   onSet,
   onNoTarget,
 }: {
+  grouped?: boolean // under its phase's heading: the row doesn't repeat the phase
   name: string
   phase: string
   reference?: string | null
@@ -260,13 +266,17 @@ export function TargetToSet({
   onSet: (v: number | string, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
+  // Once a number is typed the row's button is Set, where the eye goes (local test 27 Oct: the PM typed 300000 and
+  // pressed Ask Mia, the button in that spot; nothing said Enter or leaving the box saves). Keep and Ask Mia step aside.
+  const [typed, setTyped] = useState('')
+  const id = `set-${phase}-${name}`
   return (
     <li className="grid grid-cols-1 @2xl:grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
       <div className="min-w-0">
         <p className="paragraph-sm text-primary">
-          <span className="font-medium">{name}</span> <span className="text-tertiary">· {phase}</span>
+          <span className="font-medium">{name}</span>
+          {grouped ? null : <span className="text-tertiary"> · {phase}</span>}
         </p>
-        {reference ? <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">{reference}</p> : null}
         {suggested != null ? (
           <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
             {byMia
@@ -276,33 +286,49 @@ export function TargetToSet({
               : source === 'history'
                 ? 'From a past campaign'
                 : 'From your account'}
-            :{' '}
-            {suggestedLabel ?? num(suggested)}
-            {suggestedFrom ? ` (${suggestedFrom})` : ''}
+            : {suggestedLabel ?? num(suggested)}
           </p>
+        ) : null}
+        {/* the working on tap: a name, a number and Keep is all the row needs (local test 27 Oct) */}
+        {reference || suggestedFrom ? (
+          <details className="paragraph-xs text-tertiary">
+            <summary className="cursor-pointer select-none hover:text-secondary">How this was worked out</summary>
+            {suggestedFrom ? <p className="[overflow-wrap:anywhere]">{suggestedFrom}</p> : null}
+            {reference ? <p className="[overflow-wrap:anywhere]">{reference}</p> : null}
+          </details>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="sr-only" htmlFor={`set-${phase}-${name}`}>
+        <label className="sr-only" htmlFor={id}>
           {name} target
         </label>
         <Field
-          id={`set-${phase}-${name}`}
+          id={id}
           placeholder="target"
           value=""
-          onCommit={(typed) => typed && onSet(typed)}
+          onTyping={setTyped}
+          onCommit={(v) => v && onSet(v)}
           className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
         />
-        {suggested != null ? (
-          // One target at a time: the PM looks at each starting point and takes it, or types their own.
-          <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
-            Keep {suggestedLabel ?? num(suggested)}
+        {typed.trim() ? (
+          // saves through the box's own blur, once (Field), so a click here and leaving the box are one save
+          <Button size="sm" variant="primary" onMouseDown={(e) => e.preventDefault()} onClick={() => document.getElementById(id)?.blur()}>
+            Set
           </Button>
-        ) : null}
-        <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">
-          No target
-        </button>
-        <AskMia label={`Target · ${phase} · ${name}`} detail={reference ?? undefined} />
+        ) : (
+          <>
+            {suggested != null ? (
+              // One target at a time: the PM looks at each starting point and takes it, or types their own.
+              <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
+                Keep {suggestedLabel ?? num(suggested)}
+              </Button>
+            ) : null}
+            <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">
+              No target
+            </button>
+            <AskMia label={`Target · ${phase} · ${name}`} detail={reference ?? undefined} />
+          </>
+        )}
       </div>
     </li>
   )

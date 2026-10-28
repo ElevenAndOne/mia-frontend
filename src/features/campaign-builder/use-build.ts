@@ -21,6 +21,9 @@ export function useBuild(campaignId: string | undefined) {
   const key = buildKey(tenantId, campaignId)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Which press the error came from ("apply:<card id>"), so a card's error shows under that card only (local test 27 Oct:
+  // a "Get prices" failure showed under an untouched card, reading as if the card had failed)
+  const [errorAt, setErrorAt] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: key,
@@ -29,7 +32,8 @@ export function useBuild(campaignId: string | undefined) {
     refetchInterval: (q) => {
       const s = q.state.data as BuildState | undefined
       if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own
-      return s && [s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') ? POLL_MS : false
+      // also while Mia re-checks after a change, so the page shows the result when it lands (27 Oct)
+      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || s.checking) ? POLL_MS : false
     },
   })
 
@@ -47,12 +51,14 @@ export function useBuild(campaignId: string | undefined) {
     async <T,>(label: string, fn: () => Promise<T>): Promise<T | undefined> => {
       setBusy(label)
       setError(null)
+      setErrorAt(null)
       try {
         const out = await fn()
         await queryClient.invalidateQueries({ queryKey: key })
         return out
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
+        setErrorAt(label)
         return undefined
       } finally {
         setBusy(null)
@@ -73,7 +79,11 @@ export function useBuild(campaignId: string | undefined) {
     loadError: query.error instanceof Error ? query.error.message : null,
     busy,
     error,
-    clearError: () => setError(null),
+    errorAt,
+    clearError: () => {
+      setError(null)
+      setErrorAt(null)
+    },
     saveBrief: (
       fields: Partial<Record<BriefField | 'playbook', unknown>>,
       name?: string,

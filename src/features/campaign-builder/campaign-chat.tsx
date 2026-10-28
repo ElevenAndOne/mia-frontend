@@ -20,10 +20,13 @@ interface Msg {
 const PIN_PREFIX = '📌 About: '
 const REVEAL_INTERVAL_MS = 40 // same pace as the main chat: ~125 characters a second
 const CHARS_PER_TICK = 5
-// "Ask Mia" with nothing typed: the question that goes with the item (Mia answers short and proposes the fix).
-const DEFAULT_ASK = 'What is this, and how would you fix it?'
+// "Ask Mia" pins the item to the message box and waits for the PM (local test 27 Oct: it sent a stock question at once,
+// and two presses gave two generic answers). These are one-tap starts; the PM can type their own instead.
+const QUICK_ASKS = ['Why this?', 'How would you fix it?']
+const CONNECTION_ERROR = 'Connection error. Please try again.'
+const FAILED = 'Something went wrong. Try again.'
 
-type Pending = { id: string; summary: string[]; at?: string }
+type Pending = { id: string; summary: string[]; at?: string; about?: string }
 
 export function CampaignChat({
   campaignId,
@@ -31,6 +34,7 @@ export function CampaignChat({
   pending = [],
   busy = null,
   error = null,
+  errorAt = null,
   onApply,
   onDrop,
   onChanged,
@@ -41,9 +45,11 @@ export function CampaignChat({
   // used to ask Mia to make the change again, and her second attempt could differ).
   pending?: Pending[]
   busy?: string | null
-  // Why the last Apply or Not now was refused, said under the cards (DFSA 27 Oct: it showed only at the top of the
-  // page, out of sight, so Apply looked like it did nothing)
+  // Why the last Apply or Not now was refused, said under that card (DFSA 27 Oct: it showed only at the top of the
+  // page, out of sight, so Apply looked like it did nothing). errorAt is the press it came from ("apply:<id>"); any
+  // other error stays at the top of the page.
   error?: string | null
+  errorAt?: string | null
   onApply?: (id: string) => Promise<unknown>
   onDrop?: (id: string) => Promise<unknown>
   onChanged?: () => void
@@ -54,7 +60,9 @@ export function CampaignChat({
   const [streaming, setStreaming] = useState('')
   const [status, setStatus] = useState('')
   const [input, setInput] = useState('')
+  const [pin, setPin] = useState<AskFocus | null>(null) // what "Ask Mia" pinned, sent with the PM's next message
   const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const follow = useRef(true) // follow the reply only while the PM is parked at the bottom
@@ -65,7 +73,14 @@ export function CampaignChat({
   useEffect(() => {
     if (!sessionId) return
     fetchConversationMessages(sessionId, conversationId)
-      .then((m) => setMessages(m.map((x) => ({ role: x.role, content: x.content }))))
+      // an error from an earlier attempt isn't shown as if it were current (local test 27 Oct)
+      .then((m) =>
+        setMessages(
+          m
+            .filter((x) => !(x.role === 'assistant' && [CONNECTION_ERROR, FAILED].includes(x.content.trim())))
+            .map((x) => ({ role: x.role, content: x.content })),
+        ),
+      )
       .catch(() => setMessages([])) // a new campaign has no conversation yet
   }, [sessionId, conversationId])
 
@@ -140,11 +155,11 @@ export function CampaignChat({
           },
         )
       } catch {
-        received = received || 'Connection error. Please try again.'
+        received = received || CONNECTION_ERROR
       } finally {
         done = true
         await revealed
-        setMessages((prev) => [...prev, { role: 'assistant', content: received || 'Something went wrong. Try again.' }])
+        setMessages((prev) => [...prev, { role: 'assistant', content: received || FAILED }])
         setLoading(false)
         setStreaming('')
         setStatus('')
@@ -156,20 +171,25 @@ export function CampaignChat({
     [sessionId, conversationId, campaignId, user?.google_user_id, activeWorkspace?.tenant_id],
   )
 
-  // "Ask Mia" on the page: send straight away with the item pinned (no typing needed). One sent while Mia is still
-  // replying waits its turn and goes when she's done (review 22 Oct, 5.1: it was dropped, so an answer saved on the
-  // page never got its "what else this changes" card).
+  // "Ask Mia" on the page pins the item to the message box and puts the cursor there; nothing is sent until the PM
+  // sends. An answer saved on the page (it carries its text) is sent at once, as it was; one sent while Mia is still
+  // replying waits its turn (review 22 Oct, 5.1: it was dropped, so the answer never got its "what this changes" card).
   const loadingRef = useRef(false)
   loadingRef.current = loading
   const queued = useRef<AskFocus[]>([])
   useEffect(() => {
     const on = (e: Event) => {
       const focus = (e as CustomEvent<AskFocus>).detail
+      if (!focus.text) {
+        setPin({ label: focus.label, detail: focus.detail })
+        requestAnimationFrame(() => inputRef.current?.focus())
+        return
+      }
       if (loadingRef.current) {
         queued.current.push(focus)
         return
       }
-      void send(focus.text ?? DEFAULT_ASK, { label: focus.label, detail: focus.detail })
+      void send(focus.text, { label: focus.label, detail: focus.detail })
     }
     window.addEventListener(ASK_EVENT, on)
     return () => window.removeEventListener(ASK_EVENT, on)
@@ -177,8 +197,18 @@ export function CampaignChat({
   useEffect(() => {
     if (loading) return
     const next = queued.current.shift()
-    if (next) void send(next.text ?? DEFAULT_ASK, { label: next.label, detail: next.detail })
+    if (next?.text) void send(next.text, { label: next.label, detail: next.detail })
   }, [loading, send])
+  const sendTyped = (text: string) => {
+    if (loading || !text.trim()) return
+    void send(text, pin)
+    setPin(null)
+    clearFocus()
+  }
+  const cardError = (id: string) => (error && (errorAt === `apply:${id}` || errorAt === `drop:${id}`) ? error : null)
+  // a card refused and gone from the list still says why, at the end of the cards
+  const orphanError =
+    error && /^(apply|drop):/.test(errorAt ?? '') && !pending.some((p) => errorAt?.endsWith(`:${p.id}`)) ? error : null
 
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-secondary bg-primary" aria-label="Chat with Mia about this campaign">
@@ -216,7 +246,7 @@ export function CampaignChat({
         {!loading
           ? pending.map((p) => (
               <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-brand bg-brand-primary px-3 py-2">
-                <p className="label-xs text-brand-secondary">Mia proposes</p>
+                <p className="label-xs text-brand-secondary">Mia proposes{p.about ? ` · for ${p.about}` : ''}</p>
                 <ul className="flex flex-col gap-1 paragraph-sm text-primary">
                   {p.summary.map((line, k) => (
                     <li key={k} className="[overflow-wrap:anywhere]">{line}</li>
@@ -246,47 +276,84 @@ export function CampaignChat({
                     Not now
                   </button>
                 </div>
+                {cardError(p.id) ? (
+                  <p role="alert" className="rounded-lg border border-error bg-error-primary px-3 py-2 paragraph-sm text-error">
+                    {cardError(p.id)}
+                  </p>
+                ) : null}
               </div>
             ))
           : null}
-        {!loading && error && pending.length ? (
+        {!loading && orphanError ? (
           <p role="alert" className="rounded-lg border border-error bg-error-primary px-3 py-2 paragraph-sm text-error">
-            {error}
+            {orphanError}
           </p>
         ) : null}
         <div ref={endRef} />
       </div>
       <form
-        className="border-t border-secondary p-3 flex gap-2"
+        className="border-t border-secondary p-3 flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          if (!loading) void send(input, null)
+          sendTyped(input)
         }}
       >
-        <label htmlFor="campaign-chat-input" className="sr-only">
-          Message Mia
-        </label>
-        <textarea
-          id="campaign-chat-input"
-          rows={2}
-          className="flex-1 resize-none rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
-          placeholder="Message Mia about this campaign"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              if (!loading) void send(input, null)
-            }
-          }}
-        />
-        <button
-          type="submit"
-          disabled={loading || !input.trim()}
-          className="self-end rounded-lg bg-brand-solid px-3 py-2 paragraph-sm text-primary-onbrand disabled:opacity-50"
-        >
-          Send
-        </button>
+        {pin ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex max-w-full items-center gap-1 rounded-md bg-brand-primary px-2 py-0.5 paragraph-xs text-brand-secondary">
+              <span className="truncate">About: {pin.label}</span>
+              <button
+                type="button"
+                aria-label="Remove what's pinned"
+                className="text-brand-secondary hover:text-primary"
+                onClick={() => {
+                  setPin(null)
+                  clearFocus()
+                }}
+              >
+                ×
+              </button>
+            </span>
+            {QUICK_ASKS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={loading}
+                className="rounded-full border border-secondary px-2.5 py-0.5 paragraph-xs text-secondary hover:bg-secondary disabled:opacity-50"
+                onClick={() => sendTyped(q)}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <label htmlFor="campaign-chat-input" className="sr-only">
+            Message Mia
+          </label>
+          <textarea
+            id="campaign-chat-input"
+            ref={inputRef}
+            rows={2}
+            className="flex-1 resize-none rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
+            placeholder={pin ? 'Ask Mia about this' : 'Message Mia about this campaign'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendTyped(input)
+              }
+            }}
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="self-end rounded-lg bg-brand-solid px-3 py-2 paragraph-sm text-primary-onbrand disabled:opacity-50"
+          >
+            Send
+          </button>
+        </div>
       </form>
     </aside>
   )

@@ -7,8 +7,13 @@ import { useEffect, useRef, useState, type InputHTMLAttributes } from 'react'
 export function Field({
   value,
   onCommit,
+  onTyping,
   ...rest
-}: { value: string | number | null | undefined; onCommit: (typed: string) => void } & Omit<
+}: {
+  value: string | number | null | undefined
+  onCommit: (typed: string) => void
+  onTyping?: (typed: string) => void // what is in the box as it's typed, before it saves (a row shows "Set" for it)
+} & Omit<
   InputHTMLAttributes<HTMLInputElement>,
   'value' | 'onChange' | 'onBlur' | 'onKeyDown'
 >) {
@@ -40,7 +45,10 @@ export function Field({
       onFocus={() => {
         focused.current = true
       }}
-      onChange={(e) => setV(e.target.value)}
+      onChange={(e) => {
+        setV(e.target.value)
+        onTyping?.(e.target.value)
+      }}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -48,6 +56,7 @@ export function Field({
           e.currentTarget.blur() // saves through onBlur, once
         } else if (e.key === 'Escape') {
           setV(shown)
+          onTyping?.(shown)
         }
       }}
     />

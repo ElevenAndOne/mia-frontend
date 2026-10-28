@@ -6,6 +6,7 @@ import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
 import { AskMia, askMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
+import { answerFocus } from './answer-focus'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -29,7 +30,7 @@ interface Props {
   onConfirm?: (fields: string[]) => Promise<unknown>
 }
 
-const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
+const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made', 'measurement']
 const LABELS: Record<BriefField, string> = {
   goal: 'Goal',
   audience: 'Audience',
@@ -43,6 +44,7 @@ const LABELS: Record<BriefField, string> = {
   offer: 'Offer',
   landing_page: 'Landing page',
   already_made: 'Already made (not made again)',
+  measurement: "How it's measured",
 }
 
 type Draft = Record<BriefField, string>
@@ -61,6 +63,7 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   offer: b.offer ?? '',
   landing_page: b.landing_page ?? '',
   already_made: (b.already_made ?? []).join('\n'),
+  measurement: (b.measurement ?? []).join('\n'),
 })
 
 const fromDraft = (k: BriefField, v: string): unknown => {
@@ -98,8 +101,9 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     if (qs.length) {
       items.push({
         key: 'questions',
-        title: `Answer or skip Mia's ${qs.length} question${qs.length === 1 ? '' : 's'}`,
-        detail: 'Most important first. Type your answer and press Send, or skip it and Mia decides. Approve waits for these.',
+        // one at a time with where you are, like Mia's questions after the plan (local test 27 Oct)
+        title: `Mia's question ${(b?.answered_questions ?? []).length + 1} of ${(b?.answered_questions ?? []).length + qs.length}`,
+        detail: 'Answer it, or skip it and Mia decides.',
         done: !qs.length,
         openByDefault: true,
         more: (
@@ -113,7 +117,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
               // reads it in context and proposes what else it changes, with Apply.
               const q = qs.find((x) => x.id === id)
               if (ok !== undefined && q)
-                askMia({ label: 'Your answer · Key facts', detail: q.question, text: `My answer: ${answer}` })
+                askMia(answerFocus(q.question, answer))
               return ok
             }}
             onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
@@ -146,10 +150,16 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         openByDefault: true,
         more: (
           <ul className="flex flex-col gap-1.5">
+            {/* a label and one short line each, the whole text on tap (local test 27 Oct: five facts in full
+                sentences read as a wall of text) */}
             {drafted.map((f) => (
-              <li key={f} className="flex flex-col paragraph-sm">
-                <span className="label-xs text-secondary">{LABELS[f] ?? f} · Mia's reading</span>
-                <span className="text-primary [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
+              <li key={f} className="paragraph-sm">
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none flex-col [&::-webkit-details-marker]:hidden">
+                    <span className="label-xs text-secondary">{LABELS[f] ?? f}</span>
+                    <span className="text-primary line-clamp-1 group-open:line-clamp-none [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
+                  </summary>
+                </details>
               </li>
             ))}
           </ul>
@@ -489,7 +499,7 @@ function Questions({
   onAnswer: (id: string, answer: string) => Promise<unknown>
   onSkip: (id: string) => Promise<unknown>
 }) {
-  const qs = (brief.open_questions ?? []).slice(0, 3)
+  const qs = (brief.open_questions ?? []).slice(0, 1) // one at a time; the next shows after Send or Skip
   // Kept by question id: a question that closes moves the others up, and answers stayed under the wrong one (16 Oct).
   const [answers, setAnswers] = useState<Record<string, string>>({})
   if (!qs.length) return null

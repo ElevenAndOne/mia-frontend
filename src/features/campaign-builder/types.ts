@@ -8,6 +8,8 @@ export interface BuildRun {
   status: RunStatus
   stage: string | null
   stage_label: string | null
+  stage_at?: number | null // this stage's place in the run ("3 of 7"), for the progress bar
+  stage_of?: number | null
   error: string | null
   stale: boolean
   started_at: string | null
@@ -36,6 +38,7 @@ export interface Brief {
   offer?: string | null
   landing_page?: string | null
   already_made?: string[]
+  measurement?: string[] // how results are counted: tracking events, pixels, what counts as an entry
   pm_words?: PmWords[]
   open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
   answered_questions?: { question: string; answer: string | null; assumed?: string }[]
@@ -56,6 +59,7 @@ export type BriefField =
   | 'offer'
   | 'landing_page'
   | 'already_made'
+  | 'measurement'
 
 export interface CreativeBrief {
   objective?: string
@@ -74,6 +78,7 @@ export interface CreativeBrief {
 export interface PlanAsset {
   words_stale?: boolean // the job or a fact its words used changed after they were written
   words_stale_why?: string[] // e.g. "the offer changed", "the job changed"
+  writing?: boolean // the running words run is writing this job (read only while words_run is running)
   phase: string
   channel: string
   name: string
@@ -289,8 +294,10 @@ export interface BuildState {
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
-  pending?: { id: string; summary: string[]; at?: string }[] // changes the chat proposed, waiting for Apply
+  // changes the chat proposed, waiting for Apply; `about`: the page item it was asked from (its Ask Mia label)
+  pending?: { id: string; summary: string[]; at?: string; about?: string }[]
   decision_log?: { summary: string[]; outcome: string; by?: string; at?: string }[]
+  checking?: boolean // Mia is re-checking the plan after a change (build_service.schedule_check)
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
