@@ -94,7 +94,7 @@ export const PostingRhythmCard = ({
             onChange={(e) => void save({ posts_per_week: Number(e.target.value) })}
             className="px-2 py-1 rounded-lg border border-primary bg-primary paragraph-xs text-primary"
           >
-            {[1, 2, 3, 4, 5].map((n) => (
+            {[1, 2, 3].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
