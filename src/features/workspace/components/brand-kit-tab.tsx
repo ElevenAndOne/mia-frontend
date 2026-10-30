@@ -64,10 +64,13 @@ export const BrandKitTab = ({
   sessionId,
   tenantId,
   canManage,
+  hideLogo = false,
 }: {
   sessionId: string | null
   tenantId: string
   canManage: boolean
+  /** Basic has one logo, set on the Workspace tab: no second "logo on posts" row here. */
+  hideLogo?: boolean
 }) => {
   const { showToast } = useToast()
   const { isBasic } = useExperience()
@@ -322,55 +325,57 @@ export const BrandKitTab = ({
               ))}
             </datalist>
           </div>
-          <div className="flex items-center gap-3 px-3 py-3">
-            <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
-              {kit.logo ? (
-                <img src={kit.logo.cdn_url} alt="" className="w-full h-full object-contain p-1" />
-              ) : (
-                <Plus size={14} className="text-quaternary" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="subheading-md text-primary">Logo on posts</p>
-              <p className="paragraph-xs text-quaternary">
-                {kit.logo
-                  ? 'Transparent PNG works best. "Add our logo" in chat uses this.'
-                  : 'No logo yet — a transparent PNG works best.'}
-              </p>
-            </div>
-            {canManage && kit.logo && (
-              <button
-                type="button"
-                onClick={() => deleteAsset(kit.logo!.asset_id)}
-                className="px-2.5 py-1.5 rounded-lg border border-tertiary paragraph-xs text-error hover:bg-tertiary"
-              >
-                Remove
-              </button>
-            )}
-            {canManage && (
-              <>
+          {!hideLogo && (
+            <div className="flex items-center gap-3 px-3 py-3">
+              <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
+                {kit.logo ? (
+                  <img src={kit.logo.cdn_url} alt="" className="w-full h-full object-contain p-1" />
+                ) : (
+                  <Plus size={14} className="text-quaternary" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="subheading-md text-primary">Logo on posts</p>
+                <p className="paragraph-xs text-quaternary">
+                  {kit.logo
+                    ? 'Transparent PNG works best. "Add our logo" in chat uses this.'
+                    : 'No logo yet — a transparent PNG works best.'}
+                </p>
+              </div>
+              {canManage && kit.logo && (
                 <button
                   type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={uploadingKind !== null}
-                  className="px-2.5 py-1.5 rounded-lg border border-tertiary paragraph-xs text-secondary hover:bg-tertiary disabled:opacity-50"
+                  onClick={() => deleteAsset(kit.logo!.asset_id)}
+                  className="px-2.5 py-1.5 rounded-lg border border-tertiary paragraph-xs text-error hover:bg-tertiary"
                 >
-                  {uploadingKind === 'logo' ? 'Uploading…' : kit.logo ? 'Replace' : 'Upload'}
+                  Remove
                 </button>
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) uploadAsset('logo', f)
-                    e.target.value = ''
-                  }}
-                />
-              </>
-            )}
-          </div>
+              )}
+              {canManage && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingKind !== null}
+                    className="px-2.5 py-1.5 rounded-lg border border-tertiary paragraph-xs text-secondary hover:bg-tertiary disabled:opacity-50"
+                  >
+                    {uploadingKind === 'logo' ? 'Uploading…' : kit.logo ? 'Replace' : 'Upload'}
+                  </button>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) uploadAsset('logo', f)
+                      e.target.value = ''
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {canManage && (

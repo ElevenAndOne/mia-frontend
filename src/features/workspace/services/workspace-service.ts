@@ -156,6 +156,36 @@ export const uploadWorkspaceLogo = async (
   return `${API_BASE_URL}${data.logo_url}?v=${Date.now()}`
 }
 
+/**
+ * Basic's one logo (Settings clean-up, 30 Oct 2026): saved as the logo Mia puts on posts and,
+ * by the backend, as the workspace logo next to the name in Mia. Returns the app logo URL.
+ */
+export const uploadOneLogo = async (sessionId: string, tenantId: string, file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('kind', 'logo')
+  formData.append('everywhere', 'true')
+  formData.append('file', file)
+  const response = await apiFetch(`/api/tenants/${tenantId}/brand-kit/assets`, {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId },
+    body: formData,
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Logo upload failed')
+  }
+  return `${API_BASE_URL}/api/tenants/${tenantId}/logo?v=${Date.now()}`
+}
+
+/** Removes Basic's one logo from posts and from the app. */
+export const removeOneLogo = async (sessionId: string, tenantId: string): Promise<void> => {
+  const headers = { 'X-Session-ID': sessionId }
+  const kit = await apiFetch(`/api/tenants/${tenantId}/brand-kit`, { headers })
+  const logoId = kit.ok ? ((await kit.json()) as { logo?: { asset_id?: string } | null }).logo?.asset_id : null
+  if (logoId) await apiFetch(`/api/tenants/${tenantId}/brand-kit/assets/${logoId}`, { method: 'DELETE', headers })
+  await deleteWorkspaceLogo(sessionId, tenantId).catch(() => undefined)
+}
+
 export const deleteWorkspaceLogo = async (sessionId: string, tenantId: string): Promise<void> => {
   const response = await apiFetch(`/api/tenants/${tenantId}/logo`, {
     method: 'DELETE',

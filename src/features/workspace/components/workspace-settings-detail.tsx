@@ -43,6 +43,8 @@ const TabFallback = () => (
 import {
   uploadWorkspaceLogo,
   deleteWorkspaceLogo,
+  uploadOneLogo,
+  removeOneLogo,
   fetchWorkspaceDetails,
   updateWorkspaceWebsiteUrl,
   updateWorkspaceFramework,
@@ -60,15 +62,13 @@ import { DeleteWorkspaceModal } from './delete-workspace-modal'
 import { RenameWorkspaceModal } from './rename-workspace-modal'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
 import { WebsiteReadCard } from './website-read-card'
-import { CollapsibleSection } from '../../../components/collapsible-section'
 import { BasicWorkspaceSettings } from './basic-workspace-settings'
-import { HowMiaWritesCard, LearnedRulesCard, PeopleCard } from './basic-brand-cards'
+import { BasicBrandTab } from './basic-brand-tab'
 import { HelpContent } from '../../shell/components/help-content'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
 import { StaffCard } from './staff-card'
 import { useFeature } from '../hooks/use-features'
 import { CreativeWatchCard } from './creative-watch-card'
-import { BrandFactsSection } from './brand-facts-section'
 import {
   SegmentedControl,
   type SegmentedControlOption,
@@ -272,6 +272,11 @@ export const WorkspaceSettingsDetail = ({
   const staffOn = useFeature('staff_whatsapp')
   const { showToast } = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
+  // A logo that arrived another way (a website read fills an empty one) shows without a reload.
+  useEffect(() => {
+    if (workspace.logo_url && !logoUrl) setLogoUrl(`${workspace.logo_url}?v=${Date.now()}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace.logo_url])
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -451,7 +456,10 @@ export const WorkspaceSettingsDetail = ({
     setUploadingLogo(true)
     setLogoError(null)
     try {
-      const url = await uploadWorkspaceLogo(sessionId, workspace.tenant_id, file)
+      // Basic has one logo: on posts and next to the name in Mia (Settings clean-up, 30 Oct 2026).
+      const url = isBasic
+        ? await uploadOneLogo(sessionId, workspace.tenant_id, file)
+        : await uploadWorkspaceLogo(sessionId, workspace.tenant_id, file)
       setLogoUrl(url)
       await refreshWorkspaces()
     } catch (e) {
@@ -466,7 +474,8 @@ export const WorkspaceSettingsDetail = ({
     setUploadingLogo(true)
     setLogoError(null)
     try {
-      await deleteWorkspaceLogo(sessionId, workspace.tenant_id)
+      if (isBasic) await removeOneLogo(sessionId, workspace.tenant_id)
+      else await deleteWorkspaceLogo(sessionId, workspace.tenant_id)
       setLogoUrl(null)
       await refreshWorkspaces()
     } catch (e) {
@@ -475,6 +484,61 @@ export const WorkspaceSettingsDetail = ({
       setUploadingLogo(false)
     }
   }
+
+  // Invite, members, staff and the Mia folder. Full plans show them at the top of the tab;
+  // Basic shows them as "Your team", under the business (Settings clean-up, 30 Oct 2026).
+  const teamBlock = (
+    <>
+      {/* Basic can invite people too. It is one workspace, not one person — a sole
+          owner who takes on a bookkeeper should not have to change experience to
+          let them in. Inviting does not change the experience; it only adds a
+          member (see suggest_experience: the shape is read once, at sign-up). */}
+      {canManage && (
+        <button
+          onClick={onOpenCreateInviteModal}
+          className={
+            isBasic
+              ? 'w-full py-2.5 px-4 border border-primary text-secondary rounded-xl paragraph-sm flex items-center justify-center gap-2 hover:bg-tertiary transition-colors mb-3'
+              : 'w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4'
+          }
+        >
+          <Plus size={20} />
+          Invite Member
+        </button>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spinner size="md" variant="dark" />
+        </div>
+      ) : (
+        <WorkspaceMembersPanel
+          people={people}
+          onUpdateRole={onUpdateRole}
+          onTransferOwnership={onTransferOwnership}
+          onRemoveMember={onRemoveMember}
+          onCopyInvite={onCopyInvite}
+          onRevokeInvite={onRevokeInvite}
+        />
+      )}
+
+      {/* Staff on WhatsApp (Oct 2026): the people with no login who send Mia photos.
+          Owner/admin only, and only where the feature is on for the workspace. */}
+      {canManage && staffOn && sessionId && (
+        <div className="mt-4">
+          <StaffCard sessionId={sessionId} tenantId={workspace.tenant_id} />
+        </div>
+      )}
+
+      {/* The Mia folder (22 Oct 2026): Basic has no WhatsApp settings tab, so the team's
+          shared Drive folder sits here, with the team it belongs to. */}
+      {canManage && isBasic && sessionId && (
+        <div className="mt-4">
+          <CreativeWatchCard sessionId={sessionId} tenantId={workspace.tenant_id} />
+        </div>
+      )}
+    </>
+  )
 
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
@@ -720,68 +784,24 @@ export const WorkspaceSettingsDetail = ({
           <div className={activeTab === 'brand' ? undefined : 'hidden'}>
             <Suspense fallback={<TabFallback />}>
               {isBasic ? (
-                /* Slim Basic Brand (30 Sep 2026): four plain questions, the people Mia
-                   knows, what she has learned, and the look. The full Marketing Context
-                   field list and the website facts are under "More". */
-                <div className="space-y-3">
-                  <CollapsibleSection
-                    title="How Mia writes for you"
-                    summary="What you do, who it's for, how you sound, what to avoid"
-                    defaultOpen
-                  >
-                    <HowMiaWritesCard
-                      sessionId={sessionId ?? ''}
-                      tenantId={workspace.tenant_id}
-                      canManage={canManage}
-                    />
-                  </CollapsibleSection>
-                  <CollapsibleSection
-                    title="People"
-                    summary="The people Mia can put in your pictures"
-                  >
-                    <PeopleCard
-                      sessionId={sessionId ?? ''}
-                      tenantId={workspace.tenant_id}
-                      canManage={canManage}
-                    />
-                  </CollapsibleSection>
-                  <CollapsibleSection
-                    title="What Mia has learned"
-                    summary="Habits she picked up from your changes; turn any of them off"
-                  >
-                    <LearnedRulesCard
-                      sessionId={sessionId ?? ''}
-                      tenantId={workspace.tenant_id}
-                      canManage={canManage}
-                    />
-                  </CollapsibleSection>
-                  <CollapsibleSection
-                    title="Colours, font & logo"
-                    summary="What Mia uses to make your posts look like you"
-                  >
-                    <BrandKitTab
-                      sessionId={sessionId}
-                      tenantId={workspace.tenant_id}
-                      canManage={canManage}
-                    />
-                  </CollapsibleSection>
-                  <CollapsibleSection title="More" summary="Facts from your website, and every detail Mia keeps">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="subheading-md text-primary mb-2">Facts Mia may quote</p>
-                        <BrandFactsSection sessionId={sessionId ?? ''} tenantId={workspace.tenant_id} />
-                      </div>
-                      <div>
-                        <p className="subheading-md text-primary mb-2">All the details</p>
-                        <MarketingContextPage
-                          sessionId={sessionId}
-                          tenantId={workspace.tenant_id}
-                          canManage={canManage}
-                        />
-                      </div>
-                    </div>
-                  </CollapsibleSection>
-                </div>
+                /* Basic Brand (Settings clean-up, 30 Oct 2026): their look first, where Mia
+                   learns it (brand guide, website, Page), then how she writes. The full
+                   field list is gone from Basic: an owner never needed it. */
+                <BasicBrandTab
+                  sessionId={sessionId ?? ''}
+                  tenantId={workspace.tenant_id}
+                  canManage={canManage}
+                  workspaceName={workspace.name}
+                  workspaceLogoUrl={logoUrl}
+                  websiteUrl={websiteUrl}
+                  onWebsiteSaved={(url) => {
+                    setWebsiteUrl(url)
+                    setWebsiteUrlInput(url)
+                  }}
+                  connectedPlatforms={workspace.connected_platforms ?? []}
+                  onOpenConnections={() => navigate('/integrations?from=settings')}
+                  onLookChanged={() => void refreshWorkspaces()}
+                />
               ) : (
                 <MarketingContextPage
                   sessionId={sessionId}
@@ -875,50 +895,7 @@ export const WorkspaceSettingsDetail = ({
                 </div>
               )}
 
-              {/* Basic can invite people too. It is one workspace, not one person — a sole
-                  owner who takes on a bookkeeper should not have to change experience to
-                  let them in. Inviting does not change the experience; it only adds a
-                  member (see suggest_experience: the shape is read once, at sign-up). */}
-              {canManage && (
-                <button
-                  onClick={onOpenCreateInviteModal}
-                  className="w-full py-3 px-4 bg-brand-solid text-primary-onbrand rounded-xl subheading-md flex items-center justify-center gap-2 hover:bg-brand-solid-hover transition-colors mb-4"
-                >
-                  <Plus size={20} />
-                  Invite Member
-                </button>
-              )}
-
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Spinner size="md" variant="dark" />
-                </div>
-              ) : (
-                <WorkspaceMembersPanel
-                  people={people}
-                  onUpdateRole={onUpdateRole}
-                  onTransferOwnership={onTransferOwnership}
-                  onRemoveMember={onRemoveMember}
-                  onCopyInvite={onCopyInvite}
-                  onRevokeInvite={onRevokeInvite}
-                />
-              )}
-
-              {/* Staff on WhatsApp (Oct 2026): the people with no login who send Mia photos.
-                  Owner/admin only, and only where the feature is on for the workspace. */}
-              {canManage && staffOn && sessionId && (
-                <div className="mt-4">
-                  <StaffCard sessionId={sessionId} tenantId={workspace.tenant_id} />
-                </div>
-              )}
-
-              {/* The Mia folder (22 Oct 2026): Basic has no WhatsApp settings tab, so the team's
-                  shared Drive folder sits here, with the team it belongs to. */}
-              {canManage && isBasic && sessionId && (
-                <div className="mt-4">
-                  <CreativeWatchCard sessionId={sessionId} tenantId={workspace.tenant_id} />
-                </div>
-              )}
+              {!(isBasic && canManage) && teamBlock}
 
               {/* Workspace Settings - Owner and Admin */}
               {canManage && (
@@ -933,12 +910,6 @@ export const WorkspaceSettingsDetail = ({
                       workspaceName={workspace.name}
                       canManage={canManage}
                       isOwner={isOwner}
-                      websiteUrl={websiteUrl}
-                      onWebsiteSaved={(url) => {
-                        setWebsiteUrl(url)
-                        setWebsiteUrlInput(url)
-                      }}
-                      onOpenBrand={() => selectTab('brand')}
                       connectedPlatforms={workspace.connected_platforms ?? []}
                       onOpenConnections={() => navigate('/integrations?from=settings')}
                       onRename={onOpenRenameModal}
@@ -947,6 +918,7 @@ export const WorkspaceSettingsDetail = ({
                       logoError={logoError}
                       onUploadLogo={handleLogoUpload}
                       onRemoveLogo={handleLogoRemove}
+                      teamSlot={teamBlock}
                       whatsappMessagesSlot={
                         <div className="border-t border-tertiary pt-2 mt-1">
                                               <div className="flex items-center gap-3">
