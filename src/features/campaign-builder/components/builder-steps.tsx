@@ -4,8 +4,8 @@ const BAR: Record<StepState | 'now', string> = {
   done: 'bg-utility-success-500',
   todo: 'bg-tertiary',
   busy: 'bg-brand-solid animate-pulse',
-  recheck: 'bg-utility-warning-500',
-  now: 'bg-brand-solid',
+  // the step to do now: outlined, not filled, so it never reads as done beside "0 of 6 done" (local test 2, 28 Oct)
+  now: 'bg-brand-primary border border-brand',
 }
 
 // Progress you can see (local test 27 Oct: "all these look like the same page, as if we are getting nowhere"): each
@@ -35,7 +35,7 @@ export function StepRail({
         {STEPS.map((st, i) => {
           const state = states[st.key]
           const open = canOpen(states, st.key)
-          const look = st.key === cur && state !== 'busy' && state !== 'recheck' ? 'now' : state
+          const look = st.key === cur && state !== 'busy' ? 'now' : state
           const here = st.key === step
           return (
             <li key={st.key} className="min-w-0">
@@ -44,7 +44,7 @@ export function StepRail({
                 disabled={!open}
                 aria-current={here ? 'step' : undefined}
                 onClick={() => onGo(st.key)}
-                title={!open ? 'Finish the steps before this one first' : state === 'recheck' ? 'Something earlier changed: check this again' : undefined}
+                title={!open ? 'Finish the steps before this one first' : undefined}
                 className="flex w-full flex-col gap-1.5 text-left disabled:cursor-not-allowed"
               >
                 <span
@@ -57,7 +57,7 @@ export function StepRail({
                 >
                   {state === 'done' ? '✓ ' : `${i + 1}. `}
                   {st.label}
-                  {state === 'recheck' ? ' · recheck' : state === 'busy' && !here ? ' · Mia working' : ''}
+                  {state === 'busy' && !here ? ' · Mia working' : ''}
                 </span>
               </button>
             </li>

@@ -104,6 +104,16 @@ export async function dropChange(sessionId: string, tenantId: string, campaignId
   )
 }
 
+// Put back what an answer changed in the plan; the answer stays answered.
+export async function undoAnswer(sessionId: string, tenantId: string, campaignId: string, questionId: string) {
+  return check<BuildState>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/answers/${encodeURIComponent(questionId)}/undo`, {
+      method: 'POST',
+      headers: json(sessionId),
+    }),
+  )
+}
+
 export async function editPlan(sessionId: string, tenantId: string, campaignId: string, ops: PlanOp[]) {
   return check<BuildState>(
     await apiFetch(`${base(tenantId)}/${campaignId}/plan`, {

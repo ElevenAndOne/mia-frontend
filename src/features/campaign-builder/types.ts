@@ -40,7 +40,14 @@ export interface Brief {
   already_made?: string[]
   measurement?: string[] // how results are counted: tracking events, pixels, what counts as an entry
   pm_words?: PmWords[]
-  open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
+  open_questions?: {
+    id: string
+    question: string
+    why_it_matters: string
+    impact?: string
+    // Mia read the last answer as about something else and asks again (build_service.check_brief_answers)
+    unclear?: { answer: string; why: string; kind?: 'not_an_answer' | 'unclear' }
+  }[]
   answered_questions?: { question: string; answer: string | null; assumed?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
@@ -118,6 +125,7 @@ export interface KpiTarget {
   unit?: string | null
   lower_is_better?: boolean
   made_by: string
+  doubted?: number // a past result Mia put aside as far off the working rate (estimates._doubt_history)
   value: number | null
   basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | 'mia_estimate' | string
   confidence?: 'high' | 'medium' | 'low'
@@ -221,6 +229,7 @@ export interface PlanReview {
   error?: string
   checked_at?: string // Mia's final check, run on the campaign as it stood then
   stale?: boolean // the plan changed after this check: its notes may no longer apply
+  jobs_changed?: boolean // a job itself changed after this check (what "Found before your latest change" means on a note)
   // The close reading (26 Oct): every job's brief and words against what was decided, and the PM's chat messages
   audit?: {
     error?: string
@@ -297,7 +306,14 @@ export interface BuildState {
   // changes the chat proposed, waiting for Apply; `about`: the page item it was asked from (its Ask Mia label)
   pending?: { id: string; summary: string[]; at?: string; about?: string }[]
   decision_log?: { summary: string[]; outcome: string; by?: string; at?: string }[]
-  checking?: boolean // Mia is re-checking the plan after a change (build_service.schedule_check)
+  checking?: boolean // Mia's final check will really run now (build_service.state: settled, nothing to write first)
+  check_pending?: boolean // a check is waiting (it may write changed words first, or do nothing yet): the page polls on it
+  auto_words?: boolean // jobs Mia writes or rewrites by herself on her next check (build_service.auto_words_todo)
+  // What the last answer changed in the plan, while it can still be undone exactly (build_service.answer_undo_view)
+  answer_undo?: { id: string; label: string } | null
+  // Mia's lines about recent answers (also saved in the chat's history), and how many answers she's still applying
+  answer_notes?: { nid: string; id: string; text: string; at: string }[]
+  reading_answers?: number
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 

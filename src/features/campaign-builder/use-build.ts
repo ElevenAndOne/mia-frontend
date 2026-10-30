@@ -33,7 +33,10 @@ export function useBuild(campaignId: string | undefined) {
       const s = q.state.data as BuildState | undefined
       if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own
       // also while Mia re-checks after a change, so the page shows the result when it lands (27 Oct)
-      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || s.checking) ? POLL_MS : false
+      // and while Mia applies an answer in the background, so her line and the change land on their own (29 Oct)
+      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || (s.check_pending ?? s.checking) || (s.reading_answers ?? 0) > 0)
+        ? POLL_MS
+        : false
     },
   })
 
@@ -52,12 +55,28 @@ export function useBuild(campaignId: string | undefined) {
       setBusy(label)
       setError(null)
       setErrorAt(null)
+      // A request that never reached the server (fetch throws TypeError: "NetworkError when attempting to fetch
+      // resource", local test 2, 29 Oct) is tried once more; one that starts work isn't, so it can't start it twice.
+      const network = (e: unknown) => e instanceof TypeError
       try {
-        const out = await fn()
-        await queryClient.invalidateQueries({ queryKey: key })
+        let out: T
+        try {
+          out = await fn()
+        } catch (e) {
+          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft'].includes(label)) throw e
+          await new Promise((r) => setTimeout(r, 1000))
+          out = await fn()
+        }
+        await queryClient.invalidateQueries({ queryKey: key, exact: true }) // the page only: the KPI list (keyed under it) was read twice after every save
         return out
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Something went wrong')
+        setError(
+          network(e)
+            ? "Couldn't reach Mia's server, so that wasn't saved. Try again."
+            : e instanceof Error
+              ? e.message
+              : 'Something went wrong',
+        )
         setErrorAt(label)
         return undefined
       } finally {
@@ -96,11 +115,26 @@ export function useBuild(campaignId: string | undefined) {
     confirmBrief: (fields: string[]) => run('confirm', () => api.confirmBrief(...ids(), fields)),
     fillTargets: () => run('fill', () => api.fillTargets(...ids())),
     finalCheck: () => run('check', () => api.finalCheck(...ids())),
-    applyChange: (id: string) => run(`apply:${id}`, () => api.applyChange(...ids(), id)),
+    applyChange: (id: string) =>
+      run(`apply:${id}`, async () => {
+        const out = await api.applyChange(...ids(), id)
+        // a job card on an approved campaign changes the Studio list (30 Oct)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['campaign-studio', tenantId, campaignId] }),
+          queryClient.invalidateQueries({ queryKey: ['campaign-launch', tenantId, campaignId] }),
+        ])
+        return out
+      }),
     dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
-    editPlan: (ops: PlanOp[]) =>
-      run('edit', async () => {
+    editPlan: (ops: PlanOp[], label = 'edit') =>
+      run(label, async () => {
         const next = await api.editPlan(...ids(), ops)
+        queryClient.setQueryData(key, next)
+        return next
+      }),
+    undoAnswer: (questionId: string) =>
+      run(`undo:${questionId}`, async () => {
+        const next = await api.undoAnswer(...ids(), questionId)
         queryClient.setQueryData(key, next)
         return next
       }),

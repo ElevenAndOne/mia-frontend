@@ -6,7 +6,6 @@ import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
 import { AskMia, askMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
-import { answerFocus } from './answer-focus'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -111,15 +110,9 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             brief={b!}
             busy={busy}
             running={run?.status === 'running'}
-            onAnswer={async (id, answer) => {
-              const ok = await onSave({}, undefined, [{ id, answer }])
-              // One answer path on both tabs (audit 22 Oct): the answer fills the fields it settles (server), then Mia
-              // reads it in context and proposes what else it changes, with Apply.
-              const q = qs.find((x) => x.id === id)
-              if (ok !== undefined && q)
-                askMia(answerFocus(q.question, answer))
-              return ok
-            }}
+            // The answer fills the fields it settles (server); it doesn't go to the chat as the PM's message (local
+            // test 2, 29 Oct: every answer showed in the chat with a long reply under it).
+            onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
             onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
           />
         ),
@@ -520,6 +513,14 @@ function Questions({
             <label htmlFor={`q-${q.id}`} className="min-w-0 flex-1 paragraph-sm text-primary">
               {q.question}
               <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
+              {q.unclear ? (
+                <span className="mt-1 block paragraph-xs text-utility-warning-700 [overflow-wrap:anywhere]">
+                  You wrote “{q.unclear.answer}”. {q.unclear.why}{' '}
+                  {q.unclear.kind === 'unclear'
+                    ? 'Which do you mean? Say it in a few more words.'
+                    : 'What’s your answer to this one? (Chat messages go in the chat box.)'}
+                </span>
+              ) : null}
             </label>
             <span className="flex items-center gap-2">
               <AskMia label="Brief question" detail={q.question} />

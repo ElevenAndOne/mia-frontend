@@ -6,6 +6,8 @@ import { askMia, clearFocus } from './your-turn'
 // Fix a finding where it is (P6, local test 27 Oct: each self-check finding went back and forth through the chat, and
 // an answer landed in the wrong box). One tap asks Mia to fix it as decided, or the PM says how in a line; Mia's card
 // for it shows right here with Apply (and in the chat), since the card remembers the item it was asked from.
+export type CardError = { at: string; error: string | null } | null
+
 export function FindingFix({
   label,
   detail,
@@ -14,6 +16,7 @@ export function FindingFix({
   busy,
   onApply,
   onDrop,
+  cardError = null,
 }: {
   label: string // the Ask Mia label: also how the card finds its way back here (pending.about)
   detail: string
@@ -22,10 +25,18 @@ export function FindingFix({
   busy: string | null
   onApply?: (id: string) => Promise<unknown>
   onDrop?: (id: string) => Promise<unknown>
+  cardError?: CardError
 }) {
   const [typed, setTyped] = useState('')
   const [sent, setSent] = useState(false)
   const cards = (state.pending ?? []).filter((p) => p.about === label)
+  // Its Apply or Not now failed: why shows here, also once a refused card has left the list (28 Oct: it showed at the
+  // page top and in the chat, not where it was pressed)
+  const [shown, setShown] = useState<string[]>([])
+  if (cards.some((p) => !shown.includes(p.id))) setShown([...new Set([...shown, ...cards.map((p) => p.id)])])
+  const failed = cardError?.error && shown.some((id) => cardError.at.endsWith(`:${id}`)) ? cardError.error : null
+  const why = failed ? <p className="paragraph-xs text-error [overflow-wrap:anywhere]">{failed}</p> : null
+  const gone = failed && !cards.some((p) => cardError?.at.endsWith(`:${p.id}`)) // its card was refused and has left
   // her card has come: "Sent" has done its job, so after Apply or Not now the box is fresh again
   if (cards.length && sent) setSent(false)
   const send = (text: string) => {
@@ -46,6 +57,7 @@ export function FindingFix({
                 <li key={k} className="[overflow-wrap:anywhere]">{line}</li>
               ))}
             </ul>
+            {cardError?.at.endsWith(`:${p.id}`) ? why : null}
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="primary" loading={busy === `apply:${p.id}`} disabled={!!busy} onClick={() => void onApply?.(p.id)}>
                 Apply
@@ -86,6 +98,7 @@ export function FindingFix({
           </Button>
         ) : null}
       </div>
+      {gone ? why : null}
       {sent ? <p className="paragraph-xs text-tertiary">Sent. Mia's fix shows here; if she needs to ask you something, it's in the chat.</p> : null}
     </div>
   )

@@ -11,7 +11,7 @@ import { PlanTab, type PlanPart } from '../features/campaign-builder/components/
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
 import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
 import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
-import { DoNext } from '../features/campaign-builder/components/do-next'
+import { UpNext } from '../features/campaign-builder/components/up-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
@@ -265,6 +265,40 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     goStep(nxt.key)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [states, step])
+  // Background work that finishes says so (local test 27 Oct: "i had no idea it was done til u said so"): the plan,
+  // the final words, Mia's check. Only on the change from running, never on load.
+  const wasRunning = useRef<{ plan?: boolean; words?: boolean; checking?: boolean; checked?: string }>({})
+  useEffect(() => {
+    if (!s) return
+    const now = {
+      plan: s.plan_run?.status === 'running',
+      words: s.words_run?.status === 'running',
+      checking: !!s.checking,
+      checked: s.plan?.review?.checked_at, // a check that really ran (one that found nothing to do keeps the old stamp)
+    }
+    const was = wasRunning.current
+    wasRunning.current = now
+    const jobs = s.plan?.assets ?? []
+    const asks = (s.plan?.decisions.ask_pm ?? []).filter((q) => typeof q === 'string' || q.about !== 'Targets').length
+    if (was.plan && !now.plan && s.plan_run?.status === 'done')
+      setFlash(
+        asks
+          ? `Done: the plan is made, ${jobs.length} jobs. Answer Mia's questions; she writes the final words as soon as they're done.`
+          : `Done: the plan is made, ${jobs.length} jobs. Mia is writing their final words now; you can go on.`,
+      )
+    else if (was.words && !now.words && s.words_run?.status === 'done') {
+      const flagged = jobs.filter((a) => a.final_words?.status === 'flagged').length
+      const written = jobs.filter((a) => a.final_words).length
+      setFlash(`Done: final words for ${written} of ${jobs.length} jobs${flagged ? `, ${flagged} for you to look at` : ', all checked'}.`)
+    } else if (was.words && !now.words && s.words_run?.status === 'failed')
+      setFlash('The final words stopped. Try again is on the Final words step.')
+    else if (was.checking && !now.checking && !now.words && now.checked && now.checked !== was.checked) {
+      const p = s.plan
+      const done = new Set(p?.decisions.notes_done ?? [])
+      const n = (p?.review?.audit?.jobs?.length ?? 0) + (p?.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x)).length
+      setFlash(n ? `Done: Mia checked the plan and found ${n} thing${n === 1 ? '' : 's'} to look at.` : 'Done: Mia checked the plan. Nothing found.')
+    }
+  }, [s])
   useEffect(() => {
     if (!flash) return
     const t = setTimeout(() => setFlash(null), 8000)
@@ -328,30 +362,18 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     Discard draft
                   </Button>
                 ) : null}
-                {step && states ? (
-                  // Only when you're looking at another step: on the step you're on, it would repeat it (L5). Named
-                  // for where it goes (local test 27 Oct: "Back to Jobs & budget" from Targets, though it was ahead).
-                  step !== currentStep(states) ? (
-                    <Button variant="primary" onClick={() => goStep(currentStep(states))}>
-                      {stepKeys.indexOf(currentStep(states)) > stepKeys.indexOf(step) ? 'Continue: ' : 'Back to '}
-                      {STEPS.find((st) => st.key === currentStep(states))?.label}
-                    </Button>
-                  ) : null
-                ) : (
+                {step && states ? null : ( // while a draft, the way on is in Up next, below (28 Oct)
                   <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
                     Next: {s.next_step.label}
                   </Button>
                 )}
               </div>
             </header>
+            {step && states ? <UpNext state={s} states={states} step={step} onGo={goStep} /> : null}
             {flash ? (
               <p role="status" className="rounded-lg border border-brand bg-primary px-3 py-2 paragraph-sm text-primary">
                 {flash}
               </p>
-            ) : null}
-            {step && states ? (
-              <DoNext step={step} state={s} busy={build.busy} onMakePlan={build.makePlan} onKeepPlan={build.keepPlan}
-                onRewrite={(ids) => build.writeWords(ids, true)} onGo={goStep} />
             ) : null}
             {step && states ? (
               <StepRail states={states} step={step} onGo={goStep} />
@@ -374,7 +396,8 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               ))}
             </nav>
             )}
-            {build.error ? (
+            {build.error && !/^(apply|drop):/.test(build.errorAt ?? '') ? (
+              // a card's Apply or Not now says why under that card, in the chat and on its finding (28 Oct)
               <Card warn className="flex items-center justify-between gap-3 paragraph-sm text-primary">
                 {build.error}
                 <button type="button" className="paragraph-xs text-tertiary" onClick={build.clearError}>
@@ -444,6 +467,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               errorAt={build.errorAt}
               onApply={build.applyChange}
               onDrop={build.dropChange}
+              answerUndo={s.answer_undo ?? null}
+              onUndoAnswer={build.undoAnswer}
+              answerNotes={s.answer_notes ?? []}
+              readingAnswers={s.reading_answers ?? 0}
               onChanged={() => {
                 fromChat.current = true
               }}
@@ -484,9 +511,6 @@ function StepView({
       {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
           and lagged behind it). The page opens on the thing to do. */}
       <h2 className="sr-only">{meta.label}</h2>
-      {states[step] === 'recheck' ? (
-        <p className="paragraph-xs text-utility-warning-700">Something earlier changed: check this again.</p>
-      ) : null}
       {step === 'check' && left.length ? (
         // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
         // Only while something is left (local test 27 Oct: "Every step is done. Run Mia's final check" showed right
@@ -498,7 +522,7 @@ function StepView({
               <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
                 <span>
                   {st.label}
-                  {states[st.key] === 'recheck' ? ' · something earlier changed' : states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
+                  {states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
                 </span>
                 <Button size="sm" onClick={() => onGo(st.key)}>
                   Go to {st.label}
@@ -551,6 +575,7 @@ function StepView({
           onFillTargets={build.fillTargets}
           onApplyChange={build.applyChange}
           onDropChange={build.dropChange}
+          cardError={build.errorAt && /^(apply|drop):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
         />
       )}
       {step === 'check' ? (

@@ -144,6 +144,8 @@ export interface KPIActual {
   // Short chip text for scope_note ('all site', '4/11 posts'). Older cached rows
   // predate it — callers fall back to 'all site', which is what they always showed.
   scope_label?: string | null
+  // Why a blank is blank ("No emails sent between 1 Oct and 30 Oct…"); only on rows with no value
+  blank_reason?: string | null
   // Movement over the last 7 days, from the recorded reading series. Absent when the
   // series doesn't reach back a week yet, or when the date picker is off the campaign's
   // own window (the displayed value then measures something the series doesn't).
@@ -285,6 +287,21 @@ export const clearTrackerCache = () => {
 }
 
 /** Trigger a server-side cache clear + re-warm for all phases, then clear local cache */
+// Ad campaigns that spent money in the campaign's dates and aren't linked for them (from the analytics store, fast).
+// Tracking check, 30 Oct 2026: DFSA's Google Display and three Meta campaigns ran unlinked, so their results never counted.
+export interface UnlinkedAds {
+  line: string | null
+  ads: { platform: string; label: string; id: string; name: string; spend: number }[]
+}
+export const fetchUnlinkedAds = async (sessionId: string, tenantId: string, campaignId: string): Promise<UnlinkedAds | null> => {
+  try {
+    const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/unlinked-ads`, { headers: { 'X-Session-ID': sessionId } })
+    return res.ok ? ((await res.json()) as UnlinkedAds) : null
+  } catch {
+    return null // a nudge is never worth an error on the tracker
+  }
+}
+
 export const refreshCampaignActuals = async (
   sessionId: string,
   tenantId: string,

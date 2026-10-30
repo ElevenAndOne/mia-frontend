@@ -38,6 +38,10 @@ export function CampaignChat({
   onApply,
   onDrop,
   onChanged,
+  answerUndo = null,
+  onUndoAnswer,
+  answerNotes = [],
+  readingAnswers = 0,
 }: {
   campaignId: string
   conversationId: string
@@ -53,6 +57,12 @@ export function CampaignChat({
   onApply?: (id: string) => Promise<unknown>
   onDrop?: (id: string) => Promise<unknown>
   onChanged?: () => void
+  // What the last answer changed in the plan, while it can still be undone (the PM answered, so it was applied)
+  answerUndo?: { id: string; label: string } | null
+  onUndoAnswer?: (questionId: string) => Promise<unknown>
+  // Mia's lines about the PM's answers (saved in the history by the server), and how many she's still applying
+  answerNotes?: { nid: string; text: string }[]
+  readingAnswers?: number
 }) {
   const { sessionId, activeWorkspace, user } = useSession()
   const queryClient = useQueryClient()
@@ -164,7 +174,7 @@ export function CampaignChat({
         setStreaming('')
         setStatus('')
         onChanged?.() // before the refetch, so the page can tell this change came from the chat
-        await queryClient.invalidateQueries({ queryKey: buildKey(activeWorkspace?.tenant_id, campaignId) })
+        await queryClient.invalidateQueries({ queryKey: buildKey(activeWorkspace?.tenant_id, campaignId), exact: true })
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,6 +204,20 @@ export function CampaignChat({
     window.addEventListener(ASK_EVENT, on)
     return () => window.removeEventListener(ASK_EVENT, on)
   }, [send])
+  // Mia's line about an answer lands when she's applied it: hers alone, no PM bubble above it. Lines already there when
+  // the page opened are in the history the chat loaded, so only new ones are added.
+  const seenNotes = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (seenNotes.current === null) {
+      seenNotes.current = new Set(answerNotes.map((n) => n.nid))
+      return
+    }
+    const fresh = answerNotes.filter((n) => !seenNotes.current!.has(n.nid))
+    if (!fresh.length) return
+    fresh.forEach((n) => seenNotes.current!.add(n.nid))
+    follow.current = true
+    setMessages((prev) => [...prev, ...fresh.map((n) => ({ role: 'assistant' as const, content: n.text }))])
+  }, [answerNotes])
   useEffect(() => {
     if (loading) return
     const next = queued.current.shift()
@@ -232,6 +256,25 @@ export function CampaignChat({
         {messages.map((m, i) =>
           m.role === 'user' ? (
             <UserMessage key={i} content={m.content} />
+          ) : m.content === CONNECTION_ERROR && i === messages.length - 1 && !loading ? (
+            // The message never reached Mia (local test 2, 29 Oct): send the same one again, in its place
+            <p key={i} className="flex flex-wrap items-center gap-2 paragraph-sm text-secondary">
+              Couldn't reach Mia, so she didn't get that.
+              <button
+                type="button"
+                className="rounded-lg border border-secondary px-3 py-1 paragraph-sm text-primary"
+                onClick={() => {
+                  const at = messages.map((x) => x.role).lastIndexOf('user')
+                  if (at < 0) return
+                  const again = messages[at].content
+                  setMessages(messages.slice(0, at))
+                  messagesRef.current = messages.slice(0, at)
+                  void send(again, null)
+                }}
+              >
+                Send it again
+              </button>
+            </p>
           ) : (
             <ChatMarkdown key={i} content={m.content} className="paragraph-sm text-primary" />
           ),
@@ -284,6 +327,29 @@ export function CampaignChat({
               </div>
             ))
           : null}
+        {!loading && readingAnswers > 0 ? (
+          <p className="paragraph-xs text-tertiary">Mia is applying your answer…</p>
+        ) : null}
+        {!loading && answerUndo ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-secondary px-3 py-2">
+            <p className="flex-1 min-w-0 paragraph-sm text-secondary [overflow-wrap:anywhere]">
+              From your answer: {answerUndo.label}
+            </p>
+            <button
+              type="button"
+              disabled={!!busy}
+              className="rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary disabled:opacity-50"
+              onClick={() => void onUndoAnswer?.(answerUndo.id)}
+            >
+              Undo
+            </button>
+            {error && errorAt === `undo:${answerUndo.id}` ? (
+              <p role="alert" className="w-full paragraph-sm text-error">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {!loading && orphanError ? (
           <p role="alert" className="rounded-lg border border-error bg-error-primary px-3 py-2 paragraph-sm text-error">
             {orphanError}

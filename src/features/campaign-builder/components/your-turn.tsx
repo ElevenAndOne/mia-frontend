@@ -147,18 +147,15 @@ export interface TurnItem {
 
 export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactNode }) {
   const open = items.filter((i) => !i.done)
-  const nextKey = open[0]?.key
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(items.filter((i) => i.openByDefault && !i.done).map((i) => i.key)))
-  // The item at the top is open unless the PM hides it, so what it needs is on screen (local test 27 Oct: the
-  // self-check note's fix needed "Show" first)
+  // One thing at a time (local test 4, 30 Oct, Josh: "it mustnt just be a wall of text… like 1 at a time they can
+  // address"): the item to do now is shown whole; every other one waits as a one-line row the PM can open instead.
+  const [chosen, setChosen] = useState<string | null>(null)
+  const current = open.find((i) => i.key === chosen) ?? open[0]
+  // The item being done shows its list (the fixes, the questions) unless the PM hides it
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
-  const isOpen = (k: string) => expanded.has(k) || (k === nextKey && !hidden.has(k))
-  const toggle = (k: string) => {
-    const opening = !isOpen(k)
-    setExpanded((e) => { const n = new Set(e); if (opening) n.add(k); else n.delete(k); return n })
-    setHidden((h) => { const n = new Set(h); if (opening) n.delete(k); else n.add(k); return n })
-  }
-  if (!open.length) {
+  const isOpen = (k: string) => !hidden.has(k)
+  const toggle = (k: string) => setHidden((h) => { const n = new Set(h); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  if (!current) {
     // Nothing left: one quiet line instead of a list of crossed-out steps.
     return (
       <Card className="flex flex-wrap items-center justify-between gap-2 !py-3">
@@ -170,63 +167,91 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
       </Card>
     )
   }
+  const rest = open.filter((i) => i.key !== current.key)
+  const n = open.indexOf(current) + 1
   return (
     <Card className="!p-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
         {/* what to do, not how the list works (local test 27 Oct) */}
         <h2 className="min-w-0 subheading-md text-primary">Your turn</h2>
         <span className="paragraph-xs text-tertiary tabular-nums">
-          {open.length} to do{items.length > open.length ? ` · ${items.length - open.length} done` : ''}
+          {open.length === 1 ? '1 to do' : `${n} of ${open.length} to do`}
         </span>
       </div>
-      <ol className="flex flex-col">
-        {/* Done items leave the list (19 Oct): a checklist that clears, not one that fills with crossed-out steps. */}
-        {open.map((it, n) => {
-          const next = it.key === nextKey
-          return (
-            <li
-              key={it.key}
-              className={`border-b border-secondary last:border-b-0 px-4 py-3 ${next ? 'bg-brand-primary' : ''}`}
-            >
-              <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
-                <span
-                  aria-hidden="true"
-                  className={`grid size-7 place-items-center rounded-full label-xs ${
-                    it.done ? 'bg-success-primary text-success' : next ? 'bg-brand-solid text-primary-onbrand' : 'bg-tertiary text-secondary'
-                  }`}
+      <div className="bg-brand-primary px-4 py-3">
+        <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
+          <span aria-hidden="true" className="grid size-7 place-items-center rounded-full label-xs bg-brand-solid text-primary-onbrand">
+            {n}
+          </span>
+          <div className="min-w-0">
+            <p className="paragraph-sm font-medium text-primary">{current.title}</p>
+            {current.detail ? <div className="paragraph-xs text-secondary">{current.detail}</div> : null}
+          </div>
+          {current.actions || current.more ? (
+            <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
+              {current.actions}
+              {current.more ? (
+                <button type="button" aria-expanded={isOpen(current.key)} onClick={() => toggle(current.key)} className="paragraph-xs underline text-primary">
+                  {isOpen(current.key) ? 'Hide' : 'Show'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        {current.more && isOpen(current.key) ? <div className="mt-3 @2xl:pl-10">{current.more}</div> : null}
+      </div>
+      {rest.length ? (
+        <div className="border-t border-secondary px-4 py-2">
+          <p className="paragraph-xs text-tertiary">Then:</p>
+          <ul className="flex flex-col">
+            {rest.map((it) => (
+              <li key={it.key}>
+                {/* one line each; opening one makes it the item above (the list stays one at a time) */}
+                <button
+                  type="button"
+                  onClick={() => setChosen(it.key)}
+                  className="flex w-full items-center gap-2 py-1 text-left paragraph-xs text-secondary hover:text-primary"
                 >
-                  {it.done ? '✓' : n + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className={`paragraph-sm font-medium ${it.done ? 'text-tertiary line-through' : 'text-primary'}`}>
-                    <span className="sr-only">{it.done ? 'Done: ' : ''}</span>
-                    {it.title}
-                  </p>
-                  {it.detail && !it.done ? <div className="paragraph-xs text-secondary">{it.detail}</div> : null}
-                </div>
-                {!it.done && (it.actions || it.more) ? (
-                  <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
-                    {it.actions}
-                    {it.more ? (
-                      <button
-                        type="button"
-                        aria-expanded={isOpen(it.key)}
-                        onClick={() => toggle(it.key)}
-                        className="paragraph-xs underline text-primary"
-                      >
-                        {isOpen(it.key) ? 'Hide' : 'Show'}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-              {it.more && isOpen(it.key) && !it.done ? <div className="mt-3 @2xl:pl-10">{it.more}</div> : null}
-            </li>
-          )
-        })}
-      </ol>
+                  <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-tertiary label-xs text-secondary">
+                    {open.indexOf(it) + 1}
+                  </span>
+                  <span className="min-w-0 truncate">{it.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {footer ? <div className="border-t border-secondary px-4 py-3">{footer}</div> : null}
     </Card>
+  )
+}
+
+// A list worked through one at a time, "1 of 3" with Back and Next (local test 4, 30 Oct: three findings and three notes
+// at once read as a wall). Each entry is whole on its own; the counter says how many are left.
+export function OneAtATime({ entries, noun = 'item' }: { entries: { key: string; node: ReactNode }[]; noun?: string }) {
+  const [at, setAt] = useState(0)
+  if (!entries.length) return null
+  const i = Math.min(at, entries.length - 1)
+  return (
+    <div className="flex flex-col gap-2">
+      {entries.length > 1 ? (
+        <div className="flex items-center justify-between gap-2 paragraph-xs text-tertiary">
+          <span className="tabular-nums">
+            {noun} {i + 1} of {entries.length}
+          </span>
+          <span className="flex items-center gap-3">
+            <button type="button" disabled={i === 0} onClick={() => setAt(i - 1)} className="underline disabled:opacity-40 disabled:no-underline">
+              Back
+            </button>
+            <button type="button" disabled={i === entries.length - 1} onClick={() => setAt(i + 1)} className="underline disabled:opacity-40 disabled:no-underline">
+              Next
+            </button>
+          </span>
+        </div>
+      ) : null}
+      <div key={entries[i].key}>{entries[i].node}</div>
+    </div>
   )
 }
 
@@ -252,7 +277,9 @@ export function TargetToSet({
   grouped = false,
   onSet,
   onNoTarget,
+  saving = false,
 }: {
+  saving?: boolean // this row's number is being saved
   grouped?: boolean // under its phase's heading: the row doesn't repeat the phase
   name: string
   phase: string
@@ -312,8 +339,9 @@ export function TargetToSet({
         />
         {typed.trim() ? (
           // saves through the box's own blur, once (Field), so a click here and leaving the box are one save
-          <Button size="sm" variant="primary" onMouseDown={(e) => e.preventDefault()} onClick={() => document.getElementById(id)?.blur()}>
-            Set
+          // a typed number saves when the PM leaves the box too (29 Oct: it saved on a click away, unannounced)
+          <Button size="sm" variant="primary" loading={saving} onMouseDown={(e) => e.preventDefault()} onClick={() => document.getElementById(id)?.blur()}>
+            Save
           </Button>
         ) : (
           <>

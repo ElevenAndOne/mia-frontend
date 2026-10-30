@@ -1,12 +1,12 @@
+import { targetsToDecide } from './steps'
 import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
 import { JobWords } from './final-words'
-import { AskMia, askMia, FactStrip, Fold, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
-import { answerFocus } from './answer-focus'
-import { FindingFix } from './finding-fix'
+import { AskMia, FactStrip, Fold, OneAtATime, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
+import { FindingFix, type CardError } from './finding-fix'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Field } from './field'
@@ -22,13 +22,13 @@ interface Props {
   kpiGroups: KpiGroup[]
   kpiError?: string | null
   busy: string | null
-  onEdit: (ops: PlanOp[]) => Promise<unknown>
+  onEdit: (ops: PlanOp[], label?: string) => Promise<unknown> // label: what shows the spinner (default 'edit')
   onMakePlan: () => Promise<unknown>
   onApprove: (pastFindings?: boolean) => Promise<unknown>
   onWriteWords: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
   onSaveBrief: (fields: { playbook: string | null }) => Promise<unknown>
   onReprice: () => Promise<unknown>
-  onKeepPlan?: () => Promise<unknown> // offered in Do this next now (do-next.tsx)
+  onKeepPlan?: () => Promise<unknown> // with Update the plan, when the brief changed under it
   // The step-by-step page shows one part at a time (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md).
   part?: PlanPart
   onSkipQuestion?: (id: string) => Promise<unknown>
@@ -37,16 +37,22 @@ interface Props {
   // A card Mia proposed for a finding is applied on the finding itself (finding-fix.tsx)
   onApplyChange?: (id: string) => Promise<unknown>
   onDropChange?: (id: string) => Promise<unknown>
+  // an Apply or Not now that failed ("apply:<card id>"): said on the finding the card belongs to
+  cardError?: CardError
 }
 
 export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // Which of "Your turn" each step holds, and which detail sections it opens.
+// What a later change needs from the PM shows on whatever step they're on, never as a trip back (Josh, 29 Oct): the
+// brief changing under the plan, a kept target to recheck, jobs to confirm again, words to rewrite.
+const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words']
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
-  questions: (k) => ['older-brief', 'not-carried', 'questions', 'answered', 'notes'].includes(k),
-  targets: (k) => ['older-brief', 'targets', 'recheck', 'fill-targets'].includes(k),
-  jobs: (k) => ['older-brief', 'reprice', 'confirm-jobs', 'breaks'].includes(k) || k.startsWith('blocker-'),
-  words: (k) => ['older-brief', 'words', 'stale-words', 'fix-words', 'fill-in', 'breaks'].includes(k),
-  check: (k) => ['final-check', 'breaks', 'notes', 'approve'].includes(k),
+  questions: (k) => [...EVERYWHERE, 'not-carried', 'questions', 'answered'].includes(k),
+  targets: (k) => [...EVERYWHERE, 'targets', 'fill-targets'].includes(k),
+  // Mia's self-check is about the jobs, so it's read here, once, grouped by job (29 Oct: it sat on Mia's questions)
+  jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
+  words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
+  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'approve'].includes(k),
 }
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
@@ -56,8 +62,8 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
   check: ['how'],
 }
 
-export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onApprove, onWriteWords, onSaveBrief, onReprice,
-  part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange }: Props) {
+export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onKeepPlan, onApprove, onWriteWords, onSaveBrief,
+  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError = null }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
   // Detail sections: closed until wanted; a step opens the ones it is about.
@@ -107,7 +113,8 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <YourTurn
           key={part}
           items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
-            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, part }).filter((i) => !part || PART_ITEMS[part](i.key))}
+            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError, part, onMakePlan, onKeepPlan })
+            .filter((i) => !part || PART_ITEMS[part](i.key))}
         />
       )}
       {(part === 'questions' || part === 'check') && (plan.decisions.answered ?? []).some((q) => !q.answer) ? (
@@ -311,8 +318,13 @@ function planTurnItems({
   onFillTargets,
   onApplyChange,
   onDropChange,
+  cardError,
   part,
+  onMakePlan,
+  onKeepPlan,
 }: {
+  onMakePlan?: Props['onMakePlan']
+  onKeepPlan?: Props['onKeepPlan']
   state: BuildState
   plan: Plan
   busy: string | null
@@ -326,6 +338,7 @@ function planTurnItems({
   onFillTargets?: Props['onFillTargets']
   onApplyChange?: Props['onApplyChange']
   onDropChange?: Props['onDropChange']
+  cardError?: CardError
   part?: PlanPart
 }): TurnItem[] {
   // Order (live test 20 Oct): what changes the plan first, then targets, questions and notes; the final words come
@@ -346,11 +359,11 @@ function planTurnItems({
   )
   const flagged = flaggedAll.filter(({ a }) => (a.final_words?.flags ?? []).some((f) => !isNote(f)))
   const targets = plan.decisions.kpi_targets
-  const toSet = targets.filter((t) => t.value == null && !t.no_target)
+  const toSet = targetsToDecide({ plan })
   const targetKeys = new Set(targets.map((t) => t.key))
   const otherBlockers = state.blockers.filter((b) => !(b.key && (targetKeys.has(b.key) || b.key === 'words' || b.key === 'questions')))
   const recheck = targets.filter((t) => t.recheck && t.value != null)
-  const mias = toSet.filter((t) => t.suggested != null && t.suggested_by === 'mia')
+  const mias = toSet.filter((t) => t.suggested != null && (t.suggested_by === 'mia' || t.fromHistory))
   // The "set these targets" question is the Targets item below; once none are left it's stale.
   const asks = (plan.decisions.ask_pm ?? [])
     .map((q) => (typeof q === 'string' ? { question: q } : q))
@@ -358,7 +371,26 @@ function planTurnItems({
   const done = new Set(plan.decisions.notes_done ?? [])
   const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
 
-  // A brief that changed under the plan is offered in Do this next, above every step (do-next.tsx, 26 Oct)
+  // A brief that changed under the plan: first, on whichever step the PM is on (it was a separate Do this next box)
+  if (state.plan_from_older_brief && onMakePlan)
+    items.push({
+      key: 'older-brief',
+      title: 'The budget, dates, channels or goal changed',
+      detail: 'Update the plan for it (everything you decided is kept where it still fits), or keep this plan and fix what no longer fits.',
+      openByDefault: true,
+      actions: (
+        <>
+          <PrimaryAction loading={busy === 'plan'} onClick={() => onMakePlan()}>
+            Update the plan
+          </PrimaryAction>
+          {onKeepPlan ? (
+            <Button size="sm" loading={busy === 'keep'} onClick={() => void onKeepPlan()}>
+              Keep this plan
+            </Button>
+          ) : null}
+        </>
+      ),
+    })
   if (jobs.length && jobs.every((a) => a.credits == null)) {
     items.push({
       key: 'reprice',
@@ -371,8 +403,12 @@ function planTurnItems({
       ),
     })
   }
-  // Once the jobs and money are confirmed, Mia writes the missing words by herself (build_service._auto_check, 27 Oct)
-  const autoWriting = !!state.checking && !!plan.decisions.jobs_confirmed && without > 0 && wordsRun?.status !== 'running'
+  // Mia writes the words by herself, once, after the plan is settled: questions answered, targets set and the jobs
+  // confirmed (Josh, 29 Oct: words written earlier were rewritten after every later change). "About to" only when her
+  // next check will write them (auto_words); the button is only for a run that stopped or a job it couldn't write
+  const autoWriting = !!(state.check_pending ?? state.checking) && !!state.auto_words && without > 0 && wordsRun?.status !== 'running'
+  const afterQuestions = without > 0 && wordsRun?.status !== 'running' && wordsRun?.status !== 'failed' && !state.auto_words
+    && (asks.length > 0 || (state.brief?.brief.open_questions?.length ?? 0) > 0 || toSet.length > 0 || !plan.decisions.jobs_confirmed)
   // The working state shows on the row whose work is running (local test 27 Oct: "Fix all" on one row made this row
   // say "Mia is writing the final words" while the pressed row kept a live button). Each job a run writes is marked
   // (build_service.start_words_run); a run with no marks (an older server) still shows here.
@@ -380,22 +416,34 @@ function planTurnItems({
   const writingNew = running && (jobs.some((a) => a.writing && !a.final_words) || !jobs.some((a) => a.writing))
   wordItems.push({
     key: 'words',
-    title: writingNew || autoWriting ? 'Mia is writing the final words' : without ? 'Write the final words' : 'Final words written',
+    title:
+      writingNew || autoWriting
+        ? 'Mia is writing the final words'
+        : afterQuestions
+          ? 'Final words come next'
+          : !without
+          ? 'Final words written'
+          : wordsRun?.status === 'failed'
+            ? 'Writing stopped part-way'
+            : `${without} job${without === 1 ? '' : 's'} still on draft words`,
     done: !without && !writingNew,
     detail:
       writingNew
         ? `${wordsRun?.stage_label ?? 'Writing'}… about a minute a job. You can keep working.`
         : autoWriting
           ? `Starting on the ${without} jobs without final words. About a minute a job; you can keep working.`
-          : `${without} of ${jobs.length} jobs have draft words. Mia writes the finished copy for each and checks it.` +
-            (wordsRun?.status === 'failed' ? ` The last run stopped: ${wordsRun.error ?? 'try again'}.` : ''),
+          : afterQuestions
+            ? 'Mia writes the finished copy for every job by herself once you press Looks right on Jobs & budget.'
+            : wordsRun?.status === 'failed'
+            ? `${jobs.length - without} of ${jobs.length} jobs have their words${wordsRun.error ? ` (${wordsRun.error.replace(/\.$/, '')})` : ''}. Carry on writes the other ${without}.`
+            : `Mia couldn't write these by herself. Try again, or ask her what's missing.`,
     actions:
       writingNew || autoWriting ? (
         <Checking label="Writing…" />
-      ) : running ? null : (
+      ) : running || afterQuestions ? null : (
         <>
           <PrimaryAction loading={busy === 'words'} onClick={() => onWriteWords()}>
-            Write them
+            {wordsRun?.status === 'failed' ? 'Carry on' : 'Try again'}
           </PrimaryAction>
           <AskMia label="Final words" detail="Writing the final words for the jobs" />
         </>
@@ -493,7 +541,7 @@ function planTurnItems({
       key: 'targets',
       title: `Set ${toSet.length} target${toSet.length === 1 ? '' : 's'}`,
       detail: mias.length
-        ? `Mia estimated ${mias.length}. Keep hers one by one or all at once, or type your own. Estimates show as Mia's, not your data.`
+        ? `Each has a starting number: Mia's estimate, or your result from a past campaign. Keep them one by one or all at once, or type your own. Estimates show as Mia's, not your data.`
         : 'Type a number for each, or "No target". Ask Mia to fill the boxes with her estimates.',
       openByDefault: true,
       // Under their phase's heading, in the plan's order (local test 27 Oct: ten targets in one list, the phase only as
@@ -517,7 +565,10 @@ function planTurnItems({
               byMia={t.suggested_by === 'mia'}
               kind={t.suggested_kind}
               source={t.suggested_by}
-              onSet={(v, note) => onEdit([{ op: 'set_target', key: t.key, value: v, ...(note ? { estimate_note: note } : {}) }])}
+              onSet={(v, note) =>
+                onEdit([{ op: 'set_target', key: t.key, value: v, ...(note && !t.fromHistory ? { estimate_note: note } : {}) }], `target:${t.key}`)
+              }
+              saving={busy === `target:${t.key}`}
               onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
             />
           ))}
@@ -530,12 +581,19 @@ function planTurnItems({
         <>
           {mias.length ? (
             <PrimaryAction
-              loading={busy === 'edit'}
+              loading={busy === 'keep-all'}
               onClick={() =>
-                onEdit(mias.map((t) => ({ op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" })))
+                onEdit(
+                  mias.map((t) =>
+                    t.fromHistory
+                      ? { op: 'set_target', key: t.key, value: t.suggested ?? null }
+                      : { op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" },
+                  ),
+                  'keep-all',
+                )
               }
             >
-              Keep all {mias.length} of Mia's estimates
+              Keep all {mias.length}
             </PrimaryAction>
           ) : null}
           <Button size="sm" onClick={() => reveal(`t-${first.key}`, 'phases')}>
@@ -552,7 +610,7 @@ function planTurnItems({
   if (recheck.length) {
     items.push({
       key: 'recheck',
-      title: `Recheck ${recheck.length} target${recheck.length === 1 ? '' : 's'}: what ${recheck.length === 1 ? 'it was' : 'they were'} worked from changed`,
+      title: `Recheck ${recheck.length} target${recheck.length === 1 ? '' : 's'} you kept: what ${recheck.length === 1 ? 'it was' : 'they were'} worked from changed`,
       detail: recheck.length === 1 ? (recheck[0].recheck ?? undefined) : 'Keep yours, or use Mia\'s new number.',
       openByDefault: true,
       more: (
@@ -629,14 +687,13 @@ function planTurnItems({
           {showing.map((q) => (
             <PlanQuestion
               key={String(q.id ?? q.question)}
-              q={q as { id?: string; about?: string; question: string; impact?: string }}
+              q={q as PlanQ}
               busy={busy}
               onAnswer={async (answer) => {
                 if (!q.id) return
-                const ok = await onEdit([{ op: 'answer_question', id: String(q.id), answer }])
-                // Mia reads the answer and proposes what it changes in the plan (with Apply), or says nothing does.
-                if (ok !== undefined)
-                  askMia(answerFocus(q.question, answer, q.about ? String(q.about) : null))
+                // The server applies what the answer changes in the background, with an Undo; the answer never goes
+                // to the chat as the PM's message (local test 2, 29 Oct). Mia's line, if any, reaches the chat as hers.
+                await onEdit([{ op: 'answer_question', id: String(q.id), answer }])
               }}
               onSkip={() => (q.id && onSkipQuestion ? onSkipQuestion(String(q.id)) : Promise.resolve())}
             />
@@ -710,76 +767,129 @@ function planTurnItems({
           ? staleNote
           : undefined,
       actions: checkAction(plan.review?.stale),
+      // one finding at a time (local test 4, 30 Oct: three long findings at once read as a wall)
       more: (
-        <ul className="flex flex-col gap-2">
-          {breaks.map((x) => (
-            <li key={`${x.job}-${x.where}-${x.decision}`} className="flex flex-col gap-2 paragraph-sm text-primary">
-              <span className="min-w-0">
-                <span className="font-medium">{x.job}</span> ({x.where}): {x.how}
-                <span className="block paragraph-xs text-tertiary">Decided: {x.decision}</span>
-              </span>
-              <FindingFix
-                label={`Fix · ${x.job} (${x.where})`}
-                detail={`${x.job} (${x.where}): ${x.how} Decided: ${x.decision}`}
-                quick="Fix it to follow what I decided"
-                state={state}
-                busy={busy}
-                onApply={onApplyChange}
-                onDrop={onDropChange}
-              />
-            </li>
-          ))}
-        </ul>
+        <OneAtATime
+          noun="Finding"
+          entries={breaks.map((x) => ({
+            key: `${x.job}-${x.where}-${x.decision}`,
+            node: (
+              <div className="flex flex-col gap-2 paragraph-sm text-primary">
+                <span className="min-w-0">
+                  <span className="font-medium">{x.job}</span> ({x.where}): {x.how}
+                  <span className="block paragraph-xs text-tertiary">Decided: {x.decision}</span>
+                </span>
+                <FindingFix
+                  label={breakLabel(x)}
+                  detail={`${x.job} (${x.where}): ${x.how} Decided: ${x.decision}`}
+                  quick="Fix it to follow what I decided"
+                  state={state}
+                  busy={busy}
+                  onApply={onApplyChange}
+                  onDrop={onDropChange}
+                  cardError={cardError}
+                />
+              </div>
+            ),
+          }))}
+        />
       ),
     })
   }
   if (lookAt.length) {
+    // One heading per job, its notes under it, each raised once (29 Oct: one job had three separate items, two of them
+    // the same notes as on Mia's questions). A note naming no job goes under "The plan as a whole".
+    const lower = (t: string) => t.toLowerCase()
+    const jobOf = (note: string) =>
+      [...jobs].sort((a, b) => b.name.length - a.name.length).find((a) => lower(note).includes(lower(a.name)))?.name ??
+      jobs.find((a) => lower(note).includes(lower(a.name.split(':')[0].trim())))?.name ??
+      'The plan as a whole'
+    const groups = new Map<string, string[]>()
+    lookAt.forEach((x) => groups.set(jobOf(x), [...(groups.get(jobOf(x)) ?? []), x]))
+    const named = [...groups.keys()].filter((k) => k !== 'The plan as a whole')
     items.push({
       key: 'notes',
-      title: `Look at ${lookAt.length} note${lookAt.length === 1 ? '' : 's'} from Mia's self-check`,
-      // Notes are about the plan Mia checked: after a change they say so, and Check again reads it as it is now.
+      title:
+        named.length && named.length === groups.size
+          ? `Mia's self-check: ${lookAt.length} note${lookAt.length === 1 ? '' : 's'} on ${named.length === 1 ? named[0] : `${named.length} jobs`}`
+          : `Mia's self-check: ${lookAt.length} note${lookAt.length === 1 ? '' : 's'}`,
+      // Notes are about the jobs Mia checked: "before your latest change" only when a job itself changed since
       detail: checking
         ? 'Mia is checking the plan as it is now.'
-        : plan.review?.stale
+        : plan.review?.jobs_changed
           ? staleNote
-          : undefined,
-      actions: checkAction(plan.review?.stale),
+          : 'Fix any you want changed. Looks right settles the rest with the jobs.',
+      actions: checkAction(plan.review?.jobs_changed),
+      openByDefault: true,
+      // one note at a time, its job named above it (local test 4, 30 Oct)
       more: (
-        <ul className="flex flex-col gap-2">
-          {lookAt.map((x) => (
-            <li key={x} className="flex flex-col gap-2 paragraph-sm text-primary">
-              <span className="flex flex-wrap items-start justify-between gap-2">
-                <span className="min-w-0 flex-1">{x}</span>
-                <button
-                  type="button"
-                  disabled={busy === 'edit'}
-                  onClick={() => onEdit([{ op: 'close_note', text: x }])}
-                  className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
-                >
-                  It's fine
-                </button>
-              </span>
-              <FindingFix
-                label={`Note · ${x.length > 48 ? `${x.slice(0, 48)}…` : x}`}
-                detail={x}
-                quick="Fix it"
-                state={state}
-                busy={busy}
-                onApply={onApplyChange}
-                onDrop={onDropChange}
-              />
-            </li>
-          ))}
-        </ul>
+        <OneAtATime
+          noun="Note"
+          entries={[...groups.entries()].flatMap(([job, notes]) =>
+            notes.map((x) => ({
+              key: x,
+              node: (
+                <div className="flex flex-col gap-2 paragraph-sm text-primary">
+                  <p className="label-sm text-primary">{job}</p>
+                  <span className="flex flex-wrap items-start justify-between gap-2">
+                    <span className="min-w-0 flex-1">{x}</span>
+                    <button
+                      type="button"
+                      disabled={busy === 'edit'}
+                      onClick={() => onEdit([{ op: 'close_note', text: x }])}
+                      className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+                    >
+                      It's fine
+                    </button>
+                  </span>
+                  <FindingFix
+                    label={noteLabel(x)}
+                    detail={x}
+                    quick="Fix it"
+                    state={state}
+                    busy={busy}
+                    onApply={onApplyChange}
+                    onDrop={onDropChange}
+                    cardError={cardError}
+                  />
+                </div>
+              ),
+            })),
+          )}
+        />
       ),
     })
   }
+  // A long start with nothing live is said, not left to be found (local test 2, 29 Oct: the campaign started 1 Nov and
+  // its first job went live 18 Nov; it follows from making time, but the PM should know and choose)
+  const startOn = state.brief?.brief.start_date
+  const firstLive = jobs.map((a) => a.launch_date).filter((d): d is string => !!d).sort()[0]
+  const gapDays = startOn && firstLive ? Math.round((Date.parse(firstLive) - Date.parse(startOn)) / 86_400_000) : 0
+  if (gapDays >= 10)
+    items.push({
+      key: 'launch-gap',
+      title: `Nothing goes live for the first ${gapDays} days`,
+      detail: `The campaign starts ${day(startOn!)}; the first job goes live ${day(firstLive!)}, after the time it takes to make. Fine as it is, or ask Mia for a quick piece to run sooner.`,
+      actions: <AskMia label="Nothing live at the start" detail={`Campaign starts ${startOn}, first job live ${firstLive}`} />,
+    })
+  const reconfirm = !plan.decisions.jobs_confirmed && !!(plan.decisions as { jobs_confirmed_sig?: string }).jobs_confirmed_sig
+  if (reconfirm && part !== 'jobs')
+    items.push({
+      key: 'reconfirm-jobs',
+      title: 'The jobs or the money changed since you confirmed them',
+      detail: 'Look them over on Jobs & budget, or confirm them as they are now.',
+      actions: (
+        <PrimaryAction loading={busy === 'edit'} onClick={() => onEdit([{ op: 'confirm_jobs' }])}>
+          Looks right
+        </PrimaryAction>
+      ),
+    })
   if (part === 'jobs' || part === 'check') {
     items.push({
       key: 'confirm-jobs',
       title: 'Check the jobs and the money',
       done: !!plan.decisions.jobs_confirmed,
-      detail: `${jobs.length} jobs, ${num(jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits. Change anything below, then confirm. A change later brings this back.`,
+      detail: `${jobs.length} jobs, ${num(jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits. Change anything below, then confirm: Mia writes the final words once you do.`,
       actions: (
         <PrimaryAction loading={busy === 'edit'} onClick={() => onEdit([{ op: 'confirm_jobs' }])}>
           Looks right
@@ -792,10 +902,15 @@ function planTurnItems({
     // Each job on its own row with its own button, and "Rewriting…" there while it runs (local test 27 Oct: the
     // button sat unchanged for the whole rewrite, and a five-job rewrite showed nothing on any job)
     const rewriting = stale.filter((a) => wordsRun?.status === 'running' && a.writing)
+    // Settled and waiting: Mia rewrites them by herself before her check (local test 4, 30 Oct: a Rewrite button and
+    // "Checking…" showed while she was about to do exactly that), so no button then
+    const soon = !rewriting.length && wordsRun?.status !== 'running' && !!state.auto_words && !!(state.check_pending ?? state.checking)
     wordItems.unshift({
       key: 'stale-words',
       title: rewriting.length
         ? `Mia is rewriting ${rewriting.length === 1 ? rewriting[0].name : `${rewriting.length} jobs`} (about a minute a job)`
+        : soon
+          ? `Mia is about to rewrite ${stale.length === 1 ? stale[0].name : `${stale.length} jobs`}, then she checks`
         : stale.length === 1
           ? `Rewrite ${stale[0].name}'s words`
           : `Rewrite the words for ${stale.length} jobs`,
@@ -811,7 +926,7 @@ function planTurnItems({
               </span>
               {wordsRun?.status === 'running' && a.writing ? (
                 <Checking label="Rewriting…" />
-              ) : (
+              ) : soon ? null : (
                 <Button size="sm" disabled={wordsRun?.status === 'running' || busy === 'words'} onClick={() => onWriteWords([a.job_id as string], true)}>
                   Rewrite
                 </Button>
@@ -821,7 +936,7 @@ function planTurnItems({
         </ul>
       ),
       actions:
-        stale.length > 1 && !rewriting.length ? (
+        stale.length > 1 && !rewriting.length && !soon ? (
           <PrimaryAction disabled={busy === 'words' || wordsRun?.status === 'running'} onClick={() => onWriteWords(stale.map((a) => a.job_id as string), true)}>
             Rewrite all {stale.length}
           </PrimaryAction>
@@ -846,30 +961,42 @@ function planTurnItems({
       ),
     })
   }
-  const canApprove = !state.blockers.length && !state.plan_from_older_brief
-  // The close reading warns, never blocks (review 26 Oct): open findings are named and approving past them is one
-  // explicit confirmation, logged with who approved. A reading from before the latest changes never counts here.
-  const open = plan.review?.stale ? [] : breaks
-  const outdated = !!plan.review?.stale && breaks.length > 0
+  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking
+  // Mia's check warns, never blocks (review 26 Oct): what's still open is named and approving past it is one explicit
+  // confirmation, logged with who approved. A check from before the latest change is "not checked", never "nothing
+  // found" (live 28 Oct, Cherry Time: the final words outdated the check, its findings stopped counting, and four jobs
+  // with flagged words and an uncovered must-have went to the studio). Same list as build_service.still_open.
+  const unchecked = !plan.review?.checked_at || !!plan.review?.stale
+  const open = unchecked ? [] : breaks
+  const outdated = unchecked && !!plan.review
+  const pastThese = [
+    ...(unchecked ? ['no check of the latest version'] : []),
+    ...(open.length ? [`${open.length} finding${open.length === 1 ? '' : 's'}`] : []),
+    ...(!unchecked && lookAt.length ? [`${lookAt.length} open note${lookAt.length === 1 ? '' : 's'}`] : []),
+    ...(flagged.length ? [`flagged words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`] : []),
+  ]
+  const otherWarnings = (state.warnings ?? []).filter((w) => !w.includes('still have flagged words'))
   items.push({
     key: 'approve',
     title: 'Approve the plan',
     detail: canApprove
-      ? (open.length
-          ? `Mia's final check still flags ${open.length} job${open.length === 1 ? '' : 's'} (above). Fix them, or approve past them: it's noted in the decision log.`
+      ? (pastThese.length
+          ? `Still open: ${pastThese.join(', ')}. Fix ${pastThese.length === 1 ? 'it' : 'them'}, or approve past ${pastThese.length === 1 ? 'it' : 'them'}: it's noted in the decision log.`
           : 'Saves the plan to the campaign. Next you send the jobs to Flex.') +
-        (outdated
-          ? checking
-            ? ' Mia is checking your latest changes.'
-            : " Mia's check is from before your latest changes, so its notes don't count here: Check again reads the plan as it is now."
+        (unchecked && outdated
+          ? " Mia's check is from before your latest changes: Check again reads the campaign as it is now (about a minute)."
           : '') +
-        (state.warnings?.length ? ` Note: ${state.warnings.join(' ')}` : '')
-      : 'Waiting on: ' +
-        [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · '),
+        // the flagged-words warning repeats "flagged words on n jobs" above (local test 4, 30 Oct: the box read as a
+        // wall, and the two counts disagreed); any other warning is said once, short
+        (otherWarnings.length ? ` Note: ${otherWarnings[0]}${otherWarnings.length > 1 ? ` (and ${otherWarnings.length - 1} more)` : ''}` : '')
+      : state.blockers.length || state.plan_from_older_brief
+        ? 'Waiting on: ' +
+          [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · ')
+        : 'Mia is checking the campaign as it is now (about a minute); approve once she’s done.',
     actions: (
       <span className="flex flex-wrap items-center gap-2">
-        {outdated ? checkAction(true) ?? null : null}
-        <ApproveAction open={open.length} disabled={!canApprove} loading={busy === 'approve'} onApprove={onApprove} />
+        {unchecked ? checkAction(true) ?? null : null}
+        <ApproveAction past={pastThese} disabled={!canApprove} loading={busy === 'approve'} onApprove={onApprove} />
       </span>
     ),
   })
@@ -887,15 +1014,16 @@ function Checking({ label = 'Checking…' }: { label?: string }) {
   )
 }
 
-// Approve, or with open findings from Mia's final check, "Approve anyway" and then one confirmation naming them.
-function ApproveAction({ open, disabled, loading, onApprove }: {
-  open: number
+// Approve, or with something still open (Mia's check, findings, notes, flagged words), "Approve anyway" and then one
+// confirmation naming them.
+function ApproveAction({ past, disabled, loading, onApprove }: {
+  past: string[]
   disabled: boolean
   loading: boolean
   onApprove: (pastFindings?: boolean) => Promise<unknown>
 }) {
   const [confirming, setConfirming] = useState(false)
-  if (!open) {
+  if (!past.length) {
     return (
       <PrimaryAction disabled={disabled} loading={loading} onClick={() => onApprove()}>
         Approve
@@ -912,7 +1040,7 @@ function ApproveAction({ open, disabled, loading, onApprove }: {
   return (
     <span className="flex flex-wrap items-center gap-2">
       <span className="paragraph-xs text-secondary">
-        Approve past {open} open finding{open === 1 ? '' : 's'}?
+        Approve with these still open: {past.join(', ')}?
       </span>
       <PrimaryAction disabled={disabled} loading={loading} onClick={() => onApprove(true)}>
         Yes, approve
@@ -926,13 +1054,33 @@ function ApproveAction({ open, disabled, loading, onApprove }: {
 
 // One of Mia's questions: an answer box with Send (Enter works), Ask Mia, and Skip (Mia decides and says what she
 // assumed).
+// A finding's label is how Mia's card finds its way back to it (pending.about), so two findings never share one (28 Oct:
+// two on the same job and place shared a label, and so a card). Made from the finding's own words, never its place in
+// the list, so closing or adding another never moves a card to the wrong one.
+const clip = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}…` : t)
+const tag = (t: string) => {
+  let h = 0
+  for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  return h.toString(36).slice(0, 4)
+}
+const breakLabel = (x: { job: string; where: string; decision: string }) => `Fix · ${x.job} (${x.where}) · ${clip(x.decision, 32)}`
+const noteLabel = (x: string) => (x.length > 48 ? `Note · ${clip(x, 48)} #${tag(x)}` : `Note · ${x}`)
+
+type PlanQ = {
+  id?: string
+  about?: string
+  question: string
+  impact?: string
+  unclear?: { answer: string; why: string; kind?: 'not_an_answer' | 'unclear' }
+}
+
 function PlanQuestion({
   q,
   busy,
   onAnswer,
   onSkip,
 }: {
-  q: { id?: string; about?: string; question: string; impact?: string }
+  q: PlanQ
   busy: string | null
   onAnswer: (answer: string) => Promise<unknown>
   onSkip: () => Promise<unknown>
@@ -948,6 +1096,15 @@ function PlanQuestion({
           <span className="paragraph-sm text-primary font-medium">{q.about ? String(q.about) : 'Question'}</span>
           {q.impact === 'changes_the_plan' ? <Chip tone="mia">changes the plan</Chip> : null}
           <span className="block paragraph-xs text-secondary">{q.question}</span>
+          {q.unclear ? (
+            // Mia read the last answer as about something else, and asks again (item 15)
+            <span className="mt-1 block paragraph-xs text-utility-warning-700 [overflow-wrap:anywhere]">
+              You wrote “{q.unclear.answer}”. {q.unclear.why}{' '}
+              {q.unclear.kind === 'unclear'
+                ? 'Which do you mean? Say it in a few more words.'
+                : 'What’s your answer to this one? (Chat messages go in the chat box.)'}
+            </span>
+          ) : null}
         </div>
         <span className="flex items-center gap-2">
           <AskMia label={`Question${q.about ? ` · ${String(q.about)}` : ''}`} detail={q.question} />

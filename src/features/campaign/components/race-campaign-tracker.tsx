@@ -10,6 +10,7 @@ import {
   getCachedActuals,
   refreshCampaignActuals,
   clearTrackerCache,
+  fetchUnlinkedAds,
 } from '../services/campaign-tracker-service'
 import type {
   CampaignTracker,
@@ -397,6 +398,18 @@ export function RaceCampaignTracker({
       setActualsMap({})
     }
   }, [dateRange])
+
+  // Ads that ran in the campaign's dates without being linked for them: said here, where the numbers are read, with the
+  // way to fix it (tracking check, 30 Oct 2026: DFSA's cost per conversion was blank because Google wasn't linked)
+  const [unlinked, setUnlinked] = useState<string | null>(null)
+  const unlinkedFor = campaign && campaign.status !== 'draft' ? campaign.campaign_id : null
+  useEffect(() => {
+    let off = false
+    setUnlinked(null)
+    if (!sessionId || !tenantId || !unlinkedFor) return
+    void fetchUnlinkedAds(sessionId, tenantId, unlinkedFor).then((r) => { if (!off) setUnlinked(r?.line ?? null) })
+    return () => { off = true }
+  }, [sessionId, tenantId, unlinkedFor])
 
   // ── Fetch actuals for a phase ────────────────────────────────────────
   const loadActuals = useCallback(
@@ -787,7 +800,7 @@ export function RaceCampaignTracker({
                           )}
                           <span
                             className={`paragraph-xs font-medium ${actual.actual_value === null ? 'text-quaternary' : metTarget ? 'text-utility-success-600' : 'text-primary'}`}
-                            title={actual.scope_note ?? undefined}
+                            title={actual.scope_note ?? actual.blank_reason ?? undefined}
                           >
                             {formatActual(actual)}
                           </span>
@@ -860,6 +873,14 @@ export function RaceCampaignTracker({
           {actualsError && (
             <p className="paragraph-xs text-quaternary text-center py-3">
               Could not load actuals — try again later
+            </p>
+          )}
+          {unlinked && campaign && (
+            <p className="paragraph-xs text-secondary rounded-lg border border-secondary px-3 py-2 mt-2">
+              {unlinked}{' '}
+              <a className="underline text-primary" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
+                Review links
+              </a>
             </p>
           )}
         </div>
