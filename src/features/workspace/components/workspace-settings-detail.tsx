@@ -785,7 +785,7 @@ export const WorkspaceSettingsDetail = ({
             <Suspense fallback={<TabFallback />}>
               {isBasic ? (
                 /* Basic Brand (Settings clean-up, 30 Oct 2026): their look first, where Mia
-                   learns it (brand guide, website, Page), then how she writes. The full
+                   learns it (brand guide, fonts, website), then how she writes. The full
                    field list is gone from Basic: an owner never needed it. */
                 <BasicBrandTab
                   sessionId={sessionId ?? ''}
@@ -798,8 +798,6 @@ export const WorkspaceSettingsDetail = ({
                     setWebsiteUrl(url)
                     setWebsiteUrlInput(url)
                   }}
-                  connectedPlatforms={workspace.connected_platforms ?? []}
-                  onOpenConnections={() => navigate('/integrations?from=settings')}
                   onLookChanged={() => void refreshWorkspaces()}
                 />
               ) : (

@@ -2,7 +2,6 @@ import { Suspense, lazy, useEffect, useState, type DragEvent, type ReactNode } f
 import { Check } from '../../../components/icon/check'
 import { ChevronDown } from '../../../components/icon/chevron-down'
 import { File06 } from '../../../components/icon/file-06'
-import { Globe01 } from '../../../components/icon/globe-01'
 import { Plus } from '../../../components/icon/plus'
 import { Spinner } from '../../../components/spinner'
 import { useToast } from '../../../contexts/toast-context'
@@ -41,7 +40,6 @@ interface Kit {
   palette: Colour[]
   logo: { cdn_url: string } | null
   guide: Guide | null
-  facebook_page?: string | null
   own_fonts?: OwnFont[]
   font_status?: FontStatus[]
 }
@@ -107,8 +105,9 @@ const kitCache = new Map<string, Kit>()
 
 /**
  * Basic's Brand tab (Settings clean-up, 30 Oct 2026): what their posts look like first, where
- * Mia learns it (their brand guide, website and Page) next, then how she writes for them.
- * A brand guide is one row here, or a file dropped anywhere on the tab.
+ * Mia learns it (their brand guide, fonts and website) next, then how she writes for them.
+ * A brand guide is one row here, or a file dropped anywhere on the tab. Facebook and Instagram
+ * are connections, so they live on the Workspace tab only (2 Nov).
  */
 export const BasicBrandTab = ({
   sessionId,
@@ -118,8 +117,6 @@ export const BasicBrandTab = ({
   workspaceLogoUrl,
   websiteUrl,
   onWebsiteSaved,
-  connectedPlatforms,
-  onOpenConnections,
   onLookChanged,
 }: {
   sessionId: string
@@ -129,8 +126,6 @@ export const BasicBrandTab = ({
   workspaceLogoUrl: string | null
   websiteUrl: string
   onWebsiteSaved: (url: string) => void
-  connectedPlatforms: string[]
-  onOpenConnections: () => void
   /** A website read or a guide changed the look (and maybe the logo): the page refreshes it. */
   onLookChanged?: () => void
 }) => {
@@ -189,7 +184,6 @@ export const BasicBrandTab = ({
 
   const palette = (kit?.palette ?? []).filter((c) => /^#[0-9a-fA-F]{6}$/.test(c.hex))
   const logo = kit?.logo?.cdn_url ?? workspaceLogoUrl
-  const fb = connectedPlatforms.filter((p) => /facebook|instagram/i.test(p)).length
 
   return (
     <div
@@ -343,7 +337,7 @@ export const BasicBrandTab = ({
         </Card>
       </div>
 
-      {/* Where Mia learns about you: guide, website, Page */}
+      {/* Where Mia learns about you: guide, fonts, website */}
       <div>
         <Eyebrow>Where Mia learns about you</Eyebrow>
         <Card>
@@ -409,22 +403,6 @@ export const BasicBrandTab = ({
             }}
             compact
           />
-          <div className="flex items-center gap-3 px-3 py-3">
-            <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 text-secondary">
-              <Globe01 size={16} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="subheading-md text-primary">Facebook and Instagram</p>
-              <p className="paragraph-xs text-quaternary truncate">
-                {fb
-                  ? `${kit?.facebook_page ? `${kit.facebook_page}. ` : ''}What your customers react to`
-                  : 'Not connected yet'}
-              </p>
-            </div>
-            <button type="button" onClick={onOpenConnections} className={ghost}>
-              {fb ? 'Manage' : 'Connect'}
-            </button>
-          </div>
         </Card>
       </div>
 

@@ -1,8 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Globe01 } from '../../../components/icon/globe-01'
 import { Image01 } from '../../../components/icon/image-01'
 import { Trash01 } from '../../../components/icon/trash-01'
 import { ChevronDown } from '../../../components/icon/chevron-down'
+import { apiFetch } from '../../../utils/api'
 import { PostingRhythmCard } from './posting-rhythm-card'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
 
@@ -116,6 +117,23 @@ export function BasicWorkspaceSettings({
   onDelete,
 }: BasicWorkspaceSettingsProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  // The logo on their posts and the Page Mia reads, from the brand kit: one logo shows the same
+  // here as on Brand (an older workspace may have the post logo only), and the Page is named.
+  const [kit, setKit] = useState<{ logo?: string | null; page?: string | null }>({})
+  useEffect(() => {
+    let live = true
+    apiFetch(`/api/tenants/${tenantId}/brand-kit`, { headers: { 'X-Session-ID': sessionId } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((k: { logo?: { cdn_url?: string } | null; facebook_page?: string | null } | null) => {
+        if (live && k) setKit({ logo: k.logo?.cdn_url ?? null, page: k.facebook_page ?? null })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [sessionId, tenantId, logoUrl])
+  const logo = logoUrl ?? kit.logo ?? null
+  const fb = connectedPlatforms.filter((p) => /facebook|instagram/i.test(p)).length
   return (
     <div className="space-y-3">
       {/* One name and one logo (Settings clean-up, 30 Oct 2026): the logo next to the name in
@@ -123,8 +141,8 @@ export function BasicWorkspaceSettings({
       <Group label="Your business">
         <Row
           icon={
-            logoUrl ? (
-              <img src={logoUrl} alt="" className="w-full h-full object-contain p-1" />
+            logo ? (
+              <img src={logo} alt="" className="w-full h-full object-contain p-1" />
             ) : (
               <Image01 size={16} />
             )
@@ -137,7 +155,7 @@ export function BasicWorkspaceSettings({
               Rename
             </button>
           )}
-          {canManage && logoUrl && (
+          {canManage && logo && (
             <button
               type="button"
               onClick={onRemoveLogo}
@@ -154,7 +172,7 @@ export function BasicWorkspaceSettings({
               disabled={uploadingLogo}
               className={ghost}
             >
-              {uploadingLogo ? 'Uploading…' : logoUrl ? 'Change logo' : 'Add logo'}
+              {uploadingLogo ? 'Uploading…' : logo ? 'Change logo' : 'Add logo'}
             </button>
           )}
           <input
@@ -178,13 +196,13 @@ export function BasicWorkspaceSettings({
           icon={<Globe01 size={16} />}
           title="Facebook and Instagram"
           sub={
-            connectedPlatforms.length
-              ? `${connectedPlatforms.length} connected`
-              : 'Nothing connected yet — Mia needs these to read and post'
+            fb
+              ? `${kit.page ? `${kit.page}. ` : ''}Mia posts here and reads what your customers react to`
+              : 'Not connected yet. Mia needs these to post and to learn what works'
           }
         >
           <button type="button" onClick={onOpenConnections} className={ghost}>
-            {connectedPlatforms.length ? 'Manage' : 'Connect'}
+            {fb ? 'Manage' : 'Connect'}
           </button>
         </Row>
         <WhatsAppNumberCard sessionId={sessionId} messagesSlot={whatsappMessagesSlot} />
