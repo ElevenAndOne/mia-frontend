@@ -9,6 +9,8 @@ import { useToast } from '../../../contexts/toast-context'
 import { apiFetch } from '../../../utils/api'
 import { HowMiaWritesCard, LearnedRulesCard, PeopleCard } from './basic-brand-cards'
 import { BrandFactsSection } from './brand-facts-section'
+import { type FontStatus, type OwnFont } from './brand-fonts'
+import { BrandFontsRow } from './brand-fonts-row'
 import { BrandGuideModal } from './brand-guide-modal'
 import { WebsiteReadCard } from './website-read-card'
 
@@ -40,6 +42,8 @@ interface Kit {
   logo: { cdn_url: string } | null
   guide: Guide | null
   facebook_page?: string | null
+  own_fonts?: OwnFont[]
+  font_status?: FontStatus[]
 }
 
 // Faces every device has: no Google Fonts request for these, only for the rest.
@@ -381,6 +385,18 @@ export const BasicBrandTab = ({
               </button>
             )}
           </div>
+          <BrandFontsRow
+            sessionId={sessionId}
+            tenantId={tenantId}
+            canManage={canManage}
+            ownFonts={kit?.own_fonts ?? []}
+            status={kit?.font_status ?? []}
+            onChanged={(got) => {
+              kitCache.set(tenantId, got as Kit)
+              setKit(got as Kit)
+              onLookChanged?.()
+            }}
+          />
           <WebsiteReadCard
             sessionId={sessionId}
             tenantId={tenantId}

@@ -5,6 +5,7 @@ import { ArrowRight } from '../../../components/icon/arrow-right'
 import { Upload01 } from '../../../components/icon/upload-01'
 import { Spinner } from '../../../components/spinner'
 import { apiFetch } from '../../../utils/api'
+import { paidFontsLine, type FontStatus } from './brand-fonts'
 
 interface Colour {
   hex: string
@@ -34,6 +35,7 @@ interface ReadResult {
   offered: string[]
   file: { name: string; pages?: number }
   now: { palette: Colour[]; font_family: string | null }
+  font_status?: FontStatus[]
 }
 
 const READING = [
@@ -186,6 +188,7 @@ export const BrandGuideModal = ({
         name
           ? `${[name, weight].filter(Boolean).join(' ')}${drawn ? ` (drawn as ${drawn}, its free match)` : ''}`
           : ''
+      const paid = paidFontsLine(result?.font_status, 'Your guide')
       const head = face(f.headline_font, f.headline_weight, f.headline_drawn_as)
       const body = face(f.body_font, f.body_weight, f.body_drawn_as)
       const online = f.online_fonts?.headline
@@ -201,6 +204,11 @@ export const BrandGuideModal = ({
           {now.font_family && f.headline_font && now.font_family !== f.headline_font
             ? ` Mia uses ${now.font_family} now.`
             : ''}
+          {paid && (
+            <span className="block mt-1.5 text-secondary">
+              {paid} You can upload them under Your fonts once this is saved.
+            </span>
+          )}
         </span>
       )
     }
