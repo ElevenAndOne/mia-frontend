@@ -274,7 +274,7 @@ export const WorkspaceSettingsDetail = ({
   const [logoUrl, setLogoUrl] = useState<string | null>(workspace.logo_url ?? null)
   // A logo that arrived another way (a website read fills an empty one) shows without a reload.
   useEffect(() => {
-    if (workspace.logo_url && !logoUrl) setLogoUrl(`${workspace.logo_url}?v=${Date.now()}`)
+    if (workspace.logo_url && !logoUrl) setLogoUrl(workspace.logo_url.includes('?') ? workspace.logo_url : `${workspace.logo_url}?v=${Date.now()}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace.logo_url])
   const [uploadingLogo, setUploadingLogo] = useState(false)
