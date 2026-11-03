@@ -153,7 +153,10 @@ export const uploadWorkspaceLogo = async (
     throw new Error(err.detail || 'Logo upload failed')
   }
   const data = await response.json()
-  return `${API_BASE_URL}${data.logo_url}?v=${Date.now()}`
+  // The backend versions the URL (?v=updated_at) so caches never serve the old logo; older
+  // backends don't, so fall back to a fresh buster.
+  const path: string = data.logo_url
+  return `${API_BASE_URL}${path}${path.includes('?') ? '' : `?v=${Date.now()}`}`
 }
 
 /**
