@@ -165,6 +165,7 @@ export interface CreditFit {
   unknown_pool?: string[]
   estimated?: string[]
   outside_known_sprints?: number
+  setup_not_counted?: number
   no_rate?: string[]
   sprints?: { label: string; start: string; end: string; free: number | null; planned: number; assets: number }[]
 }
@@ -278,6 +279,8 @@ export interface BuildState {
     client: string
     status: string
     building: boolean
+    // the campaign the home tracker shows (is_primary)
+    on_home?: boolean
     start_date: string | null
     end_date: string | null
     budget_total: number | null
@@ -299,6 +302,10 @@ export interface BuildState {
   plan_from_older_brief: boolean
   // The workspace brand guide every step reads (Settings); null when none is saved (22 Oct)
   brand_guide?: { file?: string | null; uploaded?: string | null; edited_in_settings?: string[]; fields: number; has_words: boolean } | null
+  // The Brand Kit (Settings → Brand Kit: colours, fonts, logo), read by every step and sent to Flex (3 Nov)
+  brand_look?: { colours: number; fonts: boolean; logo: boolean; guide_file?: string | null } | null
+  // Words the brand guide rules out: any job's words that use one go back to the writer (3 Nov)
+  brand_never_use?: string[]
   what_mia_read: WhatMiaRead | null
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
@@ -484,6 +491,7 @@ export interface ResultsState {
   days_elapsed: number | null
   share_elapsed: number | null
   budget_total: number | null
+  currency?: string // the campaign's (review 2 Nov: results always said R)
   phases: { phase: string; budget: number | null; kpis: ResultsKpi[] }[]
   debrief: {
     headline?: string

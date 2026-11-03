@@ -3,6 +3,7 @@ import { Button } from '../../../components/button'
 import type { BuildState, Plan } from '../types'
 import { Field } from './field'
 import { Card, day, money, num } from './parts'
+import { wordsToFix } from './steps'
 
 // The calmer page (19 Oct, docs2/CAMPAIGN_BUILDER_CALMER_UI_PLAN_2026-10-19.md): what the PM has to do comes
 // first ("Your turn"), one line of facts under it, and the detail folds away with a one-line summary. Any item
@@ -104,7 +105,7 @@ export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
     .join(' · ')
   const credits = plan.credits
   const words = plan.assets.filter((a) => a.final_words).length
-  const flagged = plan.assets.filter((a) => a.final_words?.status === 'flagged').length
+  const flagged = plan.assets.filter(wordsToFix).length
   const fit =
     credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : 'room unknown'
   const cells: [string, string, string][] = [

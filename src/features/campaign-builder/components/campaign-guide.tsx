@@ -17,10 +17,14 @@ export function CampaignGuide({
   campaignId,
   readOnly,
   brand,
+  look = null,
+  never = [],
 }: {
   campaignId: string
   readOnly: boolean
   brand: BuildState['brand_guide'] | null
+  look?: BuildState['brand_look'] | null
+  never?: string[]
 }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
@@ -56,7 +60,7 @@ export function CampaignGuide({
   const available = q.data?.available ?? []
   return (
     <Card className="flex flex-col gap-2">
-      <BrandGuideLine brand={brand} />
+      <BrandGuideLine brand={brand} look={look} never={never} campaignId={campaignId} readOnly={readOnly} />
       {!attached && !available.length ? null : <h3 className="subheading-sm text-primary">Campaign guide</h3>}
       {attached ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -109,19 +113,36 @@ export function CampaignGuide({
   )
 }
 
-// Which brand guide Mia reads for every step, or a nudge to add one.
-function BrandGuideLine({ brand }: { brand: BuildState['brand_guide'] | null }) {
+// Which brand guide Mia reads for every step, or a way to add one here (3 Nov: the line only pointed to Settings), and
+// the Brand Kit that goes to the studio with every job.
+function BrandGuideLine({
+  brand,
+  look,
+  never,
+  campaignId,
+  readOnly,
+}: {
+  brand: BuildState['brand_guide'] | null
+  look: BuildState['brand_look'] | null
+  never: string[]
+  campaignId: string
+  readOnly: boolean
+}) {
   const settings = (
     <Link to="/settings/workspace?tab=brand" className="underline text-secondary hover:text-primary">
-      {brand ? 'Open in Settings' : 'Add one in Settings'}
+      {brand ? 'Open in Settings' : 'Settings'}
     </Link>
   )
+  const kit = lookLine(look)
   if (!brand) {
     return (
-      <p className="paragraph-xs text-secondary">
-        <span className="text-primary">Brand guide:</span> none saved for this workspace yet, so Mia writes without
-        one. {settings}
-      </p>
+      <div className="flex flex-col gap-1.5">
+        <p className="paragraph-xs text-secondary">
+          <span className="text-primary">Brand guide:</span> none saved for this workspace yet, so Mia writes from your
+          brief alone.{kit ? ` ${kit}` : ''} Add the guide here or in {settings}.
+        </p>
+        {readOnly ? null : <AddBrandGuide campaignId={campaignId} />}
+      </div>
     )
   }
   const edited = brand.edited_in_settings?.length ?? 0
@@ -130,7 +151,62 @@ function BrandGuideLine({ brand }: { brand: BuildState['brand_guide'] | null }) 
       <span className="text-primary">Brand guide:</span> {brand.file || 'from Settings'}
       {brand.uploaded ? `, uploaded ${day(brand.uploaded)}` : ''}
       {edited ? `, ${edited} edit${edited === 1 ? '' : 's'} in Settings` : ''}. Mia reads it whole for the brief, the
-      plan, every job’s words and her checks. {settings}
+      plan, every job’s words and her checks
+      {never.length ? `, and sends back any words that use one of the ${never.length} it rules out` : ''}.
+      {kit ? ` ${kit}` : ''} {settings}
     </p>
+  )
+}
+
+const lookLine = (look: BuildState['brand_look'] | null | undefined) => {
+  if (!look) return ''
+  const has = [
+    look.colours ? `${look.colours} colour${look.colours === 1 ? '' : 's'}` : '',
+    look.fonts ? 'fonts' : '',
+    look.logo ? 'the logo' : '',
+  ].filter(Boolean)
+  return has.length ? `Their Brand Kit (${has.join(', ')}) goes to the studio with every job.` : ''
+}
+
+/** Add the workspace brand guide without leaving the campaign: read and saved as Settings does. */
+export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDone?: () => void }) {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pick = async (file: File | undefined) => {
+    if (!file || !sessionId || !tenantId) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.addBrandGuide(sessionId, tenantId, file)
+      await queryClient.invalidateQueries({ queryKey: buildKey(tenantId, campaignId) })
+      onDone?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That didn’t work. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <label className={`inline-flex w-fit items-center gap-2 ${busy ? 'opacity-60' : 'cursor-pointer'}`}>
+        <input
+          type="file"
+          accept=".pdf,.ppt,.pptx,.doc,.docx,.md,.txt"
+          className="sr-only"
+          disabled={busy}
+          onChange={(e) => {
+            void pick(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+        <span className="rounded-lg border border-secondary bg-primary px-3 py-1.5 label-sm text-primary hover:bg-secondary">
+          {busy ? 'Mia is reading it…' : 'Add brand guide'}
+        </span>
+      </label>
+      {error ? <p className="paragraph-xs text-error">{error}</p> : null}
+    </div>
   )
 }

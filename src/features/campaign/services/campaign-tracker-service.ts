@@ -121,6 +121,8 @@ export interface CampaignTracker {
   client_name: string
   status: string
   is_primary: boolean
+  // 'v2' for a campaign made in the new campaign builder
+  builder?: string | null
   start_date: string | null
   end_date: string | null
   current_phase: string | null
@@ -146,6 +148,9 @@ export interface KPIActual {
   scope_label?: string | null
   // Why a blank is blank ("No emails sent between 1 Oct and 30 Oct…"); only on rows with no value
   blank_reason?: string | null
+  // A source is connected and read; there was just nothing in these dates (an email last sent before the campaign
+  // started), so it isn't "Not tracked" (local test 5, 2 Nov)
+  measured?: boolean
   // Movement over the last 7 days, from the recorded reading series. Absent when the
   // series doesn't reach back a week yet, or when the date picker is off the campaign's
   // own window (the displayed value then measures something the series doesn't).

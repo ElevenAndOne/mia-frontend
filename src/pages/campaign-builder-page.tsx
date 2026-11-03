@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { readDeck, startBuild, type DeckRead } from '../features/campaign-builder/api'
+import { readDeck, showOnHome, startBuild, type DeckRead } from '../features/campaign-builder/api'
+import { clearTrackerCache } from '../features/campaign/services/campaign-tracker-service'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab, type PlanPart } from '../features/campaign-builder/components/plan-tab'
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
-import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
+import { STEPS, currentStep, stepStates, wordsToFix, type StepKey } from '../features/campaign-builder/components/steps'
 import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
 import { UpNext } from '../features/campaign-builder/components/up-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
@@ -208,6 +209,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const navigate = useNavigate()
   const { tab = 'brief' } = useParams()
   const build = useBuild(campaignId)
+  const { sessionId, activeWorkspace } = useSession()
   const s = build.state
   const go = (t: string) => navigate(`/campaign-builder/${campaignId}/${t}`)
   const [chatOpen, setChatOpen] = useState(false) // phones and narrow windows; always shown on wide screens
@@ -217,7 +219,18 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     window.addEventListener(ASK_EVENT, open)
     return () => window.removeEventListener(ASK_EVENT, open)
   }, [])
-  const [flash, setFlash] = useState<string | null>(null)
+  const [flash, setFlashNow] = useState<string | null>(null)
+  // Two lines in one render (a step moving on and its background work finishing) are said together, the work first,
+  // never one wiping the other (review 2 Nov: "Final words done. Next: Check" lost to "Done: final words for…")
+  const lastSaid = useRef<{ at: number; text: string } | null>(null)
+  const setFlash = (text: string | null) => {
+    const prev = lastSaid.current
+    const together = text && prev && Date.now() - prev.at < 300
+    const joined = !together ? text
+      : prev.text.startsWith('✓') ? `${text} ${prev.text.replace(/^✓ .*? done\. /, '')}` : `${prev.text} ${text}`
+    lastSaid.current = joined ? { at: Date.now(), text: joined } : null
+    setFlashNow(joined)
+  }
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
   const pageScroll = useRef<HTMLDivElement>(null)
@@ -287,7 +300,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
           : `Done: the plan is made, ${jobs.length} jobs. Mia is writing their final words now; you can go on.`,
       )
     else if (was.words && !now.words && s.words_run?.status === 'done') {
-      const flagged = jobs.filter((a) => a.final_words?.status === 'flagged').length
+      const flagged = jobs.filter(wordsToFix).length
       const written = jobs.filter((a) => a.final_words).length
       setFlash(`Done: final words for ${written} of ${jobs.length} jobs${flagged ? `, ${flagged} for you to look at` : ', all checked'}.`)
     } else if (was.words && !now.words && s.words_run?.status === 'failed')
@@ -301,7 +314,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   }, [s])
   useEffect(() => {
     if (!flash) return
-    const t = setTimeout(() => setFlash(null), 8000)
+    const t = setTimeout(() => setFlashNow(null), 8000)
     return () => clearTimeout(t)
   }, [flash])
 
@@ -360,6 +373,25 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     }}
                   >
                     Discard draft
+                  </Button>
+                ) : null}
+                {!s.campaign.building && !s.campaign.on_home && sessionId && activeWorkspace ? (
+                  // approve never puts a campaign on home; going live does when nothing current is there (2 Nov)
+                  <Button
+                    variant="ghost"
+                    title="Show this campaign's targets and numbers in the tracker on the home page"
+                    onClick={async () => {
+                      try {
+                        await showOnHome(sessionId, activeWorkspace.tenant_id, s.campaign.campaign_id)
+                        clearTrackerCache()
+                        build.reload()
+                        setFlash('This campaign now shows on the home page.')
+                      } catch (e) {
+                        setFlash((e as Error).message)
+                      }
+                    }}
+                  >
+                    Show on home
                   </Button>
                 ) : null}
                 {step && states ? null : ( // while a draft, the way on is in Up next, below (28 Oct)

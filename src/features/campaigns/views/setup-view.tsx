@@ -290,6 +290,8 @@ const describeBinding = (
   if (kpi.manual_actual != null) return { label: 'manual entry', kind: 'manual' }
   if (kpi.hubspot_list_name) return { label: `HubSpot · ${kpi.hubspot_list_name}`, kind: 'legacy' }
   if (kpi.brevo_list_name) return { label: `Brevo · ${kpi.brevo_list_name}`, kind: 'legacy' }
+  if (actual?.state === 'none' && actual.measured)
+    return { label: 'measured from connected platforms (nothing in these dates yet)', kind: 'live' }
   if (actual?.state === 'none')
     return { label: 'nothing measures this — shows "Not tracked"', kind: 'none' }
   if (actual && actual.actual_value !== null)

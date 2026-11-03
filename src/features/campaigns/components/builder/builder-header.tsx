@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { fetchLinkedContent } from '../../services/campaign-api'
 import { fetchDeleteCheck, type DeleteCheck, type FlexJobOpen } from '../../services/campaign-delete-api'
 import { StatusBadge } from '../status-badge'
@@ -24,6 +24,10 @@ export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
   const { campaign, sessionId, tenantId } = useCampaignWorkspace()
   const { patchCampaign, cycleStatus, removeCampaign } = useCampaignMutations()
   const navigate = useNavigate()
+  // A campaign made in the new builder sends its jobs to Flex from its own page, so the ClickUp send isn't offered here:
+  // the same work could go to ClickUp and Flex (local test 5, 2 Nov). The campaign says which builder made it (review
+  // 2 Nov: reading the staff-only board left the button on for everyone else).
+  const newBuilder = (campaign as typeof campaign & { builder?: string | null }).builder === 'v2'
 
 
   const initials = (campaign.client_name || campaign.campaign_name).slice(0, 2).toUpperCase()
@@ -123,7 +127,13 @@ export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
       {/* Controls card — status / dates / budget / channels / guide */}
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center flex-wrap gap-3">
-        <ClickUpActions />
+        {newBuilder ? (
+          <Link to={`/campaign-builder/${campaign.campaign_id}/studio`} className="paragraph-xs text-brand-secondary hover:underline">
+            Jobs go to the studio from this campaign's builder page
+          </Link>
+        ) : (
+          <ClickUpActions />
+        )}
         <button onClick={onDelete} title="Delete campaign" className="p-1 text-quaternary hover:text-utility-error-500 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>

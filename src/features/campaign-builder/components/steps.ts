@@ -1,4 +1,15 @@
-import type { BuildState } from '../types'
+import type { BuildState, KpiTarget, PlanAsset } from '../types'
+import { moneySign, num } from './parts'
+
+/** A note left for the PM in the words ("[PM to add the link]") needs a fact only the PM has: rewriting can't fix it.
+ *  By the flag's kind; the wording is only a fallback for words checked before kinds existed (review 19 Oct). */
+export const isWordsNote = (f: { problem: string; kind?: string }) =>
+  f.kind === 'note' || (!f.kind && f.problem.startsWith('a note left in the words'))
+
+/** A job whose words have a real flag to fix: the one count every place shows, as build_service.words_flagged counts it
+ *  (local test 4, 30 Oct: "2 jobs" and "3 jobs"; local test 5, 2 Nov: "5 to fix" beside "flagged words on 1 job"). */
+export const wordsToFix = (a: PlanAsset) =>
+  a.final_words?.status === 'flagged' && (a.final_words.flags ?? []).some((f) => !isWordsNote(f))
 
 // The builder as six steps (docs2/CAMPAIGN_BUILDER_STEPS_PLAN_2026-10-20.md; Start folded into Key facts, L1): one at a
 // time, most important first,
@@ -21,13 +32,24 @@ export const STEPS: { key: StepKey; label: string; help: string }[] = [
 // The targets the PM still has to decide: the empty ones, and the ones Mia copied from the client's history that the PM
 // hasn't looked at (29 Oct: an old, mislabelled R7,698 cost per click went into the plan without the PM seeing it).
 // A history target shows with its number as the starting point, like one of Mia's estimates.
-export function targetsToDecide(s: Pick<BuildState, 'plan'>) {
+/** A target's number as a PM reads it, as the server's _ref_value writes it: 5.61%, R0.76, 1,200 (local test 5, 2 Nov:
+ *  a past campaign's rates showed bare, "5.61", beside Mia's "64.00%"). Rates are stored in percent. */
+export const targetLabel = (t: Pick<KpiTarget, 'unit'>, v: number, currency?: string | null) =>
+  t.unit === 'fraction'
+    ? `${v.toFixed(2)}%`
+    : t.unit === 'currency'
+      ? `${moneySign(currency)}${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : num(v)
+
+export function targetsToDecide(s: Pick<BuildState, 'plan'> & { campaign?: { currency?: string | null } }) {
   const targets = s.plan?.decisions.kpi_targets ?? []
   return targets
     .filter((t) => (t.value == null && !t.no_target) || (t.made_by === 'rules' && t.value != null))
     .map((t) =>
       t.value != null
-        ? { ...t, suggested: t.value, suggested_by: 'history', suggested_label: null, suggested_from: t.reason ?? null, fromHistory: true }
+        ? // a last-90-days account rate reads "From your account", a past campaign's result "From a past campaign"
+          // (review 2 Nov: every rules target said past campaign)
+          { ...t, suggested: t.value, suggested_by: t.basis === 'account' ? 'account' : 'history', suggested_label: targetLabel(t, t.value, s.campaign?.currency), suggested_from: t.reason ?? null, fromHistory: true }
         : // a past result put aside as far off: why, where the row explains its number
           { ...t, fromHistory: false, ...(t.doubted != null && t.reason ? { account_reference: t.reason } : {}) },
     )

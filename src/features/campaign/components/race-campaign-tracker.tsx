@@ -82,7 +82,7 @@ function formatActual(actual: KPIActual): string {
   if (actual.actual_value === null || actual.actual_value === undefined) {
     // 'none' = nothing is wired to this KPI — say so instead of a dash that reads
     // as "loading" or "zero" (state is absent on pre-Sep-2026 cached entries).
-    return actual.state === 'none' ? 'Not tracked' : '—'
+    return actual.state === 'none' && !actual.measured ? 'Not tracked' : '—'
   }
   if (actual.unit === 'percent') return `${actual.actual_value.toFixed(1)}%`
   if (actual.actual_value >= 1000000) return `${(actual.actual_value / 1000000).toFixed(1)}M`
@@ -165,6 +165,38 @@ function campaignTimePct(startDate: string, endDate: string): number {
 
 function todayString(): string {
   return format(new Date(), 'yyyy-MM-dd')
+}
+
+/** The campaign's real state: an approved builder campaign is a draft until its first job launches, and said
+ *  "Live" with blank numbers here (home tracker plan, 2 Nov). */
+function CampaignStatusPill({ status, startDate }: { status: string; startDate: string | null }) {
+  if (status === 'live') {
+    return (
+      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-utility-success-50 border border-utility-success-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-utility-success-500 animate-pulse" />
+        <span className="paragraph-xs text-utility-success-700">Live</span>
+      </span>
+    )
+  }
+  // a start date already behind us with nothing launched yet isn't "Starts", it's waiting on a launch
+  const startsAhead = !!startDate && new Date(`${startDate.slice(0, 10)}T23:59:59`) >= new Date()
+  const label =
+    status === 'draft'
+      ? startDate && startsAhead
+        ? `Starts ${format(new Date(startDate), 'd MMM')}`
+        : startDate
+          ? 'Approved, not launched'
+          : 'Approved'
+      : status === 'paused'
+        ? 'Paused'
+        : status === 'completed'
+          ? 'Ended'
+          : status.charAt(0).toUpperCase() + status.slice(1)
+  return (
+    <span className="px-2 py-0.5 rounded-full border border-secondary paragraph-xs text-tertiary whitespace-nowrap">
+      {label}
+    </span>
+  )
 }
 
 function PhaseStatusDot({ status }: { status: CampaignPhase['status'] }) {
@@ -648,6 +680,14 @@ export function RaceCampaignTracker({
             ) : (
               <p className="subheading-xs text-primary truncate">{campaign.campaign_name}</p>
             )}
+            {campaign.builder === 'v2' && (
+              <a
+                className="ml-2 paragraph-xs text-tertiary underline hover:text-secondary"
+                href={`/campaign-builder/${campaign.campaign_id}/results`}
+              >
+                Results
+              </a>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -669,10 +709,7 @@ export function RaceCampaignTracker({
                 />
               </svg>
             </button>
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-utility-success-50 border border-utility-success-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-utility-success-500 animate-pulse" />
-              <span className="paragraph-xs text-utility-success-700">Live</span>
-            </span>
+            <CampaignStatusPill status={campaign.status} startDate={campaign.start_date} />
           </div>
         </div>
 
@@ -870,6 +907,11 @@ export function RaceCampaignTracker({
               )
             })}
 
+          {campaign.status === 'draft' && (
+            <p className="paragraph-xs text-quaternary text-center py-2">
+              Numbers start when the first job launches.
+            </p>
+          )}
           {actualsError && (
             <p className="paragraph-xs text-quaternary text-center py-3">
               Could not load actuals — try again later

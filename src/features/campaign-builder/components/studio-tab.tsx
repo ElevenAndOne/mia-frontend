@@ -141,9 +141,12 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     items.push({
       key: 'send',
       title: toSend.length ? `Send ${toSend.length} job${toSend.length === 1 ? '' : 's'} to Flex` : 'Pick the jobs to send',
-      detail: toSend.length
-        ? 'Each becomes an Open task in Flex with its credits and the full brief for the designer. Untick any you are not sending yet.'
-        : 'Tick the jobs to send in the list below.',
+      // Flex not answering is said on the item, not only inside the account picker (review 2 Nov)
+      detail: s.flex_down
+        ? 'Flex isn’t answering right now, so nothing can be sent. Try again in a few minutes.'
+        : toSend.length
+          ? 'Each becomes an Open task in Flex with its credits and the full brief for the designer. Untick any you are not sending yet.'
+          : 'Tick the jobs to send in the list below.',
       actions: toSend.length ? (
         <>
           {senderPick}

@@ -1,4 +1,4 @@
-import { CampaignGuide } from './campaign-guide'
+import { AddBrandGuide, CampaignGuide } from './campaign-guide'
 import { ClientRules } from './client-rules'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
@@ -82,6 +82,22 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
   // Detail sections: closed until wanted (each step opens with only Your turn, L8). Key facts has none; the context of
   // the brief sits folded on Check & approve.
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
+  const skipKey = `mia-builder-brand-skip-${state.campaign.campaign_id}`
+  const [brandSkipped, setBrandSkipped] = useState(() => {
+    try {
+      return localStorage.getItem(skipKey) === '1'
+    } catch {
+      return false
+    }
+  })
+  const skipBrand = () => {
+    setBrandSkipped(true)
+    try {
+      localStorage.setItem(skipKey, '1')
+    } catch {
+      // private window: skipped for this visit only
+    }
+  }
   const shows = (f: string) => !part || (part === 'context' && ['read', 'words', 'rules'].includes(f))
 
   if (!state.brief) {
@@ -115,6 +131,25 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
             onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
           />
+        ),
+      })
+    }
+    // No brand guide: asked once, before the plan, with the upload right here (review, 3 Nov: the page only pointed
+    // to Settings). "Carry on without" is remembered for this campaign in this browser.
+    if (!state.brand_guide && !state.plan && !brandSkipped) {
+      items.push({
+        key: 'brand',
+        title: 'Add the client’s brand guide? (optional)',
+        detail: state.brand_look
+          ? 'Their Brand Kit colours and fonts go to the studio, but Mia has no guide for how they sound and what they can claim. With one, every job’s words follow it.'
+          : 'Mia has no brand guide for this workspace, so the words follow your brief alone. With one, every job sounds like the client and avoids what it rules out.',
+        actions: (
+          <>
+            <AddBrandGuide campaignId={state.campaign.campaign_id} />
+            <Button size="sm" variant="ghost" onClick={skipBrand}>
+              Carry on without
+            </Button>
+          </>
         ),
       })
     }
@@ -192,7 +227,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
       done: planFresh && !planRunning,
       detail: planRunning
-        ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
+        ? 'This usually takes 10 to 20 minutes. You can leave the page; it keeps going.'
         : waiting
           ? 'Answer or skip the questions above first: Mia plans from your answers.'
           : state.plan_from_older_brief
@@ -249,7 +284,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           </ul>
         </Card>
       ) : null}
-      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} /> : null}
+      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} look={state.brand_look ?? null} never={state.brand_never_use ?? []} /> : null}
       {part !== 'context' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"
@@ -258,7 +293,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         open={folds.has('stand')}
         onToggle={() => toggle('stand')}
       >
-        <WhereTheyStand groups={kpiGroups} />
+        <WhereTheyStand groups={kpiGroups} currency={state.campaign.currency} />
       </Fold>) : null}
       {shows('words') && b?.pm_words?.length ? (
         <Fold
@@ -610,7 +645,7 @@ function WhatMiaRead({ state }: { state: BuildState }) {
 
 // Where the client stands on mia-cube's KPI list before the plan is made: the last campaign
 // result for each KPI (and its target then), else the account's own last-90-days figure.
-function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
+function WhereTheyStand({ groups, currency }: { groups: KpiGroup[]; currency?: string | null }) {
   const rows = groups
     .map((g) => ({ ...g, kpis: g.kpis.filter((k) => k.last_result || k.account_90d != null) }))
     .filter((g) => g.kpis.length)
@@ -630,8 +665,8 @@ function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
                   <span className="text-primary">{k.name}</span>
                   <span className="text-secondary tabular-nums">
                     {k.last_result
-                      ? `${kpiValue(k.last_result.value, k.unit)}${k.last_result.target != null ? ` (target ${kpiValue(k.last_result.target, k.unit)})` : ''}`
-                      : `${kpiValue(k.account_90d, k.unit)} · 90 days`}
+                      ? `${kpiValue(k.last_result.value, k.unit, currency)}${k.last_result.target != null ? ` (target ${kpiValue(k.last_result.target, k.unit, currency)})` : ''}`
+                      : `${kpiValue(k.account_90d, k.unit, currency)} · 90 days`}
                   </span>
                   {k.last_result ? <span className="w-full paragraph-xs text-tertiary">{k.last_result.campaign}</span> : null}
                 </li>

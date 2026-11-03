@@ -1,6 +1,6 @@
 import { Button } from '../../../components/button'
 import type { BuildState } from '../types'
-import { STEPS, currentStep, targetsToDecide, type StepKey, type StepState } from './steps'
+import { STEPS, currentStep, targetsToDecide, wordsToFix, type StepKey, type StepState } from './steps'
 
 // Up next (local test 27 Oct: "it needs to guide and tell me each step along the way… i had no idea it was done til u
 // said so"): one line, always in view, naming the one next thing for the PM, and what Mia is doing meanwhile. Worked
@@ -36,13 +36,13 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
   const briefQs = s.brief?.brief.open_questions ?? []
   const toSet = targetsToDecide(s)
   const jobs = plan?.assets ?? []
-  // a client-to-confirm note isn't a flag to fix: counted as plan-tab and build_service.words_flagged count it (local
-  // test 4, 30 Oct: "2 jobs" here, "3 jobs" in the approve box)
-  const isNote = (f: { problem: string; kind?: string }) => f.kind === 'note' || (!f.kind && f.problem.startsWith('a note left in the words'))
-  const flagged = jobs.filter((a) => a.final_words?.status === 'flagged' && (a.final_words.flags ?? []).some((f) => !isNote(f)))
+  const flagged = jobs.filter(wordsToFix)
   const done = new Set(plan?.decisions.notes_done ?? [])
-  const breaks = plan?.review?.audit?.jobs?.length ?? 0
-  const notesOpen = (plan?.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x)).length
+  // a check from before the latest change isn't what's open now (review 2 Nov: "Go through Mia's 2 findings" beside
+  // items saying "Found before your latest change"); the next check says what is, and the approve box counts the same
+  const stale = !!plan?.review?.stale
+  const breaks = stale ? 0 : plan?.review?.audit?.jobs?.length ?? 0
+  const notesOpen = stale ? 0 : (plan?.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x)).length
   const findings = breaks + notesOpen
   // the same words the approve box uses: findings and notes counted apart
   const found = [breaks ? plural(breaks, 'finding') : '', notesOpen ? plural(notesOpen, 'note') : ''].filter(Boolean).join(' and ')
@@ -52,11 +52,15 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
     recheck ? `recheck ${plural(recheck, 'target')} you kept` : '',
     reconfirm && cur !== 'jobs' ? 'confirm the jobs again' : '',
   ].filter(Boolean)
-  const say = (text: string, step: StepKey) => ({
-    text: first.length ? `First ${first.join(' and ')} (below). Then: ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text,
-    step,
-    background: step === 'words' && words ? undefined : background,
-  })
+  // jobsLast: the text itself says when to confirm the jobs again, so it isn't put first
+  const say = (text: string, step: StepKey, jobsLast = false) => {
+    const pre = jobsLast ? first.filter((x) => x !== 'confirm the jobs again') : first
+    return {
+      text: pre.length ? `First ${pre.join(' and ')} (below). Then: ${text.charAt(0).toLowerCase()}${text.slice(1)}` : text,
+      step,
+      background: step === 'words' && words ? undefined : background,
+    }
+  }
   switch (cur) {
     case 'facts':
       if (briefQs.length) return say(`Answer Mia's ${plural(briefQs.length, 'question')} about the key facts, one at a time.`, 'facts')
@@ -76,14 +80,26 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       if ((s.check_pending ?? s.checking) && s.auto_words) return say('Mia is about to write the final words. Nothing needs you yet.', 'words')
       if (flagged.length) return say(`Fix the words on ${plural(flagged.length, 'job')} Mia flagged.`, 'words')
       if (s.words_run?.status === 'failed') return say('Writing stopped part-way: press Carry on for the jobs left.', 'words')
-      if (!jobs.some((a) => a.final_words)) return say('Mia starts the final words in a moment. Nothing needs you yet.', 'words')
+      // nothing waiting to write them (a lost background check, review 2 Nov): the item below says Try again, so this
+      // does too, never "in a moment" for ever
+      if (!jobs.some((a) => a.final_words)) return say("Mia's final words haven't started: press Try again.", 'words')
       return say('Some jobs are still on draft words: press Try again.', 'words')
     default: {
       if (states.check === 'done') return { text: 'Approved. Send the jobs to Flex next.', step: 'check' }
       const blockers = s.blockers.filter((b) => b.key !== 'words' || !words)
       if (blockers.length) return say(`Sort ${plural(blockers.length, 'thing')} before you approve.`, 'check')
-      if (findings && !s.checking) return say(`Go through Mia's ${found}, one at a time, then approve.`, 'check')
+      // the list's order: findings and notes first, since fixing them changes the jobs, then the jobs confirmed once
+      // (local test 5, 2 Nov: "First confirm the jobs again" over a list that put a finding first)
+      // an answer being applied may change the jobs: approve waits for it (review 2 Nov)
+      if ((s.reading_answers ?? 0) > 0)
+        return { text: 'Mia is applying your last answer. Then you approve.', step: 'check' }
+      if (findings && !s.checking)
+        return say(`Go through Mia's ${found}, one at a time${reconfirm ? ', then confirm the jobs again' : ''}, then approve.`, 'check', true)
       if (s.checking || words) return { text: 'Mia is checking the plan once more. Then you approve.', step: 'check' }
+      // a changed job's words are rewritten first, then the check runs (local test 5, 2 Nov: "Everything is done.
+      // Approve the plan." showed over "Mia is about to rewrite 2 jobs, then she checks")
+      if ((s.check_pending ?? s.checking) && s.auto_words)
+        return { text: 'Mia is rewriting the changed jobs, then she checks once more. Nothing needs you yet.', step: 'check' }
       return say('Everything is done. Approve the plan.', 'check')
     }
   }

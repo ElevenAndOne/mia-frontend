@@ -6,8 +6,13 @@ import type { BuildRun } from '../types'
 // pattern (plan §8.2): ⚠ + words + amber border, from the utility-warning tokens that have
 // dark-mode pairs, so colour is never the only signal.
 
-export const money = (v: number | null | undefined, currency = 'ZAR') =>
-  v == null ? '—' : `${currency === 'ZAR' ? 'R' : `${currency} `}${Math.round(v).toLocaleString('en-US')}`
+/** What goes before an amount, as the server's numbers.money_sign writes it: R for rand (or unknown), $, €, £, A$, else
+ *  the code ("KES 1,200"). */
+export const moneySign = (currency?: string | null) =>
+  ({ ZAR: 'R', USD: '$', EUR: '€', GBP: '£', AUD: 'A$' } as Record<string, string>)[(currency || 'ZAR').toUpperCase()] ?? `${currency} `
+
+export const money = (v: number | null | undefined, currency?: string | null) =>
+  v == null ? '—' : `${moneySign(currency)}${Math.round(v).toLocaleString('en-US')}`
 
 export const day = (d: string | null | undefined) => {
   if (!d) return '—'
@@ -124,7 +129,7 @@ export function RunProgress({ run, what }: { run: BuildRun; what: string }) {
         </div>
       ) : null}
       <p className="paragraph-xs text-tertiary">
-        {what === 'plan' ? 'Usually 5 to 15 minutes. You can leave the page; it keeps going.' : 'About a minute or two.'}
+        {what === 'plan' ? 'Usually 10 to 20 minutes. You can leave the page; it keeps going.' : 'About a minute or two.'}
       </p>
     </Card>
   )

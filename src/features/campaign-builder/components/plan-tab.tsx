@@ -1,4 +1,4 @@
-import { targetsToDecide } from './steps'
+import { isWordsNote, targetsToDecide, wordsToFix } from './steps'
 import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
@@ -11,7 +11,7 @@ import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
 import { Field } from './field'
 import { WhereTheyStand } from './brief-tab'
-import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, num } from './parts'
+import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money, moneySign, num } from './parts'
 
 // Plan tab (plan §8.2): the concept, one column per phase (budget, why, KPI targets with their
 // basis), the jobs for the studio with their designer briefs and credits, then Approve.
@@ -65,7 +65,8 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
 export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onKeepPlan, onApprove, onWriteWords, onSaveBrief,
   onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError = null }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
-  const [openJobs, setOpenJobs] = useState<Set<number>>(() => new Set())
+  // by job id, so removing a job never opens its neighbour (review 2 Nov: keyed by place)
+  const [openJobs, setOpenJobs] = useState<Set<string>>(() => new Set())
   // Detail sections: closed until wanted; a step opens the ones it is about.
   // Each step opens with only Your turn; its detail sections stay folded until wanted (L8).
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
@@ -92,13 +93,14 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   // "Show me" from Your turn: open the fold (and the job), then scroll to the item.
   const reveal = (id: string, fold?: string, jobIndex?: number) => {
     if (fold) setFolds((f) => new Set(f).add(fold))
-    if (jobIndex != null) setOpenJobs((o) => new Set(o).add(jobIndex))
+    const job = jobIndex != null ? plan.assets[jobIndex] : undefined
+    if (job) setOpenJobs((o) => new Set(o).add(job.job_id ?? `${jobIndex}-${job.name}`))
     setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
   }
   const toggle = (f: string) => setFolds((o) => { const n = new Set(o); if (n.has(f)) n.delete(f); else n.add(f); return n })
   const targets = plan.decisions.kpi_targets
   const toSet = targets.filter((t) => t.value == null && !t.no_target)
-  const flaggedJobs = plan.assets.filter((a) => a.final_words?.status === 'flagged')
+  const flaggedJobs = plan.assets.filter(wordsToFix)
   const sc = plan.review?.scorecard
   return (
     <div className="flex flex-col gap-4">
@@ -206,6 +208,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
                   ))}
                 {locked ? null : picking === p.phase ? (
                   <KpiPicker
+                    currency={currency}
                     groups={kpiGroups}
                     error={kpiError}
                     busy={busy === 'edit'}
@@ -246,9 +249,11 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       {shows('jobs') ? (<Fold
         id="fold-jobs"
         title="Jobs for the studio"
+        // written, as the Final words box counts them: a job whose only flags are client-to-confirm notes is written,
+        // not "to fix" (local test 6, 2 Nov: "11 ready, 2 to fix" beside "19 of 19, 2 to fix")
         summary={`${plan.assets.length} jobs · ${num(plan.credits?.total_planned ?? 0)} credits · words: ${
-          plan.assets.filter((a) => a.final_words?.status === 'ready').length
-        } ready${flaggedJobs.length ? `, ${flaggedJobs.length} to fix` : ''}`}
+          plan.assets.filter((a) => a.final_words).length
+        } of ${plan.assets.length} written${flaggedJobs.length ? `, ${flaggedJobs.length} to fix` : ''}`}
         open={folds.has('jobs')}
         onToggle={() => toggle('jobs')}
       >
@@ -262,13 +267,15 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
                 {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
               </p>
               <ul className="divide-y divide-secondary">
-                {jobs.map(({ a, i }) => (
+                {jobs.map(({ a, i }) => {
+                  const id = a.job_id ?? `${i}-${a.name}`
+                  return (
                   <JobRow
-                    key={a.job_id ?? `${i}-${a.name}`}
+                    key={id}
                     a={a}
                     index={i}
-                    open={openJobs.has(i)}
-                    onToggle={() => setOpenJobs((o) => { const n = new Set(o); if (n.has(i)) n.delete(i); else n.add(i); return n })}
+                    open={openJobs.has(id)}
+                    onToggle={() => setOpenJobs((o) => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n })}
                   >
                     <Job
                       a={a}
@@ -279,7 +286,8 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
                       onRewrite={(ids) => onWriteWords(ids, true)}
                     />
                   </JobRow>
-                ))}
+                  )
+                })}
               </ul>
             </div>
           )
@@ -349,17 +357,14 @@ function planTurnItems({
   const wordsRun = state.words_run
   const without = jobs.filter((a) => !a.final_words).length
   const flaggedAll = jobs.map((a, i) => ({ a, i })).filter(({ a }) => a.final_words?.status === 'flagged')
-  // A note left for the PM ("[PM to add the link]") needs a fact only the PM has: rewriting can't fix it.
-  // By the flag's kind; the wording is only a fallback for words checked before kinds existed (review 19 Oct).
-  const isNote = (f: { problem: string; kind?: string }) => f.kind === 'note' || (!f.kind && f.problem.startsWith('a note left in the words'))
   const notes = flaggedAll.flatMap(({ a, i }) =>
     (a.final_words?.flags ?? [])
-      .filter(isNote)
+      .filter(isWordsNote)
       .map((f) => ({ a, i, where: f.where, note: f.note ?? (f.problem.match(/\((.*)\)$/) ?? [])[1] ?? f.problem })),
   )
-  const flagged = flaggedAll.filter(({ a }) => (a.final_words?.flags ?? []).some((f) => !isNote(f)))
+  const flagged = flaggedAll.filter(({ a }) => wordsToFix(a))
   const targets = plan.decisions.kpi_targets
-  const toSet = targetsToDecide({ plan })
+  const toSet = targetsToDecide({ plan, campaign: state.campaign })
   const targetKeys = new Set(targets.map((t) => t.key))
   const otherBlockers = state.blockers.filter((b) => !(b.key && (targetKeys.has(b.key) || b.key === 'words' || b.key === 'questions')))
   const recheck = targets.filter((t) => t.recheck && t.value != null)
@@ -889,7 +894,10 @@ function planTurnItems({
       key: 'confirm-jobs',
       title: 'Check the jobs and the money',
       done: !!plan.decisions.jobs_confirmed,
-      detail: `${jobs.length} jobs, ${num(jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits. Change anything below, then confirm: Mia writes the final words once you do.`,
+      // the same total as the jobs list: setup work isn't counted yet (local test 5, 2 Nov: 67 here, 58 in the list)
+      detail: `${jobs.length} jobs, ${num(plan.credits?.total_planned ?? jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits${
+        plan.credits?.setup_not_counted ? ` (plus ${num(plan.credits.setup_not_counted)} for setup work, still to be agreed)` : ''
+      }. Change anything below, then confirm: Mia writes the final words once you do.`,
       actions: (
         <PrimaryAction loading={busy === 'edit'} onClick={() => onEdit([{ op: 'confirm_jobs' }])}>
           Looks right
@@ -950,7 +958,7 @@ function planTurnItems({
       key: 'final-check',
       title: at ? `Mia checked the campaign ${day(at)}` : "Run Mia's final check",
       detail: checking
-        ? 'Mia is checking the whole campaign as it is now (about a minute).'
+        ? 'Mia is checking the whole campaign as it is now (a minute or two).'
         : at
           ? 'Mia checks again by herself after each change. Her notes are in "How Mia got here" below.'
           : 'Mia reads the whole campaign as it is now and flags only what really matters.',
@@ -961,7 +969,10 @@ function planTurnItems({
       ),
     })
   }
-  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking
+  // an answer still being applied changes the plan after approve (review 2 Nov: its edits became a card on the approved
+  // campaign that could never apply), so approve waits for it like the check
+  const applying = (state.reading_answers ?? 0) > 0
+  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking && !applying
   // Mia's check warns, never blocks (review 26 Oct): what's still open is named and approving past it is one explicit
   // confirmation, logged with who approved. A check from before the latest change is "not checked", never "nothing
   // found" (live 28 Oct, Cherry Time: the final words outdated the check, its findings stopped counting, and four jobs
@@ -984,7 +995,7 @@ function planTurnItems({
           ? `Still open: ${pastThese.join(', ')}. Fix ${pastThese.length === 1 ? 'it' : 'them'}, or approve past ${pastThese.length === 1 ? 'it' : 'them'}: it's noted in the decision log.`
           : 'Saves the plan to the campaign. Next you send the jobs to Flex.') +
         (unchecked && outdated
-          ? " Mia's check is from before your latest changes: Check again reads the campaign as it is now (about a minute)."
+          ? " Mia's check is from before your latest changes: Check again reads the campaign as it is now (a minute or two)."
           : '') +
         // the flagged-words warning repeats "flagged words on n jobs" above (local test 4, 30 Oct: the box read as a
         // wall, and the two counts disagreed); any other warning is said once, short
@@ -992,7 +1003,9 @@ function planTurnItems({
       : state.blockers.length || state.plan_from_older_brief
         ? 'Waiting on: ' +
           [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · ')
-        : 'Mia is checking the campaign as it is now (about a minute); approve once she’s done.',
+        : applying
+          ? 'Mia is applying your last answer (under a minute); approve once she’s done.'
+          : 'Mia is checking the campaign as it is now (a minute or two); approve once she’s done.',
     actions: (
       <span className="flex flex-wrap items-center gap-2">
         {unchecked ? checkAction(true) ?? null : null}
@@ -1157,9 +1170,10 @@ function JobRow({
   onToggle: () => void
   children: ReactNode
 }) {
-  const status = a.final_words?.status
+  // notes for the client to confirm aren't a flag (wordsToFix): those words are written (local test 6, 2 Nov)
+  const status = !a.final_words ? undefined : wordsToFix(a) ? 'flagged' : 'ready'
   const dot = a.credits == null || status === 'flagged' ? 'bg-utility-warning-500' : status === 'ready' ? 'bg-utility-success-500' : 'bg-tertiary'
-  const label = a.credits == null ? 'no rate yet' : status === 'flagged' ? 'words need a look' : status === 'ready' ? 'words ready' : 'no words yet'
+  const label = a.credits == null ? 'no rate yet' : status === 'flagged' ? 'words need a look' : status === 'ready' ? 'words written' : 'no words yet'
   return (
     <li id={`job-${index}`}>
       <button type="button" onClick={onToggle} aria-expanded={open}
@@ -1347,7 +1361,7 @@ function BudgetField({
   if (disabled) return <span className="paragraph-sm text-primary">{money(value, currency)}</span>
   return (
     <label className="flex items-center gap-1 paragraph-xs text-tertiary">
-      <span className="sr-only">Budget</span>R
+      <span className="sr-only">Budget</span>{moneySign(currency).trim()}
       <Field
         className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
         value={value}

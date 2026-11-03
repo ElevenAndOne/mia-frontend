@@ -10,6 +10,8 @@ export interface BrandGuideExtracted {
   humour: string | null
   voice_do: string[] | null
   voice_dont: string[] | null
+  // exact words the guide bans; the campaign builder sends back any job's words that use one (3 Nov)
+  never_use?: string[] | null
   competitors: string[] | null
   primary_goals: string[] | null
   customer_language: string | null
@@ -199,6 +201,7 @@ export const FIELD_LABELS: Record<keyof BrandGuideExtracted, string> = {
   humour: 'Humour (none / dry / warm / playful)',
   voice_do: 'Voice — do',
   voice_dont: 'Voice — don\'t',
+  never_use: 'Never use (exact words)',
   competitors: 'Competitors',
   primary_goals: 'Primary Goals',
   customer_language: 'Customer Language',
@@ -213,6 +216,7 @@ export const ARRAY_FIELDS: Array<keyof BrandGuideExtracted> = [
   'tone_descriptors',
   'voice_do',
   'voice_dont',
+  'never_use',
   'competitors',
   'primary_goals',
   'taglines',

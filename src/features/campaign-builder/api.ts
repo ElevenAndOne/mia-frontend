@@ -18,6 +18,42 @@ async function check<T>(res: Response): Promise<T> {
   throw new Error(detail)
 }
 
+/** Make this the campaign the home tracker shows (the workspace's starred campaign). Admin-only on the server: a
+ *  member gets a plain reason instead of the silent failure the home dropdown gives (home tracker plan, 2 Nov). */
+export async function showOnHome(sessionId: string, tenantId: string, campaignId: string): Promise<void> {
+  const res = await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/set-primary`, {
+    method: 'PATCH',
+    headers: { 'X-Session-ID': sessionId },
+  })
+  if (res.status === 403) throw new Error('Only a workspace admin can choose the campaign on home.')
+  await check(res)
+}
+
+/** Read and save the workspace brand guide from the builder page (the same two calls as Settings → Brand Guide, saved
+ *  as read: the PM can review the fields in Settings). Admin-only on the server, said plainly here (3 Nov). */
+export async function addBrandGuide(sessionId: string, tenantId: string, file: File): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  const admin = 'Only a workspace admin can add the brand guide.'
+  const q = `session_id=${encodeURIComponent(sessionId)}&tenant_id=${encodeURIComponent(tenantId)}`
+  const read = await apiFetch(`/api/marketing-context/upload-brand-guide?${q}`, { method: 'POST', body: form })
+  if (read.status === 403) throw new Error(admin)
+  const got = await check<{ filename: string; extracted: Record<string, unknown>; brand_guide_raw: string }>(read)
+  const save = await apiFetch('/api/marketing-context/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      tenant_id: tenantId,
+      brand_guide_filename: got.filename,
+      brand_guide_raw: got.brand_guide_raw,
+      brand_guide_extracted: got.extracted,
+    }),
+  })
+  if (save.status === 403) throw new Error(admin)
+  await check(save)
+}
+
 export async function fetchBuild(sessionId: string, tenantId: string, campaignId: string): Promise<BuildState> {
   return check(await apiFetch(`${base(tenantId)}/${campaignId}`, { headers: { 'X-Session-ID': sessionId } }))
 }
