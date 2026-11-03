@@ -446,10 +446,18 @@ function Row({
             )}
           </span>
         ) : inClickUp && j.clickup ? (
-          <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
-            href={j.clickup.url} target="_blank" rel="noreferrer">
-            Open in ClickUp ↗
-          </a>
+          <span className="flex flex-col gap-0.5">
+            {j.clickup.state === 'deleted' ? null : (
+              <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
+                href={j.clickup.url} target="_blank" rel="noreferrer">
+                Open in ClickUp ↗
+              </a>
+            )}
+            {/* the nightly ClickUp check: re-link the job to the task the team works in, or drop it */}
+            {j.clickup.state === 'archived' || j.clickup.state === 'deleted' ? (
+              <NeedsYou>{j.clickup.state === 'archived' ? 'task archived in ClickUp' : 'task deleted in ClickUp'}</NeedsYou>
+            ) : null}
+          </span>
         ) : madeElsewhere ? (
           <span className="paragraph-xs text-tertiary">{j.kept_out}</span>
         ) : (

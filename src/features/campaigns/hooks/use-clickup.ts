@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { fetchClickupSync, invokeClickup, linkClickupList, patchAsset } from '../services/campaign-api'
+import { fetchClickupSync, fetchStudioPreview, invokeClickup, linkClickupList, patchAsset, studioPush } from '../services/campaign-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import type {
   ClickUpAdsPushResult,
@@ -7,6 +7,9 @@ import type {
   ClickUpPushResult,
   ClickUpUpdateResult,
   ReadyAd,
+  StudioDefaults,
+  StudioPreview,
+  StudioPushRow,
   SyncResult,
 } from '../types'
 
@@ -137,6 +140,32 @@ export function useClickUp() {
 
   const resetPull = useCallback(() => { setPullResult(null); setPullError('') }, [])
 
+  // ── Send to studio (7 Oct 2026) ──────────────────────────────────────────
+  const [studioPreview, setStudioPreview] = useState<StudioPreview | null>(null)
+  const [studioLoading, setStudioLoading] = useState(false)
+  const [studioPushing, setStudioPushing] = useState(false)
+  const [studioError, setStudioError] = useState('')
+  const [studioResult, setStudioResult] = useState<ClickUpAdsPushResult | null>(null)
+
+  const loadStudioPreview = useCallback(async (listId: string | null) => {
+    setStudioLoading(true); setStudioError('')
+    try { setStudioPreview(await fetchStudioPreview(sessionId, tenantId, id, listId)) }
+    catch (e) { setStudioError(e instanceof Error ? e.message : 'Could not read the studio checklist') }
+    finally { setStudioLoading(false) }
+  }, [sessionId, tenantId, id])
+
+  const sendToStudio = useCallback(async (listId: string, defaults: StudioDefaults, rows: StudioPushRow[], remember: boolean) => {
+    setStudioPushing(true); setStudioError(''); setStudioResult(null)
+    try {
+      setStudioResult(await studioPush(sessionId, tenantId, id, { list_id: listId, defaults, remember_defaults: remember, rows }))
+      await reloadDetail()
+    }
+    catch (e) { setStudioError(e instanceof Error ? e.message : 'Send to studio failed') }
+    finally { setStudioPushing(false) }
+  }, [sessionId, tenantId, id, reloadDetail])
+
+  const resetStudio = useCallback(() => { setStudioPreview(null); setStudioResult(null); setStudioError('') }, [])
+
   return {
     clickupListId: campaign.clickup_list_id,
     syncResult, syncLoading, syncError, runSync,
@@ -144,5 +173,6 @@ export function useClickUp() {
     pushResult, pushing, pushError, pushSummary, resetPush,
     adsResult, pushingAds, adsError, pushAds, resetAds,
     pullResult, pulling, pullError, runPull, applyPulled, applying, resetPull,
+    studioPreview, studioLoading, studioPushing, studioError, studioResult, loadStudioPreview, sendToStudio, resetStudio,
   }
 }

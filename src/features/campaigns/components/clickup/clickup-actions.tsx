@@ -3,30 +3,29 @@ import { usePlugins } from '../../../plugins/hooks/use-plugins'
 import { useClickUp } from '../../hooks/use-clickup'
 import { useClickUpBrowse } from '../../hooks/use-clickup-browse'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
-import { ClickUpPushAdsModal } from './clickup-push-ads-modal'
+import { StudioPushModal } from './studio-push-modal'
 import { ClickUpPullModal } from './clickup-pull-modal'
 import { ClickUpSyncModal } from './clickup-sync-modal'
-import { ClickUpUpdateModal } from './clickup-update-modal'
 
-type Modal = 'sync' | 'update' | 'push-ads' | 'pull' | null
+type Modal = 'studio' | 'sync' | 'pull' | null
 
-const iconBtn = 'p-1 transition-colors disabled:opacity-50'
-
-// ClickUp controls for the Builder header: sync-check, update, the campaign push
-// (0.4.0 — full structure: overview task + phase parents + nested ad subtasks),
-// and the pull (approved ads back). Only rendered when the plugin is enabled.
+// ClickUp controls for the Builder header (7 Oct 2026): one labelled "Send to studio"
+// button opens the checklist that pushes (and re-pushes) the campaign; the sync check and
+// the pull of approved ads sit behind a small menu. Only rendered when the plugin is enabled.
 export const ClickUpActions = () => {
   const { isEnabled } = usePlugins()
   const { campaign } = useCampaignWorkspace()
   const cu = useClickUp()
   const browse = useClickUpBrowse()
   const [modal, setModal] = useState<Modal>(null)
+  const [menu, setMenu] = useState(false)
   const [applied, setApplied] = useState(false)
 
   if (!isEnabled('clickup')) return null
 
-  const openPushAds = () => { cu.resetAds(); void browse.loadSpaces(); setModal('push-ads') }
-  const openPull = () => { setApplied(false); cu.resetPull(); void cu.runPull(); setModal('pull') }
+  const openStudio = () => { setMenu(false); cu.resetStudio(); setModal('studio') }
+  const openPull = () => { setMenu(false); setApplied(false); cu.resetPull(); void cu.runPull(); setModal('pull') }
+  const openSync = () => { setMenu(false); void cu.runSync(); setModal('sync') }
 
   const applyPull = async () => {
     if (!cu.pullResult) return
@@ -36,30 +35,45 @@ export const ClickUpActions = () => {
 
   return (
     <>
-      <button onClick={() => { void cu.runSync(); setModal('sync') }} title="Check ClickUp sync" className={iconBtn}>
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
-      </button>
-      <button onClick={() => { void cu.runUpdate(); setModal('update') }} disabled={cu.updating} title="Update ClickUp tasks" className={iconBtn}>
-        <svg className={`w-4 h-4 ${cu.updating ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9" /></svg>
-      </button>
-      <button onClick={openPushAds} title="Push campaign to ClickUp (overview + phases + ad subtasks)" className={iconBtn}>
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="5" rx="1" /><rect x="3" y="13" width="18" height="5" rx="1" /><path d="M8 21h8" stroke="#00C4FF" /></svg>
-      </button>
-      <button onClick={openPull} disabled={cu.pulling} title="Sync from ClickUp (pull approved ads)" className={iconBtn}>
-        <svg className={`w-4 h-4 ${cu.pulling ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="#7B68EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" stroke="#00C4FF" /><path d="M7 10l5 5 5-5" stroke="#00C4FF" /><path d="M4 21h16" /></svg>
-      </button>
+      <div className="relative flex items-center gap-1">
+        <button
+          onClick={openStudio}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#7B68EE]/10 text-[#5a48c7] hover:bg-[#7B68EE]/20 paragraph-xs font-medium"
+          title="Check every task, then send the campaign to ClickUp"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 14.5L12 4l9 10.5" /><path d="M7 19.5L12 15l5 4.5" /></svg>
+          Send to studio
+        </button>
+        <button onClick={() => setMenu((m) => !m)} className="p-1 rounded-md hover:bg-tertiary text-tertiary" title="More ClickUp actions" aria-haspopup="menu" aria-expanded={menu}>
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+        </button>
+        {menu && (
+          <div className="absolute right-0 top-full mt-1 z-20 bg-secondary border border-secondary rounded-lg shadow-lg min-w-[200px] py-1" role="menu">
+            <button role="menuitem" onClick={openSync} className="w-full text-left px-3 py-2 paragraph-xs text-primary hover:bg-tertiary">Check what's in ClickUp</button>
+            <button role="menuitem" onClick={openPull} disabled={cu.pulling} className="w-full text-left px-3 py-2 paragraph-xs text-primary hover:bg-tertiary disabled:opacity-50">Pull approved ads back</button>
+          </div>
+        )}
+      </div>
 
-      {modal === 'push-ads' && (
-        <ClickUpPushAdsModal browse={browse} result={cu.adsResult} pushing={cu.pushingAds} error={cu.adsError} clickupListId={cu.clickupListId} onPush={cu.pushAds} onClose={() => setModal(null)} />
+      {modal === 'studio' && (
+        <StudioPushModal
+          browse={browse}
+          preview={cu.studioPreview}
+          loading={cu.studioLoading}
+          pushing={cu.studioPushing}
+          error={cu.studioError}
+          result={cu.studioResult}
+          savedListId={cu.clickupListId}
+          onLoadPreview={(listId) => void cu.loadStudioPreview(listId)}
+          onPush={(listId, defaults, rows, remember) => void cu.sendToStudio(listId, defaults, rows, remember)}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal === 'pull' && (
         <ClickUpPullModal result={cu.pullResult} loading={cu.pulling} applying={cu.applying} error={cu.pullError} applied={applied} onApply={() => void applyPull()} onClose={() => setModal(null)} />
       )}
       {modal === 'sync' && (
-        <ClickUpSyncModal result={cu.syncResult} loading={cu.syncLoading} error={cu.syncError} campaignName={campaign.campaign_name} onClose={() => setModal(null)} onPushMissing={openPushAds} />
-      )}
-      {modal === 'update' && (
-        <ClickUpUpdateModal result={cu.updateResult} updating={cu.updating} error={cu.updateError} onClose={() => setModal(null)} />
+        <ClickUpSyncModal result={cu.syncResult} loading={cu.syncLoading} error={cu.syncError} campaignName={campaign.campaign_name} onClose={() => setModal(null)} onPushMissing={openStudio} />
       )}
     </>
   )
