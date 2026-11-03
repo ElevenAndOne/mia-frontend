@@ -19,7 +19,7 @@ const findActual = (rows: KPIActual[] | null | undefined, kpiName: string | null
 const actualText = (a: KPIActual): string => {
   if (a.actual_label) return a.actual_label
   if (a.actual_value === null || a.actual_value === undefined)
-    return a.state === 'none' ? 'Not tracked' : '—'
+    return a.state === 'none' && !a.measured ? 'Not tracked' : '—'
   return String(a.actual_value)
 }
 
@@ -75,7 +75,7 @@ export const FunnelCards = ({
                 <div className="flex items-baseline gap-1.5 flex-wrap">
                   <span
                     className={`${primaryMissing ? 'text-base font-semibold text-quaternary' : 'text-2xl font-extrabold text-primary'} cw-mono tracking-tight`}
-                    title={primary.scope_note ?? undefined}
+                    title={primary.scope_note ?? primary.blank_reason ?? undefined}
                   >
                     {actualText(primary)}
                   </span>
@@ -92,6 +92,11 @@ export const FunnelCards = ({
                   )}
                 </div>
                 <div className="paragraph-xs text-tertiary mt-0.5">{p.primaryLabel}</div>
+                {primaryMissing && primary.blank_reason && (
+                  <div className="paragraph-xs text-quaternary mt-1 line-clamp-2" title={primary.blank_reason}>
+                    {primary.blank_reason}
+                  </div>
+                )}
               </>
             ) : p.primaryValue ? (
               <div className="flex items-baseline gap-1.5">

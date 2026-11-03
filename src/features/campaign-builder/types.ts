@@ -8,6 +8,8 @@ export interface BuildRun {
   status: RunStatus
   stage: string | null
   stage_label: string | null
+  stage_at?: number | null // this stage's place in the run ("3 of 7"), for the progress bar
+  stage_of?: number | null
   error: string | null
   stale: boolean
   started_at: string | null
@@ -36,8 +38,16 @@ export interface Brief {
   offer?: string | null
   landing_page?: string | null
   already_made?: string[]
+  measurement?: string[] // how results are counted: tracking events, pixels, what counts as an entry
   pm_words?: PmWords[]
-  open_questions?: { id: string; question: string; why_it_matters: string; impact?: string }[]
+  open_questions?: {
+    id: string
+    question: string
+    why_it_matters: string
+    impact?: string
+    // Mia read the last answer as about something else and asks again (build_service.check_brief_answers)
+    unclear?: { answer: string; why: string; kind?: 'not_an_answer' | 'unclear' }
+  }[]
   answered_questions?: { question: string; answer: string | null; assumed?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
@@ -56,6 +66,7 @@ export type BriefField =
   | 'offer'
   | 'landing_page'
   | 'already_made'
+  | 'measurement'
 
 export interface CreativeBrief {
   objective?: string
@@ -74,6 +85,7 @@ export interface CreativeBrief {
 export interface PlanAsset {
   words_stale?: boolean // the job or a fact its words used changed after they were written
   words_stale_why?: string[] // e.g. "the offer changed", "the job changed"
+  writing?: boolean // the running words run is writing this job (read only while words_run is running)
   phase: string
   channel: string
   name: string
@@ -113,6 +125,7 @@ export interface KpiTarget {
   unit?: string | null
   lower_is_better?: boolean
   made_by: string
+  doubted?: number // a past result Mia put aside as far off the working rate (estimates._doubt_history)
   value: number | null
   basis: 'history' | 'account' | 'budget' | 'no_basis' | 'pm' | 'mia_estimate' | string
   confidence?: 'high' | 'medium' | 'low'
@@ -152,6 +165,7 @@ export interface CreditFit {
   unknown_pool?: string[]
   estimated?: string[]
   outside_known_sprints?: number
+  setup_not_counted?: number
   no_rate?: string[]
   sprints?: { label: string; start: string; end: string; free: number | null; planned: number; assets: number }[]
 }
@@ -216,6 +230,7 @@ export interface PlanReview {
   error?: string
   checked_at?: string // Mia's final check, run on the campaign as it stood then
   stale?: boolean // the plan changed after this check: its notes may no longer apply
+  jobs_changed?: boolean // a job itself changed after this check (what "Found before your latest change" means on a note)
   // The close reading (26 Oct): every job's brief and words against what was decided, and the PM's chat messages
   audit?: {
     error?: string
@@ -264,6 +279,8 @@ export interface BuildState {
     client: string
     status: string
     building: boolean
+    // the campaign the home tracker shows (is_primary)
+    on_home?: boolean
     start_date: string | null
     end_date: string | null
     budget_total: number | null
@@ -285,12 +302,25 @@ export interface BuildState {
   plan_from_older_brief: boolean
   // The workspace brand guide every step reads (Settings); null when none is saved (22 Oct)
   brand_guide?: { file?: string | null; uploaded?: string | null; edited_in_settings?: string[]; fields: number; has_words: boolean } | null
+  // The Brand Kit (Settings → Brand Kit: colours, fonts, logo), read by every step and sent to Flex (3 Nov)
+  brand_look?: { colours: number; fonts: boolean; logo: boolean; guide_file?: string | null } | null
+  // Words the brand guide rules out: any job's words that use one go back to the writer (3 Nov)
+  brand_never_use?: string[]
   what_mia_read: WhatMiaRead | null
   approved: { at: string | null; by: string | null } | null
   blockers: Blocker[]
   warnings: string[]
-  pending?: { id: string; summary: string[]; at?: string }[] // changes the chat proposed, waiting for Apply
+  // changes the chat proposed, waiting for Apply; `about`: the page item it was asked from (its Ask Mia label)
+  pending?: { id: string; summary: string[]; at?: string; about?: string }[]
   decision_log?: { summary: string[]; outcome: string; by?: string; at?: string }[]
+  checking?: boolean // Mia's final check will really run now (build_service.state: settled, nothing to write first)
+  check_pending?: boolean // a check is waiting (it may write changed words first, or do nothing yet): the page polls on it
+  auto_words?: boolean // jobs Mia writes or rewrites by herself on her next check (build_service.auto_words_todo)
+  // What the last answer changed in the plan, while it can still be undone exactly (build_service.answer_undo_view)
+  answer_undo?: { id: string; label: string } | null
+  // Mia's lines about recent answers (also saved in the chat's history), and how many answers she's still applying
+  answer_notes?: { nid: string; id: string; text: string; at: string }[]
+  reading_answers?: number
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
@@ -461,6 +491,7 @@ export interface ResultsState {
   days_elapsed: number | null
   share_elapsed: number | null
   budget_total: number | null
+  currency?: string // the campaign's (review 2 Nov: results always said R)
   phases: { phase: string; budget: number | null; kpis: ResultsKpi[] }[]
   debrief: {
     headline?: string

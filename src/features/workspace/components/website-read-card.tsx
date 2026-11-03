@@ -19,6 +19,9 @@ interface Props {
   onWebsiteSaved?: (url: string) => void
   /** Jump to the Brand tab, where the colours, fonts, logo and voice can be edited. */
   onOpenBrandKit?: () => void
+  /** One row with what was found as a line (Basic Brand tab, 30 Oct 2026): the look shows
+   *  in Your look above, where a brand guide beats the site, so no second board of it here. */
+  compact?: boolean
 }
 
 const READING_STEPS = [
@@ -87,6 +90,7 @@ export const WebsiteReadCard = ({
   canManage,
   onWebsiteSaved,
   onOpenBrandKit,
+  compact = false,
 }: Props) => {
   const { showToast } = useToast()
   const [input, setInput] = useState(websiteUrl)
@@ -133,14 +137,19 @@ export const WebsiteReadCard = ({
         } else {
           setEditing(false)
           onWebsiteSaved?.(ws.url ?? urlRead)
-          showToast('success', 'Done. Mia knows your colours, fonts, voice and facts now.')
+          showToast(
+            'success',
+            compact
+              ? 'Done. Mia has read your website.'
+              : 'Done. Mia knows your colours, fonts, voice and facts now.'
+          )
         }
         return
       }
       setReading(false)
       setError('This is taking longer than expected. Refresh the page in a minute.')
     },
-    [sessionId, tenantId, showToast, onWebsiteSaved]
+    [sessionId, tenantId, showToast, onWebsiteSaved, compact]
   )
 
   useEffect(() => {
@@ -243,6 +252,7 @@ export const WebsiteReadCard = ({
               {websiteUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
               {scan?.read_at ? ` · read ${fmtWhen(scan.read_at)}` : ''}
               {pagesRead ? ` · ${pagesRead} pages` : ''}
+              {compact && counts.length ? ` · ${counts.join(', ')}` : ''}
             </p>
           )}
         </div>
@@ -331,7 +341,7 @@ export const WebsiteReadCard = ({
       )}
 
       {/* The board: what Mia found, on the home canvas's paper */}
-      {!reading && !loading && hasFindings && (
+      {!compact && !reading && !loading && hasFindings && (
         <div className="mx-3 mb-3 relative rounded-lg brand-paper px-4 pt-3.5 pb-4">
           <p className="brand-paper-eyebrow">What Mia found</p>
 

@@ -5,9 +5,10 @@ import { logger } from '../../../utils/logger'
 interface UseMccSelectionParams {
   userId?: string | null
   sessionId?: string | null
+  tenantId?: string | null
 }
 
-export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) => {
+export const useMccSelection = ({ userId, sessionId, tenantId }: UseMccSelectionParams) => {
   const [mccAccounts, setMccAccounts] = useState<MccAccount[]>([])
   const [selectedMcc, setSelectedMcc] = useState<string | null>(null)
   const [isFetchingMccs, setIsFetchingMccs] = useState(true)
@@ -24,7 +25,7 @@ export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) =>
     const load = async () => {
       try {
         setIsFetchingMccs(true)
-        const accounts = await fetchMccAccounts(userId)
+        const accounts = await fetchMccAccounts(userId, tenantId)
         setMccAccounts(accounts)
       } catch (err) {
         logger.error('[ACCOUNT-SELECTION] Error fetching MCCs:', err)
@@ -43,7 +44,7 @@ export const useMccSelection = ({ userId, sessionId }: UseMccSelectionParams) =>
     if (!sessionId) return
 
     try {
-      await selectMccAccount(sessionId, mccId)
+      await selectMccAccount(sessionId, mccId, tenantId)
     } catch (err) {
       logger.error('[ACCOUNT-SELECTION] Failed to store MCC selection', err)
     }

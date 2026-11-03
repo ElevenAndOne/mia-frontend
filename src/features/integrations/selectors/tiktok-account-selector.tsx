@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -27,8 +28,10 @@ const TikTokAccountSelector = ({
   onSuccess,
   currentAccountData,
 }: TikTokAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [advertisers, setAdvertisers] = useState<TikTokAdvertiser[]>([])
+  // Why the list is empty (backend says: not connected here / TikTok error / no access).
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -48,17 +51,21 @@ const TikTokAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/tiktok/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/tiktok/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
       if (data.success) {
         setAdvertisers(data.advertisers || [])
+        setEmptyReason(data.reason || null)
 
         // Pre-select previously linked advertiser, or auto-select the only one
         if (currentAccountData?.tiktok_advertiser_id) {
@@ -83,24 +90,27 @@ const TikTokAccountSelector = ({
     }
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/tiktok/link-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          advertiser_id: state.selectedId,
-          advertiser_name: advertisers.find((a) => a.id === state.selectedId)?.name || null,
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/tiktok/link-account', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            advertiser_id: state.selectedId,
+            advertiser_name: advertisers.find((a) => a.id === state.selectedId)?.name || null,
+          }),
+        }
+      )
 
       const data = await response.json()
 
       if (data.success) {
         actions.handleSuccess()
       } else {
-        throw new Error(data.message || 'Failed to link TikTok account')
+        throw new Error(data.message || data.detail || 'Failed to link TikTok account')
       }
     })
   }
@@ -124,7 +134,9 @@ const TikTokAccountSelector = ({
       successMessage="TikTok account linked!"
       isEmpty={advertisers.length === 0}
       emptyMessage="No TikTok advertisers found."
-      emptySubMessage="Make sure your TikTok app has been granted advertiser access."
+      emptySubMessage={
+        emptyReason || 'Make sure your TikTok app has been granted advertiser access.'
+      }
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel="Link Account"
@@ -142,7 +154,11 @@ const TikTokAccountSelector = ({
                   key={advertiser.id}
                   isSelected={state.selectedId === advertiser.id}
                   onSelect={() => actions.setSelectedId(advertiser.id)}
-                  title={advertiser.currency ? `${advertiser.name} (${advertiser.currency})` : advertiser.name}
+                  title={
+                    advertiser.currency
+                      ? `${advertiser.name} (${advertiser.currency})`
+                      : advertiser.name
+                  }
                   subtitle={`ID: ${advertiser.id}`}
                   accentColor="black"
                   selectionStyle="radio"

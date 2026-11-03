@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -17,7 +18,7 @@ interface AirtableBaseSelectorProps {
 }
 
 const AirtableBaseSelector = ({ isOpen, onClose, onSuccess }: AirtableBaseSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [bases, setBases] = useState<AirtableBase[]>([])
 
   const [state, actions] = useSelectorState<string>({
@@ -38,12 +39,15 @@ const AirtableBaseSelector = ({ isOpen, onClose, onSuccess }: AirtableBaseSelect
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/airtable/bases', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/airtable/bases', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
@@ -72,17 +76,20 @@ const AirtableBaseSelector = ({ isOpen, onClose, onSuccess }: AirtableBaseSelect
     const selectedBase = bases.find((b) => b.id === state.selectedId)
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/airtable/select-base', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          base_id: state.selectedId,
-          base_name: selectedBase?.name,
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/airtable/select-base', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            base_id: state.selectedId,
+            base_name: selectedBase?.name,
+          }),
+        }
+      )
 
       const data = await response.json()
 

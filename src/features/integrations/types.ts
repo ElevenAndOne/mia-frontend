@@ -37,6 +37,8 @@ export interface MetaAccount {
   name: string
   currency: string
   status: string
+  /** "Closed", "Disabled", … ("Active" or empty for runnable accounts). */
+  status_label?: string
 }
 
 export interface HubSpotAccount {

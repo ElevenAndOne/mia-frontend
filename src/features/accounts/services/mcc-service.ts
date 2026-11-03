@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../utils/api'
+import { withWorkspace } from '../../integrations/utils/with-workspace'
 
 export interface MccAccount {
   customer_id: string
@@ -8,8 +9,14 @@ export interface MccAccount {
   sub_account_ids?: string[]
 }
 
-export const fetchMccAccounts = async (userId: string): Promise<MccAccount[]> => {
-  const url = `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(userId)}`
+export const fetchMccAccounts = async (
+  userId: string,
+  tenantId?: string | null
+): Promise<MccAccount[]> => {
+  const url = withWorkspace(
+    `/api/oauth/google/ad-accounts?user_id=${encodeURIComponent(userId)}`,
+    tenantId
+  )
   const response = await apiFetch(url, { method: 'GET' })
   if (!response.ok) {
     throw new Error('Failed to fetch accounts')
@@ -18,11 +25,16 @@ export const fetchMccAccounts = async (userId: string): Promise<MccAccount[]> =>
   return data.mcc_accounts || []
 }
 
-export const selectMccAccount = async (sessionId: string, mccId: string) => {
+export const selectMccAccount = async (
+  sessionId: string,
+  mccId: string,
+  // The workspace on screen: this rewrites that workspace's Google Ads MCC routing.
+  tenantId?: string | null
+) => {
   const response = await apiFetch('/api/session/select-mcc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, mcc_id: mccId }),
+    body: JSON.stringify({ session_id: sessionId, mcc_id: mccId, tenant_id: tenantId || null }),
   })
 
   if (!response.ok) {

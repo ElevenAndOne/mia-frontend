@@ -1,9 +1,10 @@
-import { useRef, type ReactNode } from 'react'
-import { Edit03 } from '../../../components/icon/edit-03'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Globe01 } from '../../../components/icon/globe-01'
 import { Image01 } from '../../../components/icon/image-01'
 import { Trash01 } from '../../../components/icon/trash-01'
-import { WebsiteReadCard } from './website-read-card'
+import { ChevronDown } from '../../../components/icon/chevron-down'
+import { apiFetch } from '../../../utils/api'
+import { PostingRhythmCard } from './posting-rhythm-card'
 import { WhatsAppNumberCard } from './whatsapp-number-card'
 
 interface BasicWorkspaceSettingsProps {
@@ -12,9 +13,6 @@ interface BasicWorkspaceSettingsProps {
   workspaceName: string
   canManage: boolean
   isOwner: boolean
-  websiteUrl: string
-  onWebsiteSaved: (url: string) => void
-  onOpenBrand: () => void
   onRename: () => void
   logoUrl: string | null
   uploadingLogo: boolean
@@ -30,6 +28,8 @@ interface BasicWorkspaceSettingsProps {
   miaStyleSection?: ReactNode
   /** Light / dark / auto. Rendered here so it sits above Delete, not below it. */
   appearanceSlot?: ReactNode
+  /** Invite, members, staff on WhatsApp and the Mia folder: under the business, not above it. */
+  teamSlot?: ReactNode
   onDelete: () => void
 }
 
@@ -63,6 +63,31 @@ const Group = ({ label, children }: { label?: string; children: ReactNode }) => 
   </section>
 )
 
+/** One row that opens in place: title, a short line, a chevron. */
+const Fold = ({ title, sub, children }: { title: string; sub: string; children: ReactNode }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-tertiary/40 transition-colors"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block subheading-md text-primary">{title}</span>
+          <span className="block paragraph-xs text-quaternary">{sub}</span>
+        </span>
+        <ChevronDown
+          size={16}
+          className={`text-quaternary transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && <div className="px-3 pb-3">{children}</div>}
+    </div>
+  )
+}
+
 const ghost =
   'px-2.5 py-1.5 border border-primary rounded-lg paragraph-xs text-secondary hover:bg-tertiary transition-colors disabled:opacity-50'
 
@@ -77,9 +102,6 @@ export function BasicWorkspaceSettings({
   workspaceName,
   canManage,
   isOwner,
-  websiteUrl,
-  onWebsiteSaved,
-  onOpenBrand,
   onRename,
   logoUrl,
   uploadingLogo,
@@ -91,50 +113,56 @@ export function BasicWorkspaceSettings({
   whatsappMessagesSlot,
   appearanceSlot,
   miaStyleSection,
+  teamSlot,
   onDelete,
 }: BasicWorkspaceSettingsProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  // The logo on their posts and the Page Mia reads, from the brand kit: one logo shows the same
+  // here as on Brand (an older workspace may have the post logo only), and the Page is named.
+  const [kit, setKit] = useState<{ logo?: string | null; page?: string | null }>({})
+  useEffect(() => {
+    let live = true
+    apiFetch(`/api/tenants/${tenantId}/brand-kit`, { headers: { 'X-Session-ID': sessionId } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((k: { logo?: { cdn_url?: string } | null; facebook_page?: string | null } | null) => {
+        if (live && k) setKit({ logo: k.logo?.cdn_url ?? null, page: k.facebook_page ?? null })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [sessionId, tenantId, logoUrl])
+  const logo = logoUrl ?? kit.logo ?? null
+  const fb = connectedPlatforms.filter((p) => /facebook|instagram/i.test(p)).length
   return (
     <div className="space-y-3">
+      {/* One name and one logo (Settings clean-up, 30 Oct 2026): the logo next to the name in
+          Mia is also the one on posts. The website moved to Brand, where what it finds lands. */}
       <Group label="Your business">
-        <WebsiteReadCard
-          sessionId={sessionId}
-          tenantId={tenantId}
-          websiteUrl={websiteUrl}
-          canManage={canManage}
-          onWebsiteSaved={onWebsiteSaved}
-          onOpenBrandKit={onOpenBrand}
-        />
-        <Row icon={<Edit03 size={16} />} title="Name" sub={workspaceName}>
+        <Row
+          icon={
+            logo ? (
+              <img src={logo} alt="" className="w-full h-full object-contain p-1" />
+            ) : (
+              <Image01 size={16} />
+            )
+          }
+          title={workspaceName}
+          sub={logoError ? logoError : 'One logo, used in Mia and on your posts'}
+        >
           {canManage && (
             <button type="button" onClick={onRename} className={ghost}>
               Rename
             </button>
           )}
-        </Row>
-        <Row
-          icon={
-            logoUrl ? (
-              <img src={logoUrl} alt="" className="w-full h-full object-contain p-1" />
-            ) : (
-              <Image01 size={16} />
-            )
-          }
-          title="Logo"
-          sub={
-            logoError
-              ? logoError
-              : 'The picture next to your business name in Mia. The logo Mia puts on posts is under Brand.'
-          }
-        >
-          {canManage && logoUrl && (
+          {canManage && logo && (
             <button
               type="button"
               onClick={onRemoveLogo}
               disabled={uploadingLogo}
               className={`${ghost} text-error`}
             >
-              Remove
+              Remove logo
             </button>
           )}
           {canManage && (
@@ -144,13 +172,13 @@ export function BasicWorkspaceSettings({
               disabled={uploadingLogo}
               className={ghost}
             >
-              {uploadingLogo ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+              {uploadingLogo ? 'Uploading…' : logo ? 'Change logo' : 'Add logo'}
             </button>
           )}
           <input
             ref={fileRef}
             type="file"
-            accept="image/svg+xml,image/png,image/webp,image/jpeg"
+            accept="image/png,image/webp,image/jpeg"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]
@@ -168,24 +196,39 @@ export function BasicWorkspaceSettings({
           icon={<Globe01 size={16} />}
           title="Facebook and Instagram"
           sub={
-            connectedPlatforms.length
-              ? `${connectedPlatforms.length} connected`
-              : 'Nothing connected yet — Mia needs these to read and post'
+            fb
+              ? `${kit.page ? `${kit.page}. ` : ''}Mia posts here and reads what your customers react to`
+              : 'Not connected yet. Mia needs these to post and to learn what works'
           }
         >
           <button type="button" onClick={onOpenConnections} className={ghost}>
-            {connectedPlatforms.length ? 'Manage' : 'Connect'}
+            {fb ? 'Manage' : 'Connect'}
           </button>
         </Row>
-        <WhatsAppNumberCard
-          sessionId={sessionId}
-          messagesSlot={whatsappMessagesSlot}
-        />
+        <WhatsAppNumberCard sessionId={sessionId} messagesSlot={whatsappMessagesSlot} />
       </Group>
 
-      {miaStyleSection}
+      {teamSlot && (
+        <section>
+          <p className="settings-eyebrow text-quaternary px-1 pb-2">Your team</p>
+          {teamSlot}
+        </section>
+      )}
 
-      {appearanceSlot && <Group label="Appearance">{appearanceSlot}</Group>}
+      <Group label="How Mia works with you">
+        {miaStyleSection && (
+          <Fold title="How she talks to you" sub="Tone, length and how often she suggests a step">
+            {miaStyleSection}
+          </Fold>
+        )}
+        {/* The rhythm card draws its own top rule for its old home; the group's divider does that here. */}
+        <Fold title="Posting rhythm" sub="Posts a week, your best days and a reminder">
+          <div className="[&>div]:border-t-0 [&>div]:pt-0 [&>div]:mt-0">
+            <PostingRhythmCard sessionId={sessionId} tenantId={tenantId} canManage={canManage} />
+          </div>
+        </Fold>
+        {appearanceSlot}
+      </Group>
 
       {isOwner && (
         <Group>

@@ -1,25 +1,25 @@
 import { useMemo, useState } from 'react'
 import type { KpiGroup, KpiOption } from '../types'
-import { num } from './parts'
+import { moneySign, num } from './parts'
 
 // Pick KPIs from mia-cube's KPI list (analytics.kpi_registry): the same list the tracker measures
 // against, so every KPI a plan carries can be tracked. Grouped as the list groups them, with the
 // client's last result beside each so the choice is informed. Adding one works out its target
 // at once (from history, or "no basis: you set it").
 
-export const kpiValue = (v: number | null | undefined, unit: string | null | undefined) => {
+export const kpiValue = (v: number | null | undefined, unit: string | null | undefined, currency?: string | null) => {
   if (v == null) return '—'
-  if (unit === 'currency') return `R${num(v)}`
+  if (unit === 'currency') return `${moneySign(currency)}${num(v)}`
   if (unit === 'fraction') return `${num(v)}%`
   return num(v)
 }
 
-export function lastResultText(k: KpiOption) {
+export function lastResultText(k: KpiOption, currency?: string | null) {
   if (k.last_result) {
-    const t = k.last_result.target != null ? ` vs ${kpiValue(k.last_result.target, k.unit)} target` : ''
-    return `Last: ${kpiValue(k.last_result.value, k.unit)}${t} · ${k.last_result.campaign}`
+    const t = k.last_result.target != null ? ` vs ${kpiValue(k.last_result.target, k.unit, currency)} target` : ''
+    return `Last: ${kpiValue(k.last_result.value, k.unit, currency)}${t} · ${k.last_result.campaign}`
   }
-  if (k.account_90d != null) return `Account, last 90 days: ${kpiValue(k.account_90d, k.unit)}`
+  if (k.account_90d != null) return `Account, last 90 days: ${kpiValue(k.account_90d, k.unit, currency)}`
   return 'No result on file yet'
 }
 
@@ -30,7 +30,9 @@ export function KpiPicker({
   onClose,
   busy,
   error = null,
+  currency,
 }: {
+  currency?: string | null
   groups: KpiGroup[]
   taken: Set<string>
   onPick: (key: string) => void
@@ -91,7 +93,7 @@ export function KpiPicker({
                         {has ? ' · already in this phase' : ''}
                       </span>
                       <span className="block paragraph-xs text-tertiary">
-                        {lastResultText(k)}
+                        {lastResultText(k, currency)}
                         {k.needs_source ? ' · needs its source (a HubSpot or Brevo list) set after approval' : ''}
                       </span>
                     </button>

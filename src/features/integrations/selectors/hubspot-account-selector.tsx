@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -14,7 +15,7 @@ interface HubSpotAccountSelectorProps {
 }
 
 const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [accounts, setAccounts] = useState<HubSpotAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -35,12 +36,15 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/hubspot/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/hubspot/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
@@ -71,7 +75,10 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
 
     await actions.withSubmitting(async () => {
       const response = await apiFetch(
-        `/api/oauth/hubspot/select-account?hubspot_id=${state.selectedId}`,
+        withWorkspace(
+          `/api/oauth/hubspot/select-account?hubspot_id=${state.selectedId}`,
+          activeWorkspace?.tenant_id
+        ),
         {
           method: 'POST',
           headers: {
@@ -102,12 +109,15 @@ const HubSpotAccountSelector = ({ isOpen, onClose, onSuccess }: HubSpotAccountSe
     setPendingRemove(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/hubspot/disconnect?hubspot_id=${id}`, {
-        method: 'DELETE',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace(`/api/oauth/hubspot/disconnect?hubspot_id=${id}`, activeWorkspace?.tenant_id),
+        {
+          method: 'DELETE',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 

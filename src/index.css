@@ -422,6 +422,12 @@ body.full-bleed #root {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* A loading spinner isn't decoration: stopped, it reads as frozen (local test 27 Oct: Windows "Animation effects"
+     off left every spinner still, and the PM thought the plan and the check had hung). It keeps turning, slowly. */
+  .animate-spin {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* Basic home motion (Sep 2026). Short, once, and off under reduced motion. */

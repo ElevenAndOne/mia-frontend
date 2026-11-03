@@ -3,15 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { readDeck, startBuild, type DeckRead } from '../features/campaign-builder/api'
+import { readDeck, showOnHome, startBuild, type DeckRead } from '../features/campaign-builder/api'
+import { clearTrackerCache } from '../features/campaign/services/campaign-tracker-service'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab, type PlanPart } from '../features/campaign-builder/components/plan-tab'
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
-import { STEPS, currentStep, stepStates, type StepKey } from '../features/campaign-builder/components/steps'
+import { STEPS, currentStep, stepStates, wordsToFix, type StepKey } from '../features/campaign-builder/components/steps'
 import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
-import { DoNext } from '../features/campaign-builder/components/do-next'
+import { UpNext } from '../features/campaign-builder/components/up-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
@@ -208,6 +209,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const navigate = useNavigate()
   const { tab = 'brief' } = useParams()
   const build = useBuild(campaignId)
+  const { sessionId, activeWorkspace } = useSession()
   const s = build.state
   const go = (t: string) => navigate(`/campaign-builder/${campaignId}/${t}`)
   const [chatOpen, setChatOpen] = useState(false) // phones and narrow windows; always shown on wide screens
@@ -217,7 +219,18 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     window.addEventListener(ASK_EVENT, open)
     return () => window.removeEventListener(ASK_EVENT, open)
   }, [])
-  const [flash, setFlash] = useState<string | null>(null)
+  const [flash, setFlashNow] = useState<string | null>(null)
+  // Two lines in one render (a step moving on and its background work finishing) are said together, the work first,
+  // never one wiping the other (review 2 Nov: "Final words done. Next: Check" lost to "Done: final words for…")
+  const lastSaid = useRef<{ at: number; text: string } | null>(null)
+  const setFlash = (text: string | null) => {
+    const prev = lastSaid.current
+    const together = text && prev && Date.now() - prev.at < 300
+    const joined = !together ? text
+      : prev.text.startsWith('✓') ? `${text} ${prev.text.replace(/^✓ .*? done\. /, '')}` : `${prev.text} ${text}`
+    lastSaid.current = joined ? { at: Date.now(), text: joined } : null
+    setFlashNow(joined)
+  }
   const seen = useRef<{ brief?: number; plan?: string }>({})
   const fromChat = useRef(false)
   const pageScroll = useRef<HTMLDivElement>(null)
@@ -249,9 +262,59 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     }
     seen.current = { brief, plan }
   }, [s])
+  // A step that finishes while the PM is on it moves them to the next, and says so (local test 27 Oct: after "Looks
+  // right" the page stayed put, and the PM only knew a step was done when told). Only on the change to done: going
+  // back to a finished step stays there.
+  const shownStates = useRef<ReturnType<typeof stepStates> | null>(null)
+  useEffect(() => {
+    if (!states || !step) return
+    const was = shownStates.current?.[step]
+    shownStates.current = states
+    if (!was || was === 'done' || states[step] !== 'done') return
+    const at = STEPS.findIndex((st) => st.key === step)
+    const nxt = STEPS[at + 1]
+    if (!nxt) return
+    setFlash(`✓ ${STEPS[at].label} done. Next: ${nxt.label}.`)
+    goStep(nxt.key)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [states, step])
+  // Background work that finishes says so (local test 27 Oct: "i had no idea it was done til u said so"): the plan,
+  // the final words, Mia's check. Only on the change from running, never on load.
+  const wasRunning = useRef<{ plan?: boolean; words?: boolean; checking?: boolean; checked?: string }>({})
+  useEffect(() => {
+    if (!s) return
+    const now = {
+      plan: s.plan_run?.status === 'running',
+      words: s.words_run?.status === 'running',
+      checking: !!s.checking,
+      checked: s.plan?.review?.checked_at, // a check that really ran (one that found nothing to do keeps the old stamp)
+    }
+    const was = wasRunning.current
+    wasRunning.current = now
+    const jobs = s.plan?.assets ?? []
+    const asks = (s.plan?.decisions.ask_pm ?? []).filter((q) => typeof q === 'string' || q.about !== 'Targets').length
+    if (was.plan && !now.plan && s.plan_run?.status === 'done')
+      setFlash(
+        asks
+          ? `Done: the plan is made, ${jobs.length} jobs. Answer Mia's questions; she writes the final words as soon as they're done.`
+          : `Done: the plan is made, ${jobs.length} jobs. Mia is writing their final words now; you can go on.`,
+      )
+    else if (was.words && !now.words && s.words_run?.status === 'done') {
+      const flagged = jobs.filter(wordsToFix).length
+      const written = jobs.filter((a) => a.final_words).length
+      setFlash(`Done: final words for ${written} of ${jobs.length} jobs${flagged ? `, ${flagged} for you to look at` : ', all checked'}.`)
+    } else if (was.words && !now.words && s.words_run?.status === 'failed')
+      setFlash('The final words stopped. Try again is on the Final words step.')
+    else if (was.checking && !now.checking && !now.words && now.checked && now.checked !== was.checked) {
+      const p = s.plan
+      const done = new Set(p?.decisions.notes_done ?? [])
+      const n = (p?.review?.audit?.jobs?.length ?? 0) + (p?.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x)).length
+      setFlash(n ? `Done: Mia checked the plan and found ${n} thing${n === 1 ? '' : 's'} to look at.` : 'Done: Mia checked the plan. Nothing found.')
+    }
+  }, [s])
   useEffect(() => {
     if (!flash) return
-    const t = setTimeout(() => setFlash(null), 8000)
+    const t = setTimeout(() => setFlashNow(null), 8000)
     return () => clearTimeout(t)
   }, [flash])
 
@@ -312,28 +375,37 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     Discard draft
                   </Button>
                 ) : null}
-                {step && states ? (
-                  // Only when you're looking at another step: on the step you're on, it would repeat it (L5).
-                  step !== currentStep(states) ? (
-                    <Button variant="primary" onClick={() => goStep(currentStep(states))}>
-                      Back to {STEPS.find((st) => st.key === currentStep(states))?.label}
-                    </Button>
-                  ) : null
-                ) : (
+                {!s.campaign.building && !s.campaign.on_home && sessionId && activeWorkspace ? (
+                  // approve never puts a campaign on home; going live does when nothing current is there (2 Nov)
+                  <Button
+                    variant="ghost"
+                    title="Show this campaign's targets and numbers in the tracker on the home page"
+                    onClick={async () => {
+                      try {
+                        await showOnHome(sessionId, activeWorkspace.tenant_id, s.campaign.campaign_id)
+                        clearTrackerCache()
+                        build.reload()
+                        setFlash('This campaign now shows on the home page.')
+                      } catch (e) {
+                        setFlash((e as Error).message)
+                      }
+                    }}
+                  >
+                    Show on home
+                  </Button>
+                ) : null}
+                {step && states ? null : ( // while a draft, the way on is in Up next, below (28 Oct)
                   <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
                     Next: {s.next_step.label}
                   </Button>
                 )}
               </div>
             </header>
+            {step && states ? <UpNext state={s} states={states} step={step} onGo={goStep} /> : null}
             {flash ? (
               <p role="status" className="rounded-lg border border-brand bg-primary px-3 py-2 paragraph-sm text-primary">
                 {flash}
               </p>
-            ) : null}
-            {step && states ? (
-              <DoNext step={step} state={s} busy={build.busy} onMakePlan={build.makePlan} onKeepPlan={build.keepPlan}
-                onRewrite={(ids) => build.writeWords(ids, true)} onGo={goStep} />
             ) : null}
             {step && states ? (
               <StepRail states={states} step={step} onGo={goStep} />
@@ -356,7 +428,8 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               ))}
             </nav>
             )}
-            {build.error ? (
+            {build.error && !/^(apply|drop):/.test(build.errorAt ?? '') ? (
+              // a card's Apply or Not now says why under that card, in the chat and on its finding (28 Oct)
               <Card warn className="flex items-center justify-between gap-3 paragraph-sm text-primary">
                 {build.error}
                 <button type="button" className="paragraph-xs text-tertiary" onClick={build.clearError}>
@@ -423,8 +496,13 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               pending={s.pending ?? []}
               busy={build.busy}
               error={build.error}
+              errorAt={build.errorAt}
               onApply={build.applyChange}
               onDrop={build.dropChange}
+              answerUndo={s.answer_undo ?? null}
+              onUndoAnswer={build.undoAnswer}
+              answerNotes={s.answer_notes ?? []}
+              readingAnswers={s.reading_answers ?? 0}
               onChanged={() => {
                 fromChat.current = true
               }}
@@ -459,36 +537,31 @@ function StepView({
   const meta = STEPS[i]
   const next = STEPS[i + 1]
   const nextOpen = next && states[step] === 'done'
+  const left = STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="paragraph-xs text-tertiary">
-          Step {i + 1} of {STEPS.length}{states[step] === 'recheck' ? ' · something earlier changed, check this again' : ''}
-        </p>
-        <h2 className="subheading-lg text-primary">{meta.label}</h2>
-        <p className="paragraph-sm text-secondary">{meta.help}</p>
-      </div>
-      {step === 'check' ? (
+      {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
+          and lagged behind it). The page opens on the thing to do. */}
+      <h2 className="sr-only">{meta.label}</h2>
+      {step === 'check' && left.length ? (
         // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
+        // Only while something is left (local test 27 Oct: "Every step is done. Run Mia's final check" showed right
+        // after the check had run)
         <Card className="flex flex-col gap-2">
           <h3 className="subheading-sm text-primary">Still to do</h3>
-          {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').length ? (
-            <ul className="flex flex-col gap-1">
-              {STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done').map((st) => (
-                <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-                  <span>
-                    {st.label}
-                    {states[st.key] === 'recheck' ? ' · recheck: something earlier changed' : states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
-                  </span>
-                  <Button size="sm" onClick={() => onGo(st.key)}>
-                    Go to {st.label}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="paragraph-sm text-secondary">Every step is done. Run Mia's final check, then approve.</p>
-          )}
+          <ul className="flex flex-col gap-1">
+            {left.map((st) => (
+              <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
+                <span>
+                  {st.label}
+                  {states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
+                </span>
+                <Button size="sm" onClick={() => onGo(st.key)}>
+                  Go to {st.label}
+                </Button>
+              </li>
+            ))}
+          </ul>
         </Card>
       ) : null}
       {step === 'facts' ? (
@@ -532,6 +605,9 @@ function StepView({
           onSkipQuestion={build.skipQuestion}
           onFinalCheck={build.finalCheck}
           onFillTargets={build.fillTargets}
+          onApplyChange={build.applyChange}
+          onDropChange={build.dropChange}
+          cardError={build.errorAt && /^(apply|drop):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
         />
       )}
       {step === 'check' ? (
@@ -548,8 +624,8 @@ function StepView({
       ) : null}
       {next ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
-          <p className="paragraph-xs text-tertiary">
-            {nextOpen ? 'Done here. Go back to change anything; later steps follow.' : 'Finish this step to go on.'}
+          <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
+            {nextOpen ? `✓ ${meta.label} done` : 'Finish this step to go on.'}
           </p>
           <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
             Next: {next.label}

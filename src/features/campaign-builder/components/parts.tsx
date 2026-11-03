@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle } from '../../../components/icon/alert-triangle'
 import type { BuildRun } from '../types'
 
@@ -6,8 +6,13 @@ import type { BuildRun } from '../types'
 // pattern (plan §8.2): ⚠ + words + amber border, from the utility-warning tokens that have
 // dark-mode pairs, so colour is never the only signal.
 
-export const money = (v: number | null | undefined, currency = 'ZAR') =>
-  v == null ? '—' : `${currency === 'ZAR' ? 'R' : `${currency} `}${Math.round(v).toLocaleString('en-US')}`
+/** What goes before an amount, as the server's numbers.money_sign writes it: R for rand (or unknown), $, €, £, A$, else
+ *  the code ("KES 1,200"). */
+export const moneySign = (currency?: string | null) =>
+  ({ ZAR: 'R', USD: '$', EUR: '€', GBP: '£', AUD: 'A$' } as Record<string, string>)[(currency || 'ZAR').toUpperCase()] ?? `${currency} `
+
+export const money = (v: number | null | undefined, currency?: string | null) =>
+  v == null ? '—' : `${moneySign(currency)}${Math.round(v).toLocaleString('en-US')}`
 
 export const day = (d: string | null | undefined) => {
   if (!d) return '—'
@@ -84,19 +89,48 @@ export function Card({ children, className = '', warn = false, id }: { children:
   )
 }
 
+// Progress you can trust (local test 27 Oct: a still spinner for 5 to 15 minutes looked frozen): a bar filled by the
+// run's real stages ("3 of 7: Writing the jobs…"), and a clock that ticks, so it moves even with animations off.
 export function RunProgress({ run, what }: { run: BuildRun; what: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const started = run.started_at ? Date.parse(run.started_at) : NaN
+  const secs = Number.isFinite(started) ? Math.max(0, Math.floor((now - started) / 1000)) : null
+  const at = run.stage_at ?? null
+  const of = run.stage_of ?? null
+  // a stage under way counts as half done, so the bar never sits at 0 or reaches the end before the run does
+  const pct = at && of ? Math.round(((at - 0.5) / of) * 100) : null
   return (
-    <Card className="flex items-center gap-3">
-      <span
-        aria-hidden="true"
-        className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent text-secondary"
-      />
-      <div className="min-w-0">
-        <p className="subheading-sm text-primary">Mia is making the {what}</p>
-        <p className="paragraph-sm text-tertiary">
-          {run.stage_label ?? 'Starting'}… {what === 'plan' ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.' : 'About a minute or two.'}
-        </p>
+    <Card className="flex flex-col gap-2">
+      <div className="flex items-center gap-3" role="status">
+        <span
+          aria-hidden="true"
+          className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent text-secondary"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="subheading-sm text-primary">Mia is making the {what}</p>
+          <p className="paragraph-sm text-tertiary">
+            {at && of ? `${at} of ${of}: ` : ''}
+            {run.stage_label ?? 'Starting'}…
+          </p>
+        </div>
+        {secs != null ? (
+          <span className="paragraph-sm tabular-nums text-tertiary">
+            {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}
+          </span>
+        ) : null}
       </div>
+      {pct != null ? (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-tertiary" aria-hidden="true">
+          <div className="h-full rounded-full bg-brand-solid transition-[width] duration-700" style={{ width: `${pct}%` }} />
+        </div>
+      ) : null}
+      <p className="paragraph-xs text-tertiary">
+        {what === 'plan' ? 'Usually 10 to 20 minutes. You can leave the page; it keeps going.' : 'About a minute or two.'}
+      </p>
     </Card>
   )
 }

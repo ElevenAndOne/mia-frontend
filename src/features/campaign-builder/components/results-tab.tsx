@@ -73,7 +73,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
           </p>
           <p className="paragraph-xs text-tertiary">
             {day(s.start_date)} – {day(s.end_date)}
-            {s.budget_total != null ? ` · ${money(s.budget_total, 'ZAR')}` : ''}
+            {s.budget_total != null ? ` · ${money(s.budget_total, s.currency)}` : ''}
           </p>
         </div>
         {progress != null && s.when === 'running' ? (
@@ -98,7 +98,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
             <section key={p.phase} className="rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-2">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="subheading-md text-primary">{p.phase}</h3>
-                <span className="paragraph-xs text-tertiary">{p.budget != null ? money(p.budget, 'ZAR') : ''}</span>
+                <span className="paragraph-xs text-tertiary">{p.budget != null ? money(p.budget, s.currency) : ''}</span>
               </div>
               {loading ? <p className="paragraph-xs text-tertiary">Reading the platforms… (up to a minute)</p> : null}
               <ul className="flex flex-col gap-1.5">
@@ -112,7 +112,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                         <span className="label-sm text-primary">{k.kpi_name}</span>
                         <span className="paragraph-sm text-primary tabular-nums">
                           {a?.actual_label ?? (value != null ? num(value) : '—')}
-                          <span className="text-tertiary"> / {k.target != null ? targetLabel(k) : 'no target'}</span>
+                          <span className="text-tertiary"> / {k.target != null ? targetLabel(k, s.currency) : 'no target'}</span>
                         </span>
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
@@ -208,9 +208,9 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
 const MONEY_KEYS = new Set(['cpc', 'cpm', 'cpa', 'cost_per_conversion', 'cost_per_lead', 'spend'])
 const PERCENT_KEYS = new Set(['ctr', 'conversion_rate', 'email_open_rate', 'email_click_rate', 'web_engagement_rate',
   'website_engagement_rate', 'organic_engagement_rate', 'email_unsubscribe_rate', 'email_bounce_rate'])
-function targetLabel(k: ResultsKpi): string {
+function targetLabel(k: ResultsKpi, currency?: string): string {
   const key = k.kpi_key ?? ''
-  if (MONEY_KEYS.has(key)) return money(k.target as number, 'ZAR')
+  if (MONEY_KEYS.has(key)) return money(k.target as number, currency)
   if (PERCENT_KEYS.has(key)) return `${num(k.target as number)}%`
   return num(k.target as number)
 }

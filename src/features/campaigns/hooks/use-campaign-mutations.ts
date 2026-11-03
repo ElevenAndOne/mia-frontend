@@ -4,6 +4,7 @@ import { clearTrackerCache } from '../../campaign/services/campaign-tracker-serv
 import { clearCampaignDetailCache } from '../campaign-detail-cache'
 import { commitPatch } from '../utils/commit-patch'
 import * as api from '../services/campaign-api'
+import { deleteCampaignWithFlex, type DeleteResult } from '../services/campaign-delete-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import type { CampaignSummary, LinkedCampaign } from '../types'
 
@@ -97,14 +98,14 @@ export function useCampaignMutations() {
     [sessionId, tenantId, id, setCampaign, showToast],
   )
 
-  const removeCampaign = useCallback(async (): Promise<boolean> => {
-    const res = await api.deleteCampaign(sessionId, tenantId, id)
+  const removeCampaign = useCallback(async (flex: 'cancel' | 'leave'): Promise<DeleteResult> => {
+    const res = await deleteCampaignWithFlex(sessionId, tenantId, id, flex)
+    clearCampaignDetailCache()  // a refused delete may still have cancelled some jobs in Flex
     if (res.ok) {
-      clearCampaignDetailCache()
       clearTrackerCache()
       setList((prev) => prev.filter((c) => c.campaign_id !== id))
     }
-    return res.ok
+    return res
   }, [sessionId, tenantId, id, setList])
 
   return { patchCampaign, cycleStatus, linkGuide, saveObjectives, savePickerLinks, removeCampaign }

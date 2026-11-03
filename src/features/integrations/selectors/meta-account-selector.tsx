@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { withWorkspace } from '../utils/with-workspace'
 import type { MetaAccount } from '../types'
 
 interface MetaAccountSelectorProps {
@@ -29,8 +30,11 @@ const MetaAccountSelector = ({
   currentGoogleAccountName,
   currentAccountData,
 }: MetaAccountSelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
   const [accounts, setAccounts] = useState<MetaAccount[]>([])
+  // Why the list is empty / whether some Business Manager edges failed (backend says).
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
+  const [partial, setPartial] = useState(false)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -50,12 +54,15 @@ const MetaAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/meta/accounts/available', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/meta/accounts/available', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
@@ -72,6 +79,8 @@ const MetaAccountSelector = ({
       }
 
       if (data.success && data.accounts) {
+        setEmptyReason(data.reason || null)
+        setPartial(Boolean(data.partial))
         const sortedAccounts = data.accounts.sort((a: MetaAccount, b: MetaAccount) =>
           a.name.localeCompare(b.name)
         )
@@ -97,24 +106,27 @@ const MetaAccountSelector = ({
 
   const handleLinkAccount = async () => {
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/meta/accounts/link', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          meta_account_id: state.selectedId || '',
-          google_account_id: selectedAccount?.id, // MAR 2026: Explicitly send account to link to
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/meta/accounts/link', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            meta_account_id: state.selectedId || '',
+            google_account_id: selectedAccount?.id, // MAR 2026: Explicitly send account to link to
+          }),
+        }
+      )
 
       const data = await response.json()
 
       if (data.success) {
         actions.handleSuccess()
       } else {
-        throw new Error(data.message || 'Failed to update Meta account')
+        throw new Error(data.message || data.detail || 'Failed to update Meta account')
       }
     })
   }
@@ -134,7 +146,7 @@ const MetaAccountSelector = ({
       successMessage="Meta account linked successfully!"
       isEmpty={accounts.length === 0}
       emptyMessage="No Meta ad accounts found"
-      emptySubMessage="Make sure you have access to at least one Meta Ads account"
+      emptySubMessage={emptyReason || 'Make sure you have access to at least one Meta Ads account'}
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel={`Apply (${state.selectedId ? '1' : '0'})`}
@@ -152,12 +164,27 @@ const MetaAccountSelector = ({
                 actions.setSelectedId(state.selectedId === account.id ? null : account.id)
               }
               title={account.name}
-              subtitle={`ID: ${account.id} • ${account.currency}`}
+              subtitle={[
+                `ID: ${account.id}`,
+                account.currency,
+                account.status_label && account.status_label !== 'Active'
+                  ? account.status_label
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' • ')}
               accentColor="blue"
             />
           ))}
         </div>
       </div>
+
+      {partial && (
+        <p className="paragraph-xs text-tertiary mt-3">
+          Meta didn&apos;t return every Business Manager just now, so an account may be missing.
+          Close and reopen to try again.
+        </p>
+      )}
 
       <div className="bg-utility-info-100 border border-utility-info-300 rounded-lg p-3 mt-4">
         <p className="paragraph-xs text-utility-info-700">

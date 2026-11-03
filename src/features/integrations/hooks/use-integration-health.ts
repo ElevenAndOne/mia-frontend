@@ -14,7 +14,7 @@ export function useIntegrationHealth(sessionId: string | null, tenantId?: string
       const response = await apiFetch('/api/integrations/health', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId ?? '' },
-        body: JSON.stringify({ session_id: sessionId }),
+        body: JSON.stringify({ session_id: sessionId, tenant_id: tenantId || null }),
       })
       if (!response.ok) return {}
       const json = await response.json()

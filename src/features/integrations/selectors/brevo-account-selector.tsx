@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -14,7 +15,7 @@ interface BrevoAccountSelectorProps {
 }
 
 const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [accounts, setAccounts] = useState<BrevoAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -35,12 +36,15 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/brevo/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/brevo/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
@@ -79,6 +83,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
         body: JSON.stringify({
           session_id: sessionId,
           brevo_id: state.selectedId,
+          tenant_id: activeWorkspace?.tenant_id || null,
         }),
       })
 
@@ -104,12 +109,15 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
     setPendingRemove(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/brevo/disconnect?brevo_id=${id}`, {
-        method: 'DELETE',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace(`/api/oauth/brevo/disconnect?brevo_id=${id}`, activeWorkspace?.tenant_id),
+        {
+          method: 'DELETE',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 

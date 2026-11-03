@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { fetchLinkedContent } from '../../services/campaign-api'
+import { fetchDeleteCheck, type DeleteCheck, type FlexJobOpen } from '../../services/campaign-delete-api'
 import { StatusBadge } from '../status-badge'
 import { ViewSwitcher } from '../view-switcher'
 import { ClickUpActions } from '../clickup/clickup-actions'
@@ -14,10 +15,19 @@ import { formatBudget, formatShortDate } from '../../utils/campaign-dates'
 const dateCls = 'paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cursor-pointer'
 const numCls = 'w-20 paragraph-xs text-tertiary bg-transparent border-b border-tertiary focus:border-utility-brand-400 outline-none cw-mono [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden'
 
+const jobLines = (jobs: FlexJobOpen[], why = false) => {
+  const shown = jobs.slice(0, 10).map((j) => `• ${j.name} (${why && j.why ? j.why : j.stage_label})`)
+  return [...shown, ...(jobs.length > 10 ? [`…and ${jobs.length - 10} more`] : [])].join('\n')
+}
+
 export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
   const { campaign, sessionId, tenantId } = useCampaignWorkspace()
   const { patchCampaign, cycleStatus, removeCampaign } = useCampaignMutations()
   const navigate = useNavigate()
+  // A campaign made in the new builder sends its jobs to Flex from its own page, so the ClickUp send isn't offered here:
+  // the same work could go to ClickUp and Flex (local test 5, 2 Nov). The campaign says which builder made it (review
+  // 2 Nov: reading the staff-only board left the button on for everyone else).
+  const newBuilder = (campaign as typeof campaign & { builder?: string | null }).builder === 'v2'
 
 
   const initials = (campaign.client_name || campaign.campaign_name).slice(0, 2).toUpperCase()
@@ -38,9 +48,36 @@ export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
   const goTo = (section: 'linked' | 'readiness') =>
     navigate(`/campaigns/${campaign.campaign_id}/setup/${section}`)
 
+  // Jobs already sent to Flex are named before the delete and cancelled there with it. Flex keeps one that has
+  // started, so those are named again and the PM chooses whether to delete in Mia anyway (live 28 Oct).
   const onDelete = async () => {
-    if (!confirm(`Delete "${campaign.campaign_name}"? This cannot be undone.`)) return
-    if (await removeCampaign()) navigate('/campaigns')
+    let check: DeleteCheck
+    try {
+      check = await fetchDeleteCheck(sessionId, tenantId, campaign.campaign_id)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't check the campaign before deleting it")
+      return
+    }
+    if (check.busy) {
+      alert(`Mia is ${check.busy} on this campaign. Delete it once she's done.`)
+      return
+    }
+    const jobs = check.flex_jobs
+    const inFlex = jobs.length
+      ? `\n\n${jobs.length} job${jobs.length === 1 ? ' is' : 's are'} in Flex and will be cancelled there too:\n${jobLines(jobs)}`
+      : ''
+    if (!confirm(`Delete "${campaign.campaign_name}"? This cannot be undone.${inFlex}`)) return
+    let res = await removeCampaign('cancel')
+    if (!res.ok && res.flexLeft.length) {
+      const anyway = confirm(
+        `${res.message}\n\n${jobLines(res.flexLeft, true)}\n\nDelete the campaign in Mia anyway? ` +
+          'These jobs stay open in Flex until someone cancels them there.',
+      )
+      if (!anyway) return
+      res = await removeCampaign('leave')
+    }
+    if (res.ok) navigate('/campaigns')
+    else alert(res.message)
   }
 
   return (
@@ -90,7 +127,13 @@ export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
       {/* Controls card — status / dates / budget / channels / guide */}
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center flex-wrap gap-3">
-        <ClickUpActions />
+        {newBuilder ? (
+          <Link to={`/campaign-builder/${campaign.campaign_id}/studio`} className="paragraph-xs text-brand-secondary hover:underline">
+            Jobs go to the studio from this campaign's builder page
+          </Link>
+        ) : (
+          <ClickUpActions />
+        )}
         <button onClick={onDelete} title="Delete campaign" className="p-1 text-quaternary hover:text-utility-error-500 transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>

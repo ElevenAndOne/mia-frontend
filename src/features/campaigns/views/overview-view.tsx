@@ -45,7 +45,7 @@ export const OverviewView = () => {
   const notTracked = useMemo(() => {
     const names: string[] = []
     for (const rows of Object.values(actualsByPhase)) {
-      for (const r of rows ?? []) if (r.state === 'none') names.push(r.kpi_name)
+      for (const r of rows ?? []) if (r.state === 'none' && !r.measured) names.push(r.kpi_name)
     }
     return names
   }, [actualsByPhase])

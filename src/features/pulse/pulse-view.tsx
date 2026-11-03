@@ -354,9 +354,11 @@ function PostsSection({ data, isLoading }: { data: PostsProvenance | undefined; 
 function SessionFeedbackSection({
   data,
   isLoading,
+  onSelectUser,
 }: {
   data: SessionFeedbackSummary | undefined
   isLoading: boolean
+  onSelectUser: (googleUserId: string | null) => void
 }) {
   const asked = data?.asked ?? 0
   const scoreLabel = data?.score === null || data?.score === undefined ? '—' : data.score.toFixed(2)
@@ -423,12 +425,18 @@ function SessionFeedbackSection({
                 <>
                   <div className="plz-seclab">In their words</div>
                   {data!.comments.slice(0, 6).map((c: SessionFeedbackSummary['comments'][number], i: number) => (
-                    <div className="plz-sfquote" key={i}>
+                    <div
+                      className={c.google_user_id ? 'plz-sfquote plz-fbitem' : 'plz-sfquote'}
+                      key={i}
+                      onClick={c.google_user_id ? () => onSelectUser(c.google_user_id) : undefined}
+                      title={c.google_user_id ? 'Show this tester in the drill-down' : undefined}
+                    >
                       <div className="plz-fbdetails" style={{ borderLeftColor: 'inherit' }}>
                         {c.comment}
                       </div>
                       <div className="plz-fbresp">
-                        {c.label} · {c.tenant_id ?? 'no workspace'}
+                        {c.label} · {c.user_name ?? 'unknown person'} ·{' '}
+                        {c.workspace_name ?? c.tenant_id ?? 'no workspace'} · {timeAgo(c.at)}
                       </div>
                     </div>
                   ))}
@@ -586,7 +594,8 @@ function FeedbackSection({
                     <div className="plz-qmeta">
                       <span className="plz-tag">{f.rating === 1 ? '👍' : '👎'}</span>
                       {f.category_label && <span className="plz-tag">{f.category_label}</span>}
-                      <span>{f.user_email || 'unknown'}</span>
+                      <span>{f.user_name || f.user_email || 'unknown'}</span>
+                      {f.workspace_name && <span>{f.workspace_name}</span>}
                       <span>{timeAgo(f.created_at)}</span>
                     </div>
                   </div>
@@ -1100,6 +1109,7 @@ export function PulseView() {
         <SessionFeedbackSection
           data={sessionFeedback.data}
           isLoading={sessionFeedback.isLoading}
+          onSelectUser={(id) => id && setSelectedId(id)}
         />
 
         {/* message feedback — thumbs up/down + issue reports from chat */}

@@ -3,6 +3,7 @@ import { Button } from '../../../components/button'
 import type { BuildState, Plan } from '../types'
 import { Field } from './field'
 import { Card, day, money, num } from './parts'
+import { wordsToFix } from './steps'
 
 // The calmer page (19 Oct, docs2/CAMPAIGN_BUILDER_CALMER_UI_PLAN_2026-10-19.md): what the PM has to do comes
 // first ("Your turn"), one line of facts under it, and the detail folds away with a one-line summary. Any item
@@ -104,7 +105,7 @@ export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
     .join(' · ')
   const credits = plan.credits
   const words = plan.assets.filter((a) => a.final_words).length
-  const flagged = plan.assets.filter((a) => a.final_words?.status === 'flagged').length
+  const flagged = plan.assets.filter(wordsToFix).length
   const fit =
     credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : 'room unknown'
   const cells: [string, string, string][] = [
@@ -147,10 +148,15 @@ export interface TurnItem {
 
 export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactNode }) {
   const open = items.filter((i) => !i.done)
-  const nextKey = open[0]?.key
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(items.filter((i) => i.openByDefault && !i.done).map((i) => i.key)))
-  const toggle = (k: string) => setExpanded((e) => { const n = new Set(e); if (n.has(k)) n.delete(k); else n.add(k); return n })
-  if (!open.length) {
+  // One thing at a time (local test 4, 30 Oct, Josh: "it mustnt just be a wall of text… like 1 at a time they can
+  // address"): the item to do now is shown whole; every other one waits as a one-line row the PM can open instead.
+  const [chosen, setChosen] = useState<string | null>(null)
+  const current = open.find((i) => i.key === chosen) ?? open[0]
+  // The item being done shows its list (the fixes, the questions) unless the PM hides it
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set())
+  const isOpen = (k: string) => !hidden.has(k)
+  const toggle = (k: string) => setHidden((h) => { const n = new Set(h); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  if (!current) {
     // Nothing left: one quiet line instead of a list of crossed-out steps.
     return (
       <Card className="flex flex-wrap items-center justify-between gap-2 !py-3">
@@ -162,67 +168,91 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
       </Card>
     )
   }
+  const rest = open.filter((i) => i.key !== current.key)
+  const n = open.indexOf(current) + 1
   return (
     <Card className="!p-0 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="subheading-md text-primary">Your turn</h2>
-          <p className="paragraph-xs text-tertiary">
-            Work down the list. Each item leaves it once it's done, so the next one is always at the top.
-          </p>
-        </div>
+        {/* what to do, not how the list works (local test 27 Oct) */}
+        <h2 className="min-w-0 subheading-md text-primary">Your turn</h2>
         <span className="paragraph-xs text-tertiary tabular-nums">
-          {open.length} to do{items.length > open.length ? ` · ${items.length - open.length} done` : ''}
+          {open.length === 1 ? '1 to do' : `${n} of ${open.length} to do`}
         </span>
       </div>
-      <ol className="flex flex-col">
-        {/* Done items leave the list (19 Oct): a checklist that clears, not one that fills with crossed-out steps. */}
-        {open.map((it, n) => {
-          const next = it.key === nextKey
-          return (
-            <li
-              key={it.key}
-              className={`border-b border-secondary last:border-b-0 px-4 py-3 ${next ? 'bg-brand-primary' : ''}`}
-            >
-              <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
-                <span
-                  aria-hidden="true"
-                  className={`grid size-7 place-items-center rounded-full label-xs ${
-                    it.done ? 'bg-success-primary text-success' : next ? 'bg-brand-solid text-primary-onbrand' : 'bg-tertiary text-secondary'
-                  }`}
+      <div className="bg-brand-primary px-4 py-3">
+        <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
+          <span aria-hidden="true" className="grid size-7 place-items-center rounded-full label-xs bg-brand-solid text-primary-onbrand">
+            {n}
+          </span>
+          <div className="min-w-0">
+            <p className="paragraph-sm font-medium text-primary">{current.title}</p>
+            {current.detail ? <div className="paragraph-xs text-secondary">{current.detail}</div> : null}
+          </div>
+          {current.actions || current.more ? (
+            <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
+              {current.actions}
+              {current.more ? (
+                <button type="button" aria-expanded={isOpen(current.key)} onClick={() => toggle(current.key)} className="paragraph-xs underline text-primary">
+                  {isOpen(current.key) ? 'Hide' : 'Show'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        {current.more && isOpen(current.key) ? <div className="mt-3 @2xl:pl-10">{current.more}</div> : null}
+      </div>
+      {rest.length ? (
+        <div className="border-t border-secondary px-4 py-2">
+          <p className="paragraph-xs text-tertiary">Then:</p>
+          <ul className="flex flex-col">
+            {rest.map((it) => (
+              <li key={it.key}>
+                {/* one line each; opening one makes it the item above (the list stays one at a time) */}
+                <button
+                  type="button"
+                  onClick={() => setChosen(it.key)}
+                  className="flex w-full items-center gap-2 py-1 text-left paragraph-xs text-secondary hover:text-primary"
                 >
-                  {it.done ? '✓' : n + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className={`paragraph-sm font-medium ${it.done ? 'text-tertiary line-through' : 'text-primary'}`}>
-                    <span className="sr-only">{it.done ? 'Done: ' : ''}</span>
-                    {it.title}
-                  </p>
-                  {it.detail && !it.done ? <div className="paragraph-xs text-secondary">{it.detail}</div> : null}
-                </div>
-                {!it.done && (it.actions || it.more) ? (
-                  <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
-                    {it.actions}
-                    {it.more ? (
-                      <button
-                        type="button"
-                        aria-expanded={expanded.has(it.key)}
-                        onClick={() => toggle(it.key)}
-                        className="paragraph-xs underline text-primary"
-                      >
-                        {expanded.has(it.key) ? 'Hide' : 'Show'}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-              {it.more && expanded.has(it.key) && !it.done ? <div className="mt-3 @2xl:pl-10">{it.more}</div> : null}
-            </li>
-          )
-        })}
-      </ol>
+                  <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-tertiary label-xs text-secondary">
+                    {open.indexOf(it) + 1}
+                  </span>
+                  <span className="min-w-0 truncate">{it.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {footer ? <div className="border-t border-secondary px-4 py-3">{footer}</div> : null}
     </Card>
+  )
+}
+
+// A list worked through one at a time, "1 of 3" with Back and Next (local test 4, 30 Oct: three findings and three notes
+// at once read as a wall). Each entry is whole on its own; the counter says how many are left.
+export function OneAtATime({ entries, noun = 'item' }: { entries: { key: string; node: ReactNode }[]; noun?: string }) {
+  const [at, setAt] = useState(0)
+  if (!entries.length) return null
+  const i = Math.min(at, entries.length - 1)
+  return (
+    <div className="flex flex-col gap-2">
+      {entries.length > 1 ? (
+        <div className="flex items-center justify-between gap-2 paragraph-xs text-tertiary">
+          <span className="tabular-nums">
+            {noun} {i + 1} of {entries.length}
+          </span>
+          <span className="flex items-center gap-3">
+            <button type="button" disabled={i === 0} onClick={() => setAt(i - 1)} className="underline disabled:opacity-40 disabled:no-underline">
+              Back
+            </button>
+            <button type="button" disabled={i === entries.length - 1} onClick={() => setAt(i + 1)} className="underline disabled:opacity-40 disabled:no-underline">
+              Next
+            </button>
+          </span>
+        </div>
+      ) : null}
+      <div key={entries[i].key}>{entries[i].node}</div>
+    </div>
   )
 }
 
@@ -245,9 +275,13 @@ export function TargetToSet({
   byMia,
   kind,
   source,
+  grouped = false,
   onSet,
   onNoTarget,
+  saving = false,
 }: {
+  saving?: boolean // this row's number is being saved
+  grouped?: boolean // under its phase's heading: the row doesn't repeat the phase
   name: string
   phase: string
   reference?: string | null
@@ -260,13 +294,17 @@ export function TargetToSet({
   onSet: (v: number | string, estimateNote?: string) => void
   onNoTarget: () => void
 }) {
+  // Once a number is typed the row's button is Set, where the eye goes (local test 27 Oct: the PM typed 300000 and
+  // pressed Ask Mia, the button in that spot; nothing said Enter or leaving the box saves). Keep and Ask Mia step aside.
+  const [typed, setTyped] = useState('')
+  const id = `set-${phase}-${name}`
   return (
     <li className="grid grid-cols-1 @2xl:grid-cols-[1fr_auto] items-center gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
       <div className="min-w-0">
         <p className="paragraph-sm text-primary">
-          <span className="font-medium">{name}</span> <span className="text-tertiary">· {phase}</span>
+          <span className="font-medium">{name}</span>
+          {grouped ? null : <span className="text-tertiary"> · {phase}</span>}
         </p>
-        {reference ? <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">{reference}</p> : null}
         {suggested != null ? (
           <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
             {byMia
@@ -276,33 +314,50 @@ export function TargetToSet({
               : source === 'history'
                 ? 'From a past campaign'
                 : 'From your account'}
-            :{' '}
-            {suggestedLabel ?? num(suggested)}
-            {suggestedFrom ? ` (${suggestedFrom})` : ''}
+            : {suggestedLabel ?? num(suggested)}
           </p>
+        ) : null}
+        {/* the working on tap: a name, a number and Keep is all the row needs (local test 27 Oct) */}
+        {reference || suggestedFrom ? (
+          <details className="paragraph-xs text-tertiary">
+            <summary className="cursor-pointer select-none hover:text-secondary">How this was worked out</summary>
+            {suggestedFrom ? <p className="[overflow-wrap:anywhere]">{suggestedFrom}</p> : null}
+            {reference ? <p className="[overflow-wrap:anywhere]">{reference}</p> : null}
+          </details>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="sr-only" htmlFor={`set-${phase}-${name}`}>
+        <label className="sr-only" htmlFor={id}>
           {name} target
         </label>
         <Field
-          id={`set-${phase}-${name}`}
+          id={id}
           placeholder="target"
           value=""
-          onCommit={(typed) => typed && onSet(typed)}
+          onTyping={setTyped}
+          onCommit={(v) => v && onSet(v)}
           className="w-24 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary text-right"
         />
-        {suggested != null ? (
-          // One target at a time: the PM looks at each starting point and takes it, or types their own.
-          <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
-            Keep {suggestedLabel ?? num(suggested)}
+        {typed.trim() ? (
+          // saves through the box's own blur, once (Field), so a click here and leaving the box are one save
+          // a typed number saves when the PM leaves the box too (29 Oct: it saved on a click away, unannounced)
+          <Button size="sm" variant="primary" loading={saving} onMouseDown={(e) => e.preventDefault()} onClick={() => document.getElementById(id)?.blur()}>
+            Save
           </Button>
-        ) : null}
-        <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">
-          No target
-        </button>
-        <AskMia label={`Target · ${phase} · ${name}`} detail={reference ?? undefined} />
+        ) : (
+          <>
+            {suggested != null ? (
+              // One target at a time: the PM looks at each starting point and takes it, or types their own.
+              <Button size="sm" onClick={() => onSet(suggested, suggestedFrom ?? 'starting point from the account')}>
+                Keep {suggestedLabel ?? num(suggested)}
+              </Button>
+            ) : null}
+            <button type="button" onClick={onNoTarget} className="paragraph-xs underline text-secondary hover:text-primary">
+              No target
+            </button>
+            <AskMia label={`Target · ${phase} · ${name}`} detail={reference ?? undefined} />
+          </>
+        )}
       </div>
     </li>
   )

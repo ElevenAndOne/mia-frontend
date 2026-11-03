@@ -167,6 +167,12 @@ export interface SessionFeedbackSummary {
     label: string | null
     comment: string | null
     tenant_id: string | null
+    workspace_name: string | null
+    /** Profile name, else email, else "WhatsApp +27…"; null when nothing identifies them. */
+    user_name: string | null
+    user_email: string | null
+    google_user_id: string | null
+    conversation_id: string | null
     at: string | null
   }[]
 }
@@ -178,9 +184,11 @@ export interface FeedbackItem {
   category: string | null
   category_label: string | null
   details: string | null
+  user_name: string | null
   user_email: string | null
   google_user_id: string | null
   tenant_id: string | null
+  workspace_name: string | null
   conversation_id: string | null
   chat_history_id: number
   question: string

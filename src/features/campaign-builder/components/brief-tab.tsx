@@ -1,4 +1,4 @@
-import { CampaignGuide } from './campaign-guide'
+import { AddBrandGuide, CampaignGuide } from './campaign-guide'
 import { ClientRules } from './client-rules'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
@@ -29,7 +29,7 @@ interface Props {
   onConfirm?: (fields: string[]) => Promise<unknown>
 }
 
-const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made']
+const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made', 'measurement']
 const LABELS: Record<BriefField, string> = {
   goal: 'Goal',
   audience: 'Audience',
@@ -43,6 +43,7 @@ const LABELS: Record<BriefField, string> = {
   offer: 'Offer',
   landing_page: 'Landing page',
   already_made: 'Already made (not made again)',
+  measurement: "How it's measured",
 }
 
 type Draft = Record<BriefField, string>
@@ -61,6 +62,7 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   offer: b.offer ?? '',
   landing_page: b.landing_page ?? '',
   already_made: (b.already_made ?? []).join('\n'),
+  measurement: (b.measurement ?? []).join('\n'),
 })
 
 const fromDraft = (k: BriefField, v: string): unknown => {
@@ -80,6 +82,22 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
   // Detail sections: closed until wanted (each step opens with only Your turn, L8). Key facts has none; the context of
   // the brief sits folded on Check & approve.
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
+  const skipKey = `mia-builder-brand-skip-${state.campaign.campaign_id}`
+  const [brandSkipped, setBrandSkipped] = useState(() => {
+    try {
+      return localStorage.getItem(skipKey) === '1'
+    } catch {
+      return false
+    }
+  })
+  const skipBrand = () => {
+    setBrandSkipped(true)
+    try {
+      localStorage.setItem(skipKey, '1')
+    } catch {
+      // private window: skipped for this visit only
+    }
+  }
   const shows = (f: string) => !part || (part === 'context' && ['read', 'words', 'rules'].includes(f))
 
   if (!state.brief) {
@@ -98,8 +116,9 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     if (qs.length) {
       items.push({
         key: 'questions',
-        title: `Answer or skip Mia's ${qs.length} question${qs.length === 1 ? '' : 's'}`,
-        detail: 'Most important first. Type your answer and press Send, or skip it and Mia decides. Approve waits for these.',
+        // one at a time with where you are, like Mia's questions after the plan (local test 27 Oct)
+        title: `Mia's question ${(b?.answered_questions ?? []).length + 1} of ${(b?.answered_questions ?? []).length + qs.length}`,
+        detail: 'Answer it, or skip it and Mia decides.',
         done: !qs.length,
         openByDefault: true,
         more: (
@@ -107,17 +126,30 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             brief={b!}
             busy={busy}
             running={run?.status === 'running'}
-            onAnswer={async (id, answer) => {
-              const ok = await onSave({}, undefined, [{ id, answer }])
-              // One answer path on both tabs (audit 22 Oct): the answer fills the fields it settles (server), then Mia
-              // reads it in context and proposes what else it changes, with Apply.
-              const q = qs.find((x) => x.id === id)
-              if (ok !== undefined && q)
-                askMia({ label: 'Your answer · Key facts', detail: q.question, text: `My answer: ${answer}` })
-              return ok
-            }}
+            // The answer fills the fields it settles (server); it doesn't go to the chat as the PM's message (local
+            // test 2, 29 Oct: every answer showed in the chat with a long reply under it).
+            onAnswer={(id, answer) => onSave({}, undefined, [{ id, answer }])}
             onSkip={(id) => (onSkipQuestion ? onSkipQuestion(id) : onSave({}, undefined, [{ id, answer: null }]))}
           />
+        ),
+      })
+    }
+    // No brand guide: asked once, before the plan, with the upload right here (review, 3 Nov: the page only pointed
+    // to Settings). "Carry on without" is remembered for this campaign in this browser.
+    if (!state.brand_guide && !state.plan && !brandSkipped) {
+      items.push({
+        key: 'brand',
+        title: 'Add the client’s brand guide? (optional)',
+        detail: state.brand_look
+          ? 'Their Brand Kit colours and fonts go to the studio, but Mia has no guide for how they sound and what they can claim. With one, every job’s words follow it.'
+          : 'Mia has no brand guide for this workspace, so the words follow your brief alone. With one, every job sounds like the client and avoids what it rules out.',
+        actions: (
+          <>
+            <AddBrandGuide campaignId={state.campaign.campaign_id} />
+            <Button size="sm" variant="ghost" onClick={skipBrand}>
+              Carry on without
+            </Button>
+          </>
         ),
       })
     }
@@ -146,10 +178,16 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         openByDefault: true,
         more: (
           <ul className="flex flex-col gap-1.5">
+            {/* a label and one short line each, the whole text on tap (local test 27 Oct: five facts in full
+                sentences read as a wall of text) */}
             {drafted.map((f) => (
-              <li key={f} className="flex flex-col paragraph-sm">
-                <span className="label-xs text-secondary">{LABELS[f] ?? f} · Mia's reading</span>
-                <span className="text-primary [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
+              <li key={f} className="paragraph-sm">
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none flex-col [&::-webkit-details-marker]:hidden">
+                    <span className="label-xs text-secondary">{LABELS[f] ?? f}</span>
+                    <span className="text-primary line-clamp-1 group-open:line-clamp-none [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
+                  </summary>
+                </details>
               </li>
             ))}
           </ul>
@@ -189,7 +227,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
       done: planFresh && !planRunning,
       detail: planRunning
-        ? 'This takes 5 to 15 minutes. You can leave the page; it keeps going.'
+        ? 'This usually takes 10 to 20 minutes. You can leave the page; it keeps going.'
         : waiting
           ? 'Answer or skip the questions above first: Mia plans from your answers.'
           : state.plan_from_older_brief
@@ -246,7 +284,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           </ul>
         </Card>
       ) : null}
-      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} /> : null}
+      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} look={state.brand_look ?? null} never={state.brand_never_use ?? []} /> : null}
       {part !== 'context' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"
@@ -255,7 +293,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         open={folds.has('stand')}
         onToggle={() => toggle('stand')}
       >
-        <WhereTheyStand groups={kpiGroups} />
+        <WhereTheyStand groups={kpiGroups} currency={state.campaign.currency} />
       </Fold>) : null}
       {shows('words') && b?.pm_words?.length ? (
         <Fold
@@ -489,7 +527,7 @@ function Questions({
   onAnswer: (id: string, answer: string) => Promise<unknown>
   onSkip: (id: string) => Promise<unknown>
 }) {
-  const qs = (brief.open_questions ?? []).slice(0, 3)
+  const qs = (brief.open_questions ?? []).slice(0, 1) // one at a time; the next shows after Send or Skip
   // Kept by question id: a question that closes moves the others up, and answers stayed under the wrong one (16 Oct).
   const [answers, setAnswers] = useState<Record<string, string>>({})
   if (!qs.length) return null
@@ -510,6 +548,14 @@ function Questions({
             <label htmlFor={`q-${q.id}`} className="min-w-0 flex-1 paragraph-sm text-primary">
               {q.question}
               <span className="block paragraph-xs text-tertiary">{q.why_it_matters}</span>
+              {q.unclear ? (
+                <span className="mt-1 block paragraph-xs text-utility-warning-700 [overflow-wrap:anywhere]">
+                  You wrote “{q.unclear.answer}”. {q.unclear.why}{' '}
+                  {q.unclear.kind === 'unclear'
+                    ? 'Which do you mean? Say it in a few more words.'
+                    : 'What’s your answer to this one? (Chat messages go in the chat box.)'}
+                </span>
+              ) : null}
             </label>
             <span className="flex items-center gap-2">
               <AskMia label="Brief question" detail={q.question} />
@@ -599,7 +645,7 @@ function WhatMiaRead({ state }: { state: BuildState }) {
 
 // Where the client stands on mia-cube's KPI list before the plan is made: the last campaign
 // result for each KPI (and its target then), else the account's own last-90-days figure.
-function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
+function WhereTheyStand({ groups, currency }: { groups: KpiGroup[]; currency?: string | null }) {
   const rows = groups
     .map((g) => ({ ...g, kpis: g.kpis.filter((k) => k.last_result || k.account_90d != null) }))
     .filter((g) => g.kpis.length)
@@ -619,8 +665,8 @@ function WhereTheyStand({ groups }: { groups: KpiGroup[] }) {
                   <span className="text-primary">{k.name}</span>
                   <span className="text-secondary tabular-nums">
                     {k.last_result
-                      ? `${kpiValue(k.last_result.value, k.unit)}${k.last_result.target != null ? ` (target ${kpiValue(k.last_result.target, k.unit)})` : ''}`
-                      : `${kpiValue(k.account_90d, k.unit)} · 90 days`}
+                      ? `${kpiValue(k.last_result.value, k.unit, currency)}${k.last_result.target != null ? ` (target ${kpiValue(k.last_result.target, k.unit, currency)})` : ''}`
+                      : `${kpiValue(k.account_90d, k.unit, currency)} · 90 days`}
                   </span>
                   {k.last_result ? <span className="w-full paragraph-xs text-tertiary">{k.last_result.campaign}</span> : null}
                 </li>

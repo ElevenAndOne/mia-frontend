@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -18,7 +19,7 @@ const MailchimpAccountSelector = ({
   onClose,
   onSuccess,
 }: MailchimpAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [accounts, setAccounts] = useState<MailchimpAccount[]>([])
 
   const [state, actions] = useSelectorState<number>({
@@ -39,12 +40,15 @@ const MailchimpAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/mailchimp/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/mailchimp/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
@@ -75,7 +79,10 @@ const MailchimpAccountSelector = ({
 
     await actions.withSubmitting(async () => {
       const response = await apiFetch(
-        `/api/oauth/mailchimp/set-primary?mailchimp_id=${state.selectedId}`,
+        withWorkspace(
+          `/api/oauth/mailchimp/set-primary?mailchimp_id=${state.selectedId}`,
+          activeWorkspace?.tenant_id
+        ),
         {
           method: 'POST',
           headers: {
@@ -106,12 +113,18 @@ const MailchimpAccountSelector = ({
     setPendingRemove(null)
 
     try {
-      const response = await apiFetch(`/api/oauth/mailchimp/disconnect?mailchimp_id=${id}`, {
-        method: 'DELETE',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace(
+          `/api/oauth/mailchimp/disconnect?mailchimp_id=${id}`,
+          activeWorkspace?.tenant_id
+        ),
+        {
+          method: 'DELETE',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 

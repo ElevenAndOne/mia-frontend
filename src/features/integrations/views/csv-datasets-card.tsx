@@ -74,7 +74,7 @@ export function CsvDatasetsCard() {
   const refresh = useCallback(async () => {
     if (!sessionId) return
     try {
-      setDatasets(await listDatasets(sessionId))
+      setDatasets(await listDatasets(sessionId, activeWorkspace?.tenant_id))
     } catch {
       // Non-fatal: an empty/failed list just shows the upload prompt.
     }
@@ -111,6 +111,7 @@ export function CsvDatasetsCard() {
         // Single file → the name the user typed; batch → each filename (extension stripped).
         const ds = await uploadDataset(sessionId, file, {
           name: single ? stagedName.trim() || undefined : _stripExt(file.name),
+          tenantId: activeWorkspace?.tenant_id,
         })
         setDatasets((prev) => [ds, ...prev.filter((d) => d.dataset_id !== ds.dataset_id)])
       }
@@ -141,7 +142,7 @@ export function CsvDatasetsCard() {
       return
     }
     try {
-      const updated = await updateDataset(sessionId, editingId, { name })
+      const updated = await updateDataset(sessionId, editingId, { name }, activeWorkspace?.tenant_id)
       setDatasets((prev) => prev.map((d) => (d.dataset_id === updated.dataset_id ? updated : d)))
       setEditingId(null)
       showToast('success', 'Dataset renamed')
@@ -154,7 +155,7 @@ export function CsvDatasetsCard() {
     async (datasetId: string) => {
       if (!sessionId) return
       try {
-        await deleteDataset(sessionId, datasetId)
+        await deleteDataset(sessionId, datasetId, activeWorkspace?.tenant_id)
         setDatasets((prev) => prev.filter((d) => d.dataset_id !== datasetId))
         showToast('success', 'Dataset removed')
       } catch (e) {
