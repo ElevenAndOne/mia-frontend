@@ -96,9 +96,14 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       })
   }
   const setAll = (jobs: StudioJob[], include: boolean) => setJobs(jobs.filter((x) => x.include !== include), { include })
+  // Jobs that can go to Flex: not there yet and not tracked in ClickUp (3 Nov: a campaign moved from the old builder
+  // listed all its ClickUp work as "Not sent yet" and asked the PM to pick jobs to send)
+  const outside = (j: StudioJob) => !j.flex.task_id && !!(j.clickup || j.kept_out)
+  const unsent = s.jobs.filter((j) => !j.flex.task_id && !outside(j))
   const groups = [
     { title: 'In Flex', jobs: s.jobs.filter((j) => j.flex.task_id), pick: false },
-    { title: 'Not sent yet', jobs: s.jobs.filter((j) => !j.flex.task_id), pick: true },
+    { title: 'Made outside Flex', jobs: s.jobs.filter(outside), pick: false },
+    { title: 'Not sent yet', jobs: unsent, pick: true },
   ]
   const unconfirmed = toSend.filter((j) => !j.credits_confirmed).length
   const otherBlockers = s.blockers.filter((b) => !/^Confirm the credits/.test(b))
@@ -126,7 +131,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
   )
   const items: TurnItem[] = []
   otherBlockers.forEach((b, k) => items.push({ key: `b${k}`, title: b, actions: <AskMia label="Before sending" detail={b} /> }))
-  if (toSend.length || !s.sent) {
+  if (toSend.length || (!s.sent && unsent.length)) {
     items.push({
       key: 'confirm',
       title: unconfirmed ? `Check the credits on ${unconfirmed} job${unconfirmed === 1 ? '' : 's'}` : 'Credits checked',
@@ -163,7 +168,6 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       ) : null,
     })
   }
-  const unsent = s.jobs.filter((j) => !j.flex.task_id)
   if (s.sent && unsent.length && !toSend.length) {
     items.push({
       key: 'rest',
@@ -340,12 +344,18 @@ function Row({
     if (!typing.current) setC(j.credits == null ? '' : String(j.credits))
   }, [j.credits])
   const inFlex = !!j.flex.task_id
+  const inClickUp = !inFlex && !!j.clickup
+  const madeElsewhere = !inFlex && !inClickUp && !!j.kept_out
   const missing = j.include && !inFlex && j.credits == null
   return (
     <tr id={`row-${j.asset_id}`} className="border-t border-secondary align-top scroll-mt-24">
       <td className="py-2 pr-2">
         {inFlex ? (
           <span className="label-xs text-utility-success-700 whitespace-nowrap" title="Sent to Flex">✓ sent</span>
+        ) : inClickUp ? (
+          <span className="label-xs text-tertiary whitespace-nowrap" title="Tracked in ClickUp, so it isn't sent to Flex">ClickUp</span>
+        ) : madeElsewhere ? (
+          <span className="label-xs text-tertiary whitespace-nowrap" title={j.kept_out ?? undefined}>Done</span>
         ) : (
         <input
           type="checkbox"
@@ -369,7 +379,7 @@ function Row({
         {j.ledger_tier ? ` · ${j.ledger_tier}` : ''}
       </td>
       <td className="py-2 pr-2 text-right">
-        {inFlex ? (
+        {inFlex || inClickUp || madeElsewhere ? (
           num(j.credits)
         ) : (
           <span className="inline-flex flex-col items-end gap-0.5">
@@ -435,6 +445,13 @@ function Row({
               <span className="paragraph-xs text-tertiary">in Flex</span>
             )}
           </span>
+        ) : inClickUp && j.clickup ? (
+          <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
+            href={j.clickup.url} target="_blank" rel="noreferrer">
+            Open in ClickUp ↗
+          </a>
+        ) : madeElsewhere ? (
+          <span className="paragraph-xs text-tertiary">{j.kept_out}</span>
         ) : (
           <span className="paragraph-xs text-tertiary">Not sent</span>
         )}

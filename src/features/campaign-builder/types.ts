@@ -186,6 +186,9 @@ export interface Plan {
   angles_to_test?: { angle?: string; hypothesis?: string; [k: string]: unknown }[]
   not_repeating?: { what?: string; why?: string; [k: string]: unknown }[] | string[]
   risks?: unknown[]
+  // a campaign made in the old builder and moved here (scripts/convert_to_builder.py, 3 Nov): its jobs were made in
+  // ClickUp, so the page says that instead of "send the jobs" and "words not written"
+  moved_from_old_builder?: { at: string; jobs: number; to_flex?: number }
   assets: PlanAsset[]
   credits: CreditFit
   decisions: {
@@ -388,6 +391,10 @@ export interface StudioJob {
   include: boolean
   setup_work: boolean
   credits_confirmed: boolean
+  // made in ClickUp and never sent to Flex (a ClickUp task added to the campaign, or work from before it moved from
+  // the old builder): listed apart, never offered for sending
+  clickup?: { task_id: string; url: string } | null
+  kept_out?: string | null // made outside Flex, and why (e.g. launched before the campaign moved)
   flex: {
     task_id?: string
     url?: string

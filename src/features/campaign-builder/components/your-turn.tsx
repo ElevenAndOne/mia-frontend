@@ -112,11 +112,15 @@ export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
     ['Dates', c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'not set', plan.assets.length ? `studio from ${day(firstDue(plan))}` : ''],
     ['Budget', c.budget_total != null ? money(c.budget_total, c.currency) : money(total || null, c.currency), shares],
     ['Studio', `${plan.assets.length} jobs · ${num(credits?.total_planned ?? 0)} cr`, `${fit}${credits?.estimated?.length ? ' (estimate)' : ''}`],
-    [
-      'Final words',
-      words ? `${words} of ${plan.assets.length}` : 'not written',
-      state.words_run?.status === 'running' ? 'writing now' : flagged ? `${flagged} to fix` : words ? 'all checked' : 'drafts for now',
-    ],
+    plan.moved_from_old_builder
+      ? plan.moved_from_old_builder.to_flex
+        ? ['Final words', 'from the old builder', 'on each job']
+        : ['Final words', 'in ClickUp', 'made before the move']
+      : [
+          'Final words',
+          words ? `${words} of ${plan.assets.length}` : 'not written',
+          state.words_run?.status === 'running' ? 'writing now' : flagged ? `${flagged} to fix` : words ? 'all checked' : 'drafts for now',
+        ],
   ]
   return (
     <dl className="grid grid-cols-2 @3xl:grid-cols-4 gap-px overflow-hidden rounded-xl border border-secondary bg-secondary">
