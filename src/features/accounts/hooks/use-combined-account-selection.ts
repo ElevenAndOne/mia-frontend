@@ -21,11 +21,13 @@ export const useCombinedAccountSelection = ({
     user,
     refreshAccounts,
     sessionId,
+    activeWorkspace,
   } = useSession()
   const [selectingAccountId, setSelectingAccountId] = useState<string | null>(null)
   const { mccAccounts, selectedMcc, isFetchingMccs, selectMcc, clearSelection } = useMccSelection({
     userId: user?.google_user_id,
     sessionId,
+    tenantId: activeWorkspace?.tenant_id,
   })
 
   useEffect(() => {

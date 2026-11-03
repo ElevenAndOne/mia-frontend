@@ -34,6 +34,7 @@ import { Skeleton, SkeletonRows } from '../../components/skeleton'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { logger } from '../../utils/logger'
 import { trackEvent } from '../../utils/tracking'
+import { withWorkspace } from './utils/with-workspace'
 
 interface Integration {
   id: string
@@ -544,6 +545,7 @@ const IntegrationsPage = ({
         body: JSON.stringify({
           api_key: brevoApiKey.trim(),
           session_id: sessionId,
+          tenant_id: activeWorkspace?.tenant_id || null,
         }),
       })
 
@@ -577,10 +579,13 @@ const IntegrationsPage = ({
     setBrevoError('')
 
     try {
-      const response = await apiFetch('/api/oauth/brevo/disconnect', {
-        method: 'DELETE',
-        headers: createSessionHeaders(sessionId),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/brevo/disconnect', activeWorkspace?.tenant_id),
+        {
+          method: 'DELETE',
+          headers: createSessionHeaders(sessionId),
+        }
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -618,7 +623,11 @@ const IntegrationsPage = ({
       const response = await apiFetch('/api/oauth/smartlead/save-api-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: smartleadApiKey.trim(), session_id: sessionId }),
+        body: JSON.stringify({
+          api_key: smartleadApiKey.trim(),
+          session_id: sessionId,
+          tenant_id: activeWorkspace?.tenant_id || null,
+        }),
       })
 
       if (!response.ok) {
@@ -646,10 +655,13 @@ const IntegrationsPage = ({
     setSmartleadError('')
 
     try {
-      const response = await apiFetch('/api/oauth/smartlead/disconnect', {
-        method: 'POST',
-        headers: createSessionHeaders(sessionId),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/smartlead/disconnect', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: createSessionHeaders(sessionId),
+        }
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -1108,9 +1120,12 @@ const IntegrationsPage = ({
     // which can be stale). Only show selector if token is actually present in the DB.
     if (integrationId === 'meta' || integrationId === 'facebook_organic') {
       try {
-        const metaCredsResponse = await apiFetch('/api/oauth/meta/credentials-status', {
-          headers: createSessionHeaders(sessionId),
-        })
+        const metaCredsResponse = await apiFetch(
+          withWorkspace('/api/oauth/meta/credentials-status', activeWorkspace?.tenant_id),
+          {
+            headers: createSessionHeaders(sessionId),
+          }
+        )
         if (metaCredsResponse.ok) {
           const metaCredsData = await metaCredsResponse.json()
           if (metaCredsData.has_credentials) {
@@ -1452,7 +1467,11 @@ const IntegrationsPage = ({
                 // "Add more" holds Canva for anyone who can manage connections, even with no rows.
                 if (rows.length === 0 && !(group === 'more' && canManageIntegrations)) return null
                 return (
-                  <section key={group} className="mb-6" aria-label={group === 'page' ? 'Your pages' : 'Add more'}>
+                  <section
+                    key={group}
+                    className="mb-6"
+                    aria-label={group === 'page' ? 'Your pages' : 'Add more'}
+                  >
                     <div className="mb-2.5 flex items-baseline justify-between">
                       <span className="mia-mono text-primary">
                         {group === 'page' ? 'Your pages' : 'Add more'}
@@ -1534,7 +1553,9 @@ const IntegrationsPage = ({
                       {group === 'more' && canManageIntegrations && (
                         <div
                           className={`flex items-center justify-between gap-4 rounded-2xl bg-secondary p-3 ${
-                            canvaStatus?.needs_reconnect ? 'ring-1 ring-inset ring-utility-error-400' : ''
+                            canvaStatus?.needs_reconnect
+                              ? 'ring-1 ring-inset ring-utility-error-400'
+                              : ''
                           }`}
                         >
                           <div className="flex min-w-0 items-start gap-3">

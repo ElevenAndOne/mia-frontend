@@ -48,6 +48,8 @@ export interface SetGoogleAdsBody {
   customer_id: string
   google_ads_account_type: 'standalone' | 'mcc_subaccount'
   google_ads_mcc_id?: string
+  /** The workspace on screen (backend checks membership). Omitted: the session's. */
+  tenant_id?: string | null
 }
 
 export const setGoogleAdsAccount = async (

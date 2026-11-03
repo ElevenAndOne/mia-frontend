@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { logger } from '../../../utils/logger'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { Modal } from '../../overlay'
 
 interface GA4Property {
@@ -33,7 +34,7 @@ const GA4PropertySelector = ({
   ga4Properties,
   linkedProperties,
 }: GA4PropertySelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
   const [properties, setProperties] = useState<GA4Property[]>([])
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([])
   const [primaryPropertyId, setPrimaryPropertyId] = useState<string | null>(null)
@@ -84,7 +85,7 @@ const GA4PropertySelector = ({
     try {
       const url = forceRefresh ? '/api/accounts/available?refresh=true' : '/api/accounts/available'
 
-      const response = await apiFetch(url, {
+      const response = await apiFetch(withWorkspace(url, activeWorkspace?.tenant_id), {
         headers: { 'X-Session-ID': sessionId || 'default' },
       })
       const data = await response.json()
@@ -106,9 +107,12 @@ const GA4PropertySelector = ({
       )
       for (let i = 0; i < GA4_MAX_POLLS; i++) {
         await new Promise((resolve) => setTimeout(resolve, GA4_POLL_INTERVAL_MS))
-        const retryResponse = await apiFetch('/api/accounts/available', {
-          headers: { 'X-Session-ID': sessionId || 'default' },
-        })
+        const retryResponse = await apiFetch(
+          withWorkspace('/api/accounts/available', activeWorkspace?.tenant_id),
+          {
+            headers: { 'X-Session-ID': sessionId || 'default' },
+          }
+        )
         const retryData = await retryResponse.json()
         if (retryData.success && retryData.ga4_properties && retryData.ga4_properties.length > 0) {
           const sortedProperties = retryData.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
@@ -119,7 +123,26 @@ const GA4PropertySelector = ({
         }
       }
 
-      setError('No GA4 properties found. Make sure you have access to at least one GA4 property.')
+      // The background fetch swallows Google's errors, so 30s of polling used to end in a
+      // bare "none found" even when the real problem was an expired Google login. Ask
+      // once for a direct listing: it returns the properties, or the actual reason.
+      const direct = await apiFetch(
+        withWorkspace('/api/accounts/available?ga4_direct=true', activeWorkspace?.tenant_id),
+        { headers: { 'X-Session-ID': sessionId || 'default' } }
+      )
+      const directData = direct.ok ? await direct.json() : null
+      if (directData?.ga4_properties?.length > 0) {
+        setProperties(
+          [...directData.ga4_properties].sort((a: GA4Property, b: GA4Property) =>
+            a.display_name.localeCompare(b.display_name)
+          )
+        )
+        return
+      }
+      setError(
+        directData?.ga4_error ||
+          'Your Google login has no GA4 properties. Ask the client to add this Google account to their GA4 property, then try again.'
+      )
     } catch (err) {
       logger.error('Error fetching GA4 properties:', err)
       setError('Failed to load GA4 properties. Please try again.')
@@ -192,18 +215,21 @@ const GA4PropertySelector = ({
       const propertyIdsString = orderedPropertyIds.join(',')
 
       // Link GA4 properties (comma-separated, primary first) or unlink if empty
-      const response = await apiFetch('/api/accounts/link-platform', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          account_id: accountId,
-          platform: 'ga4',
-          platform_id: propertyIdsString,
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/accounts/link-platform', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            account_id: accountId,
+            platform: 'ga4',
+            platform_id: propertyIdsString,
+          }),
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Failed to link GA4 property')

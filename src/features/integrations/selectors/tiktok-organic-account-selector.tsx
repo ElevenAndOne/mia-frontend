@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../../utils/api'
 import { useSession } from '../../../contexts/session-context'
+import { withWorkspace } from '../utils/with-workspace'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
@@ -27,8 +28,10 @@ const TikTokOrganicAccountSelector = ({
   onSuccess,
   currentAccountData,
 }: TikTokOrganicAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [accounts, setAccounts] = useState<TikTokAccount[]>([])
+  // Why the list is empty (backend says: not connected here / TikTok error / no access).
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -48,17 +51,21 @@ const TikTokOrganicAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/tiktok-organic/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/tiktok-organic/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
       if (data.success) {
         setAccounts(data.accounts || [])
+        setEmptyReason(data.reason || null)
 
         // Pre-select previously linked account, or auto-select the only one
         if (currentAccountData?.tiktok_business_id) {
@@ -83,17 +90,20 @@ const TikTokOrganicAccountSelector = ({
     }
 
     await actions.withSubmitting(async () => {
-      const response = await apiFetch('/api/oauth/tiktok-organic/link-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          business_id: state.selectedId,
-          account_name: accounts.find((a) => a.id === state.selectedId)?.name || null,
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/tiktok-organic/link-account', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            business_id: state.selectedId,
+            account_name: accounts.find((a) => a.id === state.selectedId)?.name || null,
+          }),
+        }
+      )
 
       const data = await response.json()
 
@@ -124,7 +134,7 @@ const TikTokOrganicAccountSelector = ({
       successMessage="TikTok account linked!"
       isEmpty={accounts.length === 0}
       emptyMessage="No TikTok accounts found."
-      emptySubMessage="Make sure your TikTok app has been granted account access."
+      emptySubMessage={emptyReason || 'Make sure your TikTok app has been granted account access.'}
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel="Link Account"

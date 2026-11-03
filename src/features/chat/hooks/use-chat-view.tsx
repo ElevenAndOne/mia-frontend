@@ -220,7 +220,7 @@ export const useChatView = () => {
       return
     }
     let cancelled = false
-    listDatasets(sessionId)
+    listDatasets(sessionId, tenantId)
       .then((ds) => {
         if (!cancelled) setHasDatasets(ds.length > 0)
       })

@@ -33,7 +33,11 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
   // Without one, the modal shows the "authenticate with Google first" empty state instead
   // of fetching (or spinning) pointlessly.
   const canDiscover = isAuthenticated && !!user?.google_user_id
-  const discovery = useGoogleAdsDiscovery(isOpen && canDiscover, user?.google_user_id)
+  const discovery = useGoogleAdsDiscovery(
+    isOpen && canDiscover,
+    user?.google_user_id,
+    activeWorkspace?.tenant_id
+  )
   const { mccGroups, standalone } = useGroupedDiscovery(discovery.accounts, search)
 
   // Reset transient state on close; pre-select the saved account when the list is ready.
@@ -78,7 +82,11 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
 
       // For an MCC-managed sub-account this passes the managing MCC so the backend sets
       // login_customer_id — otherwise data pulls for that account fail.
-      await accountService.setGoogleAdsAccount(sessionId || '', setGoogleAdsBodyFor(selected))
+      // tenant_id: write to the workspace on screen, not the one another tab switched to.
+      await accountService.setGoogleAdsAccount(sessionId || '', {
+        ...setGoogleAdsBodyFor(selected),
+        tenant_id: activeWorkspace?.tenant_id || null,
+      })
 
       // Persist to localStorage so picker pre-selects correctly on next open
       if (activeWorkspace?.tenant_id) {
@@ -113,13 +121,20 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
       isLoading={canDiscover && (discovery.status === 'idle' || discovery.status === 'loading')}
       error={
         state.error ||
-        (discovery.status === 'error' ? 'Failed to load Google Ads accounts' : null)
+        (discovery.status === 'error'
+          ? discovery.errorDetail || 'Failed to load Google Ads accounts'
+          : null)
       }
       success={state.success}
       successMessage="Account selected!"
       isEmpty={!canDiscover || (discovery.status === 'ready' && discovery.accounts.length === 0)}
       emptyMessage="No Google Ads accounts found"
-      emptySubMessage="Please authenticate with Google first"
+      emptySubMessage={
+        !canDiscover
+          ? 'Please authenticate with Google first'
+          : discovery.notes[0] ||
+            'This Google login has no Google Ads accounts it can use. Connect with the login that manages the account.'
+      }
       isSubmitting={state.isSubmitting}
       onSubmit={handleSelectAccount}
       submitLabel="Select Account"
@@ -152,6 +167,11 @@ const GoogleAccountSelector = ({ isOpen, onClose, onSuccess }: GoogleAccountSele
           listClassName="space-y-4 max-h-80 overflow-y-auto"
           renderItem={renderAccount}
         />
+        {discovery.notes.map((note) => (
+          <p key={note} className="paragraph-xs text-tertiary mt-3">
+            {note}
+          </p>
+        ))}
       </div>
     </AccountSelectorModal>
   )

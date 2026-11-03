@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { withWorkspace } from '../utils/with-workspace'
 import type { FacebookPage } from '../types'
 
 interface ManualPageLookupResult {
@@ -28,9 +29,12 @@ const FacebookPageSelector = ({
   currentAccountName,
   currentAccountData,
 }: FacebookPageSelectorProps) => {
-  const { sessionId, selectedAccount } = useSession()
+  const { sessionId, selectedAccount, activeWorkspace } = useSession()
   const accountToUse = currentAccountData || selectedAccount
   const [pages, setPages] = useState<FacebookPage[]>([])
+  // Why the list is empty / whether some Business Manager edges failed (backend says).
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
+  const [partial, setPartial] = useState(false)
   const [instagramAccounts, setInstagramAccounts] = useState<
     Array<{ id: string; username: string; page_id: string }>
   >([])
@@ -64,7 +68,7 @@ const FacebookPageSelector = ({
         ? '/api/oauth/meta/organic/facebook-pages?refresh=true'
         : '/api/oauth/meta/organic/facebook-pages'
 
-      const response = await apiFetch(url, {
+      const response = await apiFetch(withWorkspace(url, activeWorkspace?.tenant_id), {
         headers: {
           'X-Session-ID': sessionId || 'default',
         },
@@ -85,6 +89,8 @@ const FacebookPageSelector = ({
       }
 
       if (data.success && data.facebook_pages) {
+        setEmptyReason(data.reason || null)
+        setPartial(Boolean(data.partial))
         const sortedPages = data.facebook_pages.sort((a: FacebookPage, b: FacebookPage) =>
           a.name.localeCompare(b.name)
         )
@@ -114,21 +120,24 @@ const FacebookPageSelector = ({
       const selectedPage = state.selectedId ? pages.find((p) => p.id === state.selectedId) : null
       const linkedInstagram = instagramAccounts.find((ig) => ig.page_id === state.selectedId)
 
-      const response = await apiFetch('/api/oauth/meta/organic/link-page', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId || 'default',
-        },
-        body: JSON.stringify({
-          page_id: state.selectedId || '',
-          page_name: selectedPage?.name || '',
-          page_access_token: selectedPage?.access_token || '',
-          account_id: accountToUse.id,
-          instagram_account_id: linkedInstagram?.id || null,
-          instagram_username: linkedInstagram?.username || null,
-        }),
-      })
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/meta/organic/link-page', activeWorkspace?.tenant_id),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId || 'default',
+          },
+          body: JSON.stringify({
+            page_id: state.selectedId || '',
+            page_name: selectedPage?.name || '',
+            page_access_token: selectedPage?.access_token || '',
+            account_id: accountToUse.id,
+            instagram_account_id: linkedInstagram?.id || null,
+            instagram_username: linkedInstagram?.username || null,
+          }),
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Failed to link Facebook Page')
@@ -152,7 +161,10 @@ const FacebookPageSelector = ({
 
     try {
       const response = await apiFetch(
-        `/api/oauth/meta/organic/lookup-page?page_id=${encodeURIComponent(manualPageId.trim())}`,
+        withWorkspace(
+          `/api/oauth/meta/organic/lookup-page?page_id=${encodeURIComponent(manualPageId.trim())}`,
+          activeWorkspace?.tenant_id
+        ),
         { headers: { 'X-Session-ID': sessionId || 'default' } }
       )
       const data = await response.json()
@@ -210,7 +222,7 @@ const FacebookPageSelector = ({
       successMessage="Facebook Page linked successfully!"
       isEmpty={pages.length === 0}
       emptyMessage="No Facebook Pages found"
-      emptySubMessage="Make sure you have access to at least one Facebook Page"
+      emptySubMessage={emptyReason || 'Make sure you have access to at least one Facebook Page'}
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkPage}
       submitLabel={`Apply (${state.selectedId ? '1' : '0'})`}
@@ -250,6 +262,12 @@ const FacebookPageSelector = ({
           )
         })}
       </div>
+      {partial && (
+        <p className="paragraph-xs text-tertiary mt-3">
+          Meta didn&apos;t return every Business Manager just now, so a Page may be missing. Press
+          Refresh list to try again.
+        </p>
+      )}
 
       {/* Manual page ID fallback */}
       <div className="mt-3">

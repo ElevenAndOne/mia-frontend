@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../utils/api'
+import { withWorkspace } from '../utils/with-workspace'
 import type { AccountData, GA4Property, LinkedGA4Property, PlatformStatus } from '../types'
 
 export interface IntegrationStatusData {
@@ -149,9 +150,11 @@ export const fetchTenantIntegrationStatus = async (
 
 export const fetchAccountIntegrationStatus = async (
   sessionId: string,
-  selectedAccountId?: string | number
+  selectedAccountId?: string | number,
+  tenantId?: string
 ): Promise<IntegrationStatusData> => {
-  const accountsResponse = await apiFetch('/api/accounts/available', {
+  // tenantId: read the workspace on screen, not the one another tab switched to last.
+  const accountsResponse = await apiFetch(withWorkspace('/api/accounts/available', tenantId), {
     headers: { 'X-Session-ID': sessionId },
   })
 
@@ -210,7 +213,7 @@ export const fetchIntegrationStatus = async (
   // FEB 2026 FIX: Always fetch account data for linked_ga4_properties, ga4_property_id, etc.
   // The tenant endpoint only returns platform connection status, not the actual account-level data
   // needed to show which GA4 properties are linked, which Facebook page is selected, etc.
-  const accountStatus = await fetchAccountIntegrationStatus(sessionId, selectedAccountId)
+  const accountStatus = await fetchAccountIntegrationStatus(sessionId, selectedAccountId, tenantId)
 
   // If in tenant context, merge tenant-level and account-level platform status.
   // Account credentials take precedence - if credentials exist, show as connected.

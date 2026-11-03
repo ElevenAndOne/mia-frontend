@@ -4,6 +4,7 @@ import { useSession } from '../../../contexts/session-context'
 import { AccountSelectorModal } from './components/account-selector-modal'
 import { SelectorItem } from './components/selector-item'
 import { useSelectorState } from './hooks/use-selector-state'
+import { withWorkspace } from '../utils/with-workspace'
 
 interface LinkedInAdAccount {
   id: string
@@ -16,6 +17,12 @@ interface LinkedInAdAccount {
 interface LinkedInOrganization {
   id: string
   name: string
+}
+
+interface LinkedInOtherPageRole {
+  id: string
+  name: string
+  roles: string[]
 }
 
 interface LinkedInAccountSelectorProps {
@@ -34,10 +41,14 @@ const LinkedInAccountSelector = ({
   onSuccess,
   currentAccountData,
 }: LinkedInAccountSelectorProps) => {
-  const { sessionId } = useSession()
+  const { sessionId, activeWorkspace } = useSession()
   const [adAccounts, setAdAccounts] = useState<LinkedInAdAccount[]>([])
   const [organizations, setOrganizations] = useState<LinkedInOrganization[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  // Pages this LinkedIn profile has a lesser role on (not Super admin), so can't link.
+  const [otherPageRoles, setOtherPageRoles] = useState<LinkedInOtherPageRole[]>([])
+  // Why the list is empty, from the backend (not connected here / expired / role).
+  const [emptyReason, setEmptyReason] = useState<string | null>(null)
 
   const [state, actions] = useSelectorState<string>({
     onSuccess,
@@ -57,18 +68,25 @@ const LinkedInAccountSelector = ({
     actions.setError(null)
 
     try {
-      const response = await apiFetch('/api/oauth/linkedin/accounts', {
-        method: 'GET',
-        headers: {
-          'X-Session-ID': sessionId || 'default',
-        },
-      })
+      // Name the workspace on screen: the backend session's workspace is whichever
+      // was switched to last in ANY tab, which is how this picker came up empty.
+      const response = await apiFetch(
+        withWorkspace('/api/oauth/linkedin/accounts', activeWorkspace?.tenant_id),
+        {
+          method: 'GET',
+          headers: {
+            'X-Session-ID': sessionId || 'default',
+          },
+        }
+      )
 
       const data = await response.json()
 
       if (data.success) {
         setAdAccounts(data.ad_accounts || [])
         setOrganizations(data.organizations || [])
+        setOtherPageRoles(data.other_page_roles || [])
+        setEmptyReason(data.reason || null)
 
         // Pre-select previously linked ad account and org
         if (currentAccountData?.linkedin_ads_account_id) {
@@ -105,6 +123,7 @@ const LinkedInAccountSelector = ({
           'X-Session-ID': sessionId || 'default',
         },
         body: JSON.stringify({
+          tenant_id: activeWorkspace?.tenant_id || null,
           ad_account_id: state.selectedId || null,
           ad_account_name: adAccounts.find((a) => a.id === state.selectedId)?.name || null,
           organization_id: selectedOrgId || null,
@@ -141,7 +160,9 @@ const LinkedInAccountSelector = ({
       successMessage="LinkedIn account linked!"
       isEmpty={adAccounts.length === 0 && organizations.length === 0}
       emptyMessage="No LinkedIn accounts found."
-      emptySubMessage="Make sure your LinkedIn app has the right permissions."
+      emptySubMessage={
+        emptyReason || 'Connect with the LinkedIn profile that manages the Page or ad account.'
+      }
       isSubmitting={state.isSubmitting}
       onSubmit={handleLinkAccount}
       submitLabel="Link Account"
@@ -188,6 +209,14 @@ const LinkedInAccountSelector = ({
               ))}
             </div>
           </div>
+        )}
+
+        {otherPageRoles.length > 0 && (
+          <p className="paragraph-sm text-tertiary">
+            Not shown: {otherPageRoles.map((p) => p.name).join(', ')}. Your LinkedIn role on{' '}
+            {otherPageRoles.length === 1 ? 'that Page' : 'those Pages'} isn't Super admin, which
+            LinkedIn needs before Mia can read Page results.
+          </p>
         )}
       </div>
     </AccountSelectorModal>
