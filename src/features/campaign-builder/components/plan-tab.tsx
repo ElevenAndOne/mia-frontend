@@ -105,7 +105,14 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   return (
     <div className="flex flex-col gap-4">
       {run?.status === 'failed' ? <RunFailed run={run} what="plan" busy={!!busy} onRetry={() => onMakePlan()} /> : null}
-      {locked ? (
+      {locked && plan.moved_from_old_builder ? (
+        <Card className="paragraph-sm text-primary">
+          Moved from the old campaign builder on {day(plan.moved_from_old_builder.at)}.{' '}
+          {plan.moved_from_old_builder.to_flex
+            ? 'Its jobs are priced from the studio rate card: check their credits on the Studio tab, then send them to Flex.'
+            : 'Its jobs were already made in ClickUp, so they stay there and aren’t sent to Flex. Jobs you add from now on go to Flex from the Studio tab.'}
+        </Card>
+      ) : locked ? (
         <Card className="paragraph-sm text-primary">
           Approved{state.approved?.at ? ` ${day(state.approved.at)}` : ''}
           {state.approved?.by ? ` by ${state.approved.by}` : ''}. It goes live when you launch it, so nothing is tracked
@@ -251,9 +258,14 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         title="Jobs for the studio"
         // written, as the Final words box counts them: a job whose only flags are client-to-confirm notes is written,
         // not "to fix" (local test 6, 2 Nov: "11 ready, 2 to fix" beside "19 of 19, 2 to fix")
-        summary={`${plan.assets.length} jobs · ${num(plan.credits?.total_planned ?? 0)} credits · words: ${
-          plan.assets.filter((a) => a.final_words).length
-        } of ${plan.assets.length} written${flaggedJobs.length ? `, ${flaggedJobs.length} to fix` : ''}`}
+        summary={`${plan.assets.length} jobs · ${num(plan.credits?.total_planned ?? 0)} credits${
+          plan.moved_from_old_builder
+            ? plan.moved_from_old_builder.to_flex
+              ? ' · from the old builder'
+              : ' · made in ClickUp'
+            : ` · words: ${plan.assets.filter((a) => a.final_words).length} of ${plan.assets.length} written${
+                flaggedJobs.length ? `, ${flaggedJobs.length} to fix` : ''}`
+        }`}
         open={folds.has('jobs')}
         onToggle={() => toggle('jobs')}
       >
