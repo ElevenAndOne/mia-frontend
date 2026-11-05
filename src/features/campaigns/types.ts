@@ -198,6 +198,7 @@ export interface CampaignSummary {
   budget_currency: string | null
   start_date: string | null
   end_date: string | null
+  builder?: string | null // 'v2': made in the campaign builder, its jobs are added on its own page
 }
 
 export type CampaignView = 'overview' | 'calendar' | 'builder' | 'setup'

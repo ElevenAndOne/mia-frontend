@@ -625,7 +625,13 @@ function StepView({
       {next ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
           <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
-            {nextOpen ? `✓ ${meta.label} done` : 'Finish this step to go on.'}
+            {nextOpen
+              ? `✓ ${meta.label} done`
+              : // Mia at work is not the PM's job to finish (review 5 Nov, 2.11: "Finish this step to go on" beside a
+                // plan or the words still being written, a likely part of "it won't let me click Next")
+                states[step] === 'busy'
+                ? 'Mia is working on this step. Next opens when she is done.'
+                : 'Finish this step to go on: the line at the top says what is left.'}
           </p>
           <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
             Next: {next.label}

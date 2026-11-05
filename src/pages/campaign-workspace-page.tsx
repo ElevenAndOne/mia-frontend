@@ -81,6 +81,12 @@ const CampaignWorkspacePage = () => {
       )
     }
     if (!ViewComponent || !sessionId || !tenantId) return null
+    // A campaign made in (or moved to) the campaign builder is built and changed only on its own page (Josh, 5 Nov:
+    // new campaigns live only there; the old page goes once the old campaigns finish or move). Its reporting views
+    // (Overview, Calendar, Setup) stay here until they move to the new page.
+    if (view === 'builder' && (campaign as typeof campaign & { builder?: string | null }).builder === 'v2') {
+      return <Navigate to={`/campaign-builder/${campaign.campaign_id}/studio`} replace />
+    }
     return (
       <CampaignWorkspaceProvider
         value={{

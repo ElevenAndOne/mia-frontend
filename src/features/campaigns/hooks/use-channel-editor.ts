@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useToast } from '../../../contexts/toast-context'
-import { commitPatch } from '../utils/commit-patch'
+import { commitPatch, refusal } from '../utils/commit-patch'
 import { mapAction, mapAsset, mapPhase } from '../utils/update-helpers'
 import * as api from '../services/campaign-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
@@ -84,8 +84,9 @@ export function useChannelEditor(phaseId: string, actionId: string) {
     async (assetId: string) => {
       const res = await api.deleteAsset(sessionId, tenantId, id, assetId)
       if (res.ok) applyAction((a) => ({ ...a, assets: a.assets.filter((x) => x.asset_id !== assetId) }))
+      else showToast('error', await refusal(res, "Couldn't remove the asset. Please try again."))
     },
-    [sessionId, tenantId, id, applyAction],
+    [sessionId, tenantId, id, applyAction, showToast],
   )
 
   return { patchAction, addAsset, patchAsset, deleteAsset }

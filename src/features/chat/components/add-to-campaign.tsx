@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FilePlus02 } from '../../../components/icon/file-plus-02'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
@@ -37,6 +38,9 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
 
   const [open, setOpen] = useState(false)
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
+  // Campaigns in the campaign builder take new jobs on their own page, where Mia knows the plan; an add from here
+  // always failed on them (review 5 Nov, 1.5), so they are links, not choices
+  const [inBuilder, setInBuilder] = useState<CampaignSummary[]>([])
   const [campaignId, setCampaignId] = useState('')
   const [phases, setPhases] = useState<string[] | null>(null)
   const [phaseName, setPhaseName] = useState('')
@@ -48,7 +52,9 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     if (!open || campaigns || !sessionId || !tenantId) return
     fetchCampaignList(sessionId, tenantId)
       .then((list) => {
-        const usable = list.filter((c) => c.status !== 'archived')
+        const open = list.filter((c) => c.status !== 'archived')
+        const usable = open.filter((c) => c.builder !== 'v2')
+        setInBuilder(open.filter((c) => c.builder === 'v2'))
         setCampaigns(usable)
         if (usable.length === 1) setCampaignId(usable[0].campaign_id)
       })
@@ -166,7 +172,9 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
           {campaigns === null ? (
             <p className="paragraph-sm text-quaternary">Loading campaigns…</p>
           ) : campaigns.length === 0 ? (
-            <p className="paragraph-sm text-quaternary">No campaigns in this workspace yet.</p>
+            <p className="paragraph-sm text-quaternary">
+              {inBuilder.length ? 'No campaigns to add to from here.' : 'No campaigns in this workspace yet.'}
+            </p>
           ) : (
             <>
               <select
@@ -213,6 +221,23 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
               </p>
             </>
           )}
+          {campaigns !== null && inBuilder.length ? (
+            <div className="border-t border-secondary pt-2 flex flex-col gap-1">
+              <p className="paragraph-xs text-tertiary">
+                In the campaign builder. Add a job on the campaign's page: ask Mia in its chat.
+              </p>
+              {inBuilder.map((c) => (
+                <Link
+                  key={c.campaign_id}
+                  to={`/campaign-builder/${c.campaign_id}`}
+                  className="paragraph-xs text-brand-secondary hover:underline truncate"
+                  onClick={() => setOpen(false)}
+                >
+                  {c.campaign_name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
     </div>

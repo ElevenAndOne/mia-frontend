@@ -6,13 +6,14 @@ import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import { StudioPushModal } from './studio-push-modal'
 import { ClickUpPullModal } from './clickup-pull-modal'
 import { ClickUpSyncModal } from './clickup-sync-modal'
+import { ClickUpActionsClassic } from './clickup-actions-classic'
 
 type Modal = 'studio' | 'sync' | 'pull' | null
 
 // ClickUp controls for the Builder header (7 Oct 2026): one labelled "Send to studio"
 // button opens the checklist that pushes (and re-pushes) the campaign; the sync check and
 // the pull of approved ads sit behind a small menu. Only rendered when the plugin is enabled.
-export const ClickUpActions = () => {
+const ClickUpActionsStudio = () => {
   const { isEnabled } = usePlugins()
   const { campaign } = useCampaignWorkspace()
   const cu = useClickUp()
@@ -78,3 +79,9 @@ export const ClickUpActions = () => {
     </>
   )
 }
+
+// The Send-to-studio modal is behind a switch while its open items are fixed (review 5 Nov, section 4): until
+// VITE_STUDIO_PUSH_MODAL is "true" the header keeps the push, update and pull buttons PMs use today.
+const STUDIO_PUSH_MODAL = import.meta.env.VITE_STUDIO_PUSH_MODAL === 'true'
+
+export const ClickUpActions = () => (STUDIO_PUSH_MODAL ? <ClickUpActionsStudio /> : <ClickUpActionsClassic />)

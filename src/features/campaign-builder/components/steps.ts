@@ -82,7 +82,8 @@ export function stepStates(s: BuildState): Record<StepKey, StepState> {
     questions: planRunning ? 'busy' : !plan ? 'todo' : asks.length ? 'todo' : 'done',
     targets: !plan ? 'todo' : toSet.length ? 'todo' : 'done',
     // confirmed once: done (confirming again after a change is offered on the step the PM is on)
-    jobs: !plan || jobBlockers ? 'todo' : (plan.decisions as { jobs_confirmed_sig?: string }).jobs_confirmed_sig ? 'done' : 'todo',
+    // no jobs left is never done (live 3 Nov: all removed, then Looks right, and Final words could never finish)
+    jobs: !plan || jobBlockers || !jobs.length ? 'todo' : (plan.decisions as { jobs_confirmed_sig?: string }).jobs_confirmed_sig ? 'done' : 'todo',
     // words written before the jobs were confirmed (an older draft) don't make the step done ahead of Jobs (local test
     // 4, 30 Oct: Final words showed done while Targets and Jobs were still open)
     words: wordsRunning ? 'busy' : allWords && !!(plan?.decisions as { jobs_confirmed_sig?: string } | undefined)?.jobs_confirmed_sig ? 'done' : 'todo',
