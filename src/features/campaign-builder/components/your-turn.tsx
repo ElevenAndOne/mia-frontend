@@ -16,6 +16,7 @@ export interface AskFocus {
   detail?: string // the text of the item, so Mia knows exactly what is meant
   text?: string // what to send instead of the default question (an answer: "My answer: …")
   draft?: string // put this in the chat box for the PM to finish, nothing sent ("Add a job: ")
+  pickFile?: boolean // with draft: open the file dialog too ("Add jobs from a file")
 }
 export const ASK_EVENT = 'campaign-ask'
 export const askMia = (focus: AskFocus) => window.dispatchEvent(new CustomEvent<AskFocus>(ASK_EVENT, { detail: focus }))

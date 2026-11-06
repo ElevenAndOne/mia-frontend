@@ -224,11 +224,20 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <p className="paragraph-sm text-secondary max-w-[60ch]">
           Need another job in this campaign? Ask Mia in the chat. She puts it in the right phase, prices it from the credit
-          table, and shows it for you to apply before anything changes. If it already exists as a ClickUp task, paste its link.
+          table, and shows it for you to apply before anything changes. If it already exists as a ClickUp task, paste its link or upload a ClickUp export.
         </p>
-        <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
-          Add a job
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
+            Add a job
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => askMia({ label: 'Add jobs from a file', draft: 'Add the jobs in this file to the campaign. ', pickFile: true })}
+          >
+            Add jobs from a file
+          </Button>
+        </div>
       </Card>
 
       {lq.data?.tag ? (
