@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useToast } from '../../../contexts/toast-context'
-import { commitPatch } from '../utils/commit-patch'
+import { commitPatch, refusal } from '../utils/commit-patch'
 import { mapAction, mapAsset, mapPhase } from '../utils/update-helpers'
 import * as api from '../services/campaign-api'
 import { useCampaignWorkspace } from '../contexts/campaign-context'
@@ -30,11 +30,23 @@ export function useChannelEditor(phaseId: string, actionId: string) {
   )
 
   const addAsset = useCallback(async () => {
-    const res = await api.createAsset(sessionId, tenantId, id, actionId, {
-      asset_name: 'New asset',
-      asset_type: 'static',
-    })
-    if (!res.ok) return
+    let res: Response
+    try {
+      res = await api.createAsset(sessionId, tenantId, id, actionId, {
+        asset_name: 'New asset',
+        asset_type: 'static',
+      })
+    } catch {
+      showToast('error', "Couldn't add the asset — check your connection and retry.")
+      return
+    }
+    // say why instead of doing nothing (3 Nov: PMs pressed Add and nothing happened), e.g. a campaign made in the
+    // campaign builder, whose jobs are added there
+    if (!res.ok) {
+      const detail = await res.json().then((b) => b?.detail, () => null)
+      showToast('error', typeof detail === 'string' && detail ? detail : "Couldn't add the asset — please try again.")
+      return
+    }
     const d = await res.json()
     const asset: Asset = {
       asset_id: d.asset_id,
@@ -55,7 +67,7 @@ export function useChannelEditor(phaseId: string, actionId: string) {
       meta_ad_id: null,
     }
     applyAction((a) => ({ ...a, assets: [...a.assets, { ...asset, sort_order: a.assets.length }] }))
-  }, [sessionId, tenantId, id, actionId, applyAction])
+  }, [sessionId, tenantId, id, actionId, applyAction, showToast])
 
   const patchAsset = useCallback(
     async (assetId: string, fields: Partial<Asset>) => {
@@ -72,8 +84,9 @@ export function useChannelEditor(phaseId: string, actionId: string) {
     async (assetId: string) => {
       const res = await api.deleteAsset(sessionId, tenantId, id, assetId)
       if (res.ok) applyAction((a) => ({ ...a, assets: a.assets.filter((x) => x.asset_id !== assetId) }))
+      else showToast('error', await refusal(res, "Couldn't remove the asset. Please try again."))
     },
-    [sessionId, tenantId, id, applyAction],
+    [sessionId, tenantId, id, applyAction, showToast],
   )
 
   return { patchAction, addAsset, patchAsset, deleteAsset }

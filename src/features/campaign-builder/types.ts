@@ -172,7 +172,7 @@ export interface CreditFit {
 
 export interface Plan {
   framework: string
-  built_on: string
+  built_on?: string
   brief: Brief
   concept: {
     name: string
@@ -219,7 +219,7 @@ export interface Plan {
     answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
-  checks: PlanCheck[]
+  checks?: PlanCheck[] // none on a campaign moved from the old builder
   review?: PlanReview
 }
 
@@ -393,7 +393,8 @@ export interface StudioJob {
   credits_confirmed: boolean
   // made in ClickUp and never sent to Flex (a ClickUp task added to the campaign, or work from before it moved from
   // the old builder): listed apart, never offered for sending
-  clickup?: { task_id: string; url: string } | null
+  // state: the nightly check found the task still there, archived or deleted in ClickUp
+  clickup?: { task_id: string; url: string; state?: 'ok' | 'archived' | 'deleted' | null; checked_at?: string | null } | null
   kept_out?: string | null // made outside Flex, and why (e.g. launched before the campaign moved)
   flex: {
     task_id?: string

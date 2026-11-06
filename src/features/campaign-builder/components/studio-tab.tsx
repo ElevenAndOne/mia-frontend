@@ -7,7 +7,7 @@ import * as api from '../api'
 import type { LaunchJob, StudioJob, StudioState } from '../types'
 import { JobCard } from './launch-tab'
 import { Card, NeedsYou, channelLabel, day, num } from './parts'
-import { AskMia, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
+import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
 
 // The Studio tab (plan §8.2): the approved jobs, priced from the Credit Ledger and placed in the
 // client's sprints, sent to Flex in one go. After that, Flex is where the work is managed; this tab
@@ -218,6 +218,18 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
+
+      {/* Jobs are added on this page through Mia, not from the old campaign screen or the home chat; nothing here said so
+          (live 5 Nov: "I am not sure how to add new tasks"). The chat starts the line, the PM finishes it. */}
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <p className="paragraph-sm text-secondary max-w-[60ch]">
+          Need another job in this campaign? Ask Mia in the chat. She puts it in the right phase, prices it from the credit
+          table, and shows it for you to apply before anything changes. If it already exists as a ClickUp task, paste its link.
+        </p>
+        <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
+          Add a job
+        </Button>
+      </Card>
 
       {lq.data?.tag ? (
         // The one manual step a PM can get wrong: an ad they set up by hand must carry the tag for its results to come
@@ -446,10 +458,18 @@ function Row({
             )}
           </span>
         ) : inClickUp && j.clickup ? (
-          <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
-            href={j.clickup.url} target="_blank" rel="noreferrer">
-            Open in ClickUp ↗
-          </a>
+          <span className="flex flex-col gap-0.5">
+            {j.clickup.state === 'deleted' ? null : (
+              <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
+                href={j.clickup.url} target="_blank" rel="noreferrer">
+                Open in ClickUp ↗
+              </a>
+            )}
+            {/* the nightly ClickUp check: re-link the job to the task the team works in, or drop it */}
+            {j.clickup.state === 'archived' || j.clickup.state === 'deleted' ? (
+              <NeedsYou>{j.clickup.state === 'archived' ? 'task archived in ClickUp' : 'task deleted in ClickUp'}</NeedsYou>
+            ) : null}
+          </span>
         ) : madeElsewhere ? (
           <span className="paragraph-xs text-tertiary">{j.kept_out}</span>
         ) : (

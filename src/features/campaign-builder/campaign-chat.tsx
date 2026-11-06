@@ -190,6 +190,16 @@ export function CampaignChat({
   useEffect(() => {
     const on = (e: Event) => {
       const focus = (e as CustomEvent<AskFocus>).detail
+      if (focus.draft !== undefined) {
+        // a start for the PM to finish (the Studio tab's "Add a job"): in the box, not sent, no pin
+        setInput(focus.draft)
+        requestAnimationFrame(() => {
+          const el = inputRef.current
+          el?.focus()
+          el?.setSelectionRange(focus.draft!.length, focus.draft!.length)
+        })
+        return
+      }
       if (!focus.text) {
         setPin({ label: focus.label, detail: focus.detail })
         requestAnimationFrame(() => inputRef.current?.focus())
@@ -250,7 +260,7 @@ export function CampaignChat({
       >
         {messages.length === 0 && !streaming ? (
           <p className="paragraph-sm text-tertiary">
-            Press “Ask Mia” on anything in the list, or try: “Make the budget R80k”, “Drop the emailer”, “Why this idea?”
+            Press “Ask Mia” on anything in the list, or try: “Make the budget R80k”, “Drop the emailer”, “Add a job: a LinkedIn carousel for the launch”, “Why this idea?”
           </p>
         ) : null}
         {messages.map((m, i) =>

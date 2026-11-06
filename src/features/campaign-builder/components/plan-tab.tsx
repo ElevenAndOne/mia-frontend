@@ -110,7 +110,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           Moved from the old campaign builder on {day(plan.moved_from_old_builder.at)}.{' '}
           {plan.moved_from_old_builder.to_flex
             ? 'Its jobs are priced from the studio rate card: check their credits on the Studio tab, then send them to Flex.'
-            : 'Its jobs were already made in ClickUp, so they stay there and aren’t sent to Flex. Jobs you add from now on go to Flex from the Studio tab.'}
+            : 'Its jobs were already made in ClickUp, so they stay there and aren’t sent to Flex. To add a job, ask Mia in the chat (“Add a job: …”); jobs you add from now on go to Flex from the Studio tab.'}
         </Card>
       ) : locked ? (
         <Card className="paragraph-sm text-primary">
@@ -296,6 +296,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
                       onEdit={onEdit}
                       wordsRunning={state.words_run?.status === 'running'}
                       onRewrite={(ids) => onWriteWords(ids, true)}
+                      lastJob={plan.assets.length === 1}
                     />
                   </JobRow>
                   )
@@ -890,7 +891,7 @@ function planTurnItems({
       actions: <AskMia label="Nothing live at the start" detail={`Campaign starts ${startOn}, first job live ${firstLive}`} />,
     })
   const reconfirm = !plan.decisions.jobs_confirmed && !!(plan.decisions as { jobs_confirmed_sig?: string }).jobs_confirmed_sig
-  if (reconfirm && part !== 'jobs')
+  if (reconfirm && part !== 'jobs' && jobs.length)
     items.push({
       key: 'reconfirm-jobs',
       title: 'The jobs or the money changed since you confirmed them',
@@ -901,7 +902,15 @@ function planTurnItems({
         </PrimaryAction>
       ),
     })
-  if (part === 'jobs' || part === 'check') {
+  if ((part === 'jobs' || part === 'check') && !jobs.length) {
+    // every job removed (live 3 Nov): Looks right on nothing led to a step that could never finish
+    items.push({
+      key: 'no-jobs',
+      title: 'There are no jobs in the plan',
+      detail: 'Ask Mia in the chat to add the jobs you want, or make the plan again from Key facts.',
+      actions: <AskMia label="No jobs" detail="Every job was removed from the plan" />,
+    })
+  } else if (part === 'jobs' || part === 'check') {
     items.push({
       key: 'confirm-jobs',
       title: 'Check the jobs and the money',
@@ -1482,6 +1491,7 @@ function Job({
   onEdit,
   wordsRunning,
   onRewrite,
+  lastJob = false,
 }: {
   a: PlanAsset
   index: number
@@ -1489,8 +1499,11 @@ function Job({
   onEdit: Props['onEdit']
   wordsRunning: boolean
   onRewrite: (jobIds: string[]) => Promise<unknown>
+  lastJob?: boolean
 }) {
   const noRate = a.credits == null
+  // Remove asks first: one click dropped a job for good, and a PM removed all 13 one after another (live 3 Nov)
+  const [askRemove, setAskRemove] = useState(false)
   const set = (fields: Record<string, string | null>) => onEdit([{ op: 'update_asset', index, job_id: a.job_id, fields }])
   return (
     <article className={`rounded-lg bg-primary p-3 flex flex-col gap-2 ${noRate ? 'border-2 border-utility-warning-300' : 'border border-secondary'}`}>
@@ -1526,11 +1539,30 @@ function Job({
             </>
           )}
         </div>
-        {disabled ? null : (
+        {disabled ? null : askRemove ? (
+          <span className="flex shrink-0 flex-wrap items-center justify-end gap-2 paragraph-xs">
+            <span className="text-secondary">
+              {lastJob ? 'This is the last job. Remove it?' : 'Remove this job?'}
+            </span>
+            <button
+              type="button"
+              className="text-utility-error-700 hover:underline"
+              onClick={() => {
+                setAskRemove(false)
+                onEdit([{ op: 'remove_asset', index, job_id: a.job_id }])
+              }}
+            >
+              Remove
+            </button>
+            <button type="button" className="text-tertiary hover:text-primary" onClick={() => setAskRemove(false)}>
+              Keep
+            </button>
+          </span>
+        ) : (
           <button
             type="button"
             className="paragraph-xs text-tertiary hover:text-primary shrink-0"
-            onClick={() => onEdit([{ op: 'remove_asset', index, job_id: a.job_id }])}
+            onClick={() => setAskRemove(true)}
           >
             Remove
           </button>
@@ -1665,14 +1697,17 @@ function DesignerBrief({ cb, why }: { cb: CreativeBrief; why?: string }) {
 }
 
 function Checks({ plan }: { plan: Plan }) {
-  const bad = plan.checks.filter((c) => !c.ok)
+  // a campaign moved from the old builder has no checks: no planner ran (review 5 Nov: the fold crashed the page)
+  const checks = plan.checks ?? []
+  if (!checks.length) return null
+  const bad = checks.filter((c) => !c.ok)
   return (
     <details className="rounded-xl border border-secondary bg-primary p-4">
       <summary className="cursor-pointer subheading-sm text-primary">
-        Mia's checks · {plan.checks.length - bad.length} of {plan.checks.length} pass
+        Mia's checks · {checks.length - bad.length} of {checks.length} pass
       </summary>
       <ul className="mt-2 flex flex-col gap-1 paragraph-sm">
-        {plan.checks.map((c) => (
+        {checks.map((c) => (
           <li key={c.check} className={c.ok ? 'text-secondary' : 'text-utility-warning-700'}>
             {c.ok ? '✓' : '⚠'} {c.check}: <span className="text-tertiary">{c.detail}</span>
           </li>

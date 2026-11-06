@@ -169,7 +169,7 @@ function todayString(): string {
 
 /** The campaign's real state: an approved builder campaign is a draft until its first job launches, and said
  *  "Live" with blank numbers here (home tracker plan, 2 Nov). */
-function CampaignStatusPill({ status, startDate }: { status: string; startDate: string | null }) {
+function CampaignStatusPill({ status, startDate, builder }: { status: string; startDate: string | null; builder?: string | null }) {
   if (status === 'live') {
     return (
       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-utility-success-50 border border-utility-success-200">
@@ -184,9 +184,12 @@ function CampaignStatusPill({ status, startDate }: { status: string; startDate: 
     status === 'draft'
       ? startDate && startsAhead
         ? `Starts ${format(new Date(startDate), 'd MMM')}`
-        : startDate
-          ? 'Approved, not launched'
-          : 'Approved'
+        : // "Approved" is the campaign builder's word: a draft made the old way was never approved (review 5 Nov, 2.6)
+          builder !== 'v2'
+          ? 'Draft'
+          : startDate
+            ? 'Approved, not launched'
+            : 'Approved'
       : status === 'paused'
         ? 'Paused'
         : status === 'completed'
@@ -709,7 +712,7 @@ export function RaceCampaignTracker({
                 />
               </svg>
             </button>
-            <CampaignStatusPill status={campaign.status} startDate={campaign.start_date} />
+            <CampaignStatusPill status={campaign.status} startDate={campaign.start_date} builder={campaign.builder} />
           </div>
         </div>
 
@@ -907,7 +910,7 @@ export function RaceCampaignTracker({
               )
             })}
 
-          {campaign.status === 'draft' && (
+          {campaign.status === 'draft' && campaign.builder === 'v2' && (
             <p className="paragraph-xs text-quaternary text-center py-2">
               Numbers start when the first job launches.
             </p>

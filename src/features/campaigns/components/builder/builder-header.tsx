@@ -128,9 +128,17 @@ export const BuilderHeader = ({ onBuildNew }: { onBuildNew: () => void }) => {
       <div className="bg-secondary rounded-2xl border border-secondary p-4 sm:p-5 space-y-4">
       <div className="flex items-center flex-wrap gap-3">
         {newBuilder ? (
-          <Link to={`/campaign-builder/${campaign.campaign_id}/studio`} className="paragraph-xs text-brand-secondary hover:underline">
-            Jobs go to the studio from this campaign's builder page
-          </Link>
+          // a button, not a caption: on a campaign moved to the campaign builder this is where its work happens now
+          // (5 Nov: the small link was easy to miss)
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="paragraph-xs text-tertiary">Made in the campaign builder: jobs are added and changed there.</span>
+            <Link
+              to={`/campaign-builder/${campaign.campaign_id}/studio`}
+              className="inline-flex items-center rounded-lg bg-brand-solid px-3 py-1.5 paragraph-xs font-medium text-primary-onbrand hover:opacity-90"
+            >
+              Open in the campaign builder
+            </Link>
+          </span>
         ) : (
           <ClickUpActions />
         )}

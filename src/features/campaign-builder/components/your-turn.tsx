@@ -15,6 +15,7 @@ export interface AskFocus {
   label: string // what the PM clicked, as the chip shows it ("Target · Reach · Click-through rate")
   detail?: string // the text of the item, so Mia knows exactly what is meant
   text?: string // what to send instead of the default question (an answer: "My answer: …")
+  draft?: string // put this in the chat box for the PM to finish, nothing sent ("Add a job: ")
 }
 export const ASK_EVENT = 'campaign-ask'
 export const askMia = (focus: AskFocus) => window.dispatchEvent(new CustomEvent<AskFocus>(ASK_EVENT, { detail: focus }))

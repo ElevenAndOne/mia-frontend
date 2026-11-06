@@ -74,6 +74,7 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
     case 'targets':
       return say(toSet.length ? `Keep Mia's number or type your own for ${plural(toSet.length, 'target')}.` : 'Check the targets.', 'targets')
     case 'jobs':
+      if (!jobs.length) return say('There are no jobs in the plan: ask Mia in the chat to add one, or make the plan again.', 'jobs')
       return say('Look over the jobs and the money, then press Looks right. Mia writes the final words after.', 'jobs')
     case 'words':
       if (words) return say(`${background} Nothing needs you yet; this step finishes by itself.`, 'words')
