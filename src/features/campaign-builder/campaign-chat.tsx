@@ -205,7 +205,17 @@ export function CampaignChat({
       if (focus.draft !== undefined) {
         // a start for the PM to finish (the Studio tab's "Add a job"): in the box, not sent, no pin
         setInput(focus.draft)
-        if (focus.pickFile) fileRef.current?.click() // "Add jobs from a file": the file dialog opens on the same press
+        if (focus.pickFile) {
+          // "Add jobs from a file": the file dialog opens on the same press; cancelled, the start it put in the box goes
+          // too, unless the PM has typed into it since (review 6 Nov, 2.4)
+          const draft = focus.draft
+          fileRef.current?.addEventListener(
+            'cancel',
+            () => setInput((now) => (now === draft ? '' : now)),
+            { once: true },
+          )
+          fileRef.current?.click()
+        }
         requestAnimationFrame(() => {
           const el = inputRef.current
           el?.focus()
@@ -485,7 +495,7 @@ export function CampaignChat({
           />
           <button
             type="button"
-            title="Attach a ClickUp export, a document of tasks or a brief"
+            title="Attach a spreadsheet, a Word document or a ClickUp export"
             aria-label="Attach a file"
             disabled={loading || !!reading}
             onClick={() => fileRef.current?.click()}

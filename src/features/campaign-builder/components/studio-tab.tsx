@@ -223,8 +223,9 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
           (live 5 Nov: "I am not sure how to add new tasks"). The chat starts the line, the PM finishes it. */}
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <p className="paragraph-sm text-secondary max-w-[60ch]">
-          Need another job in this campaign? Ask Mia in the chat. She puts it in the right phase, prices it from the credit
-          table, and shows it for you to apply before anything changes. If it already exists as a ClickUp task, paste its link or upload a ClickUp export.
+          Need more jobs in this campaign? Ask Mia in the chat: type them, add a file (a spreadsheet, a Word document or a
+          ClickUp export), or paste ClickUp links. She sorts them into phases, prices them from the credit table, and shows
+          one card for you to check and apply before anything changes.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
@@ -394,6 +395,11 @@ function Row({
           {j.phase} · {channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
+        {inFlex && j.clickup_not_linked ? (
+          <span className="block label-xs text-utility-warning-700" title={j.clickup_not_linked}>
+            Not linked to its ClickUp task yet: Mia tries again on the next Flex read
+          </span>
+        ) : null}
       </td>
       <td className="py-2 pr-2 text-secondary">
         {j.ledger_type ?? '—'}
