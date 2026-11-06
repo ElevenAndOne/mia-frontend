@@ -6,6 +6,21 @@ import { fetchPhaseActuals, type KPIActual } from '../../campaign/services/campa
 import * as api from '../api'
 import type { ResultsKpi } from '../types'
 import { Card, Chip, day, money, num } from './parts'
+import { askMia } from './your-turn'
+
+// A target is set in the chat (Mia's targets card, applied by the PM); this only starts the question there (6 Nov: a
+// campaign moved or approved with no targets had no way to get them).
+function AskForTarget({ draft }: { draft: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => askMia({ label: 'Targets', draft })}
+      className="inline-flex items-center rounded-full border border-brand px-2.5 py-0.5 label-xs text-brand-secondary hover:bg-brand-primary whitespace-nowrap"
+    >
+      Ask Mia
+    </button>
+  )
+}
 
 // The Results tab (plan §8.2): how the live campaign is tracking against the plan's targets, read the way each
 // target was made, then the debrief once it ends. Actuals are the campaign tracker's (cached, warmed nightly).
@@ -101,6 +116,12 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                 <span className="paragraph-xs text-tertiary">{p.budget != null ? money(p.budget, s.currency) : ''}</span>
               </div>
               {loading ? <p className="paragraph-xs text-tertiary">Reading the platforms… (up to a minute)</p> : null}
+              {!p.kpis.length ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-secondary bg-primary px-2 py-1.5">
+                  <span className="paragraph-sm text-secondary">No target yet</span>
+                  <AskForTarget draft={`Suggest targets for ${p.phase}.`} />
+                </div>
+              ) : null}
               <ul className="flex flex-col gap-1.5">
                 {p.kpis.map((k) => {
                   const a = rows.find((r) => r.kpi_name === k.kpi_name)
@@ -121,7 +142,17 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                             {k.basis === 'budget' && !k.rate ? (pc === 'behind' ? 'buying less than before' : 'buying what it bought before') : PACE_STYLE[pc].label}
                           </span>
                         ) : null}
-                        {k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
+                        {k.target == null ? <AskForTarget draft={`Suggest a target for ${p.phase} ${k.kpi_name}.`} /> : null}
+                        {k.basis === 'after_approve' ? <Chip>set after approve</Chip> : k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
+                        {(() => {
+                          // the number it replaced stays on record (owner, 6 Nov): never a silent rewrite
+                          const last = k.history?.length ? k.history[k.history.length - 1] : null
+                          return last && last.old != null ? (
+                            <span className="paragraph-xs text-tertiary">
+                              changed {last.at ? day(last.at) : ''} from {targetLabel({ ...k, target: last.old }, s.currency)}
+                            </span>
+                          ) : null
+                        })()}
                         {a?.state === 'none' ? <span className="paragraph-xs text-tertiary">not tracked yet: set its source on the campaign</span> : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
                       </div>

@@ -487,6 +487,8 @@ export interface ResultsKpi {
   target: number | null
   basis?: string | null
   confidence?: string | null
+  // set or changed after approve through Mia's targets card, oldest first; each keeps the number it replaced
+  history?: { old: number | null; new: number; why?: string | null; at?: string | null }[]
   rate: boolean
   lower_is_better: boolean
 }
