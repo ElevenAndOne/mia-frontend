@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ChatMarkdown } from '../../components/chat-markdown'
 import { useSession } from '../../contexts/session-context'
 import { fetchConversationMessages, sendChatMessageStreaming } from '../chat/services/chat-service'
+import { readDeck, type DeckRead } from './api'
 import { buildKey } from './use-build'
 import { ASK_EVENT, clearFocus, type AskFocus } from './components/your-turn'
 
@@ -72,6 +73,13 @@ export function CampaignChat({
   const [input, setInput] = useState('')
   const [pin, setPin] = useState<AskFocus | null>(null) // what "Ask Mia" pinned, sent with the PM's next message
   const [loading, setLoading] = useState(false)
+  // Files attached to the next message (a ClickUp export, a document of tasks): read to text on the server, sent with the message
+  const [files, setFiles] = useState<DeckRead[]>([])
+  const [reading, setReading] = useState<string | null>(null)
+  const [attachError, setAttachError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const filesRef = useRef<DeckRead[]>([])
+  filesRef.current = files
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -114,10 +122,13 @@ export function CampaignChat({
     async (typed: string, pin: AskFocus | null) => {
       if (!typed.trim() || !sessionId) return
       // The pin travels in the message itself, so Mia (and the saved history) knows what was asked about.
-      const text = pin ? `${PIN_PREFIX}${pin.label}${pin.detail ? `\n${pin.detail}` : ''}\n\n${typed.trim()}` : typed.trim()
+      const attached = filesRef.current
+      const named = attached.length ? `\n\n(Attached: ${attached.map((f) => f.filename).join(', ')})` : ''
+      const text = (pin ? `${PIN_PREFIX}${pin.label}${pin.detail ? `\n${pin.detail}` : ''}\n\n${typed.trim()}` : typed.trim()) + named
       const history = [...messagesRef.current, { role: 'user' as const, content: text }]
       setMessages(history)
       setInput('')
+      setFiles([])
       setLoading(true)
       setStreaming('')
       setStatus('')
@@ -152,6 +163,7 @@ export function CampaignChat({
             conversation_history: history.slice(-40),
             conversation_id: conversationId,
             campaign_page_id: campaignId,
+            ...(attached.length ? { documents: attached.map((f) => ({ filename: f.filename, content: f.text })) } : {}),
           },
           (chunk) => {
             if (chunk.text) {
@@ -193,6 +205,17 @@ export function CampaignChat({
       if (focus.draft !== undefined) {
         // a start for the PM to finish (the Studio tab's "Add a job"): in the box, not sent, no pin
         setInput(focus.draft)
+        if (focus.pickFile) {
+          // "Add jobs from a file": the file dialog opens on the same press; cancelled, the start it put in the box goes
+          // too, unless the PM has typed into it since (review 6 Nov, 2.4)
+          const draft = focus.draft
+          fileRef.current?.addEventListener(
+            'cancel',
+            () => setInput((now) => (now === draft ? '' : now)),
+            { once: true },
+          )
+          fileRef.current?.click()
+        }
         requestAnimationFrame(() => {
           const el = inputRef.current
           el?.focus()
@@ -233,9 +256,26 @@ export function CampaignChat({
     const next = queued.current.shift()
     if (next?.text) void send(next.text, { label: next.label, detail: next.detail })
   }, [loading, send])
+  const attach = async (picked: File[]) => {
+    if (!sessionId || !activeWorkspace || !picked.length) return
+    setAttachError(null)
+    const failed: string[] = []
+    for (const f of picked) {
+      setReading(f.name)
+      try {
+        const read = await readDeck(sessionId, activeWorkspace.tenant_id, f)
+        setFiles((have) => (have.some((h) => h.filename === read.filename && h.chars === read.chars) ? have : [...have, read]))
+      } catch (err) {
+        failed.push(`${f.name}: ${err instanceof Error ? err.message : 'could not be read'}`)
+      }
+    }
+    setReading(null)
+    if (failed.length) setAttachError(failed.join(' · '))
+  }
   const sendTyped = (text: string) => {
-    if (loading || !text.trim()) return
-    void send(text, pin)
+    if (loading || reading) return
+    if (!text.trim() && !files.length) return
+    void send(text.trim() ? text : 'Add the jobs in the attached file to this campaign.', pin)
     setPin(null)
     clearFocus()
   }
@@ -403,7 +443,38 @@ export function CampaignChat({
             ))}
           </div>
         ) : null}
+        {files.length || reading || attachError ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {files.map((f) => (
+              <span key={`${f.filename}-${f.chars}`} className="inline-flex items-center gap-1 rounded-full border border-brand px-2.5 py-0.5 paragraph-xs text-brand-secondary">
+                {f.filename} · {f.how}
+                <button
+                  type="button"
+                  aria-label={`Remove ${f.filename}`}
+                  className="text-quaternary hover:text-primary"
+                  onClick={() => setFiles((have) => have.filter((x) => x !== f))}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {reading ? <span className="paragraph-xs text-tertiary">Reading {reading}…</span> : null}
+            {attachError ? <span className="paragraph-xs text-utility-error-700">{attachError}</span> : null}
+          </div>
+        ) : null}
         <div className="flex gap-2">
+          <input
+            ref={fileRef}
+            id="campaign-chat-file"
+            type="file"
+            multiple
+            hidden
+            accept=".pdf,.pptx,.docx,.txt,.md,.xlsx,.xlsm,.csv,.html,.htm"
+            onChange={(e) => {
+              void attach(Array.from(e.target.files ?? []))
+              e.target.value = ''
+            }}
+          />
           <label htmlFor="campaign-chat-input" className="sr-only">
             Message Mia
           </label>
@@ -423,8 +494,18 @@ export function CampaignChat({
             }}
           />
           <button
+            type="button"
+            title="Attach a spreadsheet, a Word document or a ClickUp export"
+            aria-label="Attach a file"
+            disabled={loading || !!reading}
+            onClick={() => fileRef.current?.click()}
+            className="self-end rounded-lg border border-secondary px-3 py-2 paragraph-sm text-secondary hover:bg-secondary disabled:opacity-50"
+          >
+            Attach
+          </button>
+          <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={loading || !!reading || (!input.trim() && !files.length)}
             className="self-end rounded-lg bg-brand-solid px-3 py-2 paragraph-sm text-primary-onbrand disabled:opacity-50"
           >
             Send

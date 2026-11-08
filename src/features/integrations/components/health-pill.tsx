@@ -1,4 +1,4 @@
-export type HealthState = 'reconnect' | 'no_spend'
+export type HealthState = 'reconnect' | 'no_spend' | 'not_active' | 'no_access'
 
 export interface IntegrationHealth {
   state: HealthState
@@ -9,6 +9,16 @@ const STYLES: Record<HealthState, { label: string; className: string }> = {
   // Red: something is broken and data has stopped.
   reconnect: {
     label: 'Reconnect',
+    className: 'text-utility-error-600 bg-utility-error-50 border-utility-error-200',
+  },
+  // Red: the platform itself has switched the ad account off (Google deactivated it).
+  not_active: {
+    label: 'Not active',
+    className: 'text-utility-error-600 bg-utility-error-50 border-utility-error-200',
+  },
+  // Red: Mia's login can no longer see the ad account (unlinked, or the user was removed).
+  no_access: {
+    label: 'No access',
     className: 'text-utility-error-600 bg-utility-error-50 border-utility-error-200',
   },
   // Amber: working as intended, but not what the user probably expects.

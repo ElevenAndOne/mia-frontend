@@ -396,6 +396,8 @@ export interface StudioJob {
   // state: the nightly check found the task still there, archived or deleted in ClickUp
   clickup?: { task_id: string; url: string; state?: 'ok' | 'archived' | 'deleted' | null; checked_at?: string | null } | null
   kept_out?: string | null // made outside Flex, and why (e.g. launched before the campaign moved)
+  // sent to Flex, which hasn't linked it to its ClickUp task yet (tried again on every Flex read): the reason, if any
+  clickup_not_linked?: string | null
   flex: {
     task_id?: string
     url?: string
@@ -485,6 +487,8 @@ export interface ResultsKpi {
   target: number | null
   basis?: string | null
   confidence?: string | null
+  // set or changed after approve through Mia's targets card, oldest first; each keeps the number it replaced
+  history?: { old: number | null; new: number; why?: string | null; at?: string | null }[]
   rate: boolean
   lower_is_better: boolean
 }

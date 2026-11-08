@@ -93,7 +93,7 @@ const IntegrationsPage = ({
     invalidate: invalidateIntegrationStatus,
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
-  // Per-platform warnings: a dead grant, or an ad account that has never spent.
+  // Per-platform warnings: a dead grant, or an ad account with no spend in the last 90 days.
   const integrationHealth = useIntegrationHealth(sessionId, activeWorkspace?.tenant_id)
 
   useEffect(() => {
@@ -1491,21 +1491,31 @@ const IntegrationsPage = ({
                         // account) on every workspace. For an owner that is not "connected":
                         // paid rows count only when an account is linked AND has spent.
                         const paidRow = i.id === 'meta' || i.id === 'google'
+                        // The platform switched the ad account off: reconnecting won't help,
+                        // they need to reactivate it there or link another account.
+                        const notActive = health?.state === 'not_active'
+                        const noAccess = health?.state === 'no_access'
                         const dormant =
-                          health?.state === 'no_spend' ||
-                          (paidRow && i.connected && i.linked && !paidUnlocked)
+                          !notActive &&
+                          !noAccess &&
+                          (health?.state === 'no_spend' ||
+                            (paidRow && i.connected && i.linked && !paidUnlocked))
                         const broken = Boolean(health) && health?.state !== 'no_spend'
                         const on = i.connected && i.linked && !dormant
-                        const sub = dormant
-                          ? 'Linked, but no ads have run from this account yet.'
-                          : !on
-                            ? meta.unlocks
-                            : broken
-                              ? 'Needs your attention — reconnect to keep posts and results flowing.'
-                              : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
+                        const sub = notActive
+                          ? 'Google has deactivated this ad account. Reactivate it in Google Ads or link a different one.'
+                          : noAccess
+                            ? "Mia can't see this ad account any more. Link it again in Google Ads, or change account."
+                            : dormant
+                              ? 'Linked, but we found no recent ad spend on this account.'
+                              : !on
+                                ? meta.unlocks
+                                : broken
+                                  ? 'Needs your attention — reconnect to keep posts and results flowing.'
+                                  : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
                         const label = busy
                           ? 'Connecting…'
-                          : dormant
+                          : dormant || notActive || noAccess
                             ? 'Change account'
                             : on
                               ? 'Reconnect'
