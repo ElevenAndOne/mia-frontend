@@ -93,7 +93,7 @@ const IntegrationsPage = ({
     invalidate: invalidateIntegrationStatus,
   } = useIntegrationStatus(sessionId, selectedAccount?.id, activeWorkspace?.tenant_id)
 
-  // Per-platform warnings: a dead grant, or an ad account that has never spent.
+  // Per-platform warnings: a dead grant, or an ad account with no spend in the last 90 days.
   const integrationHealth = useIntegrationHealth(sessionId, activeWorkspace?.tenant_id)
 
   useEffect(() => {
@@ -1497,7 +1497,7 @@ const IntegrationsPage = ({
                         const broken = Boolean(health) && health?.state !== 'no_spend'
                         const on = i.connected && i.linked && !dormant
                         const sub = dormant
-                          ? 'Linked, but no ads have run from this account yet.'
+                          ? 'Linked, but we found no recent ad spend on this account.'
                           : !on
                             ? meta.unlocks
                             : broken
