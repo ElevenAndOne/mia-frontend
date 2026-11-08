@@ -1494,24 +1494,28 @@ const IntegrationsPage = ({
                         // The platform switched the ad account off: reconnecting won't help,
                         // they need to reactivate it there or link another account.
                         const notActive = health?.state === 'not_active'
+                        const noAccess = health?.state === 'no_access'
                         const dormant =
                           !notActive &&
+                          !noAccess &&
                           (health?.state === 'no_spend' ||
                             (paidRow && i.connected && i.linked && !paidUnlocked))
                         const broken = Boolean(health) && health?.state !== 'no_spend'
                         const on = i.connected && i.linked && !dormant
                         const sub = notActive
                           ? 'Google has deactivated this ad account. Reactivate it in Google Ads or link a different one.'
-                          : dormant
-                            ? 'Linked, but we found no recent ad spend on this account.'
-                            : !on
-                              ? meta.unlocks
-                              : broken
-                                ? 'Needs your attention — reconnect to keep posts and results flowing.'
-                                : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
+                          : noAccess
+                            ? "Mia can't see this ad account any more. Link it again in Google Ads, or change account."
+                            : dormant
+                              ? 'Linked, but we found no recent ad spend on this account.'
+                              : !on
+                                ? meta.unlocks
+                                : broken
+                                  ? 'Needs your attention — reconnect to keep posts and results flowing.'
+                                  : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
                         const label = busy
                           ? 'Connecting…'
-                          : dormant || notActive
+                          : dormant || notActive || noAccess
                             ? 'Change account'
                             : on
                               ? 'Reconnect'
