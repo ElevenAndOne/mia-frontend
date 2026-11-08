@@ -922,10 +922,18 @@ export function RaceCampaignTracker({
           )}
           {unlinked && campaign && (
             <p className="paragraph-xs text-secondary rounded-lg border border-secondary px-3 py-2 mt-2">
-              {unlinked}{' '}
-              <a className="underline text-primary" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
-                Review links
-              </a>
+              {/* New-builder campaigns: the line stays (spend that isn't tracked), but the old link screen is closed
+                  to them; the Flex push links their ads (owner, 8 Nov) */}
+              {campaign.builder === 'v2' ? (
+                unlinked.replace(/ Link them so their results count here\.$/, '')
+              ) : (
+                <>
+                  {unlinked}{' '}
+                  <a className="underline text-primary" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
+                    Review links
+                  </a>
+                </>
+              )}
             </p>
           )}
         </div>
