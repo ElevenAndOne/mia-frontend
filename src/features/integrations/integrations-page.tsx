@@ -1491,21 +1491,27 @@ const IntegrationsPage = ({
                         // account) on every workspace. For an owner that is not "connected":
                         // paid rows count only when an account is linked AND has spent.
                         const paidRow = i.id === 'meta' || i.id === 'google'
+                        // The platform switched the ad account off: reconnecting won't help,
+                        // they need to reactivate it there or link another account.
+                        const notActive = health?.state === 'not_active'
                         const dormant =
-                          health?.state === 'no_spend' ||
-                          (paidRow && i.connected && i.linked && !paidUnlocked)
+                          !notActive &&
+                          (health?.state === 'no_spend' ||
+                            (paidRow && i.connected && i.linked && !paidUnlocked))
                         const broken = Boolean(health) && health?.state !== 'no_spend'
                         const on = i.connected && i.linked && !dormant
-                        const sub = dormant
-                          ? 'Linked, but we found no recent ad spend on this account.'
-                          : !on
-                            ? meta.unlocks
-                            : broken
-                              ? 'Needs your attention — reconnect to keep posts and results flowing.'
-                              : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
+                        const sub = notActive
+                          ? 'Google has deactivated this ad account. Reactivate it in Google Ads or link a different one.'
+                          : dormant
+                            ? 'Linked, but we found no recent ad spend on this account.'
+                            : !on
+                              ? meta.unlocks
+                              : broken
+                                ? 'Needs your attention — reconnect to keep posts and results flowing.'
+                                : `Connected${i.lastSync ? ` · last synced ${i.lastSync}` : ''}`
                         const label = busy
                           ? 'Connecting…'
-                          : dormant
+                          : dormant || notActive
                             ? 'Change account'
                             : on
                               ? 'Reconnect'
