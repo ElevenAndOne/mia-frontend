@@ -10,14 +10,18 @@ export function getDateRangeDisplay(range: string): string {
 
 /**
  * Format an ISO timestamp into a relative "time ago" string.
+ * No timestamp (or an unreadable one) gives '' so callers show nothing. It used to say
+ * "Just now", and the backend sends no sync time, so every integration card read
+ * "Last synced: Just now", even one whose login had stopped working.
  */
 export function getTimeAgo(isoTimestamp?: string): string {
-  if (!isoTimestamp) return 'Just now'
+  if (!isoTimestamp) return ''
 
   try {
     const utcTimestamp = isoTimestamp.endsWith('Z') ? isoTimestamp : `${isoTimestamp}Z`
     const now = new Date()
     const then = new Date(utcTimestamp)
+    if (Number.isNaN(then.getTime())) return ''
     const diffMs = now.getTime() - then.getTime()
     const diffMins = Math.floor(diffMs / 60000)
 
@@ -28,6 +32,6 @@ export function getTimeAgo(isoTimestamp?: string): string {
     const diffDays = Math.floor(diffHours / 24)
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
   } catch {
-    return 'Just now'
+    return ''
   }
 }

@@ -12,51 +12,44 @@ export interface IntegrationStatusData {
 const buildPlatformStatus = (
   flags: Partial<Record<keyof PlatformStatus, boolean>>
 ): PlatformStatus => {
-  const now = new Date().toISOString()
+  // No last_synced: nothing records a real sync time, and stamping "now" made every card
+  // read "Last synced: Just now", even one whose login had stopped working.
   return {
-    google: { connected: Boolean(flags.google), linked: Boolean(flags.google), last_synced: now },
-    ga4: { connected: Boolean(flags.ga4), linked: Boolean(flags.ga4), last_synced: now },
-    meta: { connected: Boolean(flags.meta), linked: Boolean(flags.meta), last_synced: now },
+    google: { connected: Boolean(flags.google), linked: Boolean(flags.google) },
+    ga4: { connected: Boolean(flags.ga4), linked: Boolean(flags.ga4) },
+    meta: { connected: Boolean(flags.meta), linked: Boolean(flags.meta) },
     facebook_organic: {
       connected: Boolean(flags.facebook_organic),
       linked: Boolean(flags.facebook_organic),
-      last_synced: now,
     },
-    brevo: { connected: Boolean(flags.brevo), linked: Boolean(flags.brevo), last_synced: now },
+    brevo: { connected: Boolean(flags.brevo), linked: Boolean(flags.brevo) },
     hubspot: {
       connected: Boolean(flags.hubspot),
       linked: Boolean(flags.hubspot),
-      last_synced: now,
     },
     mailchimp: {
       connected: Boolean(flags.mailchimp),
       linked: Boolean(flags.mailchimp),
-      last_synced: now,
     },
     linkedin_ads: {
       connected: Boolean(flags.linkedin_ads),
       linked: Boolean(flags.linkedin_ads),
-      last_synced: now,
     },
     tiktok_ads: {
       connected: Boolean(flags.tiktok_ads),
       linked: Boolean(flags.tiktok_ads),
-      last_synced: now,
     },
     tiktok_organic: {
       connected: Boolean(flags.tiktok_organic),
       linked: Boolean(flags.tiktok_organic),
-      last_synced: now,
     },
     airtable: {
       connected: Boolean(flags.airtable),
       linked: Boolean(flags.airtable),
-      last_synced: now,
     },
     smartlead: {
       connected: Boolean(flags.smartlead),
       linked: Boolean(flags.smartlead),
-      last_synced: now,
     },
   }
 }
@@ -72,17 +65,13 @@ const mergePlatformStatus = (
 ): PlatformStatus => {
   if (!accountData) return tenantStatus
 
-  const now = new Date().toISOString()
-
   // A platform shows as "connected" based on what makes sense for each platform:
   // - Platforms with account selectors (Google Ads, GA4, Meta, FB): ONLY when the specific
   //   account/property/page is selected (account field is set on TenantAccountMapping)
   // - Platforms with just OAuth/API key (Brevo, HubSpot, Mailchimp, LinkedIn, Airtable):
   //   Connected when tenant_integrations says connected OR account field is set
   const accountOnly = (accountField: string | null | undefined) =>
-    accountField
-      ? { connected: true, linked: true, last_synced: now }
-      : { connected: false, linked: false }
+    accountField ? { connected: true, linked: true } : { connected: false, linked: false }
 
   const tenantOrAccount = (
     accountField: string | null | undefined,
@@ -90,7 +79,7 @@ const mergePlatformStatus = (
   ) => {
     const isConnected = Boolean(accountField) || Boolean(tenantEntry?.connected)
     return isConnected
-      ? { connected: true, linked: Boolean(accountField), last_synced: now }
+      ? { connected: true, linked: Boolean(accountField) }
       : { connected: false, linked: false }
   }
 

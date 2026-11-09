@@ -1676,9 +1676,12 @@ const IntegrationsPage = ({
                               <p className="paragraph-xs text-quaternary truncate">
                                 {integration.description}
                               </p>
-                              {integration.lastSync && (
-                                <span> • Last synced: {integration.lastSync}</span>
-                              )}
+                              {/* A red label means data has stopped: no "synced" line beside it. */}
+                              {integration.lastSync &&
+                                (!integrationHealth[integration.id] ||
+                                  integrationHealth[integration.id].state === 'no_spend') && (
+                                  <span> • Last synced: {integration.lastSync}</span>
+                                )}
                             </div>
                           </div>
                           {integrationHealth[integration.id] && (
@@ -1759,6 +1762,19 @@ const IntegrationsPage = ({
                             />
                           </div>
                         </div>
+                        {/* The advice on the card itself, full width under the name, not only in
+                            the pill's hover text: a phone or tablet has no hover. */}
+                        {integrationHealth[integration.id] && (
+                          <p
+                            className={`paragraph-xs mt-2 whitespace-normal sm:pl-[3.25rem] ${
+                              integrationHealth[integration.id].state === 'no_spend'
+                                ? 'text-utility-warning-600'
+                                : 'text-utility-error-600'
+                            }`}
+                          >
+                            {integrationHealth[integration.id].detail}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )
