@@ -98,34 +98,11 @@ const GA4PropertySelector = ({
         return
       }
 
-      // Properties not ready yet — background fetch may still be running (takes ~18-20s).
-      // Poll every 6 seconds up to 5 times (30s total) before giving up.
-      const GA4_POLL_INTERVAL_MS = 6000
-      const GA4_MAX_POLLS = 5
-      logger.log(
-        '[GA4-PROPERTY-SELECTOR] Properties not cached yet, polling for background fetch...'
-      )
-      for (let i = 0; i < GA4_MAX_POLLS; i++) {
-        await new Promise((resolve) => setTimeout(resolve, GA4_POLL_INTERVAL_MS))
-        const retryResponse = await apiFetch(
-          withWorkspace('/api/accounts/available', activeWorkspace?.tenant_id),
-          {
-            headers: { 'X-Session-ID': sessionId || 'default' },
-          }
-        )
-        const retryData = await retryResponse.json()
-        if (retryData.success && retryData.ga4_properties && retryData.ga4_properties.length > 0) {
-          const sortedProperties = retryData.ga4_properties.sort((a: GA4Property, b: GA4Property) =>
-            a.display_name.localeCompare(b.display_name)
-          )
-          setProperties(sortedProperties)
-          return
-        }
-      }
-
-      // The background fetch swallows Google's errors, so 30s of polling used to end in a
-      // bare "none found" even when the real problem was an expired Google login. Ask
-      // once for a direct listing: it returns the properties, or the actual reason.
+      // Nothing cached: ask Google directly, once. This used to poll the background fetch
+      // every 6s for 30s first, because an empty cache can mean "still loading" or "this
+      // login has none" — so a login with no properties always waited the full 30s+ before
+      // hearing so. The direct listing answers both at Google's own speed, and returns
+      // the real reason (e.g. an expired login) instead of a bare "none found".
       const direct = await apiFetch(
         withWorkspace('/api/accounts/available?ga4_direct=true', activeWorkspace?.tenant_id),
         { headers: { 'X-Session-ID': sessionId || 'default' } }
@@ -139,9 +116,10 @@ const GA4PropertySelector = ({
         )
         return
       }
+      setProperties([])
       setError(
         directData?.ga4_error ||
-          'Your Google login has no GA4 properties. Ask the client to add this Google account to their GA4 property, then try again.'
+          'This Google login has no GA4 properties. Ask the client to add this Google account to their GA4 property, then try again.'
       )
     } catch (err) {
       logger.error('Error fetching GA4 properties:', err)

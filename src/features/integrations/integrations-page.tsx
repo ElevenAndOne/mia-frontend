@@ -236,8 +236,9 @@ const IntegrationsPage = ({
     let t: ReturnType<typeof setTimeout> | undefined
     if (googleAdsPending) {
       localStorage.removeItem(StorageKey.GOOGLE_ADS_CONNECT_PENDING)
-      // One Google grant covers Ads + GA4 — offer both pickers back to back.
-      t = setTimeout(() => startModalChain(['google', 'ga4']), 1000)
+      // The Google Ads connect is Ads-only now (Nov 2026), so only the Ads picker: the
+      // Analytics card connects its own login.
+      t = setTimeout(() => startModalChain(['google']), 1000)
     } else if (ga4Pending) {
       localStorage.removeItem(StorageKey.GA4_CONNECT_PENDING)
       // After Google OAuth for GA4, open GA4 property selector (not Google Ads)
@@ -262,9 +263,10 @@ const IntegrationsPage = ({
   const showSmartleadModal = openModal === 'smartlead'
 
   const setShowBrevoModal = (show: boolean) => setOpenModal(show ? 'brevo' : null)
-  // One OAuth grant unlocks several pickers — Meta auth covers Meta Ads *and* Facebook
-  // Pages, Google auth covers Google Ads *and* GA4 — but users don't know that, so walk
-  // them through the pickers in sequence instead of leaving the second one undiscovered.
+  // One OAuth grant can unlock several pickers — Meta auth covers Meta Ads *and* Facebook
+  // Pages — but users don't know that, so walk them through the pickers in sequence instead
+  // of leaving the second one undiscovered. (Google Ads and GA4 are separate logins since
+  // Nov 2026, so the Google connect no longer chains into the GA4 picker.)
   //
   // The queue lives in sessionStorage, not a ref or state: applying an account selection
   // refreshes the workspace/account context, which remounts this page — and an in-memory
@@ -304,11 +306,19 @@ const IntegrationsPage = ({
    * Queue head still this step → the user genuinely dismissed it, so abandon the
    * rest. Head already moved on → a successful advance is in flight and this is the
    * hook's follow-up close; ignore it.
+   *
+   * No queue at all → the picker was opened on its own (Connect, Manage, back from
+   * Google): just close it. This case used to do nothing, so the X on a picker opened
+   * outside a chain could not close it (Nov 2026). The functional update only closes
+   * when this picker is still the one open, never a picker another step just opened.
    */
   const dismissChainStep = (step: string) => () => {
-    if (readChain()[0] === step) {
+    const chain = readChain()
+    if (chain[0] === step) {
       writeChain([])
       setOpenModal(null)
+    } else if (chain.length === 0) {
+      setOpenModal((current) => (current === step ? null : current))
     }
   }
 
@@ -1037,17 +1047,20 @@ const IntegrationsPage = ({
     }
   }
 
-  const handleConnect = async (integrationId: string) => {
+  const handleConnect = async (integrationId: string, opts?: { reconnect?: boolean }) => {
     // Jan 2025: Role-based access control - only owners and admins can manage integrations
     if (activeWorkspace && !['owner', 'admin'].includes(activeWorkspace.role)) {
       showToast('warning', 'Only workspace owners and admins can manage integrations')
       return
     }
 
-    // GA4: Check if workspace already has Google OAuth credentials
-    // If yes → open property selector directly. If no → run Google OAuth first.
+    // GA4: if the workspace already has an ANALYTICS login, Connect just opens the property
+    // picker. Otherwise (and always for Reconnect) it goes to Google for Analytics only.
+    // Nov 2026: a Google Ads login no longer counts — Ads and Analytics are separate logins,
+    // and Reconnect used to open the picker without ever reaching Google, so a dead
+    // Analytics login could not be fixed from its own card.
     if (integrationId === 'ga4') {
-      if (activeWorkspace?.tenant_id) {
+      if (activeWorkspace?.tenant_id && !opts?.reconnect) {
         try {
           const tenantResponse = await apiFetch(
             `/api/tenants/${activeWorkspace.tenant_id}/integrations`,
@@ -1058,8 +1071,8 @@ const IntegrationsPage = ({
           if (tenantResponse.ok) {
             const tenantData = await tenantResponse.json()
             const ps = tenantData.platform_status || {}
-            if (ps.google_ads || ps.ga4) {
-              // Google OAuth exists → open GA4 property selector directly
+            if (ps.ga4) {
+              // An Analytics login exists → open GA4 property selector directly
               setShowGA4PropertySelector(true)
               return
             }
@@ -1074,7 +1087,7 @@ const IntegrationsPage = ({
       const tenantParam = activeWorkspace?.tenant_id ? `tenant_id=${activeWorkspace.tenant_id}` : ''
       const returnUrl = window.location.origin + '/integrations'
       const frontendOrigin = encodeURIComponent(returnUrl)
-      const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`]
+      const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`, 'purpose=analytics']
         .filter(Boolean)
         .join('&')
       try {
@@ -1172,7 +1185,8 @@ const IntegrationsPage = ({
         // callback redirects back to integrations page, app detects OAUTH_PENDING and completes.
         const returnUrl = window.location.origin + '/integrations'
         const frontendOrigin = encodeURIComponent(returnUrl)
-        const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`]
+        // Google Ads only: its own login, which leaves the Analytics login alone (Nov 2026).
+        const googleParams = [tenantParam, `frontend_origin=${frontendOrigin}`, 'purpose=ads']
           .filter(Boolean)
           .join('&')
         const response = await apiFetch(`/api/oauth/google/auth-url?${googleParams}`, {
@@ -1736,7 +1750,7 @@ const IntegrationsPage = ({
                                   'tiktok_organic',
                                   'airtable',
                                 ].includes(integration.id)
-                                  ? () => handleConnect(integration.id)
+                                  ? () => handleConnect(integration.id, { reconnect: true })
                                   : undefined
                               }
                               onAddAccount={
