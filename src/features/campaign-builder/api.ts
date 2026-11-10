@@ -140,6 +140,39 @@ export async function dropChange(sessionId: string, tenantId: string, campaignId
   )
 }
 
+/** A chat canvas deliverable, as the canvas parsed it: the job's words and how it runs (budget, flight, measure). */
+export interface CanvasJob {
+  phase: string
+  name: string
+  channel: string
+  format?: string
+  primary_text?: string
+  hashtags?: string
+  headline?: string
+  description?: string
+  headlines?: string[]
+  descriptions?: string[]
+  keywords?: string[]
+  cta?: string
+  link?: string
+  visuals?: string[]
+  media?: string[]
+  notes?: { label: string; value: string }[]
+  conversation_id?: string
+  document_id?: string
+}
+
+/** "Add to campaign" on the chat canvas for a builder campaign: one card on its page, applied there (step 5). */
+export async function addFromCanvas(sessionId: string, tenantId: string, campaignId: string, job: CanvasJob) {
+  return check<{ card_id: string; change: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/from-canvas`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify(job),
+    }),
+  )
+}
+
 // Put back what an answer changed in the plan; the answer stays answered.
 export async function undoAnswer(sessionId: string, tenantId: string, campaignId: string, questionId: string) {
   return check<BuildState>(
