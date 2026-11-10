@@ -347,7 +347,14 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   {money(s.campaign.budget_total, s.campaign.currency)}
                   {s.campaign.building
                     ? ' · draft'
-                    : s.campaign.status === 'live'
+                    : // paused and finished campaigns said "approved, not live yet" (browser pass 10 Nov)
+                      s.campaign.status === 'paused'
+                      ? ' · paused'
+                      : s.campaign.status === 'completed'
+                        ? ' · ended'
+                        : s.campaign.status === 'archived'
+                          ? ' · archived'
+                          : s.campaign.status === 'live'
                       ? // launched before its start date: it isn't running yet (live test 18 Oct)
                         s.campaign.start_date && s.campaign.start_date > new Date().toISOString().slice(0, 10)
                         ? ` · launched, starts ${s.campaign.start_date}`
