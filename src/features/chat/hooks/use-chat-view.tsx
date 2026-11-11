@@ -44,6 +44,7 @@ import {
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 import { newUuid } from '../../../lib/uuid'
+import { normalizeDateRange } from '../../../utils/date-range'
 
 export interface ChatMessageItem {
   id: string
@@ -123,7 +124,7 @@ export const useChatView = () => {
   }, [])
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [dateRange, setDateRange] = useState(
-    () => localStorage.getItem(StorageKey.DATE_RANGE) || '30_days'
+    () => normalizeDateRange(localStorage.getItem(StorageKey.DATE_RANGE))
   )
 
   // Persist date range to localStorage

@@ -19,6 +19,7 @@ const MarketingContextPage = lazy(() =>
     default: m.MarketingContextPage,
   }))
 )
+const BrandFactsCard = lazy(() => import('./brand-facts-card').then((m) => ({ default: m.BrandFactsCard })))
 const BrandKitTab = lazy(() => import('./brand-kit-tab').then((m) => ({ default: m.BrandKitTab })))
 const SkillLearningPage = lazy(() =>
   import('./skill-learning-page').then((m) => ({ default: m.SkillLearningPage }))
@@ -820,6 +821,10 @@ export const WorkspaceSettingsDetail = ({
                 tenantId={workspace.tenant_id}
                 canManage={canManage}
               />
+              <div className="settings-card rounded-lg border border-tertiary bg-secondary p-3 mt-4">
+                <p className="subheading-md text-primary">Facts Mia can state</p>
+                <BrandFactsCard sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
+              </div>
             </Suspense>
           </div>
         )}

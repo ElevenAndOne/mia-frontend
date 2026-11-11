@@ -5,6 +5,7 @@
 import { useCallback } from 'react'
 import { useStreamingCore } from './use-streaming-core'
 import { createApiUrl } from '../../../utils/api'
+import { normalizeDateRange } from '../../../utils/date-range'
 
 interface UseStreamingInsightsReturn {
   text: string
@@ -39,7 +40,7 @@ export function useStreamingInsights(): UseStreamingInsightsReturn {
         },
         body: JSON.stringify({
           session_id: sessionId,
-          date_range: dateRange,
+          date_range: normalizeDateRange(dateRange),
           platforms: platforms && platforms.length > 0 ? platforms : undefined,
         }),
       })
