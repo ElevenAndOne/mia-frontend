@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   collapseEdits,
-  miaCreateApi,
+  picturesApi,
   type MiaAsset,
-} from '../../creative-studio/creative-studio-api'
+} from '../services/pictures-api'
 import { useSession } from '../../../contexts/session-context'
 import { Pencil01 } from '../../../components/icon/pencil-01'
 import { Maximize01 } from '../../../components/icon/maximize-01'
@@ -118,7 +118,7 @@ export function ChatImageCard({
       }
       try {
         if (event.variant_group) {
-          const set = await miaCreateApi.getSet(sessionId, tenantId, event.variant_group)
+          const set = await picturesApi.getSet(sessionId, tenantId, event.variant_group)
           // Edits inherit the variant_group so they land in this card — keep the newest
           // version of each tile, not both.
           if (set.assets.length) setAssets(collapseEdits(set.assets))
@@ -140,9 +140,9 @@ export function ChatImageCard({
           return
         }
         if (event.job_id) {
-          const job = await miaCreateApi.getJob(sessionId, tenantId, event.job_id)
+          const job = await picturesApi.getJob(sessionId, tenantId, event.job_id)
           if (job.status === 'completed') {
-            const { assets: jobAssets } = await miaCreateApi.listJobAssets(
+            const { assets: jobAssets } = await picturesApi.listJobAssets(
               sessionId,
               tenantId,
               event.job_id

@@ -38,9 +38,9 @@ import { useThinkingPhrase } from './use-thinking-phrase'
 import type { ChatImageJob } from '../components/chat-image-card'
 import {
   collapseEdits,
-  miaCreateApi,
+  picturesApi,
   type MiaAsset,
-} from '../../creative-studio/creative-studio-api'
+} from '../services/pictures-api'
 import { StorageKey } from '../../../constants/storage-keys'
 import type { CampaignInfo } from '../../campaign/components/race-campaign-tracker'
 import { newUuid } from '../../../lib/uuid'
@@ -307,8 +307,8 @@ export const useChatView = () => {
       if (!sessionId || !tenantId) return
       try {
         const [listed, pending] = await Promise.all([
-          miaCreateApi.listConversationAssets(sessionId, tenantId, convId),
-          miaCreateApi.listPendingJobs(sessionId, tenantId, convId),
+          picturesApi.listConversationAssets(sessionId, tenantId, convId),
+          picturesApi.listPendingJobs(sessionId, tenantId, convId),
         ])
         // An edit replaces the tile it came from — otherwise every version ever rendered
         // came back as its own card and the grid grew on each visit (2026-08-20).

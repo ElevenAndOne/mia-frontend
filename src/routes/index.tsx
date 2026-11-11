@@ -42,7 +42,6 @@ const PostLinkPage = lazy(() => import('../features/posts/post-link-page'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const MemoPage = lazy(() => import('../pages/memo-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
-const CreativeStudioPage = lazy(() => import('../pages/creative-studio-page'))
 const InternalPulsePage = lazy(() => import('../pages/internal-pulse-page'))
 
 const LazyLoadSpinner = () => (
@@ -411,19 +410,6 @@ export const AppRoutes = ({
                 <RequireFeature flag="paid_media">
                   <ErrorBoundary>
                     <InsightsPredictPage />
-                  </ErrorBoundary>
-                </RequireFeature>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/creative-studio"
-            element={
-              <ProtectedRoute requireAccount>
-                <RequireFeature flag="paid_media">
-                  <ErrorBoundary>
-                    <CreativeStudioPage />
                   </ErrorBoundary>
                 </RequireFeature>
               </ProtectedRoute>

@@ -4,11 +4,11 @@ import { Spinner } from '../../../components/spinner'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import {
-  miaCreateApi,
+  picturesApi,
   type EditState,
   type EditedAsset,
   type MiaAsset,
-} from '../../creative-studio/creative-studio-api'
+} from '../services/pictures-api'
 
 type Mode = 'place' | 'select'
 type Handle = 'headline' | 'logo'
@@ -118,7 +118,7 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
   useEffect(() => {
     if (prewarmedRef.current || !sessionId || !tenantId) return
     prewarmedRef.current = true
-    void miaCreateApi.prewarmEditor(sessionId, tenantId, asset.asset_id)
+    void picturesApi.prewarmEditor(sessionId, tenantId, asset.asset_id)
   }, [sessionId, tenantId, asset.asset_id])
 
   // Load the base + recipe
@@ -127,7 +127,7 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     let cancelled = false
     ;(async () => {
       try {
-        const s = await miaCreateApi.getEditState(sessionId, tenantId, assetId)
+        const s = await picturesApi.getEditState(sessionId, tenantId, assetId)
         if (cancelled) return
         setState(s)
         setHeadlinePos(s.recipe.headline_xy ?? null)
@@ -327,7 +327,7 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     if (!sessionId || !tenantId || !dirty) return
     setBusy('Applying…')
     try {
-      const next = await miaCreateApi.recompose(
+      const next = await picturesApi.recompose(
         sessionId,
         tenantId,
         assetId,
@@ -377,7 +377,7 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
       if (seq === segmentSeq.current) setBusy('Warming up the selector (first click only)…')
     }, 5000)
     try {
-      const res = await miaCreateApi.segment(
+      const res = await picturesApi.segment(
         sessionId,
         tenantId,
         assetId,
@@ -424,7 +424,7 @@ export const ImageEditorOverlay = ({ asset, conversationId, onClose, onEdited }:
     if (!sessionId || !tenantId || !maskUrl || !instruction.trim()) return
     setBusy('Repainting…')
     try {
-      const next = await miaCreateApi.inpaint(
+      const next = await picturesApi.inpaint(
         sessionId,
         tenantId,
         assetId,
