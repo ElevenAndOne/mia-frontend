@@ -6,12 +6,26 @@ import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, Resu
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
 
+type ValidationItem = { loc?: (string | number)[]; msg?: string; type?: string; ctx?: { max_length?: number } }
+
+/** FastAPI's 422 detail is a list; turn its first item into a sentence a PM can act on
+ *  (a long pasted brief used to show only "Request failed (422)", sweep 12 Nov). */
+function validationMessage(items: ValidationItem[]): string {
+  const it = items[0] ?? {}
+  const field = String((it.loc ?? []).filter((p) => p !== 'body').slice(-1)[0] ?? 'text').replace(/_/g, ' ')
+  if (it.type === 'string_too_long' && it.ctx?.max_length) {
+    return `That's too long: the ${field} can be at most ${it.ctx.max_length.toLocaleString()} characters. Shorten it, or attach it as a file.`
+  }
+  return it.msg ? `${it.msg} (${field})` : 'Some of what was sent could not be read.'
+}
+
 async function check<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>
   let detail = `Request failed (${res.status})`
   try {
     const body = await res.json()
     if (typeof body?.detail === 'string') detail = body.detail
+    else if (Array.isArray(body?.detail) && body.detail.length) detail = validationMessage(body.detail)
   } catch {
     // keep the status line
   }

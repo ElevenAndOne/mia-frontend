@@ -102,7 +102,8 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
       try {
         await addFromCanvas(sessionId, tenantId, campaignId, {
           phase: phaseName,
-          name: jobName.trim() || doc.title || 'Chat canvas job',
+          // the server's cap is 200; a long canvas title used to fail the whole add
+          name: (jobName.trim() || doc.title || 'Chat canvas job').slice(0, 200),
           channel: specChannel(spec),
           ...(spec ? { format: spec.format } : {}),
           primary_text: spec ? spec.primaryText : doc.content,
