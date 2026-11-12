@@ -95,6 +95,8 @@ export interface WebsiteScan {
     imagery_style?: string | null
   }
   voice_committed?: boolean
+  /** The read left its brand guide waiting: the guide in use is one they chose (backend who_wins). */
+  voice_kept_theirs?: boolean
   facts?: {
     offers?: number
     awards?: number
@@ -174,6 +176,9 @@ export interface MarketingContext {
   has_context: boolean
   brand_guide_filename: string | null
   brand_guide_extracted: BrandGuideExtracted | null
+  /** Mia's newer draft, waiting because the guide in use is one they chose; null when there's none. */
+  brand_guide_pending?: Partial<BrandGuideExtracted> | null
+  brand_guide_chosen_by_owner?: boolean
   manual_overrides: Partial<BrandGuideExtracted>
   platform_snapshot: PlatformSnapshot
   platform_snapshot_updated_at: string | null
