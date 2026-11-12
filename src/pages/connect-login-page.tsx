@@ -7,6 +7,8 @@ import { clearExternalAuthId, readExternalAuthId } from '../features/connect/ext
 
 const EXPIRED = 'This connection link has expired or was already used. Go back to Claude and connect again.'
 const FAILED = "That didn't work. Go back to Claude and try connecting again."
+// The session's own error text is for developers ("Failed to fetch"); the person gets this.
+const SIGN_IN_FAILED = "Signing in to Mia didn't work. Please try again."
 
 const Card = ({ children }: { children: React.ReactNode }) => (
   <div className="h-full flex items-center justify-center p-4">
@@ -28,6 +30,7 @@ const ConnectLoginPage = () => {
     isLoading: sessionLoading,
     sessionId,
     user,
+    error: sessionError,
     login,
     loginMeta,
     logout,
@@ -93,6 +96,12 @@ const ConnectLoginPage = () => {
       <Card>
         <h1 className="title-h6 text-primary mb-2">Connect Claude to Mia</h1>
         <p className="paragraph-sm text-tertiary mb-6">Sign in to Mia first.</p>
+        {/* A failed or cancelled sign-in used to leave this page looking untouched. */}
+        {sessionError && (
+          <div className="bg-error-primary border border-error-subtle rounded-xl p-4 mb-6">
+            <p className="paragraph-sm text-error">{SIGN_IN_FAILED}</p>
+          </div>
+        )}
         <button
           onClick={() => login()}
           className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors mb-3"
