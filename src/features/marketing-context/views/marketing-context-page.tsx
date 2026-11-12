@@ -52,6 +52,7 @@ export function MarketingContextPage({ sessionId, tenantId, canManage = true }: 
     handleRefreshSnapshot,
     handleFindCompetitors,
     handleCancelUpload,
+    handleUsePendingGuide,
   } = useMarketingContext(sessionId, tenantId)
 
   const [editingOverrides, setEditingOverrides] = useState(false)
@@ -249,6 +250,21 @@ export function MarketingContextPage({ sessionId, tenantId, canManage = true }: 
           />
         )}
       </div>
+
+      {/* Mia's newer draft, waiting: the guide they chose stays until they take it */}
+      {canManage && context?.brand_guide_pending && context?.brand_guide_chosen_by_owner && (
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-tertiary bg-secondary px-5 py-4">
+          <div>
+            <p className="subheading-sm text-primary">Mia has a newer version of your brand guide</p>
+            <p className="paragraph-xs text-tertiary mt-0.5">
+              She read your pages again. Yours stays in use until you choose hers.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={handleUsePendingGuide}>
+            Use Mia's version
+          </Button>
+        </div>
+      )}
 
       {/* Brand context fields */}
       <div className="rounded-xl border border-tertiary bg-primary">

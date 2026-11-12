@@ -11,7 +11,7 @@ import SaveDraftButton from './save-draft-button'
 import CampaignSavedCard from './campaign-saved-card'
 import { splitSaveDraftPrompt } from '../utils/save-draft-prompt'
 import type { PendingAction } from '../services/chat-service'
-import type { MiaAsset } from '../../creative-studio/creative-studio-api'
+import type { MiaAsset } from '../services/pictures-api'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'

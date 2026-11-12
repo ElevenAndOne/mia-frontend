@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStreamingCore } from './use-streaming-core'
 import { createApiUrl } from '../../../utils/api'
 import { logger } from '../../../utils/logger'
+import { normalizeDateRange } from '../../../utils/date-range'
 
 export interface ParsedInsight {
   title: string
@@ -173,7 +174,7 @@ export function useStreamingInsightsParsed(): UseStreamingInsightsParsedReturn {
         },
         body: JSON.stringify({
           session_id: sessionId,
-          date_range: dateRange,
+          date_range: normalizeDateRange(dateRange),
           platforms: platforms && platforms.length > 0 ? platforms : undefined,
         }),
       })

@@ -203,6 +203,7 @@ export const useAppController = () => {
     location.pathname !== '/' &&
     !location.pathname.startsWith('/login') &&
     !location.pathname.startsWith('/invite/') &&
+    !location.pathname.startsWith('/connect/') &&
     location.pathname !== '/onboarding'
   ) {
     logger.log('[APP-CONTROLLER] Generic loading screen for protected route')

@@ -60,10 +60,29 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     const where = j.route === 'meta' ? 'Meta' : 'Google Ads'
     if (!window.confirm(`Push every ready ad on this ${channelLabel(j.channel)} channel to ${where} as PAUSED? Nothing runs until someone switches it on in ${where}.`)) return
     void run('push', async () => {
-      const r = j.route === 'meta'
-        ? await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id)
-        : await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id)
-      setNote(r ? `Pushed to ${where}, paused. Switch it on there when you're ready.` : null)
+      // The workflow finishing is not the push working: Meta/Google can refuse a step and the result
+      // comes back with success false, which used to read as "Pushed" (sweep 12 Nov).
+      setNote(null)
+      if (j.route === 'meta') {
+        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id)
+        if (!r?.success) {
+          const why = r?.stage === 'campaign' ? r.campaign : r?.stage === 'adset' ? r.adset : undefined
+          const reason = why?.error || why?.message
+          throw new Error(`Meta refused the push at the ${r?.stage ?? 'first'} step${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
+        }
+        const made = r.ads_created ?? 0
+        const tried = r.ads?.length ?? made
+        setNote(made < tried
+          ? `Pushed to Meta, paused, but only ${made} of ${tried} ads were made. Check the others in Meta Ads Manager.`
+          : `Pushed to Meta, paused. Switch it on there when you're ready.`)
+      } else {
+        const r = await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id)
+        if (!r?.success) {
+          const reason = r?.error || r?.message
+          throw new Error(`Google Ads refused the push${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
+        }
+        setNote(`Pushed to ${where}, paused. Switch it on there when you're ready.`)
+      }
     })
   }
   const schedule = () =>

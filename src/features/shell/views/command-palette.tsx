@@ -9,12 +9,10 @@ import { MessageChatSquare } from '../../../components/icon/message-chat-square'
 import { Plus } from '../../../components/icon/plus'
 import { SearchMd } from '../../../components/icon/search-md'
 import { Settings01 } from '../../../components/icon/settings-01'
-import { Stars01 } from '../../../components/icon/stars-01'
 import { Target01 } from '../../../components/icon/target-01'
 import { Wallet01 } from '../../../components/icon/wallet-01'
 import { ClipboardCheck } from '../../../components/icon/clipboard-check'
 import { useSession } from '../../../contexts/session-context'
-import { usePlugins } from '../../plugins/hooks/use-plugins'
 import { useFeatures } from '../../workspace/hooks/use-features'
 import { useExperience } from '../../workspace/hooks/use-experience'
 import { useCommandPalette } from '../context/command-palette-context'
@@ -37,7 +35,6 @@ export const CommandPalette = () => {
   const { isOpen, close } = useCommandPalette()
   const navigate = useNavigate()
   const { sessionId } = useSession()
-  const { isEnabled } = usePlugins()
   const { isEnabled: isFeatureEnabled } = useFeatures()
   const { isBasic } = useExperience()
   const { conversations, load } = useRecentConversations(sessionId)
@@ -107,17 +104,6 @@ export const CommandPalette = () => {
               group: 'Jump to',
               icon: <Target01 size={17} />,
               run: () => go('/campaigns'),
-            } as PaletteItem,
-          ]
-        : []),
-      ...(isEnabled('mia-creative-studio') && isFeatureEnabled('paid_media')
-        ? [
-            {
-              id: 'jump-mia-create',
-              label: 'Mia Create',
-              group: 'Jump to',
-              icon: <Stars01 size={17} />,
-              run: () => go('/creative-studio'),
             } as PaletteItem,
           ]
         : []),
@@ -216,7 +202,7 @@ export const CommandPalette = () => {
     // The flags and the experience are deps too: the palette mounts before the session
     // loads, and a Basic workspace briefly listed Campaigns and Reports (30 Sep 2026).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, isEnabled, isFeatureEnabled, isBasic])
+  }, [conversations, isFeatureEnabled, isBasic])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

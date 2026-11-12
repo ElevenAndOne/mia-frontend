@@ -14,7 +14,6 @@ interface AppShellProps {
   onNewWorkspace?: () => void
   onIntegrationsClick?: () => void
   onCampaignsClick?: () => void
-  onCreativeStudioClick?: () => void
   onReportsClick?: () => void
   onHelpClick?: () => void
   onLogout?: () => void

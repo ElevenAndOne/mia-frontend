@@ -4,6 +4,7 @@ import { FilePlus02 } from '../../../components/icon/file-plus-02'
 import { useSession } from '../../../contexts/session-context'
 import { useToast } from '../../../contexts/toast-context'
 import { clearTrackerCache } from '../../campaign/services/campaign-tracker-service'
+import { addFromCanvas } from '../../campaign-builder/api'
 import { clearCampaignDetailCache } from '../../campaigns/campaign-detail-cache'
 import { fetchCampaignDetail, fetchCampaignList } from '../../campaigns/services/campaign-api'
 import type { CampaignSummary } from '../../campaigns/types'
@@ -26,10 +27,13 @@ const specChannel = (spec: CreativeSpec | null): string => {
   return spec.isPaid ? 'meta_ads' : 'organic_social'
 }
 
+/** A builder campaign that takes jobs now: approved (draft, live or paused). One still being planned, or ended, doesn't. */
+const takesJobs = (c: CampaignSummary) => c.builder === 'v2' && ['draft', 'live', 'paused'].includes(c.status)
+
 /**
- * "Add to campaign" on the chat canvas: writes the deliverable into a campaign
- * phase as a real Asset via the existing campaign_add_channel_action executor —
- * so it lands in the builder, calendar and ClickUp flow like builder-made assets.
+ * "Add to campaign" on the chat canvas. An older campaign: writes the deliverable into a phase as a real Asset via
+ * the campaign_add_channel_action executor. A builder campaign: one card on its page, checked and priced like a job
+ * Mia proposes there, added only when the PM presses Apply (step 5, audit 9 Nov §4.1).
  */
 export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps) => {
   const { sessionId, activeWorkspace } = useSession()
@@ -38,10 +42,12 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
 
   const [open, setOpen] = useState(false)
   const [campaigns, setCampaigns] = useState<CampaignSummary[] | null>(null)
-  // Campaigns in the campaign builder take new jobs on their own page, where Mia knows the plan; an add from here
-  // always failed on them (review 5 Nov, 1.5), so they are links, not choices
+  // Builder campaigns that can't take a job now (still being planned, or ended) are links to their page, not choices
   const [inBuilder, setInBuilder] = useState<CampaignSummary[]>([])
   const [campaignId, setCampaignId] = useState('')
+  const [jobName, setJobName] = useState(doc.title || '')
+  // a builder campaign's card is made: the PM applies it on the campaign's page
+  const [carded, setCarded] = useState<{ campaignId: string; name: string } | null>(null)
   const [phases, setPhases] = useState<string[] | null>(null)
   const [phaseName, setPhaseName] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -53,8 +59,8 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     fetchCampaignList(sessionId, tenantId)
       .then((list) => {
         const open = list.filter((c) => c.status !== 'archived')
-        const usable = open.filter((c) => c.builder !== 'v2')
-        setInBuilder(open.filter((c) => c.builder === 'v2'))
+        const usable = open.filter((c) => c.builder !== 'v2' || takesJobs(c))
+        setInBuilder(open.filter((c) => c.builder === 'v2' && !takesJobs(c)))
         setCampaigns(usable)
         if (usable.length === 1) setCampaignId(usable[0].campaign_id)
       })
@@ -86,14 +92,49 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     }
   }, [open])
 
+  const chosen = campaigns?.find((c) => c.campaign_id === campaignId)
+  const toBuilder = !!chosen && takesJobs(chosen)
+
   const submit = useCallback(async () => {
-    if (!sessionId || !campaignId || !phaseName || submitting) return
+    if (!sessionId || !tenantId || !campaignId || !phaseName || submitting) return
     setSubmitting(true)
+    if (toBuilder) {
+      try {
+        await addFromCanvas(sessionId, tenantId, campaignId, {
+          phase: phaseName,
+          // the server's cap is 200; a long canvas title used to fail the whole add
+          name: (jobName.trim() || doc.title || 'Chat canvas job').slice(0, 200),
+          channel: specChannel(spec),
+          ...(spec ? { format: spec.format } : {}),
+          primary_text: spec ? spec.primaryText : doc.content,
+          ...(spec?.hashtags ? { hashtags: spec.hashtags } : {}),
+          ...(spec?.headline ? { headline: spec.headline } : {}),
+          ...(spec?.description ? { description: spec.description } : {}),
+          ...(spec && spec.headlines.length > 1 ? { headlines: spec.headlines } : {}),
+          ...(spec && spec.descriptions.length > 1 ? { descriptions: spec.descriptions } : {}),
+          ...(spec?.keywords.length ? { keywords: spec.keywords } : {}),
+          ...(spec?.cta ? { cta: spec.cta } : {}),
+          ...(spec?.linkUrl ? { link: spec.linkUrl } : {}),
+          ...(spec?.visuals.length ? { visuals: spec.visuals } : {}),
+          ...(spec?.media.length ? { media: spec.media } : {}),
+          // Budget, Flight dates, Measure, Best time: kept on the job, never turned into credits
+          ...(spec?.notes.length ? { notes: spec.notes } : {}),
+          ...(conversationId ? { conversation_id: conversationId } : {}),
+          document_id: doc.id,
+        })
+        setCarded({ campaignId, name: chosen?.campaign_name ?? 'the campaign' })
+      } catch (e) {
+        showToast('error', e instanceof Error ? e.message : 'Failed to add to campaign')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
     // Map the deliverable → the executor's asset shape. Best time (if Mia noted
     // one) rides along; uploaded Media: images become the approved creative.
     const bestTime = spec?.notes.find((n) => /best time/i.test(n.label))?.value
     const asset: Record<string, unknown> = {
-      asset_name: doc.title || 'Chat canvas post',
+      asset_name: jobName.trim() || doc.title || 'Chat canvas post',
       asset_type: spec
         ? spec.platform === 'google' && spec.format === 'search_ad'
           ? 'responsive_search_ad'
@@ -145,7 +186,8 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     } finally {
       setSubmitting(false)
     }
-  }, [sessionId, campaignId, phaseName, submitting, spec, doc, conversationId, campaigns, showToast])
+  }, [sessionId, tenantId, campaignId, phaseName, submitting, spec, doc, conversationId, campaigns, showToast,
+      toBuilder, jobName, chosen])
 
   if (!tenantId) return null
 
@@ -156,7 +198,10 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
     <div className="relative" ref={menuRef}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => !o)
+          setCarded(null) // a reopened picker starts again, not on the last card's message
+        }}
         aria-label="Add to campaign"
         aria-expanded={open}
         title="Add this post to a campaign"
@@ -169,7 +214,20 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
         <div className="absolute z-40 top-full right-0 mt-1 w-64 rounded-xl border border-tertiary bg-primary shadow-lg p-3 flex flex-col gap-2.5">
           <p className="paragraph-sm font-semibold text-primary">Add to campaign</p>
 
-          {campaigns === null ? (
+          {carded ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="paragraph-sm text-primary">
+                It's on a card on {carded.name}'s page. Check it there and press Apply to add the job.
+              </p>
+              <Link
+                to={`/campaign-builder/${carded.campaignId}/studio`}
+                className="paragraph-sm text-brand-secondary hover:underline"
+                onClick={() => setOpen(false)}
+              >
+                Open the campaign
+              </Link>
+            </div>
+          ) : campaigns === null ? (
             <p className="paragraph-sm text-quaternary">Loading campaigns…</p>
           ) : campaigns.length === 0 ? (
             <p className="paragraph-sm text-quaternary">
@@ -208,23 +266,34 @@ export const AddToCampaign = ({ doc, spec, conversationId }: AddToCampaignProps)
                   </select>
                 ))}
 
+              <input
+                value={jobName}
+                onChange={(e) => setJobName(e.target.value)}
+                maxLength={200}
+                aria-label="Job name"
+                placeholder="Job name"
+                className={selectCls}
+              />
+
               <button
                 type="button"
                 disabled={!campaignId || !phaseName || submitting}
                 onClick={() => void submit()}
                 className="w-full py-1.5 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium disabled:opacity-40 transition-opacity"
               >
-                {submitting ? 'Adding…' : 'Add to phase'}
+                {submitting ? 'Adding…' : toBuilder ? 'Send to its page' : 'Add to phase'}
               </button>
               <p className="paragraph-xs text-quaternary">
-                Lands in the builder & calendar like any campaign asset.
+                {toBuilder
+                  ? 'Shows on the campaign’s page as a card. Nothing is added until you press Apply there.'
+                  : 'Lands in the builder & calendar like any campaign asset.'}
               </p>
             </>
           )}
-          {campaigns !== null && inBuilder.length ? (
+          {!carded && campaigns !== null && inBuilder.length ? (
             <div className="border-t border-secondary pt-2 flex flex-col gap-1">
               <p className="paragraph-xs text-tertiary">
-                In the campaign builder. Add a job on the campaign's page: ask Mia in its chat.
+                Being planned or ended in the campaign builder: open its page to add work there.
               </p>
               {inBuilder.map((c) => (
                 <Link

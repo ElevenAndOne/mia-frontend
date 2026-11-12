@@ -7,6 +7,7 @@ import { Spinner } from '../../../components/spinner'
 import { useToast } from '../../../contexts/toast-context'
 import { apiFetch } from '../../../utils/api'
 import { HowMiaWritesCard, LearnedRulesCard, PeopleCard } from './basic-brand-cards'
+import { BrandFactsCard } from './brand-facts-card'
 import { BrandFactsSection } from './brand-facts-section'
 import { type FontStatus, type OwnFont } from './brand-fonts'
 import { BrandFontsRow } from './brand-fonts-row'
@@ -422,9 +423,12 @@ export const BasicBrandTab = ({
           <OpenRow title="What Mia has learned" sub="Habits from your changes, turn any off">
             <LearnedRulesCard sessionId={sessionId} tenantId={tenantId} canManage={canManage} />
           </OpenRow>
+          <OpenRow title="Facts Mia can state" sub="Awards, dates, prices: confirm what she found">
+            <BrandFactsCard sessionId={sessionId} tenantId={tenantId} canManage={canManage} />
+          </OpenRow>
           <OpenRow
-            title="Facts Mia may quote"
-            sub="Prices and offers she found, and where each came from"
+            title="What Mia read on your website"
+            sub="Prices, offers, events and links, and where each came from"
           >
             <BrandFactsSection sessionId={sessionId} tenantId={tenantId} />
           </OpenRow>

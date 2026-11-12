@@ -1,7 +1,7 @@
 import { memo, type RefObject } from 'react'
 import ChatMessage from './chat-message'
 import type { ChatMessageItem } from '../hooks/use-chat-view.tsx'
-import type { MiaAsset } from '../../creative-studio/creative-studio-api'
+import type { MiaAsset } from '../services/pictures-api'
 import type { ChatImageJob } from './chat-image-card'
 
 interface ChatMessageListProps {

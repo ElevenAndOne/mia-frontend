@@ -5,8 +5,8 @@ import { Button } from '../../components/button'
 import { TopBar } from '../../components/top-bar'
 import { Edit03 } from '../../components/icon/edit-03'
 import { UploadCloud01 } from '../../components/icon/upload-cloud-01'
-import { creativeStudioApi, miaCreateApi } from '../creative-studio/creative-studio-api'
-import type { CreativeAsset } from '../creative-studio/creative-studio-api'
+import { picturesApi } from '../chat/services/pictures-api'
+import type { CreativeAsset } from '../chat/services/pictures-api'
 import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
@@ -892,8 +892,8 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
 
   useEffect(() => {
     if (!sessionId || !tenantId) return
-    creativeStudioApi
-      .listAssets(tenantId, sessionId, { asset_type: 'reference', media_type: 'image', limit: 24 })
+    picturesApi
+      .listLibrary(tenantId, sessionId, { asset_type: 'reference', media_type: 'image', limit: 24 })
       .then((r) => setLibrary(r.assets))
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Couldn’t load the library'))
   }, [sessionId, tenantId])
@@ -906,7 +906,7 @@ const SendDesignDialog = ({ onClose, onSent }: { onClose: () => void; onSent: (l
     setUploading(true)
     try {
       for (const file of Array.from(files).slice(0, 10)) {
-        const r = await miaCreateApi.uploadReference(sessionId, tenantId, file)
+        const r = await picturesApi.uploadReference(sessionId, tenantId, file)
         const asset: CreativeAsset = {
           asset_id: r.asset_id,
           tenant_id: tenantId,

@@ -27,7 +27,7 @@ import { SchedulePost } from './schedule-post'
 import { WordsEditor } from './words-editor'
 import { HighlightToolbar } from './highlight-toolbar'
 import { CreativePreview } from './previews/creative-preview'
-import { parseCreativeSpec, PLATFORM_LABELS } from './previews/creative-spec'
+import { effectiveDocType, parseCreativeSpec, plainDividers, PLATFORM_LABELS } from './previews/creative-spec'
 
 // TipTap only loads when a long-form doc enters Edit mode (keeps the chat bundle lean).
 const RichEditor = lazy(() => import('./rich-editor'))
@@ -320,7 +320,7 @@ export const CanvasPane = ({
     setPickMode(false)
   }, [activeId, closeToolbar])
 
-  const baseTypeLabel = DOC_TYPE_LABELS[doc.doc_type] ?? DOC_TYPE_LABELS.generic
+  const baseTypeLabel = DOC_TYPE_LABELS[effectiveDocType(doc)] ?? DOC_TYPE_LABELS.generic
   const platformLabel = spec ? PLATFORM_LABELS[spec.platform] : null
   // Skip the platform suffix when it just repeats the doc type ("EMAIL · EMAIL").
   const typeLabel =
@@ -696,10 +696,10 @@ export const CanvasPane = ({
                 )}
               </>
             ) : (
-              <ChatMarkdown content={doc.content} hardBreaks />
+              <ChatMarkdown content={plainDividers(doc.content)} hardBreaks />
             )}
           </div>
-        ) : WYSIWYG_TYPES.has(doc.doc_type) ? (
+        ) : WYSIWYG_TYPES.has(effectiveDocType(doc)) ? (
           <div className="max-w-[40rem] mx-auto">
             <Suspense fallback={<p className="paragraph-sm text-quaternary">Loading editor…</p>}>
               {/* Keyed by doc ONLY — self-saves bump version and must NOT remount;

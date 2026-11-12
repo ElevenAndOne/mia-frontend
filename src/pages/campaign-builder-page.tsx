@@ -32,6 +32,7 @@ const TABS = [
 // The server's limit on the documents' text (StartRequest.deck_text); every step reads up to it whole (deck.py
 // FULL_CHARS, 27 Oct).
 const MAX_SOURCE_CHARS = 200_000
+const MAX_PM_TEXT_CHARS = 20_000
 
 // The documents as the one text the server reads. One file reads exactly as before; several are each opened by the
 // line services/campaign_builder/deck.py FILE_MARK looks for.
@@ -60,7 +61,11 @@ function NewBuild() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const deckText = sourceText(files, deck)
-  const tooLong = deckText.length > MAX_SOURCE_CHARS
+  const deckTooLong = deckText.length > MAX_SOURCE_CHARS
+  // The server takes at most 20,000 characters here (StartRequest.pm_text); a pasted full brief belongs in
+  // the deck box, which takes far more (sweep 12 Nov: over the cap it failed with a bare "Request failed").
+  const textTooLong = text.length > MAX_PM_TEXT_CHARS
+  const tooLong = deckTooLong || textTooLong
 
   const addFiles = async (picked: File[]) => {
     if (!sessionId || !activeWorkspace) return
@@ -130,6 +135,12 @@ function NewBuild() {
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
+          {textTooLong ? (
+            <p className="paragraph-xs text-error">
+              This box takes up to {MAX_PM_TEXT_CHARS.toLocaleString()} characters (this is {text.length.toLocaleString()}).
+              Keep the short version here and paste the full brief under "Or paste its text" below, or attach it as a file.
+            </p>
+          ) : null}
           <div className="flex flex-col gap-1">
             {files.map((f, i) => (
               <span
@@ -170,7 +181,7 @@ function NewBuild() {
                 }}
               />
             </label>
-            {tooLong ? (
+            {deckTooLong ? (
               <p className="paragraph-xs text-error">
                 Together these are {deckText.length.toLocaleString()} characters; the most Mia takes in at once is{' '}
                 {MAX_SOURCE_CHARS.toLocaleString()}. Remove a document, or paste only the parts that matter.
@@ -347,7 +358,14 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                   {money(s.campaign.budget_total, s.campaign.currency)}
                   {s.campaign.building
                     ? ' · draft'
-                    : s.campaign.status === 'live'
+                    : // paused and finished campaigns said "approved, not live yet" (browser pass 10 Nov)
+                      s.campaign.status === 'paused'
+                      ? ' · paused'
+                      : s.campaign.status === 'completed'
+                        ? ' · ended'
+                        : s.campaign.status === 'archived'
+                          ? ' · archived'
+                          : s.campaign.status === 'live'
                       ? // launched before its start date: it isn't running yet (live test 18 Oct)
                         s.campaign.start_date && s.campaign.start_date > new Date().toISOString().slice(0, 10)
                         ? ` · launched, starts ${s.campaign.start_date}`

@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../utils/api'
+import { normalizeDateRange } from '../../../utils/date-range'
 
 export interface SummaryResponse {
   success: boolean
@@ -18,7 +19,7 @@ export const fetchSummaryInsights = async (
     },
     body: JSON.stringify({
       session_id: sessionId,
-      date_range: dateRange,
+      date_range: normalizeDateRange(dateRange),
     }),
   })
 

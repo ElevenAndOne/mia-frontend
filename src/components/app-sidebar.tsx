@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
 import { useTheme } from '../contexts/theme-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
-import { usePlugins } from '../features/plugins/hooks/use-plugins'
 import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useExperience } from '../features/workspace/hooks/use-experience'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
@@ -25,7 +24,6 @@ import { Monitor01 } from './icon/monitor-01'
 import { Moon01 } from './icon/moon-01'
 import { Plus } from './icon/plus'
 import { Settings01 } from './icon/settings-01'
-import { Stars01 } from './icon/stars-01'
 import { Sun } from './icon/sun'
 import { Target01 } from './icon/target-01'
 import { Users01 } from './icon/users-01'
@@ -33,9 +31,6 @@ import { Wallet01 } from './icon/wallet-01'
 import { ClipboardCheck } from './icon/clipboard-check'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
 
-// Mia Create is hidden from the nav for now (2026-08-12). The page, its route
-// and its feature flag are untouched — flip this back to show it again.
-const SHOW_MIA_CREATE = false
 import { UserAvatar } from './user-avatar'
 
 const COLLAPSE_KEY = 'mia:sidebar-collapsed'
@@ -88,7 +83,6 @@ export const AppSidebar = () => {
   const location = useLocation()
   const { user, activeWorkspace, sessionId } = useSession()
   const { theme, setTheme } = useTheme()
-  const { isEnabled } = usePlugins()
   // Per-workspace feature flags (progressive disclosure). Everything defaults ON; a flag
   // hides a surface, it never removes it. Workspace Settings is deliberately ungated.
   const { isEnabled: isFeatureEnabled } = useFeatures()
@@ -150,9 +144,7 @@ export const AppSidebar = () => {
         ? 'campaigns'
         : path.startsWith('/scheduler')
           ? 'scheduler'
-          : path.startsWith('/creative-studio')
-            ? 'mia-create'
-            : path.startsWith('/reports')
+          : path.startsWith('/reports')
               ? 'reports'
               : path.startsWith('/budget-tracker')
                 ? 'budget'
@@ -277,15 +269,6 @@ export const AppSidebar = () => {
               collapsed={collapsed}
               active={activeKey === 'scheduler'}
               onClick={() => navigate('/scheduler')}
-            />
-          )}
-          {SHOW_MIA_CREATE && isEnabled('mia-creative-studio') && (
-            <NavItem
-              icon={<Stars01 size={18} />}
-              label="Mia Create"
-              collapsed={collapsed}
-              active={activeKey === 'mia-create'}
-              onClick={actions.onCreativeStudioClick}
             />
           )}
           {isFeatureEnabled('reports') && (

@@ -178,9 +178,39 @@ const titleCase = (label: string): string =>
  * social/ad deliverable (or the copy can't be found) — callers fall back to
  * the markdown renderer.
  */
-export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
-  if (doc.doc_type !== 'social_post' && doc.doc_type !== 'ad_copy' && doc.doc_type !== 'email')
-    return null
+// Mirrors the backend's _infer_doc_type (services/chat_engine.py). 9 Nov (Onvlee): three paid
+// ads were saved as 'generic' because the prompt asked for doc_type "ad", which isn't a type.
+// The backend now maps it, but documents already saved that way still need their preview, so
+// a generic document whose content is the ad or post template is read as that type.
+const AD_HEADING = /^\W*ad\s+\d+\b[^\n]*\((?:meta|google|linkedin|tiktok|facebook|instagram)[^)\n]*\)/im
+const POST_HEADING = /^\W*post\s+\d+\b[^\n]*\(organic[^)\n]*\)/im
+const AD_FIELDS = /^\W*(flight dates|budget)\s*:/gim
+const POST_FIELDS = /^\W*(launch date|best time)\s*:/im
+const GOOGLE_POOL = /^\W*(headline|keyword)\s*:/im
+const FORMAT_FIELD = /^\W*format\s*:/im
+const PLATFORM_FIELD = /^\s*platform:\s*(facebook|instagram|linkedin|tiktok)\b/im
+
+export const effectiveDocType = (doc: Pick<CanvasDocument, 'doc_type' | 'content'>): string => {
+  if (doc.doc_type && doc.doc_type !== 'generic') return doc.doc_type
+  const c = doc.content || ''
+  const adFields = c.match(AD_FIELDS)?.length ?? 0
+  if (AD_HEADING.test(c) || (adFields > 0 && GOOGLE_POOL.test(c)) || (adFields >= 2 && FORMAT_FIELD.test(c)))
+    return 'ad_copy'
+  if (PLATFORM_FIELD.test(c) || POST_HEADING.test(c) || (POST_FIELDS.test(c) && FORMAT_FIELD.test(c)))
+    return 'social_post'
+  return doc.doc_type || 'generic'
+}
+
+/** A "---" straight under a line of text is a heading underline in markdown, which turned a
+ *  plain document's whole field block into one bold heading (9 Nov). A blank line before it
+ *  makes it the divider it was meant to be. Display only; the stored text is unchanged. */
+export const plainDividers = (md: string): string =>
+  (md || '').replace(/^([^\n]*\S[^\n]*)\n(-{3,}|={3,})[ \t]*$/gm, '$1\n\n$2')
+
+export const parseCreativeSpec = (rawDoc: CanvasDocument): CreativeSpec | null => {
+  const docType = effectiveDocType(rawDoc)
+  if (docType !== 'social_post' && docType !== 'ad_copy' && docType !== 'email') return null
+  const doc = docType === rawDoc.doc_type ? rawDoc : { ...rawDoc, doc_type: docType }
 
   const lines = doc.content.split('\n')
   const fields: Record<string, string> = {}
@@ -216,6 +246,14 @@ export const parseCreativeSpec = (doc: CanvasDocument): CreativeSpec | null => {
     }
 
     if (rawLine.trim()) seenContent = true
+
+    // The template's field heading ("**Ad 2, Responsive Search Ad (Google Ads)**") opens the
+    // field block even without a divider above it: a Google search ad has no primary text, so
+    // the model starts with the heading (9 Nov), and its fields were shown as the ad copy.
+    if (!inNotes && (AD_HEADING.test(rawLine) || POST_HEADING.test(rawLine))) {
+      inNotes = true
+      continue
+    }
 
     const labelMatch = rawLine.match(LABEL_LINE)
     const label = labelMatch ? labelMatch[1].trim().toLowerCase() : null

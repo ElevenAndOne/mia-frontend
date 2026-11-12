@@ -23,9 +23,9 @@ const Block = ({ title, items }: { title: string; items: string[] }) =>
   ) : null
 
 /**
- * Brand → "Facts Mia may quote": the prices, awards, dates and links Mia read off the website.
- * Read-only for now — these are the only facts she will state in a post, so the owner can see
- * exactly what she knows. Re-reading the site under Workspace refreshes them.
+ * Brand → "What Mia read on your website": the prices, awards, dates and links Mia read off the
+ * website, read-only. Which claims she may state is decided in BrandFactsCard (brand-facts-card.tsx).
+ * Re-reading the site under Workspace refreshes them.
  */
 export const BrandFactsSection = ({ sessionId, tenantId }: Props) => {
   const [facts, setFacts] = useState<WebsiteFacts | null>(null)
@@ -98,7 +98,7 @@ export const BrandFactsSection = ({ sessionId, tenantId }: Props) => {
         />
       </div>
       <p className="paragraph-xs text-quaternary">
-        Mia only states what is listed here. To update it, use Read again under Workspace.
+        To update this, use Read again under Workspace.
         {facts.read_at
           ? ` Last read ${new Date(facts.read_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}.`
           : ''}

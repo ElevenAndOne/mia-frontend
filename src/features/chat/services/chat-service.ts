@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../utils/api'
+import { normalizeDateRange } from '../../../utils/date-range'
 
 interface ChatHistoryMessage {
   role: 'user' | 'assistant'
@@ -269,7 +270,7 @@ export const sendChatMessage = async (payload: ChatRequestPayload, signal?: Abor
     message: payload.message,
     display_text: payload.display_text,
     session_id: payload.session_id,
-    date_range: payload.date_range,
+    date_range: normalizeDateRange(payload.date_range),
     selected_platforms: payload.selected_platforms,
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,
@@ -380,7 +381,7 @@ export const sendChatMessageStreaming = async (
     message: payload.message,
     display_text: payload.display_text,
     session_id: payload.session_id,
-    date_range: payload.date_range,
+    date_range: normalizeDateRange(payload.date_range),
     selected_platforms: payload.selected_platforms,
     conversation_history: payload.conversation_history,
     conversation_id: payload.conversation_id,

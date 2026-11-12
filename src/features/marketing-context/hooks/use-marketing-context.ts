@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../../contexts/toast-context'
 import type { BrandGuideExtracted, MarketingContext, UploadResult } from '../types'
 import {
+  commitPendingBrandGuide,
   fetchMarketingContext,
   findCompetitors,
   generateBrandGuideFromWebsite,
@@ -33,6 +34,8 @@ export interface UseMarketingContextReturn {
   handleRefreshSnapshot: () => Promise<void>
   handleFindCompetitors: () => Promise<void>
   handleCancelUpload: () => void
+  /** Take Mia's newer brand guide draft over the one they chose (it waits for them; never auto-applied). */
+  handleUsePendingGuide: () => Promise<void>
 }
 
 export function useMarketingContext(
@@ -196,6 +199,17 @@ export function useMarketingContext(
     }
   }, [sessionId, showToast, load])
 
+  const handleUsePendingGuide = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      await commitPendingBrandGuide(sessionId, tenantId)
+      showToast('success', "Mia's new version of your brand guide is now in use.")
+      await load()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Could not use the new version')
+    }
+  }, [sessionId, tenantId, showToast, load])
+
   const handleCancelUpload = useCallback(() => {
     setUploadStep('idle')
     setUploadResult(null)
@@ -224,5 +238,6 @@ export function useMarketingContext(
     handleRefreshSnapshot,
     handleFindCompetitors,
     handleCancelUpload,
+    handleUsePendingGuide,
   }
 }

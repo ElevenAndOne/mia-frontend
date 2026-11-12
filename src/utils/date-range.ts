@@ -59,6 +59,21 @@ export const CHAT_DATE_RANGE_OPTIONS: DateRangeOption[] = [
 
 export const isCustomDateRange = (value: string): boolean => CUSTOM_RANGE_PATTERN.test(value)
 
+/**
+ * A range the backend accepts: a preset or a real YYYY-MM-DD_YYYY-MM-DD span (start ≤ end). The
+ * backend refuses anything else (services/date_service.check_date_range, 11 Nov 2026), so every
+ * value read from storage or a URL goes through normalizeDateRange before it is sent.
+ */
+export const isApiDateRange = (value: string | null | undefined): boolean => {
+  if (!value) return false
+  if (value in PRESET_DEFINITIONS) return true
+  const span = parseCustomDateRange(value)
+  return !!span && span.start.getTime() <= span.end.getTime()
+}
+
+export const normalizeDateRange = (value: string | null | undefined): DateRangeValue =>
+  value && isApiDateRange(value) ? value : '30_days'
+
 export const buildCustomDateRangeValue = (start: Date, end: Date): string => {
   return `${format(start, 'yyyy-MM-dd')}_${format(end, 'yyyy-MM-dd')}`
 }
