@@ -10,7 +10,9 @@
  * no WhatsApp post card rendered on live).
  */
 // /p/ (12 Oct 2026): the read-only posts behind a WhatsApp link, for people with no login.
-export const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card', '/p/'] as const
+// /connect/ (12 Nov 2026): where Claude sends a person to sign in to Mia. They sign in ON the
+// page (like /invite/), so it is standalone for redirects and logout but not a renderer path.
+export const STANDALONE_PATHS = ['/invite/', '/report-print', '/post-card', '/p/', '/connect/'] as const
 
 export const isStandalonePath = (path: string): boolean =>
   STANDALONE_PATHS.some((p) => path === p || path.startsWith(p))

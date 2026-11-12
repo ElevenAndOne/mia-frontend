@@ -5,11 +5,14 @@ import { RequireFeature } from './require-feature'
 import { RequireStaff } from './require-staff'
 import { ErrorBoundary } from '../components/error-boundary'
 import { Spinner } from '../components/spinner'
+// Imported here, not lazily: it saves WorkOS's id from the query string before anything strips it.
+import { CONNECT_LOGIN_PATH } from '../features/connect/external-auth-id'
 
 // Lazy like every other page — two of these import framer-motion, which kept
 // the whole animation library in the entry chunk when they were eager.
 const IntroPage = lazy(() => import('../pages/intro-page'))
 const InvitePage = lazy(() => import('../pages/invite-page'))
+const ConnectLoginPage = lazy(() => import('../pages/connect-login-page'))
 const AccountSelectionPage = lazy(() => import('../pages/account-selection-page'))
 const MetaAccountSelectionPage = lazy(() => import('../pages/meta-account-selection-page'))
 
@@ -88,6 +91,9 @@ export const AppRoutes = ({
         />
 
         <Route path="/invite/:inviteId" element={<InvitePage onAccepted={onInviteAccepted} />} />
+
+        {/* Claude connector sign-in (WorkOS sends the browser here) */}
+        <Route path={CONNECT_LOGIN_PATH} element={<ConnectLoginPage />} />
 
         {/* Auth Routes - require authentication */}
         <Route
