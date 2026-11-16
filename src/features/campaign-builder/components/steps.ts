@@ -97,7 +97,10 @@ export function currentStep(states: Record<StepKey, StepState>): StepKey {
 }
 
 export function canOpen(states: Record<StepKey, StepState>, key: StepKey): boolean {
-  const cur = STEPS.findIndex((st) => st.key === currentStep(states))
+  // Key facts re-opened after the plan was made (the budget blocker sets it to do) doesn't lock the plan's own steps:
+  // it locked Jobs and Final words over a plan that existed (sweep D6). It still shows to do, and approve still waits.
+  const gate = states.facts === 'todo' && states.questions === 'done' ? { ...states, facts: 'done' as StepState } : states
+  const cur = STEPS.findIndex((st) => st.key === currentStep(gate))
   const idx = STEPS.findIndex((st) => st.key === key)
   return idx <= cur || states[key] === 'done'
 }

@@ -43,7 +43,11 @@ export function useCampaignMutations() {
       paused: 'live',
       completed: 'live',
     }
-    void patchCampaign({ status: next[campaign.status] ?? 'live' })
+    // Only these move by a click. An archived (or still-building) campaign used to fall through to 'live', so one
+    // click on its badge put it back on the home tracker and the nightly readings (sweep 12 Nov).
+    const to = next[campaign.status]
+    if (!to) return
+    void patchCampaign({ status: to })
   }, [campaign.status, patchCampaign])
 
   const linkGuide = useCallback(

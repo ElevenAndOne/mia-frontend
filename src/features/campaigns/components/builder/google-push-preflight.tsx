@@ -110,6 +110,9 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
 
   // Editable campaign-level fields (seeded from the preview)
   const [dailyBudget, setDailyBudget] = useState<string>('')
+  // Whether the PM changed the pre-filled amount. Only a typed amount is sent (the server takes it in the account's
+  // currency), so the plan's rand figure never goes out as dollars by itself (review 16 Nov).
+  const [budgetTyped, setBudgetTyped] = useState(false)
   const [bidding, setBidding] = useState('MAXIMIZE_CONVERSIONS')
   const [targetCpa, setTargetCpa] = useState<string>('')
   const [searchPartners, setSearchPartners] = useState(false)
@@ -121,7 +124,10 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
     fetchGooglePushPreview(sessionId, tenantId, campaign.campaign_id, actionId)
       .then((p) => {
         setPreview(p)
-        setDailyBudget(p.daily_budget != null ? String(p.daily_budget) : '')
+        // In a currency clash the plan's amount is in the wrong currency: the box starts empty under its "(USD)" label,
+        // so no rand figure reads as dollars (review 16 Nov)
+        const clash = p.errors?.some((e) => e.code === 'budget_currency_mismatch')
+        setDailyBudget(p.daily_budget != null && !clash ? String(p.daily_budget) : '')
         setBidding(p.bidding_strategy || 'MAXIMIZE_CONVERSIONS')
         setTargetCpa(p.target_cpa != null ? String(p.target_cpa) : '')
         setSearchPartners(!!p.networks?.search_partners)
@@ -201,7 +207,7 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
       })
       // 3. Push (the backend re-derives from what we just saved).
       const r = await pushChannelActionToGoogle(sessionId, tenantId, campaign.campaign_id, actionId, {
-        daily_budget: dailyBudget ? Number(dailyBudget) : undefined,
+        daily_budget: budgetTyped && dailyBudget ? Number(dailyBudget) : undefined,
       })
       setResult(r)
       if (r.success) await reloadDetail()
@@ -225,7 +231,11 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
   const BUDGET_ERRORS = new Set(['no_budget', 'budget_needs_end'])
   const hardErrors =
     preview?.errors?.filter(
-      (e) => !FIXABLE.has(e.code) && !(BUDGET_ERRORS.has(e.code) && dailyBudget),
+      (e) =>
+        !FIXABLE.has(e.code) &&
+        !(BUDGET_ERRORS.has(e.code) && dailyBudget) &&
+        // the currency block lifts only for an amount the PM typed (in the account's currency, the label says which)
+        !(e.code === 'budget_currency_mismatch' && budgetTyped && Number(dailyBudget) > 0),
     ) ?? []
   const draftIssues = drafts.some((d) => draftProblems(d).length > 0)
   const missingBudget = !dailyBudget && (preview?.errors ?? []).some((e) => BUDGET_ERRORS.has(e.code))
@@ -266,8 +276,15 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
             </div>
           ) : (
             <div className="bg-utility-error-100 border border-utility-error-300 rounded-lg p-4 mb-4">
-              <p className="subheading-md text-utility-error-700">Push failed — nothing was created (the push is all-or-nothing).</p>
-              {result.error && <p className="paragraph-xs text-utility-error-700 mt-1">{result.error}</p>}
+              {result.error === 'timed_out' ? (
+                // the push may have gone through after all: never say "nothing was created" here (sweep 12 Nov)
+                <p className="subheading-md text-utility-error-700">{result.message}</p>
+              ) : (
+                <>
+                  <p className="subheading-md text-utility-error-700">Push failed — nothing was created (the push is all-or-nothing).</p>
+                  {result.error && <p className="paragraph-xs text-utility-error-700 mt-1">{result.error}</p>}
+                </>
+              )}
             </div>
           )
         ) : preview ? (
@@ -310,8 +327,8 @@ export const GooglePushPreflight = ({ actionId, onClose }: Props) => {
                 </label>
               </div>
               <div className="bg-primary border border-secondary rounded-lg p-3">
-                <span className={fieldLabel}>Daily budget (R) & flight</span>
-                <input type="number" min={0} value={dailyBudget} onChange={(e) => setDailyBudget(e.target.value)} className={inputCls} />
+                <span className={fieldLabel}>Daily budget ({preview.currency ?? 'ZAR'}) & flight</span>
+                <input type="number" min={0} value={dailyBudget} onChange={(e) => { setDailyBudget(e.target.value); setBudgetTyped(true) }} className={inputCls} />
                 <p className="paragraph-xs text-tertiary mt-1.5">
                   {preview.flight_start ?? 'now'} → {preview.flight_end ?? 'always-on'} · Google Search budgets are per-day
                 </p>

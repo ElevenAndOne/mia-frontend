@@ -33,6 +33,9 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const [when, setWhen] = useState(() => (j.launch_date ? `${j.launch_date}T09:00` : ''))
   const [manualLink, setManualLink] = useState('')
   const [checks, setChecks] = useState<PushCheck[] | null>(null)
+  const [pushCcy, setPushCcy] = useState<string | null>(null)
+  const [advice, setAdvice] = useState<string[]>([]) // the check's warnings: not blocking, but worth a look
+  const [typedBudget, setTypedBudget] = useState('') // in the ad account's currency, only when the plan's isn't it
 
   const run = async (label: string, fn: () => Promise<unknown>, after?: (out: unknown) => void) => {
     setBusy(label)
@@ -55,6 +58,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
         ? await fetchMetaPushPreview(sessionId!, tenantId, campaignId, j.action_id)
         : await fetchGooglePushPreview(sessionId!, tenantId, campaignId, j.action_id)
       setChecks(p.errors)
+      setAdvice(p.warnings ?? [])
+      setPushCcy(p.currency ?? null)
     })
   const push = () => {
     const where = j.route === 'meta' ? 'Meta' : 'Google Ads'
@@ -63,11 +68,15 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
       // The workflow finishing is not the push working: Meta/Google can refuse a step and the result
       // comes back with success false, which used to read as "Pushed" (sweep 12 Nov).
       setNote(null)
+      const typed = currencyClash && Number(typedBudget) > 0 ? Number(typedBudget) : undefined
       if (j.route === 'meta') {
-        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id)
+        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id,
+          typed ? { lifetime_budget: typed } : {})
         if (!r?.success) {
           const why = r?.stage === 'campaign' ? r.campaign : r?.stage === 'adset' ? r.adset : undefined
-          const reason = why?.error || why?.message
+          // a step that never reported back isn't a refusal: its own message says to check Ads Manager (review 16 Nov)
+          if (why?.error === 'timed_out' || why?.error === 'cut_off') throw new Error(why.message ?? 'Check Ads Manager before pushing again.')
+          const reason = why?.message || why?.error
           throw new Error(`Meta refused the push at the ${r?.stage ?? 'first'} step${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
         }
         const made = r.ads_created ?? 0
@@ -76,9 +85,11 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ? `Pushed to Meta, paused, but only ${made} of ${tried} ads were made. Check the others in Meta Ads Manager.`
           : `Pushed to Meta, paused. Switch it on there when you're ready.`)
       } else {
-        const r = await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id)
+        const r = await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id,
+          typed ? { daily_budget: typed } : {})
         if (!r?.success) {
-          const reason = r?.error || r?.message
+          if (r?.error === 'timed_out' || r?.error === 'cut_off') throw new Error(r.message ?? 'Check Google Ads before pushing again.')
+          const reason = r?.message || r?.error
           throw new Error(`Google Ads refused the push${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
         }
         setNote(`Pushed to ${where}, paused. Switch it on there when you're ready.`)
@@ -92,7 +103,12 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const mark = () => run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null }))
   const notOnPage = () => run('unsure', () => api.launchAction(sessionId!, tenantId, campaignId, 'not-on-page', { asset_id: j.asset_id }))
   const unsure = j.launch?.unsure ?? []
-  const blocking = (checks ?? []).filter((c) => c.severity === 'block')
+  // The plan's budget is in another currency than the ad account's: the PM types it in the account's (review 16 Nov:
+  // the block said "type it on this push" and there was nowhere to type it)
+  const currencyClash = (checks ?? []).some((c) => c.code === 'budget_currency_mismatch')
+  const blocking = (checks ?? []).filter(
+    (c) => c.severity === 'block' && !(c.code === 'budget_currency_mismatch' && Number(typedBudget) > 0),
+  )
 
   const body = (
     <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
@@ -107,6 +123,14 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                       className="inline-flex items-center rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary">
                       {a.title || a.kind} ({a.kind}) ↗
                     </a>
+                    {a.measured ? (
+                      <p className="paragraph-xs text-tertiary mt-0.5">
+                        {a.width}×{a.height}
+                        {a.ratio ? ` (${a.ratio})` : ''}: {a.fits}
+                      </p>
+                    ) : a.measured === false && a.why ? (
+                      <p className="paragraph-xs text-tertiary mt-0.5">Size not read: {a.why}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -126,6 +150,10 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 <span>{j.creative}</span> // never a link that isn't a web address (review 26 Oct)
               )}
             </p>
+          ) : j.search && j.state === 'ready' ? (
+            <p className="paragraph-sm text-secondary">A search ad is its headlines and descriptions, so there's no file: add the page people land on.</p>
+          ) : j.no_file && j.state === 'ready' ? (
+            <NeedsYou>Done in Flex, but no file came back with it. Paste the file's link below, or add it to the job in Flex.</NeedsYou>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}
@@ -154,7 +182,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
 
           {j.state === 'ready' ? (
             <div className="flex flex-col gap-2">
-              {j.figma_only || !j.usable_artwork.length ? (
+              {!j.search && (j.figma_only || !j.usable_artwork.length) ? (
                 <label className="flex flex-col gap-1 paragraph-xs text-tertiary">
                   Image or video link (direct, or a Drive file)
                   <input className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" value={creative}
@@ -169,7 +197,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 </label>
               )}
               <Button size="sm" variant="primary" className="self-start" loading={busy === 'take'} onClick={() => void takeIn()}>
-                Use this artwork
+                {j.search ? 'Take it in' : 'Use this artwork'}
               </Button>
             </div>
           ) : null}
@@ -188,6 +216,18 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                   I set it up myself
                 </Button>
               </div>
+              {currencyClash ? (
+                <label className="flex flex-wrap items-center gap-2 paragraph-xs text-secondary">
+                  {j.route === 'meta' ? 'Lifetime' : 'Daily'} budget in {pushCcy ?? "the account's currency"}
+                  <input
+                    type="number"
+                    min={0}
+                    value={typedBudget}
+                    onChange={(e) => setTypedBudget(e.target.value)}
+                    className="w-32 rounded-lg border border-secondary bg-primary px-2 py-1 paragraph-xs text-primary"
+                  />
+                </label>
+              ) : null}
               {checks ? (
                 blocking.length ? (
                   <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
@@ -195,6 +235,16 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                       <li key={c.code}>⚠ {c.message}</li>
                     ))}
                   </ul>
+                ) : advice.length ? (
+                  // warnings used to be dropped, and this said "All checks pass" over them (sweep D6)
+                  <div className="paragraph-xs text-secondary">
+                    <p>Nothing blocks the push. Worth a look first:</p>
+                    <ul className="flex flex-col gap-0.5 mt-0.5">
+                      {advice.map((w) => (
+                        <li key={w}>• {w}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
                   <p className="paragraph-xs text-utility-success-700">All checks pass. It goes up paused.</p>
                 )
@@ -266,12 +316,16 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     <li className="rounded-xl border border-secondary bg-primary">
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
         className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-secondary">
-        <span className="min-w-0 flex-1 paragraph-sm text-primary">{j.name}</span>
+        <span className="min-w-0 flex-1 paragraph-sm text-primary">
+          {j.name}
+          {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
+        </span>
         <span className="paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}
         </span>
         <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
         {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
+        {j.state === 'ready' && j.no_file ? <span className="paragraph-xs text-utility-warning-700">Done in Flex, no file yet</span> : null}
         {j.state === 'launched' ? (
           <span className="label-xs text-utility-success-700 whitespace-nowrap">
             ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : 'pushed, paused'}

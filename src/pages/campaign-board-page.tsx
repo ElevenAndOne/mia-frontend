@@ -26,6 +26,10 @@ export default function CampaignBoardPage() {
     queryKey: ['campaign-board', tenantId],
     queryFn: () => api.fetchBoard(sessionId!, tenantId!),
     enabled: !!sessionId && !!tenantId,
+    // Every visit reads it fresh (the cached list still shows meanwhile): campaigns are made, approved, renamed and
+    // deleted on other pages, and the app-wide 5-minute staleTime hid those until it ran out (sweep 12 Nov).
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
   const open = (c: BoardCampaign) => navigate(`/campaign-builder/${c.campaign_id}/${c.next_step?.tab ?? 'brief'}`)
 

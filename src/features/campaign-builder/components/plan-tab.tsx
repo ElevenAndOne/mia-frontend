@@ -993,7 +993,9 @@ function planTurnItems({
   // an answer still being applied changes the plan after approve (review 2 Nov: its edits became a card on the approved
   // campaign that could never apply), so approve waits for it like the check
   const applying = (state.reading_answers ?? 0) > 0
-  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking && !applying
+  // while Mia rewrites words the server refuses approve; the button said yes, then the click got a 409 (sweep D6)
+  const rewriting = state.words_run?.status === 'running'
+  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking && !applying && !rewriting
   // Mia's check warns, never blocks (review 26 Oct): what's still open is named and approving past it is one explicit
   // confirmation, logged with who approved. A check from before the latest change is "not checked", never "nothing
   // found" (live 28 Oct, Cherry Time: the final words outdated the check, its findings stopped counting, and four jobs

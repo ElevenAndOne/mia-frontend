@@ -8,6 +8,9 @@ const CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-tertiary text-tertiary border-secondary' },
   paused: { label: 'Paused', className: 'bg-utility-warning-100 text-utility-warning-700 border-utility-warning-200' },
   completed: { label: 'Completed', className: 'bg-utility-info-100 text-utility-info-700 border-utility-info-200' },
+  // archived used to fall back to "Draft" (sweep 12 Nov)
+  archived: { label: 'Archived', className: 'bg-tertiary text-quaternary border-secondary' },
+  building: { label: 'Building', className: 'bg-tertiary text-tertiary border-secondary' },
 }
 
 export const StatusBadge = ({ status, pulse }: StatusBadgeProps) => {

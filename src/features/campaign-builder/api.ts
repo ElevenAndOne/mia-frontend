@@ -346,6 +346,46 @@ export async function fetchResults(sessionId: string, tenantId: string, campaign
   return check(await apiFetch(`${base(tenantId)}/${campaignId}/results`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
+/** Each pushed ad's and published post's own numbers since the campaign started (step 4, 16 Nov). */
+export interface JobResult {
+  job_id: string
+  name: string
+  phase: string
+  channel: string
+  format?: string | null
+  angle?: string | null
+  platform: string
+  read: boolean
+  impressions?: number
+  clicks?: number
+  ctr?: number | null
+  cpc?: number | null
+  spend?: number
+  leads?: number
+  conversions?: number
+  views?: number | null
+  engagements?: number | null
+}
+
+/** The campaign's job code (OAO in OAO-07), before its first push (step 7, 16 Nov). */
+export async function setJobCode(sessionId: string, tenantId: string, campaignId: string, code: string): Promise<{ code: string }> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/job-code`, {
+    method: 'PUT',
+    headers: json(sessionId),
+    body: JSON.stringify({ code }),
+  }))
+}
+
+export async function fetchJobResults(sessionId: string, tenantId: string, campaignId: string, refresh = false): Promise<{
+  jobs: JobResult[]
+  problems: string[]
+  window: { start: string; end: string }
+}> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/results/jobs${refresh ? '?refresh=true' : ''}`, {
+    headers: { 'X-Session-ID': sessionId },
+  }))
+}
+
 export async function writeDebrief(sessionId: string, tenantId: string, campaignId: string): Promise<{ status: string; reason?: string }> {
   return check(await apiFetch(`${base(tenantId)}/${campaignId}/results/debrief`, { method: 'POST', headers: json(sessionId) }))
 }

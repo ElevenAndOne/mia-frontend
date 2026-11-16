@@ -435,6 +435,7 @@ export interface MetaPushPreview {
   custom_conversion_id: string | null
   custom_conversion_name: string | null
   lifetime_budget: number | null
+  currency?: string // the budget's currency: the ad account's (sweep 12 Nov: was always shown as R)
   flight_start: string | null
   flight_end: string | null
   campaign_name: string
@@ -487,6 +488,7 @@ export interface GooglePushPreview {
   }
   campaign_name: string
   daily_budget: number | null
+  currency?: string // the budget's currency: the ad account's
   bidding_strategy: string // MAXIMIZE_CONVERSIONS | TARGET_SPEND | MANUAL_CPC
   target_cpa: number | null
   countries: string[]

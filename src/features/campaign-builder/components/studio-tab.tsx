@@ -188,7 +188,10 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     items.push({
       key: 'check-back',
       title: `Check ${back.length} job${back.length === 1 ? '' : 's'} back from the studio`,
-      detail: 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
+      // a job done in Flex with no file is asked for its file, not its artwork (browser pass 16 Nov)
+      detail: back.some((j) => j.no_file)
+        ? `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
+        : 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
       actions: <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>,
     })
   }
@@ -218,6 +221,31 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
+      {s?.job_code?.code ? (
+        // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex and at the end of each ad's name
+        <Card className="flex flex-wrap items-center justify-between gap-2">
+          <p className="paragraph-sm text-secondary">
+            Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
+            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>… They go to Flex with each job and at the end of each
+            ad's name, so an ad traces back to its job.
+            {s.job_code.locked ? ' The code is fixed now: ads carry it.' : ''}
+          </p>
+          {!s.job_code.locked ? (
+            <Button size="sm" loading={busy === 'code'} onClick={() => {
+              const next = window.prompt('The campaign\'s job code: 2 to 6 letters or digits, starting with a letter', s.job_code?.code ?? '')
+              if (!next || !sessionId || !tenantId) return
+              setBusy('code')
+              setError(null)
+              api.setJobCode(sessionId, tenantId, campaignId, next)
+                .then(() => qc.invalidateQueries({ queryKey: key }))
+                .catch((e) => setError(e instanceof Error ? e.message : 'Could not change the code'))
+                .finally(() => setBusy(null))
+            }}>
+              Change the code
+            </Button>
+          ) : null}
+        </Card>
+      ) : null}
 
       {/* Jobs are added on this page through Mia, not from the old campaign screen or the home chat; nothing here said so
           (live 5 Nov: "I am not sure how to add new tasks"). The chat starts the line, the PM finishes it. */}
@@ -391,6 +419,7 @@ function Row({
       </td>
       <td className="py-2 pr-2 min-w-0">
         <span className="text-primary">{j.name}</span>
+        {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
         <span className="block paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
