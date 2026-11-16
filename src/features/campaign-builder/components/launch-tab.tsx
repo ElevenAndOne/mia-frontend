@@ -123,6 +123,14 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                       className="inline-flex items-center rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary">
                       {a.title || a.kind} ({a.kind}) ↗
                     </a>
+                    {a.measured ? (
+                      <p className="paragraph-xs text-tertiary mt-0.5">
+                        {a.width}×{a.height}
+                        {a.ratio ? ` (${a.ratio})` : ''}: {a.fits}
+                      </p>
+                    ) : a.measured === false && a.why ? (
+                      <p className="paragraph-xs text-tertiary mt-0.5">Size not read: {a.why}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -142,6 +150,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 <span>{j.creative}</span> // never a link that isn't a web address (review 26 Oct)
               )}
             </p>
+          ) : j.no_file && j.state === 'ready' ? (
+            <NeedsYou>Done in Flex, but no file came back with it. Paste the file's link below, or add it to the job in Flex.</NeedsYou>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}
@@ -310,6 +320,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
         </span>
         <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
         {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
+        {j.state === 'ready' && j.no_file ? <span className="paragraph-xs text-utility-warning-700">Done in Flex, no file yet</span> : null}
         {j.state === 'launched' ? (
           <span className="label-xs text-utility-success-700 whitespace-nowrap">
             ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : 'pushed, paused'}

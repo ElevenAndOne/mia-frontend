@@ -460,8 +460,10 @@ export interface LaunchJob {
   state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled'
   stage_label?: string | null
   ready_at?: string | null
-  artwork: { url: string; kind: string; title?: string }[]
+  // measured: each file's size and the placement it fits, read once when it came back from Flex (step 8, 16 Nov)
+  artwork: { url: string; kind: string; title?: string; measured?: boolean; why?: string; width?: number; height?: number; ratio?: string; fits?: string }[]
   usable_artwork: string[]
+  no_file?: boolean // done in Flex, but no file to use came back: the PM pastes its link (step 9, 16 Nov)
   figma_only: boolean
   creative?: string | null
   final_url?: string | null

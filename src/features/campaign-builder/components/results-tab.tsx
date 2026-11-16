@@ -180,6 +180,8 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
         })}
       </div>
 
+      {fetchable ? <ByJob campaignId={campaignId} currency={s.currency} /> : null}
+
       <Card className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="subheading-md text-primary">Debrief</p>
@@ -249,6 +251,72 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   )
 }
 
+
+const PLATFORM: Record<string, string> = { meta_ads: 'Meta ad', google_ads: 'Google ad', facebook: 'Facebook post', instagram: 'Instagram post' }
+
+/** Which job did best (step 4, 16 Nov): each ad and post on its own, with its angle and format. Read when asked, since
+ *  it calls the platforms; a platform that couldn't be read is said, never shown as zeros. */
+function ByJob({ campaignId, currency }: { campaignId: string; currency?: string }) {
+  const { sessionId, activeWorkspace } = useSession()
+  const tenantId = activeWorkspace?.tenant_id
+  const [open, setOpen] = useState(false)
+  const q = useQuery({
+    queryKey: ['campaign-results-jobs', tenantId, campaignId],
+    queryFn: () => api.fetchJobResults(sessionId!, tenantId!, campaignId),
+    enabled: open && !!sessionId && !!tenantId,
+    staleTime: 10 * 60 * 1000,
+  })
+  const jobs = q.data?.jobs ?? []
+  return (
+    <Card className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="subheading-md text-primary">By job</p>
+        {!open ? (
+          <Button size="sm" onClick={() => setOpen(true)}>
+            Show each ad and post
+          </Button>
+        ) : null}
+      </div>
+      {!open ? (
+        <p className="paragraph-sm text-secondary">What each ad and post did on its own, so you can see which angle and format worked.</p>
+      ) : q.isPending ? (
+        <p className="paragraph-xs text-tertiary">Reading each ad and post… (up to a minute)</p>
+      ) : q.isError ? (
+        <p className="paragraph-xs text-error">
+          {(q.error as Error)?.message}{' '}
+          <button type="button" className="underline" onClick={() => void q.refetch()}>
+            Try again
+          </button>
+        </p>
+      ) : !jobs.length ? (
+        <p className="paragraph-sm text-secondary">Nothing has gone out from the jobs yet: ads appear here once pushed, posts once they're out.</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {jobs.map((j) => (
+            <li key={`${j.job_id}-${j.platform}`} className="rounded-lg border border-secondary bg-primary px-2 py-1.5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="label-sm text-primary">{j.name}</span>
+                <span className="paragraph-xs text-tertiary">
+                  {PLATFORM[j.platform] ?? j.platform} · {j.phase}
+                  {j.format ? ` · ${j.format}` : ''}
+                </span>
+              </div>
+              {j.angle ? <p className="paragraph-xs text-secondary">{j.angle}</p> : null}
+              <p className="paragraph-xs text-primary tabular-nums mt-0.5">
+                {!j.read
+                  ? "Couldn't be read just now"
+                  : j.platform === 'facebook' || j.platform === 'instagram'
+                    ? `${j.views != null ? num(j.views) : '—'} views · ${j.engagements != null ? num(j.engagements) : '—'} engagements`
+                    : `${num(j.impressions ?? 0)} impressions · ${num(j.clicks ?? 0)} clicks · CTR ${j.ctr != null ? `${j.ctr}%` : '—'} · CPC ${j.cpc != null ? money(j.cpc, currency) : '—'}${j.leads ? ` · ${num(j.leads)} leads` : ''}${j.conversions ? ` · ${num(j.conversions)} conversions` : ''}`}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.data?.problems?.length ? <p className="paragraph-xs text-utility-warning-700">{q.data.problems.join(' ')}</p> : null}
+    </Card>
+  )
+}
 
 // A target as the PM typed it means it: R5 for a cost, 2.5% for a rate, 2,000 for a count (live test 18 Oct).
 const MONEY_KEYS = new Set(['cpc', 'cpm', 'cpa', 'cost_per_conversion', 'cost_per_lead', 'spend'])
