@@ -314,7 +314,10 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     <li className="rounded-xl border border-secondary bg-primary">
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
         className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-secondary">
-        <span className="min-w-0 flex-1 paragraph-sm text-primary">{j.name}</span>
+        <span className="min-w-0 flex-1 paragraph-sm text-primary">
+          {j.name}
+          {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
+        </span>
         <span className="paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}
         </span>

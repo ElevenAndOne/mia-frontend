@@ -367,6 +367,15 @@ export interface JobResult {
   engagements?: number | null
 }
 
+/** The campaign's job code (OAO in OAO-07), before its first push (step 7, 16 Nov). */
+export async function setJobCode(sessionId: string, tenantId: string, campaignId: string, code: string): Promise<{ code: string }> {
+  return check(await apiFetch(`${base(tenantId)}/${campaignId}/job-code`, {
+    method: 'PUT',
+    headers: json(sessionId),
+    body: JSON.stringify({ code }),
+  }))
+}
+
 export async function fetchJobResults(sessionId: string, tenantId: string, campaignId: string, refresh = false): Promise<{
   jobs: JobResult[]
   problems: string[]

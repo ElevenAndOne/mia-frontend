@@ -378,6 +378,7 @@ export interface BudgetChannel {
 export interface StudioJob {
   asset_id: string
   name: string
+  job_no?: string | null // Mia's job number, e.g. OAO-07 (step 7, 16 Nov)
   phase: string
   channel: string
   format: string | null
@@ -412,6 +413,7 @@ export interface StudioJob {
 
 export interface StudioState {
   ready: boolean
+  job_code?: { code: string | null; locked: boolean } // the campaign's code; locked once an ad carries it
   reason?: string
   flex_client_id?: number | null
   jobs: StudioJob[]
@@ -453,6 +455,7 @@ export interface LaunchJob {
   asset_id: string
   action_id: string
   name: string
+  job_no?: string | null
   phase: string
   channel: string
   route: 'meta' | 'google' | 'schedule' | 'manual'
