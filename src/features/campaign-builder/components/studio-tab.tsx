@@ -188,7 +188,10 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     items.push({
       key: 'check-back',
       title: `Check ${back.length} job${back.length === 1 ? '' : 's'} back from the studio`,
-      detail: 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
+      // a job done in Flex with no file is asked for its file, not its artwork (browser pass 16 Nov)
+      detail: back.some((j) => j.no_file)
+        ? `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
+        : 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
       actions: <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>,
     })
   }

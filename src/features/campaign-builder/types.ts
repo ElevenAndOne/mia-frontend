@@ -467,6 +467,7 @@ export interface LaunchJob {
   artwork: { url: string; kind: string; title?: string; measured?: boolean; why?: string; width?: number; height?: number; ratio?: string; fits?: string }[]
   usable_artwork: string[]
   no_file?: boolean // done in Flex, but no file to use came back: the PM pastes its link (step 9, 16 Nov)
+  search?: boolean // a Google Search job: words only, never asked for a file (browser pass 16 Nov)
   figma_only: boolean
   creative?: string | null
   final_url?: string | null

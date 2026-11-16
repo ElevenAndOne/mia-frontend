@@ -150,6 +150,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 <span>{j.creative}</span> // never a link that isn't a web address (review 26 Oct)
               )}
             </p>
+          ) : j.search && j.state === 'ready' ? (
+            <p className="paragraph-sm text-secondary">A search ad is its headlines and descriptions, so there's no file: add the page people land on.</p>
           ) : j.no_file && j.state === 'ready' ? (
             <NeedsYou>Done in Flex, but no file came back with it. Paste the file's link below, or add it to the job in Flex.</NeedsYou>
           ) : j.state !== 'in_studio' ? (
@@ -180,7 +182,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
 
           {j.state === 'ready' ? (
             <div className="flex flex-col gap-2">
-              {j.figma_only || !j.usable_artwork.length ? (
+              {!j.search && (j.figma_only || !j.usable_artwork.length) ? (
                 <label className="flex flex-col gap-1 paragraph-xs text-tertiary">
                   Image or video link (direct, or a Drive file)
                   <input className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" value={creative}
@@ -195,7 +197,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 </label>
               )}
               <Button size="sm" variant="primary" className="self-start" loading={busy === 'take'} onClick={() => void takeIn()}>
-                Use this artwork
+                {j.search ? 'Take it in' : 'Use this artwork'}
               </Button>
             </div>
           ) : null}
