@@ -33,6 +33,9 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const [when, setWhen] = useState(() => (j.launch_date ? `${j.launch_date}T09:00` : ''))
   const [manualLink, setManualLink] = useState('')
   const [checks, setChecks] = useState<PushCheck[] | null>(null)
+  const [pushCcy, setPushCcy] = useState<string | null>(null)
+  const [advice, setAdvice] = useState<string[]>([]) // the check's warnings: not blocking, but worth a look
+  const [typedBudget, setTypedBudget] = useState('') // in the ad account's currency, only when the plan's isn't it
 
   const run = async (label: string, fn: () => Promise<unknown>, after?: (out: unknown) => void) => {
     setBusy(label)
@@ -55,6 +58,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
         ? await fetchMetaPushPreview(sessionId!, tenantId, campaignId, j.action_id)
         : await fetchGooglePushPreview(sessionId!, tenantId, campaignId, j.action_id)
       setChecks(p.errors)
+      setAdvice(p.warnings ?? [])
+      setPushCcy(p.currency ?? null)
     })
   const push = () => {
     const where = j.route === 'meta' ? 'Meta' : 'Google Ads'
@@ -63,11 +68,15 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
       // The workflow finishing is not the push working: Meta/Google can refuse a step and the result
       // comes back with success false, which used to read as "Pushed" (sweep 12 Nov).
       setNote(null)
+      const typed = currencyClash && Number(typedBudget) > 0 ? Number(typedBudget) : undefined
       if (j.route === 'meta') {
-        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id)
+        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id,
+          typed ? { lifetime_budget: typed } : {})
         if (!r?.success) {
           const why = r?.stage === 'campaign' ? r.campaign : r?.stage === 'adset' ? r.adset : undefined
-          const reason = why?.error || why?.message
+          // a step that never reported back isn't a refusal: its own message says to check Ads Manager (review 16 Nov)
+          if (why?.error === 'timed_out' || why?.error === 'cut_off') throw new Error(why.message ?? 'Check Ads Manager before pushing again.')
+          const reason = why?.message || why?.error
           throw new Error(`Meta refused the push at the ${r?.stage ?? 'first'} step${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
         }
         const made = r.ads_created ?? 0
@@ -76,9 +85,11 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ? `Pushed to Meta, paused, but only ${made} of ${tried} ads were made. Check the others in Meta Ads Manager.`
           : `Pushed to Meta, paused. Switch it on there when you're ready.`)
       } else {
-        const r = await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id)
+        const r = await pushChannelActionToGoogle(sessionId!, tenantId, campaignId, j.action_id,
+          typed ? { daily_budget: typed } : {})
         if (!r?.success) {
-          const reason = r?.error || r?.message
+          if (r?.error === 'timed_out' || r?.error === 'cut_off') throw new Error(r.message ?? 'Check Google Ads before pushing again.')
+          const reason = r?.message || r?.error
           throw new Error(`Google Ads refused the push${reason ? `: ${reason}` : ''}. Nothing is spending; anything it made is paused.`)
         }
         setNote(`Pushed to ${where}, paused. Switch it on there when you're ready.`)
@@ -92,7 +103,12 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const mark = () => run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null }))
   const notOnPage = () => run('unsure', () => api.launchAction(sessionId!, tenantId, campaignId, 'not-on-page', { asset_id: j.asset_id }))
   const unsure = j.launch?.unsure ?? []
-  const blocking = (checks ?? []).filter((c) => c.severity === 'block')
+  // The plan's budget is in another currency than the ad account's: the PM types it in the account's (review 16 Nov:
+  // the block said "type it on this push" and there was nowhere to type it)
+  const currencyClash = (checks ?? []).some((c) => c.code === 'budget_currency_mismatch')
+  const blocking = (checks ?? []).filter(
+    (c) => c.severity === 'block' && !(c.code === 'budget_currency_mismatch' && Number(typedBudget) > 0),
+  )
 
   const body = (
     <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
@@ -188,6 +204,18 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                   I set it up myself
                 </Button>
               </div>
+              {currencyClash ? (
+                <label className="flex flex-wrap items-center gap-2 paragraph-xs text-secondary">
+                  {j.route === 'meta' ? 'Lifetime' : 'Daily'} budget in {pushCcy ?? "the account's currency"}
+                  <input
+                    type="number"
+                    min={0}
+                    value={typedBudget}
+                    onChange={(e) => setTypedBudget(e.target.value)}
+                    className="w-32 rounded-lg border border-secondary bg-primary px-2 py-1 paragraph-xs text-primary"
+                  />
+                </label>
+              ) : null}
               {checks ? (
                 blocking.length ? (
                   <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
@@ -195,6 +223,16 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                       <li key={c.code}>⚠ {c.message}</li>
                     ))}
                   </ul>
+                ) : advice.length ? (
+                  // warnings used to be dropped, and this said "All checks pass" over them (sweep D6)
+                  <div className="paragraph-xs text-secondary">
+                    <p>Nothing blocks the push. Worth a look first:</p>
+                    <ul className="flex flex-col gap-0.5 mt-0.5">
+                      {advice.map((w) => (
+                        <li key={w}>• {w}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
                   <p className="paragraph-xs text-utility-success-700">All checks pass. It goes up paused.</p>
                 )

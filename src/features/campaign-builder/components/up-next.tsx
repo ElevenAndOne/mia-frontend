@@ -81,6 +81,11 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       if ((s.check_pending ?? s.checking) && s.auto_words) return say('Mia is about to write the final words. Nothing needs you yet.', 'words')
       if (flagged.length) return say(`Fix the words on ${plural(flagged.length, 'job')} Mia flagged.`, 'words')
       if (s.words_run?.status === 'failed') return say('Writing stopped part-way: press Carry on for the jobs left.', 'words')
+      // the jobs aren't confirmed (or changed since): the words row has no Try again then, it waits for Looks right
+      // (sweep D6: this said "press Try again" over a row with no such button)
+      if (plan && !plan.decisions.jobs_confirmed)
+        return say(reconfirm ? 'The jobs changed: press Looks right on Jobs & budget again, and Mia writes the final words after.'
+          : 'Press Looks right on Jobs & budget, and Mia writes the final words after.', 'jobs', true)
       // nothing waiting to write them (a lost background check, review 2 Nov): the item below says Try again, so this
       // does too, never "in a moment" for ever
       if (!jobs.some((a) => a.final_words)) return say("Mia's final words haven't started: press Try again.", 'words')

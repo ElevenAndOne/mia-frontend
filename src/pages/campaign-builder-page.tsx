@@ -16,6 +16,7 @@ import { UpNext } from '../features/campaign-builder/components/up-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
 import { ResultsTab } from '../features/campaign-builder/components/results-tab'
 import { useBuild } from '../features/campaign-builder/use-build'
+import { sastToday } from '../features/campaigns/utils/campaign-dates'
 
 // The new campaign page (rebuild slice 3, staff only while tested).
 //   /campaign-builder/new                 describe the campaign → a draft exists from that moment
@@ -367,7 +368,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                           ? ' · archived'
                           : s.campaign.status === 'live'
                       ? // launched before its start date: it isn't running yet (live test 18 Oct)
-                        s.campaign.start_date && s.campaign.start_date > new Date().toISOString().slice(0, 10)
+                        s.campaign.start_date && s.campaign.start_date > sastToday()
                         ? ` · launched, starts ${s.campaign.start_date}`
                         : ' · live'
                       : ' · approved, not live yet'}

@@ -66,7 +66,13 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   const actuals = useQueries({
     queries: (s?.phases ?? []).map((p) => ({
       queryKey: ['campaign-results-actuals', tenantId, campaignId, p.phase],
-      queryFn: () => fetchPhaseActuals(sessionId!, tenantId!, campaignId, p.phase),
+      // fetchPhaseActuals answers null when the read failed; as data that sat as a row of dashes for 10 minutes with
+      // nothing said (sweep 12 Nov), so it is an error here: retried, and shown with a Try again
+      queryFn: async () => {
+        const got = await fetchPhaseActuals(sessionId!, tenantId!, campaignId, p.phase)
+        if (got == null) throw new Error("Couldn't read the platforms for this phase just now.")
+        return got
+      },
       enabled: fetchable,
       staleTime: 10 * 60 * 1000,
     })),
@@ -109,6 +115,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
         {s.phases.map((p, i) => {
           const rows = (actuals[i]?.data as KPIActual[] | null | undefined) ?? []
           const loading = fetchable && actuals[i]?.isPending
+          const failed = fetchable && actuals[i]?.isError
           return (
             <section key={p.phase} className="rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-2">
               <div className="flex items-baseline justify-between gap-2">
@@ -116,6 +123,14 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                 <span className="paragraph-xs text-tertiary">{p.budget != null ? money(p.budget, s.currency) : ''}</span>
               </div>
               {loading ? <p className="paragraph-xs text-tertiary">Reading the platforms… (up to a minute)</p> : null}
+              {failed ? (
+                <p className="paragraph-xs text-error">
+                  {(actuals[i].error as Error)?.message}{' '}
+                  <button type="button" className="underline" onClick={() => void actuals[i].refetch()}>
+                    Try again
+                  </button>
+                </p>
+              ) : null}
               {!p.kpis.length ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-secondary bg-primary px-2 py-1.5">
                   <span className="paragraph-sm text-secondary">No target yet</span>

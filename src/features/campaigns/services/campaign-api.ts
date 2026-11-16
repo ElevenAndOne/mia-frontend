@@ -454,13 +454,45 @@ export async function suggestMetaAudience(
 // workflow-status endpoint until it settles.
 const PUSH_POLL_MS = 3000
 const PUSH_POLL_MAX = 100 // ~5 min — the workflow keeps going server-side regardless
+const PUSH_POLL_BLIPS = 10 // ~30 s of no answer in a row before giving up on watching (the push itself carries on)
+
+/** Watch a push workflow to its end. A missed poll or an "unknown" status is a blip (a Temporal or network hiccup
+ *  while the push carries on server-side), not the push failing: it used to end the progress with "Push … unknown"
+ *  and the PM pressed Push again (sweep 12 Nov). */
+async function watchPush<T>(s: string, workflowId: string, where: string): Promise<T> {
+  let blips = 0
+  for (let i = 0; i < PUSH_POLL_MAX; i++) {
+    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
+    let st: { status?: string; result?: unknown } | null = null
+    try {
+      const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
+      st = await poll.json().catch(() => null)
+    } catch {
+      st = null
+    }
+    if (!st || !st.status || st.status === 'unknown') {
+      if (++blips >= PUSH_POLL_BLIPS) {
+        throw new Error(`Can't check on the push to ${where} right now, but it carries on. Refresh the campaign in a minute before pushing again.`)
+      }
+      continue
+    }
+    blips = 0
+    if (st.status === 'completed') return st.result as T
+    if (st.status !== 'running') {
+      throw new Error(`Push to ${where} ${st.status} — check the workflow logs (${workflowId})`)
+    }
+  }
+  throw new Error(
+    `Still pushing — ${where} is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.`,
+  )
+}
 
 export async function pushChannelActionToMeta(
   s: string,
   t: string,
   campaignId: string,
   actionId: string,
-  overrides: { default_cta?: string } = {},
+  overrides: { default_cta?: string; lifetime_budget?: number } = {},
 ): Promise<MetaPushResult> {
   const res = await apiFetch(
     `${base(t)}/${campaignId}/channel_actions/${actionId}/push-to-meta`,
@@ -469,20 +501,7 @@ export async function pushChannelActionToMeta(
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Push to Meta failed (${res.status})`)
 
-  const workflowId: string = body.workflow_id
-  for (let i = 0; i < PUSH_POLL_MAX; i++) {
-    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
-    const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
-    const st = await poll.json().catch(() => null)
-    if (!st) continue
-    if (st.status === 'completed') return st.result as MetaPushResult
-    if (st.status && st.status !== 'running') {
-      throw new Error(`Push to Meta ${st.status} — check the workflow logs (${workflowId})`)
-    }
-  }
-  throw new Error(
-    'Still pushing — Meta is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
-  )
+  return watchPush<MetaPushResult>(s, body.workflow_id, 'Meta')
 }
 
 // ── Google Ads push (mirrors the Meta push above; Search/RSA only) ──────────
@@ -539,20 +558,7 @@ export async function pushChannelActionToGoogle(
   const body = await res.json().catch(() => null)
   if (!res.ok) throw new Error(body?.detail || `Push to Google failed (${res.status})`)
 
-  const workflowId: string = body.workflow_id
-  for (let i = 0; i < PUSH_POLL_MAX; i++) {
-    await new Promise((r) => setTimeout(r, PUSH_POLL_MS))
-    const poll = await apiFetch(`/api/actions/status/${workflowId}`, { headers: auth(s) })
-    const st = await poll.json().catch(() => null)
-    if (!st) continue
-    if (st.status === 'completed') return st.result as GooglePushResult
-    if (st.status && st.status !== 'running') {
-      throw new Error(`Push to Google ${st.status} — check the workflow logs (${workflowId})`)
-    }
-  }
-  throw new Error(
-    'Still pushing — Google is taking a while. The push continues server-side; refresh the campaign in a minute to see the scheduled ads.',
-  )
+  return watchPush<GooglePushResult>(s, body.workflow_id, 'Google')
 }
 
 // ── Launch readiness ───────────────────────────────────────────────────────

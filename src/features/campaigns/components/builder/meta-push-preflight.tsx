@@ -8,6 +8,7 @@ import {
 } from '../../services/campaign-api'
 import { useCampaignWorkspace } from '../../contexts/campaign-context'
 import type { MetaPushPreview, MetaPushResult } from '../../types'
+import { moneySign } from '../../../campaign-builder/components/parts'
 
 const META = '#0866FF'
 
@@ -57,6 +58,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
   const { tenantId, sessionId, campaign, reloadDetail } = useCampaignWorkspace()
 
   const [preview, setPreview] = useState<MetaPushPreview | null>(null)
+  const [typedBudget, setTypedBudget] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [pushing, setPushing] = useState(false)
@@ -158,6 +160,7 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
       })
       const r = await pushChannelActionToMeta(sessionId, tenantId, campaign.campaign_id, actionId, {
         default_cta: cta,
+        ...(currencyClash && typedBudget ? { lifetime_budget: Number(typedBudget) } : {}),
       })
       setResult(r)
       if (r.success) await reloadDetail()
@@ -171,7 +174,12 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
   const fieldLabel = 'block label-xs text-tertiary mb-0.5'
   const inputCls =
     'w-full bg-primary border border-secondary rounded-lg px-2.5 py-1.5 paragraph-xs text-primary focus:outline-none focus:border-brand'
-  const blocked = !!preview?.errors?.length
+  // The plan's budget is in another currency than the ad account's (review 16 Nov: the block said "type it on this
+  // push" and there was nowhere to type it). The amount typed here is in the account's currency and lifts that block.
+  const currencyClash = !!preview?.errors?.some((e) => e.code === 'budget_currency_mismatch')
+  const blocked =
+    !!preview?.errors?.some((e) => !(e.code === 'budget_currency_mismatch' && Number(typedBudget) > 0)) ||
+    (currencyClash && !(Number(typedBudget) > 0))
 
   return (
     <div className="campaign-workspace fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4" onClick={onClose}>
@@ -202,6 +210,12 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
           ) : (
             <div className="bg-utility-error-100 border border-utility-error-300 rounded-lg p-4 mb-4">
               <p className="subheading-md text-utility-error-700">Push failed at the {result.stage} step.</p>
+              {(() => {
+                // Meta's reason, or the timed-out note ("check Ads Manager before pushing again"), sweep 12 Nov
+                const why = result.stage === 'campaign' ? result.campaign : result.stage === 'adset' ? result.adset : undefined
+                const reason = why?.message || why?.error
+                return reason ? <p className="paragraph-xs text-utility-error-700 mt-1">{reason}</p> : null
+              })()}
             </div>
           )
         ) : preview ? (
@@ -259,9 +273,16 @@ export const MetaPushPreflight = ({ actionId, onClose }: Props) => {
               </div>
               <div className="bg-primary border border-secondary rounded-lg p-3">
                 <span className={fieldLabel}>Budget & flight</span>
-                <p className="paragraph-xs text-primary">
-                  {preview.lifetime_budget ? `R${preview.lifetime_budget.toLocaleString()} lifetime` : '—'}
-                </p>
+                {currencyClash ? (
+                  <label className="block">
+                    <span className="paragraph-xs text-secondary">Lifetime budget in {preview.currency}</span>
+                    <input type="number" min={0} value={typedBudget} onChange={(e) => setTypedBudget(e.target.value)} className={inputCls} />
+                  </label>
+                ) : (
+                  <p className="paragraph-xs text-primary">
+                    {preview.lifetime_budget ? `${moneySign(preview.currency)}${preview.lifetime_budget.toLocaleString()} lifetime` : '—'}
+                  </p>
+                )}
                 <p className="paragraph-xs text-tertiary mt-0.5">{preview.flight_start ?? 'now'} → {preview.flight_end ?? '?'}</p>
               </div>
             </div>
