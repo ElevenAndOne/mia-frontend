@@ -409,6 +409,35 @@ export interface StudioJob {
     sprint_name?: string
     sent_at?: string
   }
+  // changes asked of the studio for a job in Flex (its lead accepts or declines; 17 Nov), the last five
+  change_requests?: StudioChangeRequest[]
+}
+
+export interface StudioChangeRequest {
+  mia_request_id: string
+  field: 'name' | 'due_date' | 'launch_date' | 'credits'
+  label: string
+  old: string | number | null
+  new: string | number | null
+  status: 'to_send' | 'open' | 'to_withdraw' | 'accepted' | 'declined' | 'withdrawn' | 'refused'
+  asked_by?: string | null
+  asked_at?: string | null
+  decided_by?: string | null
+  decided_at?: string | null
+  note?: string | null
+  error?: string | null
+}
+
+// An idea the studio sent Mia from the outline in Flex (17 Nov)
+export interface StudioIdea {
+  id: number | string
+  body: string
+  by_name?: string | null
+  by_email?: string | null
+  mia_item_id?: string | null
+  about?: string | null // the job (or later-wave item) it was sent from
+  created_at?: string | null
+  status: 'new' | 'asked' | 'set_aside'
 }
 
 export interface StudioState {
@@ -425,6 +454,9 @@ export interface StudioState {
   senders: string[]
   you: string | null
   flex_down?: boolean // Flex didn't answer: said as that, never as "nobody can send" (review 22 Oct, 4.5)
+  // whether Flex has the whole plan as it is now (the outline, 17 Nov)
+  outline?: { version: number | null; sent_version: number | null; sent_at: string | null; current: boolean; error: string | null }
+  ideas?: { new: number; items: StudioIdea[]; set_aside: number; set_aside_items?: StudioIdea[] }
 }
 
 // The campaigns board (plan §8.1).

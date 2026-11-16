@@ -269,6 +269,31 @@ export async function sendToFlex(sessionId: string, tenantId: string, campaignId
   )
 }
 
+export async function withdrawChangeRequest(sessionId: string, tenantId: string, campaignId: string, miaRequestId: string) {
+  return check<{ status: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/requests/${encodeURIComponent(miaRequestId)}/withdraw`, {
+      method: 'POST',
+      headers: json(sessionId),
+    }),
+  )
+}
+
+export async function decideIdea(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  ideaId: number | string,
+  status: 'new' | 'asked' | 'set_aside',
+) {
+  return check<{ status: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/ideas/${encodeURIComponent(String(ideaId))}`, {
+      method: 'PATCH',
+      headers: json(sessionId),
+      body: JSON.stringify({ status }),
+    }),
+  )
+}
+
 export async function refreshFromFlex(sessionId: string, tenantId: string, campaignId: string) {
   return check<{ updated: number }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/refresh`, { method: 'POST', headers: json(sessionId) }),

@@ -4,7 +4,7 @@ import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import { CopyButton } from './copy-button'
 import * as api from '../api'
-import type { LaunchJob, StudioJob, StudioState } from '../types'
+import type { LaunchJob, StudioChangeRequest, StudioIdea, StudioJob, StudioState } from '../types'
 import { JobCard } from './launch-tab'
 import { Card, NeedsYou, channelLabel, day, num } from './parts'
 import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
@@ -203,6 +203,19 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       actions: <PrimaryAction onClick={() => openAndGo(toLaunch.map((j) => j.asset_id))}>Launch {toLaunch.length === 1 ? 'it' : 'them'}</PrimaryAction>,
     })
   }
+  const newIdeas = (s.ideas?.items ?? []).filter((i) => i.status === 'new')
+  if (newIdeas.length) {
+    items.push({
+      key: 'ideas',
+      title: `${newIdeas.length} idea${newIdeas.length === 1 ? '' : 's'} from the studio`,
+      detail: 'Sent from the plan in Flex. Ask Mia to make one a job, or set it aside. Nothing changes until you apply her card.',
+      actions: (
+        <Button size="sm" onClick={() => document.getElementById('studio-ideas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+          See {newIdeas.length === 1 ? 'it' : 'them'}
+        </Button>
+      ),
+    })
+  }
   if (s.sent) {
     items.push({
       key: 'follow',
@@ -221,6 +234,22 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
+      {s.outline?.version ? (
+        // the whole plan in Flex, read only at the top of the campaign (the outline, 17 Nov)
+        <p className="paragraph-xs text-tertiary">
+          {s.outline.current
+            ? 'Flex has the whole plan as it is now, shown at the top of the campaign there; the studio can send ideas from it.'
+            : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
+        </p>
+      ) : null}
+      {s.ideas?.items.length || s.ideas?.set_aside ? (
+        <Ideas
+          ideas={s.ideas.items}
+          aside={s.ideas.set_aside_items ?? []}
+          busy={busy}
+          onDecide={(i, status) => act(`idea-${i.id}`, () => api.decideIdea(...ids, i.id, status))}
+        />
+      ) : null}
       {s?.job_code?.code ? (
         // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex and at the end of each ad's name
         <Card className="flex flex-wrap items-center justify-between gap-2">
@@ -228,7 +257,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
             Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
             <span className="text-primary tabular-nums">{s.job_code.code}-02</span>… They go to Flex with each job and at the end of each
             ad's name, so an ad traces back to its job.
-            {s.job_code.locked ? ' The code is fixed now: ads carry it.' : ''}
+            {s.job_code.locked ? ' The code is fixed now: Flex tasks and ads carry it.' : ''}
           </p>
           {!s.job_code.locked ? (
             <Button size="sm" loading={busy === 'code'} onClick={() => {
@@ -351,6 +380,8 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
                           onToggle={lj ? () => setOpenRows((o) => { const n = new Set(o); if (n.has(j.asset_id)) n.delete(j.asset_id); else n.add(j.asset_id); return n }) : undefined}
                           disabled={busy === 'send'}
                           onChange={(change) => setJobs([j], change)}
+                          onWithdraw={(r) => act(`withdraw-${r.mia_request_id}`, () => api.withdrawChangeRequest(...ids, r.mia_request_id))}
+                          busy={busy}
                         />
                         {open && lj ? (
                           <tr className="bg-secondary">
@@ -380,6 +411,8 @@ function Row({
   onToggle,
   disabled,
   onChange,
+  onWithdraw,
+  busy,
 }: {
   j: StudioJob
   launch?: LaunchJob
@@ -387,6 +420,8 @@ function Row({
   onToggle?: () => void
   disabled: boolean
   onChange: (c: { credits?: number | null; include?: boolean }) => void
+  onWithdraw?: (r: StudioChangeRequest) => void
+  busy?: string | null
 }) {
   const [c, setC] = useState(j.credits == null ? '' : String(j.credits))
   const typing = useRef(false) // a refresh never overwrites the box while the PM is typing (review 26 Oct)
@@ -424,6 +459,7 @@ function Row({
           {j.phase} · {channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
+        {inFlex ? <Requests rs={j.change_requests ?? []} onWithdraw={onWithdraw} busy={busy} /> : null}
         {inFlex && j.clickup_not_linked ? (
           <span className="block label-xs text-utility-warning-700" title={j.clickup_not_linked}>
             Not linked to its ClickUp task yet: Mia tries again on the next Flex read
@@ -526,6 +562,135 @@ function Row({
         ) : null}
       </td>
     </tr>
+  )
+}
+
+// Changes asked of the studio for a job in Flex: what was asked and where it stands (17 Nov). An open one can be taken
+// back; a decided one says who decided and their note.
+const SAID: Record<StudioChangeRequest['status'], string> = {
+  to_send: 'asked, going to Flex',
+  open: 'asked, waiting on the studio lead',
+  to_withdraw: 'being taken back',
+  accepted: 'accepted',
+  declined: 'declined',
+  withdrawn: 'taken back',
+  refused: 'Flex couldn’t take it',
+}
+
+function Requests({ rs, onWithdraw, busy }: { rs: StudioChangeRequest[]; onWithdraw?: (r: StudioChangeRequest) => void; busy?: string | null }) {
+  // everything still waiting, and the latest answer on each field (older answers are in Flex's history)
+  const shown = rs.filter(
+    (r, k) => ['to_send', 'open', 'to_withdraw'].includes(r.status) || !rs.slice(k + 1).some((x) => x.field === r.field),
+  )
+  if (!shown.length) return null
+  const v = (x: string | number | null) => (x == null || x === '' ? '—' : String(x))
+  return (
+    <span className="mt-1 flex flex-col gap-0.5">
+      {shown.map((r) => {
+        const waiting = r.status === 'to_send' || r.status === 'open'
+        const tone =
+          r.status === 'accepted'
+            ? 'text-utility-success-700'
+            : r.status === 'declined' || r.status === 'refused'
+              ? 'text-utility-error-700'
+              : 'text-utility-warning-700'
+        return (
+          <span key={r.mia_request_id} className={`label-xs ${tone}`}>
+            {r.label} {v(r.old)} → {v(r.new)}: {SAID[r.status]}
+            {r.decided_by && !waiting ? ` by ${r.decided_by}` : ''}
+            {r.note ? ` (“${r.note}”)` : ''}
+            {r.error && r.status !== 'accepted' ? <span className="block text-tertiary">{r.error}</span> : null}
+            {waiting && onWithdraw ? (
+              <button
+                type="button"
+                className="ml-2 underline text-tertiary hover:text-primary disabled:opacity-50"
+                disabled={busy === `withdraw-${r.mia_request_id}`}
+                onClick={() => onWithdraw(r)}
+              >
+                Take it back
+              </button>
+            ) : null}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+// The studio's ideas from the outline in Flex (17 Nov). Mia makes every job, so an idea becomes one only through her
+// card in the chat; the PM can also set one aside.
+function Ideas({
+  ideas,
+  aside,
+  busy,
+  onDecide,
+}: {
+  ideas: StudioIdea[]
+  aside: StudioIdea[]
+  busy: string | null
+  onDecide: (i: StudioIdea, status: 'new' | 'asked' | 'set_aside') => void
+}) {
+  const [showAside, setShowAside] = useState(false)
+  return (
+    <Card className="flex flex-col gap-3">
+      <div id="studio-ideas" className="scroll-mt-24 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="subheading-sm text-primary">Ideas from the studio</p>
+        {aside.length ? (
+          <button type="button" className="paragraph-xs text-tertiary underline hover:text-primary" onClick={() => setShowAside((v) => !v)}>
+            {showAside ? 'Hide the ones set aside' : `${aside.length} set aside`}
+          </button>
+        ) : null}
+      </div>
+      {!ideas.length && !showAside ? <p className="paragraph-sm text-secondary">Every idea is set aside.</p> : null}
+      {showAside
+        ? aside.map((i) => (
+            <div key={`a-${i.id}`} className="flex flex-wrap items-start justify-between gap-3 border-t border-secondary pt-3 opacity-70">
+              <div className="min-w-0 max-w-[60ch]">
+                <p className="paragraph-sm text-secondary whitespace-pre-line">{i.body}</p>
+                <p className="paragraph-xs text-tertiary">
+                  {i.by_name ?? i.by_email ?? 'The studio'}
+                  {i.about ? ` · on ${i.about}` : ''} · set aside
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" loading={busy === `idea-${i.id}`} onClick={() => onDecide(i, 'new')}>
+                Bring it back
+              </Button>
+            </div>
+          ))
+        : null}
+      {ideas.map((i) => (
+        <div key={i.id} className="flex flex-wrap items-start justify-between gap-3 border-t border-secondary pt-3 first:border-t-0 first:pt-0">
+          <div className="min-w-0 max-w-[60ch]">
+            <p className="paragraph-sm text-primary whitespace-pre-line">{i.body}</p>
+            <p className="paragraph-xs text-tertiary">
+              {i.by_name ?? i.by_email ?? 'The studio'}
+              {i.about ? ` · on ${i.about}` : ''}
+              {i.created_at ? ` · ${day(i.created_at.slice(0, 10))}` : ''}
+              {i.status === 'asked' ? ' · asked Mia' : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={i.status === 'new' ? 'primary' : 'secondary'}
+              loading={busy === `idea-${i.id}`}
+              onClick={() => {
+                askMia({
+                  label: 'An idea from the studio',
+                  draft: `Make a job from the studio's idea${i.about ? ` (on ${i.about})` : ''}${i.by_name ? `, from ${i.by_name}` : ''}: "${i.body}" `,
+                })
+                if (i.status !== 'asked') onDecide(i, 'asked')
+              }}
+            >
+              {i.status === 'asked' ? 'Ask Mia again' : 'Ask Mia to make it a job'}
+            </Button>
+            <Button size="sm" variant="secondary" loading={busy === `idea-${i.id}`} onClick={() => onDecide(i, 'set_aside')}>
+              Set aside
+            </Button>
+          </div>
+        </div>
+      ))}
+    </Card>
   )
 }
 
