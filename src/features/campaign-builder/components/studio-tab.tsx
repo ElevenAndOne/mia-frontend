@@ -583,7 +583,9 @@ function Requests({ rs, onWithdraw, busy }: { rs: StudioChangeRequest[]; onWithd
     (r, k) => ['to_send', 'open', 'to_withdraw'].includes(r.status) || !rs.slice(k + 1).some((x) => x.field === r.field),
   )
   if (!shown.length) return null
-  const v = (x: string | number | null) => (x == null || x === '' ? '—' : String(x))
+  // dates read as the job row does ("18 Nov 2026"); names and credits as they are
+  const v = (r: StudioChangeRequest, x: string | number | null) =>
+    x == null || x === '' ? '—' : r.field === 'due_date' || r.field === 'launch_date' ? day(String(x)) : String(x)
   return (
     <span className="mt-1 flex flex-col gap-0.5">
       {shown.map((r) => {
@@ -596,7 +598,7 @@ function Requests({ rs, onWithdraw, busy }: { rs: StudioChangeRequest[]; onWithd
               : 'text-utility-warning-700'
         return (
           <span key={r.mia_request_id} className={`label-xs ${tone}`}>
-            {r.label} {v(r.old)} → {v(r.new)}: {SAID[r.status]}
+            {r.label} {v(r, r.old)} → {v(r, r.new)}: {SAID[r.status]}
             {r.decided_by && !waiting ? ` by ${r.decided_by}` : ''}
             {r.note ? ` (“${r.note}”)` : ''}
             {r.error && r.status !== 'accepted' ? <span className="block text-tertiary">{r.error}</span> : null}
@@ -642,22 +644,6 @@ function Ideas({
         ) : null}
       </div>
       {!ideas.length && !showAside ? <p className="paragraph-sm text-secondary">Every idea is set aside.</p> : null}
-      {showAside
-        ? aside.map((i) => (
-            <div key={`a-${i.id}`} className="flex flex-wrap items-start justify-between gap-3 border-t border-secondary pt-3 opacity-70">
-              <div className="min-w-0 max-w-[60ch]">
-                <p className="paragraph-sm text-secondary whitespace-pre-line">{i.body}</p>
-                <p className="paragraph-xs text-tertiary">
-                  {i.by_name ?? i.by_email ?? 'The studio'}
-                  {i.about ? ` · on ${i.about}` : ''} · set aside
-                </p>
-              </div>
-              <Button size="sm" variant="secondary" loading={busy === `idea-${i.id}`} onClick={() => onDecide(i, 'new')}>
-                Bring it back
-              </Button>
-            </div>
-          ))
-        : null}
       {ideas.map((i) => (
         <div key={i.id} className="flex flex-wrap items-start justify-between gap-3 border-t border-secondary pt-3 first:border-t-0 first:pt-0">
           <div className="min-w-0 max-w-[60ch]">
@@ -690,6 +676,22 @@ function Ideas({
           </div>
         </div>
       ))}
+      {showAside
+        ? aside.map((i) => (
+            <div key={`a-${i.id}`} className="flex flex-wrap items-start justify-between gap-3 border-t border-secondary pt-3 opacity-70">
+              <div className="min-w-0 max-w-[60ch]">
+                <p className="paragraph-sm text-secondary whitespace-pre-line">{i.body}</p>
+                <p className="paragraph-xs text-tertiary">
+                  {i.by_name ?? i.by_email ?? 'The studio'}
+                  {i.about ? ` · on ${i.about}` : ''} · set aside
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" loading={busy === `idea-${i.id}`} onClick={() => onDecide(i, 'new')}>
+                Bring it back
+              </Button>
+            </div>
+          ))
+        : null}
     </Card>
   )
 }
