@@ -58,11 +58,38 @@ export const setStatus = (tenantId: string, status: 'draft' | 'checked' | 'appro
     body: JSON.stringify({ status }),
   })
 
-/** A guide file as a blob URL. The caller revokes it when done. */
-export async function fetchBlobUrl(path: string): Promise<string> {
-  const resp = await apiFetch(path)
-  if (!resp.ok) return fail(resp)
-  return URL.createObjectURL(await resp.blob())
+// A guide shows 13 page pictures and up to ten photo thumbnails. Asked for all at once, they took
+// more database connections than the live server has to spare, and requests waited 30 seconds for
+// one (first live build, 18 Nov 2026). So pictures are fetched a few at a time.
+const MAX_AT_ONCE = 3
+let running = 0
+const waiting: (() => void)[] = []
+
+async function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  if (running >= MAX_AT_ONCE) await new Promise<void>((go) => waiting.push(go))
+  running += 1
+  try {
+    return await work()
+  } finally {
+    running -= 1
+    waiting.shift()?.()
+  }
+}
+
+const pause = (ms: number) => new Promise<void>((done) => window.setTimeout(done, ms))
+
+/** A guide file as a blob URL, fetched in turn. A picture that fails because the server was busy
+ *  is asked for again, twice, before the caller is told: one failed request left a page of the
+ *  guide blank until the whole view was reloaded. The caller revokes the URL when done. */
+export function fetchBlobUrl(path: string): Promise<string> {
+  return inTurn(async () => {
+    for (let attempt = 0; ; attempt++) {
+      const resp = await apiFetch(path)
+      if (resp.ok) return URL.createObjectURL(await resp.blob())
+      if (resp.status < 500 || attempt >= 2) return fail(resp)
+      await pause(1200 * (attempt + 1))
+    }
+  })
 }
 
 export const pagePath = (tenantId: string, n: number) => `${BASE}/${encodeURIComponent(tenantId)}/page/${n}`
