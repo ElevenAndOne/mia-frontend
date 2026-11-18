@@ -395,7 +395,15 @@ export interface StudioJob {
   // made in ClickUp and never sent to Flex (a ClickUp task added to the campaign, or work from before it moved from
   // the old builder): listed apart, never offered for sending
   // state: the nightly check found the task still there, archived or deleted in ClickUp
-  clickup?: { task_id: string; url: string; state?: 'ok' | 'archived' | 'deleted' | null; checked_at?: string | null } | null
+  // what ClickUp says now (read every 15 minutes, services/campaign_builder/clickup_sync.py): its status, and when it closed
+  clickup?: {
+    task_id: string
+    url: string
+    state?: 'ok' | 'archived' | 'deleted' | null
+    checked_at?: string | null
+    clickup_status?: string | null
+    done_at?: string | null
+  } | null
   kept_out?: string | null // made outside Flex, and why (e.g. launched before the campaign moved)
   // sent to Flex, which hasn't linked it to its ClickUp task yet (tried again on every Flex read): the reason, if any
   clickup_not_linked?: string | null
@@ -409,6 +417,35 @@ export interface StudioJob {
     sprint_name?: string
     sent_at?: string
   }
+  // changes asked of the studio for a job in Flex (its lead accepts or declines; 17 Nov), the last five
+  change_requests?: StudioChangeRequest[]
+}
+
+export interface StudioChangeRequest {
+  mia_request_id: string
+  field: 'name' | 'due_date' | 'launch_date' | 'credits'
+  label: string
+  old: string | number | null
+  new: string | number | null
+  status: 'to_send' | 'open' | 'to_withdraw' | 'accepted' | 'declined' | 'withdrawn' | 'refused'
+  asked_by?: string | null
+  asked_at?: string | null
+  decided_by?: string | null
+  decided_at?: string | null
+  note?: string | null
+  error?: string | null
+}
+
+// An idea the studio sent Mia from the outline in Flex (17 Nov)
+export interface StudioIdea {
+  id: number | string
+  body: string
+  by_name?: string | null
+  by_email?: string | null
+  mia_item_id?: string | null
+  about?: string | null // the job (or later-wave item) it was sent from
+  created_at?: string | null
+  status: 'new' | 'asked' | 'set_aside'
 }
 
 export interface StudioState {
@@ -425,6 +462,9 @@ export interface StudioState {
   senders: string[]
   you: string | null
   flex_down?: boolean // Flex didn't answer: said as that, never as "nobody can send" (review 22 Oct, 4.5)
+  // whether Flex has the whole plan as it is now (the outline, 17 Nov)
+  outline?: { version: number | null; sent_version: number | null; sent_at: string | null; current: boolean; error: string | null }
+  ideas?: { new: number; items: StudioIdea[]; set_aside: number; set_aside_items?: StudioIdea[] }
 }
 
 // The campaigns board (plan §8.1).
@@ -458,9 +498,10 @@ export interface LaunchJob {
   job_no?: string | null
   phase: string
   channel: string
-  route: 'meta' | 'google' | 'schedule' | 'manual'
+  // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)
+  route: 'meta' | 'google' | 'schedule' | 'manual' | 'elsewhere'
   manual_where: string
-  state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled'
+  state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled' | 'elsewhere'
   stage_label?: string | null
   ready_at?: string | null
   // measured: each file's size and the placement it fits, read once when it came back from Flex (step 8, 16 Nov)
@@ -475,6 +516,7 @@ export interface LaunchJob {
   // unsure: posts Mia couldn't confirm Facebook or Instagram took (the PM checks the Page, review 26 Oct)
   launch: { launched_at?: string; how?: string; link?: string | null; launched_by?: string; unsure?: string[]; link_note?: string }
   flex_url?: string | null
+  clickup_url?: string | null // a job worked in ClickUp: its task
 }
 
 export interface LaunchState {

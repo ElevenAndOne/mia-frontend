@@ -46,6 +46,8 @@ const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const MemoPage = lazy(() => import('../pages/memo-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const InternalPulsePage = lazy(() => import('../pages/internal-pulse-page'))
+const InternalHouseRulesPage = lazy(() => import('../pages/internal-house-rules-page'))
+const InternalSiteGuidesPage = lazy(() => import('../pages/internal-site-guides-page'))
 
 const LazyLoadSpinner = () => (
   <div className="w-full h-full flex items-center justify-center bg-secondary">
@@ -455,6 +457,32 @@ export const AppRoutes = ({
             <ProtectedRoute>
               <ErrorBoundary>
                 <InternalPulsePage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Internal-only: brand guides for a business's first website. Auth-gated here; the
+            backend staff allowlist is the real access control. */}
+        <Route
+          path="/internal/site-guides"
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <InternalSiteGuidesPage />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Hidden page for the agency's house rules (slop list, platform facts): no menu link. The backend
+            HOUSE_RULES_EMAILS allowlist is the real access control (Andrew gets this, not Pulse). */}
+        <Route
+          path="/internal/house-rules"
+          element={
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <InternalHouseRulesPage />
               </ErrorBoundary>
             </ProtectedRoute>
           }

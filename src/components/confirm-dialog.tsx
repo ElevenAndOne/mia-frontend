@@ -5,6 +5,8 @@ interface ConfirmDialogProps {
   isOpen: boolean
   message: string
   confirmLabel?: string
+  /** 'danger' (default) for a delete or anything hard to undo; 'primary' for a plain yes. */
+  confirmVariant?: 'danger' | 'primary'
   onConfirm: () => void
   onCancel: () => void
 }
@@ -17,6 +19,7 @@ export function ConfirmDialog({
   isOpen,
   message,
   confirmLabel = 'Confirm',
+  confirmVariant = 'danger',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -34,7 +37,7 @@ export function ConfirmDialog({
           <Button variant="secondary" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="danger" size="sm" onClick={onConfirm}>
+          <Button variant={confirmVariant} size="sm" onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

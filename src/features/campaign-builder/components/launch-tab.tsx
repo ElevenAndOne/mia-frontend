@@ -32,6 +32,11 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const [creative, setCreative] = useState('')
   const [when, setWhen] = useState(() => (j.launch_date ? `${j.launch_date}T09:00` : ''))
   const [manualLink, setManualLink] = useState('')
+  // the day a job worked outside Flex went out: its launch date if that has passed, else today (18 Nov)
+  const [markDay, setMarkDay] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    return j.launch_date && j.launch_date <= today ? j.launch_date : today
+  })
   const [checks, setChecks] = useState<PushCheck[] | null>(null)
   const [pushCcy, setPushCcy] = useState<string | null>(null)
   const [advice, setAdvice] = useState<string[]>([]) // the check's warnings: not blocking, but worth a look
@@ -101,6 +106,8 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
       api.launchAction(sessionId!, tenantId, campaignId, 'schedule', { asset_id: j.asset_id, when: new Date(when).toISOString() }),
     )
   const mark = () => run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null }))
+  const markLive = () =>
+    run('mark', () => api.launchAction(sessionId!, tenantId, campaignId, 'mark', { asset_id: j.asset_id, link: manualLink || null, when: markDay }))
   const notOnPage = () => run('unsure', () => api.launchAction(sessionId!, tenantId, campaignId, 'not-on-page', { asset_id: j.asset_id }))
   const unsure = j.launch?.unsure ?? []
   // The plan's budget is in another currency than the ad account's: the PM types it in the account's (review 16 Nov:
@@ -110,7 +117,56 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     (c) => c.severity === 'block' && !(c.code === 'budget_currency_mismatch' && Number(typedBudget) > 0),
   )
 
-  const body = (
+  // A job worked outside Flex (in ClickUp, or made before the campaign moved): it goes out where the team runs it
+  // (Brevo, LinkedIn...), so the PM marks it live here, with its link and the day, and Results track it (18 Nov). A job
+  // set to live/running in ClickUp is marked live by Mia herself.
+  const elsewhereBody = (
+    <div className={`flex flex-col gap-2 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
+      {j.state === 'launched' ? (
+        <p className="paragraph-sm text-secondary">
+          {j.launch.how === 'clickup' ? 'Live: set to live/running in ClickUp' : 'Marked live'}
+          {j.launch.launched_at ? ` on ${day(j.launch.launched_at.slice(0, 10))}` : ''}
+          {j.launch.launched_by && j.launch.how !== 'clickup' ? ` by ${j.launch.launched_by}` : ''}.
+        </p>
+      ) : (
+        <>
+          <p className="paragraph-xs text-secondary">
+            {j.clickup_url ? 'Worked in ClickUp, not Flex' : 'Made outside Flex'}
+            {j.stage_label ? ` (${j.stage_label})` : ''}. When it's out in {j.manual_where}, mark it live here so Mia
+            tracks its results. Add its link there if it has one (a Brevo campaign, a post).
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 paragraph-xs text-tertiary">
+              Its link there (optional)
+              <input className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" value={manualLink}
+                onChange={(e) => setManualLink(e.target.value)} placeholder="https://…" />
+            </label>
+            <label className="flex flex-col gap-1 paragraph-xs text-tertiary">
+              Went out on
+              <input type="date" className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary"
+                value={markDay} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setMarkDay(e.target.value)} />
+            </label>
+            <Button size="sm" variant="primary" loading={busy === 'mark'} disabled={!markDay} onClick={() => void markLive()}>
+              Mark as live
+            </Button>
+          </div>
+        </>
+      )}
+      {j.launch?.link ? (
+        <a href={j.launch.link} target="_blank" rel="noreferrer" className="self-start paragraph-xs underline text-primary">
+          Where it runs ↗
+        </a>
+      ) : null}
+      {j.clickup_url ? (
+        <a href={j.clickup_url} target="_blank" rel="noreferrer" className="self-start paragraph-xs underline text-primary">
+          Open in ClickUp ↗
+        </a>
+      ) : null}
+      {error ? <p className="paragraph-xs text-utility-warning-700">{error}</p> : null}
+    </div>
+  )
+
+  const flexBody = (
     <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
 
           {j.artwork.length ? (
@@ -311,6 +367,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           {error ? <p className="paragraph-xs text-utility-warning-700">{error}</p> : null}
     </div>
   )
+  const body = j.route === 'elsewhere' ? elsewhereBody : flexBody
   if (bare) return body
   return (
     <li className="rounded-xl border border-secondary bg-primary">
@@ -325,10 +382,11 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
         </span>
         <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
         {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
+        {j.state === 'elsewhere' ? <span className="paragraph-xs text-secondary">{j.stage_label ?? 'Not in Flex'}</span> : null}
         {j.state === 'ready' && j.no_file ? <span className="paragraph-xs text-utility-warning-700">Done in Flex, no file yet</span> : null}
         {j.state === 'launched' ? (
           <span className="label-xs text-utility-success-700 whitespace-nowrap">
-            ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : 'pushed, paused'}
+            ✓ {j.launch.how === 'scheduled' ? 'scheduled' : j.launch.how === 'manual' ? 'launched' : j.launch.how === 'clickup' ? 'live (ClickUp)' : 'pushed, paused'}
           </span>
         ) : null}
         <span className="paragraph-xs text-tertiary">{open ? '▴' : '▾'}</span>

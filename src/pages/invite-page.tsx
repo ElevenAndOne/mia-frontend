@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { logger } from '../utils/logger'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../contexts/session-context'
@@ -8,6 +8,8 @@ import { WorkspaceRoleIcon } from '../features/workspace/components/workspace-ro
 import { getRoleDescription, getRoleLabel } from '../features/workspace/utils/role'
 import { useInviteLanding } from '../features/workspace/hooks/use-invite-landing'
 import { StorageKey } from '../constants/storage-keys'
+import { EmailSignIn } from '../features/auth/components/email-sign-in'
+import { hasPendingEmailSignIn } from '../features/auth/utils/email-sign-in-pending'
 
 interface InvitePageProps {
   onAccepted: (tenantId: string, skipAccountSelection?: boolean) => void
@@ -58,6 +60,24 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     if (switching) await logout()
     void loginMeta()
   }
+
+  // Email code (18 Nov 2026): for an invite to an address that is not a Google account,
+  // the only way in. The new session is stored by the form; reloading this page picks it
+  // up, and the auto-accept flag accepts the invite as soon as it has loaded — the same
+  // hand-off the Google and Facebook buttons use.
+  // Opens by itself when a code was just sent from this tab, so a reload lands on the code.
+  const [emailOpen, setEmailOpen] = useState(() => hasPendingEmailSignIn(inviteId))
+  const handleEmailSignedIn = () => {
+    localStorage.setItem(StorageKey.AUTO_ACCEPT_INVITE, inviteId || '')
+    window.location.reload()
+  }
+  const emailForm = (
+    <EmailSignIn
+      inviteId={inviteId}
+      onSignedIn={handleEmailSignedIn}
+      onCancel={() => setEmailOpen(false)}
+    />
+  )
 
   const handleBack = () => {
     window.history.replaceState({}, '', '/')
@@ -112,7 +132,9 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     return null
   }
 
-  if (loading) {
+  // Full-screen only for the first load. A refresh of details we already have (the session
+  // id changed) used to swap the whole card out, and the email form's code step with it.
+  if (loading && !inviteDetails) {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -157,7 +179,7 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
     )
   }
 
-  if (showLoginPrompt && !isAnyAuthenticated && !sessionLoading) {
+  if ((showLoginPrompt || emailOpen) && !isAnyAuthenticated && !sessionLoading) {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <div className="bg-primary rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -181,23 +203,39 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
             Please sign in to accept this invite and join{' '}
             <span className="font-semibold">{inviteDetails?.tenant_name}</span>.
           </p>
+          {emailOpen ? (
+            <div className="mb-3">{emailForm}</div>
+          ) : (
+            <>
+              <button
+                onClick={() => void handleSignInFacebook()}
+                className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors mb-3"
+              >
+                Continue with Facebook
+              </button>
+              <button
+                onClick={handleSignIn}
+                className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors mb-3"
+              >
+                Continue with Google
+              </button>
+              <button
+                onClick={() => setEmailOpen(true)}
+                className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors mb-3"
+              >
+                Continue with email
+              </button>
+              <p className="paragraph-xs text-quaternary mb-3">
+                Use the account with the email address the invite was sent to. If that email
+                isn't a Google account, choose Continue with email.
+              </p>
+            </>
+          )}
           <button
-            onClick={() => void handleSignInFacebook()}
-            className="w-full px-6 py-3 bg-brand-solid text-primary-onbrand rounded-xl subheading-bg hover:bg-brand-solid-hover transition-colors mb-3"
-          >
-            Continue with Facebook
-          </button>
-          <button
-            onClick={handleSignIn}
-            className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors mb-3"
-          >
-            Continue with Google
-          </button>
-          <p className="paragraph-xs text-quaternary mb-3">
-            Use the account with the email address the invite was sent to.
-          </p>
-          <button
-            onClick={dismissLoginPrompt}
+            onClick={() => {
+              setEmailOpen(false)
+              dismissLoginPrompt()
+            }}
             className="paragraph-sm text-quaternary hover:text-secondary"
           >
             Back to invite
@@ -246,7 +284,8 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
               This invite is for{' '}
               <span className="font-semibold">{inviteDetails?.invited_email}</span>, but MIA is
               signed in as <span className="font-semibold">{user?.email || 'another account'}</span>.
-              Sign in with the Google or Facebook account that uses the invited email.
+              Sign in with the Google or Facebook account that uses the invited email, or with
+              an email code sent to it.
             </p>
           </div>
         )}
@@ -295,6 +334,17 @@ const InvitePage = ({ onAccepted }: InvitePageProps) => {
               Sign in with Facebook instead
             </button>
           )}
+          {wrongAccount &&
+            (emailOpen ? (
+              <div className="border border-secondary rounded-xl p-4">{emailForm}</div>
+            ) : (
+              <button
+                onClick={() => setEmailOpen(true)}
+                className="w-full px-6 py-3 border border-primary text-secondary rounded-xl subheading-bg hover:bg-secondary transition-colors"
+              >
+                Sign in with an email code instead
+              </button>
+            ))}
 
           <button
             onClick={handleAccept}
