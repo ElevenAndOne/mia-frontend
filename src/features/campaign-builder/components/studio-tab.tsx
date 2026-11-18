@@ -203,6 +203,23 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       actions: <PrimaryAction onClick={() => openAndGo(toLaunch.map((j) => j.asset_id))}>Launch {toLaunch.length === 1 ? 'it' : 'them'}</PrimaryAction>,
     })
   }
+  // jobs worked in ClickUp and closed there, not live in Mia yet: sent from Brevo or the like, so the PM marks them
+  // live (a task set to live/running in ClickUp is marked live by Mia herself; 18 Nov)
+  const closedInClickUp = s.jobs.filter(
+    (j) => j.clickup?.done_at && !j.flex.task_id && launchJobs.get(j.asset_id)?.state === 'elsewhere',
+  )
+  if (closedInClickUp.length) {
+    items.push({
+      key: 'clickup-closed',
+      title: `${closedInClickUp.length} job${closedInClickUp.length === 1 ? '' : 's'} closed in ClickUp, not live in Mia`,
+      detail: 'Once each is out (sent from Brevo, posted, running), mark it live with its link so Mia tracks its results.',
+      actions: (
+        <PrimaryAction onClick={() => openAndGo(closedInClickUp.map((j) => j.asset_id))}>
+          Mark {closedInClickUp.length === 1 ? 'it' : 'them'} live
+        </PrimaryAction>
+      ),
+    })
+  }
   const newIdeas = (s.ideas?.items ?? []).filter((i) => i.status === 'new')
   if (newIdeas.length) {
     items.push({
@@ -539,6 +556,15 @@ function Row({
           </span>
         ) : inClickUp && j.clickup ? (
           <span className="flex flex-col gap-0.5">
+            {/* what ClickUp says now (read every 15 minutes); live once it's live/running there or marked live (18 Nov) */}
+            {launch?.state === 'launched' ? (
+              <LaunchChip state="launched" how={launch.launch?.how} />
+            ) : j.clickup.clickup_status ? (
+              <span className="inline-flex w-fit items-center whitespace-nowrap rounded-full border border-secondary px-2 py-0.5 label-xs text-secondary">
+                ClickUp: {j.clickup.clickup_status}
+              </span>
+            ) : null}
+            {j.clickup.done_at && launch?.state === 'elsewhere' ? <NeedsYou>closed in ClickUp: mark it live once it's out</NeedsYou> : null}
             {j.clickup.state === 'deleted' ? null : (
               <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-secondary px-2 py-0.5 paragraph-xs text-secondary hover:bg-secondary"
                 href={j.clickup.url} target="_blank" rel="noreferrer">
@@ -551,13 +577,17 @@ function Row({
             ) : null}
           </span>
         ) : madeElsewhere ? (
-          <span className="paragraph-xs text-tertiary">{j.kept_out}</span>
+          launch?.state === 'launched' ? (
+            <LaunchChip state="launched" how={launch.launch?.how} />
+          ) : (
+            <span className="paragraph-xs text-tertiary">{j.kept_out}</span>
+          )
         ) : (
           <span className="paragraph-xs text-tertiary">Not sent</span>
         )}
         {onToggle ? (
           <button type="button" aria-expanded={!!open} onClick={onToggle} className="mt-1 block paragraph-xs underline text-primary">
-            {open ? 'Hide launch' : launch?.state === 'ready' || launch?.state === 'taken_in' ? 'Launch it' : 'Details'}
+            {open ? 'Hide launch' : launch?.state === 'ready' || launch?.state === 'taken_in' ? 'Launch it' : launch?.state === 'elsewhere' ? 'Mark live' : 'Details'}
           </button>
         ) : null}
       </td>
@@ -704,7 +734,7 @@ function LaunchChip({ state, how }: { state: string; how?: string }) {
       : state === 'taken_in'
         ? ['Ready to launch', 'bg-utility-blue-100 text-utility-blue-700 border-utility-blue-300']
         : state === 'launched'
-          ? [how === 'scheduled' ? '✓ Scheduled' : how === 'manual' ? '✓ Launched' : '✓ Pushed, paused', 'bg-success-primary text-success border-transparent']
+          ? [how === 'scheduled' ? '✓ Scheduled' : how === 'manual' ? '✓ Launched' : how === 'clickup' ? '✓ Live (ClickUp)' : '✓ Pushed, paused', 'bg-success-primary text-success border-transparent']
           : ['Cancelled', 'bg-tertiary text-tertiary border-secondary']
   return <span className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 label-xs whitespace-nowrap ${cls}`}>{label}</span>
 }

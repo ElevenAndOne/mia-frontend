@@ -395,7 +395,15 @@ export interface StudioJob {
   // made in ClickUp and never sent to Flex (a ClickUp task added to the campaign, or work from before it moved from
   // the old builder): listed apart, never offered for sending
   // state: the nightly check found the task still there, archived or deleted in ClickUp
-  clickup?: { task_id: string; url: string; state?: 'ok' | 'archived' | 'deleted' | null; checked_at?: string | null } | null
+  // what ClickUp says now (read every 15 minutes, services/campaign_builder/clickup_sync.py): its status, and when it closed
+  clickup?: {
+    task_id: string
+    url: string
+    state?: 'ok' | 'archived' | 'deleted' | null
+    checked_at?: string | null
+    clickup_status?: string | null
+    done_at?: string | null
+  } | null
   kept_out?: string | null // made outside Flex, and why (e.g. launched before the campaign moved)
   // sent to Flex, which hasn't linked it to its ClickUp task yet (tried again on every Flex read): the reason, if any
   clickup_not_linked?: string | null
@@ -490,9 +498,10 @@ export interface LaunchJob {
   job_no?: string | null
   phase: string
   channel: string
-  route: 'meta' | 'google' | 'schedule' | 'manual'
+  // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)
+  route: 'meta' | 'google' | 'schedule' | 'manual' | 'elsewhere'
   manual_where: string
-  state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled'
+  state: 'in_studio' | 'ready' | 'taken_in' | 'launched' | 'cancelled' | 'elsewhere'
   stage_label?: string | null
   ready_at?: string | null
   // measured: each file's size and the placement it fits, read once when it came back from Flex (step 8, 16 Nov)
@@ -507,6 +516,7 @@ export interface LaunchJob {
   // unsure: posts Mia couldn't confirm Facebook or Instagram took (the PM checks the Page, review 26 Oct)
   launch: { launched_at?: string; how?: string; link?: string | null; launched_by?: string; unsure?: string[]; link_note?: string }
   flex_url?: string | null
+  clickup_url?: string | null // a job worked in ClickUp: its task
 }
 
 export interface LaunchState {
