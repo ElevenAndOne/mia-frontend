@@ -76,12 +76,19 @@ async function inTurn<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-/** A guide file as a blob URL, fetched in turn. The caller revokes it when done. */
+const pause = (ms: number) => new Promise<void>((done) => window.setTimeout(done, ms))
+
+/** A guide file as a blob URL, fetched in turn. A picture that fails because the server was busy
+ *  is asked for again, twice, before the caller is told: one failed request left a page of the
+ *  guide blank until the whole view was reloaded. The caller revokes the URL when done. */
 export function fetchBlobUrl(path: string): Promise<string> {
   return inTurn(async () => {
-    const resp = await apiFetch(path)
-    if (!resp.ok) return fail(resp)
-    return URL.createObjectURL(await resp.blob())
+    for (let attempt = 0; ; attempt++) {
+      const resp = await apiFetch(path)
+      if (resp.ok) return URL.createObjectURL(await resp.blob())
+      if (resp.status < 500 || attempt >= 2) return fail(resp)
+      await pause(1200 * (attempt + 1))
+    }
   })
 }
 
