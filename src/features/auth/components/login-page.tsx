@@ -4,6 +4,8 @@ import { LoginPageDesktop } from './login-page-desktop'
 import { LoginPageMobile } from './login-page-mobile'
 import { useLoginPage, type LoginMethod } from '../hooks/use-login-page'
 import { Logo } from '../../../components/logo'
+import { EmailSignIn } from './email-sign-in'
+import { hasPendingEmailSignIn } from '../utils/email-sign-in-pending'
 
 interface LoginPageProps {
   onAuthSuccess?: () => void
@@ -96,6 +98,10 @@ export const LoginPage = ({
     if (code) void fetchInviter(code).then(setInviter)
   }, [])
 
+  // Email code (18 Nov 2026): for people whose email is not a Google account. Only invited
+  // people and accounts made this way get a code; new businesses still start with Meta.
+  const [emailOpen, setEmailOpen] = useState(() => hasPendingEmailSignIn())
+
   const authButtons: AuthButtonConfig[] = [
     {
       id: 'google',
@@ -122,7 +128,29 @@ export const LoginPage = ({
       // along; it was the button that never called it.
       onClick: makeHandler('meta'),
     },
+    {
+      id: 'email',
+      label: 'Continue with email',
+      variant: 'ghost',
+      loading: false,
+      loadingMessage: '',
+      onClick: () => setEmailOpen(true),
+    },
   ]
+
+  const actions = (layout: 'mobile' | 'desktop') =>
+    emailOpen ? (
+      <div className={layout === 'mobile' ? 'rounded-2xl bg-primary p-4' : ''}>
+        <EmailSignIn
+          // A fresh start from / so the session loads like any other sign-in, and a
+          // remembered invite (PENDING_INVITE) is picked up from there.
+          onSignedIn={() => window.location.assign('/')}
+          onCancel={() => setEmailOpen(false)}
+        />
+      </div>
+    ) : (
+      renderAuthButtons(layout, authButtons, isBusy)
+    )
 
   return (
     <div className="relative w-full h-full">
@@ -131,8 +159,8 @@ export const LoginPage = ({
           {inviter.first_name} from {inviter.business} invited you to Mia
         </div>
       )}
-      <LoginPageMobile actionButtons={renderAuthButtons('mobile', authButtons, isBusy)} />
-      <LoginPageDesktop actionButtons={renderAuthButtons('desktop', authButtons, isBusy)} />
+      <LoginPageMobile actionButtons={actions('mobile')} />
+      <LoginPageDesktop actionButtons={actions('desktop')} />
     </div>
   )
 }
