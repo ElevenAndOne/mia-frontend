@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/button'
 import { ConfirmDialog } from '../../components/confirm-dialog'
 import { SegmentedControl } from '../../components/segmented-control'
 import { Spinner } from '../../components/spinner'
 import { useSession } from '../../contexts/session-context'
+import { useIsMobile } from '../../hooks/use-is-mobile'
+import { ChangesView } from './components/changes-view'
+import { ago } from './components/format'
 import { RuleRow } from './components/rule-row'
 import { TestPost } from './components/test-post'
-import { useDecisions, useMe, useRules } from './hooks/use-house-rules'
+import { useDecisions, useMe, useNews, useRules, useRunJob } from './hooks/use-house-rules'
 import { HouseRulesError } from './services/house-rules-service'
-import type { HouseRule, RuleKind } from './types'
+import type { HouseRule, RuleKind, Tab } from './types'
 
 type Filter = 'waiting' | 'live' | 'off'
 
@@ -19,9 +23,9 @@ const IN_FILTER: Record<Filter, (r: HouseRule) => boolean> = {
 }
 
 const INTRO: Record<RuleKind, string> = {
-  slop: 'Lines any post could start with, whatever it’s about. Approve one and Mia stops writing it. A client’s own posts are never flagged.',
+  slop: 'Lines any post could start with, whatever it’s about. Approve one and Mia stops writing it. A client’s own posts are never flagged. Every few days Mia also reads her own recent posts and brings the lines she keeps repeating here.',
   platform_fact:
-    'How each platform works right now, each with its source. Mia checks every 90 days and brings changes here. Nothing changes until you approve it.',
+    'How each platform works right now, each with its source. Turn a news card into one with “Make it a rule”. Mia follows every live fact.',
 }
 
 const EMPTY: Record<RuleKind, Record<Filter, string>> = {
@@ -31,7 +35,7 @@ const EMPTY: Record<RuleKind, Record<Filter, string>> = {
     off: 'Nothing rejected or stopped.',
   },
   platform_fact: {
-    waiting: 'No platform facts yet. Mia’s first check of the platforms brings them here for you to approve.',
+    waiting: 'Nothing waiting. Make a rule from a card on What’s changing and it goes live here.',
     live: 'No platform facts are live yet.',
     off: 'Nothing rejected or stopped.',
   },
@@ -44,10 +48,18 @@ function RuleList({ kind, sessionId }: { kind: RuleKind; sessionId: string | nul
   const { one, many } = useDecisions(sessionId)
   const all = useMemo(() => rules.data?.rules ?? [], [rules.data])
   const count = (f: Filter) => all.filter(IN_FILTER[f]).length
-  const shown = all.filter(IN_FILTER[filter])
+  // Lines found in Mia's own posts first, newest first: they come with evidence, the starter lists don't.
+  const found = (r: HouseRule) => (r.source === 'finder' ? 1 : 0)
+  const shown = all
+    .filter(IN_FILTER[filter])
+    .sort((a, b) => found(b) - found(a) || (found(a) ? (b.created_at ?? '').localeCompare(a.created_at ?? '') : 0))
   const waitingIds = all.filter(IN_FILTER.waiting).map((r) => r.id)
   const busyId = one.isPending ? one.variables?.id : undefined
   const noun = kind === 'slop' ? 'line' : 'fact'
+  const finder = useNews(sessionId, kind === 'slop')
+  const findJob = finder.data?.jobs.slop_finder
+  const run = useRunJob(sessionId)
+  const finding = !!findJob?.running || (run.isPending && run.variables === 'slop_finder')
 
   if (rules.isLoading) {
     return (
@@ -83,11 +95,23 @@ function RuleList({ kind, sessionId }: { kind: RuleKind; sessionId: string | nul
             { value: 'off', label: `Turned off ${count('off')}` },
           ]}
         />
-        {filter === 'waiting' && waitingIds.length > 1 && (
-          <Button variant="primary" loading={many.isPending} onClick={() => setConfirmAll(true)}>
-            Approve all {waitingIds.length}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {kind === 'slop' && (
+            <Button
+              variant="ghost"
+              loading={finding}
+              onClick={() => run.mutate('slop_finder')}
+              title={findJob?.last_ok_at ? `Last looked ${ago(findJob.last_ok_at)}` : undefined}
+            >
+              {finding ? 'Reading Mia’s posts…' : 'Look for new lines'}
+            </Button>
+          )}
+          {filter === 'waiting' && waitingIds.length > 1 && (
+            <Button variant="primary" loading={many.isPending} onClick={() => setConfirmAll(true)}>
+              Approve all {waitingIds.length}
+            </Button>
+          )}
+        </div>
       </div>
 
       {shown.length === 0 ? (
@@ -123,12 +147,33 @@ function RuleList({ kind, sessionId }: { kind: RuleKind; sessionId: string | nul
   )
 }
 
+const TAB_PARAM: Record<string, Tab> = { lines: 'slop', changes: 'changes', facts: 'platform_fact' }
+const PARAM_OF: Record<Tab, string> = { slop: 'lines', changes: 'changes', platform_fact: 'facts' }
+const HEADING: Record<Tab, string> = {
+  slop: 'What Mia never writes',
+  changes: 'What’s changing on the platforms',
+  platform_fact: 'How the platforms work',
+}
+
 export default function HouseRulesView() {
   const { sessionId } = useSession()
-  const [tab, setTab] = useState<RuleKind>('slop')
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = TAB_PARAM[params.get('tab') ?? ''] ?? 'slop' // ?tab=changes from the Monday email
+  const setTab = (t: Tab) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', PARAM_OF[t])
+        return next
+      },
+      { replace: true }
+    )
   const me = useMe(sessionId)
   const facts = useRules(sessionId, 'platform_fact', me.isSuccess)
   const newFacts = (facts.data?.rules ?? []).filter((r) => r.status === 'proposed').length
+  const news = useNews(sessionId, me.isSuccess)
+  const newNews = (news.data?.cards ?? []).filter((c) => c.status === 'new').length
+  const phone = useIsMobile() // three long tab names don't fit a phone side by side
 
   let body
   if (me.isLoading) {
@@ -154,16 +199,34 @@ export default function HouseRulesView() {
   } else {
     body = (
       <>
-        <SegmentedControl<RuleKind>
-          size="md"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'slop', label: 'Lines to avoid' },
-            { value: 'platform_fact', label: newFacts ? `Platform facts · ${newFacts} new` : 'Platform facts' },
-          ]}
-        />
-        <RuleList key={tab} kind={tab} sessionId={sessionId} />
+        <div className="max-w-full overflow-x-auto">
+          <SegmentedControl<Tab>
+            size="md"
+            className="w-max"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'slop', label: phone ? 'Lines' : 'Lines to avoid' },
+              {
+                value: 'changes',
+                label: phone
+                  ? newNews ? `Changes · ${newNews}` : 'Changes'
+                  : newNews ? `What’s changing · ${newNews} new` : 'What’s changing',
+              },
+              {
+                value: 'platform_fact',
+                label: phone
+                  ? newFacts ? `Facts · ${newFacts}` : 'Facts'
+                  : newFacts ? `Platform facts · ${newFacts} new` : 'Platform facts',
+              },
+            ]}
+          />
+        </div>
+        {tab === 'changes' ? (
+          <ChangesView sessionId={sessionId} />
+        ) : (
+          <RuleList key={tab} kind={tab} sessionId={sessionId} />
+        )}
         {tab === 'slop' && <TestPost sessionId={sessionId} />}
       </>
     )
@@ -175,7 +238,7 @@ export default function HouseRulesView() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="label-xs uppercase tracking-wider text-tertiary">Mia · House rules</span>
-            <h1 className="m-0 title-h3 text-primary">What Mia never writes</h1>
+            <h1 className="m-0 title-h3 text-primary">{HEADING[tab]}</h1>
           </div>
           {me.data?.email && <span className="paragraph-sm text-tertiary">Signed in as {me.data.name || me.data.email}</span>}
         </header>

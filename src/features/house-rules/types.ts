@@ -53,3 +53,82 @@ export interface Me {
   email: string | null
   name: string | null
 }
+
+// ── What's changing (mia-backend services/platform_watch.py + platform_benchmarks.py) ──────────────────────────────
+
+export type Tab = 'slop' | 'changes' | 'platform_fact'
+export type NewsStatus = 'new' | 'kept' | 'ignored' | 'made_rule'
+export type NewsDecision = 'keep' | 'ignore' | 'make_rule'
+export type JobName = 'platform_news' | 'platform_benchmarks' | 'slop_finder' | 'house_rules_digest'
+
+export interface NewsCard {
+  id: string
+  /** news: from a platform's own feed or the trade press; trend: a move across our own clients. */
+  kind: 'news' | 'trend'
+  platform: string | null
+  importance: 'high' | 'medium' | 'low' | null
+  headline: string | null
+  summary: string | null
+  why: string | null
+  action: string | null
+  /** A lasting rule the item suggests, prefilled when "Make it a rule" opens. */
+  rule_text: string | null
+  source_name: string | null
+  source_url: string | null
+  title: string | null
+  published_at: string | null
+  found_at: string | null
+  status: NewsStatus
+  decided_by: string | null
+  decided_at: string | null
+  rule_id: string | null
+}
+
+export interface JobInfo {
+  job: JobName
+  last_run_at: string | null
+  last_ok_at: string | null
+  running: boolean
+  last_result: Record<string, unknown> | null
+}
+
+export interface NewsList {
+  cards: NewsCard[]
+  jobs: Record<JobName, JobInfo>
+}
+
+export interface NewsDecisionResult {
+  news: NewsCard
+  rule: HouseRule | null
+}
+
+export interface BenchmarkClient {
+  name: string
+  /** 0.18 = up 18% against that client's four weeks before. */
+  change: number
+  now: number
+  before: number
+}
+
+export interface BenchmarkRow {
+  platform: 'meta' | 'google'
+  metric: 'cpm' | 'cpc' | 'ctr'
+  label: string
+  clients: number
+  up: number
+  down: number
+  median_change: number | null
+  /** Click rate up is good news; costs up are not. */
+  good_when_up: boolean
+  detail: BenchmarkClient[]
+}
+
+export interface BenchmarkWeek {
+  week_start: string
+  week_end: string
+  rows: BenchmarkRow[]
+}
+
+export interface Benchmarks {
+  weeks: BenchmarkWeek[]
+}

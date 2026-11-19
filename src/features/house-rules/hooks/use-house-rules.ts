@@ -1,7 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '../../../contexts/toast-context'
-import { checkPost, decideMany, decideRule, fetchMe, fetchRules } from '../services/house-rules-service'
-import type { Decision, HouseRule, RuleKind, RuleList, RuleStatus } from '../types'
+import {
+  checkPost,
+  decideMany,
+  decideNews,
+  decideRule,
+  fetchBenchmarks,
+  fetchMe,
+  fetchNews,
+  fetchRules,
+  runJob,
+} from '../services/house-rules-service'
+import type {
+  Decision,
+  HouseRule,
+  JobName,
+  NewsDecision,
+  NewsList,
+  NewsStatus,
+  RuleKind,
+  RuleList,
+  RuleStatus,
+} from '../types'
 
 const KEY = 'house-rules'
 
@@ -82,5 +102,86 @@ export function useCheck(sessionId: string | null, text: string) {
     enabled: !!sessionId && text.trim().length > 0,
     placeholderData: (prev) => prev, // keep the last result while the next one loads, no flicker
     staleTime: 15 * 1000,
+  })
+}
+
+// ── What's changing ─────────────────────────────────────────────────────────────
+
+/** The cards and the jobs' last runs. While a check runs it's asked again every few seconds, so new cards appear
+ *  without a reload; otherwise once a minute is plenty (jobs run daily or weekly). */
+export function useNews(sessionId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [KEY, 'news', sessionId],
+    queryFn: () => fetchNews(sessionId),
+    enabled: !!sessionId && enabled,
+    staleTime: 15 * 1000,
+    refetchInterval: (q) =>
+      Object.values(q.state.data?.jobs ?? {}).some((j) => j.running) ? 4000 : 60 * 1000,
+  })
+}
+
+export function useBenchmarks(sessionId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [KEY, 'benchmarks', sessionId],
+    queryFn: () => fetchBenchmarks(sessionId),
+    enabled: !!sessionId && enabled,
+    staleTime: 60 * 1000,
+  })
+}
+
+const NEWS_AFTER: Record<NewsDecision, NewsStatus> = { keep: 'kept', ignore: 'ignored', make_rule: 'made_rule' }
+
+/** Keep, ignore, or make a card a rule. The card moves at once; a refusal puts it back and says why. Making a rule
+ *  also refreshes the Platform facts tab. */
+export function useNewsDecision(sessionId: string | null) {
+  const qc = useQueryClient()
+  const { showToast } = useToast()
+  const newsKey = [KEY, 'news', sessionId]
+
+  return useMutation({
+    mutationFn: (v: { id: string; decision: NewsDecision; ruleText?: string }) =>
+      decideNews(sessionId, v.id, v.decision, v.ruleText),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: newsKey })
+      const before = qc.getQueryData<NewsList>(newsKey)
+      qc.setQueryData<NewsList>(newsKey, (old) =>
+        old
+          ? { ...old, cards: old.cards.map((c) => (c.id === v.id ? { ...c, status: NEWS_AFTER[v.decision] } : c)) }
+          : old
+      )
+      return before
+    },
+    onSuccess: (data, v) => {
+      qc.setQueryData<NewsList>(newsKey, (old) =>
+        old ? { ...old, cards: old.cards.map((c) => (c.id === data.news.id ? data.news : c)) } : old
+      )
+      if (v.decision === 'make_rule') showToast('success', 'Done. Mia follows it from now on: see Platform facts.')
+    },
+    onError: (err, _v, before) => {
+      if (before) qc.setQueryData(newsKey, before)
+      showToast('error', err instanceof Error ? err.message : 'That didn’t save. Try again.')
+    },
+    onSettled: (_d, _e, v) => {
+      qc.invalidateQueries({ queryKey: newsKey })
+      if (v.decision === 'make_rule') qc.invalidateQueries({ queryKey: [KEY, 'rules'] })
+    },
+  })
+}
+
+const STARTED: Record<Exclude<JobName, 'house_rules_digest'>, string> = {
+  platform_news: 'Checking the platforms now. New cards show up here in a minute or two.',
+  platform_benchmarks: 'Reading every client’s numbers now. This takes a few minutes.',
+  slop_finder: 'Reading Mia’s recent posts now. New lines show up under Waiting in a minute or two.',
+}
+
+/** "Check now": starts a background job; the news query then polls until it's done. */
+export function useRunJob(sessionId: string | null) {
+  const qc = useQueryClient()
+  const { showToast } = useToast()
+  return useMutation({
+    mutationFn: (job: Exclude<JobName, 'house_rules_digest'>) => runJob(sessionId, job),
+    onSuccess: (_d, job) => showToast('success', STARTED[job]),
+    onError: (err) => showToast('error', err instanceof Error ? err.message : 'That didn’t start. Try again.'),
+    onSettled: () => qc.invalidateQueries({ queryKey: [KEY, 'news'] }),
   })
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../../../components/button'
 import type { Decision, HouseRule } from '../types'
+import { day, safeLink } from './format'
 
 /** Plain names for the slop groups: Andrew reads these, not the code's keys. */
 const GROUP_LABEL: Record<string, string> = {
@@ -12,30 +13,21 @@ const GROUP_LABEL: Record<string, string> = {
   worn_framing: 'Worn-out phrase',
   bait_ask: 'Begging for likes',
   structure: 'Stock shape',
+  ai_vocab: 'Sounds like AI',
+  filler: 'Filler',
 }
 
 const PLATFORM_LABEL: Record<string, string> = {
+  meta: 'Meta',
   facebook: 'Facebook',
   instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
   linkedin: 'LinkedIn',
   tiktok: 'TikTok',
-  google: 'Google',
-}
-
-function day(iso: string | null): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function safeLink(url: string | null): string | null {
-  if (!url) return null
-  try {
-    const u = new URL(url)
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null
-  } catch {
-    return null
-  }
+  google: 'Google Ads',
+  youtube: 'YouTube',
+  search: 'Google Search',
+  other: 'Other',
 }
 
 interface RuleRowProps {
@@ -56,6 +48,8 @@ export function RuleRow({ rule, busy, onDecide }: RuleRowProps) {
     isFact && rule.confidence ? { official: 'Platform says so', tested: 'Tested', claimed: 'Claimed, not proven' }[rule.confidence] : null,
     isFact && day(rule.last_checked) ? `Checked ${day(rule.last_checked)}` : null,
   ].filter(Boolean) as string[]
+  // A line the slop finder put up says where Mia kept writing it ("Mia wrote this in 9 posts for 4 clients...").
+  const foundIn = !isFact && rule.source === 'finder' && rule.status === 'proposed' ? rule.source_ref : null
   const decided =
     rule.status === 'retired' || rule.status === 'rejected'
       ? [rule.status === 'retired' ? 'Stopped' : 'Rejected', rule.decided_by ? `by ${rule.decided_by}` : null, day(rule.decided_at)]
@@ -88,6 +82,7 @@ export function RuleRow({ rule, busy, onDecide }: RuleRowProps) {
               )}
             </span>
           )}
+          {foundIn && <span className="paragraph-sm text-tertiary italic">{foundIn}</span>}
           {decided && (
             <span className="paragraph-sm text-tertiary">
               {decided}
