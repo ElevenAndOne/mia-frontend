@@ -75,9 +75,18 @@ export async function fetchBuild(sessionId: string, tenantId: string, campaignId
 export async function startBuild(
   sessionId: string,
   tenantId: string,
-  body: { pm_text: string; deck_text?: string; name?: string },
+  body: { pm_text: string; deck_text?: string; name?: string; client_type?: ClientType },
 ): Promise<{ campaign_id: string }> {
   return check(await apiFetch(base(tenantId), { method: 'POST', headers: json(sessionId), body: JSON.stringify(body) }))
+}
+
+// A BPO client's campaign (19 Nov 2026): their document is the brief, Mia asks only what's vital and missing from it,
+// and there are no KPIs or ad budget. Chosen on the new-campaign page, kept for the campaign's life.
+export type ClientType = 'campaign' | 'bpo'
+
+// Where the new-campaign page's switch starts: what this workspace chose last.
+export async function lastClientType(sessionId: string, tenantId: string): Promise<{ client_type: ClientType }> {
+  return check(await apiFetch(`${base(tenantId)}/client-type`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
 export async function saveBrief(

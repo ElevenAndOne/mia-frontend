@@ -288,6 +288,8 @@ export interface BuildState {
     end_date: string | null
     budget_total: number | null
     currency: string
+    // 'bpo': a BPO client's campaign, no KPIs or ad budget (19 Nov 2026)
+    client_type?: 'campaign' | 'bpo'
   }
   brief: {
     version: number

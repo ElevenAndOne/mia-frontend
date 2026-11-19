@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { readDeck, showOnHome, startBuild, type DeckRead } from '../features/campaign-builder/api'
+import { lastClientType, readDeck, showOnHome, startBuild, type ClientType, type DeckRead } from '../features/campaign-builder/api'
 import { clearTrackerCache } from '../features/campaign/services/campaign-tracker-service'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
@@ -61,6 +61,18 @@ function NewBuild() {
   const [reading, setReading] = useState<string | null>(null) // the file being read now
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Campaign | BPO: starts on what this workspace chose last (BPO clients stay BPO clients)
+  const [clientType, setClientType] = useState<ClientType>('campaign')
+  useEffect(() => {
+    if (!sessionId || !activeWorkspace) return
+    let live = true
+    lastClientType(sessionId, activeWorkspace.tenant_id)
+      .then((r) => live && setClientType(r.client_type))
+      .catch(() => undefined) // the switch stays on Campaign
+    return () => {
+      live = false
+    }
+  }, [sessionId, activeWorkspace])
   const deckText = sourceText(files, deck)
   const deckTooLong = deckText.length > MAX_SOURCE_CHARS
   // The server takes at most 20,000 characters here (StartRequest.pm_text); a pasted full brief belongs in
@@ -94,6 +106,7 @@ function NewBuild() {
       const { campaign_id } = await startBuild(sessionId, activeWorkspace.tenant_id, {
         pm_text: text.trim() || 'Build the campaign from the attached deck.',
         deck_text: deckText || undefined,
+        client_type: clientType,
       })
       navigate(`/campaign-builder/${campaign_id}/brief`)
     } catch (e) {
@@ -123,6 +136,32 @@ function NewBuild() {
               Write it the way you'd tell the team: the goal, dates, budget, channels, anything that must or must not
               happen. A line is enough; Mia reads {activeWorkspace?.name ?? 'the client'}'s history, results and brand and
               drafts the brief for you to check.
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div role="radiogroup" aria-label="Client type" className="inline-flex self-start rounded-lg border border-secondary bg-primary p-0.5">
+              {(
+                [
+                  ['campaign', 'Campaign'],
+                  ['bpo', 'BPO'],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={clientType === key}
+                  onClick={() => setClientType(key)}
+                  className={`rounded-md px-3 py-1 label-sm ${clientType === key ? 'bg-secondary text-primary' : 'text-tertiary'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="paragraph-xs text-tertiary">
+              {clientType === 'bpo'
+                ? "BPO: the client's document is the brief. Mia only asks if the dates, what to make or the channels are missing, and there are no KPIs or ad budget."
+                : 'Campaign: Mia plans it with you, with KPIs, targets and the ad budget.'}
             </p>
           </div>
           <label htmlFor="pm-text" className="sr-only">
