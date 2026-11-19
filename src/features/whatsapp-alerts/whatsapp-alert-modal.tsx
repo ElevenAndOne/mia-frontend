@@ -5,8 +5,8 @@ import type { WhatsAppAlertData } from './types'
 
 interface WhatsAppAlertModalProps {
   data: WhatsAppAlertData
-  onSnooze: () => void  // backdrop, X, Remind Me Later — re-shows after 24h
-  onDismiss: () => void // permanent hide
+  onSnooze: () => void  // Remind Me Later only — re-shows after 24h
+  onDismiss: () => void // X, backdrop, Dismiss, View Campaign — permanent hide
 }
 
 function parseRecommendation(rec: string): { title: string; body: string } {
@@ -35,13 +35,21 @@ export function WhatsAppAlertModal({ data, onSnooze, onDismiss }: WhatsAppAlertM
     })
   }
 
+  // The builder's Results for a builder campaign, the old campaign page for an old one; the
+  // builder's board when the alert has no campaign (a test). /campaigns is off the agency nav.
   const handleGoToCampaign = () => {
     onDismiss()
-    navigate('/campaigns')
+    navigate(
+      data.campaign_id
+        ? data.builder === 'v2'
+          ? `/campaign-builder/${data.campaign_id}/results`
+          : `/campaigns/${data.campaign_id}/overview`
+        : '/campaign-builder'
+    )
   }
 
   return (
-    <Modal isOpen onClose={onSnooze} title="Campaign Alert" size="xl">
+    <Modal isOpen onClose={onDismiss} title="Campaign Alert" size="xl">
       <div className="px-6 pt-5 pb-6 space-y-5">
         {/* Campaign / phase header */}
         <div>

@@ -8,13 +8,29 @@ import { useInsightsDatePicker } from './use-insights-date-picker'
 import { consumeReturnUrl } from '../routes/protected-route'
 import { StorageKey } from '../constants/storage-keys'
 import { logger } from '../utils/logger'
-import { fetchLatestAlert } from '../features/whatsapp-alerts/whatsapp-alert-service'
+import { dismissAlert, fetchLatestAlert } from '../features/whatsapp-alerts/whatsapp-alert-service'
 import type { WhatsAppAlertData } from '../features/whatsapp-alerts/types'
 
+// Legacy browser-only dismissals (before 19 Nov 2026). Dismissals now live on the server;
+// this is read once per alert so a dismiss made before the switch is carried over, not lost.
 interface AlertDismissalRecord {
   key: string
   snoozedUntil?: number // epoch ms — show again after this time
   dismissed?: boolean   // permanent hide
+}
+
+const readLegacyDismissal = (alertKey: string): 'dismiss' | 'snooze' | null => {
+  try {
+    const records: AlertDismissalRecord[] = JSON.parse(
+      localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
+    )
+    const record = records.find((r) => r.key === alertKey)
+    if (record?.dismissed === true) return 'dismiss'
+    if (record?.snoozedUntil !== undefined && record.snoozedUntil > Date.now()) return 'snooze'
+  } catch {
+    // unreadable storage — nothing to carry over
+  }
+  return null
 }
 
 export const useAppController = () => {
@@ -48,24 +64,19 @@ export const useAppController = () => {
 
   const insightsDatePicker = useInsightsDatePicker()
 
-  // WhatsApp alert: auto-fetch latest alert once authenticated, show modal if unseen/unsnoozeD
+  // WhatsApp alert: auto-fetch the popup alert once authenticated. The server decides who
+  // sees it (subscribed members, delivered alerts, not dismissed/snoozed by this user).
   useEffect(() => {
     if (isLoading || (!isAuthenticated && !isMetaAuthenticated) || !sessionId) return
 
     fetchLatestAlert(sessionId).then((alert) => {
       if (!alert) return
-      const alertKey = `${alert.campaign_name}:${alert.phase_name}`
-      const records: AlertDismissalRecord[] = JSON.parse(
-        localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
-      )
-      const record = records.find((r) => r.key === alertKey)
-      const now = Date.now()
-      const isSuppressed =
-        record?.dismissed === true ||
-        (record?.snoozedUntil !== undefined && record.snoozedUntil > now)
-      if (!isSuppressed) {
-        setWaAlertData(alert)
+      const legacy = readLegacyDismissal(`${alert.campaign_name}:${alert.phase_name}`)
+      if (legacy && alert.alert_token) {
+        dismissAlert(sessionId, alert.alert_token, legacy).catch(() => {})
+        return
       }
+      setWaAlertData(alert)
     }).catch(() => {}) // silently ignore — no alerts is fine
   }, [isLoading, isAuthenticated, isMetaAuthenticated, sessionId])
 
@@ -246,29 +257,18 @@ export const useAppController = () => {
     },
     onNewWorkspace: handleNewWorkspace,
     waAlertData,
-    // Temporary close — re-shows after 24 hours (backdrop, X button, Remind Me Later)
+    // Remind Me Later — the server hides it for this user for 24 hours, on every device
     snoozeWaAlert: () => {
-      if (waAlertData) {
-        const alertKey = `${waAlertData.campaign_name}:${waAlertData.phase_name}`
-        const records: AlertDismissalRecord[] = JSON.parse(
-          localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
-        )
-        const filtered = records.filter((r) => r.key !== alertKey)
-        filtered.push({ key: alertKey, snoozedUntil: Date.now() + 24 * 60 * 60 * 1000 })
-        localStorage.setItem(StorageKey.WA_ALERT_DISMISSALS, JSON.stringify(filtered))
+      if (waAlertData?.alert_token && sessionId) {
+        dismissAlert(sessionId, waAlertData.alert_token, 'snooze').catch(() => {})
       }
       setWaAlertData(null)
     },
-    // Permanent dismiss — never shows this alert again
+    // Dismiss (also the X, clicking outside, and View Campaign) — never shows this
+    // campaign phase's alert to this user again
     clearWaAlert: () => {
-      if (waAlertData) {
-        const alertKey = `${waAlertData.campaign_name}:${waAlertData.phase_name}`
-        const records: AlertDismissalRecord[] = JSON.parse(
-          localStorage.getItem(StorageKey.WA_ALERT_DISMISSALS) || '[]'
-        )
-        const filtered = records.filter((r) => r.key !== alertKey)
-        filtered.push({ key: alertKey, dismissed: true })
-        localStorage.setItem(StorageKey.WA_ALERT_DISMISSALS, JSON.stringify(filtered))
+      if (waAlertData?.alert_token && sessionId) {
+        dismissAlert(sessionId, waAlertData.alert_token, 'dismiss').catch(() => {})
       }
       setWaAlertData(null)
     },

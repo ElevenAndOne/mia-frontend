@@ -16,6 +16,19 @@ export const fetchLatestAlert = async (sessionId: string): Promise<WhatsAppAlert
   return res.json()
 }
 
+export const dismissAlert = async (
+  sessionId: string,
+  alertToken: string,
+  action: 'dismiss' | 'snooze'
+): Promise<void> => {
+  const res = await apiFetch('/api/whatsapp-alerts/my-latest/dismiss', {
+    method: 'POST',
+    headers: { 'X-Session-ID': sessionId, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alert_token: alertToken, action }),
+  })
+  if (!res.ok) throw new Error('Failed to dismiss alert')
+}
+
 export const fetchWorkspaceAlertSettings = async (
   sessionId: string,
   tenantId: string
