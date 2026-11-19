@@ -273,6 +273,7 @@ export const MiaStyleTab = ({
     try {
       await updateMiaPreferences(sessionId, tenantId, preset)
       setData((d) => (d ? { ...d, user_preferences: preset } : d))
+      showToast('success', 'Style saved', 2500)
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to save', 5000)
     } finally {

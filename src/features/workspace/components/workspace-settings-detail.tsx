@@ -324,8 +324,10 @@ export const WorkspaceSettingsDetail = ({
     setSavingFramework(true)
     try {
       await updateWorkspaceFramework(sessionId, workspace.tenant_id, next)
+      showToast('success', 'Framework saved', 2500)
     } catch {
       setFramework(prev) // revert on failure
+      showToast('error', "Couldn't change the framework")
     } finally {
       setSavingFramework(false)
     }
@@ -355,6 +357,7 @@ export const WorkspaceSettingsDetail = ({
       await updateWorkspaceWebsiteUrl(sessionId, workspace.tenant_id, url)
       setWebsiteUrl(url)
       setWebsiteUrlInput(url)
+      showToast('success', 'Website saved', 2500)
       return true
     } catch (e) {
       setWebsiteError(e instanceof Error ? e.message : 'Failed to save')
@@ -445,6 +448,7 @@ export const WorkspaceSettingsDetail = ({
         tenant_id: workspace.tenant_id,
       })
       setSubscriptionSaved(true)
+      showToast('success', 'Alerts saved', 2500)
       setTimeout(() => setSubscriptionSaved(false), 3000)
       loadAlertSettings()
     } catch {

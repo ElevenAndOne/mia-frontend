@@ -8,9 +8,11 @@ import { HelpCircle } from '../../../components/icon/help-circle'
 import { LogOut01 } from '../../../components/icon/log-out-01'
 import { Palette } from '../../../components/icon/palette'
 import { Settings01 } from '../../../components/icon/settings-01'
+import { Plus } from '../../../components/icon/plus'
 import { Popover } from '../../overlay'
 import { useAppShellActions } from '../../../hooks/use-app-shell-actions'
 import { useExperience } from '../../workspace/hooks/use-experience'
+import { useFeatures } from '../../workspace/hooks/use-features'
 import { useRovingFocus } from '../../../hooks/use-roving-focus'
 import { useWorkspaceSwitcher } from '../../workspace/hooks/use-workspace-switcher'
 import { WorkspaceListItem } from '../../workspace/components/workspace-list-item'
@@ -157,6 +159,9 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
     reloadOnSuccess: false,
   })
   const { handleKeyDown } = useRovingFocus({ selector: '[data-workspace-item]' })
+  const newWorkspaceAction = useAppShellActions()
+  const { isEnabled: isFeatureEnabled } = useFeatures()
+  const canAddWorkspace = isFeatureEnabled('new_workspace')
   // Alphabetical, so a client is where you expect it (Josh, 19 Nov).
   const sortedWorkspaces = [...availableWorkspaces].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
@@ -266,6 +271,22 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
             ))
           )}
         </div>
+        )}
+        {/* Agency (19 Nov 2026): "New workspace" lives here, not in the sidebar list. */}
+        {!isBasic && canAddWorkspace && (
+          <div className="border-t border-tertiary px-2 py-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false)
+                newWorkspaceAction.onNewWorkspace()
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg paragraph-sm text-secondary hover:bg-secondary hover:text-primary transition-colors"
+            >
+              <Plus size={16} className="text-tertiary" />
+              New workspace
+            </button>
+          </div>
         )}
       </Popover>
     </>

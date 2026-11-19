@@ -508,18 +508,14 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
       <TopBar title="Reports" onBack={onBack} breadcrumbs={crumbs()} />
       <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="heading-md text-primary">Reports</h1>
-          <p className="paragraph-sm text-tertiary mt-1">
-            Monthly performance reports auto-filled from your platform data
-          </p>
-        </div>
+      {/* The top bar already says "Reports": one line and the action (19 Nov 2026). */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="paragraph-sm text-tertiary">Client reports, filled from the platforms.</p>
         <button
           onClick={() => setStep('configure')}
-          className="px-4 py-2 rounded-lg bg-brand-solid text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+          className="shrink-0 px-3.5 py-2 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium shadow-sm hover:bg-brand-solid-hover active:scale-[0.98] transition"
         >
-          + New Report
+          New report
         </button>
       </div>
 

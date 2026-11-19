@@ -1447,7 +1447,7 @@ const IntegrationsPage = ({
           {!isBasic && !loading && connectedSources.length > 0 && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
               <div className="mb-4">
-                <h2 className="label-md text-primary">{connectedSources.length} Sources</h2>
+                <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary">{connectedSources.length} Sources</h2>
                 <p className="paragraph-xs text-quaternary">
                   Connect your data sources to unlock powerful new insights
                 </p>
@@ -1482,7 +1482,7 @@ const IntegrationsPage = ({
                       <div
                         className={`w-full text-left transition-all bg-primary border-2 rounded-xl p-3 overflow-hidden cursor-pointer hover:border-brand-alt ${
                           loading ? 'opacity-50 pointer-events-none' : ''
-                        } ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
+                        } ${highlightedIds.includes(integration.id) ? 'mia-nudge border-secondary' : 'border-secondary'}`}
                         onClick={handleCardClick}
                       >
                         <div className="flex items-center  gap-3">
@@ -1614,7 +1614,7 @@ const IntegrationsPage = ({
           {/* Available Integrations Section - hidden for viewer/analyst roles */}
           {!isBasic && !loading && availableSources.length > 0 && canManageIntegrations && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
-              <h2 className="label-md text-primary mb-1">Available Integrations</h2>
+              <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary mb-1">Available Integrations</h2>
               <p className="paragraph-xs text-quaternary mb-4">
                 Connect your data sources to unlock powerful new insights
               </p>
@@ -1623,7 +1623,7 @@ const IntegrationsPage = ({
                 {availableSources.map((integration) => (
                   <div
                     key={integration.id}
-                    className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'border-brand ring-2 ring-brand ring-offset-2 animate-pulse' : 'border-secondary'}`}
+                    className={`bg-primary border rounded-xl p-3 overflow-hidden ${highlightedIds.includes(integration.id) ? 'mia-nudge border-secondary' : 'border-secondary'}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
@@ -1665,7 +1665,7 @@ const IntegrationsPage = ({
           {/* Extensions Section — plugins */}
           {!isBasic && canManageIntegrations && (
             <div className="mb-6 max-w-3xl mx-auto w-full">
-              <h2 className="label-md text-primary mb-1">Extensions</h2>
+              <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary mb-1">Extensions</h2>
               <p className="paragraph-xs text-quaternary mb-4">
                 Add functionality to MIA for your workspace
               </p>

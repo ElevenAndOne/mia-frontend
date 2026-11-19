@@ -1301,7 +1301,7 @@ function Concept({ plan }: { plan: Plan }) {
   return (
     <Card>
       <p className="label-xs text-tertiary">The idea</p>
-      <h2 className="subheading-md text-primary mt-1">{c.name}</h2>
+      <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary mt-1">{c.name}</h2>
       {c.big_idea ? <p className="paragraph-sm text-primary mt-2">{c.big_idea}</p> : null}
       <div className="mt-3 grid gap-3 @xl:grid-cols-2">
         {c.why_this_client_now ? (
@@ -1740,7 +1740,7 @@ function SelfCheck({ review }: { review: PlanReview }) {
   return (
     <Card>
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="subheading-md text-primary">Mia's self-check</h2>
+        <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary">Mia's self-check</h2>
         {sc.thin_history ? (
           <Chip>Not graded: no past results on these KPIs to compare with</Chip>
         ) : (

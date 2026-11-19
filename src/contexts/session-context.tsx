@@ -76,8 +76,84 @@ type SessionContextType = SessionState & SessionActions
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined)
 
+// ── The last signed-in state, for a quick start after a refresh (19 Nov 2026) ─────────────────
+// A refresh showed "Setting up your workspace" while the sign-in checks ran (seconds). The last
+// signed-in state for this tab is drawn at once and the same checks run behind it: if they fail,
+// the signed-in fields are cleared exactly as before. Never used during a sign-in redirect, on a
+// render page, or for a different session than the one stored.
+const BOOT_KEY = 'mia:boot'
+type BootSnapshot = Pick<
+  SessionState,
+  | 'sessionId'
+  | 'isAuthenticated'
+  | 'isMetaAuthenticated'
+  | 'hasSeenIntro'
+  | 'user'
+  | 'selectedAccount'
+  | 'availableAccounts'
+  | 'availableWorkspaces'
+  | 'activeWorkspace'
+>
+const LOGGED_OUT: Partial<SessionState> = {
+  isAuthenticated: false,
+  isMetaAuthenticated: false,
+  user: null,
+  selectedAccount: null,
+  availableAccounts: [],
+  availableWorkspaces: [],
+  activeWorkspace: null,
+}
+const readBoot = (): BootSnapshot | null => {
+  try {
+    if (isRendererPath(window.location.pathname)) return null
+    if (new URLSearchParams(window.location.search).get('oauth_complete')) return null
+    if (new URLSearchParams(window.location.search).get('claim')) return null
+    if (localStorage.getItem(StorageKey.OAUTH_PENDING)) return null
+    const raw = sessionStorage.getItem(BOOT_KEY)
+    if (!raw) return null
+    const snap = JSON.parse(raw) as BootSnapshot
+    const stored = localStorage.getItem(StorageKey.SESSION_ID)
+    return snap.isAuthenticated && snap.sessionId && snap.sessionId === stored ? snap : null
+  } catch {
+    return null
+  }
+}
+const writeBoot = (s: SessionState) => {
+  try {
+    if (s.isLoading) return
+    if (!s.isAuthenticated || !s.sessionId) {
+      sessionStorage.removeItem(BOOT_KEY)
+      return
+    }
+    const snap: BootSnapshot = {
+      sessionId: s.sessionId,
+      isAuthenticated: s.isAuthenticated,
+      isMetaAuthenticated: s.isMetaAuthenticated,
+      hasSeenIntro: s.hasSeenIntro,
+      user: s.user,
+      selectedAccount: s.selectedAccount,
+      availableAccounts: s.availableAccounts,
+      availableWorkspaces: s.availableWorkspaces,
+      activeWorkspace: s.activeWorkspace,
+    }
+    sessionStorage.setItem(BOOT_KEY, JSON.stringify(snap))
+  } catch {
+    /* storage blocked or full: no quick start, nothing else changes */
+  }
+}
+
 // Lazy initializer - called fresh on each mount to detect OAuth redirect synchronously
 const getInitialState = (): SessionState => {
+  const boot = typeof window !== 'undefined' ? readBoot() : null
+  if (boot) {
+    return {
+      ...boot,
+      isLoading: false,
+      error: null,
+      metaUser: null,
+      connectingPlatform: null,
+    }
+  }
   // Detect OAuth redirect synchronously to prevent video flash
   let connectingPlatform: 'google' | 'meta' | null = null
   if (typeof window !== 'undefined') {
@@ -138,6 +214,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     [showToast]
   )
   const [state, setState] = useState<SessionState>(getInitialState)
+  // Keep the quick-start copy in step with the real state (and drop it once signed out).
+  useEffect(() => {
+    writeBoot(state)
+  }, [state])
 
   // Refs for OAuth timer cleanup on unmount
   const oauthPollTimerRef = useRef<number | null>(null)
@@ -213,7 +293,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         return
       }
 
-      setState((prev) => ({ ...prev, isLoading: true }))
+      // A quick start (BOOT_KEY) stays on screen while the checks below run.
+      setState((prev) => ({ ...prev, isLoading: !(prev.isAuthenticated && prev.sessionId) }))
 
       try {
         // Check for mobile OAuth redirect - use localStorage flag, NOT query params
@@ -485,7 +566,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         // Create new session
         const newSessionId = generateSessionId()
         storeSessionId(newSessionId)
-        setState((prev) => ({ ...prev, sessionId: newSessionId, isLoading: false }))
+        setState((prev) => ({ ...prev, ...LOGGED_OUT, sessionId: newSessionId, isLoading: false }))
       } catch (error) {
         logger.error('[SESSION] Initialization error:', error)
         // Preserve existing session ID — generating a new one would sever the backend session
@@ -495,6 +576,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (!existingSessionId) storeSessionId(fallbackSessionId)
         setState((prev) => ({
           ...prev,
+          ...LOGGED_OUT,
           error: 'Failed to initialize session',
           sessionId: fallbackSessionId,
           isLoading: false,

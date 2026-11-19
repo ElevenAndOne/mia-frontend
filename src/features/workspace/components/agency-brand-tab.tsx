@@ -5,6 +5,7 @@ import { Spinner } from '../../../components/spinner'
 import { ChevronLeft } from '../../../components/icon/chevron-left'
 import { ChevronRight } from '../../../components/icon/chevron-right'
 import { apiFetch } from '../../../utils/api'
+import { useToast } from '../../../contexts/toast-context'
 import { useMarketingContext } from '../../marketing-context/hooks/use-marketing-context'
 import type { BrandGuideExtracted } from '../../marketing-context/types'
 import { FIELD_LABELS } from '../../marketing-context/types'
@@ -344,6 +345,7 @@ const KITINFO_CACHE = sessionCache<{ own_fonts?: OwnFont[]; font_status?: FontSt
 
 export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
   const mc = useMarketingContext(sessionId, tenantId)
+  const { showToast } = useToast()
   const { context, loading, uploadStep, uploadResult, editedFields, isGenerating } = mc
 
   const [view, setView] = useState<GuideView | null>(() => VIEW_CACHE.get(tenantId) ?? null)
@@ -365,7 +367,6 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
   const [drawVersion, setDrawVersion] = useState(0) // bumps after an edit redraws the pages
   const [editSaving, setEditSaving] = useState(false)
   const [applyingLook, setApplyingLook] = useState(false)
-  const [lookNote, setLookNote] = useState<string | null>(null)
 
   const headers = { 'X-Session-ID': sessionId ?? '' }
 
@@ -457,6 +458,7 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((j as { detail?: string }).detail || 'That change didn’t save.')
       setDrawVersion((v) => v + 1)
+      showToast('success', 'Guide redrawn', 2500)
       setKitKey((k) => k + 1) // the kit follows a font/colour change (backend look.sync_edits)
       void loadKit()
       await loadVisual()
@@ -470,7 +472,6 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
   const applyLook = async () => {
     if (!sessionId) return
     setApplyingLook(true)
-    setLookNote(null)
     try {
       const res = await apiFetch(`/api/tenants/${tenantId}/brand-kit/visual-guide/apply-look`, {
         method: 'POST',
@@ -479,10 +480,9 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
       if (!res.ok) throw new Error()
       setKitKey((k) => k + 1)
       void loadKit()
-      setLookNote('Brand Kit updated')
-      window.setTimeout(() => setLookNote(null), 3000)
+      showToast('success', 'Brand Kit updated', 2500)
     } catch {
-      setLookNote('Couldn’t update the Brand Kit')
+      showToast('error', 'Couldn’t update the Brand Kit')
     } finally {
       setApplyingLook(false)
     }
@@ -753,7 +753,6 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
                   {applyingLook ? 'Updating…' : 'Use this look in the Brand Kit'}
                 </button>
               )}
-              {lookNote && <span className="paragraph-xs text-success">{lookNote}</span>}
               {canManage && (
                 <Button variant="ghost" size="sm" onClick={() => void startVisual(visual.website ?? undefined)}>
                   Build again

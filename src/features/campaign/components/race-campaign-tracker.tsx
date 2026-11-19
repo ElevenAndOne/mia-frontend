@@ -11,6 +11,7 @@ import {
   refreshCampaignActuals,
   clearTrackerCache,
   fetchUnlinkedAds,
+  type UnlinkedAds,
 } from '../services/campaign-tracker-service'
 import type {
   CampaignTracker,
@@ -436,13 +437,13 @@ export function RaceCampaignTracker({
 
   // Ads that ran in the campaign's dates without being linked for them: said here, where the numbers are read, with the
   // way to fix it (tracking check, 30 Oct 2026: DFSA's cost per conversion was blank because Google wasn't linked)
-  const [unlinked, setUnlinked] = useState<string | null>(null)
+  const [unlinked, setUnlinked] = useState<UnlinkedAds | null>(null)
   const unlinkedFor = campaign && campaign.status !== 'draft' ? campaign.campaign_id : null
   useEffect(() => {
     let off = false
     setUnlinked(null)
     if (!sessionId || !tenantId || !unlinkedFor) return
-    void fetchUnlinkedAds(sessionId, tenantId, unlinkedFor).then((r) => { if (!off) setUnlinked(r?.line ?? null) })
+    void fetchUnlinkedAds(sessionId, tenantId, unlinkedFor).then((r) => { if (!off) setUnlinked(r && r.ads?.length ? r : null) })
     return () => { off = true }
   }, [sessionId, tenantId, unlinkedFor])
 
@@ -920,22 +921,30 @@ export function RaceCampaignTracker({
               Could not load actuals — try again later
             </p>
           )}
-          {unlinked && campaign && (
-            <p className="paragraph-xs text-secondary rounded-lg border border-secondary px-3 py-2 mt-2">
-              {/* New-builder campaigns: the line stays (spend that isn't tracked), but the old link screen is closed
-                  to them; the Flex push links their ads (owner, 8 Nov) */}
-              {campaign.builder === 'v2' ? (
-                unlinked.replace(/ Link them so their results count here\.$/, '')
-              ) : (
-                <>
-                  {unlinked}{' '}
-                  <a className="underline text-primary" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
-                    Review links
+          {unlinked && campaign && (() => {
+            // Short (Josh, 19 Nov 2026): the count and spend; names on hover, not raw ad codes.
+            const n = unlinked.ads.length
+            const spend = unlinked.ads.reduce((t, a) => t + (a.spend || 0), 0)
+            const names = unlinked.ads.map((a) => `${a.label}: ${a.name}`).join('\n')
+            return (
+              <p
+                title={names}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 paragraph-xs text-secondary rounded-lg border border-secondary px-3 py-2 mt-2"
+              >
+                <span>
+                  {n} ad campaign{n === 1 ? '' : 's'} spent R{Math.round(spend).toLocaleString()} in these dates but{' '}
+                  {n === 1 ? "isn't" : "aren't"} linked to this campaign.
+                </span>
+                {/* New-builder campaigns: the old link screen is closed to them; the push from Mia links their
+                    ads (owner, 8 Nov). Old campaigns link on Setup → Linked. */}
+                {campaign.builder !== 'v2' && (
+                  <a className="font-medium text-brand-secondary hover:underline" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
+                    Link them →
                   </a>
-                </>
-              )}
-            </p>
-          )}
+                )}
+              </p>
+            )
+          })()}
         </div>
       </div>
     </div>

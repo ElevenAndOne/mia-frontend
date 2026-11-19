@@ -82,7 +82,8 @@ export function Card({ children, className = '', warn = false, id }: { children:
   return (
     <section
       id={id}
-      className={`rounded-xl bg-primary p-4 ${warn ? 'border-2 border-utility-warning-300' : 'border border-secondary'} ${className}`}
+      // The settings look (19 Nov 2026): a raised panel with a thin border and a faint shadow.
+      className={`rounded-xl bg-primary p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${warn ? 'border-2 border-utility-warning-300' : 'border border-secondary'} ${className}`}
     >
       {children}
     </section>

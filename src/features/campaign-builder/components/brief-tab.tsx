@@ -406,7 +406,7 @@ function BriefCard({
   return (
     <Card id="brief-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="subheading-md text-primary">The brief</h2>
+        <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary">The brief</h2>
         <div className="flex items-center gap-2">
           <span className="paragraph-xs text-tertiary">
             Version {state.brief?.version} · {state.brief?.made_by === 'pm' ? 'edited by you' : 'drafted by Mia'}

@@ -7,6 +7,8 @@ import { useAppShellActions } from '../hooks/use-app-shell-actions'
 import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useExperience } from '../features/workspace/hooks/use-experience'
 import { SHOW_HIDDEN_PAGES } from '../constants/nav'
+import { queryClient } from '../lib/query-client'
+import { fetchBoard } from '../features/campaign-builder/api'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
@@ -45,6 +47,8 @@ interface NavItemProps {
   onClick: () => void
   trailing?: ReactNode
   className?: string
+  /** Start loading the page before the click (hover or keyboard focus). */
+  onPrefetch?: () => void
 }
 
 const NavItem = ({
@@ -55,9 +59,12 @@ const NavItem = ({
   onClick,
   trailing,
   className = '',
+  onPrefetch,
 }: NavItemProps) => (
   <button
     onClick={onClick}
+    onMouseEnter={onPrefetch}
+    onFocus={onPrefetch}
     title={collapsed ? label : undefined}
     className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
       collapsed ? 'justify-center px-0' : 'px-3'
@@ -73,6 +80,22 @@ const NavItem = ({
     {!collapsed && trailing}
   </button>
 )
+
+// Hovering a nav item starts loading its page's code (and, where cheap, its data), so the click
+// feels instant (19 Nov 2026). Each import runs once; later calls are free.
+const PREFETCH: Record<string, () => unknown> = {
+  settings: () => import('../pages/workspace-settings-page'),
+  builder: () => import('../pages/campaign-board-page'),
+  reports: () => import('../pages/reports-page'),
+  integrations: () => import('../pages/integrations-page'),
+  home: () => import('../pages/chat-page'),
+}
+const prefetched = new Set<string>()
+const prefetch = (key: string) => {
+  if (prefetched.has(key) || !PREFETCH[key]) return
+  prefetched.add(key)
+  void Promise.resolve(PREFETCH[key]()).catch(() => prefetched.delete(key))
+}
 
 /**
  * Permanent left navigation panel (desktop). Collapsible to an icons-only rail
@@ -200,9 +223,12 @@ export const AppSidebar = () => {
           <SidebarWorkspaceButton collapsed={collapsed} />
         </div>
 
-        <div className={`pb-2 ${collapsed ? 'px-2 flex justify-center' : 'px-3'}`}>
-          <CommandPaletteTrigger variant={collapsed ? 'icon' : 'pill'} fullWidth={!collapsed} />
-        </div>
+        {/* Agency (19 Nov 2026): no search box in the sidebar; Cmd/Ctrl+K still opens search. */}
+        {isBasic && (
+          <div className={`pb-2 ${collapsed ? 'px-2 flex justify-center' : 'px-3'}`}>
+            <CommandPaletteTrigger variant={collapsed ? 'icon' : 'pill'} fullWidth={!collapsed} />
+          </div>
+        )}
 
         <div className="border-t border-tertiary mx-3" />
 
@@ -214,11 +240,13 @@ export const AppSidebar = () => {
           <NavItem
             icon={isBasic ? <Edit03 size={18} /> : <Home03 size={18} />}
             label={isBasic ? 'New Chat' : 'Home'}
+            onPrefetch={() => prefetch('home')}
             collapsed={collapsed}
             active={!isBasic && path === '/home'}
             onClick={() => actions.onNewChat()}
           />
-          {isFeatureEnabled('new_workspace') && (
+          {/* Agency: New workspace moved into the workspace switcher (19 Nov 2026). */}
+          {isFeatureEnabled('new_workspace') && isBasic && (
             <NavItem
               icon={<Plus size={18} />}
               label="New Workspace"
@@ -232,6 +260,7 @@ export const AppSidebar = () => {
             <NavItem
               icon={<Globe01 size={18} />}
               label="Integrations"
+              onPrefetch={() => prefetch('integrations')}
               collapsed={collapsed}
               active={activeKey === 'integrations'}
               onClick={actions.onIntegrationsClick}
@@ -253,6 +282,16 @@ export const AppSidebar = () => {
             <NavItem
               icon={<Target01 size={18} />}
               label="Campaign builder"
+              onPrefetch={() => {
+                prefetch('builder')
+                // its list too: the board reads ['campaign-board', tenant] (shown at once on click)
+                if (activeWorkspace?.tenant_id && sessionId)
+                  void queryClient.prefetchQuery({
+                    queryKey: ['campaign-board', activeWorkspace.tenant_id],
+                    queryFn: () => fetchBoard(sessionId, activeWorkspace.tenant_id),
+                    staleTime: 30_000,
+                  })
+              }}
               collapsed={collapsed}
               active={activeKey === 'builder'}
               onClick={() => navigate('/campaign-builder')}
@@ -284,6 +323,7 @@ export const AppSidebar = () => {
             <NavItem
               icon={<File02 size={18} />}
               label="Reports"
+              onPrefetch={() => prefetch('reports')}
               collapsed={collapsed}
               active={activeKey === 'reports'}
               onClick={actions.onReportsClick}
@@ -313,6 +353,7 @@ export const AppSidebar = () => {
             <NavItem
               icon={<Settings01 size={18} />}
               label="Settings"
+              onPrefetch={() => prefetch('settings')}
               collapsed={collapsed}
               active={activeKey === 'settings'}
               onClick={actions.onWorkspaceSettings}

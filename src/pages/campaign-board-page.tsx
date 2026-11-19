@@ -59,7 +59,34 @@ export default function CampaignBoardPage() {
           {q.data ? (
             <>
               {q.data.campaigns.length ? (
-                <Card className="overflow-x-auto p-0">
+                <>
+                {/* Phones (19 Nov 2026): one card per campaign; the table needed a sideways scroll. */}
+                <ul className="flex flex-col gap-2 md:hidden">
+                  {q.data.campaigns.map((c) => (
+                    <li key={c.campaign_id}>
+                      <button
+                        type="button"
+                        onClick={() => open(c)}
+                        className="group w-full text-left rounded-xl border border-secondary bg-primary p-3 flex flex-col gap-2 active:scale-[0.99] transition"
+                      >
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="paragraph-sm font-medium text-primary">{c.name}</span>
+                          <Chip tone={STAGE_TONE[c.stage ?? ''] ?? 'neutral'}>{c.stage}</Chip>
+                        </span>
+                        <span className="paragraph-xs text-tertiary">
+                          {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'No dates yet'}
+                          {c.budget_total != null ? ` · ${money(c.budget_total, c.currency)}` : ''}
+                        </span>
+                        {c.next_step?.label ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-secondary px-2.5 py-1 paragraph-xs text-primary">
+                            {c.next_step.label} <span aria-hidden>→</span>
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <Card className="hidden md:block overflow-x-auto p-0">
                   <table className="w-full min-w-[760px] paragraph-sm">
                     <thead>
                       <tr className="text-left label-xs text-tertiary">
@@ -122,6 +149,7 @@ export default function CampaignBoardPage() {
                     </tbody>
                   </table>
                 </Card>
+                </>
               ) : (
                 <Card className="flex flex-col items-start gap-3">
                   <p className="paragraph-sm text-secondary">

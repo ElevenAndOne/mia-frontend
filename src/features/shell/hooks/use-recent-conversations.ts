@@ -1,3 +1,4 @@
+import { sessionCache } from '../../../utils/session-cache'
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../../contexts/toast-context'
 import {
@@ -17,19 +18,34 @@ import type { RecentConversation } from '../../chat/services/chat-service'
  */
 export type RecentChatsStatus = 'idle' | 'loading' | 'ready' | 'error'
 
+const CHATS_CACHE = sessionCache<RecentConversation[]>('recent-chats')
+
 export const useRecentConversations = (sessionId: string | null, workspaceId?: string | null) => {
   const { showToast } = useToast()
-  const [conversations, setConversations] = useState<RecentConversation[]>([])
+  // The last list per workspace shows at once, even after a refresh (19 Nov 2026), and is
+  // refreshed behind it.
+  const ck = workspaceId ?? 'none'
+  const [conversations, setConversationsState] = useState<RecentConversation[]>(() => CHATS_CACHE.get(ck) ?? [])
+  const setConversations = useCallback(
+    (u: RecentConversation[] | ((prev: RecentConversation[]) => RecentConversation[])) =>
+      setConversationsState((prev) => {
+        const next = typeof u === 'function' ? u(prev) : u
+        CHATS_CACHE.set(ck, next)
+        return next
+      }),
+    [ck]
+  )
   // "No recent chats yet" only after a real, successful empty answer: the panel used to show
   // it while loading and after a failed fetch, and stayed that way until a hard refresh
   // (30 Sep 2026).
-  const [status, setStatus] = useState<RecentChatsStatus>('idle')
+  const [status, setStatus] = useState<RecentChatsStatus>(() => (CHATS_CACHE.has(ck) ? 'ready' : 'idle'))
 
   // A different workspace is a different list: never show the last one's chats (or none).
   useEffect(() => {
-    setConversations([])
-    setStatus('idle')
-  }, [workspaceId])
+    const cached = CHATS_CACHE.get(ck)
+    setConversationsState(cached ?? [])
+    setStatus(cached ? 'ready' : 'idle')
+  }, [ck])
 
   const load = useCallback(async () => {
     if (!sessionId) return
@@ -42,7 +58,7 @@ export const useRecentConversations = (sessionId: string | null, workspaceId?: s
       setStatus('error')
       showToast('error', "Couldn't load your recent chats. Please try again.")
     }
-  }, [sessionId, showToast])
+  }, [sessionId, showToast, setConversations])
 
   const remove = useCallback(
     async (conversationId: string) => {
@@ -53,7 +69,7 @@ export const useRecentConversations = (sessionId: string | null, workspaceId?: s
       }
       return ok
     },
-    [sessionId]
+    [sessionId, setConversations]
   )
 
   const rename = useCallback(
@@ -67,7 +83,7 @@ export const useRecentConversations = (sessionId: string | null, workspaceId?: s
         )
       }
     },
-    [sessionId]
+    [sessionId, setConversations]
   )
 
   const togglePin = useCallback(
@@ -86,7 +102,7 @@ export const useRecentConversations = (sessionId: string | null, workspaceId?: s
           })
       )
     },
-    [sessionId]
+    [sessionId, setConversations]
   )
 
   return { conversations, setConversations, status, load, remove, rename, togglePin }

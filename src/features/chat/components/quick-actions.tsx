@@ -55,11 +55,11 @@ export const QuickActions = ({
             className={`flex items-center justify-center gap-1.5 px-2 py-3 rounded-xl border text-center transition-all ${
               disabled
                 ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-                : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
+                : 'group bg-primary border-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm active:scale-[0.98]'
             }`}
           >
             <span
-              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+              className={`shrink-0 transition-colors ${disabled ? 'text-placeholder-subtle' : 'text-quaternary group-hover:text-brand-secondary'}`}
             >
               {action.icon}
             </span>
@@ -82,11 +82,11 @@ export const QuickActions = ({
             className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
               disabled
                 ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-                : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
+                : 'group bg-primary border-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm active:scale-[0.98]'
             }`}
           >
             <span
-              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+              className={`shrink-0 transition-colors ${disabled ? 'text-placeholder-subtle' : 'text-quaternary group-hover:text-brand-secondary'}`}
             >
               {action.icon}
             </span>

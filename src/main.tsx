@@ -88,8 +88,8 @@ void import('./sentry-replay').then((m) => m.installReplay()).catch(() => {})
 import ReactDOM from 'react-dom/client'
 import { captureReferral } from './features/referrals/referral'
 import { BrowserRouter } from 'react-router-dom'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClient } from './lib/query-client'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { persistOptions, queryClient } from './lib/query-client'
 import App from './App'
 import { SessionProvider } from './contexts/session-context'
 import { ThemeProvider } from './contexts/theme-context'
@@ -122,7 +122,7 @@ captureReferral()
 ReactDOM.createRoot(rootElement).render(
   <Sentry.ErrorBoundary fallback={<div>An error has occurred. Please refresh the page.</div>}>
     <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <ThemeProvider>
           <ToastProvider>
             <SessionProvider>
@@ -134,7 +134,7 @@ ReactDOM.createRoot(rootElement).render(
             </SessionProvider>
           </ToastProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </BrowserRouter>
   </Sentry.ErrorBoundary>
 )
