@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { sessionCache } from '../../../utils/session-cache'
+import { useEffect, useState, type ReactNode, useCallback } from 'react'
 import { CollapsibleSection } from '../../../components/collapsible-section'
 import { useExperience } from '../hooks/use-experience'
-import { Spinner } from '../../../components/spinner'
 import { useToast } from '../../../contexts/toast-context'
 import {
   fetchMiaPreferences,
@@ -68,6 +68,8 @@ const PRESET_META: Record<string, { label: string; blurb: string }> = {
 // still supports custom (dial) editing if we re-enable it for power users later.
 const ALL_DIMENSIONS: MiaDimension[] = ['tone', 'length', 'format', 'proactivity', 'jargon']
 
+const PREFS_CACHE = sessionCache<MiaPreferencesResponse>('mia-prefs') // survives a refresh in this tab
+
 export const MiaStyleTab = ({
   sessionId,
   tenantId,
@@ -76,9 +78,19 @@ export const MiaStyleTab = ({
 }: MiaStyleTabProps) => {
   const { isBasic } = useExperience()
   const { showToast } = useToast()
-  const [data, setData] = useState<MiaPreferencesResponse | null>(null)
-  const [prefs, setPrefs] = useState<MiaPreferences | null>(null)
-  const [loading, setLoading] = useState(true)
+  // The last answer per workspace shows at once on return; it refreshes behind (19 Nov 2026).
+  const [data, setDataState] = useState<MiaPreferencesResponse | null>(() => PREFS_CACHE.get(tenantId) ?? null)
+  const setData = useCallback(
+    (u: MiaPreferencesResponse | null | ((d: MiaPreferencesResponse | null) => MiaPreferencesResponse | null)) =>
+      setDataState((prev) => {
+        const next = typeof u === 'function' ? u(prev) : u
+        if (next) PREFS_CACHE.set(tenantId, next)
+        return next
+      }),
+    [tenantId]
+  )
+  const [prefs, setPrefs] = useState<MiaPreferences | null>(() => PREFS_CACHE.get(tenantId)?.resolved ?? null)
+  const [loading, setLoading] = useState(() => !PREFS_CACHE.has(tenantId))
   const [saving, setSaving] = useState(false)
   const [settingDefault, setSettingDefault] = useState(false)
   const [applyingAll, setApplyingAll] = useState(false)
@@ -86,7 +98,7 @@ export const MiaStyleTab = ({
 
   useEffect(() => {
     if (!sessionId) return
-    setLoading(true)
+    setLoading(!PREFS_CACHE.has(tenantId))
     setError(null)
     fetchMiaPreferences(sessionId, tenantId)
       .then((d) => {
@@ -95,7 +107,7 @@ export const MiaStyleTab = ({
       })
       .catch(() => setError('Failed to load Mia preferences.'))
       .finally(() => setLoading(false))
-  }, [sessionId, tenantId])
+  }, [sessionId, tenantId, setData])
 
   const applyPreset = (presetKey: string) => {
     const preset = data?.catalog.presets[presetKey]
@@ -147,8 +159,10 @@ export const MiaStyleTab = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner size="md" variant="dark" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" aria-busy="true">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[68px] rounded-xl bg-secondary animate-pulse" />
+        ))}
       </div>
     )
   }
@@ -249,23 +263,25 @@ export const MiaStyleTab = ({
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <p className="subheading-md text-primary">How Mia talks to you</p>
-        <p className="paragraph-sm text-tertiary mt-0.5">
-          Tune how Mia phrases her chat replies for you in this workspace. This changes her
-          delivery, never her data — she always uses the real numbers.
-        </p>
-        {usingDefault && (
-          <p className="paragraph-sm text-quaternary mt-1.5">
-            You're currently using the {data.workspace_default ? 'workspace' : 'Mia'} default. Pick
-            a style below to personalize it.
-          </p>
-        )}
-      </div>
+  // Agency (UI polish, 19 Nov 2026): the styles as cards; picking one saves it. The heading is the
+  // Mia tab's ("How Mia replies"), so none here; no explanations, no read-only breakdown.
+  const pick = async (key: string) => {
+    const preset = data.catalog.presets[key]
+    if (!preset || !sessionId || saving) return
+    setPrefs({ ...preset })
+    setSaving(true)
+    try {
+      await updateMiaPreferences(sessionId, tenantId, preset)
+      setData((d) => (d ? { ...d, user_preferences: preset } : d))
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Failed to save', 5000)
+    } finally {
+      setSaving(false)
+    }
+  }
 
-      {/* Preset picker */}
+  return (
+    <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {presetKeys.map((key) => {
           const meta = PRESET_META[key] || { label: key, blurb: '' }
@@ -273,90 +289,50 @@ export const MiaStyleTab = ({
           return (
             <button
               key={key}
-              onClick={() => applyPreset(key)}
+              type="button"
+              onClick={() => void pick(key)}
+              aria-pressed={active}
               className={[
-                'text-left p-3 rounded-xl border transition-colors',
+                'text-left px-4 py-3 rounded-xl border transition-all duration-150 active:scale-[0.99]',
                 active
-                  ? 'border-brand-solid bg-brand-primary'
-                  : 'border-tertiary bg-secondary hover:bg-tertiary',
+                  ? 'border-brand-solid bg-brand-primary shadow-sm'
+                  : 'border-secondary bg-secondary hover:border-brand-solid/40 hover:bg-tertiary',
               ].join(' ')}
             >
-              <p className="subheading-md text-primary">{meta.label}</p>
-              <p className="paragraph-sm text-tertiary mt-0.5">{meta.blurb}</p>
+              <span className="flex items-center justify-between gap-2">
+                <span className="subheading-bg text-primary">{meta.label}</span>
+                {active ? <span className="w-2 h-2 rounded-full bg-brand-solid" aria-hidden /> : null}
+              </span>
+              <span className="block paragraph-xs text-tertiary mt-1">{meta.blurb}</span>
             </button>
           )
         })}
       </div>
-
-      {/* What this style does — read-only summary, folded by default */}
-      <CollapsibleSection
-        title="What this style does"
-        summary={
-          prefs.preset && PRESET_META[prefs.preset]?.label
-            ? PRESET_META[prefs.preset].label
-            : 'Custom'
-        }
-      >
-        <div className="space-y-4 pt-1">
-          {ALL_DIMENSIONS.map((dim) => {
-            const meta = DIM_META[dim]
-            const value = prefs[dim]
-            return (
-              <div key={dim} className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="paragraph-sm text-primary font-medium">{meta.label}</p>
-                  <p className="paragraph-sm text-quaternary">{meta.help}</p>
-                </div>
-                <span className="shrink-0 px-3 py-1 rounded-full bg-brand-primary text-brand-secondary subheading-sm">
-                  {meta.values[value] || value}
-                </span>
-              </div>
-            )
-          })}
-
-          <p className="paragraph-sm text-quaternary">
-            Pick a style above to change how Mia talks to you — these settings update to match.
-          </p>
-        </div>
-      </CollapsibleSection>
-
-      {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 paragraph-xs text-quaternary">
+        <span>{saving ? 'Saving…' : usingDefault ? 'Using the default' : 'Saved for you'}</span>
+        <span aria-hidden>·</span>
         <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
+          type="button"
+          onClick={handleApplyAll}
+          disabled={applyingAll}
+          className="underline-offset-2 hover:underline hover:text-secondary disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save my style'}
+          {applyingAll ? 'Applying…' : 'Use in all my workspaces'}
         </button>
-
-        {!isBasic && (
-          <button
-            onClick={handleApplyAll}
-            disabled={applyingAll}
-            className="px-4 py-2 border border-primary text-secondary rounded-lg subheading-md hover:bg-tertiary transition-colors disabled:opacity-50"
-          >
-            {applyingAll ? 'Applying…' : 'Apply to all my workspaces'}
-          </button>
-        )}
-
-        {canManage && !isBasic && (
-          <button
-            onClick={handleSetDefault}
-            disabled={settingDefault}
-            className="px-4 py-2 border border-primary text-secondary rounded-lg subheading-md hover:bg-tertiary transition-colors disabled:opacity-50"
-          >
-            {settingDefault ? 'Setting…' : 'Set as workspace default'}
-          </button>
+        {canManage && (
+          <>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={handleSetDefault}
+              disabled={settingDefault}
+              className="underline-offset-2 hover:underline hover:text-secondary disabled:opacity-50"
+            >
+              {settingDefault ? 'Setting…' : 'Make it the workspace default'}
+            </button>
+          </>
         )}
       </div>
-
-      {canManage && !isBasic && (
-        <p className="paragraph-sm text-quaternary">
-          "Set as workspace default" applies these choices to everyone who hasn't picked their own
-          style. Individual members can always override it.
-        </p>
-      )}
     </div>
   )
 }

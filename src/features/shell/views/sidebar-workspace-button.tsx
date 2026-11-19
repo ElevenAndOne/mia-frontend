@@ -157,9 +157,16 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
     reloadOnSuccess: false,
   })
   const { handleKeyDown } = useRovingFocus({ selector: '[data-workspace-item]' })
+  // Alphabetical, so a client is where you expect it (Josh, 19 Nov).
+  const sortedWorkspaces = [...availableWorkspaces].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  )
 
   const name = activeWorkspace?.name
-  const logoBg = activeWorkspace?.logo_url ? 'bg-secondary' : name ? getAvatarBg(name) : 'bg-[#3B5BDB]'
+  // A logo that fails to load showed its alt text cut off ("DFS"): initials instead.
+  const [logoFailed, setLogoFailed] = useState<string | null>(null)
+  const showLogo = !!activeWorkspace?.logo_url && logoFailed !== activeWorkspace.logo_url
+  const logoBg = showLogo ? 'bg-secondary' : name ? getAvatarBg(name) : 'bg-[#3B5BDB]'
 
   return (
     <>
@@ -179,10 +186,11 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
         <span
           className={`w-9 h-9 rounded-lg flex items-center justify-center label-xs font-semibold text-white overflow-hidden shrink-0 ${logoBg}`}
         >
-          {activeWorkspace?.logo_url ? (
+          {showLogo ? (
             <img
-              src={activeWorkspace.logo_url}
-              alt={name}
+              src={activeWorkspace!.logo_url!}
+              alt=""
+              onError={() => setLogoFailed(activeWorkspace?.logo_url ?? null)}
               className="w-full h-full object-contain p-1.5"
             />
           ) : name ? (
@@ -223,7 +231,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
                 switch: the Basic menu replaced the list (30 Sep 2026). */}
             {availableWorkspaces.length > 1 && (
               <div className="flex flex-col gap-1 px-2 pt-2 max-h-48 overflow-y-auto overflow-x-hidden border-b border-tertiary pb-2" role="menu">
-                {availableWorkspaces.map((workspace, index) => (
+                {sortedWorkspaces.map((workspace, index) => (
                   <WorkspaceListItem
                     key={workspace.tenant_id}
                     workspace={workspace}
@@ -231,6 +239,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
                     isSwitching={switchingId === workspace.tenant_id}
                     onSelect={handleSwitch}
                     dataAttribute="true"
+                    showRoleIcon={false}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                   />
                 ))}
@@ -243,7 +252,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
           {availableWorkspaces.length === 0 ? (
             <div className="px-3 py-4 text-center text-quaternary paragraph-sm">No workspaces yet</div>
           ) : (
-            availableWorkspaces.map((workspace, index) => (
+            sortedWorkspaces.map((workspace, index) => (
               <WorkspaceListItem
                 key={workspace.tenant_id}
                 workspace={workspace}
@@ -251,6 +260,7 @@ export const SidebarWorkspaceButton = ({ collapsed = false }: { collapsed?: bool
                 isSwitching={switchingId === workspace.tenant_id}
                 onSelect={handleSwitch}
                 dataAttribute="true"
+                showRoleIcon={false}
                 onKeyDown={(e) => handleKeyDown(e, index)}
               />
             ))

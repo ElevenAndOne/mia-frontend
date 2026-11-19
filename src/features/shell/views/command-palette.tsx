@@ -1,3 +1,4 @@
+import { SHOW_HIDDEN_PAGES } from '../../../constants/nav'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -74,7 +75,8 @@ export const CommandPalette = () => {
               label: 'New campaign',
               group: 'Quick actions',
               icon: <Target01 size={17} />,
-              run: () => go('/campaigns/new'),
+              // Agency builds campaigns in the new builder (19 Nov).
+              run: () => go(isBasic ? '/campaigns/new' : '/campaign-builder/new'),
             },
           ]
         : []),
@@ -100,10 +102,10 @@ export const CommandPalette = () => {
         ? [
             {
               id: 'jump-campaigns',
-              label: 'Campaigns',
+              label: isBasic ? 'Campaigns' : 'Campaign builder',
               group: 'Jump to',
               icon: <Target01 size={17} />,
-              run: () => go('/campaigns'),
+              run: () => go(isBasic ? '/campaigns' : '/campaign-builder'),
             } as PaletteItem,
           ]
         : []),
@@ -118,7 +120,7 @@ export const CommandPalette = () => {
             } as PaletteItem,
           ]
         : []),
-      ...(isFeatureEnabled('budget_tracker')
+      ...(isFeatureEnabled('budget_tracker') && (isBasic || SHOW_HIDDEN_PAGES)
         ? [
             {
               id: 'jump-budget',
@@ -129,7 +131,7 @@ export const CommandPalette = () => {
             } as PaletteItem,
           ]
         : []),
-      ...(isFeatureEnabled('weekly_memo')
+      ...(isFeatureEnabled('weekly_memo') && (isBasic || SHOW_HIDDEN_PAGES)
         ? [
             {
               id: 'jump-memo',
@@ -151,7 +153,7 @@ export const CommandPalette = () => {
             } as PaletteItem,
           ]
         : []),
-      ...(isFeatureEnabled('posts')
+      ...(isFeatureEnabled('posts') && isBasic
         ? [
             {
               id: 'jump-posts',
@@ -164,11 +166,22 @@ export const CommandPalette = () => {
         : []),
       {
         id: 'jump-settings',
-        label: isBasic ? 'Workspace settings' : 'Workspace Settings',
+        label: isBasic ? 'Workspace settings' : 'Settings',
         group: 'Jump to',
         icon: <Settings01 size={17} />,
         run: () => go('/settings/workspace'),
       },
+      ...(!isBasic && isFeatureEnabled('campaigns')
+        ? [
+            {
+              id: 'jump-old-campaigns',
+              label: 'Old campaigns',
+              group: 'Jump to',
+              icon: <Target01 size={17} />,
+              run: () => go('/campaigns'),
+            } as PaletteItem,
+          ]
+        : []),
       ...(isBasic
         ? [
             {

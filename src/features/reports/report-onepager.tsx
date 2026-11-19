@@ -26,7 +26,7 @@ import {
 import { useState, useEffect, useMemo, createContext, useContext } from 'react'
 import { apiFetch } from '../../utils/api'
 import { getStoredSessionId } from '../../utils/session'
-import type { ClientReport, KpiItem, ReportData } from './types'
+import type { ClientReport, KpiItem, ReportData, ReportDataCompleteness } from './types'
 
 // ---------------------------------------------------------------------------
 // Stylised "Campaign Performance Dashboard" — light-theme landscape one-pager.
@@ -387,6 +387,10 @@ export const ReportOnePager = ({
             </div>
           </div>
         )}
+
+        {/* Missing data (19 Nov 2026): screen only, never in the PDF. A section that failed
+            to load used to show as zero with no flag, on a page that goes to clients. */}
+        {!printMode && <MissingDataNote completeness={data.data_completeness} />}
 
         {/* The page */}
         <div
@@ -1279,6 +1283,44 @@ const StudioPanel = ({ data }: { data: ReportData }) => {
     )
   }
 
+  if (sh.source === 'flex' && sh.flex) {
+    const f = sh.flex
+    if (!f.jobs_planned) {
+      return (
+        <Panel title="Studio Work" subtitle="Jobs made in the studio (Flex)">
+          <p className="text-[0.6875rem]" style={{ color: C.slate2 }}>
+            This campaign's plan has no studio jobs.
+          </p>
+        </Panel>
+      )
+    }
+    return (
+      <Panel title="Studio Work" subtitle="Jobs made in the studio (Flex)">
+        <div className="flex items-center gap-3">
+          <Donut
+            size={72}
+            thickness={12}
+            segments={[
+              { value: f.jobs_done, color: C.green },
+              { value: Math.max(f.jobs_sent - f.jobs_done, 0), color: C.purpleDeep },
+              { value: Math.max(f.jobs_planned - f.jobs_sent, 0), color: C.border },
+            ]}
+            centerTop={`${f.jobs_done}/${f.jobs_planned}`}
+            centerBottom="JOBS DONE"
+          />
+          <Legend
+            items={[
+              { label: 'Done', color: C.green, value: String(f.jobs_done) },
+              { label: 'In the studio', color: C.purpleDeep, value: String(Math.max(f.jobs_sent - f.jobs_done, 0)) },
+              { label: 'Not sent yet', color: C.border, value: String(Math.max(f.jobs_planned - f.jobs_sent, 0)) },
+              { label: 'Credits planned', color: 'transparent', value: String(f.credits) },
+            ]}
+          />
+        </div>
+      </Panel>
+    )
+  }
+
   if (sh.source === 'not_linked' || sh.total_hours === 0 || entries.length === 0) {
     return (
       <Panel title="Studio Hours" subtitle="Total studio hours used">
@@ -1456,6 +1498,56 @@ const NextStepsBar = ({ data }: { data: ReportData }) => {
         <p className="text-[0.6875rem] font-medium" style={{ color: C.slate }}>
           {data.dashboard.next_report_period}
         </p>
+      </div>
+    </div>
+  )
+}
+
+const SECTION_NAMES: Record<string, string> = {
+  spend: 'Spend breakdown',
+  kpi: 'KPI table',
+  organic: 'Top organic posts',
+  audience: 'Audience',
+  studio: 'Studio hours',
+  top_ad: 'Top paid ad',
+  dashboard: 'Headline numbers',
+}
+
+const MissingDataNote = ({ completeness }: { completeness?: ReportDataCompleteness }) => {
+  if (!completeness) return null
+  const failed = Object.entries(completeness.failed_sections ?? {})
+  const notes = completeness.store_notes ?? []
+  const kpis = Object.entries(completeness.kpis ?? {})
+  if (!failed.length && !notes.length && !kpis.length) return null
+  return (
+    <div
+      className="w-full max-w-[73.75rem] mx-auto px-4 pt-3 print:hidden"
+      role="status"
+    >
+      <div
+        className="rounded-xl px-4 py-3 text-sm"
+        style={{ background: '#FFF7E6', border: '1px solid #F5C26B', color: '#7A4B00' }}
+      >
+        <p className="font-semibold">Some data is missing from this report</p>
+        <p className="mt-0.5">
+          Only you see this note; it isn't in the PDF. Mia's written sections say these figures are unavailable rather
+          than zero. Rebuild the report later, or edit it before sending.
+        </p>
+        <ul className="mt-2 list-disc pl-5 space-y-0.5">
+          {failed.map(([section, err]) => (
+            <li key={section}>
+              <span className="font-medium">{SECTION_NAMES[section] ?? section}</span> didn't load: {err.length > 160 ? `${err.slice(0, 160)}…` : err}
+            </li>
+          ))}
+          {notes.map((n) => (
+            <li key={n}>{n}</li>
+          ))}
+          {kpis.map(([name, reasons]) => (
+            <li key={name}>
+              <span className="font-medium">{name}</span>: {reasons.join('; ')}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )

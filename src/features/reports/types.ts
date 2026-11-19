@@ -152,7 +152,9 @@ export interface StudioHoursBreakdown {
 export interface ReportStudioHours {
   total_hours: number
   breakdown: StudioHoursBreakdown
-  source: 'clickup' | 'not_linked' | 'unavailable' | 'error'
+  source: 'clickup' | 'not_linked' | 'unavailable' | 'error' | 'manual' | 'flex'
+  /** Builder campaigns (19 Nov 2026): their jobs go to Flex, so the report shows jobs and credits. */
+  flex?: { jobs_planned: number; jobs_sent: number; jobs_done: number; credits: number }
 }
 
 export interface ReportTopPaidAd {
@@ -243,6 +245,20 @@ export interface ReportData {
   risks_recommendations: ReportRisksRecommendations
   next_month_plan: ReportNextMonthPlan
   dashboard: ReportDashboard
+  /** What loaded and what didn't (backend `data_completeness`; older reports lack it). */
+  data_completeness?: ReportDataCompleteness
+}
+
+export interface ReportDataCompleteness {
+  ok: boolean
+  /** {section: error}, empty when every section loaded */
+  failed_sections: Record<string, string>
+  data_source?: Record<string, string>
+  store_as_of?: string | null
+  /** Gaps the sections recorded, e.g. "Meta Ads spend failed to load, so it is not in this total" */
+  store_notes?: string[]
+  /** KPI figures that are partial, stale or failed: {kpi name: [reasons]} */
+  kpis?: Record<string, string[]>
 }
 
 export interface ClientReport {

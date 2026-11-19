@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { ChevronDown } from './icon/chevron-down'
 
 interface CollapsibleSectionProps {
@@ -25,10 +25,24 @@ export const CollapsibleSection = ({
   className = '',
   compact = false,
 }: CollapsibleSectionProps) => {
-  const [open, setOpen] = useState(defaultOpen)
+  const [open, setOpenState] = useState(defaultOpen)
+  const box = useRef<HTMLDivElement>(null)
+  // Opening brings the section into view smoothly, only as far as needed (19 Nov 2026).
+  const setOpen = (fn: (v: boolean) => boolean) =>
+    setOpenState((v) => {
+      const next = fn(v)
+      if (next)
+        requestAnimationFrame(() =>
+          box.current?.scrollIntoView({
+            behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+            block: 'nearest',
+          })
+        )
+      return next
+    })
   if (compact) {
     return (
-      <div className={className}>
+      <div ref={box} className={className}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -44,7 +58,7 @@ export const CollapsibleSection = ({
     )
   }
   return (
-    <div className={`settings-card bg-secondary rounded-lg border border-tertiary ${className}`}>
+    <div ref={box} className={`settings-card bg-secondary rounded-lg border border-tertiary ${className}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

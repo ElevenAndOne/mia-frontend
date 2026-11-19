@@ -1,3 +1,4 @@
+import { sessionCache } from '../../../utils/session-cache'
 import { useCallback, useEffect, useState } from 'react'
 import {
   createWorkspaceInvite,
@@ -17,21 +18,41 @@ interface UseWorkspaceSettingsParams {
   canManage: boolean
 }
 
+/**
+ * The last members and invites seen per workspace (19 Nov 2026): coming back to Settings showed a
+ * spinner for ~3 s every time. They show at once and refresh behind what is shown.
+ */
+const MEMBERS_CACHE = sessionCache<{ members: WorkspaceMember[]; invites: WorkspaceInvite[] }>('members') // survives a refresh in this tab
+
 export const useWorkspaceSettings = ({
   sessionId,
   workspaceId,
   canManage,
 }: UseWorkspaceSettingsParams) => {
-  const [members, setMembers] = useState<WorkspaceMember[]>([])
-  const [invites, setInvites] = useState<WorkspaceInvite[]>([])
+  const cached = workspaceId ? MEMBERS_CACHE.get(workspaceId) : undefined
+  const [members, setMembers] = useState<WorkspaceMember[]>(cached?.members ?? [])
+  const [invites, setInvites] = useState<WorkspaceInvite[]>(cached?.invites ?? [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Every change (a fetch, an invite, a removal) is what the next visit shows first.
+  useEffect(() => {
+    if (workspaceId && (members.length || invites.length)) MEMBERS_CACHE.set(workspaceId, { members, invites })
+  }, [workspaceId, members, invites])
+
+  // Switching workspace: that workspace's last list at once, not the previous one's.
+  useEffect(() => {
+    const c = workspaceId ? MEMBERS_CACHE.get(workspaceId) : undefined
+    setMembers(c?.members ?? [])
+    setInvites(c?.invites ?? [])
+  }, [workspaceId])
 
   const refresh = useCallback(async () => {
     if (!sessionId || !workspaceId) return
 
     try {
-      setLoading(true)
+      // A spinner only the first time; after that the last list stays up while this runs.
+      setLoading(!MEMBERS_CACHE.has(workspaceId))
       setError(null)
 
       const [membersData, invitesData] = await Promise.all([

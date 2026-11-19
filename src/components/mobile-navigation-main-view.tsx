@@ -3,6 +3,8 @@ import { Calendar } from './icon/calendar'
 import { Check } from './icon/check'
 import { ChevronRight } from './icon/chevron-right'
 import { File02 } from './icon/file-02'
+import { Home03 } from './icon/home-03'
+import { SHOW_HIDDEN_PAGES } from '../constants/nav'
 import { Globe01 } from './icon/globe-01'
 import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
@@ -66,6 +68,19 @@ export const MobileNavigationMainView = ({
 
       {/* Primary Actions */}
       <div className="p-4 space-y-2">
+        {!isBasic && (
+          <button
+            onClick={() => {
+              onClose()
+              navigate('/home', { state: { newChat: true } })
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Home03 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Home</span>
+          </button>
+        )}
+
         {onNewWorkspace && isFeatureEnabled('new_workspace') && (
           <button
             onClick={() => {
@@ -90,7 +105,22 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {onCampaignsClick && isFeatureEnabled('campaigns') && (
+        {/* Agency: old Campaigns live in Workspace Settings → Old campaigns; the
+            builder is the campaigns item (19 Nov). */}
+        {!isBasic && isFeatureEnabled('campaigns') && (
+          <button
+            onClick={() => {
+              onClose()
+              navigate('/campaign-builder')
+            }}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
+          >
+            <Target01 size={20} className="text-tertiary" />
+            <span className="paragraph-sm">Campaign builder</span>
+          </button>
+        )}
+
+        {isBasic && onCampaignsClick && isFeatureEnabled('campaigns') && (
           <button
             onClick={() => {
               onClose()
@@ -103,7 +133,7 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {isFeatureEnabled('posts') && (
+        {isBasic && isFeatureEnabled('posts') && (
           <button
             onClick={() => {
               onClose()
@@ -129,7 +159,7 @@ export const MobileNavigationMainView = ({
           </button>
         )}
 
-        {isFeatureEnabled('budget_tracker') && (
+        {isFeatureEnabled('budget_tracker') && (isBasic || SHOW_HIDDEN_PAGES) && (
           <button
             onClick={() => {
               onClose()
@@ -148,7 +178,7 @@ export const MobileNavigationMainView = ({
             className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 text-secondary hover:bg-secondary transition-colors"
           >
             <Settings01 size={20} className="text-tertiary" />
-            <span className="paragraph-sm">{isBasic ? 'Settings' : 'Workspace Settings'}</span>
+            <span className="paragraph-sm">Settings</span>
           </button>
         )}
 

@@ -119,8 +119,8 @@ function NewBuild() {
     <div className="w-full h-dvh flex flex-col overflow-hidden bg-secondary">
       <TopBar
         title="New campaign"
-        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'New campaign' }]}
-        onBack={() => navigate('/home')}
+        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaign builder', to: '/campaign-builder' }, { label: 'New campaign' }]}
+        onBack={() => navigate('/campaign-builder')}
       />
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6">
         <form
@@ -373,8 +373,18 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     <div className="w-full h-dvh flex flex-col overflow-hidden bg-secondary">
       <TopBar
         title={s?.campaign.name ?? 'Campaign'}
-        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaigns', to: '/campaign-builder' }, { label: s?.campaign.name ?? 'Campaign' }]}
-        onBack={() => navigate('/home')}
+        breadcrumbs={[
+          { label: 'Home', to: '/home' },
+          { label: 'Campaign builder', to: '/campaign-builder' },
+          { label: s?.campaign.name ?? 'Campaign', to: `/campaign-builder/${campaignId}/brief` },
+          // A draft is on one of the six steps; an approved campaign on one of its tabs.
+          {
+            label: step
+              ? (STEPS.find((st) => st.key === step)?.label ?? 'Brief')
+              : (TABS.find((t) => t.key === tab || (t.key === 'studio' && tab === 'launch'))?.label ?? 'Brief'),
+          },
+        ]}
+        onBack={() => navigate('/campaign-builder')}
       />
       <div className="flex-1 min-h-0 flex">
       <div ref={pageScroll} className="@container flex-1 min-w-0 overflow-y-auto">

@@ -31,6 +31,8 @@ interface CreateInviteModalProps {
 }
 
 const ROLES_WITH_ADMIN = ['admin', 'analyst', 'viewer']
+// Agency shows the least access first (Josh, 19 Nov): Viewer, Analyst, Admin.
+const ROLE_ORDER = ['viewer', 'analyst', 'admin']
 const ROLES_WITHOUT_ADMIN = ['analyst', 'viewer']
 
 export const CreateInviteModal = ({
@@ -249,32 +251,30 @@ export const CreateInviteModal = ({
           </>
         ) : !createdInviteLink ? (
           <>
-            <div className={`flex gap-2 ${isBasic ? 'hidden' : ''}`} role="group" aria-label="Invite type">
-              <button
-                type="button"
-                onClick={() => onInviteTypeChange(true)}
-                aria-pressed={isLinkInvite}
-                className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
-                  isLinkInvite
-                    ? 'bg-brand-solid text-primary-onbrand'
-                    : 'bg-primary text-secondary border border-secondary'
-                }`}
-              >
-                Anyone with link
-              </button>
-              <button
-                type="button"
-                onClick={() => onInviteTypeChange(false)}
-                aria-pressed={!isLinkInvite}
-                className={`flex-1 py-2 px-3 rounded-lg subheading-md transition-colors ${
-                  !isLinkInvite
-                    ? 'bg-brand-solid text-primary-onbrand'
-                    : 'bg-primary text-secondary border border-secondary'
-                }`}
-              >
-                Specific email
-              </button>
+            {/* Agency (19 Nov): two ways only, Email or Invite link. Basic never sees this row. */}
+            <div className={`flex gap-1 p-1 rounded-lg bg-tertiary/60 ${isBasic ? 'hidden' : ''}`} role="group" aria-label="Invite type">
+              {[
+                { link: false, label: 'Email' },
+                { link: true, label: 'Invite link' },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  onClick={() => onInviteTypeChange(o.link)}
+                  aria-pressed={isLinkInvite === o.link}
+                  className={`flex-1 py-1.5 px-3 rounded-md subheading-md transition-all ${
+                    isLinkInvite === o.link ? 'bg-quaternary text-primary shadow-sm' : 'text-tertiary hover:text-primary'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
+            {!isBasic && isLinkInvite && (
+              <p className="paragraph-xs text-tertiary">
+                Anyone with the link can join, so a link can't make someone an admin. Invite admins by email.
+              </p>
+            )}
 
             {!isLinkInvite && (
               <div>
@@ -303,7 +303,7 @@ export const CreateInviteModal = ({
                 }`}
                 role="group"
               >
-                {availableRoles.map((role) => (
+                {(isBasic ? availableRoles : [...availableRoles].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))).map((role) => (
                   <button
                     key={role}
                     type="button"
@@ -312,11 +312,17 @@ export const CreateInviteModal = ({
                     className={`py-2 px-3 rounded-lg subheading-md transition-colors ${
                       isBasic ? 'text-left' : 'capitalize'
                     } ${
-                      inviteRole === role
-                        ? 'bg-brand-solid text-primary-onbrand'
-                        : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
+                      isBasic
+                        ? inviteRole === role
+                          ? 'bg-brand-solid text-primary-onbrand'
+                          : 'bg-primary text-secondary border border-secondary hover:bg-secondary'
+                        : // Agency (19 Nov): the chosen role outlined, not filled, so Create invite is the one solid button.
+                          inviteRole === role
+                          ? 'bg-transparent text-primary border-2 border-brand-solid'
+                          : 'bg-transparent text-tertiary border-2 border-secondary hover:border-brand-solid/40 hover:text-primary'
                     }`}
                   >
+                    {!isBasic && inviteRole === role ? <span aria-hidden className="mr-1.5 text-brand-secondary">✓</span> : null}
                     {isBasic ? getRoleDescription(role, true) : role}
                   </button>
                 ))}
@@ -335,9 +341,10 @@ export const CreateInviteModal = ({
                 type="button"
                 onClick={onCreateInvite}
                 disabled={isCreateInviteDisabled}
+                title={isCreateInviteDisabled && !isLinkInvite && !inviteEmail.trim() ? 'Add their email first' : undefined}
                 className="flex-1 py-2 px-4 bg-brand-solid text-primary-onbrand rounded-lg subheading-md hover:bg-brand-solid-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {creatingInvite ? 'Creating...' : 'Create Invite'}
+                {creatingInvite ? 'Creating…' : isBasic ? 'Create Invite' : 'Create invite'}
               </button>
             </div>
           </>

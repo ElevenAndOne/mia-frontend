@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Check } from '../../../components/icon/check'
 import type { Workspace } from '../types'
@@ -73,6 +74,7 @@ export const WorkspaceListItem = ({
   trailing,
   onKeyDown,
 }: WorkspaceListItemProps) => {
+  const [logoFailed, setLogoFailed] = useState(false)
   const showDetails = variant === 'detailed'
   const isDisabled = disabled || isSwitching || (disableWhenActive && isActive)
   const platformCount = workspace.connected_platforms.length
@@ -123,10 +125,11 @@ export const WorkspaceListItem = ({
       } ${className}`.trim()}
     >
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 overflow-hidden ${workspace.logo_url ? 'bg-secondary' : avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center label-xs font-semibold shrink-0 overflow-hidden ${workspace.logo_url && !logoFailed ? 'bg-secondary' : avatarPalette} ${avatarClassName} ${avatarTextClassName}`.trim()}
       >
-        {workspace.logo_url ? (
-          <img src={workspace.logo_url} alt={workspace.name} className="w-full h-full object-contain p-2" />
+        {workspace.logo_url && !logoFailed ? (
+          // A logo that fails to load showed its alt text cut off ("Cre", "Ch"): initials instead.
+          <img src={workspace.logo_url} alt="" onError={() => setLogoFailed(true)} className="w-full h-full object-contain p-2" />
         ) : (
           initials
         )}

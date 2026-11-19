@@ -32,6 +32,47 @@ export const WorkspaceMembersPanel = ({
     )
   }
 
+  if (!isBasic) {
+    // Agency (19 Nov 2026): a plain list, role as text in one right-hand column that lines up
+    // whether or not the row has a menu (you and the owner have none). No role icons.
+    return (
+      <ul className="flex flex-col divide-y divide-secondary">
+        {people.map((person) => (
+          <li key={person.id} className="flex items-center gap-3 py-2.5">
+            {person.type === 'member' ? (
+              <UserAvatar name={person.name} imageUrl={person.imageUrl} size="sm" fallbackClassName="bg-quaternary text-tertiary" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-quaternary flex items-center justify-center shrink-0">
+                <Mail01 size={16} className="text-tertiary" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="paragraph-sm text-primary truncate">{person.name}</p>
+              <p className="paragraph-xs text-quaternary truncate">
+                {person.type === 'member' ? person.email : 'Invite waiting'}
+              </p>
+            </div>
+            {/* The role's colour kept (Josh, 19 Nov), in one column that lines up for everyone. */}
+            <span className="w-20 flex justify-end shrink-0">
+              <span className={`px-2 py-0.5 rounded-full label-xs ${person.roleBadgeClass}`}>{getRoleLabel(person.role, false)}</span>
+            </span>
+            <span className="w-8 flex justify-end shrink-0">
+              <MemberRowMenu
+                hideAnalyst={false}
+                person={person}
+                onUpdateRole={onUpdateRole}
+                onTransferOwnership={onTransferOwnership}
+                onRemoveMember={onRemoveMember}
+                onCopyInvite={onCopyInvite}
+                onRevokeInvite={onRevokeInvite}
+              />
+            </span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <div className="space-y-3">
       {people.map((person) => (

@@ -4,6 +4,8 @@ import { TopBar } from '../components/top-bar'
 import { Button } from '../components/button'
 import { Skeleton, SkeletonRows } from '../components/skeleton'
 import { useSession } from '../contexts/session-context'
+import { useExperience } from '../features/workspace/hooks/use-experience'
+import { oldCampaignCrumbs } from '../features/campaigns/utils/old-campaign-crumbs'
 import { CampaignWorkspaceProvider } from '../features/campaigns/contexts/campaign-context'
 import { useCampaignList } from '../features/campaigns/hooks/use-campaign-list'
 import { useCampaignDetail } from '../features/campaigns/hooks/use-campaign-detail'
@@ -30,10 +32,11 @@ const LEGACY_VIEWS: Record<string, string> = {
 }
 
 const CampaignWorkspacePage = () => {
-  const { campaignId, view } = useParams<{ campaignId: string; view: string }>()
+  const { campaignId, view, section } = useParams<{ campaignId: string; view: string; section?: string }>()
   const navigate = useNavigate()
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
+  const { isBasic } = useExperience()
   const { list, setList, reload: reloadList } = useCampaignList()
   const {
     campaign,
@@ -119,7 +122,12 @@ const CampaignWorkspacePage = () => {
   return (
     <>
       <div className="campaign-workspace w-full h-dvh flex flex-col overflow-hidden">
-        <TopBar title="Campaigns" onBack={() => navigate('/home')} />
+        <TopBar
+          title={campaign?.campaign_name ?? 'Campaign'}
+          breadcrumbs={oldCampaignCrumbs(isBasic, campaign?.campaign_name, campaignId, view, section)}
+          // Agency: up is the Old campaigns list in Settings (19 Nov).
+          onBack={() => navigate(isBasic ? '/home' : '/settings/workspace?tab=oldcampaigns')}
+        />
         <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
           <div className="max-w-[75rem] mx-auto">{body()}</div>
         </div>

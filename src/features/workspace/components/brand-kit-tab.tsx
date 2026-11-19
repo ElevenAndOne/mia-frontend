@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { sessionCache } from '../../../utils/session-cache'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Plus } from '../../../components/icon/plus'
 import { Trash01 } from '../../../components/icon/trash-01'
 import { Spinner } from '../../../components/spinner'
@@ -58,19 +59,25 @@ const POPULAR_FONTS = [
  * Module-level rather than React Query because that is the whole requirement: one GET, one
  * consumer, no invalidation graph.
  */
-const KIT_CACHE = new Map<string, BrandKitData>()
+const KIT_CACHE = sessionCache<BrandKitData>('brand-kit') // survives a refresh in this tab
 
 export const BrandKitTab = ({
   sessionId,
   tenantId,
   canManage,
   hideLogo = false,
+  compact = false,
+  fontsSlot = null,
 }: {
   sessionId: string | null
   tenantId: string
   canManage: boolean
   /** Basic has one logo, set on the Workspace tab: no second "logo on posts" row here. */
   hideLogo?: boolean
+  /** Agency's Brand tab (19 Nov 2026): the compact layout, in agency order. */
+  compact?: boolean
+  /** Shown under the headline font: the workspace's own font files. */
+  fontsSlot?: ReactNode
 }) => {
   const { showToast } = useToast()
   const { isBasic } = useExperience()
@@ -184,13 +191,15 @@ export const BrandKitTab = ({
   }
   if (!kit) return null
 
-  if (isBasic) {
+  if (isBasic || compact) {
     const sel = selected !== null && selected < palette.length ? palette[selected] : null
     const swatchOk = (hex: string) => /^#[0-9a-fA-F]{6}$/.test(hex)
     const field =
       'bg-white text-[#040b1d] paragraph-sm rounded-lg px-2.5 py-1.5 border border-black/15 outline-none focus:border-brand-solid disabled:opacity-60'
-    return (
-      <div className="space-y-3 pb-2">
+    // The pieces, so Basic keeps its order and agency (19 Nov 2026) reads logo, colours, fonts,
+    // product photos, then one Save at the bottom.
+    const board = (
+      <>
         {/* Paper board: colours + imagery, the way the home canvas shows them */}
         <div className="rounded-lg brand-paper px-4 pt-3.5 pb-4">
           <p className="brand-paper-eyebrow">Colours</p>
@@ -299,8 +308,10 @@ export const BrandKitTab = ({
           />
         </div>
 
-        {/* Font + logo rows */}
-        <div className="settings-card rounded-lg border border-tertiary bg-secondary overflow-hidden divide-y divide-tertiary">
+      </>
+    )
+    const fontRow = (
+      <>
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 text-secondary font-serif text-base">
               Aa
@@ -325,6 +336,10 @@ export const BrandKitTab = ({
               ))}
             </datalist>
           </div>
+      </>
+    )
+    const logoRow = (
+      <>
           {!hideLogo && (
             <div className="flex items-center gap-3 px-3 py-3">
               <div className="w-8 h-8 rounded-lg bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
@@ -376,8 +391,10 @@ export const BrandKitTab = ({
               )}
             </div>
           )}
-        </div>
-
+      </>
+    )
+    const saveButton = (
+      <>
         {canManage && (
           <button
             type="button"
@@ -389,6 +406,10 @@ export const BrandKitTab = ({
           </button>
         )}
 
+      </>
+    )
+    const products = (
+      <>
         <CollapsibleSection
           title="Product photos"
           summary="Optional — only when a specific product has to look exactly right"
@@ -446,9 +467,63 @@ export const BrandKitTab = ({
             )}
           </div>
         </CollapsibleSection>
+      </>
+    )
+    const card = (children: ReactNode) => (
+      <div className="settings-card rounded-lg border border-tertiary bg-secondary overflow-hidden divide-y divide-tertiary">
+        {children}
+      </div>
+    )
+    if (!isBasic) {
+      // Save bar on change (Josh, 19 Nov 2026): nothing to press until something changed.
+      const dirty =
+        (fontFamily.trim() || null) !== (kit.font_family || null) ||
+        (imageryStyle.trim() || null) !== (kit.imagery_style || null) ||
+        JSON.stringify(palette) !== JSON.stringify(kit.palette ?? [])
+      return (
+        <div className="space-y-3 pb-2">
+          {!hideLogo && card(logoRow)}
+          {board}
+          {card(
+            <>
+              {fontRow}
+              {fontsSlot ? <div className="px-1">{fontsSlot}</div> : null}
+            </>
+          )}
+          {products}
+          {canManage && dirty && (
+            <div className="sticky bottom-3 z-10 mia-fade-in flex items-center justify-between gap-3 rounded-xl border border-brand-solid bg-primary px-4 py-2.5 shadow-lg">
+              <span className="paragraph-sm text-secondary">Unsaved changes</span>
+              <span className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyKit(kit)}
+                  className="px-3 py-1.5 rounded-lg paragraph-sm text-tertiary hover:text-primary"
+                >
+                  Undo
+                </button>
+                {saveButton}
+              </span>
+            </div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <div className="space-y-3 pb-2">
+        {board}
+        {card(
+          <>
+            {fontRow}
+            {logoRow}
+          </>
+        )}
+        {saveButton}
+        {products}
       </div>
     )
   }
+
 
   return (
     <div className="space-y-6 pb-8">

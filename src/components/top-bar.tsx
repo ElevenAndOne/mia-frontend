@@ -47,8 +47,8 @@ export function TopBar({
           </button>
         )}
         <h1
-          className="text-primary font-medium"
-          style={{ fontFamily: 'Geologica, sans-serif', fontSize: '16px', lineHeight: '130%' }}
+          className="text-primary font-semibold tracking-[-0.01em]"
+          style={{ fontFamily: 'Geologica, sans-serif', fontSize: '17px', lineHeight: '130%' }}
         >
           {title}
         </h1>

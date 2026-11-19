@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/theme-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useExperience } from '../features/workspace/hooks/use-experience'
+import { SHOW_HIDDEN_PAGES } from '../constants/nav'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
@@ -18,6 +19,7 @@ import { Edit03 } from './icon/edit-03'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
 import { HelpCircle } from './icon/help-circle'
+import { Home03 } from './icon/home-03'
 import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
 import { Monitor01 } from './icon/monitor-01'
@@ -208,10 +210,12 @@ export const AppSidebar = () => {
           className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2 ${collapsed ? 'px-2' : 'px-3'}`}
           role="menu"
         >
+          {/* Agency: "Home" (a fresh chat on the home screen). Basic keeps "New Chat". */}
           <NavItem
-            icon={<Edit03 size={18} />}
-            label="New Chat"
+            icon={isBasic ? <Edit03 size={18} /> : <Home03 size={18} />}
+            label={isBasic ? 'New Chat' : 'Home'}
             collapsed={collapsed}
+            active={!isBasic && path === '/home'}
             onClick={() => actions.onNewChat()}
           />
           {isFeatureEnabled('new_workspace') && (
@@ -233,7 +237,9 @@ export const AppSidebar = () => {
               onClick={actions.onIntegrationsClick}
             />
           )}
-          {isFeatureEnabled('campaigns') && (
+          {/* Agency: the old Campaigns pages moved to Workspace Settings → Old campaigns
+              (agency clean-up 19 Nov). Basic keeps its own Campaigns item. */}
+          {isFeatureEnabled('campaigns') && isBasic && (
             <NavItem
               icon={<Target01 size={18} />}
               label="Campaigns"
@@ -242,8 +248,8 @@ export const AppSidebar = () => {
               onClick={actions.onCampaignsClick}
             />
           )}
-          {isFeatureEnabled('campaigns') && user?.is_staff && (
-            // The new builder's board, staff only while it's tested (rebuild §8.1).
+          {isFeatureEnabled('campaigns') && !isBasic && (
+            // The new builder's board: every agency user since 19 Nov (was staff only).
             <NavItem
               icon={<Target01 size={18} />}
               label="Campaign builder"
@@ -252,7 +258,8 @@ export const AppSidebar = () => {
               onClick={() => navigate('/campaign-builder')}
             />
           )}
-          {isFeatureEnabled('posts') && (
+          {/* Posts is a Basic feature. */}
+          {isFeatureEnabled('posts') && isBasic && (
             <NavItem
               icon={<Calendar size={18} />}
               label="Posts"
@@ -262,7 +269,9 @@ export const AppSidebar = () => {
               className={blinkPosts ? 'nav-blink' : ''}
             />
           )}
-          {isFeatureEnabled('scheduler') && (
+          {/* Agency: Scheduler, Budget Tracker and Weekly Memo are hidden (19 Nov); Basic as before. The pages and
+              routes stay, and emails still link to /memo. */}
+          {isFeatureEnabled('scheduler') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<Users01 size={18} />}
               label="Scheduler"
@@ -280,7 +289,7 @@ export const AppSidebar = () => {
               onClick={actions.onReportsClick}
             />
           )}
-          {isFeatureEnabled('budget_tracker') && (
+          {isFeatureEnabled('budget_tracker') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<Wallet01 size={18} />}
               label="Budget Tracker"
@@ -289,7 +298,7 @@ export const AppSidebar = () => {
               onClick={() => navigate('/budget-tracker')}
             />
           )}
-          {isFeatureEnabled('weekly_memo') && (
+          {isFeatureEnabled('weekly_memo') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<ClipboardCheck size={18} />}
               label="Weekly Memo"
@@ -303,7 +312,7 @@ export const AppSidebar = () => {
           {!isBasic && (
             <NavItem
               icon={<Settings01 size={18} />}
-              label="Workspace Settings"
+              label="Settings"
               collapsed={collapsed}
               active={activeKey === 'settings'}
               onClick={actions.onWorkspaceSettings}

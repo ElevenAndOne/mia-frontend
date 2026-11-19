@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useSession } from '../../../contexts/session-context'
 import { apiFetch } from '../../../utils/api'
 import { useClipboard } from '../../../hooks/use-clipboard'
@@ -28,21 +29,26 @@ export const useWorkspaceSettingsPage = () => {
   // workspace, and the menu item they tapped already said which page they wanted. Opening
   // on the list would make them pick their only option before seeing anything.
   const { isBasic } = useExperience()
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
-    isBasic ? (activeWorkspace?.tenant_id ?? null) : null
-  )
-  // The active workspace can resolve a beat after first render.
-  useEffect(() => {
-    if (isBasic && !selectedWorkspaceId && activeWorkspace?.tenant_id) {
-      setSelectedWorkspaceId(activeWorkspace.tenant_id)
-    }
-  }, [isBasic, selectedWorkspaceId, activeWorkspace?.tenant_id])
+  // Agency (19 Nov 2026): Settings opens straight on the open workspace, like Basic. The
+  // workspace lives in the address (?ws=<id>) so a refresh, a shared link and the breadcrumb
+  // all land on it; the list of every workspace is ?view=all. Basic never sees the list.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const wsParam = searchParams.get('ws')
+  const showList = !isBasic && searchParams.get('view') === 'all'
+  const selectedWorkspaceId: string | null = isBasic
+    ? (activeWorkspace?.tenant_id ?? null)
+    : showList
+      ? null
+      : (wsParam && availableWorkspaces.some((w) => w.tenant_id === wsParam) ? wsParam : null) ??
+        activeWorkspace?.tenant_id ??
+        null
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showCreateInviteModal, setShowCreateInviteModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [inviteRole, setInviteRole] = useState('viewer')
   const [inviteEmail, setInviteEmail] = useState('')
-  const [isLinkInvite, setIsLinkInvite] = useState(!isBasic)
+  // Agency opens on Email (19 Nov: Email first, then Invite link); Basic is email only.
+  const [isLinkInvite, setIsLinkInvite] = useState(false)
   const [creatingInvite, setCreatingInvite] = useState(false)
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null)
   const [createdInviteEmail, setCreatedInviteEmail] = useState<string | null>(null)
@@ -101,22 +107,23 @@ export const useWorkspaceSettingsPage = () => {
 
   const handleSelectWorkspace = useCallback(
     (workspaceId: string) => {
-      setSelectedWorkspaceId(workspaceId)
+      // A fresh workspace opens on its first tab: no leftover ?tab= from the last one.
+      setSearchParams({ ws: workspaceId })
       setMembers([])
       setInvites([])
       setShowCreateInviteModal(false)
       setCreatedInviteLink(null)
       setError(null)
     },
-    [setMembers, setInvites, setError]
+    [setMembers, setInvites, setError, setSearchParams]
   )
 
   const handleBackToOverview = useCallback(() => {
-    setSelectedWorkspaceId(null)
+    if (!isBasic) setSearchParams({ view: 'all' })
     setMembers([])
     setInvites([])
     setError(null)
-  }, [setMembers, setInvites, setError])
+  }, [setMembers, setInvites, setError, isBasic, setSearchParams])
 
   const handleWorkspaceCreated = useCallback(async () => {
     setShowCreateModal(false)
@@ -231,7 +238,7 @@ export const useWorkspaceSettingsPage = () => {
     setShowCreateInviteModal(false)
     setInviteEmail('')
     setInviteRole('viewer')
-    setIsLinkInvite(true)
+    setIsLinkInvite(false)
   }, [])
 
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -268,7 +275,7 @@ export const useWorkspaceSettingsPage = () => {
     const wasActive = activeWorkspace?.tenant_id === selectedWorkspaceId
     const success = await deleteWorkspace(selectedWorkspaceId)
     if (success) {
-      setSelectedWorkspaceId(null)
+      if (!isBasic) setSearchParams({ view: 'all' })
       const remaining = availableWorkspaces.filter((w) => w.tenant_id !== selectedWorkspaceId)
       if (remaining.length === 0) {
         setShowCreateModal(true)
@@ -278,7 +285,7 @@ export const useWorkspaceSettingsPage = () => {
       }
     }
     return success
-  }, [selectedWorkspaceId, activeWorkspace, deleteWorkspace, availableWorkspaces, switchWorkspace])
+  }, [selectedWorkspaceId, activeWorkspace, deleteWorkspace, availableWorkspaces, switchWorkspace, isBasic, setSearchParams])
 
   const handleLeaveWorkspace = useCallback(async (): Promise<boolean> => {
     if (!selectedWorkspaceId || !sessionId) return false
@@ -295,7 +302,7 @@ export const useWorkspaceSettingsPage = () => {
       if (response.ok) {
         // Refresh workspaces to remove the one we left
         await refreshWorkspaces()
-        setSelectedWorkspaceId(null)
+        if (!isBasic) setSearchParams({ view: 'all' })
         return true
       }
 
@@ -306,7 +313,7 @@ export const useWorkspaceSettingsPage = () => {
       setError('Network error while leaving workspace')
       return false
     }
-  }, [selectedWorkspaceId, sessionId, refreshWorkspaces, setError])
+  }, [selectedWorkspaceId, sessionId, refreshWorkspaces, setError, isBasic, setSearchParams])
 
   const isCreateInviteDisabled = creatingInvite || (!isLinkInvite && !inviteEmail.trim())
 

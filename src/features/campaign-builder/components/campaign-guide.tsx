@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import * as api from '../api'
 import { buildKey } from '../use-build'
@@ -35,7 +34,6 @@ export function CampaignGuide({
     queryFn: () => api.fetchGuides(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId,
   })
-  const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,7 +42,6 @@ export function CampaignGuide({
     setError(null)
     try {
       await api.attachGuide(sessionId!, tenantId!, campaignId, guideId)
-      setPick('')
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: key }),
         queryClient.invalidateQueries({ queryKey: buildKey(tenantId, campaignId) }),
@@ -57,11 +54,10 @@ export function CampaignGuide({
   }
 
   const attached = q.data?.attached
-  const available = q.data?.available ?? []
   return (
     <Card className="flex flex-col gap-2">
       <BrandGuideLine brand={brand} look={look} never={never} campaignId={campaignId} readOnly={readOnly} />
-      {!attached && !available.length ? null : <h3 className="subheading-sm text-primary">Campaign guide</h3>}
+      {!attached ? null : <h3 className="subheading-sm text-primary">Campaign guide</h3>}
       {attached ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-primary">
@@ -79,35 +75,10 @@ export function CampaignGuide({
             </button>
           )}
         </div>
-      ) : available.length ? (
-        <p className="paragraph-xs text-secondary">
-          Guides uploaded in Settings aren’t read for this campaign until you attach one here.
-        </p>
       ) : null}
-      {readOnly || !available.length ? null : (
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="guide-pick" className="sr-only">
-            A guide uploaded in Settings
-          </label>
-          <select
-            id="guide-pick"
-            value={pick}
-            onChange={(e) => setPick(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-secondary bg-primary px-2 py-1.5 paragraph-sm text-primary"
-          >
-            <option value="">{attached ? 'Use a different guide…' : 'Attach a guide uploaded in Settings…'}</option>
-            {available.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.campaign_name || g.filename}
-                {g.attached_to ? ` (attached to ${g.attached_to})` : ''}
-              </option>
-            ))}
-          </select>
-          <Button size="sm" disabled={!pick} loading={busy} onClick={() => void attach(pick)}>
-            Attach
-          </Button>
-        </div>
-      )}
+      {/* No more attaching a guide from a Settings shelf (Josh, 19 Nov 2026: the Campaign Guides
+          tab is gone; people left old guides there). A campaign's guide comes in with its brief
+          on New campaign. One attached before stays, and can be detached. */}
       {error ? <p className="paragraph-xs text-error">{error}</p> : null}
     </Card>
   )

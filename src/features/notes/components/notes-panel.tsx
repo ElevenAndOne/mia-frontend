@@ -153,7 +153,8 @@ export const NotesPanel = ({
   const [tab, setTab] = useState<'active' | 'retired'>('active')
   const [kindFilter, setKindFilter] = useState<NoteKind | 'all'>('all')
   const [draft, setDraft] = useState('')
-  const [kind, setKind] = useState<NoteKind>('decision')
+  // Compact view (no title) starts on "Must follow"; the full panel keeps Decision.
+  const [kind, setKind] = useState<NoteKind>(title ? 'decision' : 'constraint')
 
   const grouped = useMemo(
     () =>
@@ -194,12 +195,133 @@ export const NotesPanel = ({
     }
   }
 
+  if (!title) {
+    // Compact (agency Settings → Mia, 19 Nov 2026): two kinds instead of five, one clean line per
+    // rule, retired ones behind a link. Hard rules are the ones Mia must follow; the rest she
+    // keeps in mind. Campaign Setup → Rules keeps the full panel.
+    const hard = notes.filter((n) => n.kind === 'constraint' || n.kind === 'avoid')
+    const soft = notes.filter((n) => !(n.kind === 'constraint' || n.kind === 'avoid'))
+    const must = kind === 'constraint' || kind === 'avoid'
+    const item = (n: MiaNote) => (
+      <li key={n.note_id} className="group flex items-start gap-3 py-2.5">
+        <span className="min-w-0 flex-1">
+          <span className="block paragraph-sm text-primary">{n.text}</span>
+          <span className="block paragraph-xs text-quaternary mt-0.5">
+            {n.is_active ? provenance(n) : `Retired ${fmtDate(n.retired_at) ?? ''}`}
+            {openChat(n) && (
+              <>
+                {' · '}
+                <button onClick={openChat(n)} className="hover:underline hover:text-secondary">
+                  open chat
+                </button>
+              </>
+            )}
+          </span>
+        </span>
+        {busyId === n.note_id ? (
+          <Spinner size="sm" />
+        ) : (
+          <button
+            onClick={() =>
+              void (n.is_active
+                ? run(() => retire(n), 'Retired')
+                : run(() => restore(n), 'Restored'))
+            }
+            className="shrink-0 paragraph-xs text-quaternary hover:text-primary opacity-70 group-hover:opacity-100"
+          >
+            {n.is_active ? 'Retire' : 'Restore'}
+          </button>
+        )}
+      </li>
+    )
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit()
+            }}
+            placeholder={placeholder}
+            rows={2}
+            maxLength={500}
+            className="w-full paragraph-sm text-primary bg-primary border border-secondary rounded-lg px-3 py-2 outline-none focus:border-brand-solid resize-none placeholder:text-quaternary"
+          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <div role="radiogroup" aria-label="Kind of rule" className="inline-flex rounded-lg bg-tertiary/60 p-0.5 gap-0.5">
+              {(
+                [
+                  ['constraint', 'Must follow'],
+                  ['preference', 'Good to know'],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={(k === 'constraint') === must}
+                  onClick={() => setKind(k)}
+                  className={`px-3 py-1 rounded-md paragraph-xs transition-all ${
+                    (k === 'constraint') === must ? 'bg-quaternary text-primary shadow-sm font-medium' : 'text-tertiary hover:text-primary'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="flex-1" />
+            <button
+              onClick={() => void submit()}
+              disabled={saving || !draft.trim()}
+              className="px-3 py-1.5 bg-brand-solid text-primary-onbrand rounded-lg paragraph-sm font-medium hover:bg-brand-solid-hover disabled:opacity-50"
+            >
+              {saving ? <Spinner size="sm" /> : 'Add rule'}
+            </button>
+          </div>
+        </div>
+        {loading && <Spinner size="sm" />}
+        {error && <p className="paragraph-xs text-utility-error-500">{error}</p>}
+        {!loading && notes.length === 0 && (
+          <p className="paragraph-xs text-quaternary">None yet. Tell Mia one in chat or add it here.</p>
+        )}
+        {hard.length > 0 && (
+          <div>
+            <p className="paragraph-xs font-medium text-tertiary">Must follow</p>
+            <ul className="flex flex-col divide-y divide-secondary">{hard.map(item)}</ul>
+          </div>
+        )}
+        {soft.length > 0 && (
+          <div>
+            <p className="paragraph-xs font-medium text-tertiary">Good to know</p>
+            <ul className="flex flex-col divide-y divide-secondary">{soft.map(item)}</ul>
+          </div>
+        )}
+        {retired.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setTab(tab === 'retired' ? 'active' : 'retired')}
+              className="paragraph-xs text-quaternary hover:text-secondary"
+            >
+              {tab === 'retired' ? 'Hide retired' : `Show retired (${retired.length})`}
+            </button>
+            {tab === 'retired' && <ul className="flex flex-col divide-y divide-secondary opacity-70">{retired.map(item)}</ul>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="heading-sm text-primary">{title}</h2>
-        <p className="paragraph-sm text-secondary mt-1">{description}</p>
-      </div>
+      {/* No heading when the page around it gives one (agency Settings → Mia, 19 Nov 2026). */}
+      {title ? (
+        <div>
+          <h2 className="heading-sm text-primary">{title}</h2>
+          {description ? <p className="paragraph-sm text-secondary mt-1">{description}</p> : null}
+        </div>
+      ) : null}
 
       {/* Composer */}
       <div className="rounded-xl border border-tertiary bg-primary p-3 flex flex-col gap-2">
@@ -235,7 +357,7 @@ export const NotesPanel = ({
             disabled={saving || !draft.trim()}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-solid text-primary-onbrand rounded-lg label-sm hover:bg-brand-solid-hover transition-colors disabled:opacity-50"
           >
-            {saving ? <Spinner size="sm" /> : 'Add note'}
+            {saving ? <Spinner size="sm" /> : 'Add rule'}
           </button>
         </div>
       </div>

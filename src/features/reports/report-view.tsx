@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import type { Crumb } from '../../components/breadcrumbs'
 import { useSession } from '../../contexts/session-context'
 import { useToast } from '../../contexts/toast-context'
 import { trackEvent } from '../../utils/tracking'
@@ -6,7 +8,6 @@ import { TopBar } from '../../components/top-bar'
 import type { CampaignOption } from './services/report-service'
 import {
   listCampaignOptions,
-  getClickUpSpaces,
   listKpiTargetOptions,
 } from './services/report-service'
 import type {
@@ -14,7 +15,6 @@ import type {
   KpiTargetOption,
   TopAdMetric,
   TopOrganicMetric,
-  ClickUpSpace,
 } from './types'
 import { TOP_AD_METRIC_OPTIONS, TOP_ORGANIC_METRIC_OPTIONS } from './types'
 import { useReports } from './hooks/use-reports'
@@ -59,19 +59,24 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     removeReport,
   } = useReports()
 
-  const [step, setStep] = useState<'list' | 'configure' | 'report'>('list')
+  // The open report and a new-report start live in the address (19 Nov 2026): ?report=<id>, or
+  // ?new=1&campaign=<id> (the builder's Results tab links here). A refresh keeps the report open
+  // and the breadcrumb "Reports" goes back to the list.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const reportParam = searchParams.get('report')
+  const [step, setStep] = useState<'list' | 'configure' | 'report'>(() =>
+    searchParams.get('report') ? 'report' : searchParams.get('new') ? 'configure' : 'list'
+  )
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([])
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
-  const [spaces, setSpaces] = useState<ClickUpSpace[]>([])
-  const [loadingSpaces, setLoadingSpaces] = useState(false)
 
   const [campaignId, setCampaignId] = useState('')
+  const [nudgeCampaign, setNudgeCampaign] = useState(false)
+  const campaignSelect = useRef<HTMLSelectElement>(null)
   const [startDate, setStartDate] = useState(DEFAULT_START)
   const [endDate, setEndDate] = useState(DEFAULT_END)
   const [topAdMetric, setTopAdMetric] = useState<TopAdMetric>('ctr')
   const [topOrganicMetric, setTopOrganicMetric] = useState<TopOrganicMetric>('engagement_rate')
-  const [selectedSpaceId, setSelectedSpaceId] = useState('')
-  const [selectedListId, setSelectedListId] = useState('')
   const [kpiOptions, setKpiOptions] = useState<KpiTargetOption[]>([])
   const [loadingKpis, setLoadingKpis] = useState(false)
   const [windowTargets, setWindowTargets] = useState<Record<string, string>>({})
@@ -81,14 +86,12 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   })
 
   const selectedCampaign = campaigns.find((c) => c.campaign_id === campaignId) ?? null
-  const selectedSpace = spaces.find((s) => s.space_id === selectedSpaceId) ?? null
-  const availableLists = selectedSpace?.lists ?? []
 
   useEffect(() => {
     trackEvent(sessionId, 'page_visit', 'reports')
   }, [sessionId])
 
-  // Load campaigns + ClickUp spaces when configure step opens
+  // Load campaigns when the configure step opens (the ClickUp picker went 19 Nov 2026)
   useEffect(() => {
     if (step !== 'configure' || !tenantId || !sessionId) return
     if (campaigns.length === 0) {
@@ -98,32 +101,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
         .catch(() => showToast('error', "Couldn't load campaigns. Please try again."))
         .finally(() => setLoadingCampaigns(false))
     }
-    if (spaces.length === 0) {
-      setLoadingSpaces(true)
-      getClickUpSpaces(sessionId, tenantId)
-        .then(setSpaces)
-        .catch(() => showToast('error', "Couldn't load ClickUp spaces. Please try again."))
-        .finally(() => setLoadingSpaces(false))
-    }
-  }, [step, tenantId, sessionId, campaigns.length, spaces.length, showToast])
-
-  // When campaign changes, pre-select its linked ClickUp list if any
-  useEffect(() => {
-    if (!selectedCampaign) {
-      setSelectedSpaceId('')
-      setSelectedListId('')
-      return
-    }
-    const linkedListId = selectedCampaign.clickup_list_id
-    if (!linkedListId) {
-      setSelectedListId('')
-      setSelectedSpaceId('')
-      return
-    }
-    setSelectedListId(linkedListId)
-    const parentSpace = spaces.find((s) => s.lists.some((l) => l.list_id === linkedListId))
-    if (parentSpace) setSelectedSpaceId(parentSpace.space_id)
-  }, [campaignId, selectedCampaign, spaces])
+  }, [step, tenantId, sessionId, campaigns.length, showToast])
 
   // Load the campaign's KPIs so a target can be set per KPI for this window.
   useEffect(() => {
@@ -187,14 +165,6 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     })
   }
 
-  // Reset list when space changes (unless it belongs to new space)
-  const handleSpaceChange = (spaceId: string) => {
-    setSelectedSpaceId(spaceId)
-    const space = spaces.find((s) => s.space_id === spaceId)
-    const listStillValid = space?.lists.some((l) => l.list_id === selectedListId) ?? false
-    if (!listStillValid) setSelectedListId('')
-  }
-
   const handleGenerate = async () => {
     if (!campaignId) return
     if (!startDate || !endDate || endDate < startDate) return
@@ -212,34 +182,56 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
       end_date: endDate,
       top_ad_metric: topAdMetric,
       top_organic_metric: topOrganicMetric,
-      clickup_list_id: selectedListId || undefined,
       window_targets: Object.keys(parsedTargets).length > 0 ? parsedTargets : undefined,
     }
     const report = await generate(params)
     // Only advance to the report view if the POST succeeded; otherwise stay on the
     // configure step so the error banner is visible.
-    if (report) setStep('report')
+    if (report) setSearchParams({ report: report.report_id })
   }
 
   const handleOpenReport = async (reportId: string) => {
-    await openReport(reportId)
-    setStep('report')
+    setSearchParams({ report: reportId })
   }
 
-  if (step === 'report' && activeReport) {
-    const backToList = () => {
+  // Follow the address: a report id opens it; none (breadcrumb, browser back) is the list.
+  useEffect(() => {
+    if (reportParam) {
+      if (activeReport?.report_id !== reportParam) void openReport(reportParam)
+      setStep('report')
+    } else if (step === 'report') {
       setActiveReport(null)
       setStep('list')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the address only
+  }, [reportParam])
+
+  // ?new=1&campaign=<id>: start a new report for that campaign.
+  useEffect(() => {
+    const cid = searchParams.get('campaign')
+    if (searchParams.get('new') && cid) setCampaignId(cid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, from the link
+  }, [])
+
+  const reportName = activeReport?.report_data?.cover
+    ? `${activeReport.report_data.cover.campaign_name} · ${activeReport.report_data.cover.reporting_period_label}`
+    : 'Report'
+  const crumbs = (last?: string): Crumb[] =>
+    last
+      ? [{ label: 'Home', to: '/home' }, { label: 'Reports', to: '/reports' }, { label: last }]
+      : [{ label: 'Home', to: '/home' }, { label: 'Reports' }]
+
+  if (step === 'report' && activeReport) {
+    const backToList = () => setSearchParams({})
 
     // Report still generating on the backend — show progress, poll runs in the hook.
     if (activeReport.status === 'generating' || (!activeReport.report_data && !error)) {
       return (
         <div className="flex flex-col h-full">
-          <TopBar title="Client Reports" onBack={backToList} />
+          <TopBar title="Reports" onBack={backToList} breadcrumbs={crumbs(reportName)} />
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center space-y-4 max-w-sm">
-              <div className="mx-auto h-10 w-10 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+              <div className="mx-auto h-10 w-10 rounded-full border-2 border-brand-solid border-t-transparent animate-spin" />
               <p className="paragraph-md font-medium text-primary">Generating your report…</p>
               <p className="paragraph-sm text-tertiary">
                 Pulling platform data, studio hours, and generating AI sections — this usually takes
@@ -262,7 +254,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     if (activeReport.status === 'failed' || (!activeReport.report_data && error)) {
       return (
         <div className="flex flex-col h-full">
-          <TopBar title="Client Reports" onBack={backToList} />
+          <TopBar title="Reports" onBack={backToList} breadcrumbs={crumbs(reportName)} />
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center space-y-4 max-w-sm">
               <p className="paragraph-md font-medium text-primary">Report generation failed</p>
@@ -271,7 +263,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
               </p>
               <button
                 onClick={() => setStep('configure')}
-                className="px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+                className="px-4 py-2 rounded-lg bg-brand-solid text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Try again
               </button>
@@ -290,28 +282,20 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     }
 
     return (
-      <ReportOnePager
-        report={activeReport}
-        onBack={backToList}
-        saveOverrides={saveOverrides}
-      />
+      <div className="flex flex-col h-full">
+        <TopBar title={reportName} onBack={backToList} breadcrumbs={crumbs(reportName)} />
+        <div className="flex-1 min-h-0">
+          <ReportOnePager report={activeReport} onBack={backToList} saveOverrides={saveOverrides} />
+        </div>
+      </div>
     )
   }
 
   if (step === 'configure') {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
+      <TopBar title="New report" onBack={() => { setSearchParams({}); setStep('list') }} breadcrumbs={crumbs('New report')} />
       <div className="max-w-xl mx-auto w-full px-4 py-8 space-y-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setStep('list')}
-            className="text-tertiary hover:text-secondary paragraph-sm"
-          >
-            ← Back
-          </button>
-          <h2 className="heading-sm text-primary">New Report</h2>
-        </div>
-
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 paragraph-sm text-red-700">
             {error}
@@ -328,14 +312,17 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
               <div className="w-full h-10 rounded-lg bg-secondary animate-pulse" />
             ) : (
               <select
+                ref={campaignSelect}
                 value={campaignId}
                 onChange={(e) => setCampaignId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                onAnimationEnd={() => setNudgeCampaign(false)}
+                className={`w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid${nudgeCampaign ? ' mia-nudge' : ''}`}
               >
                 <option value="">Select a campaign…</option>
                 {campaigns.map((c) => (
                   <option key={c.campaign_id} value={c.campaign_id}>
                     {c.client_name ? `${c.client_name} — ` : ''}{c.campaign_name}
+                    {c.builder === 'v2' ? ' (Campaign builder)' : ' (old campaign)'}
                   </option>
                 ))}
               </select>
@@ -365,7 +352,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                 value={startDate}
                 max={endDate || undefined}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
               />
             </div>
             <div>
@@ -377,7 +364,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                 value={endDate}
                 min={startDate || undefined}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
               />
             </div>
           </div>
@@ -387,61 +374,18 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
             </p>
           )}
 
-          {/* ClickUp Studio Hours */}
-          <div>
-            <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-              Studio Hours source{' '}
-              <span className="font-normal text-tertiary">(optional)</span>
-            </label>
-            {loadingSpaces ? (
-              <div className="w-full h-10 rounded-lg bg-secondary animate-pulse" />
-            ) : spaces.length === 0 ? (
-              <p className="paragraph-xs text-tertiary">ClickUp not connected</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  value={selectedSpaceId}
-                  onChange={(e) => handleSpaceChange(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                >
-                  <option value="">Space…</option>
-                  {spaces.map((s) => (
-                    <option key={s.space_id} value={s.space_id}>
-                      {s.space_name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedListId}
-                  onChange={(e) => setSelectedListId(e.target.value)}
-                  disabled={!selectedSpaceId}
-                  className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-40"
-                >
-                  <option value="">List…</option>
-                  {availableLists.map((l) => (
-                    <option key={l.list_id} value={l.list_id}>
-                      {l.list_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {selectedListId && (
-              <p className="paragraph-xs text-tertiary mt-1.5">
-                This list will be saved to the campaign for future reports.
-              </p>
-            )}
-          </div>
+          {/* Studio hours: removed 19 Nov 2026 (ClickUp is going; back once Flex is in). */}
 
-          {/* Metric pickers */}
+          {/* Metric pickers, side by side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-              Rank top paid ad by
+              Top paid ad by
             </label>
             <select
               value={topAdMetric}
               onChange={(e) => setTopAdMetric(e.target.value as TopAdMetric)}
-              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
             >
               {TOP_AD_METRIC_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -453,12 +397,12 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
 
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
-              Rank top organic posts by
+              Top organic post by
             </label>
             <select
               value={topOrganicMetric}
               onChange={(e) => setTopOrganicMetric(e.target.value as TopOrganicMetric)}
-              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
             >
               {TOP_ORGANIC_METRIC_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -466,6 +410,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                 </option>
               ))}
             </select>
+          </div>
           </div>
 
           {/* Window targets. Campaign targets cover the whole campaign, so grading a
@@ -509,7 +454,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                         onChange={(e) => handleTargetChange(k.key, e.target.value)}
                         placeholder={k.unit === 'percent' ? '%' : '—'}
                         aria-label={`${k.kpi_name} target for this period`}
-                        className="w-28 shrink-0 px-2.5 py-1.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                        className="w-28 shrink-0 px-2.5 py-1.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
                       />
                     </div>
                   ))}
@@ -517,7 +462,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
                     <button
                       type="button"
                       onClick={applySuggested}
-                      className="paragraph-xs text-brand hover:opacity-80 pt-1"
+                      className="paragraph-xs text-brand-secondary hover:opacity-80 pt-1"
                     >
                       Use targets from the last report
                     </button>
@@ -528,18 +473,28 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
           )}
         </div>
 
+        {/* Always clickable: with no campaign picked it points at the picker instead of doing
+            nothing (19 Nov 2026: a dimmed button with an I-beam cursor said nothing). */}
         <button
-          onClick={handleGenerate}
-          disabled={!campaignId || generating}
-          className="w-full py-3 rounded-lg bg-brand text-white paragraph-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+          onClick={() => {
+            if (!campaignId) {
+              setNudgeCampaign(true)
+              campaignSelect.current?.focus()
+              return
+            }
+            void handleGenerate()
+          }}
+          disabled={generating}
+          className={`w-full py-3 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium shadow-sm hover:bg-brand-solid-hover active:scale-[0.99] transition disabled:opacity-60 ${
+            campaignId ? '' : 'opacity-70'
+          }`}
         >
-          {generating ? 'Generating report…' : 'Generate Report'}
+          {generating ? 'Generating report…' : campaignId ? 'Generate report' : 'Pick a campaign to start'}
         </button>
 
         {generating && (
           <p className="paragraph-xs text-tertiary text-center">
-            Pulling platform data, studio hours, and generating AI sections — this usually takes
-            around a minute, sometimes a little longer.
+            Reading the platforms and writing it up. About a minute.
           </p>
         )}
       </div>
@@ -550,19 +505,19 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
   // List view
   return (
     <div className="flex flex-col h-full">
-      <TopBar title="Client Reports" onBack={onBack} />
+      <TopBar title="Reports" onBack={onBack} breadcrumbs={crumbs()} />
       <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="heading-md text-primary">Client Reports</h1>
+          <h1 className="heading-md text-primary">Reports</h1>
           <p className="paragraph-sm text-tertiary mt-1">
             Monthly performance reports auto-filled from your platform data
           </p>
         </div>
         <button
           onClick={() => setStep('configure')}
-          className="px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+          className="px-4 py-2 rounded-lg bg-brand-solid text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
         >
           + New Report
         </button>
@@ -583,22 +538,21 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
           </p>
           <button
             onClick={() => reloadReports()}
-            className="mt-2 px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+            className="mt-2 px-4 py-2 rounded-lg bg-brand-solid text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
           >
             Try again
           </button>
         </div>
       ) : reports.length === 0 ? (
-        <div className="text-center py-16 space-y-3">
-          <p className="paragraph-md text-secondary">No reports yet</p>
-          <p className="paragraph-sm text-tertiary">
-            Generate your first report to get started
-          </p>
+        // Empty state: one line and the one thing to do, pulsing once (19 Nov 2026).
+        <div className="mia-fade-in rounded-2xl border border-dashed border-secondary bg-secondary px-6 py-12 text-center space-y-3">
+          <p className="text-[15px] font-semibold text-primary">No reports yet</p>
+          <p className="paragraph-sm text-tertiary">A client report pulls a campaign's numbers and writes it up.</p>
           <button
             onClick={() => setStep('configure')}
-            className="mt-2 px-4 py-2 rounded-lg bg-brand text-white paragraph-sm font-medium hover:opacity-90 transition-opacity"
+            className="mia-nudge mt-2 px-4 py-2 rounded-lg bg-brand-solid text-primary-onbrand paragraph-sm font-medium shadow-sm hover:bg-brand-solid-hover active:scale-[0.98] transition"
           >
-            Generate Report
+            Make your first report
           </button>
         </div>
       ) : (
@@ -632,7 +586,7 @@ const ReportListItem = ({
   onOpen: () => void
   onDelete: () => void
 }) => (
-  <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-primary bg-primary hover:bg-secondary transition-colors group">
+  <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-secondary bg-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm transition-all group">
     <button onClick={onOpen} className="flex-1 text-left space-y-0.5">
       <p className="paragraph-sm font-medium text-primary">
         {report.client_name || report.campaign_name || 'Unnamed report'}
