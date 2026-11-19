@@ -48,8 +48,9 @@ function RuleList({ kind, sessionId }: { kind: RuleKind; sessionId: string | nul
   const { one, many } = useDecisions(sessionId)
   const all = useMemo(() => rules.data?.rules ?? [], [rules.data])
   const count = (f: Filter) => all.filter(IN_FILTER[f]).length
-  // Lines found in Mia's own posts first, newest first: they come with evidence, the starter lists don't.
-  const found = (r: HouseRule) => (r.source === 'finder' ? 1 : 0)
+  // Lines QA caught or the finder found in Mia's own posts first, newest first: they come with evidence, the
+  // starter lists don't.
+  const found = (r: HouseRule) => (r.source === 'finder' || r.source === 'qa' ? 1 : 0)
   const shown = all
     .filter(IN_FILTER[filter])
     .sort((a, b) => found(b) - found(a) || (found(a) ? (b.created_at ?? '').localeCompare(a.created_at ?? '') : 0))

@@ -30,6 +30,14 @@ const PLATFORM_LABEL: Record<string, string> = {
   other: 'Other',
 }
 
+const FACTS_TTL_DAYS = 90 // services/house_rules.FACTS_TTL_DAYS: past this Mia's writers are told it may be stale
+
+function stale(iso: string | null): boolean {
+  if (!iso) return false
+  const t = new Date(iso).getTime()
+  return !Number.isNaN(t) && Date.now() - t > FACTS_TTL_DAYS * 86_400_000
+}
+
 interface RuleRowProps {
   rule: HouseRule
   busy: boolean
@@ -46,10 +54,14 @@ export function RuleRow({ rule, busy, onDecide }: RuleRowProps) {
     !isFact && rule.applies_to === 'social' ? 'Social posts only' : null,
     !isFact && !rule.phrase ? 'Mia’s writers read this one; the test box can’t check it' : null,
     isFact && rule.confidence ? { official: 'Platform says so', tested: 'Tested', claimed: 'Claimed, not proven' }[rule.confidence] : null,
-    isFact && day(rule.last_checked) ? `Checked ${day(rule.last_checked)}` : null,
+    isFact && day(rule.last_checked)
+      ? `Checked ${day(rule.last_checked)}${stale(rule.last_checked) ? ', may be out of date' : ''}`
+      : null,
   ].filter(Boolean) as string[]
-  // A line the slop finder put up says where Mia kept writing it ("Mia wrote this in 9 posts for 4 clients...").
-  const foundIn = !isFact && rule.source === 'finder' && rule.status === 'proposed' ? rule.source_ref : null
+  // A line the slop finder or QA put up says where it was found ("Mia wrote this in 9 posts for 4 clients...",
+  // "QA flagged this in copy for Cherry Time: ...").
+  const foundIn =
+    !isFact && (rule.source === 'finder' || rule.source === 'qa') && rule.status === 'proposed' ? rule.source_ref : null
   const decided =
     rule.status === 'retired' || rule.status === 'rejected'
       ? [rule.status === 'retired' ? 'Stopped' : 'Rejected', rule.decided_by ? `by ${rule.decided_by}` : null, day(rule.decided_at)]
