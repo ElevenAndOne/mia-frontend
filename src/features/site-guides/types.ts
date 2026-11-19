@@ -52,7 +52,7 @@ export interface Guide {
   device: { kind: string }
   photos: { hero_n: number | null; picks: PhotoPick[]; full_size: number[]; missing: string[] }
   voice: { taglines: { line: string; from: 'theirs' | 'suggested' }[] }
-  domain: { rows: DomainRow[]; choice: { name: string; buy: string[]; cost_zar: number } | null }
+  domain: { rows: DomainRow[]; choice: { name: string; buy: string[]; cost_zar: number } | null; endings?: string[] }
   questions_for_pitch: string[]
   designer_note?: string
   edited?: string[]

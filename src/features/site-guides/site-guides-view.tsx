@@ -203,7 +203,9 @@ function EditPanel({ data, busy, onEdit }: { data: GuideResponse; busy: boolean;
   const [note, setNote] = useState(guide.designer_note || '')
   const [tagline, setTagline] = useState('')
   useEffect(() => setNote(guide.designer_note || ''), [guide.designer_note])
-  const names = guide.domain.rows.filter((r) => !r.problem && (r.free.com || r.free['co.za']))
+  // the endings follow the business's country (.co.za, .co.uk, ...); a guide built before that has the first two
+  const endings = guide.domain.endings || ['com', 'co.za']
+  const names = guide.domain.rows.filter((r) => !r.problem && endings.some((x) => r.free[x]))
   return (
     <div className="sg-edit">
       <h3>Change a choice</h3>
@@ -279,7 +281,7 @@ function EditPanel({ data, busy, onEdit }: { data: GuideResponse; busy: boolean;
           <select value={guide.domain.choice?.name || ''} disabled={busy} onChange={(ev) => onEdit({ domain: ev.target.value })}>
             {names.map((r) => (
               <option key={r.name} value={r.name}>
-                {r.name} ({[r.free.com ? '.com' : '', r.free['co.za'] ? '.co.za' : ''].filter(Boolean).join(' and ')} free)
+                {r.name} ({endings.filter((x) => r.free[x]).map((x) => `.${x}`).join(' and ')} free)
               </option>
             ))}
           </select>
