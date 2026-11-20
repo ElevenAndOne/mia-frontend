@@ -29,6 +29,15 @@ export const STEPS: { key: StepKey; label: string; help: string }[] = [
   { key: 'check', label: 'Check & approve', help: 'Mia checks the campaign as it stands now. Then approve.' },
 ]
 
+// A BPO client's steps (20 Nov): no Targets (they have no KPIs) and step 4 is just the jobs (no ad budget of ours), so
+// nothing on screen is about what a BPO campaign doesn't have. The same keys, so links and states still line up.
+export function stepsFor(s: { campaign: { client_type?: string | null } } | null | undefined): typeof STEPS {
+  if (s?.campaign.client_type !== 'bpo') return STEPS
+  return STEPS.filter((st) => st.key !== 'targets').map((st) =>
+    st.key === 'jobs' ? { ...st, label: 'Jobs', help: 'What the studio makes and what it costs in credits.' } : st,
+  )
+}
+
 // The targets the PM still has to decide: the empty ones, and the ones Mia copied from the client's history that the PM
 // hasn't looked at (29 Oct: an old, mislabelled R7,698 cost per click went into the plan without the PM seeing it).
 // A history target shows with its number as the starting point, like one of Mia's estimates.

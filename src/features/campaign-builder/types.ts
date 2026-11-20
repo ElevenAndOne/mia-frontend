@@ -377,10 +377,21 @@ export interface BudgetChannel {
   why: string
 }
 
+// Every name a job carries under the agreed scheme (naming + tracking step 1, 20 Nov), and its link's tags as a query
+export interface JobNames {
+  campaign: string
+  ad_set: string
+  ad: string
+  files: string[]
+  tags: string
+}
+
 export interface StudioJob {
   asset_id: string
   name: string
   job_no?: string | null // Mia's job number, e.g. OAO-07 (step 7, 16 Nov)
+  job_id?: string | null // the Job ID on every name and link, e.g. MK7Q2X (20 Nov)
+  names?: JobNames | null
   phase: string
   channel: string
   format: string | null
@@ -498,6 +509,8 @@ export interface LaunchJob {
   action_id: string
   name: string
   job_no?: string | null
+  job_id?: string | null
+  names?: JobNames | null
   phase: string
   channel: string
   // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)

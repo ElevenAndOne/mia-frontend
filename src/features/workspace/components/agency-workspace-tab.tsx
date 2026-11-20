@@ -5,6 +5,7 @@ import { Spinner } from '../../../components/spinner'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 import { WorkspaceMembersPanel } from './workspace-members-panel'
+import { ClientCodeRow } from './client-code-row'
 import { Card, Choice, Disclosure, FadeIn, Row, RowButton, Section } from './settings-ui'
 
 /**
@@ -95,6 +96,7 @@ export const AgencyWorkspaceTab = (p: Props) => {
             <Row title="Name" hint={p.workspace.name}>
               {p.canManage && <RowButton onClick={p.onOpenRenameModal}>Rename</RowButton>}
             </Row>
+            <ClientCodeRow tenantId={p.workspace.tenant_id} canManage={p.canManage} />
             <Row
               title="Logo"
               hint="SVG or PNG, up to 500 KB"

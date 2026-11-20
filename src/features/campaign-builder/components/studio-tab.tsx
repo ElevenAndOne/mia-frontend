@@ -1,3 +1,4 @@
+import { JobId, JobNames } from './job-names'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
@@ -272,8 +273,11 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
         <Card className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-secondary">
             Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
-            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>… They go to Flex with each job and at the end of each
-            ad's name, so an ad traces back to its job.
+            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>…{' '}
+            {/* under the naming scheme (20 Nov) the ad's name ends with the Job ID, not the number */}
+            {s.jobs.some((j) => j.names)
+              ? 'They go to Flex with each job. Each job also has a Job ID, at the end of every name and link it carries.'
+              : "They go to Flex with each job and at the end of each ad's name, so an ad traces back to its job."}
             {s.job_code.locked ? ' The code is fixed now: Flex tasks and ads carry it.' : ''}
           </p>
           {!s.job_code.locked ? (
@@ -472,10 +476,12 @@ function Row({
       <td className="py-2 pr-2 min-w-0">
         <span className="text-primary">{j.name}</span>
         {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
+        <JobId id={j.job_id} />
         <span className="block paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
+        <JobNames names={j.names} />
         {inFlex ? <Requests rs={j.change_requests ?? []} onWithdraw={onWithdraw} busy={busy} /> : null}
         {inFlex && j.clickup_not_linked ? (
           <span className="block label-xs text-utility-warning-700" title={j.clickup_not_linked}>

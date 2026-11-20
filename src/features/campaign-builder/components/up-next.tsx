@@ -1,6 +1,6 @@
 import { Button } from '../../../components/button'
 import type { BuildState } from '../types'
-import { STEPS, currentStep, targetsToDecide, wordsToFix, type StepKey, type StepState } from './steps'
+import { stepsFor, currentStep, targetsToDecide, wordsToFix, type StepKey, type StepState } from './steps'
 
 // Up next (local test 27 Oct: "it needs to guide and tell me each step along the way… i had no idea it was done til u
 // said so"): one line, always in view, naming the one next thing for the PM, and what Mia is doing meanwhile. Worked
@@ -11,6 +11,8 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: string; step: StepKey; background?: string } {
   const plan = s.plan
   const cur = currentStep(states)
+  const bpo = s.campaign.client_type === 'bpo'
+  const jobsLabel = bpo ? 'Jobs' : 'Jobs & budget'
   const words = s.words_run?.status === 'running' ? s.words_run : null
   const background = words
     ? `Mia is writing the final words${words.stage_at && words.stage_of ? ` (job ${words.stage_at} of ${words.stage_of})` : ''}.`
@@ -75,7 +77,7 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       return say(toSet.length ? `Keep Mia's number or type your own for ${plural(toSet.length, 'target')}.` : 'Check the targets.', 'targets')
     case 'jobs':
       if (!jobs.length) return say('There are no jobs in the plan: ask Mia in the chat to add one, or make the plan again.', 'jobs')
-      return say('Look over the jobs and the money, then press Looks right. Mia writes the final words after.', 'jobs')
+      return say(`Look over the jobs${bpo ? '' : ' and the money'}, then press Looks right. Mia writes the final words after.`, 'jobs')
     case 'words':
       if (words) return say(`${background} Nothing needs you yet; this step finishes by itself.`, 'words')
       if ((s.check_pending ?? s.checking) && s.auto_words) return say('Mia is about to write the final words. Nothing needs you yet.', 'words')
@@ -84,8 +86,8 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       // the jobs aren't confirmed (or changed since): the words row has no Try again then, it waits for Looks right
       // (sweep D6: this said "press Try again" over a row with no such button)
       if (plan && !plan.decisions.jobs_confirmed)
-        return say(reconfirm ? 'The jobs changed: press Looks right on Jobs & budget again, and Mia writes the final words after.'
-          : 'Press Looks right on Jobs & budget, and Mia writes the final words after.', 'jobs', true)
+        return say(reconfirm ? `The jobs changed: press Looks right on ${jobsLabel} again, and Mia writes the final words after.`
+          : `Press Looks right on ${jobsLabel}, and Mia writes the final words after.`, 'jobs', true)
       // nothing waiting to write them (a lost background check, review 2 Nov): the item below says Try again, so this
       // does too, never "in a moment" for ever
       if (!jobs.some((a) => a.final_words)) return say("Mia's final words haven't started: press Try again.", 'words')
@@ -133,7 +135,7 @@ export function UpNext({ state, states, step, onGo }: {
       </p>
       {elsewhere ? (
         <Button size="sm" variant="primary" onClick={() => onGo(u.step)}>
-          Go to {STEPS.find((st) => st.key === u.step)?.label}
+          Go to {stepsFor(state).find((st) => st.key === u.step)?.label}
         </Button>
       ) : null}
     </div>

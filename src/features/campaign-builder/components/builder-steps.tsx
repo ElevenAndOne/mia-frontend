@@ -1,5 +1,7 @@
 import { canOpen, currentStep, STEPS, type StepKey, type StepState } from './steps'
 
+type Steps = typeof STEPS
+
 const BAR: Record<StepState | 'now', string> = {
   done: 'bg-utility-success-500',
   todo: 'bg-tertiary',
@@ -15,24 +17,26 @@ export function StepRail({
   states,
   step,
   onGo,
+  steps = STEPS,
 }: {
   states: Record<StepKey, StepState>
   step: StepKey
   onGo: (key: StepKey) => void
+  steps?: Steps // the campaign's own steps (stepsFor: a BPO campaign has five)
 }) {
   const cur = currentStep(states)
-  const done = STEPS.filter((st) => states[st.key] === 'done').length
+  const done = steps.filter((st) => states[st.key] === 'done').length
   return (
     <nav aria-label="Campaign steps" className="flex flex-col gap-2">
       <p className="paragraph-xs text-secondary">
-        {done} of {STEPS.length} done
+        {done} of {steps.length} done
         <span className="@xl:hidden">
           {' '}
-          · Step {STEPS.findIndex((st) => st.key === step) + 1}: {STEPS.find((st) => st.key === step)?.label}
+          · Step {steps.findIndex((st) => st.key === step) + 1}: {steps.find((st) => st.key === step)?.label}
         </span>
       </p>
-      <ol className="grid grid-cols-6 gap-2">
-        {STEPS.map((st, i) => {
+      <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((st, i) => {
           const state = states[st.key]
           const open = canOpen(states, st.key)
           const look = st.key === cur && state !== 'busy' ? 'now' : state

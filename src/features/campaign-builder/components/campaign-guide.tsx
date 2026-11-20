@@ -18,9 +18,11 @@ export function CampaignGuide({
   brand,
   look = null,
   never = [],
+  compact = false,
 }: {
   campaignId: string
   readOnly: boolean
+  compact?: boolean // one quiet line for Key facts (20 Nov); no guide here is said by the Optional line instead
   brand: BuildState['brand_guide'] | null
   look?: BuildState['brand_look'] | null
   never?: string[]
@@ -54,6 +56,36 @@ export function CampaignGuide({
   }
 
   const attached = q.data?.attached
+  if (compact) {
+    if (!brand && !attached) return null
+    return (
+      <p className="paragraph-xs text-tertiary">
+        {brand ? (
+          <>
+            Brand guide: {brand.file || 'from Settings'}
+            {never.length ? `, ${never.length} word${never.length === 1 ? '' : 's'} it rules out` : ''}
+            {' · '}
+            <Link to="/settings/workspace?tab=brand" className="underline hover:text-secondary">Settings</Link>
+          </>
+        ) : null}
+        {brand && attached ? <span aria-hidden="true"> · </span> : null}
+        {attached ? (
+          <>
+            Campaign guide: {attached.filename}
+            {readOnly ? null : (
+              <>
+                {' · '}
+                <button type="button" disabled={busy} onClick={() => void attach(null)} className="underline hover:text-secondary disabled:opacity-50">
+                  Detach
+                </button>
+              </>
+            )}
+          </>
+        ) : null}
+        {error ? <span className="block text-error">{error}</span> : null}
+      </p>
+    )
+  }
   return (
     <Card className="flex flex-col gap-2">
       <BrandGuideLine brand={brand} look={look} never={never} campaignId={campaignId} readOnly={readOnly} />
@@ -140,7 +172,7 @@ const lookLine = (look: BuildState['brand_look'] | null | undefined) => {
 }
 
 /** Add the workspace brand guide without leaving the campaign: read and saved as Settings does. */
-export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDone?: () => void }) {
+export function AddBrandGuide({ campaignId, onDone, quiet = false }: { campaignId: string; onDone?: () => void; quiet?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const queryClient = useQueryClient()
@@ -161,7 +193,7 @@ export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDo
     }
   }
   return (
-    <div className="flex flex-col gap-1">
+    <div className={quiet ? 'inline-flex flex-col' : 'flex flex-col gap-1'}>
       <label className={`inline-flex w-fit items-center gap-2 ${busy ? 'opacity-60' : 'cursor-pointer'}`}>
         <input
           type="file"
@@ -173,9 +205,13 @@ export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDo
             e.target.value = ''
           }}
         />
-        <span className="rounded-lg border border-secondary bg-primary px-3 py-1.5 label-sm text-primary hover:bg-secondary">
-          {busy ? 'Mia is reading it…' : 'Add brand guide'}
-        </span>
+        {quiet ? (
+          <span className="underline hover:text-secondary">{busy ? 'Mia is reading it…' : 'add a brand guide'}</span>
+        ) : (
+          <span className="rounded-lg border border-secondary bg-primary px-3 py-1.5 label-sm text-primary hover:bg-secondary">
+            {busy ? 'Mia is reading it…' : 'Add brand guide'}
+          </span>
+        )}
       </label>
       {error ? <p className="paragraph-xs text-error">{error}</p> : null}
     </div>

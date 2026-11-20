@@ -10,7 +10,7 @@ import { BriefTab } from '../features/campaign-builder/components/brief-tab'
 import { Card, day, money } from '../features/campaign-builder/components/parts'
 import { PlanTab, type PlanPart } from '../features/campaign-builder/components/plan-tab'
 import { StepRail } from '../features/campaign-builder/components/builder-steps'
-import { STEPS, currentStep, stepStates, wordsToFix, type StepKey } from '../features/campaign-builder/components/steps'
+import { stepsFor, currentStep, stepStates, wordsToFix, type StepKey } from '../features/campaign-builder/components/steps'
 import { ASK_EVENT } from '../features/campaign-builder/components/your-turn'
 import { UpNext } from '../features/campaign-builder/components/up-next'
 import { StudioTab } from '../features/campaign-builder/components/studio-tab'
@@ -277,7 +277,8 @@ function BuildPage({ campaignId }: { campaignId: string }) {
   const pageScroll = useRef<HTMLDivElement>(null)
   // While the campaign is a draft, the page is six steps; after Approve, the tabs (Studio & launch, Results).
   const states = s ? stepStates(s) : null
-  const stepKeys = STEPS.map((st) => st.key) as string[]
+  const steps = stepsFor(s)
+  const stepKeys = steps.map((st) => st.key) as string[]
   const step: StepKey | null =
     s && s.campaign.building && states
       ? stepKeys.includes(tab)
@@ -312,10 +313,10 @@ function BuildPage({ campaignId }: { campaignId: string }) {
     const was = shownStates.current?.[step]
     shownStates.current = states
     if (!was || was === 'done' || states[step] !== 'done') return
-    const at = STEPS.findIndex((st) => st.key === step)
-    const nxt = STEPS[at + 1]
-    if (!nxt) return
-    setFlash(`✓ ${STEPS[at].label} done. Next: ${nxt.label}.`)
+    const at = steps.findIndex((st) => st.key === step)
+    const nxt = steps[at + 1]
+    if (!nxt || at < 0) return
+    setFlash(`✓ ${steps[at].label} done. Next: ${nxt.label}.`)
     goStep(nxt.key)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [states, step])
@@ -370,7 +371,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
           // A draft is on one of the six steps; an approved campaign on one of its tabs.
           {
             label: step
-              ? (STEPS.find((st) => st.key === step)?.label ?? 'Brief')
+              ? (steps.find((st) => st.key === step)?.label ?? 'Brief')
               : (TABS.find((t) => t.key === tab || (t.key === 'studio' && tab === 'launch'))?.label ?? 'Brief'),
           },
         ]}
@@ -466,7 +467,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               </p>
             ) : null}
             {step && states ? (
-              <StepRail states={states} step={step} onGo={goStep} />
+              <StepRail states={states} step={step} onGo={goStep} steps={steps} />
             ) : (
             <nav className="flex flex-wrap gap-1 border-b border-secondary" aria-label="Campaign">
               {TABS.map((t) => (
@@ -591,11 +592,12 @@ function StepView({
   onApproved: () => void
   scrollTop: () => void
 }) {
-  const i = STEPS.findIndex((st) => st.key === step)
-  const meta = STEPS[i]
-  const next = STEPS[i + 1]
+  const steps = stepsFor(s)
+  const i = Math.max(0, steps.findIndex((st) => st.key === step))
+  const meta = steps[i]
+  const next = steps[i + 1]
   const nextOpen = next && states[step] === 'done'
-  const left = STEPS.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
+  const left = steps.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
   return (
     <div className="flex flex-col gap-4">
       {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
@@ -682,14 +684,9 @@ function StepView({
       ) : null}
       {next ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
+          {/* the line at the top is the only "what's next" (20 Nov: said three times); Next lights up when done */}
           <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
-            {nextOpen
-              ? `✓ ${meta.label} done`
-              : // Mia at work is not the PM's job to finish (review 5 Nov, 2.11: "Finish this step to go on" beside a
-                // plan or the words still being written, a likely part of "it won't let me click Next")
-                states[step] === 'busy'
-                ? 'Mia is working on this step. Next opens when she is done.'
-                : 'Finish this step to go on: the line at the top says what is left.'}
+            {nextOpen ? `✓ ${meta.label} done` : states[step] === 'busy' ? 'Mia is working on this step.' : ''}
           </p>
           <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
             Next: {next.label}

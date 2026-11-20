@@ -6,6 +6,7 @@ import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
 import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
 import { AskMia, askMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
+import { RulesLine } from './rules-line'
 
 // Brief tab (plan §8.2): what the PM asked for, as fields they can check and edit. Fields the
 // PM set are marked as theirs; Mia never re-decides them. "What Mia read" starts collapsed.
@@ -28,6 +29,12 @@ interface Props {
   onKeepPlan?: () => Promise<unknown>
   onConfirm?: (fields: string[]) => Promise<unknown>
 }
+
+// BPO clients have no ad budget of ours and no KPIs: their Key facts don't show those fields (20 Nov)
+const NOT_FOR_BPO: BriefField[] = ['budget_total', 'budget_monthly', 'measurement']
+// Shown even when empty: the facts every plan stands on. Any other empty field is one "Not set" line.
+const ALWAYS: BriefField[] = ['goal', 'start_date', 'end_date', 'budget_total', 'channels_requested']
+const EDIT_EVENT = 'brief-edit'
 
 const LIST_FIELDS: BriefField[] = ['channels_requested', 'must_haves', 'constraints', 'already_made', 'measurement']
 const LABELS: Record<BriefField, string> = {
@@ -110,7 +117,12 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
   const emptyRules = !(b?.must_haves?.length || b?.constraints?.length)
   const planFresh = !!state.plan && !state.plan_from_older_brief
   const toggle = (f: string) => setFolds((o) => { const n = new Set(o); if (n.has(f)) n.delete(f); else n.add(f); return n })
-  const toBrief = () => document.getElementById('brief-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const bpo = state.campaign.client_type === 'bpo'
+  // Edit opens the brief card's form and brings it into view
+  const editBrief = () => {
+    window.dispatchEvent(new Event(EDIT_EVENT))
+    document.getElementById('brief-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
   const items: TurnItem[] = []
   if (state.campaign.building) {
     if (qs.length) {
@@ -118,7 +130,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         key: 'questions',
         // one at a time with where you are, like Mia's questions after the plan (local test 27 Oct)
         title: `Mia's question ${(b?.answered_questions ?? []).length + 1} of ${(b?.answered_questions ?? []).length + qs.length}`,
-        detail: 'Answer it, or skip it and Mia decides.',
+        why: 'Skip it and Mia decides, and says what she assumed.',
         done: !qs.length,
         openByDefault: true,
         more: (
@@ -134,71 +146,23 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         ),
       })
     }
-    // No brand guide: asked once, before the plan, with the upload right here (review, 3 Nov: the page only pointed
-    // to Settings). "Carry on without" is remembered for this campaign in this browser.
-    if (!state.brand_guide && !state.plan && !brandSkipped) {
-      items.push({
-        key: 'brand',
-        title: 'Add the client’s brand guide? (optional)',
-        detail: state.brand_look
-          ? 'Their Brand Kit colours and fonts go to the studio, but Mia has no guide for how they sound and what they can claim. With one, every job’s words follow it.'
-          : 'Mia has no brand guide for this workspace, so the words follow your brief alone. With one, every job sounds like the client and avoids what it rules out.',
-        actions: (
-          <>
-            <AddBrandGuide campaignId={state.campaign.campaign_id} />
-            <Button size="sm" variant="ghost" onClick={skipBrand}>
-              Carry on without
-            </Button>
-          </>
-        ),
-      })
-    }
-    if (emptyRules) {
-      items.push({
-        key: 'rules',
-        title: "Add must-haves and don'ts (optional)",
-        detail: 'Legal lines, words to avoid, things the client insists on. Mia keeps them in every job.',
-        done: planFresh,
-        actions: (
-          <>
-            <Button size="sm" onClick={toBrief}>Edit the brief</Button>
-            <AskMia label="Must-haves and don'ts" detail="The brief has no must-haves or don'ts yet" />
-          </>
-        ),
-      })
-    }
-    // "These are right" (review 21 Oct): what Mia read from your material, shown as hers, before you confirm it, so
-    // every later step treats it as decided knowingly, not as a formality.
+    // "These are right" (review 21 Oct): what Mia read from your material is hers until you confirm it. The facts are
+    // shown once, in the brief card below, each marked "Mia read this" (20 Nov: they showed here and there).
     const drafted = (state.brief?.drafted ?? []) as BriefField[]
     if (drafted.length && onConfirm) {
       items.push({
         key: 'confirm',
-        title: `Check ${drafted.length} fact${drafted.length === 1 ? '' : 's'} Mia read from your material`,
-        detail: 'Mia drafted these. Until you confirm them, she treats them as her reading, not your decision.',
+        title: `Check the ${drafted.length} fact${drafted.length === 1 ? '' : 's'} Mia read`,
+        detail: 'Marked "Mia read this" in the brief below.',
+        why: 'Until you confirm them, Mia treats them as her reading, not your decision.',
         openByDefault: true,
-        more: (
-          <ul className="flex flex-col gap-1.5">
-            {/* a label and one short line each, the whole text on tap (local test 27 Oct: five facts in full
-                sentences read as a wall of text) */}
-            {drafted.map((f) => (
-              <li key={f} className="paragraph-sm">
-                <details className="group">
-                  <summary className="flex cursor-pointer list-none flex-col [&::-webkit-details-marker]:hidden">
-                    <span className="label-xs text-secondary">{LABELS[f] ?? f}</span>
-                    <span className="text-primary line-clamp-1 group-open:line-clamp-none [overflow-wrap:anywhere]">{factText(state, b!, f)}</span>
-                  </summary>
-                </details>
-              </li>
-            ))}
-          </ul>
-        ),
         actions: (
           <>
             <PrimaryAction loading={busy === 'confirm'} onClick={() => onConfirm(drafted)}>
               These are right
             </PrimaryAction>
-            <Button size="sm" onClick={toBrief}>
-              Edit the brief
+            <Button size="sm" onClick={editBrief}>
+              Edit
             </Button>
           </>
         ),
@@ -209,11 +173,11 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       items.push({
         key: 'budget',
         title: 'Set the budget',
-        detail: noBudget.what,
+        why: noBudget.what,
         actions: (
           <>
-            <Button size="sm" onClick={toBrief}>
-              Edit the brief
+            <Button size="sm" onClick={editBrief}>
+              Set it
             </Button>
             <AskMia label="Budget" detail={noBudget.what} />
           </>
@@ -227,12 +191,19 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       title: planRunning ? 'Mia is making the plan' : state.plan_from_older_brief ? 'Make the plan again' : state.plan ? 'Plan made' : 'Make the plan',
       done: planFresh && !planRunning,
       detail: planRunning
-        ? 'This usually takes 10 to 20 minutes. You can leave the page; it keeps going.'
+        ? 'Usually 10 to 20 minutes. You can leave; it keeps going.'
         : waiting
-          ? 'Answer or skip the questions above first: Mia plans from your answers.'
+          ? 'After the questions above.'
           : state.plan_from_older_brief
-            ? 'The budget, dates, channels or goal changed. Update the plan (everything you decided is kept where it still fits), or keep it and fix what no longer fits.'
-            : 'When the brief looks right, Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
+            ? 'The brief changed since the plan.'
+            : undefined,
+      why: planRunning || waiting
+        ? undefined
+        : state.plan_from_older_brief
+          ? 'The budget, dates, channels or goal changed. Update the plan (everything you decided is kept where it still fits), or keep it and fix what no longer fits.'
+          : bpo
+            ? 'Mia makes the jobs for the studio from the brief and the document, and asks about anything the document leaves open.'
+            : 'Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
       actions: planRunning ? null : (
         <>
           <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running' || waiting} onClick={() => onMakePlan()}>
@@ -272,20 +243,34 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         </Fold>
       ) : null}
       {part !== 'context' && items.length ? <YourTurn items={items} /> : null}
-      {part === 'facts' && (b?.answered_questions ?? []).some((q) => !q.answer) ? (
-        <Card className="flex flex-col gap-1">
-          <h3 className="subheading-sm text-primary">Skipped, so Mia decides</h3>
-          <ul className="flex flex-col gap-1">
-            {(b?.answered_questions ?? []).filter((q) => !q.answer).map((q, i) => (
-              <li key={i} className="paragraph-xs text-secondary">
-                <span className="text-primary">{q.question}</span> {q.assumed ? `Mia assumed: ${q.assumed}` : 'Mia decides as she plans.'}
-              </li>
-            ))}
-          </ul>
-        </Card>
+      {part !== 'context' ? (
+        <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} bpo={bpo} drafted={(state.brief?.drafted ?? []) as BriefField[]} />
       ) : null}
-      {part !== 'context' ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} look={state.brand_look ?? null} never={state.brand_never_use ?? []} /> : null}
-      {part !== 'context' ? <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} /> : null}
+      {part === 'facts' ? (
+        // Reference and optional things: one quiet line each (20 Nov, docs2/BUILDER_HAND_HOLDING_CLEANUP_2026-11-20.md)
+        <div className="flex flex-col gap-1.5 px-1">
+          <RulesLine client={state.campaign.client} campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} />
+          <CampaignGuide compact campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} look={state.brand_look ?? null} never={state.brand_never_use ?? []} />
+          {state.campaign.building && !state.plan && ((!state.brand_guide && !brandSkipped) || emptyRules) ? (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 paragraph-xs text-tertiary">
+              <span>Optional:</span>
+              {!state.brand_guide && !brandSkipped ? (
+                <>
+                  <AddBrandGuide campaignId={state.campaign.campaign_id} quiet />
+                  <button type="button" onClick={skipBrand} className="underline hover:text-secondary">no guide</button>
+                  {emptyRules ? <span aria-hidden="true">·</span> : null}
+                </>
+              ) : null}
+              {emptyRules ? (
+                <button type="button" onClick={editBrief} className="underline hover:text-secondary">
+                  add must-haves and don'ts
+                </button>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {!part ? <CampaignGuide campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} brand={state.brand_guide ?? null} look={state.brand_look ?? null} never={state.brand_never_use ?? []} /> : null}
       {shows('stand') ? (<Fold
         id="fold-stand"
         title={`Where ${state.campaign.client} stands on the KPI list`}
@@ -330,27 +315,20 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
   )
 }
 
-// One brief field as the PM reads it (money, dates and lists formatted), for "These are right".
-function factText(state: BuildState, b: Brief, f: BriefField): string {
-  const v = b[f as keyof Brief]
-  if (f === 'budget_total') return money(b.budget_total ?? null, state.campaign.currency)
-  if (f === 'budget_monthly') return money(b.budget_monthly ?? null, state.campaign.currency)
-  if (f === 'start_date' || f === 'end_date') return day(v as string | null)
-  if (f === 'channels_requested') return (b.channels_requested ?? []).map(channelLabel).join(' · ') || '—'
-  if (Array.isArray(v)) return v.join(' · ') || '—'
-  return (v as string) || '—'
-}
-
 function BriefCard({
   state,
   brief,
   busy,
   onSave,
+  bpo = false,
+  drafted = [],
 }: {
   state: BuildState
   brief: Brief
   busy: string | null
   onSave: Props['onSave']
+  bpo?: boolean
+  drafted?: BriefField[]
 }) {
   const [editing, setEditing] = useState(false)
   const initial = useMemo(() => toDraft(brief, state.campaign.name), [brief, state.campaign.name])
@@ -368,6 +346,26 @@ function BriefCard({
   }
   const setByPm = new Set(brief.set_by_pm ?? [])
   const locked = !state.campaign.building
+  // "Edit" in Your turn or the optional line opens this form (one form, not a second one up there)
+  useEffect(() => {
+    if (locked) return
+    const open = () => {
+      setBase(initial)
+      setDraft(initial)
+      setEditing(true)
+    }
+    window.addEventListener(EDIT_EVENT, open)
+    return () => window.removeEventListener(EDIT_EVENT, open)
+  }, [initial, locked])
+  const fields = (Object.keys(LABELS) as BriefField[]).filter((k) => !(bpo && NOT_FOR_BPO.includes(k)))
+  const read = new Set(drafted)
+  const empty = (k: BriefField) => {
+    const v = brief[k as keyof Brief]
+    return v == null || v === '' || (Array.isArray(v) && !v.length)
+  }
+  const shown = fields.filter((k) => ALWAYS.includes(k) || !empty(k)).filter((k) => k !== 'budget_monthly' || brief.budget_monthly != null)
+  const notSet = fields.filter((k) => !shown.includes(k) && k !== 'budget_monthly')
+  const skipped = (brief.answered_questions ?? []).filter((q) => !q.answer)
 
   const save = async () => {
     const changed: Partial<Record<BriefField, unknown>> = {}
@@ -444,7 +442,7 @@ function BriefCard({
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </label>
-          {(Object.keys(LABELS) as BriefField[]).map((k) => (
+          {fields.map((k) => (
             <label key={k} className={`flex flex-col gap-1 ${['goal', 'audience', ...LIST_FIELDS].includes(k) ? 'sm:col-span-2' : ''}`}>
               <span className="label-xs text-secondary">
                 {LABELS[k]}
@@ -472,9 +470,11 @@ function BriefCard({
           ))}
         </form>
       ) : (
-        // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct).
+        // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct). Each fact is one
+        // line, the whole text on tap; empty ones are one "Not set" line (20 Nov: a wall of dashes and full sentences).
+        <>
         <dl className="mt-3 grid grid-cols-2 @3xl:grid-cols-4 gap-x-6 gap-y-3">
-          {(Object.keys(LABELS) as BriefField[]).filter((k) => k !== 'budget_monthly' || brief.budget_monthly != null).map((k) => (
+          {shown.map((k) => (
             <div
               key={k}
               className={`min-w-0 ${
@@ -483,16 +483,52 @@ function BriefCard({
             >
               <dt className="label-xs text-tertiary flex flex-wrap items-center gap-2">
                 {LABELS[k]}
-                {setByPm.has(k) ? <Chip tone="pm">set by you</Chip> : null}
+                {setByPm.has(k) ? <Chip tone="pm">set by you</Chip> : read.has(k) && !locked ? <Chip tone="mia">Mia read this</Chip> : null}
                 {(k === 'start_date' || k === 'end_date') && brief.dates_proposed_by_mia ? (
-                  <NeedsYou>proposed by Mia: you gave no dates</NeedsYou>
+                  <NeedsYou>Mia's proposal</NeedsYou>
                 ) : null}
                 {k === 'budget_total' && brief.budget_total == null ? <NeedsYou>no budget yet</NeedsYou> : null}
               </dt>
-              <dd className="paragraph-sm text-primary mt-0.5 break-words">{show(k)}</dd>
+              <dd className="paragraph-sm text-primary mt-0.5">
+                <details className="group">
+                  <summary className="cursor-pointer list-none line-clamp-1 group-open:line-clamp-none [overflow-wrap:anywhere] [&::-webkit-details-marker]:hidden">
+                    {show(k)}
+                  </summary>
+                </details>
+              </dd>
             </div>
           ))}
         </dl>
+        {notSet.length || skipped.length ? (
+          <div className="mt-3 flex flex-col gap-1 border-t border-secondary pt-2 paragraph-xs text-tertiary">
+            {notSet.length ? (
+              <p>
+                Not set: {notSet.map((k) => LABELS[k].toLowerCase()).join(', ')}
+                {locked ? null : (
+                  <>
+                    {' · '}
+                    <button type="button" onClick={startEditing} className="underline hover:text-secondary">add</button>
+                  </>
+                )}
+              </p>
+            ) : null}
+            {skipped.length ? (
+              <details>
+                <summary className="cursor-pointer select-none">
+                  {skipped.length} question{skipped.length === 1 ? '' : 's'} skipped, so Mia decides · <span className="underline">See</span>
+                </summary>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {skipped.map((q, i) => (
+                    <li key={i} className="text-secondary">
+                      <span className="text-primary">{q.question}</span> {q.assumed ? `Mia assumed: ${q.assumed}` : 'Mia decides as she plans.'}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
+        </>
       )}
     </Card>
   )
