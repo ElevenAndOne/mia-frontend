@@ -188,8 +188,9 @@ export const WorkspaceSettingsDetail = ({
   // Agency clean-up (19 Nov 2026): Campaign Guides removed (a guide is attached per campaign in
   // the builder), Rules folded into the Mia tab, the old Campaigns pages moved here as
   // "Old campaigns". Basic is unchanged.
-  const campaignsOn = useFeature('campaigns')
-  const agencyTail: SettingsTab[] = campaignsOn ? ['oldcampaigns', 'help'] : ['help']
+  // 20 Nov 2026 (Josh): old campaigns are listed once, under the builder board; the
+  // Settings tab is gone (its component stays). ?tab=oldcampaigns lands on Workspace.
+  const agencyTail: SettingsTab[] = ['help']
   const visibleTabs: SettingsTab[] = canManage
     ? isBasic
       ? ['brand', 'members', 'help']
@@ -600,13 +601,14 @@ export const WorkspaceSettingsDetail = ({
       />
 
       {/* Tab strip */}
-      <div className="flex border-b border-tertiary px-4 overflow-x-auto">
+      {/* Fits a phone without scrolling (fresh-eyes pass, 20 Nov 2026: "Help" was cut to "H"). */}
+      <div className="flex border-b border-tertiary px-2 sm:px-4 overflow-x-auto">
         {visibleTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => selectTab(tab)}
             className={[
-              'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              'px-3 sm:px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-solid text-brand-solid'
                 : 'border-transparent text-secondary hover:text-primary',

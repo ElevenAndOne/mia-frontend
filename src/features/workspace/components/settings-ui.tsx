@@ -61,7 +61,7 @@ export const Row = ({
   <div className="flex flex-wrap items-center gap-3 px-4 py-3">
     <div className="min-w-0 flex-1">
       <div className="subheading-bg text-primary truncate">{title}</div>
-      {hint ? <div className="paragraph-sm text-tertiary mt-0.5 truncate">{hint}</div> : null}
+      {hint ? <div className="paragraph-sm text-tertiary mt-0.5 [overflow-wrap:anywhere]">{hint}</div> : null}
     </div>
     {aside ? <div className="shrink-0">{aside}</div> : null}
     {children ? <div className="shrink-0 flex items-center gap-2">{children}</div> : null}

@@ -20,7 +20,6 @@ import { Calendar } from './icon/calendar'
 import { Edit03 } from './icon/edit-03'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
-import { HelpCircle } from './icon/help-circle'
 import { Home03 } from './icon/home-03'
 import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
@@ -391,14 +390,7 @@ export const AppSidebar = () => {
             </>
           )}
 
-          {!isBasic && (
-            <NavItem
-              icon={<HelpCircle size={18} />}
-              label="Help"
-              collapsed={collapsed}
-              onClick={actions.onHelpClick}
-            />
-          )}
+          {/* Agency Help lives in Settings → Help (Josh, 20 Nov 2026). */}
         </nav>
 
         {/* Sign out — Basic signs out from the workspace menu at the top */}

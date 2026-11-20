@@ -15,7 +15,7 @@ const field =
   'w-full px-3 py-2 rounded-lg border border-primary bg-primary paragraph-sm text-primary placeholder:text-quaternary focus:outline-none focus:ring-2 focus:ring-utility-info-500'
 
 const fmt = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''
+  iso ? new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }) : ''
 
 /**
  * Staff on WhatsApp (Oct 2026): the people on the floor who send Mia photos and ideas, with no

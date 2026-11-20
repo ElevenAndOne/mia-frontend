@@ -34,8 +34,8 @@ export const oldCampaignCrumbs = (
     ? [{ label: 'Home', to: '/home' }, { label: 'Campaigns', to: '/campaigns' }]
     : [
         { label: 'Home', to: '/home' },
-        { label: 'Settings', to: '/settings/workspace' },
-        { label: 'Old campaigns', to: '/settings/workspace?tab=oldcampaigns' },
+        // Old campaigns are listed under the builder board (Josh, 20 Nov 2026: one place, not two)
+        { label: 'Campaign builder', to: '/campaign-builder' },
       ]
   if (view === 'new' || !campaignId) return [...head, { label: 'New campaign' }]
   const crumbs: Crumb[] = [...head, { label: name ?? 'Campaign', to: `/campaigns/${campaignId}/overview` }]

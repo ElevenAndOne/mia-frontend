@@ -16,7 +16,7 @@ const NewCampaignPage = () => {
         <TopBar
           title="New campaign"
           breadcrumbs={oldCampaignCrumbs(isBasic, undefined, undefined, 'new')}
-          onBack={() => navigate(isBasic ? '/home' : '/settings/workspace?tab=oldcampaigns')}
+          onBack={() => navigate(isBasic ? '/home' : '/campaign-builder')}
         />
         <div className="flex-1 min-h-0">
           <BuilderChat />

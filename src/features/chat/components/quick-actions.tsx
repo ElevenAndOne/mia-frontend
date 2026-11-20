@@ -125,7 +125,7 @@ export const QuickActions = ({
         {!disabled && (
           <>
             <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-              ML-powered predictions from your historical data.
+              Forecasts from your past results.
             </span>
             {strategiseReady && (
               <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-secondary text-secondary">
@@ -157,7 +157,7 @@ export const QuickActions = ({
         {!disabled && (
           <>
             <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-              Optimise budget allocation across your RACE campaign.
+              How to split your budget across the campaign stages.
             </span>
             <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-brand-100 text-brand-700">
               Pro

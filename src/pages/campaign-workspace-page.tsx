@@ -126,7 +126,7 @@ const CampaignWorkspacePage = () => {
           title={campaign?.campaign_name ?? 'Campaign'}
           breadcrumbs={oldCampaignCrumbs(isBasic, campaign?.campaign_name, campaignId, view, section)}
           // Agency: up is the Old campaigns list in Settings (19 Nov).
-          onBack={() => navigate(isBasic ? '/home' : '/settings/workspace?tab=oldcampaigns')}
+          onBack={() => navigate(isBasic ? '/home' : '/campaign-builder')}
         />
         <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-6 py-6">
           <div className="max-w-[75rem] mx-auto">{body()}</div>

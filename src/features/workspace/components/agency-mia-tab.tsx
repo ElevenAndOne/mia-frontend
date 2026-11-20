@@ -39,6 +39,30 @@ const Fallback = () => (
   </div>
 )
 
+const SaveMine = ({
+  saving,
+  saved,
+  disabled,
+  onSave,
+}: {
+  saving: boolean
+  saved: boolean
+  disabled: boolean
+  onSave: () => void
+}) => (
+  <span className="inline-flex items-center gap-3">
+    {saved && <span className="paragraph-xs text-success">Saved</span>}
+    <button
+      type="button"
+      onClick={onSave}
+      disabled={disabled}
+      className="px-3.5 py-1.5 rounded-lg bg-brand-solid text-primary-onbrand subheading-md hover:bg-brand-solid-hover disabled:opacity-50 active:scale-[0.98] transition"
+    >
+      {saving ? 'Saving…' : 'Save'}
+    </button>
+  </span>
+)
+
 export const AgencyMiaTab = (p: Props) => {
   // A to Z; people with no name or email (no profile yet) last.
   const members = useMemo(
@@ -85,7 +109,9 @@ export const AgencyMiaTab = (p: Props) => {
             <Fallback />
           ) : (
             <Card>
+              {/* Save sits beside what it saves, not alone in an empty strip (fresh-eyes pass, 20 Nov 2026). */}
               <Row title="Send me alerts">
+                {!p.mySubscribed && <SaveMine saving={p.savingMine} saved={p.savedMine} disabled={p.savingMine || (p.mySubscribed && !p.myNumber.trim())} onSave={p.onSaveMine} />}
                 <Switch label="Send me alerts" checked={p.mySubscribed} onChange={p.onMySubscribedChange} />
               </Row>
               {p.mySubscribed && (
@@ -108,19 +134,9 @@ export const AgencyMiaTab = (p: Props) => {
                       {p.sendingTest ? 'Sending…' : p.testSentTo ? `Sent to ${p.testSentTo}` : 'Send a test'}
                     </button>
                   )}
+                  <span className="ml-auto"><SaveMine saving={p.savingMine} saved={p.savedMine} disabled={p.savingMine || (p.mySubscribed && !p.myNumber.trim())} onSave={p.onSaveMine} /></span>
                 </div>
               )}
-              <div className="px-4 py-3 flex items-center justify-end gap-3">
-                {p.savedMine && <span className="paragraph-xs text-success">Saved</span>}
-                <button
-                  type="button"
-                  onClick={p.onSaveMine}
-                  disabled={p.savingMine || (p.mySubscribed && !p.myNumber.trim())}
-                  className="px-3.5 py-1.5 rounded-lg bg-brand-solid text-primary-onbrand subheading-md hover:bg-brand-solid-hover disabled:opacity-50 active:scale-[0.98] transition"
-                >
-                  {p.savingMine ? 'Saving…' : 'Save'}
-                </button>
-              </div>
               {p.canManage && p.alerts && (
                 <Row title="Alerts for this workspace" hint="Off stops them for everyone here.">
                   <Switch

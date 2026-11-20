@@ -20,6 +20,7 @@ import { TOP_AD_METRIC_OPTIONS, TOP_ORGANIC_METRIC_OPTIONS } from './types'
 import { useReports } from './hooks/use-reports'
 import type { ReportSummary } from './types'
 import { ReportOnePager } from './report-onepager'
+import { DateBox, SelectBox } from './form-fields'
 
 // Local-timezone-safe YYYY-MM-DD (avoids the UTC off-by-one from toISOString)
 const toISODate = (d: Date) => {
@@ -234,7 +235,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
               <div className="mx-auto h-10 w-10 rounded-full border-2 border-brand-solid border-t-transparent animate-spin" />
               <p className="paragraph-md font-medium text-primary">Generating your report…</p>
               <p className="paragraph-sm text-tertiary">
-                Pulling platform data, studio hours, and generating AI sections — this usually takes
+                Pulling platform data and writing the sections. This usually takes
                 around a minute, sometimes a little longer. You can leave this page; it’ll keep
                 generating and show up in your reports list.
               </p>
@@ -295,7 +296,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
       <TopBar title="New report" onBack={() => { setSearchParams({}); setStep('list') }} breadcrumbs={crumbs('New report')} />
-      <div className="max-w-xl mx-auto w-full px-4 py-8 space-y-6">
+      <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 paragraph-sm text-red-700">
             {error}
@@ -311,21 +312,22 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
             {loadingCampaigns ? (
               <div className="w-full h-10 rounded-lg bg-secondary animate-pulse" />
             ) : (
-              <select
+              <div className={`rounded-lg${nudgeCampaign ? ' mia-nudge' : ''}`} onAnimationEnd={() => setNudgeCampaign(false)}>
+              <SelectBox
                 ref={campaignSelect}
                 value={campaignId}
                 onChange={(e) => setCampaignId(e.target.value)}
-                onAnimationEnd={() => setNudgeCampaign(false)}
-                className={`w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid${nudgeCampaign ? ' mia-nudge' : ''}`}
+                aria-label="Campaign"
               >
                 <option value="">Select a campaign…</option>
                 {campaigns.map((c) => (
                   <option key={c.campaign_id} value={c.campaign_id}>
-                    {c.client_name ? `${c.client_name} — ` : ''}{c.campaign_name}
+                    {c.client_name ? `${c.client_name} · ` : ''}{c.campaign_name}
                     {c.builder === 'v2' ? ' (Campaign builder)' : ' (old campaign)'}
                   </option>
                 ))}
-              </select>
+              </SelectBox>
+              </div>
             )}
             {selectedCampaign?.channels && selectedCampaign.channels.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -347,25 +349,13 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
               <label className="paragraph-sm font-medium text-secondary block mb-1.5">
                 Start date
               </label>
-              <input
-                type="date"
-                value={startDate}
-                max={endDate || undefined}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
-              />
+              <DateBox label="Start date" value={startDate} max={endDate || undefined} onChange={setStartDate} />
             </div>
             <div>
               <label className="paragraph-sm font-medium text-secondary block mb-1.5">
                 End date
               </label>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate || undefined}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
-              />
+              <DateBox label="End date" value={endDate} min={startDate || undefined} onChange={setEndDate} />
             </div>
           </div>
           {endDate && startDate && endDate < startDate && (
@@ -382,34 +372,32 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
               Top paid ad by
             </label>
-            <select
+            <SelectBox
               value={topAdMetric}
               onChange={(e) => setTopAdMetric(e.target.value as TopAdMetric)}
-              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
             >
               {TOP_AD_METRIC_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           </div>
 
           <div>
             <label className="paragraph-sm font-medium text-secondary block mb-1.5">
               Top organic post by
             </label>
-            <select
+            <SelectBox
               value={topOrganicMetric}
               onChange={(e) => setTopOrganicMetric(e.target.value as TopOrganicMetric)}
-              className="w-full px-3 py-2.5 rounded-lg border border-primary bg-primary text-primary paragraph-sm focus:outline-none focus:border-brand-solid"
             >
               {TOP_ORGANIC_METRIC_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           </div>
           </div>
 
@@ -427,7 +415,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
               <p className="paragraph-xs text-tertiary mb-2.5">
                 {windowCoversCampaign
                   ? 'This period covers the whole campaign, so campaign targets apply. Override any below if you want.'
-                  : 'Campaign targets cover the full campaign. Set what this period alone should hit — anything left blank is reported without a pass/fail.'}
+                  : 'Campaign targets cover the full campaign. Set what this period alone should hit. Anything left blank is reported without a pass/fail.'}
               </p>
 
               {loadingKpis ? (
@@ -507,7 +495,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
     <div className="flex flex-col h-full">
       <TopBar title="Reports" onBack={onBack} breadcrumbs={crumbs()} />
       <div className="flex-1 overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-6">
       {/* The top bar already says "Reports": one line and the action (19 Nov 2026). */}
       <div className="flex items-center justify-between gap-3">
         <p className="paragraph-sm text-tertiary">Client reports, filled from the platforms.</p>
@@ -530,7 +518,7 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
         <div className="text-center py-16 space-y-3">
           <p className="paragraph-md text-secondary">Couldn't load your reports</p>
           <p className="paragraph-sm text-tertiary">
-            This is a temporary loading issue — your reports are safe.
+            This is a temporary loading issue. Your reports are safe.
           </p>
           <button
             onClick={() => reloadReports()}
@@ -573,6 +561,8 @@ export const ReportView = ({ onBack }: { onBack?: () => void }) => {
 // List item
 // ---------------------------------------------------------------------------
 
+const STATUS_LABEL: Record<string, string> = { complete: 'Ready', generating: 'Making…', pending: 'Making…', failed: 'Failed' }
+
 const ReportListItem = ({
   report,
   onOpen,
@@ -584,8 +574,9 @@ const ReportListItem = ({
 }) => (
   <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-secondary bg-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm transition-all group">
     <button onClick={onOpen} className="flex-1 text-left space-y-0.5">
+      {/* The campaign names the report; the workspace name was the same on every row (20 Nov 2026). */}
       <p className="paragraph-sm font-medium text-primary">
-        {report.client_name || report.campaign_name || 'Unnamed report'}
+        {report.campaign_name || report.client_name || 'Unnamed report'}
       </p>
       <p className="paragraph-xs text-tertiary">
         {report.reporting_period_label ||
@@ -598,11 +589,13 @@ const ReportListItem = ({
       <span
         className={`px-2 py-0.5 rounded-full paragraph-xs font-medium ${
           report.status === 'complete'
-            ? 'bg-green-100 text-green-700'
-            : 'bg-yellow-100 text-yellow-700'
+            ? 'bg-success-primary text-success'
+            : report.status === 'failed'
+              ? 'bg-error-primary text-error'
+              : 'bg-warning-primary text-warning'
         }`}
       >
-        {report.status}
+        {STATUS_LABEL[report.status] ?? report.status.charAt(0).toUpperCase() + report.status.slice(1)}
       </span>
       <button
         onClick={(e) => {

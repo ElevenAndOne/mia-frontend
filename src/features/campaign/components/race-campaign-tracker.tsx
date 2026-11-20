@@ -744,8 +744,13 @@ export function RaceCampaignTracker({
           })}
         </div>
 
-        {/* KPI rows — reserve height for 3 rows so 2-KPI tabs don't shift the page */}
-        <div className="px-3 py-2.5 space-y-2.5 min-h-[8.75rem]">
+        {/* KPI rows: reserve height for 3 rows so 2-KPI tabs don't shift the page; a phase with
+            no KPIs gets one line instead of an empty box (fresh-eyes pass, 20 Nov 2026). */}
+        <div
+          className={`px-3 py-2.5 space-y-2.5${
+            actualsLoading || (activePhaseData?.kpis.length ?? 0) > 0 ? ' min-h-[8.75rem]' : ''
+          }`}
+        >
           {actualsLoading && (
             <div className="flex items-center justify-center py-4">
               <div className="flex gap-1">
@@ -911,6 +916,12 @@ export function RaceCampaignTracker({
               )
             })}
 
+          {!actualsLoading &&
+            activePhaseData &&
+            activePhaseData.kpis.length === 0 &&
+            !(campaign.status === 'draft' && campaign.builder === 'v2') && (
+              <p className="paragraph-xs text-quaternary text-center py-2">No targets set for this phase.</p>
+            )}
           {campaign.status === 'draft' && campaign.builder === 'v2' && (
             <p className="paragraph-xs text-quaternary text-center py-2">
               Numbers start when the first job launches.
@@ -918,7 +929,7 @@ export function RaceCampaignTracker({
           )}
           {actualsError && (
             <p className="paragraph-xs text-quaternary text-center py-3">
-              Could not load actuals — try again later
+              Couldn't load the numbers. Try again later.
             </p>
           )}
           {unlinked && campaign && (() => {

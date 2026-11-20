@@ -54,8 +54,11 @@ const DIM_META: Record<
   },
 }
 
+const SCOPE_BTN =
+  'px-3 py-1.5 rounded-lg border border-secondary paragraph-sm text-secondary hover:bg-tertiary hover:text-primary active:scale-[0.98] transition disabled:opacity-50'
+
 const PRESET_META: Record<string, { label: string; blurb: string }> = {
-  balanced: { label: 'Balanced', blurb: "Mia's standard style — concise and professional." },
+  balanced: { label: 'Balanced', blurb: "Mia's standard style: concise and professional." },
   concise_analyst: { label: 'Concise Analyst', blurb: 'Short, bulleted, numbers-first, no fluff.' },
   friendly_strategist: {
     label: 'Friendly Strategist',
@@ -119,7 +122,7 @@ export const MiaStyleTab = ({
     setSaving(true)
     try {
       await updateMiaPreferences(sessionId, tenantId, prefs)
-      showToast('success', 'Saved — Mia will use this style for you here.', 4000)
+      showToast('success', 'Saved. Mia will use this style for you here.', 4000)
       setData((d) => (d ? { ...d, user_preferences: prefs } : d))
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to save', 5000)
@@ -309,30 +312,20 @@ export const MiaStyleTab = ({
           )
         })}
       </div>
-      <div className="flex flex-wrap items-center gap-2 paragraph-xs text-quaternary">
-        <span>{saving ? 'Saving…' : usingDefault ? 'Using the default' : 'Saved for you'}</span>
-        <span aria-hidden>·</span>
-        <button
-          type="button"
-          onClick={handleApplyAll}
-          disabled={applyingAll}
-          className="underline-offset-2 hover:underline hover:text-secondary disabled:opacity-50"
-        >
+      {/* The two scopes are real buttons, the status a quiet note (fresh-eyes pass, 20 Nov 2026:
+          they read as plain text). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={handleApplyAll} disabled={applyingAll} className={SCOPE_BTN}>
           {applyingAll ? 'Applying…' : 'Use in all my workspaces'}
         </button>
         {canManage && (
-          <>
-            <span aria-hidden>·</span>
-            <button
-              type="button"
-              onClick={handleSetDefault}
-              disabled={settingDefault}
-              className="underline-offset-2 hover:underline hover:text-secondary disabled:opacity-50"
-            >
-              {settingDefault ? 'Setting…' : 'Make it the workspace default'}
-            </button>
-          </>
+          <button type="button" onClick={handleSetDefault} disabled={settingDefault} className={SCOPE_BTN}>
+            {settingDefault ? 'Setting…' : 'Make it the workspace default'}
+          </button>
         )}
+        <span className="paragraph-xs text-quaternary ml-auto">
+          {saving ? 'Saving…' : usingDefault ? 'Using the default' : 'Saved for you'}
+        </span>
       </div>
     </div>
   )

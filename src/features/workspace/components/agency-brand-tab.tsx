@@ -16,6 +16,7 @@ import { BrandFontsRow } from './brand-fonts-row'
 import type { FontStatus, OwnFont } from './brand-fonts'
 import { BrandGuideModal } from './brand-guide-modal'
 import { Card, Disclosure } from './settings-ui'
+import { day } from '../../campaign-builder/components/parts'
 
 /**
  * Workspace Settings → Brand, agency (19 Nov 2026). One page for what used to be Brand Guide,
@@ -297,7 +298,7 @@ const GuidePages = ({
             type="button"
             aria-label="Previous page"
             onClick={() => setAt((at - 1 + count) % count)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary/90 border border-tertiary flex items-center justify-center shadow"
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary/90 border border-tertiary hidden sm:flex items-center justify-center shadow"
           >
             <ChevronLeft size={18} />
           </button>
@@ -307,16 +308,37 @@ const GuidePages = ({
             type="button"
             aria-label="Next page"
             onClick={() => setAt((at + 1) % count)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary/90 border border-tertiary flex items-center justify-center shadow"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-primary/90 border border-tertiary hidden sm:flex items-center justify-center shadow"
           >
             <ChevronRight size={18} />
           </button>
         )}
       </div>
       <div className="flex items-center gap-2">
+        {/* Phone: the arrows sit here, beside the page count, not over the picture (20 Nov 2026). */}
+        {count > 1 && (
+          <button
+            type="button"
+            aria-label="Previous page"
+            onClick={() => setAt((at - 1 + count) % count)}
+            className="sm:hidden shrink-0 h-8 w-8 rounded-full border border-tertiary flex items-center justify-center"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
         <span className="paragraph-xs text-tertiary whitespace-nowrap">
           Page {at + 1} of {count}
         </span>
+        {count > 1 && (
+          <button
+            type="button"
+            aria-label="Next page"
+            onClick={() => setAt((at + 1) % count)}
+            className="sm:hidden shrink-0 h-8 w-8 rounded-full border border-tertiary flex items-center justify-center"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {urls.map((u, i) => (
             <button
@@ -619,6 +641,13 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
     ...(context?.manual_overrides ?? {}),
   }
   const hasGuide = !!context?.has_context
+  // A website-drawn guide: its words and its drawing come from the same site, so one line says
+  // where it came from, with the newest of the two dates (fresh-eyes pass, 20 Nov 2026).
+  const drawnSameSite = !!view?.generated && !!visual?.pages
+  const guideDate =
+    drawnSameSite && visual?.built_at && (!view?.uploaded || visual.built_at > view.uploaded)
+      ? visual.built_at
+      : view?.uploaded ?? null
   const sourceLine = view?.file
     ? view.generated
       ? `Made by Mia ${view.file.replace('[Generated from ', 'from ').replace(']', '')}`
@@ -634,7 +663,7 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
             <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary">Brand guide</h2>
             <p className="paragraph-xs text-tertiary mt-0.5">
               {hasGuide
-                ? `${sourceLine ?? 'Set by hand'}${view?.uploaded ? ` · ${new Date(view.uploaded).toLocaleDateString()}` : ''}`
+                ? `${sourceLine ?? 'Set by hand'}${guideDate ? ` · ${day(guideDate)}` : ''}`
                 : 'Mia uses it in every chat and campaign.'}
             </p>
           </div>
@@ -758,10 +787,12 @@ export const AgencyBrandTab = ({ sessionId, tenantId, canManage }: Props) => {
                   Build again
                 </Button>
               )}
-              <span className="paragraph-xs text-quaternary">
-                Drawn by Mia from {(visual.website ?? 'their website').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
-                {visual.built_at ? ` · ${new Date(visual.built_at).toLocaleDateString()}` : ''}
-              </span>
+              {!drawnSameSite && (
+                <span className="paragraph-xs text-quaternary">
+                  Drawn by Mia from {(visual.website ?? 'their website').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                  {visual.built_at ? ` · ${day(visual.built_at)}` : ''}
+                </span>
+              )}
             </div>
             {canManage && visual.look && (
               <Card>

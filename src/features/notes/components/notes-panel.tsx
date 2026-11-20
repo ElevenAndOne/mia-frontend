@@ -21,7 +21,7 @@ const fmtDate = (iso: string | null) => {
   const d = new Date(iso)
   return Number.isNaN(d.getTime())
     ? null
-    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+    : d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 // Who/where a note came from. `created_by` is an id or an email — only an email is
