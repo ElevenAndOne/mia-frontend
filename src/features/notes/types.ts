@@ -10,7 +10,8 @@ export interface MiaNote {
   text: string
   source_conversation_id: string | null
   created_by: string | null
-  created_by_kind: 'chat' | 'ui' | 'system'
+  // 'claude': saved through the Claude connector after the person said yes (mia-backend services/mcp_server/tools_notes)
+  created_by_kind: 'chat' | 'ui' | 'system' | 'claude' | 'whatsapp' | 'builder'
   is_active: boolean
   created_at: string | null
   retired_at: string | null

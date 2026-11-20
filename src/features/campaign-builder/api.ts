@@ -320,10 +320,15 @@ export interface ClientRule {
   by: string | null
   added: string | null
   origin: 'person' | 'learned'
+  /** 'campaign': a note for this campaign only (sent when fetchRules is given a campaign). */
+  scope?: 'campaign' | 'workspace'
+  /** Where it came from: 'claude' shows as From Claude. */
+  from?: string | null
 }
 
-export async function fetchRules(sessionId: string, tenantId: string): Promise<{ rules: ClientRule[] }> {
-  return check(await apiFetch(`${base(tenantId)}/rules`, { headers: { 'X-Session-ID': sessionId } }))
+export async function fetchRules(sessionId: string, tenantId: string, campaignId?: string): Promise<{ rules: ClientRule[] }> {
+  const q = campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : ''
+  return check(await apiFetch(`${base(tenantId)}/rules${q}`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
 export async function addRule(sessionId: string, tenantId: string, text: string, kind = 'constraint'): Promise<unknown> {

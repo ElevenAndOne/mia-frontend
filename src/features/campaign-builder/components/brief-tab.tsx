@@ -313,7 +313,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         open={folds.has('rules')}
         onToggle={() => toggle('rules')}
       >
-        <ClientRules client={state.campaign.client} readOnly={!state.campaign.building} />
+        <ClientRules client={state.campaign.client} campaignId={state.campaign.campaign_id} readOnly={!state.campaign.building} />
       </Fold>) : null}
       {shows('read') && read ? (
         <Fold

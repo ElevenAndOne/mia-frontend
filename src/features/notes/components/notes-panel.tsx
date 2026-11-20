@@ -28,11 +28,15 @@ const fmtDate = (iso: string | null) => {
 // worth showing to a person.
 const provenance = (n: MiaNote) => {
   const origin =
-    n.created_by_kind === 'chat'
+    n.created_by_kind === 'chat' || n.created_by_kind === 'builder'
       ? 'From chat'
       : n.created_by_kind === 'ui'
         ? 'Added here'
-        : 'Set up by Mia'
+        : n.created_by_kind === 'claude'
+          ? 'From Claude'
+          : n.created_by_kind === 'whatsapp'
+            ? 'From WhatsApp'
+            : 'Set up by Mia'
   const who = n.created_by && n.created_by.includes('@') ? n.created_by.split('@')[0] : null
   return [origin, who, fmtDate(n.created_at)].filter(Boolean).join(' · ')
 }
