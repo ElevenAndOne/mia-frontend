@@ -166,7 +166,7 @@ const BrevoAccountSelector = ({ isOpen, onClose, onSuccess }: BrevoAccountSelect
               isSelected={state.selectedId === account.id}
               onSelect={() => actions.setSelectedId(account.id)}
               title={account.account_name}
-              subtitle={`Added ${new Date(account.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              subtitle={`Added ${new Date(account.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
               badge={account.is_primary ? 'Primary' : undefined}
               badgeColor="green"
               accentColor="black"

@@ -601,8 +601,10 @@ export const WorkspaceSettingsDetail = ({
       />
 
       {/* Tab strip */}
-      {/* Fits a phone without scrolling (fresh-eyes pass, 20 Nov 2026: "Help" was cut to "H"). */}
-      <div className="flex border-b border-tertiary px-2 sm:px-4 overflow-x-auto">
+      {/* Fits a phone without scrolling (fresh-eyes pass, 20 Nov 2026: "Help" was cut to "H").
+          overflow-y-hidden: sideways scroll made the tabs' 1px underline overhang show a second,
+          up-down scrollbar at the right edge (click-through 20 Nov). */}
+      <div className="flex border-b border-tertiary px-2 sm:px-4 overflow-x-auto overflow-y-hidden">
         {visibleTabs.map((tab) => (
           <button
             key={tab}

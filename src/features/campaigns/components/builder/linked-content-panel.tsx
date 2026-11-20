@@ -21,7 +21,7 @@ const fmtDate = (iso?: string | null) => {
   const d = new Date(`${iso}T00:00:00`)
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 const fmtWindow = (start: string | null, end: string | null) =>

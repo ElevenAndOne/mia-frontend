@@ -176,7 +176,7 @@ export default function CampaignBoardPage() {
                         >
                           <span className="paragraph-sm text-primary">{c.name}</span>
                           <span className="paragraph-xs text-tertiary">
-                            {c.status} · {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'no dates'}
+                            {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : ''} · {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'no dates'}
                           </span>
                         </button>
                       </li>

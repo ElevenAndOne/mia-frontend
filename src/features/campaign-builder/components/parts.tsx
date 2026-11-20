@@ -17,7 +17,7 @@ export const money = (v: number | null | undefined, currency?: string | null) =>
 export const day = (d: string | null | undefined) => {
   if (!d) return '—'
   const x = new Date(`${d.slice(0, 10)}T00:00:00`)
-  return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+  return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export const num = (v: number | null | undefined) =>

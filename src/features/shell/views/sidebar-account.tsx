@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeftDouble } from '../../../components/icon/chevron-left-double'
 import { ChevronRightDouble } from '../../../components/icon/chevron-right-double'
 import { ChevronUp } from '../../../components/icon/chevron-up'
@@ -30,11 +31,28 @@ export const SidebarAccount = ({
 }) => {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  // Collapsed, the sidebar is 72px and clips what sticks out (click-through 20 Nov 2026: the menu
+  // showed "Josh T", "Se", "Sig"), so the menu opens on the page, just right of the sidebar.
+  const [spot, setSpot] = useState<{ left: number; bottom: number } | null>(null)
+
+  useEffect(() => {
+    if (!open || !collapsed) return
+    const place = () => {
+      const r = box.current?.getBoundingClientRect()
+      if (r) setSpot({ left: r.right + 8, bottom: window.innerHeight - r.bottom + 8 })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [open, collapsed])
 
   useEffect(() => {
     if (!open) return
     const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (box.current?.contains(t) || menu.current?.contains(t)) return
+      setOpen(false)
     }
     const esc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -50,45 +68,50 @@ export const SidebarAccount = ({
   const item =
     'w-full flex items-center gap-3 px-3 py-2 rounded-lg paragraph-sm transition-colors text-left'
 
+  const menuBox = (
+    <div
+      ref={menu}
+      role="menu"
+      style={collapsed && spot ? { left: spot.left, bottom: spot.bottom } : undefined}
+      className={`z-50 rounded-xl border border-secondary bg-primary shadow-lg p-1.5 ${
+        collapsed ? 'fixed w-56' : 'absolute bottom-full mb-2 left-3 right-3'
+      }`}
+    >
+      <div className="px-3 py-2 border-b border-tertiary mb-1">
+        <p className="label-md text-primary truncate">{name}</p>
+        {email ? <p className="paragraph-xs text-quaternary truncate">{email}</p> : null}
+      </div>
+      <button
+        type="button"
+        role="menuitem"
+        className={`${item} text-secondary hover:bg-secondary hover:text-primary`}
+        onClick={() => {
+          setOpen(false)
+          onSettings()
+        }}
+      >
+        <Settings01 size={16} />
+        Settings
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className={`${item} text-error hover:bg-error-primary`}
+        onClick={() => {
+          setOpen(false)
+          onSignOut()
+        }}
+      >
+        <LogOut01 size={16} />
+        Sign out
+      </button>
+    </div>
+  )
+
   return (
     <div ref={box} className="relative border-t border-tertiary">
-      {open && (
-        <div
-          role="menu"
-          className={`absolute bottom-full mb-2 z-30 rounded-xl border border-secondary bg-primary shadow-lg p-1.5 ${
-            collapsed ? 'left-2 w-56' : 'left-3 right-3'
-          }`}
-        >
-          <div className="px-3 py-2 border-b border-tertiary mb-1">
-            <p className="label-md text-primary truncate">{name}</p>
-            {email ? <p className="paragraph-xs text-quaternary truncate">{email}</p> : null}
-          </div>
-          <button
-            type="button"
-            role="menuitem"
-            className={`${item} text-secondary hover:bg-secondary hover:text-primary`}
-            onClick={() => {
-              setOpen(false)
-              onSettings()
-            }}
-          >
-            <Settings01 size={16} />
-            Settings
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={`${item} text-error hover:bg-error-primary`}
-            onClick={() => {
-              setOpen(false)
-              onSignOut()
-            }}
-          >
-            <LogOut01 size={16} />
-            Sign out
-          </button>
-        </div>
-      )}
+      {open && !collapsed && menuBox}
+      {open && collapsed && spot && createPortal(menuBox, document.body)}
 
       <div className={`flex items-center gap-1 py-2 ${collapsed ? 'flex-col px-2' : 'px-3'}`}>
         <button

@@ -19,7 +19,7 @@ function calendarDay(dateStr: string): Date {
 
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return calendarDay(dateStr).toLocaleDateString('en-ZA', {
+  return calendarDay(dateStr).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -28,7 +28,7 @@ export function formatDate(dateStr: string | null): string {
 
 export function formatShortDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return calendarDay(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  return calendarDay(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export function currencySymbol(currency: string | null): string {

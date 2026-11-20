@@ -36,7 +36,7 @@ const shown = (iso: string) => {
   const d = new Date(`${iso}T00:00:00`)
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 /** A date written the way the rest of Mia writes it (1 Nov 2026); a click opens the

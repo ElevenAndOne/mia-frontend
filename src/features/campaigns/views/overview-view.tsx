@@ -58,8 +58,8 @@ export const OverviewView = () => {
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-utility-brand-400 bg-utility-brand-100 px-4 py-3">
           <p className="paragraph-sm text-utility-brand-700">
             {notTracked.length === 1
-              ? `1 KPI on this campaign has no data source — ${notTracked[0]} can't show a number until something is connected to it.`
-              : `${notTracked.length} KPIs on this campaign have no data source — ${notTracked.join(', ')} can't show numbers until something is connected.`}
+              ? `1 KPI has no data source yet: ${notTracked[0]}. It shows a number once something is connected.`
+              : `${notTracked.length} KPIs have no data source yet: ${notTracked.join(', ')}. They show numbers once something is connected.`}
           </p>
           <button
             onClick={() => navigate(`/campaigns/${campaign.campaign_id}/setup/sources`)}
