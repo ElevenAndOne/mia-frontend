@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, ResultsState, StudioState } from './types'
+import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, ResultsState, StudioDrive, StudioState } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -306,6 +306,13 @@ export async function decideIdea(
 export async function refreshFromFlex(sessionId: string, tenantId: string, campaignId: string) {
   return check<{ updated: number }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/refresh`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+// Try again after the Drive folders failed: clears the error and makes them again in the background (naming step 4)
+export async function retryDriveFolders(sessionId: string, tenantId: string, campaignId: string) {
+  return check<StudioDrive>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/drive/retry`, { method: 'POST', headers: json(sessionId) }),
   )
 }
 

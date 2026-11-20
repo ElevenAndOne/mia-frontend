@@ -432,6 +432,34 @@ export interface StudioJob {
   }
   // changes asked of the studio for a job in Flex (its lead accepts or declines; 17 Nov), the last five
   change_requests?: StudioChangeRequest[]
+  // its Drive folder and what's in its _Delivery as last read (naming step 4, 20 Nov); null until its folder is made
+  delivery?: StudioDelivery | null
+}
+
+// sizes are ratio tokens ("4x5", "9x16"); need/have/missing are counts per size
+export interface StudioDelivery {
+  folder_url: string
+  delivery_url: string | null
+  have: Record<string, number>
+  need: Record<string, number>
+  missing: Record<string, number>
+  complete: boolean
+  files: number
+  taken_at: string | null
+  waiting_for: string | null // complete, but held: e.g. no landing page in the brief
+  checked_at: string | null
+}
+
+// The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov)
+export interface StudioDrive {
+  shared_drive: boolean // the workspace has a Shared Drive set in Settings
+  root_url: string | null
+  made_at: string | null
+  error: string | null
+  checked_at: string | null
+  unplaced: { id: string; name: string; ratio: string | null }[] // files in _Delivery with no Job ID Mia can match
+  making: boolean
+  test_folder?: string | null // "_Mia test" when this campaign's folders go there instead of its year
 }
 
 export interface StudioChangeRequest {
@@ -478,6 +506,7 @@ export interface StudioState {
   // whether Flex has the whole plan as it is now (the outline, 17 Nov)
   outline?: { version: number | null; sent_version: number | null; sent_at: string | null; current: boolean; error: string | null }
   ideas?: { new: number; items: StudioIdea[]; set_aside: number; set_aside_items?: StudioIdea[] }
+  drive?: StudioDrive
 }
 
 // The campaigns board (plan §8.1).
