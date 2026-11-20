@@ -74,11 +74,6 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="m-0 max-w-2xl paragraph-md text-secondary">
-        What moved for our clients last week, and what Meta, Google and the others changed. Each card ends in steps:
-        Mia does the ones she can, the rest link to the right tool.
-      </p>
-
       <ClientTrends
         weeks={bench.data?.weeks ?? []}
         lastRun={jobs?.platform_benchmarks.last_ok_at ?? null}
@@ -87,6 +82,7 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
       />
 
       <div className="flex flex-col gap-4">
+        <h2 className="m-0 title-h6 text-primary">What the platforms changed</h2>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SegmentedControl<Filter>
             value={filter}
@@ -98,9 +94,9 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
             ]}
           />
           <div className="flex items-center gap-3">
-            {lastNews && !newsRunning && <span className="paragraph-sm text-tertiary">Checked {lastNews}</span>}
-            <Button variant="secondary" loading={newsRunning} onClick={() => run.mutate('platform_news')}>
-              {newsRunning ? 'Checking…' : 'Check now'}
+            {lastNews && !newsRunning && <span className="paragraph-sm text-tertiary">Updated {lastNews}</span>}
+            <Button variant="secondary" size="sm" loading={newsRunning} onClick={() => run.mutate('platform_news')}>
+              {newsRunning ? 'Updating…' : 'Update now'}
             </Button>
           </div>
         </div>

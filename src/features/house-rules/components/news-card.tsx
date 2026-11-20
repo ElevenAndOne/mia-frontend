@@ -3,7 +3,7 @@ import { Button } from '../../../components/button'
 import { ArrowUpRight } from '../../../components/icon/arrow-up-right'
 import { Stars01 } from '../../../components/icon/stars-01'
 import type { NewsCard as Card, NewsDecision, NewsStep } from '../types'
-import { day, safeLink } from './format'
+import { clientsWord, day, safeLink } from './format'
 
 const PLATFORM_LABEL: Record<string, string> = {
   meta: 'Meta',
@@ -16,6 +16,15 @@ const PLATFORM_LABEL: Record<string, string> = {
   tiktok: 'TikTok',
   linkedin: 'LinkedIn',
   other: 'Other',
+}
+
+const NOTE_MAX = 240 // mia-backend platform_watch.CLIENT_NOTE_MAX: Mia reads a note this long whole
+
+/** "24 Nov" from "2026-11-24". */
+function shortDay(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 /** Steps written before 20 Nov are one "PMs: ... Mia team: ..." line: split it so it still reads as steps. */
@@ -44,6 +53,10 @@ function ToolLink({ label, url }: { label: string; url: string }) {
   )
 }
 
+const SectionLabel = ({ children }: { children: string }) => (
+  <span className="label-xs uppercase tracking-wider text-tertiary">{children}</span>
+)
+
 interface NewsCardProps {
   card: Card
   busy: boolean
@@ -53,53 +66,88 @@ interface NewsCardProps {
 }
 
 /** One "What's changing" card, read top down: what changed, why it matters, what to do. The fine print (the full
- *  story, who it could touch, the Mia team's code notes, the source) waits under Details. */
+ *  story, who it could touch, the source, making it a rule) waits under Details. */
 export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: NewsCardProps) {
   const [open, setOpen] = useState(false)
   const [ruling, setRuling] = useState(false)
-  const [rule, setRule] = useState(card.rule_text ?? '')
+  const [rule, setRule] = useState('')
   const [noting, setNoting] = useState(false)
-  const [note, setNote] = useState(card.client_note ?? '')
+  const [note, setNote] = useState('')
   const link = safeLink(card.source_url)
   const when = day(card.published_at ?? card.found_at)
   const trend = card.kind === 'trend'
   const steps = card.steps?.length ? card.steps : legacySteps(card.action)
-  const pmSteps = steps.filter((s) => s.who === 'pm')
-  const teamSteps = steps.filter((s) => s.who === 'mia_team')
+  // A step Mia can do (follow a rule) is the agency's to press, whoever the step is for.
+  const pmSteps = steps.filter((s) => s.who === 'pm' || s.mia === 'rule')
+  const teamSteps = steps.filter((s) => s.who === 'mia_team' && s.mia !== 'rule')
+  const forTeamOnly = pmSteps.length === 0 && teamSteps.length > 0
   const clients = card.clients ?? []
-  const done = card.client_notes && !card.client_notes.taken_back ? card.client_notes : null
+  const notes = card.client_notes
+  const done = notes && !notes.taken_back ? notes : null
   const isRule = card.status === 'made_rule'
-  const ruleStep = steps.some((s) => s.mia === 'rule')
-  // With no "why" (an older card), the summary leads instead and Details only holds the rest.
   const lead = card.why ?? card.summary
   const story = card.why ? card.summary : null
 
+  // The box takes the card's words when it opens, not when the card first showed (steps can arrive later).
+  const openNote = () => {
+    setNote(card.client_note ?? '')
+    setNoting(true)
+  }
+  const openRule = () => {
+    setRule(card.rule_text ?? '')
+    setRuling(true)
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
   const miaAction = (s: NewsStep) => {
     if (s.mia === 'client_note' && card.client_note && clients.length > 0) {
       if (done) {
+        const until = shortDay(done.until)
+        const undo = (
+          <button
+            type="button"
+            className="text-tertiary underline hover:text-secondary"
+            disabled={notesBusy}
+            onClick={() => {
+              setNoting(false)
+              onClientNotes(true)
+            }}
+          >
+            Undo
+          </button>
+        )
+        // An add that stopped before any client: say so, and Undo clears it so it can be tried again.
+        // Still adding (the minute refresh can land mid-way): not a failure yet.
+        const recent = done.at ? Date.now() - new Date(done.at).getTime() < 2 * 60_000 : false
+        if (done.count === 0 && (notesBusy || recent)) {
+          return <span className="paragraph-sm text-tertiary">Adding…</span>
+        }
+        if (done.count === 0) {
+          return <span className="flex flex-wrap items-center gap-x-2 paragraph-sm text-utility-error-700">The note didn’t save for any client {undo}</span>
+        }
         return (
-          <span className="flex shrink-0 items-center gap-2 paragraph-sm text-utility-success-700">
-            Mia remembers this for {done.count} clients
-            <button
-              type="button"
-              className="text-tertiary underline hover:text-secondary"
-              disabled={notesBusy}
-              onClick={() => onClientNotes(true)}
-            >
-              Undo
-            </button>
+          <span className="flex flex-wrap items-center gap-x-2 paragraph-sm text-utility-success-700">
+            Mia remembers this for {clientsWord(done.count)}
+            {until ? ` until ${until}` : ''}
+            {undo}
           </span>
         )
       }
+      if (notes?.expired) {
+        return <span className="paragraph-sm text-tertiary">Mia’s note ended {shortDay(notes.until) ?? ''}</span>
+      }
+      if (card.note_until && card.note_until < today) {
+        return <span className="paragraph-sm text-tertiary">This ended {shortDay(card.note_until)}: nothing to remember now</span>
+      }
       return (
-        <Button size="sm" variant="primary" leftIcon={<Stars01 size={14} />} onClick={() => setNoting(true)} disabled={noting}>
-          Let Mia remember this
+        <Button size="sm" variant="primary" leftIcon={<Stars01 size={14} />} onClick={openNote} disabled={noting}>
+          Let Mia remember this for {clientsWord(clients.length)}
         </Button>
       )
     }
     if (s.mia === 'rule' && !isRule) {
       return (
-        <Button size="sm" variant="primary" leftIcon={<Stars01 size={14} />} onClick={() => setRuling(true)} disabled={ruling}>
+        <Button size="sm" variant="primary" leftIcon={<Stars01 size={14} />} onClick={openRule} disabled={ruling}>
           Let Mia follow this
         </Button>
       )
@@ -128,12 +176,18 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
     )
   }
 
+  const mainSteps = forTeamOnly ? teamSteps : pmSteps
+
   return (
     <li className="flex flex-col gap-4 rounded-xl border border-secondary bg-primary px-5 py-5">
       {/* What changed */}
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
-          {card.importance === 'high' && <span className="text-utility-warning-700">● Important</span>}
+          {forTeamOnly ? (
+            <span className="text-utility-brand-700">For the Mia team</span>
+          ) : (
+            card.importance === 'high' && <span className="text-utility-warning-700">● Important</span>
+          )}
           <span>{trend ? 'Our clients' : (PLATFORM_LABEL[card.platform ?? 'other'] ?? card.platform)}</span>
           {when && <span>· {when}</span>}
         </span>
@@ -142,10 +196,10 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
       </div>
 
       {/* What to do */}
-      {pmSteps.length > 0 && (
-        <div className="flex flex-col">
-          <span className="mb-1 label-xs uppercase tracking-wider text-tertiary">What to do</span>
-          <ol className="m-0 flex list-none flex-col p-0">{pmSteps.map(stepRow)}</ol>
+      {mainSteps.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <SectionLabel>{forTeamOnly ? 'What the Mia team does' : 'What to do'}</SectionLabel>
+          <ol className="m-0 flex list-none flex-col p-0">{mainSteps.map(stepRow)}</ol>
         </div>
       )}
 
@@ -154,30 +208,33 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
           className="flex flex-col gap-2 rounded-lg bg-secondary p-3"
           onSubmit={(e) => {
             e.preventDefault()
-            if (note.trim()) {
-              onClientNotes(false, note.trim())
-              setNoting(false)
-            }
+            // The box stays open until the save lands (it hides itself once the card says done), so a failed save
+            // keeps what was typed.
+            if (note.trim() && note.trim().length <= NOTE_MAX) onClientNotes(false, note.trim())
           }}
         >
           <label className="flex flex-col gap-1">
             <span className="paragraph-sm text-secondary">
-              Mia will keep this in mind for {clients.length} clients ({clients.slice(0, 3).join(', ')}
-              {clients.length > 3 ? '…' : ''}) when she talks about their results. It shows in their Notes, so keep it
-              plain.
+              Mia keeps this in mind for {clientsWord(clients.length)} ({clients.slice(0, 3).join(', ')}
+              {clients.length > 3 ? '…' : ''}) when she talks about their results
+              {card.note_until ? `, until ${shortDay(card.note_until)}` : ', for 90 days'}. It shows in their Notes,
+              so keep it plain.
             </span>
             <textarea
               autoFocus
               rows={3}
               value={note}
-              maxLength={600}
+              maxLength={NOTE_MAX}
               onChange={(e) => setNote(e.target.value)}
               className="w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 paragraph-sm text-primary"
             />
+            <span className="self-end paragraph-xs text-tertiary tabular-nums">
+              {note.length}/{NOTE_MAX}
+            </span>
           </label>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" size="sm" variant="primary" loading={notesBusy} disabled={!note.trim()}>
-              Add for {clients.length} clients
+              Add for {clientsWord(clients.length)}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setNoting(false)}>
               Cancel
@@ -224,66 +281,70 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
         <div className="flex flex-col gap-3 rounded-lg bg-secondary px-4 py-3">
           {story && (
             <div className="flex flex-col gap-0.5">
-              <span className="label-xs uppercase tracking-wider text-tertiary">What happened</span>
+              <SectionLabel>What happened</SectionLabel>
               <p className="m-0 paragraph-sm text-secondary">{story}</p>
             </div>
           )}
           {clients.length > 0 && (
             <div className="flex flex-col gap-0.5">
-              <span className="label-xs uppercase tracking-wider text-tertiary">
-                Could affect {clients.length} {clients.length === 1 ? 'client' : 'clients'}
-                {card.clients_basis ? ` (${card.clients_basis})` : ''}
-              </span>
+              <SectionLabel>{`Could affect ${clientsWord(clients.length)}${card.clients_basis ? ` ${card.clients_basis}` : ''}`}</SectionLabel>
               <p className="m-0 paragraph-sm text-secondary">{clients.join(', ')}</p>
             </div>
           )}
-          {teamSteps.length > 0 && (
+          {!forTeamOnly && teamSteps.length > 0 && (
             <div className="flex flex-col gap-0.5">
-              <span className="label-xs uppercase tracking-wider text-tertiary">For the Mia team (developers)</span>
-              <ul className="m-0 flex list-none flex-col p-0">{teamSteps.map(stepRow)}</ul>
+              <SectionLabel>For the Mia team (developers)</SectionLabel>
+              <ol className="m-0 flex list-none flex-col p-0">{teamSteps.map(stepRow)}</ol>
             </div>
           )}
-          {link && !trend && (
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-1 paragraph-sm text-secondary hover:text-primary"
-            >
-              Read it on {card.source_name ?? 'the source'}
-              <ArrowUpRight size={13} />
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {link && !trend && (
+              <a
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 paragraph-sm text-secondary hover:text-primary"
+              >
+                Read it on {card.source_name ?? 'the source'}
+                <ArrowUpRight size={13} />
+              </a>
+            )}
+            {!trend && !isRule && !ruling && !pmSteps.some((s) => s.mia === 'rule') && (
+              <button type="button" className="paragraph-sm text-secondary underline hover:text-primary" onClick={openRule}>
+                Make it a rule Mia follows
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Footer */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-secondary pt-4">
+      <div className="flex flex-wrap items-center gap-3 border-t border-secondary pt-4">
         <button
           type="button"
           aria-expanded={open}
           onClick={() => setOpen(!open)}
           className="mr-auto paragraph-sm text-tertiary hover:text-secondary"
         >
-          {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clients.length} clients` : ''}${teamSteps.length ? ' · Mia team' : ''}`}
+          {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clientsWord(clients.length)}` : ''}`}
         </button>
         {isRule ? (
           <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
         ) : (
           <>
+            {card.status !== 'ignored' && (
+              <button
+                type="button"
+                className="paragraph-sm text-tertiary hover:text-secondary disabled:opacity-50"
+                disabled={busy}
+                onClick={() => onDecide('ignore')}
+              >
+                Not relevant
+              </button>
+            )}
             {card.status !== 'kept' && (
               <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
-                {card.status === 'ignored' ? 'Keep after all' : 'Done, keep it'}
-              </Button>
-            )}
-            {card.status !== 'ignored' && (
-              <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('ignore')}>
-                Not relevant
-              </Button>
-            )}
-            {!trend && !ruleStep && !ruling && (
-              <Button size="sm" variant="secondary" disabled={busy} onClick={() => setRuling(true)}>
-                Make it a rule
+                {card.status === 'ignored' ? 'Keep after all' : 'Done'}
               </Button>
             )}
           </>

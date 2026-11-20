@@ -36,3 +36,6 @@ export function pct(change: number | null): string {
   if (n === 0) return '0%'
   return `${n > 0 ? '+' : '−'}${Math.abs(n)}%`
 }
+
+/** "1 client", "9 clients". */
+export const clientsWord = (n: number) => `${n} ${n === 1 ? 'client' : 'clients'}`

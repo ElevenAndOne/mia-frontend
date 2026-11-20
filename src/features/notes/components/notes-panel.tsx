@@ -37,7 +37,9 @@ const provenance = (n: MiaNote) => {
           ? 'From Claude'
           : n.created_by_kind === 'whatsapp'
             ? 'From WhatsApp'
-            : 'Set up by Mia'
+            : n.created_by_kind === 'platform'
+              ? 'Platform change, from your agency'
+              : 'Set up by Mia'
   const who = n.created_by && n.created_by.includes('@') ? n.created_by.split('@')[0] : null
   return [origin, who, fmtDate(n.created_at)].filter(Boolean).join(' · ')
 }
@@ -152,7 +154,7 @@ export const NotesPanel = ({
   const navigate = useNavigate()
   // Same hand-off the sidebar's Recent Chats uses: /home picks the conversation up from state.
   const openChat = (n: MiaNote) =>
-    n.source_conversation_id
+    n.source_conversation_id && n.created_by_kind !== 'platform'
       ? () => navigate('/home', { state: { loadConversationId: n.source_conversation_id } })
       : undefined
   const [tab, setTab] = useState<'active' | 'retired'>('active')

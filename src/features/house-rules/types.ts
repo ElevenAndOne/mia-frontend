@@ -75,7 +75,11 @@ export interface ClientNotesDone {
   count: number
   by: string | null
   at: string | null
+  /** The last day the notes stand (YYYY-MM-DD); they are taken out the morning after. */
+  until: string | null
   taken_back: boolean
+  /** Taken out because the end date passed, not by a person. */
+  expired: boolean
 }
 
 export interface NewsCard {
@@ -83,6 +87,8 @@ export interface NewsCard {
   steps: NewsStep[]
   /** What Mia would keep in each affected client's notes. */
   client_note: string | null
+  /** The last day that note applies, when the news gives one (YYYY-MM-DD). */
+  note_until: string | null
   /** Clients this could touch: those with the card's platform connected. */
   clients: string[]
   clients_basis: string | null

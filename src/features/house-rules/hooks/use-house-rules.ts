@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '../../../contexts/toast-context'
+import { clientsWord } from '../components/format'
 import {
   addClientNotes,
   checkPost,
@@ -187,7 +188,7 @@ export function useClientNotes(sessionId: string | null) {
         'success',
         v.takeBack
           ? 'Taken back. Mia no longer has that note for those clients.'
-          : `Done. Mia keeps this in mind for ${card.client_notes?.count ?? 0} clients (it’s in their Notes).`
+          : `Done. Mia keeps this in mind for ${clientsWord(card.client_notes?.count ?? 0)} (it’s in their Notes).`
       )
     },
     onError: (err) => showToast('error', err instanceof Error ? err.message : 'That didn’t save. Try again.'),
