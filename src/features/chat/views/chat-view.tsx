@@ -222,7 +222,7 @@ export const ChatView = ({
       : undefined
 
   function fmtDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
 
   // No page_visit event for /home. It is the app's landing route, so the ref guard only

@@ -110,6 +110,8 @@ export interface CampaignOption {
   status: string
   channels: string[] | null
   clickup_list_id: string | null
+  /** 'v2' for a campaign from the new Campaign builder */
+  builder?: string | null
 }
 
 export const listCampaignOptions = async (

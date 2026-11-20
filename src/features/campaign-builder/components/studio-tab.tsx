@@ -1,10 +1,12 @@
+import { JobId, JobNames } from './job-names'
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import { CopyButton } from './copy-button'
 import * as api from '../api'
-import type { LaunchJob, StudioChangeRequest, StudioIdea, StudioJob, StudioState } from '../types'
+import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState } from '../types'
 import { JobCard } from './launch-tab'
 import { Card, NeedsYou, channelLabel, day, num } from './parts'
 import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
@@ -22,6 +24,8 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     queryKey: key,
     queryFn: () => api.fetchStudio(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId && approved,
+    // the Drive folders are made in the background: look again every few seconds until they are (naming step 4)
+    refetchInterval: (query) => (query.state.data?.drive?.making ? 4000 : false),
   })
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -259,6 +263,9 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
             : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
         </p>
       ) : null}
+      {s.drive ? (
+        <DriveLine d={s.drive} retrying={busy === 'drive-retry'} onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))} />
+      ) : null}
       {s.ideas?.items.length || s.ideas?.set_aside ? (
         <Ideas
           ideas={s.ideas.items}
@@ -272,8 +279,11 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
         <Card className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-secondary">
             Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
-            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>… They go to Flex with each job and at the end of each
-            ad's name, so an ad traces back to its job.
+            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>…{' '}
+            {/* under the naming scheme (20 Nov) the ad's name ends with the Job ID, not the number */}
+            {s.jobs.some((j) => j.names)
+              ? 'They go to Flex with each job. Each job also has a Job ID, at the end of every name and link it carries.'
+              : "They go to Flex with each job and at the end of each ad's name, so an ad traces back to its job."}
             {s.job_code.locked ? ' The code is fixed now: Flex tasks and ads carry it.' : ''}
           </p>
           {!s.job_code.locked ? (
@@ -472,10 +482,13 @@ function Row({
       <td className="py-2 pr-2 min-w-0">
         <span className="text-primary">{j.name}</span>
         {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
+        <JobId id={j.job_id} />
         <span className="block paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
+        <JobNames names={j.names} />
+        <DeliveryLine dv={j.delivery} />
         {inFlex ? <Requests rs={j.change_requests ?? []} onWithdraw={onWithdraw} busy={busy} /> : null}
         {inFlex && j.clickup_not_linked ? (
           <span className="block label-xs text-utility-warning-700" title={j.clickup_not_linked}>
@@ -592,6 +605,97 @@ function Row({
         ) : null}
       </td>
     </tr>
+  )
+}
+
+// The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov): one line. Mia makes them after
+// approve and reads each job's _Delivery every 15 minutes (or on Check Flex now).
+function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean; onRetry: () => void }) {
+  const [showUnplaced, setShowUnplaced] = useState(false)
+  if (!d.shared_drive) {
+    return (
+      <p className="paragraph-xs text-tertiary">
+        Drive folders: add the client’s Shared Drive in{' '}
+        <Link to="/settings/workspace?tab=members" className="underline hover:text-primary">
+          Settings
+        </Link>{' '}
+        and Mia makes a folder for each job.
+      </p>
+    )
+  }
+  if (d.error) {
+    return (
+      <Card warn className="flex flex-wrap items-center justify-between gap-2">
+        <p className="paragraph-sm text-primary">Couldn’t make the Drive folders: {d.error}</p>
+        <Button size="sm" loading={retrying} onClick={onRetry}>
+          Try again
+        </Button>
+      </Card>
+    )
+  }
+  if (!d.root_url) return <p className="paragraph-xs text-tertiary">Making the Drive folders…</p>
+  const n = d.unplaced.length
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="paragraph-xs text-tertiary">
+        {d.making ? 'Making the Drive folders' : 'Drive folders'}
+        {d.test_folder ? ` (test, in ${d.test_folder})` : ''}
+        {d.making ? '… · ' : ' · '}
+        <a href={d.root_url} target="_blank" rel="noreferrer" className="underline hover:text-primary">
+          Open ↗
+        </a>
+        {n ? (
+          <>
+            {' · '}
+            <span className="text-utility-warning-700">
+              {n} file{n === 1 ? '' : 's'} in _Delivery Mia can’t place
+            </span>{' '}
+            <button type="button" className="underline hover:text-primary" onClick={() => setShowUnplaced((v) => !v)}>
+              {showUnplaced ? 'Hide' : 'See'}
+            </button>
+          </>
+        ) : null}
+      </p>
+      {n && showUnplaced ? (
+        <div className="paragraph-xs text-tertiary pl-3">
+          <ul className="list-disc pl-4">
+            {d.unplaced.map((f) => (
+              <li key={f.id} className="text-secondary [overflow-wrap:anywhere]">
+                {f.name}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">Put the job’s ID in the file’s name, or move it into its job’s folder, and Mia picks it up on the next check.</p>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// A job's Drive folder and what's in its _Delivery: "Drive: 4x5 2/3 · Open folder", or what it's waiting for.
+function DeliveryLine({ dv }: { dv?: StudioDelivery | null }) {
+  if (!dv) return null
+  const sizes = Object.entries(dv.need)
+  let text: string
+  let tone = 'text-tertiary'
+  if (dv.taken_at) {
+    text = 'Drive: files in, taken in'
+    tone = 'text-utility-success-700'
+  } else if (dv.waiting_for) {
+    text = `Drive: ${dv.waiting_for}`
+    tone = 'text-utility-warning-700'
+  } else if (sizes.length) {
+    text = `Drive: ${sizes.map(([r, need]) => `${r} ${Math.min(dv.have[r] ?? 0, need)}/${need}`).join(', ')}`
+  } else {
+    text = dv.files ? `Drive: ${dv.files} file${dv.files === 1 ? '' : 's'} in` : 'Drive: waiting for the files'
+  }
+  return (
+    <span className={`block label-xs ${tone}`}>
+      {text} ·{' '}
+      <a href={dv.folder_url} target="_blank" rel="noreferrer" className="underline hover:text-primary">
+        Open folder
+      </a>
+    </span>
   )
 }
 

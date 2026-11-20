@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
@@ -79,6 +80,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   if (!approved) return <Card className="paragraph-sm text-secondary">Results start once the plan is approved and the campaign is launched.</Card>
   if (q.isPending) return <p className="paragraph-sm text-tertiary">Loading…</p>
@@ -92,10 +94,18 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
           <p className="subheading-md text-primary">
             {!s.live ? 'Not live yet' : s.when === 'not_started' ? 'Live, starts ' + day(s.start_date) : s.when === 'ended' ? 'Ended' : `Day ${s.days_elapsed} of ${s.days_total}`}
           </p>
-          <p className="paragraph-xs text-tertiary">
-            {day(s.start_date)} – {day(s.end_date)}
-            {s.budget_total != null ? ` · ${money(s.budget_total, s.currency)}` : ''}
-          </p>
+          <span className="flex flex-wrap items-center gap-2">
+            <p className="paragraph-xs text-tertiary">
+              {day(s.start_date)} – {day(s.end_date)}
+              {s.budget_total != null ? ` · ${money(s.budget_total, s.currency)}` : ''}
+            </p>
+            {/* A client report for this campaign, with it already picked (19 Nov 2026). */}
+            {s.live && s.when !== 'not_started' ? (
+              <Button size="sm" variant="secondary" onClick={() => navigate(`/reports?new=1&campaign=${encodeURIComponent(campaignId)}`)}>
+                Make a client report
+              </Button>
+            ) : null}
+          </span>
         </div>
         {progress != null && s.when === 'running' ? (
           <div className="h-1.5 rounded-full bg-tertiary overflow-hidden" aria-hidden="true">

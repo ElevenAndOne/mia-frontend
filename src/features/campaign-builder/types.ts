@@ -288,6 +288,8 @@ export interface BuildState {
     end_date: string | null
     budget_total: number | null
     currency: string
+    // 'bpo': a BPO client's campaign, no KPIs or ad budget (19 Nov 2026)
+    client_type?: 'campaign' | 'bpo'
   }
   brief: {
     version: number
@@ -375,10 +377,21 @@ export interface BudgetChannel {
   why: string
 }
 
+// Every name a job carries under the agreed scheme (naming + tracking step 1, 20 Nov), and its link's tags as a query
+export interface JobNames {
+  campaign: string
+  ad_set: string
+  ad: string
+  files: string[]
+  tags: string
+}
+
 export interface StudioJob {
   asset_id: string
   name: string
   job_no?: string | null // Mia's job number, e.g. OAO-07 (step 7, 16 Nov)
+  job_id?: string | null // the Job ID on every name and link, e.g. MK7Q2X (20 Nov)
+  names?: JobNames | null
   phase: string
   channel: string
   format: string | null
@@ -419,6 +432,34 @@ export interface StudioJob {
   }
   // changes asked of the studio for a job in Flex (its lead accepts or declines; 17 Nov), the last five
   change_requests?: StudioChangeRequest[]
+  // its Drive folder and what's in its _Delivery as last read (naming step 4, 20 Nov); null until its folder is made
+  delivery?: StudioDelivery | null
+}
+
+// sizes are ratio tokens ("4x5", "9x16"); need/have/missing are counts per size
+export interface StudioDelivery {
+  folder_url: string
+  delivery_url: string | null
+  have: Record<string, number>
+  need: Record<string, number>
+  missing: Record<string, number>
+  complete: boolean
+  files: number
+  taken_at: string | null
+  waiting_for: string | null // complete, but held: e.g. no landing page in the brief
+  checked_at: string | null
+}
+
+// The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov)
+export interface StudioDrive {
+  shared_drive: boolean // the workspace has a Shared Drive set in Settings
+  root_url: string | null
+  made_at: string | null
+  error: string | null
+  checked_at: string | null
+  unplaced: { id: string; name: string; ratio: string | null }[] // files in _Delivery with no Job ID Mia can match
+  making: boolean
+  test_folder?: string | null // "_Mia test" when this campaign's folders go there instead of its year
 }
 
 export interface StudioChangeRequest {
@@ -465,6 +506,7 @@ export interface StudioState {
   // whether Flex has the whole plan as it is now (the outline, 17 Nov)
   outline?: { version: number | null; sent_version: number | null; sent_at: string | null; current: boolean; error: string | null }
   ideas?: { new: number; items: StudioIdea[]; set_aside: number; set_aside_items?: StudioIdea[] }
+  drive?: StudioDrive
 }
 
 // The campaigns board (plan §8.1).
@@ -496,6 +538,8 @@ export interface LaunchJob {
   action_id: string
   name: string
   job_no?: string | null
+  job_id?: string | null
+  names?: JobNames | null
   phase: string
   channel: string
   // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)

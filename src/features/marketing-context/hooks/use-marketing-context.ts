@@ -1,3 +1,4 @@
+import { sessionCache } from '../../../utils/session-cache'
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../../contexts/toast-context'
 import type { BrandGuideExtracted, MarketingContext, UploadResult } from '../types'
@@ -38,13 +39,25 @@ export interface UseMarketingContextReturn {
   handleUsePendingGuide: () => Promise<void>
 }
 
+/** The last brand context seen per workspace: the Brand tab shows it at once and refreshes behind it
+ *  (19 Nov 2026: it reloaded with a spinner on every visit). */
+const CONTEXT_CACHE = sessionCache<MarketingContext>('brand-context') // survives a refresh in this tab
+
 export function useMarketingContext(
   sessionId: string | null,
   tenantId?: string | null
 ): UseMarketingContextReturn {
   const { showToast } = useToast()
-  const [context, setContext] = useState<MarketingContext | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = tenantId ?? 'active'
+  const [context, setContextState] = useState<MarketingContext | null>(() => CONTEXT_CACHE.get(cacheKey) ?? null)
+  const setContext = useCallback(
+    (data: MarketingContext | null) => {
+      if (data) CONTEXT_CACHE.set(cacheKey, data)
+      setContextState(data)
+    },
+    [cacheKey]
+  )
+  const [loading, setLoading] = useState(() => !CONTEXT_CACHE.has(cacheKey))
   const [uploadStep, setUploadStep] = useState<UploadStep>('idle')
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [editedFields, setEditedFields] = useState<Partial<BrandGuideExtracted>>({})
@@ -56,7 +69,7 @@ export function useMarketingContext(
 
   const load = useCallback(async () => {
     if (!sessionId) return
-    setLoading(true)
+    setLoading(!CONTEXT_CACHE.has(cacheKey))
     try {
       const data = await fetchMarketingContext(sessionId, tenantId)
       setContext(data)
@@ -65,7 +78,7 @@ export function useMarketingContext(
     } finally {
       setLoading(false)
     }
-  }, [sessionId, tenantId, showToast])
+  }, [sessionId, tenantId, showToast, cacheKey, setContext])
 
   useEffect(() => {
     load()

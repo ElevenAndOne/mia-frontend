@@ -1,3 +1,4 @@
+import { sessionCache } from '../../../utils/session-cache'
 import { Suspense, lazy, useRef, useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Image01 } from '../../../components/icon/image-01'
@@ -9,36 +10,25 @@ import { useToast } from '../../../contexts/toast-context'
 // Each tab is its own chunk, fetched the first time it is opened. The Workspace tab (the one
 // Settings opens on) therefore renders without waiting for the brand guide editor, brand kit,
 // campaign guides, notes, skill learning or Mia style code.
-const CampaignGuidesPage = lazy(() =>
-  import('../../campaign-guides/views/campaign-guides-page').then((m) => ({
-    default: m.CampaignGuidesPage,
-  }))
-)
-const MarketingContextPage = lazy(() =>
-  import('../../marketing-context/views/marketing-context-page').then((m) => ({
-    default: m.MarketingContextPage,
-  }))
-)
-const BrandFactsCard = lazy(() => import('./brand-facts-card').then((m) => ({ default: m.BrandFactsCard })))
-const BrandKitTab = lazy(() => import('./brand-kit-tab').then((m) => ({ default: m.BrandKitTab })))
+const AgencyBrandTab = lazy(() => import('./agency-brand-tab').then((m) => ({ default: m.AgencyBrandTab })))
 const SkillLearningPage = lazy(() =>
   import('./skill-learning-page').then((m) => ({ default: m.SkillLearningPage }))
-)
-const NotesPanel = lazy(() =>
-  import('../../notes/components/notes-panel').then((m) => ({ default: m.NotesPanel }))
 )
 /**
  * Last-seen alert settings per workspace. Without this the WhatsApp switch renders "Off"
  * for a moment on every visit — including for workspaces where it is On — because the
  * fetch starts from null. A wrong answer shown confidently is worse than a spinner.
  */
-const ALERTS_CACHE = new Map<string, WorkspaceAlertSettings>()
+const ALERTS_CACHE = sessionCache<WorkspaceAlertSettings>('alerts') // survives a refresh in this tab
 
 const MiaStyleTab = lazy(() => import('./mia-style-tab').then((m) => ({ default: m.MiaStyleTab })))
 
+// A placeholder in the shape of a settings tab, not a spinner (19 Nov 2026).
 const TabFallback = () => (
-  <div className="flex items-center justify-center py-12">
-    <Spinner size="md" variant="dark" />
+  <div className="flex flex-col gap-3 py-2" aria-busy="true">
+    <Skeleton className="h-5 w-40 rounded" />
+    <Skeleton className="h-28 w-full rounded-xl" />
+    <Skeleton className="h-16 w-full rounded-xl" />
   </div>
 )
 import {
@@ -81,6 +71,10 @@ import { Moon01 } from '../../../components/icon/moon-01'
 import type { WorkspacePersonRow } from '../utils/workspace-settings'
 import type { Workspace } from '../types'
 import { useExperience } from '../hooks/use-experience'
+import { OldCampaignsTab } from './old-campaigns-tab'
+import { Skeleton } from '../../../components/skeleton'
+import { AgencyMiaTab } from './agency-mia-tab'
+import { AgencyWorkspaceTab } from './agency-workspace-tab'
 
 type SettingsTab =
   | 'members'
@@ -92,6 +86,7 @@ type SettingsTab =
   | 'whatsapp'
   | 'skills'
   | 'mia'
+  | 'oldcampaigns'
 
 interface WorkspaceSettingsDetailProps {
   canManage: boolean
@@ -190,15 +185,21 @@ export const WorkspaceSettingsDetail = ({
   // Help sits here rather than as its own row in the menu. Brand, Workspace settings, Help
   // and the theme switch were four separate doors to one idea; Settings is the door and
   // these are the rooms.
+  // Agency clean-up (19 Nov 2026): Campaign Guides removed (a guide is attached per campaign in
+  // the builder), Rules folded into the Mia tab, the old Campaigns pages moved here as
+  // "Old campaigns". Basic is unchanged.
+  // 20 Nov 2026 (Josh): old campaigns are listed once, under the builder board; the
+  // Settings tab is gone (its component stays). ?tab=oldcampaigns lands on Workspace.
+  const agencyTail: SettingsTab[] = ['help']
   const visibleTabs: SettingsTab[] = canManage
     ? isBasic
       ? ['brand', 'members', 'help']
-      : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'skills', 'whatsapp', 'mia', 'help']
+      : ['members', 'brand', 'mia', ...agencyTail]
     : // Non-managers get the Workspace/Members tab too (30 Sep 2026): it is where Leave, their
       // own WhatsApp number and the theme live, and without it they could reach none of them.
       isBasic
       ? ['brand', 'members', 'help']
-      : ['members', 'brand', 'brandkit', 'campaigns', 'notes', 'mia', 'help']
+      : ['members', 'brand', 'mia', ...agencyTail]
   // The tab lives in the URL (?tab=brand) so a refresh or a shared link lands on the same tab,
   // and the breadcrumb can name it.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -214,7 +215,17 @@ export const WorkspaceSettingsDetail = ({
       'skills',
       'mia',
       'help',
+      'oldcampaigns',
     ]
+    // Agency: old links land somewhere real. ?tab=notes (Rules) is inside Mia now; Campaign
+    // Guides is gone; a tab this person can't see opens Members.
+    if (!isBasic) {
+      if (t === 'notes') return 'mia'
+      if (t === 'brandkit') return 'brand' // Brand Kit is inside Brand since 19 Nov
+      // WhatsApp Alerts moved into Mia, Skill Learning off the tabs (19 Nov; its code stays)
+      if (t === 'whatsapp' || t === 'skills') return 'mia'
+      return t && visibleTabs.includes(t) ? t : 'members'
+    }
     // Basic lands only on a tab it can see: ?tab=campaigns used to mount the campaign
     // guides for a Basic owner, which the API now refuses (30 Sep 2026).
     const wanted = t && ok.includes(t) && (!isBasic || visibleTabs.includes(t)) ? t : null
@@ -246,8 +257,8 @@ export const WorkspaceSettingsDetail = ({
   // where you read it, and the Help tab came out as "WhatsApp Alerts" in the bar. A Record
   // means a tab added to the union without a label fails to compile instead of guessing.
   const TAB_LABELS: Record<SettingsTab, string> = {
-    members: isBasic ? 'Workspace' : 'Members',
-    brand: isBasic ? 'Brand' : 'Brand Guide',
+    members: 'Workspace',
+    brand: 'Brand',
     brandkit: 'Brand Kit',
     campaigns: 'Campaign Guides',
     notes: 'Rules',
@@ -255,6 +266,7 @@ export const WorkspaceSettingsDetail = ({
     whatsapp: 'WhatsApp Alerts',
     mia: 'Mia',
     help: 'Help',
+    oldcampaigns: 'Old campaigns',
   }
   const tabLabel = (tab: SettingsTab): string => TAB_LABELS[tab]
   const selectTab = (tab: SettingsTab) => {
@@ -313,8 +325,10 @@ export const WorkspaceSettingsDetail = ({
     setSavingFramework(true)
     try {
       await updateWorkspaceFramework(sessionId, workspace.tenant_id, next)
+      showToast('success', 'Framework saved', 2500)
     } catch {
       setFramework(prev) // revert on failure
+      showToast('error', "Couldn't change the framework")
     } finally {
       setSavingFramework(false)
     }
@@ -330,6 +344,25 @@ export const WorkspaceSettingsDetail = ({
       setEditingWebsite(false)
     } catch (e) {
       setWebsiteError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSavingWebsite(false)
+    }
+  }
+
+  // The agency Workspace tab passes the address itself (19 Nov 2026). True when saved.
+  const saveWebsiteUrl = async (url: string): Promise<boolean> => {
+    if (!sessionId || savingWebsite) return false
+    setSavingWebsite(true)
+    setWebsiteError(null)
+    try {
+      await updateWorkspaceWebsiteUrl(sessionId, workspace.tenant_id, url)
+      setWebsiteUrl(url)
+      setWebsiteUrlInput(url)
+      showToast('success', 'Website saved', 2500)
+      return true
+    } catch (e) {
+      setWebsiteError(e instanceof Error ? e.message : 'Failed to save')
+      return false
     } finally {
       setSavingWebsite(false)
     }
@@ -377,7 +410,9 @@ export const WorkspaceSettingsDetail = ({
   const alertsFetchedFor = useRef<string | null>(null)
   useEffect(() => {
     // Basic shows WhatsApp on the Workspace tab; Team and Agency have their own tab.
-    const wantsAlerts = activeTab === 'whatsapp' || (activeTab === 'members' && isBasic)
+    // Agency: alerts live in the Mia tab since 19 Nov.
+    const wantsAlerts =
+      activeTab === 'whatsapp' || (activeTab === 'members' && isBasic) || (activeTab === 'mia' && !isBasic)
     if (!wantsAlerts || !sessionId) return
     if (alertsFetchedFor.current === workspace.tenant_id) return
     alertsFetchedFor.current = workspace.tenant_id
@@ -411,8 +446,10 @@ export const WorkspaceSettingsDetail = ({
         whatsapp_number: normalized || undefined,
         subscribed: mySubscribed,
         all_workspaces: saveToAll,
+        tenant_id: workspace.tenant_id,
       })
       setSubscriptionSaved(true)
+      showToast('success', 'Alerts saved', 2500)
       setTimeout(() => setSubscriptionSaved(false), 3000)
       loadAlertSettings()
     } catch {
@@ -426,7 +463,7 @@ export const WorkspaceSettingsDetail = ({
     if (!sessionId || removingSubscription) return
     setRemovingSubscription(true)
     try {
-      await updateMySubscription(sessionId, { whatsapp_number: undefined, subscribed: false })
+      await updateMySubscription(sessionId, { whatsapp_number: undefined, subscribed: false, tenant_id: workspace.tenant_id })
       setMyWaNumber('')
       setMySubscribed(false)
       loadAlertSettings()
@@ -525,7 +562,7 @@ export const WorkspaceSettingsDetail = ({
 
       {/* Staff on WhatsApp (Oct 2026): the people with no login who send Mia photos.
           Owner/admin only, and only where the feature is on for the workspace. */}
-      {canManage && staffOn && sessionId && (
+      {isBasic && canManage && staffOn && sessionId && (
         <div className="mt-4">
           <StaffCard sessionId={sessionId} tenantId={workspace.tenant_id} />
         </div>
@@ -544,27 +581,36 @@ export const WorkspaceSettingsDetail = ({
   return (
     <div className="w-full h-dvh bg-primary flex flex-col overflow-hidden">
       <TopBar
-        title={isBasic ? 'Workspace settings' : 'Workspace Settings'}
+        title={isBasic ? 'Workspace settings' : 'Settings'}
         onBack={onBack}
         className="border-b border-tertiary"
-        breadcrumbs={[
-          { label: 'Home', to: '/home' },
-          {
-            label: isBasic ? 'Workspace settings' : 'Workspace Settings',
-            to: '/settings/workspace',
-          },
-          { label: tabLabel(activeTab) },
-        ]}
+        breadcrumbs={
+          isBasic
+            ? [
+                { label: 'Home', to: '/home' },
+                { label: 'Workspace settings', to: '/settings/workspace' },
+                { label: tabLabel(activeTab) },
+              ]
+            : // Settings are always the open client workspace's (Josh, 19 Nov): no list step.
+              [
+                { label: 'Home', to: '/home' },
+                { label: 'Settings', to: '/settings/workspace' },
+                { label: tabLabel(activeTab) },
+              ]
+        }
       />
 
       {/* Tab strip */}
-      <div className="flex border-b border-tertiary px-4 overflow-x-auto">
+      {/* Fits a phone without scrolling (fresh-eyes pass, 20 Nov 2026: "Help" was cut to "H").
+          overflow-y-hidden: sideways scroll made the tabs' 1px underline overhang show a second,
+          up-down scrollbar at the right edge (click-through 20 Nov). */}
+      <div className="flex border-b border-tertiary px-2 sm:px-4 overflow-x-auto overflow-y-hidden">
         {visibleTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => selectTab(tab)}
             className={[
-              'px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              'px-3 sm:px-4 py-3 paragraph-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
               activeTab === tab
                 ? 'border-brand-solid text-brand-solid'
                 : 'border-transparent text-secondary hover:text-primary',
@@ -584,15 +630,44 @@ export const WorkspaceSettingsDetail = ({
             to add their number: the card lived only inside the owner/admin-only sections for
             every tier. Owners/admins already have the fuller card further down; this is only
             for everyone else. */}
-        {!canManage && activeTab === 'members' && (
+        {/* Basic only (19 Nov): sending Mia photos on WhatsApp is not an agency feature. */}
+        {isBasic && !canManage && activeTab === 'members' && (
           <div className="mb-4 bg-secondary rounded-xl border border-tertiary">
             <WhatsAppNumberCard sessionId={sessionId} mode={isBasic ? 'full' : 'confirm'} />
           </div>
         )}
 
-        {/* WhatsApp Alerts tab */}
+        {/* Mia tab, agency (19 Nov: Rules, reply style and WhatsApp alerts in one, clean). */}
+        {visited.has('mia') && !isBasic && (
+          <div className={activeTab === 'mia' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
+            <AgencyMiaTab
+              sessionId={sessionId}
+              tenantId={workspace.tenant_id}
+              canManage={canManage}
+              alerts={alertSettings}
+              alertsLoading={alertSettingsLoading}
+              alertsError={alertSettingsError}
+              myNumber={myWaNumber}
+              onMyNumberChange={setMyWaNumber}
+              mySubscribed={mySubscribed}
+              onMySubscribedChange={setMySubscribed}
+              onSaveMine={() => void handleSaveSubscription()}
+              savingMine={savingSubscription}
+              savedMine={subscriptionSaved}
+              onToggleWorkspace={(on) => void handleToggleWorkspaceAlerts(on)}
+              togglingWorkspace={togglingWorkspace}
+              onSendTest={() => void handleSendTest()}
+              sendingTest={sendingTest}
+              testSentTo={testSentTo}
+            />
+          </div>
+        )}
+
+        {/* Campaign alerts. Agency: below Rules and reply style in the Mia tab (19 Nov 2026),
+            for every member (their own switch); the workspace switch and the member list for
+            owners and admins. Kept as the WhatsApp Alerts tab's body for any other tier. */}
         {visited.has('whatsapp') && (
-          <div className={activeTab === 'whatsapp' ? undefined : 'hidden'}>
+          <div className={activeTab === 'whatsapp' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
             <div className="space-y-6">
               {alertSettingsError && (
                 <div className="p-3 bg-error-primary border border-error-subtle rounded-lg">
@@ -727,9 +802,12 @@ export const WorkspaceSettingsDetail = ({
                       controls above on purpose: alerts are outbound and have never needed
                       proof, so confirming is an extra step on a number already saved,
                       never a gate in front of receiving alerts. */}
-                  <div className="p-4 bg-secondary rounded-xl border border-tertiary">
-                    <WhatsAppNumberCard sessionId={sessionId} mode="confirm" />
-                  </div>
+                  {/* Basic only on agency's settings (19 Nov): sending Mia photos is a Basic thing. */}
+                  {isBasic && (
+                    <div className="p-4 bg-secondary rounded-xl border border-tertiary">
+                      <WhatsAppNumberCard sessionId={sessionId} mode="confirm" />
+                    </div>
+                  )}
 
                   {/* The loop's two workspace-level controls (docs2/CONTINUOUS_CREATIVE_LOOP_ANALYSIS.md
                       steps 4 and 5): how often this workspace posts, and a client folder Mia
@@ -782,7 +860,7 @@ export const WorkspaceSettingsDetail = ({
 
         {/* Brand Guide tab */}
         {visited.has('brand') && (
-          <div className={activeTab === 'brand' ? undefined : 'hidden'}>
+          <div className={activeTab === 'brand' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
             <Suspense fallback={<TabFallback />}>
               {isBasic ? (
                 /* Basic Brand (Settings clean-up, 30 Oct 2026): their look first, where Mia
@@ -802,7 +880,9 @@ export const WorkspaceSettingsDetail = ({
                   onLookChanged={() => void refreshWorkspaces()}
                 />
               ) : (
-                <MarketingContextPage
+                /* Agency (19 Nov 2026): one Brand page, the guide as pages, then the look,
+                   then what Mia knows in closed groups. Replaces Brand Guide + Brand Kit. */
+                <AgencyBrandTab
                   sessionId={sessionId}
                   tenantId={workspace.tenant_id}
                   canManage={canManage}
@@ -812,85 +892,71 @@ export const WorkspaceSettingsDetail = ({
           </div>
         )}
 
-        {/* Brand Kit tab */}
-        {visited.has('brandkit') && (
-          <div className={activeTab === 'brandkit' ? undefined : 'hidden'}>
-            <Suspense fallback={<TabFallback />}>
-              <BrandKitTab
-                sessionId={sessionId}
-                tenantId={workspace.tenant_id}
-                canManage={canManage}
-              />
-              <div className="settings-card rounded-lg border border-tertiary bg-secondary p-3 mt-4">
-                <p className="subheading-md text-primary">Facts Mia can state</p>
-                <BrandFactsCard sessionId={sessionId} tenantId={workspace.tenant_id} canManage={canManage} />
-              </div>
-            </Suspense>
-          </div>
-        )}
 
-        {/* Campaign Guides tab */}
-        {visited.has('campaigns') && (
-          <div className={activeTab === 'campaigns' ? undefined : 'hidden'}>
-            <Suspense fallback={<TabFallback />}>
-              <CampaignGuidesPage
-                sessionId={sessionId}
-                tenantId={workspace.tenant_id}
-                canManage={canManage}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {/* Notes — standing decisions & constraints Mia applies in every conversation */}
-        {visited.has('notes') && (
-          <div className={activeTab === 'notes' ? undefined : 'hidden'}>
-            <Suspense fallback={<TabFallback />}>
-              <NotesPanel
-                sessionId={sessionId}
-                tenantId={workspace.tenant_id}
-                scope="workspace"
-                title="Rules"
-                description="Rules that hold for every campaign and post in this workspace — compliance lines, banned words, house style, what we’ve learnt about the audience. Mia reads these on every turn and follows them without being reminded. Campaign-specific rules live on each campaign’s Setup → Rules."
-                placeholder="Add a rule for every campaign… e.g. “Every caption ends with the 18+ / enjoy responsibly line.”"
-              />
-            </Suspense>
+        {/* Old campaigns: made before the new builder, off the sidebar since 19 Nov. */}
+        {visited.has('oldcampaigns') && (
+          <div className={activeTab === 'oldcampaigns' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
+            <OldCampaignsTab tenantId={workspace.tenant_id} />
           </div>
         )}
 
         {/* Skill Learning tab */}
         {visited.has('skills') && (
-          <div className={activeTab === 'skills' ? undefined : 'hidden'}>
+          <div className={activeTab === 'skills' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
             <Suspense fallback={<TabFallback />}>
               <SkillLearningPage sessionId={sessionId} tenantId={workspace.tenant_id} />
             </Suspense>
           </div>
         )}
 
-        {/* Mia interaction style tab */}
-        {visited.has('mia') && (
-          <div className={activeTab === 'mia' ? undefined : 'hidden'}>
-            <Suspense fallback={<TabFallback />}>
-              <MiaStyleTab
-                sessionId={sessionId}
-                tenantId={workspace.tenant_id}
-                canManage={canManage}
-              />
-            </Suspense>
-          </div>
-        )}
+
 
         {/* Help tab. Same body as the /help route — the mobile menu used to carry Help as
             its own row, which made Settings one of four doors instead of the door. */}
         {visited.has('help') && (
-          <div className={activeTab === 'help' ? undefined : 'hidden'}>
+          <div className={activeTab === 'help' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
             <HelpContent />
           </div>
         )}
 
-        {/* Members tab */}
-        {visited.has('members') && (
-          <div className={activeTab === 'members' ? undefined : 'hidden'}>
+        {/* Workspace tab, agency (19 Nov 2026): details, then people in a closed list. */}
+        {visited.has('members') && !isBasic && (
+          <div className={activeTab === 'members' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
+            <AgencyWorkspaceTab
+              workspace={workspace}
+              canManage={canManage}
+              isOwner={isOwner}
+              error={error}
+              loading={loading}
+              people={people}
+              onOpenCreateInviteModal={onOpenCreateInviteModal}
+              onUpdateRole={onUpdateRole}
+              onTransferOwnership={onTransferOwnership}
+              onRemoveMember={onRemoveMember}
+              onCopyInvite={onCopyInvite}
+              onRevokeInvite={onRevokeInvite}
+              onOpenRenameModal={onOpenRenameModal}
+              onOpenDeleteModal={onOpenDeleteModal}
+              onLeaveWorkspace={onLeaveWorkspace}
+              websiteUrl={websiteUrl}
+              onSaveWebsite={saveWebsiteUrl}
+              savingWebsite={savingWebsite}
+              websiteError={websiteError}
+              framework={framework}
+              onChangeFramework={(fw) => void handleChangeFramework(fw)}
+              savingFramework={savingFramework}
+              logoUrl={logoUrl}
+              uploadingLogo={uploadingLogo}
+              logoError={logoError}
+              onUploadLogo={(f) => void handleLogoUpload(f)}
+              onRemoveLogo={() => void handleLogoRemove()}
+            />
+          </div>
+        )}
+
+        {/* Members tab (Basic) */}
+        {visited.has('members') && isBasic && (
+          <div className={activeTab === 'members' ? (isBasic ? undefined : 'mia-fade-in') : 'hidden'}>
             <>
               {error && (
                 <div className="mb-4 p-3 bg-error-primary border border-error-subtle rounded-lg">
@@ -1263,6 +1329,7 @@ export const WorkspaceSettingsDetail = ({
         createdInviteEmail={createdInviteEmail}
         copySuccess={copySuccess}
         isCreateInviteDisabled={isCreateInviteDisabled}
+        // Only the owner may invite admins (Josh, 19 Nov).
         canInviteAdmins={isOwner}
         isBasic={isBasic}
         onInviteTypeChange={onInviteTypeChange}
@@ -1271,7 +1338,8 @@ export const WorkspaceSettingsDetail = ({
         onCreateInvite={onCreateInvite}
         onCopyInvite={onCopyInvite}
         onComplete={onCompleteInviteFlow}
-        whatsapp={canManage && staffOn && sessionId ? { sessionId, tenantId: workspace.tenant_id } : null}
+        // Inviting by WhatsApp number is a Basic thing (19 Nov): agency invites by email or link.
+        whatsapp={isBasic && canManage && staffOn && sessionId ? { sessionId, tenantId: workspace.tenant_id } : null}
       />
 
       <RenameWorkspaceModal

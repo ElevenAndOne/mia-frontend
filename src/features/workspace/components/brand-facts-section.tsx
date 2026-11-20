@@ -100,7 +100,7 @@ export const BrandFactsSection = ({ sessionId, tenantId }: Props) => {
       <p className="paragraph-xs text-quaternary">
         To update this, use Read again under Workspace.
         {facts.read_at
-          ? ` Last read ${new Date(facts.read_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}.`
+          ? ` Last read ${new Date(facts.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`
           : ''}
       </p>
     </div>

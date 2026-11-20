@@ -8,17 +8,24 @@ import { Card, Chip } from './parts'
 // Rules for this client (A3): what holds for every campaign of this client, followed in every plan and
 // every word. A PM adds one here or just tells Mia in the chat ("never say stockist for them"); rules
 // Mia learned from corrections show too, read only (they're managed where they were learned).
+// Notes for this campaign only (from Mia's chat, Notes or Claude) show first: the plan and words follow them too.
 
-export function ClientRules({ client, readOnly }: { client: string; readOnly: boolean }) {
+export function ClientRules({ client, campaignId, readOnly }: { client: string; campaignId?: string; readOnly: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const qc = useQueryClient()
-  const key = ['client-rules', tenantId]
-  const q = useQuery({ queryKey: key, queryFn: () => api.fetchRules(sessionId!, tenantId!), enabled: !!sessionId && !!tenantId })
+  const key = ['client-rules', tenantId, campaignId ?? null]
+  const q = useQuery({
+    queryKey: key,
+    queryFn: () => api.fetchRules(sessionId!, tenantId!, campaignId),
+    enabled: !!sessionId && !!tenantId,
+  })
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const rules = q.data?.rules ?? []
+  const all = q.data?.rules ?? []
+  const own = all.filter((r) => r.scope === 'campaign')
+  const rules = all.filter((r) => r.scope !== 'campaign')
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true)
@@ -33,34 +40,46 @@ export function ClientRules({ client, readOnly }: { client: string; readOnly: bo
     }
   }
 
+  const item = (r: api.ClientRule) => (
+    <li key={r.rule_id} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary [overflow-wrap:anywhere]">
+      <span className="min-w-0 flex-1">
+        {r.text}{' '}
+        {r.origin === 'learned' ? <Chip tone="mia">learned from corrections</Chip> : null}
+        {r.from === 'claude' ? <Chip>From Claude</Chip> : null}
+      </span>
+      {r.origin === 'person' && !readOnly ? (
+        <button
+          type="button"
+          className="paragraph-xs text-tertiary hover:text-primary disabled:opacity-50"
+          disabled={busy}
+          onClick={() => run(() => api.removeRule(sessionId!, tenantId!, r.rule_id))}
+        >
+          Stop following
+        </button>
+      ) : null}
+    </li>
+  )
+
   return (
     <Card className="flex flex-col gap-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="subheading-sm text-primary">Rules for {client}</p>
-        <p className="paragraph-xs text-tertiary">Followed in every plan and every word, for every campaign of this client.</p>
+        <p className="paragraph-xs text-tertiary">
+          {own.length
+            ? 'Followed in every plan and every word Mia writes for this campaign from now on.'
+            : 'Followed in every plan and every word, for every campaign of this client.'}
+        </p>
       </div>
+      {own.length ? (
+        <div className="flex flex-col gap-1.5">
+          <p className="label-xs uppercase tracking-wider text-tertiary">For this campaign only</p>
+          <ul className="flex flex-col gap-1.5">{own.map(item)}</ul>
+          {rules.length ? <p className="label-xs uppercase tracking-wider text-tertiary pt-1">For every campaign</p> : null}
+        </div>
+      ) : null}
       {rules.length ? (
-        <ul className="flex flex-col gap-1.5">
-          {rules.map((r) => (
-            <li key={r.rule_id} className="flex flex-wrap items-start justify-between gap-2 paragraph-sm text-primary [overflow-wrap:anywhere]">
-              <span className="min-w-0 flex-1">
-                {r.text}{' '}
-                {r.origin === 'learned' ? <Chip tone="mia">learned from corrections</Chip> : null}
-              </span>
-              {r.origin === 'person' && !readOnly ? (
-                <button
-                  type="button"
-                  className="paragraph-xs text-tertiary hover:text-primary disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => run(() => api.removeRule(sessionId!, tenantId!, r.rule_id))}
-                >
-                  Stop following
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      ) : q.isPending ? null : (
+        <ul className="flex flex-col gap-1.5">{rules.map(item)}</ul>
+      ) : q.isPending || own.length ? null : (
         <p className="paragraph-sm text-secondary">
           None yet. When you correct Mia in a way that holds for every campaign, she saves it here, or add one yourself.
         </p>

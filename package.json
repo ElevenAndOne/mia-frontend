@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@sentry/react": "^10.38.0",
+    "@tanstack/query-sync-storage-persister": "^5.90.20",
     "@tanstack/react-query": "^5.90.20",
+    "@tanstack/react-query-persist-client": "^5.90.20",
     "@tiptap/pm": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",

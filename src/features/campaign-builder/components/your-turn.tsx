@@ -150,6 +150,17 @@ export interface TurnItem {
   actions?: ReactNode
   more?: ReactNode // opens under the item (the list of jobs to fix, the questions)
   openByDefault?: boolean
+  why?: ReactNode // the explanation, behind "Why?" (20 Nov: a task is a short title and a button)
+}
+
+// "Why?": the reason behind a task or a fact, one tap away instead of a paragraph on screen (20 Nov, less text).
+export function Why({ children, label = 'Why?' }: { children: ReactNode; label?: string }) {
+  return (
+    <details className="paragraph-xs text-tertiary">
+      <summary className="inline cursor-pointer select-none underline hover:text-secondary">{label}</summary>
+      <div className="mt-1 text-secondary [overflow-wrap:anywhere]">{children}</div>
+    </details>
+  )
 }
 
 export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactNode }) {
@@ -160,6 +171,8 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   const current = open.find((i) => i.key === chosen) ?? open[0]
   // The item being done shows its list (the fixes, the questions) unless the PM hides it
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
+  // what comes after is a count; the list opens on tap (20 Nov: "2 more after this", not a second list)
+  const [showRest, setShowRest] = useState(false)
   const isOpen = (k: string) => !hidden.has(k)
   const toggle = (k: string) => setHidden((h) => { const n = new Set(h); if (n.has(k)) n.delete(k); else n.add(k); return n })
   if (!current) {
@@ -181,9 +194,7 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
         {/* what to do, not how the list works (local test 27 Oct) */}
         <h2 className="min-w-0 subheading-md text-primary">Your turn</h2>
-        <span className="paragraph-xs text-tertiary tabular-nums">
-          {open.length === 1 ? '1 to do' : `${n} of ${open.length} to do`}
-        </span>
+        {/* the count lives once, in "N more after this" below (20 Nov) */}
       </div>
       <div className="bg-brand-primary px-4 py-3">
         <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
@@ -193,6 +204,7 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
           <div className="min-w-0">
             <p className="paragraph-sm font-medium text-primary">{current.title}</p>
             {current.detail ? <div className="paragraph-xs text-secondary">{current.detail}</div> : null}
+            {current.why && !current.more ? <Why>{current.why}</Why> : null}
           </div>
           {current.actions || current.more ? (
             <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
@@ -206,10 +218,15 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
           ) : null}
         </div>
         {current.more && isOpen(current.key) ? <div className="mt-3 @2xl:pl-10">{current.more}</div> : null}
+        {/* with a list under it (the question), "Why?" comes after it, not between the title and the question */}
+        {current.why && current.more ? <div className="mt-1 @2xl:pl-10"><Why>{current.why}</Why></div> : null}
       </div>
       {rest.length ? (
         <div className="border-t border-secondary px-4 py-2">
-          <p className="paragraph-xs text-tertiary">Then:</p>
+          <button type="button" aria-expanded={showRest} onClick={() => setShowRest((v) => !v)} className="paragraph-xs text-tertiary hover:text-secondary">
+            {rest.length} more after this · <span className="underline">{showRest ? 'Hide' : 'See'}</span>
+          </button>
+          {showRest ? (
           <ul className="flex flex-col">
             {rest.map((it) => (
               <li key={it.key}>
@@ -227,6 +244,7 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
               </li>
             ))}
           </ul>
+          ) : null}
         </div>
       ) : null}
       {footer ? <div className="border-t border-secondary px-4 py-3">{footer}</div> : null}

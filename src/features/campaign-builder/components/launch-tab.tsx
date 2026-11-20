@@ -1,3 +1,4 @@
+import { JobId, JobNames } from './job-names'
 import { useState } from 'react'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
@@ -168,6 +169,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
 
   const flexBody = (
     <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
+          <JobNames names={j.names} />
 
           {j.artwork.length ? (
             <div className="flex flex-col gap-1">
@@ -376,6 +378,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
         <span className="min-w-0 flex-1 paragraph-sm text-primary">
           {j.name}
           {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
+          <JobId id={j.job_id} />
         </span>
         <span className="paragraph-xs text-tertiary">
           {j.phase} · {channelLabel(j.channel)}

@@ -55,11 +55,11 @@ export const QuickActions = ({
             className={`flex items-center justify-center gap-1.5 px-2 py-3 rounded-xl border text-center transition-all ${
               disabled
                 ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-                : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
+                : 'group bg-primary border-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm active:scale-[0.98]'
             }`}
           >
             <span
-              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+              className={`shrink-0 transition-colors ${disabled ? 'text-placeholder-subtle' : 'text-quaternary group-hover:text-brand-secondary'}`}
             >
               {action.icon}
             </span>
@@ -82,11 +82,11 @@ export const QuickActions = ({
             className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all w-full ${
               disabled
                 ? 'bg-secondary border-tertiary text-placeholder-subtle cursor-not-allowed'
-                : 'bg-primary border-secondary hover:shadow-sm active:scale-[0.98]'
+                : 'group bg-primary border-secondary hover:border-brand-solid/40 hover:-translate-y-px hover:shadow-sm active:scale-[0.98]'
             }`}
           >
             <span
-              className={`shrink-0 ${disabled ? 'text-placeholder-subtle' : 'text-quaternary'}`}
+              className={`shrink-0 transition-colors ${disabled ? 'text-placeholder-subtle' : 'text-quaternary group-hover:text-brand-secondary'}`}
             >
               {action.icon}
             </span>
@@ -125,7 +125,7 @@ export const QuickActions = ({
         {!disabled && (
           <>
             <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-              ML-powered predictions from your historical data.
+              Forecasts from your past results.
             </span>
             {strategiseReady && (
               <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-secondary text-secondary">
@@ -157,7 +157,7 @@ export const QuickActions = ({
         {!disabled && (
           <>
             <span className="flex-1 min-w-0 paragraph-xs text-quaternary">
-              Optimise budget allocation across your RACE campaign.
+              How to split your budget across the campaign stages.
             </span>
             <span className="shrink-0 ml-1 px-1.5 py-0.5 text-[0.625rem] font-semibold rounded-full bg-brand-100 text-brand-700">
               Pro

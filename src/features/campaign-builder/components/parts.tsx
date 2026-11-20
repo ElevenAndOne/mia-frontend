@@ -17,7 +17,7 @@ export const money = (v: number | null | undefined, currency?: string | null) =>
 export const day = (d: string | null | undefined) => {
   if (!d) return '—'
   const x = new Date(`${d.slice(0, 10)}T00:00:00`)
-  return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+  return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export const num = (v: number | null | undefined) =>
@@ -82,7 +82,8 @@ export function Card({ children, className = '', warn = false, id }: { children:
   return (
     <section
       id={id}
-      className={`rounded-xl bg-primary p-4 ${warn ? 'border-2 border-utility-warning-300' : 'border border-secondary'} ${className}`}
+      // The settings look (19 Nov 2026): a raised panel with a thin border and a faint shadow.
+      className={`rounded-xl bg-primary p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${warn ? 'border-2 border-utility-warning-300' : 'border border-secondary'} ${className}`}
     >
       {children}
     </section>

@@ -6,10 +6,14 @@ import { useTheme } from '../contexts/theme-context'
 import { useAppShellActions } from '../hooks/use-app-shell-actions'
 import { useFeatures } from '../features/workspace/hooks/use-features'
 import { useExperience } from '../features/workspace/hooks/use-experience'
+import { SHOW_HIDDEN_PAGES } from '../constants/nav'
+import { queryClient } from '../lib/query-client'
+import { fetchBoard } from '../features/campaign-builder/api'
 import { useRecentConversations } from '../features/shell/hooks/use-recent-conversations'
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
 import { SidebarWorkspaceButton } from '../features/shell/views/sidebar-workspace-button'
+import { SidebarAccount } from '../features/shell/views/sidebar-account'
 import { ChevronLeftDouble } from './icon/chevron-left-double'
 import { ChevronRight } from './icon/chevron-right'
 import { ChevronRightDouble } from './icon/chevron-right-double'
@@ -17,8 +21,7 @@ import { Calendar } from './icon/calendar'
 import { Edit03 } from './icon/edit-03'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
-import { HelpCircle } from './icon/help-circle'
-import { LogOut01 } from './icon/log-out-01'
+import { Home03 } from './icon/home-03'
 import { MessageChatSquare } from './icon/message-chat-square'
 import { Monitor01 } from './icon/monitor-01'
 import { Moon01 } from './icon/moon-01'
@@ -31,7 +34,6 @@ import { Wallet01 } from './icon/wallet-01'
 import { ClipboardCheck } from './icon/clipboard-check'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
 
-import { UserAvatar } from './user-avatar'
 
 const COLLAPSE_KEY = 'mia:sidebar-collapsed'
 
@@ -43,6 +45,8 @@ interface NavItemProps {
   onClick: () => void
   trailing?: ReactNode
   className?: string
+  /** Start loading the page before the click (hover or keyboard focus). */
+  onPrefetch?: () => void
 }
 
 const NavItem = ({
@@ -53,9 +57,12 @@ const NavItem = ({
   onClick,
   trailing,
   className = '',
+  onPrefetch,
 }: NavItemProps) => (
   <button
     onClick={onClick}
+    onMouseEnter={onPrefetch}
+    onFocus={onPrefetch}
     title={collapsed ? label : undefined}
     className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm transition-colors relative ${
       collapsed ? 'justify-center px-0' : 'px-3'
@@ -71,6 +78,22 @@ const NavItem = ({
     {!collapsed && trailing}
   </button>
 )
+
+// Hovering a nav item starts loading its page's code (and, where cheap, its data), so the click
+// feels instant (19 Nov 2026). Each import runs once; later calls are free.
+const PREFETCH: Record<string, () => unknown> = {
+  settings: () => import('../pages/workspace-settings-page'),
+  builder: () => import('../pages/campaign-board-page'),
+  reports: () => import('../pages/reports-page'),
+  integrations: () => import('../pages/integrations-page'),
+  home: () => import('../pages/chat-page'),
+}
+const prefetched = new Set<string>()
+const prefetch = (key: string) => {
+  if (prefetched.has(key) || !PREFETCH[key]) return
+  prefetched.add(key)
+  void Promise.resolve(PREFETCH[key]()).catch(() => prefetched.delete(key))
+}
 
 /**
  * Permanent left navigation panel (desktop). Collapsible to an icons-only rail
@@ -198,9 +221,12 @@ export const AppSidebar = () => {
           <SidebarWorkspaceButton collapsed={collapsed} />
         </div>
 
-        <div className={`pb-2 ${collapsed ? 'px-2 flex justify-center' : 'px-3'}`}>
-          <CommandPaletteTrigger variant={collapsed ? 'icon' : 'pill'} fullWidth={!collapsed} />
-        </div>
+        {/* Agency (19 Nov 2026): no search box in the sidebar; Cmd/Ctrl+K still opens search. */}
+        {isBasic && (
+          <div className={`pb-2 ${collapsed ? 'px-2 flex justify-center' : 'px-3'}`}>
+            <CommandPaletteTrigger variant={collapsed ? 'icon' : 'pill'} fullWidth={!collapsed} />
+          </div>
+        )}
 
         <div className="border-t border-tertiary mx-3" />
 
@@ -208,13 +234,17 @@ export const AppSidebar = () => {
           className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2 ${collapsed ? 'px-2' : 'px-3'}`}
           role="menu"
         >
+          {/* Agency: "Home" (a fresh chat on the home screen). Basic keeps "New Chat". */}
           <NavItem
-            icon={<Edit03 size={18} />}
-            label="New Chat"
+            icon={isBasic ? <Edit03 size={18} /> : <Home03 size={18} />}
+            label={isBasic ? 'New Chat' : 'Home'}
+            onPrefetch={() => prefetch('home')}
             collapsed={collapsed}
+            active={!isBasic && path === '/home'}
             onClick={() => actions.onNewChat()}
           />
-          {isFeatureEnabled('new_workspace') && (
+          {/* Agency: New workspace moved into the workspace switcher (19 Nov 2026). */}
+          {isFeatureEnabled('new_workspace') && isBasic && (
             <NavItem
               icon={<Plus size={18} />}
               label="New Workspace"
@@ -228,12 +258,15 @@ export const AppSidebar = () => {
             <NavItem
               icon={<Globe01 size={18} />}
               label="Integrations"
+              onPrefetch={() => prefetch('integrations')}
               collapsed={collapsed}
               active={activeKey === 'integrations'}
               onClick={actions.onIntegrationsClick}
             />
           )}
-          {isFeatureEnabled('campaigns') && (
+          {/* Agency: the old Campaigns pages moved to Workspace Settings → Old campaigns
+              (agency clean-up 19 Nov). Basic keeps its own Campaigns item. */}
+          {isFeatureEnabled('campaigns') && isBasic && (
             <NavItem
               icon={<Target01 size={18} />}
               label="Campaigns"
@@ -242,17 +275,28 @@ export const AppSidebar = () => {
               onClick={actions.onCampaignsClick}
             />
           )}
-          {isFeatureEnabled('campaigns') && user?.is_staff && (
-            // The new builder's board, staff only while it's tested (rebuild §8.1).
+          {isFeatureEnabled('campaigns') && !isBasic && (
+            // The new builder's board: every agency user since 19 Nov (was staff only).
             <NavItem
               icon={<Target01 size={18} />}
               label="Campaign builder"
+              onPrefetch={() => {
+                prefetch('builder')
+                // its list too: the board reads ['campaign-board', tenant] (shown at once on click)
+                if (activeWorkspace?.tenant_id && sessionId)
+                  void queryClient.prefetchQuery({
+                    queryKey: ['campaign-board', activeWorkspace.tenant_id],
+                    queryFn: () => fetchBoard(sessionId, activeWorkspace.tenant_id),
+                    staleTime: 30_000,
+                  })
+              }}
               collapsed={collapsed}
               active={activeKey === 'builder'}
               onClick={() => navigate('/campaign-builder')}
             />
           )}
-          {isFeatureEnabled('posts') && (
+          {/* Posts is a Basic feature. */}
+          {isFeatureEnabled('posts') && isBasic && (
             <NavItem
               icon={<Calendar size={18} />}
               label="Posts"
@@ -262,7 +306,9 @@ export const AppSidebar = () => {
               className={blinkPosts ? 'nav-blink' : ''}
             />
           )}
-          {isFeatureEnabled('scheduler') && (
+          {/* Agency: Scheduler, Budget Tracker and Weekly Memo are hidden (19 Nov); Basic as before. The pages and
+              routes stay, and emails still link to /memo. */}
+          {isFeatureEnabled('scheduler') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<Users01 size={18} />}
               label="Scheduler"
@@ -275,12 +321,13 @@ export const AppSidebar = () => {
             <NavItem
               icon={<File02 size={18} />}
               label="Reports"
+              onPrefetch={() => prefetch('reports')}
               collapsed={collapsed}
               active={activeKey === 'reports'}
               onClick={actions.onReportsClick}
             />
           )}
-          {isFeatureEnabled('budget_tracker') && (
+          {isFeatureEnabled('budget_tracker') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<Wallet01 size={18} />}
               label="Budget Tracker"
@@ -289,7 +336,7 @@ export const AppSidebar = () => {
               onClick={() => navigate('/budget-tracker')}
             />
           )}
-          {isFeatureEnabled('weekly_memo') && (
+          {isFeatureEnabled('weekly_memo') && (isBasic || SHOW_HIDDEN_PAGES) && (
             <NavItem
               icon={<ClipboardCheck size={18} />}
               label="Weekly Memo"
@@ -303,7 +350,8 @@ export const AppSidebar = () => {
           {!isBasic && (
             <NavItem
               icon={<Settings01 size={18} />}
-              label="Workspace Settings"
+              label="Settings"
+              onPrefetch={() => prefetch('settings')}
               collapsed={collapsed}
               active={activeKey === 'settings'}
               onClick={actions.onWorkspaceSettings}
@@ -341,54 +389,26 @@ export const AppSidebar = () => {
             </>
           )}
 
-          {!isBasic && (
-            <NavItem
-              icon={<HelpCircle size={18} />}
-              label="Help"
-              collapsed={collapsed}
-              onClick={actions.onHelpClick}
-            />
-          )}
+          {/* Agency Help lives in Settings → Help (Josh, 20 Nov 2026). */}
         </nav>
 
-        {/* Sign out — Basic signs out from the workspace menu at the top */}
+        {/* Agency: who is signed in, with Settings and Sign out in a menu and the collapse arrow
+            beside it, one row instead of three (Josh, 20 Nov 2026). Basic signs out from the
+            workspace menu at the top and keeps its own collapse bar below. */}
         {!isBasic && (
-        <div className={`py-1.5 border-t border-tertiary ${collapsed ? 'px-2' : 'px-3'}`}>
-          <button
-            onClick={actions.onLogout}
-            title={collapsed ? 'Sign Out' : undefined}
-            className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm text-error hover:bg-error-primary transition-colors ${
-              collapsed ? 'justify-center px-0' : 'px-3'
-            }`}
-            role="menuitem"
-          >
-            <LogOut01 size={18} />
-            {!collapsed && <span>Sign Out</span>}
-          </button>
-        </div>
+          <SidebarAccount
+            name={user?.name || 'User'}
+            email={user?.email || ''}
+            pictureUrl={user?.picture_url}
+            collapsed={collapsed}
+            onToggleCollapsed={() => setCollapsed((c) => !c)}
+            onSettings={actions.onWorkspaceSettings}
+            onSignOut={actions.onLogout}
+          />
         )}
 
-        {/* Who is signed in. Basic has one person and one workspace, so this block spent
-            the sidebar's most valuable slot telling them both. */}
-        {!isBasic && (
-        <div
-          className={`flex items-center gap-3 py-3 border-t border-tertiary ${
-            collapsed ? 'justify-center px-2' : 'px-4'
-          }`}
-        >
-          <UserAvatar name={user?.name || 'User'} imageUrl={user?.picture_url} size="sm" />
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="label-md text-primary truncate">{user?.name || 'User'}</p>
-              <p className="paragraph-xs text-quaternary truncate">
-                {activeWorkspace?.name || user?.email || ''}
-              </p>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Collapse toggle */}
+        {/* Collapse toggle (Basic) */}
+        {isBasic && (
         <button
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -406,6 +426,7 @@ export const AppSidebar = () => {
             </>
           )}
         </button>
+        )}
       </div>
 
       {/* Recent chats slide-over (only meaningful when expanded). Inert while off-screen, so

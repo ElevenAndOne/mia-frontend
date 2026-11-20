@@ -1,7 +1,7 @@
 // The new campaign page's calls: /api/tenants/{t}/campaign-builder (staff only while tested).
 
 import { apiFetch } from '../../utils/api'
-import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, ResultsState, StudioState } from './types'
+import type { Board, BriefField, BuildState, KpiGroup, LaunchState, PlanOp, ResultsState, StudioDrive, StudioState } from './types'
 
 const base = (tenantId: string) => `/api/tenants/${tenantId}/campaign-builder`
 const json = (sessionId: string) => ({ 'X-Session-ID': sessionId, 'Content-Type': 'application/json' })
@@ -75,9 +75,18 @@ export async function fetchBuild(sessionId: string, tenantId: string, campaignId
 export async function startBuild(
   sessionId: string,
   tenantId: string,
-  body: { pm_text: string; deck_text?: string; name?: string },
+  body: { pm_text: string; deck_text?: string; name?: string; client_type?: ClientType },
 ): Promise<{ campaign_id: string }> {
   return check(await apiFetch(base(tenantId), { method: 'POST', headers: json(sessionId), body: JSON.stringify(body) }))
+}
+
+// A BPO client's campaign (19 Nov 2026): their document is the brief, Mia asks only what's vital and missing from it,
+// and there are no KPIs or ad budget. Chosen on the new-campaign page, kept for the campaign's life.
+export type ClientType = 'campaign' | 'bpo'
+
+// Where the new-campaign page's switch starts: what this workspace chose last.
+export async function lastClientType(sessionId: string, tenantId: string): Promise<{ client_type: ClientType }> {
+  return check(await apiFetch(`${base(tenantId)}/client-type`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
 export async function saveBrief(
@@ -300,6 +309,13 @@ export async function refreshFromFlex(sessionId: string, tenantId: string, campa
   )
 }
 
+// Try again after the Drive folders failed: clears the error and makes them again in the background (naming step 4)
+export async function retryDriveFolders(sessionId: string, tenantId: string, campaignId: string) {
+  return check<StudioDrive>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/drive/retry`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
 export async function fetchBoard(sessionId: string, tenantId: string): Promise<Board> {
   return check(await apiFetch(base(tenantId), { headers: { 'X-Session-ID': sessionId } }))
 }
@@ -311,10 +327,15 @@ export interface ClientRule {
   by: string | null
   added: string | null
   origin: 'person' | 'learned'
+  /** 'campaign': a note for this campaign only (sent when fetchRules is given a campaign). */
+  scope?: 'campaign' | 'workspace'
+  /** Where it came from: 'claude' shows as From Claude. */
+  from?: string | null
 }
 
-export async function fetchRules(sessionId: string, tenantId: string): Promise<{ rules: ClientRule[] }> {
-  return check(await apiFetch(`${base(tenantId)}/rules`, { headers: { 'X-Session-ID': sessionId } }))
+export async function fetchRules(sessionId: string, tenantId: string, campaignId?: string): Promise<{ rules: ClientRule[] }> {
+  const q = campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : ''
+  return check(await apiFetch(`${base(tenantId)}/rules${q}`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
 export async function addRule(sessionId: string, tenantId: string, text: string, kind = 'constraint'): Promise<unknown> {

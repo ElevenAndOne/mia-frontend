@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import * as api from '../api'
 import { buildKey } from '../use-build'
@@ -19,9 +18,11 @@ export function CampaignGuide({
   brand,
   look = null,
   never = [],
+  compact = false,
 }: {
   campaignId: string
   readOnly: boolean
+  compact?: boolean // one quiet line for Key facts (20 Nov); no guide here is said by the Optional line instead
   brand: BuildState['brand_guide'] | null
   look?: BuildState['brand_look'] | null
   never?: string[]
@@ -35,7 +36,6 @@ export function CampaignGuide({
     queryFn: () => api.fetchGuides(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId,
   })
-  const [pick, setPick] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,7 +44,6 @@ export function CampaignGuide({
     setError(null)
     try {
       await api.attachGuide(sessionId!, tenantId!, campaignId, guideId)
-      setPick('')
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: key }),
         queryClient.invalidateQueries({ queryKey: buildKey(tenantId, campaignId) }),
@@ -57,11 +56,40 @@ export function CampaignGuide({
   }
 
   const attached = q.data?.attached
-  const available = q.data?.available ?? []
+  if (compact) {
+    if (!brand && !attached) return null
+    return (
+      <p className="paragraph-xs text-tertiary">
+        {brand ? (
+          <>
+            Brand guide: {brand.file || 'from Settings'}
+            {never.length ? `, ${never.length} word${never.length === 1 ? '' : 's'} it rules out` : ''}
+            {' · '}
+            <Link to="/settings/workspace?tab=brand" className="underline hover:text-secondary">Settings</Link>
+          </>
+        ) : null}
+        {brand && attached ? <span aria-hidden="true"> · </span> : null}
+        {attached ? (
+          <>
+            Campaign guide: {attached.filename}
+            {readOnly ? null : (
+              <>
+                {' · '}
+                <button type="button" disabled={busy} onClick={() => void attach(null)} className="underline hover:text-secondary disabled:opacity-50">
+                  Detach
+                </button>
+              </>
+            )}
+          </>
+        ) : null}
+        {error ? <span className="block text-error">{error}</span> : null}
+      </p>
+    )
+  }
   return (
     <Card className="flex flex-col gap-2">
       <BrandGuideLine brand={brand} look={look} never={never} campaignId={campaignId} readOnly={readOnly} />
-      {!attached && !available.length ? null : <h3 className="subheading-sm text-primary">Campaign guide</h3>}
+      {!attached ? null : <h3 className="subheading-sm text-primary">Campaign guide</h3>}
       {attached ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-primary">
@@ -79,35 +107,10 @@ export function CampaignGuide({
             </button>
           )}
         </div>
-      ) : available.length ? (
-        <p className="paragraph-xs text-secondary">
-          Guides uploaded in Settings aren’t read for this campaign until you attach one here.
-        </p>
       ) : null}
-      {readOnly || !available.length ? null : (
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="guide-pick" className="sr-only">
-            A guide uploaded in Settings
-          </label>
-          <select
-            id="guide-pick"
-            value={pick}
-            onChange={(e) => setPick(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-secondary bg-primary px-2 py-1.5 paragraph-sm text-primary"
-          >
-            <option value="">{attached ? 'Use a different guide…' : 'Attach a guide uploaded in Settings…'}</option>
-            {available.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.campaign_name || g.filename}
-                {g.attached_to ? ` (attached to ${g.attached_to})` : ''}
-              </option>
-            ))}
-          </select>
-          <Button size="sm" disabled={!pick} loading={busy} onClick={() => void attach(pick)}>
-            Attach
-          </Button>
-        </div>
-      )}
+      {/* No more attaching a guide from a Settings shelf (Josh, 19 Nov 2026: the Campaign Guides
+          tab is gone; people left old guides there). A campaign's guide comes in with its brief
+          on New campaign. One attached before stays, and can be detached. */}
       {error ? <p className="paragraph-xs text-error">{error}</p> : null}
     </Card>
   )
@@ -169,7 +172,7 @@ const lookLine = (look: BuildState['brand_look'] | null | undefined) => {
 }
 
 /** Add the workspace brand guide without leaving the campaign: read and saved as Settings does. */
-export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDone?: () => void }) {
+export function AddBrandGuide({ campaignId, onDone, quiet = false }: { campaignId: string; onDone?: () => void; quiet?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const queryClient = useQueryClient()
@@ -190,7 +193,7 @@ export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDo
     }
   }
   return (
-    <div className="flex flex-col gap-1">
+    <div className={quiet ? 'inline-flex flex-col' : 'flex flex-col gap-1'}>
       <label className={`inline-flex w-fit items-center gap-2 ${busy ? 'opacity-60' : 'cursor-pointer'}`}>
         <input
           type="file"
@@ -202,9 +205,13 @@ export function AddBrandGuide({ campaignId, onDone }: { campaignId: string; onDo
             e.target.value = ''
           }}
         />
-        <span className="rounded-lg border border-secondary bg-primary px-3 py-1.5 label-sm text-primary hover:bg-secondary">
-          {busy ? 'Mia is reading it…' : 'Add brand guide'}
-        </span>
+        {quiet ? (
+          <span className="underline hover:text-secondary">{busy ? 'Mia is reading it…' : 'add a brand guide'}</span>
+        ) : (
+          <span className="rounded-lg border border-secondary bg-primary px-3 py-1.5 label-sm text-primary hover:bg-secondary">
+            {busy ? 'Mia is reading it…' : 'Add brand guide'}
+          </span>
+        )}
       </label>
       {error ? <p className="paragraph-xs text-error">{error}</p> : null}
     </div>

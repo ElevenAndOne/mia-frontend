@@ -13,6 +13,8 @@
 
 /* Tailwind v4 Theme Extensions */
 @theme {
+  /* The app's font (19 Nov 2026): Tailwind's base and font-sans use it too. */
+  --font-sans: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   /* Custom Animations */
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
@@ -139,7 +141,9 @@ body {
   min-height: -webkit-fill-available;
   overflow: hidden;
   position: fixed;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  /* Figtree everywhere (Josh, 19 Nov 2026): the app had no font of its own and looked different on
+     every computer (SF on Mac, Segoe on Windows, Ubuntu on Linux). Loaded in index.html. */
+  font-family: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text-color-primary);
@@ -610,4 +614,75 @@ body.full-bleed #root {
   .mia-sticker::after {
     animation: none;
   }
+}
+
+/* ──────────────────────────────────────────────────────────── */
+/* Pointer feedback (19 Nov 2026): Tailwind's reset gives buttons the plain arrow, so nothing    */
+/* said "clickable", and a disabled button showed the text cursor. Hand on what can be clicked,  */
+/* "not allowed" on what can't yet.                                                              */
+/* ──────────────────────────────────────────────────────────── */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab'],
+  [role='menuitem'],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='color'] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled='true'],
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* A gentle pulse that points at the one field to fill next (e.g. the report's campaign picker). */
+@keyframes mia-nudge {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-background-brand-solid) 0%, transparent);
+  }
+  35% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-background-brand-solid) 35%, transparent);
+  }
+}
+.mia-nudge {
+  animation: mia-nudge 0.9s ease-out 2;
+  border-color: var(--color-background-brand-solid) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mia-nudge {
+    animation: none;
+  }
+}
+
+/* A quick fade-up when a panel shows (settings tabs; replays each time a hidden tab is shown). */
+@keyframes mia-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mia-fade-in {
+  animation: mia-fade-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mia-fade-in {
+    animation: none;
+  }
+}
+
+/* Settings cards (19 Nov 2026): a thin grey line between rows. */
+.settings-rows > * + * {
+  border-top: 1px solid var(--color-border-secondary);
 }

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
+import { Skeleton } from '../components/skeleton'
 import { useSession } from '../contexts/session-context'
 import * as api from '../features/campaign-builder/api'
 import { Card, Chip, day, money, num } from '../features/campaign-builder/components/parts'
@@ -36,8 +37,8 @@ export default function CampaignBoardPage() {
   return (
     <div className="w-full h-dvh flex flex-col overflow-hidden bg-secondary">
       <TopBar
-        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaigns' }]}
-        title="Campaigns"
+        breadcrumbs={[{ label: 'Home', to: '/home' }, { label: 'Campaign builder' }]}
+        title="Campaign builder"
         onBack={() => navigate('/home')}
         rightSlot={
           <Button variant="primary" size="sm" onClick={() => navigate('/campaign-builder/new')}>
@@ -47,12 +48,45 @@ export default function CampaignBoardPage() {
       />
       <div className="@container flex-1 min-h-0 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4">
-          {q.isPending ? <p className="paragraph-sm text-tertiary">Loading the campaigns…</p> : null}
+          {q.isPending ? (
+            <div className="flex flex-col gap-2" aria-busy="true">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : null}
           {q.error ? <Card warn className="paragraph-sm text-primary">{(q.error as Error).message}</Card> : null}
           {q.data ? (
             <>
               {q.data.campaigns.length ? (
-                <Card className="overflow-x-auto p-0">
+                <>
+                {/* Phones (19 Nov 2026): one card per campaign; the table needed a sideways scroll. */}
+                <ul className="flex flex-col gap-2 md:hidden">
+                  {q.data.campaigns.map((c) => (
+                    <li key={c.campaign_id}>
+                      <button
+                        type="button"
+                        onClick={() => open(c)}
+                        className="group w-full text-left rounded-xl border border-secondary bg-primary p-3 flex flex-col gap-2 active:scale-[0.99] transition"
+                      >
+                        <span className="flex items-start justify-between gap-2">
+                          <span className="paragraph-sm font-medium text-primary">{c.name}</span>
+                          <Chip tone={STAGE_TONE[c.stage ?? ''] ?? 'neutral'}>{c.stage}</Chip>
+                        </span>
+                        <span className="paragraph-xs text-tertiary">
+                          {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'No dates yet'}
+                          {c.budget_total != null ? ` · ${money(c.budget_total, c.currency)}` : ''}
+                        </span>
+                        {c.next_step?.label ? (
+                          <span className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-secondary px-2.5 py-1 paragraph-xs text-primary">
+                            {c.next_step.label} <span aria-hidden>→</span>
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <Card className="hidden md:block overflow-x-auto p-0">
                   <table className="w-full min-w-[760px] paragraph-sm">
                     <thead>
                       <tr className="text-left label-xs text-tertiary">
@@ -68,7 +102,7 @@ export default function CampaignBoardPage() {
                       {q.data.campaigns.map((c) => (
                         <tr
                           key={c.campaign_id}
-                          className="cursor-pointer border-t border-secondary align-top hover:bg-secondary"
+                          className="group cursor-pointer border-t border-secondary align-top transition-colors hover:bg-secondary"
                           onClick={() => open(c)}
                         >
                           <td className="px-4 py-3">
@@ -76,7 +110,12 @@ export default function CampaignBoardPage() {
                           </td>
                           <td className="px-2 py-3">
                             <span className="flex flex-col items-start gap-0.5">
-                              <Chip tone={STAGE_TONE[c.stage ?? ''] ?? 'neutral'}>{c.stage}</Chip>
+                              <Chip tone={STAGE_TONE[c.stage ?? ''] ?? 'neutral'}>
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${c.stage === 'Live' ? 'bg-success-solid animate-pulse' : 'bg-current opacity-60'}`} />
+                                  {c.stage}
+                                </span>
+                              </Chip>
                               {c.progress ? <span className="paragraph-xs text-tertiary">{c.progress}</span> : null}
                             </span>
                           </td>
@@ -97,19 +136,27 @@ export default function CampaignBoardPage() {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="paragraph-sm text-primary">{c.next_step?.label}</span>
+                            {/* The next step as a button (19 Nov 2026): what to do, one click away. */}
+                            {c.next_step?.label ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-secondary bg-primary px-2.5 py-1 paragraph-sm text-primary transition-colors group-hover:border-brand-solid group-hover:text-brand-secondary">
+                                {c.next_step.label}
+                                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+                              </span>
+                            ) : null}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </Card>
+                </>
               ) : (
                 <Card className="flex flex-col items-start gap-3">
                   <p className="paragraph-sm text-secondary">
                     No campaigns from the new builder yet. Start one: tell Mia what it's for, or drop in the client's brief.
                   </p>
-                  <Button variant="primary" size="sm" onClick={() => navigate('/campaign-builder/new')}>
+                  {/* First run: the one thing to do pulses once. */}
+                  <Button variant="primary" size="sm" className="mia-nudge" onClick={() => navigate('/campaign-builder/new')}>
                     New campaign
                   </Button>
                 </Card>
@@ -129,7 +176,7 @@ export default function CampaignBoardPage() {
                         >
                           <span className="paragraph-sm text-primary">{c.name}</span>
                           <span className="paragraph-xs text-tertiary">
-                            {c.status} · {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'no dates'}
+                            {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : ''} · {c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'no dates'}
                           </span>
                         </button>
                       </li>

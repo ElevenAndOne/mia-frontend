@@ -73,7 +73,7 @@ export const MobileNavigationUserView = ({
           >
             <Settings01 size={20} className="text-tertiary" />
             <span className="paragraph-sm">
-              {isBasic ? 'Workspace settings' : 'Workspace Settings'}
+              {isBasic ? 'Workspace settings' : 'Settings'}
             </span>
           </button>
         )}

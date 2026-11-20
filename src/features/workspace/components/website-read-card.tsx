@@ -46,7 +46,7 @@ function fmtWhen(iso?: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 /** Best-effort: load the site's fonts from Google Fonts so the specimen shows the real faces. */
