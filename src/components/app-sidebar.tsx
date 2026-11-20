@@ -13,6 +13,7 @@ import { useRecentConversations } from '../features/shell/hooks/use-recent-conve
 import { RecentChatsPanel } from '../features/shell/views/recent-chats-panel'
 import { CommandPaletteTrigger } from '../features/shell/views/command-palette-trigger'
 import { SidebarWorkspaceButton } from '../features/shell/views/sidebar-workspace-button'
+import { SidebarAccount } from '../features/shell/views/sidebar-account'
 import { ChevronLeftDouble } from './icon/chevron-left-double'
 import { ChevronRight } from './icon/chevron-right'
 import { ChevronRightDouble } from './icon/chevron-right-double'
@@ -21,7 +22,6 @@ import { Edit03 } from './icon/edit-03'
 import { File02 } from './icon/file-02'
 import { Globe01 } from './icon/globe-01'
 import { Home03 } from './icon/home-03'
-import { LogOut01 } from './icon/log-out-01'
 import { MessageChatSquare } from './icon/message-chat-square'
 import { Monitor01 } from './icon/monitor-01'
 import { Moon01 } from './icon/moon-01'
@@ -34,7 +34,6 @@ import { Wallet01 } from './icon/wallet-01'
 import { ClipboardCheck } from './icon/clipboard-check'
 import { SegmentedControl, type SegmentedControlOption } from './segmented-control'
 
-import { UserAvatar } from './user-avatar'
 
 const COLLAPSE_KEY = 'mia:sidebar-collapsed'
 
@@ -393,44 +392,23 @@ export const AppSidebar = () => {
           {/* Agency Help lives in Settings → Help (Josh, 20 Nov 2026). */}
         </nav>
 
-        {/* Sign out — Basic signs out from the workspace menu at the top */}
+        {/* Agency: who is signed in, with Settings and Sign out in a menu and the collapse arrow
+            beside it, one row instead of three (Josh, 20 Nov 2026). Basic signs out from the
+            workspace menu at the top and keeps its own collapse bar below. */}
         {!isBasic && (
-        <div className={`py-1.5 border-t border-tertiary ${collapsed ? 'px-2' : 'px-3'}`}>
-          <button
-            onClick={actions.onLogout}
-            title={collapsed ? 'Sign Out' : undefined}
-            className={`w-full py-2.5 rounded-lg flex items-center gap-3 paragraph-sm text-error hover:bg-error-primary transition-colors ${
-              collapsed ? 'justify-center px-0' : 'px-3'
-            }`}
-            role="menuitem"
-          >
-            <LogOut01 size={18} />
-            {!collapsed && <span>Sign Out</span>}
-          </button>
-        </div>
+          <SidebarAccount
+            name={user?.name || 'User'}
+            email={user?.email || ''}
+            pictureUrl={user?.picture_url}
+            collapsed={collapsed}
+            onToggleCollapsed={() => setCollapsed((c) => !c)}
+            onSettings={actions.onWorkspaceSettings}
+            onSignOut={actions.onLogout}
+          />
         )}
 
-        {/* Who is signed in. Basic has one person and one workspace, so this block spent
-            the sidebar's most valuable slot telling them both. */}
-        {!isBasic && (
-        <div
-          className={`flex items-center gap-3 py-3 border-t border-tertiary ${
-            collapsed ? 'justify-center px-2' : 'px-4'
-          }`}
-        >
-          <UserAvatar name={user?.name || 'User'} imageUrl={user?.picture_url} size="sm" />
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="label-md text-primary truncate">{user?.name || 'User'}</p>
-              <p className="paragraph-xs text-quaternary truncate">
-                {activeWorkspace?.name || user?.email || ''}
-              </p>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Collapse toggle */}
+        {/* Collapse toggle (Basic) */}
+        {isBasic && (
         <button
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -448,6 +426,7 @@ export const AppSidebar = () => {
             </>
           )}
         </button>
+        )}
       </div>
 
       {/* Recent chats slide-over (only meaningful when expanded). Inert while off-screen, so

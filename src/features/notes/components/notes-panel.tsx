@@ -1,3 +1,4 @@
+import { Skeleton } from '../../../components/skeleton'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Spinner } from '../../../components/spinner'
@@ -284,7 +285,13 @@ export const NotesPanel = ({
             </button>
           </div>
         </div>
-        {loading && <Spinner size="sm" />}
+        {loading && (
+          // Rule-shaped lines while they load, not a spinner (20 Nov 2026).
+          <div className="space-y-2 animate-pulse" aria-hidden="true">
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-3/4" />
+          </div>
+        )}
         {error && <p className="paragraph-xs text-utility-error-500">{error}</p>}
         {!loading && notes.length === 0 && (
           <p className="paragraph-xs text-quaternary">None yet. Tell Mia one in chat or add it here.</p>

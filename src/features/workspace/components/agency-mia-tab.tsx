@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from 'react'
-import { Spinner } from '../../../components/spinner'
+import { Skeleton } from '../../../components/skeleton'
 import type { WorkspaceAlertSettings } from '../../whatsapp-alerts/types'
 import { Card, Disclosure, FadeIn, Row, Section, Switch } from './settings-ui'
 
@@ -33,9 +33,15 @@ interface Props {
   testSentTo: string | null
 }
 
+// Placeholder blocks in the shape of what's coming, not a spinner (20 Nov 2026).
 const Fallback = () => (
-  <div className="flex justify-center py-6">
-    <Spinner size="md" variant="dark" />
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 animate-pulse" aria-hidden="true">
+    {[0, 1].map((i) => (
+      <div key={i} className="rounded-xl border border-secondary bg-secondary p-4 space-y-2">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+    ))}
   </div>
 )
 

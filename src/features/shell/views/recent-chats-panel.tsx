@@ -1,3 +1,4 @@
+import { Skeleton } from '../../../components/skeleton'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft } from '../../../components/icon/chevron-left'
@@ -9,7 +10,6 @@ import { SearchSm } from '../../../components/icon/search-sm'
 import { Trash01 } from '../../../components/icon/trash-01'
 import { XClose } from '../../../components/icon/x-close'
 import type { RecentConversation } from '../../chat/services/chat-service'
-import { Spinner } from '../../../components/spinner'
 
 /** Which list heading a chat sits under. Pinned chats come first regardless of age. */
 function dayGroup(conv: RecentConversation): string {
@@ -209,8 +209,14 @@ export const RecentChatsPanel = ({
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2">
         {conversations.length === 0 && (status === 'loading' || status === 'idle') ? (
-          <div className="flex items-center justify-center py-12" role="status">
-            <Spinner size="sm" />
+          // Rows in the shape of chats while they load, not a spinner (20 Nov 2026).
+          <div className="space-y-1 p-1 animate-pulse" role="status" aria-label="Loading chats">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="px-2 py-2 space-y-1.5">
+                <Skeleton className={`h-3.5 ${['w-4/5', 'w-3/5', 'w-2/3', 'w-1/2', 'w-3/4'][i]}`} />
+                <Skeleton className="h-2.5 w-16" />
+              </div>
+            ))}
           </div>
         ) : conversations.length === 0 && status === 'error' ? (
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
@@ -225,6 +231,7 @@ export const RecentChatsPanel = ({
           <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
             <MessageChatSquare size={28} className="text-quaternary" />
             <p className="paragraph-sm text-secondary">No recent chats yet</p>
+            <p className="paragraph-xs text-quaternary">Ask Mia anything on Home and it shows up here.</p>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-center px-4">
