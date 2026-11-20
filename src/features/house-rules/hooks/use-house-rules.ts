@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '../../../contexts/toast-context'
 import {
+  addClientNotes,
   checkPost,
   decideMany,
   decideNews,
@@ -10,6 +11,7 @@ import {
   fetchNews,
   fetchRules,
   runJob,
+  takeBackClientNotes,
 } from '../services/house-rules-service'
 import type {
   Decision,
@@ -165,6 +167,30 @@ export function useNewsDecision(sessionId: string | null) {
       qc.invalidateQueries({ queryKey: newsKey })
       if (v.decision === 'make_rule') qc.invalidateQueries({ queryKey: [KEY, 'rules'] })
     },
+  })
+}
+
+/** Mia adds a card's note to every client it touches, or takes the notes back. */
+export function useClientNotes(sessionId: string | null) {
+  const qc = useQueryClient()
+  const { showToast } = useToast()
+  const newsKey = [KEY, 'news', sessionId]
+
+  return useMutation({
+    mutationFn: (v: { id: string; takeBack?: boolean; text?: string }) =>
+      v.takeBack ? takeBackClientNotes(sessionId, v.id) : addClientNotes(sessionId, v.id, v.text),
+    onSuccess: (card, v) => {
+      qc.setQueryData<NewsList>(newsKey, (old) =>
+        old ? { ...old, cards: old.cards.map((c) => (c.id === card.id ? card : c)) } : old
+      )
+      showToast(
+        'success',
+        v.takeBack
+          ? 'Taken back. Mia no longer has that note for those clients.'
+          : `Done. Mia keeps this in mind for ${card.client_notes?.count ?? 0} clients (it’s in their Notes).`
+      )
+    },
+    onError: (err) => showToast('error', err instanceof Error ? err.message : 'That didn’t save. Try again.'),
   })
 }
 

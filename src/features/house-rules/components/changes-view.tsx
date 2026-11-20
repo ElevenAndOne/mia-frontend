@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../../components/button'
 import { SegmentedControl } from '../../../components/segmented-control'
 import { Spinner } from '../../../components/spinner'
-import { useBenchmarks, useNews, useNewsDecision, useRunJob } from '../hooks/use-house-rules'
+import { useBenchmarks, useClientNotes, useNews, useNewsDecision, useRunJob } from '../hooks/use-house-rules'
 import type { NewsCard as Card } from '../types'
 import { ClientTrends } from './client-trends'
 import { ago } from './format'
@@ -30,6 +30,7 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
   const news = useNews(sessionId, true)
   const bench = useBenchmarks(sessionId, true)
   const decide = useNewsDecision(sessionId)
+  const notes = useClientNotes(sessionId)
   const run = useRunJob(sessionId)
   const jobs = news.data?.jobs
   const newsRunning = !!jobs?.platform_news.running || (run.isPending && run.variables === 'platform_news')
@@ -74,8 +75,8 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
   return (
     <div className="flex flex-col gap-6">
       <p className="m-0 max-w-2xl paragraph-md text-secondary">
-        What moved for our clients last week, and what Meta, Google and the others changed. Keep what matters, ignore
-        the rest, or make one a rule Mia follows.
+        What moved for our clients last week, and what Meta, Google and the others changed. Each card ends in steps:
+        Mia does the ones she can, the rest link to the right tool.
       </p>
 
       <ClientTrends
@@ -113,7 +114,9 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
                 key={c.id}
                 card={c}
                 busy={decide.isPending && decide.variables?.id === c.id}
+                notesBusy={notes.isPending && notes.variables?.id === c.id}
                 onDecide={(decision, ruleText) => decide.mutate({ id: c.id, decision, ruleText })}
+                onClientNotes={(takeBack, text) => notes.mutate({ id: c.id, takeBack, text })}
               />
             ))}
           </ul>

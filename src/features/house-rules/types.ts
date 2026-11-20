@@ -61,8 +61,32 @@ export type NewsStatus = 'new' | 'kept' | 'ignored' | 'made_rule'
 export type NewsDecision = 'keep' | 'ignore' | 'make_rule'
 export type JobName = 'platform_news' | 'platform_benchmarks' | 'slop_finder' | 'house_rules_digest'
 
+export interface NewsStep {
+  /** pm: the agency's people, for their clients; mia_team: the people who build Mia. */
+  who: 'pm' | 'mia_team'
+  text: string
+  /** client_note: Mia can keep this in mind for every client it touches; rule: Mia can follow it from now on. */
+  mia: 'client_note' | 'rule' | null
+  /** The tool's own front door (never a link the AI made up). */
+  tool: { label: string; url: string } | null
+}
+
+export interface ClientNotesDone {
+  count: number
+  by: string | null
+  at: string | null
+  taken_back: boolean
+}
+
 export interface NewsCard {
   id: string
+  steps: NewsStep[]
+  /** What Mia would keep in each affected client's notes. */
+  client_note: string | null
+  /** Clients this could touch: those with the card's platform connected. */
+  clients: string[]
+  clients_basis: string | null
+  client_notes: ClientNotesDone | null
   /** news: from a platform's own feed or the trade press; trend: a move across our own clients. */
   kind: 'news' | 'trend'
   platform: string | null

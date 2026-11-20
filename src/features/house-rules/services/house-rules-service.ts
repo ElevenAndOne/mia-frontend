@@ -8,6 +8,7 @@ import type {
   HouseRule,
   JobName,
   Me,
+  NewsCard,
   NewsDecision,
   NewsDecisionResult,
   NewsList,
@@ -68,6 +69,12 @@ export const decideNews = (sessionId: string | null, id: string, decision: NewsD
     decision,
     rule_text: ruleText?.trim() || null,
   })
+
+export const addClientNotes = (sessionId: string | null, id: string, text?: string) =>
+  call<NewsCard>(`${BASE}/news/${encodeURIComponent(id)}/client-notes`, sessionId, { text: text?.trim() || null })
+
+export const takeBackClientNotes = (sessionId: string | null, id: string) =>
+  call<NewsCard>(`${BASE}/news/${encodeURIComponent(id)}/client-notes/take-back`, sessionId, {})
 
 export const fetchBenchmarks = (sessionId: string | null, weeks = 6) =>
   call<Benchmarks>(`${BASE}/benchmarks?weeks=${weeks}`, sessionId)

@@ -1,17 +1,38 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '../../../components/button'
 import type { BenchmarkRow, BenchmarkWeek } from '../types'
-import { day, pct } from './format'
+import { day } from './format'
 
-const PLATFORM: Record<string, string> = { meta: 'Meta', google: 'Google Ads' }
-const SMALL = 0.05 // under 5% either way is noise, shown grey
+const PLATFORM: Record<string, string> = { meta: 'Meta (Facebook & Instagram)', google: 'Google Ads' }
+const METRIC_ORDER: Record<string, number> = { cpc: 0, cpm: 1, ctr: 2 }
+const SMALL = 0.05 // under 5% either way is noise: "about the same"
 
-/** Green when the move is good news for clients (costs down, click rate up), red when it isn't, grey when small. */
-function tone(row: Pick<BenchmarkRow, 'median_change' | 'good_when_up'>): string {
-  const c = row.median_change
-  if (c === null || Math.abs(c) < SMALL) return 'text-tertiary'
-  return c > 0 === row.good_when_up ? 'text-utility-success-700' : 'text-utility-error-700'
+/** What each number means, in words a client would use. */
+const METRIC: Record<string, { name: string; explain: string }> = {
+  cpc: { name: 'Price of a click', explain: 'What we paid, on average, each time someone clicked an ad.' },
+  cpm: { name: 'Price to be seen', explain: 'What we paid for the ads to be shown 1,000 times.' },
+  ctr: { name: 'People who clicked', explain: 'Out of everyone who saw an ad, how many clicked it.' },
 }
+
+type Tone = 'good' | 'bad' | 'flat'
+
+/** A change in plain words: "26% cheaper", "18% more expensive", "16% fewer", "about the same". Costs down and clicks up are
+ *  good news for the client. */
+function say(metric: string, change: number | null | undefined, goodWhenUp: boolean): { text: string; tone: Tone } {
+  if (change === null || change === undefined) return { text: 'not enough activity', tone: 'flat' }
+  if (Math.abs(change) < SMALL) return { text: 'about the same', tone: 'flat' }
+  const n = Math.round(Math.abs(change) * 100)
+  const up = change > 0
+  const text = metric === 'ctr' ? `${n}% ${up ? 'more' : 'fewer'}` : `${n}% ${up ? 'more expensive' : 'cheaper'}`
+  return { text, tone: up === goodWhenUp ? 'good' : 'bad' }
+}
+
+const TONE_CLASS: Record<Tone, string> = {
+  good: 'text-utility-success-700',
+  bad: 'text-utility-error-700',
+  flat: 'text-tertiary',
+}
+const ARROW: Record<Tone, string> = { good: '●', bad: '●', flat: '○' }
 
 function shortSpan(w: BenchmarkWeek): string {
   const a = new Date(w.week_start)
@@ -22,6 +43,72 @@ function shortSpan(w: BenchmarkWeek): string {
     : `${a.getDate()} ${m(a)}–${b.getDate()} ${m(b)}`
 }
 
+/** "For a typical client, clicks were about the same price and 16% fewer people clicked." */
+function headline(metrics: BenchmarkRow[]): string {
+  const parts = metrics.map((r) => {
+    const s = say(r.metric, r.median_change, r.good_when_up)
+    if (r.metric === 'cpc') return s.tone === 'flat' ? 'clicks cost about the same' : `clicks were ${s.text}`
+    if (r.metric === 'cpm') return s.tone === 'flat' ? 'being seen cost about the same' : `being seen was ${s.text}`
+    return s.tone === 'flat' ? 'about as many people clicked' : `${s.text} people clicked`
+  })
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0]
+  return `For a typical client, ${list}.`
+}
+
+function Cell({ r, change }: { r: BenchmarkRow; change: number | null | undefined }) {
+  const s = say(r.metric, change, r.good_when_up)
+  return (
+    <td className={`whitespace-nowrap px-3 py-2.5 paragraph-sm ${TONE_CLASS[s.tone]}`}>
+      <span aria-hidden className="mr-1.5 text-[8px] align-middle">
+        {ARROW[s.tone]}
+      </span>
+      {s.text}
+    </td>
+  )
+}
+
+/** One platform: a sentence for the typical client, then each client in plain words. */
+function PlatformBlock({ platform, rows }: { platform: string; rows: BenchmarkRow[] }) {
+  const metrics = [...rows].sort((a, b) => (METRIC_ORDER[a.metric] ?? 9) - (METRIC_ORDER[b.metric] ?? 9))
+  const clients = [...new Set(metrics.flatMap((r) => r.detail.map((c) => c.name)))].sort((a, b) => a.localeCompare(b))
+  const changeOf = (r: BenchmarkRow, name: string) => r.detail.find((c) => c.name === name)?.change
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-secondary bg-primary p-5">
+      <div className="flex flex-col gap-0.5">
+        <h3 className="m-0 title-h6 text-primary">{PLATFORM[platform] ?? platform}</h3>
+        <p className="m-0 paragraph-md text-secondary">{headline(metrics)}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr>
+              <th className="pb-1.5 pr-3 paragraph-xs font-normal text-tertiary">
+                {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+              </th>
+              {metrics.map((r) => (
+                <th key={r.metric} className="whitespace-nowrap px-3 pb-1.5 paragraph-xs font-normal text-tertiary">
+                  {METRIC[r.metric]?.name ?? r.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map((name) => (
+              <tr key={name} className="border-t border-secondary">
+                <td className="max-w-48 truncate py-2.5 pr-3 paragraph-sm text-primary">{name}</td>
+                {metrics.map((r) => (
+                  <Cell key={r.metric} r={r} change={changeOf(r, name)} />
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 interface ClientTrendsProps {
   weeks: BenchmarkWeek[]
   lastRun: string | null
@@ -29,91 +116,64 @@ interface ClientTrendsProps {
   onRefresh: () => void
 }
 
-/** Last week against each client's four weeks before, per platform and number. Only we can see this. */
+/** How our clients' ads did last week against their own four weeks before. Only we can see this. */
 export function ClientTrends({ weeks, lastRun, running, onRefresh }: ClientTrendsProps) {
-  const [open, setOpen] = useState<string | null>(null)
-  const [latest, previous] = weeks
+  const [explain, setExplain] = useState(false)
+  const [latest] = weeks
   const shown = latest?.rows.filter((r) => r.clients > 0) ?? []
-  const prevOf = (r: BenchmarkRow) => previous?.rows.find((p) => p.platform === r.platform && p.metric === r.metric)
+  const platforms = [...new Set(shown.map((r) => r.platform))]
+  const used = [...new Set(shown.map((r) => r.metric))].sort((a, b) => (METRIC_ORDER[a] ?? 9) - (METRIC_ORDER[b] ?? 9))
 
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-secondary bg-primary p-5 sm:p-6">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="m-0 title-h6 text-primary">Across our clients</h2>
-          <Button variant="ghost" size="sm" loading={running} onClick={onRefresh}>
-            {running ? 'Reading numbers…' : 'Refresh'}
-          </Button>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="m-0 title-h6 text-primary">How our clients’ ads did last week</h2>
+          <span className="paragraph-sm text-tertiary">
+            {latest
+              ? `${shortSpan(latest)}, compared with each client’s own four weeks before.`
+              : 'Every Monday Mia compares last week with the four weeks before, for every client with ads running.'}
+          </span>
         </div>
-        <span className="paragraph-sm text-tertiary">
-          {latest
-            ? `Last week (${shortSpan(latest)}) against each client’s four weeks before. The middle client’s change, so one big account can’t skew it.`
-            : 'Every Monday Mia compares last week with the four weeks before, for every client with ads running.'}
-        </span>
+        <Button variant="ghost" size="sm" loading={running} onClick={onRefresh}>
+          {running ? 'Reading…' : 'Refresh'}
+        </Button>
       </div>
 
-      {shown.length === 0 ? (
-        <p className="m-0 py-2 paragraph-md text-tertiary">
+      {platforms.length === 0 ? (
+        <p className="m-0 paragraph-md text-tertiary">
           {latest ? 'No client had enough ad activity last week to compare.' : 'No numbers yet. The first ones come in on Monday.'}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="label-xs uppercase tracking-wider text-tertiary">
-                <th className="py-2 pr-3 font-normal">Platform</th>
-                <th className="py-2 pr-3 font-normal">Number</th>
-                <th className="py-2 pr-3 font-normal text-right">Change</th>
-                <th className="py-2 pr-3 font-normal">Clients</th>
-                <th className="hidden py-2 font-normal text-right sm:table-cell">Week before</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => {
-                const key = `${r.platform}:${r.metric}`
-                const prev = prevOf(r)
-                const isOpen = open === key
-                return (
-                  <Fragment key={key}>
-                    <tr
-                      className="cursor-pointer border-t border-secondary hover:bg-secondary"
-                      onClick={() => setOpen(isOpen ? null : key)}
-                      aria-expanded={isOpen}
-                    >
-                      <td className="py-2.5 pr-3 paragraph-md text-primary">{PLATFORM[r.platform] ?? r.platform}</td>
-                      <td className="py-2.5 pr-3 paragraph-md text-secondary">{r.label}</td>
-                      <td className={`py-2.5 pr-3 text-right subheading-md tabular-nums ${tone(r)}`}>{pct(r.median_change)}</td>
-                      <td className="py-2.5 pr-3 paragraph-sm text-tertiary whitespace-nowrap">
-                        {r.up} up, {r.down} down
-                      </td>
-                      <td className={`hidden py-2.5 text-right paragraph-sm tabular-nums sm:table-cell ${prev ? tone(prev) : 'text-tertiary'}`}>
-                        {prev && prev.clients > 0 ? pct(prev.median_change) : '–'}
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="bg-secondary">
-                        <td colSpan={5} className="px-3 py-2">
-                          <ul className="m-0 grid list-none grid-cols-1 gap-x-6 gap-y-1 p-0 sm:grid-cols-2">
-                            {r.detail.map((c) => (
-                              <li key={c.name} className="flex justify-between gap-3 paragraph-sm">
-                                <span className="truncate text-secondary">{c.name}</span>
-                                <span className={`tabular-nums ${tone({ median_change: c.change, good_when_up: r.good_when_up })}`}>
-                                  {pct(c.change)}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        platforms.map((p) => <PlatformBlock key={p} platform={p} rows={shown.filter((r) => r.platform === p)} />)
       )}
-      {lastRun && <span className="paragraph-xs text-tertiary">Last read {day(lastRun)}. Tap a row to see each client.</span>}
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 paragraph-xs text-tertiary">
+          <span>
+            <span className="text-utility-success-700">●</span> good for the client
+          </span>
+          <span>
+            <span className="text-utility-error-700">●</span> bad for the client
+          </span>
+          {lastRun && <span>Last read {day(lastRun)}</span>}
+          <button type="button" className="underline hover:text-secondary" onClick={() => setExplain(!explain)}>
+            {explain ? 'Hide what these mean' : 'What do these mean?'}
+          </button>
+        </div>
+        {explain && (
+          <ul className="m-0 flex list-none flex-col gap-1 p-0 paragraph-sm text-secondary">
+            {used.map((m) => (
+              <li key={m}>
+                <span className="text-primary">{METRIC[m]?.name ?? m}:</span> {METRIC[m]?.explain}
+              </li>
+            ))}
+            <li className="text-tertiary">
+              A client only shows when they spent enough that week for the number to mean something.
+            </li>
+          </ul>
+        )}
+      </div>
     </section>
   )
 }
