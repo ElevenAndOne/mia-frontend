@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { lastClientType, readDeck, showOnHome, startBuild, type ClientType, type DeckRead } from '../features/campaign-builder/api'
+import { readDeck, showOnHome, startBuild, type ClientType, type DeckRead } from '../features/campaign-builder/api'
 import { clearTrackerCache } from '../features/campaign/services/campaign-tracker-service'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
@@ -61,18 +61,8 @@ function NewBuild() {
   const [reading, setReading] = useState<string | null>(null) // the file being read now
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Campaign | BPO: starts on what this workspace chose last (BPO clients stay BPO clients)
+  // Campaign | BPO: always starts on Campaign; BPO is picked by hand (20 Nov, Josh)
   const [clientType, setClientType] = useState<ClientType>('campaign')
-  useEffect(() => {
-    if (!sessionId || !activeWorkspace) return
-    let live = true
-    lastClientType(sessionId, activeWorkspace.tenant_id)
-      .then((r) => live && setClientType(r.client_type))
-      .catch(() => undefined) // the switch stays on Campaign
-    return () => {
-      live = false
-    }
-  }, [sessionId, activeWorkspace])
   const deckText = sourceText(files, deck)
   const deckTooLong = deckText.length > MAX_SOURCE_CHARS
   // The server takes at most 20,000 characters here (StartRequest.pm_text); a pasted full brief belongs in
@@ -207,12 +197,12 @@ function NewBuild() {
                 ? `Reading ${reading}… (slides that are pictures take a minute)`
                 : files.length
                   ? 'Add another document'
-                  : "Add the client's deck or brief (PDF, PowerPoint, Word or Markdown); you can add several"}
+                  : 'Add brief or deck'}
               <input
                 type="file"
                 multiple
                 className="sr-only"
-                accept=".pdf,.pptx,.docx,.txt,.md,.html,.htm"
+                accept=".pdf,.pptx,.docx,.txt,.md,.xlsx,.xlsm,.csv,.html,.htm"
                 disabled={!!reading}
                 onChange={(e) => {
                   const picked = Array.from(e.target.files ?? [])
