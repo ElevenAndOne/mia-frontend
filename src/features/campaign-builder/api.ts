@@ -269,7 +269,8 @@ export async function editStudio(
 }
 
 export async function sendToFlex(sessionId: string, tenantId: string, campaignId: string, actingUserEmail: string) {
-  return check<{ sent: number; jobs: number }>(
+  // brief_cut: what had to be cut from a job's brief to fit Flex's limits (23 Nov), by job name
+  return check<{ sent: number; jobs: number; brief_cut?: Record<string, string[]> }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/send`, {
       method: 'POST',
       headers: json(sessionId),

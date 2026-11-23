@@ -163,7 +163,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
             loading={busy === 'send'}
             disabled={!!s.blockers.length || !sender}
             onClick={() =>
-              act('send', () => api.sendToFlex(...ids, sender), (out) => setDone(`Sent: ${(out as { sent: number }).sent} new task(s) in Flex.`))
+              act('send', () => api.sendToFlex(...ids, sender), (out) => setDone(sentMessage(out as { sent: number; brief_cut?: Record<string, string[]> })))
             }
           >
             Send to Flex
@@ -264,7 +264,13 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
         </p>
       ) : null}
       {s.drive ? (
-        <DriveLine d={s.drive} retrying={busy === 'drive-retry'} onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))} />
+        <DriveLine
+          d={s.drive}
+          retrying={busy === 'drive-retry'}
+          onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))}
+          checking={busy === 'refresh'}
+          onCheck={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}
+        />
       ) : null}
       {s.ideas?.items.length || s.ideas?.set_aside ? (
         <Ideas
@@ -610,7 +616,13 @@ function Row({
 
 // The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov): one line. Mia makes them after
 // approve and reads each job's _Delivery every 15 minutes (or on Check Flex now).
-function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean; onRetry: () => void }) {
+function DriveLine({ d, retrying, onRetry, checking, onCheck }: {
+  d: StudioDrive
+  retrying: boolean
+  onRetry: () => void
+  checking: boolean
+  onCheck: () => void
+}) {
   const [showUnplaced, setShowUnplaced] = useState(false)
   if (!d.shared_drive) {
     return (
@@ -644,6 +656,15 @@ function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean
         <a href={d.root_url} target="_blank" rel="noreferrer" className="underline hover:text-primary">
           Open ↗
         </a>
+        {/* read every job's _Delivery now (23 Nov: the only way was "Check Flex now", hidden behind a later task) */}
+        {d.making ? null : (
+          <>
+            {' · '}
+            <button type="button" disabled={checking} className="underline hover:text-primary disabled:opacity-50" onClick={onCheck}>
+              {checking ? 'Checking…' : 'Check now'}
+            </button>
+          </>
+        )}
         {n ? (
           <>
             {' · '}
@@ -859,4 +880,13 @@ function StageChip({ label }: { label: string }) {
       {label}
     </span>
   )
+}
+
+
+// What the send says: how many went, and any brief Mia had to shorten to fit Flex's limits (rare; never silent).
+function sentMessage(out: { sent: number; brief_cut?: Record<string, string[]> }): string {
+  const cut = Object.entries(out.brief_cut ?? {})
+  const head = `Sent: ${out.sent} new task(s) in Flex.`
+  if (!cut.length) return head
+  return `${head} Too long for Flex, so shortened: ${cut.map(([job, what]) => `${job} (${what.join('; ')})`).join(' · ')}.`
 }
