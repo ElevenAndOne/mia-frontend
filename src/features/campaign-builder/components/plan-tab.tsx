@@ -54,6 +54,16 @@ const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
   check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'approve'].includes(k),
 }
+// The step's own action comes first, so it's what Your turn shows (flow review U1, 23 Nov: Approve sat behind "See"
+// because "Check again" was listed first and never counted as done; "Looks right" sat behind notes the same way).
+// The rest follow as "N more after this".
+const LEADS: Partial<Record<PlanPart, string>> = { check: 'approve', jobs: 'confirm-jobs' }
+function leadWith(part: PlanPart | undefined, items: TurnItem[]): TurnItem[] {
+  const key = part ? LEADS[part] : undefined
+  const lead = key ? items.find((i) => i.key === key && !i.done) : undefined
+  return lead ? [lead, ...items.filter((i) => i !== lead)] : items
+}
+
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
   targets: ['phases', 'stand'],
@@ -121,9 +131,9 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       ) : (
         <YourTurn
           key={part}
-          items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
+          items={leadWith(part, planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
             onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError, part, onMakePlan, onKeepPlan })
-            .filter((i) => !part || PART_ITEMS[part](i.key))}
+            .filter((i) => !part || PART_ITEMS[part](i.key)))}
         />
       )}
       {(part === 'questions' || part === 'check') && (plan.decisions.answered ?? []).some((q) => !q.answer) ? (
@@ -977,6 +987,8 @@ function planTurnItems({
     const at = plan.review?.checked_at
     items.push({
       key: 'final-check',
+      // only a task while Mia is checking: running or re-running the check is on Approve itself (flow review U1)
+      done: !checking,
       title: at ? `Mia checked the campaign ${day(at)}` : "Run Mia's final check",
       detail: checking
         ? 'Mia is checking the whole campaign as it is now (a minute or two).'
