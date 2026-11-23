@@ -183,7 +183,9 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
       {/* What changed */}
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
-          {forTeamOnly ? (
+          {card.mia_did?.length ? (
+            <span className="text-utility-brand-700">Done by Mia</span>
+          ) : forTeamOnly ? (
             <span className="text-utility-brand-700">For the Mia team</span>
           ) : (
             card.importance === 'high' && <span className="text-utility-warning-700">● Important</span>

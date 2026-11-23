@@ -93,6 +93,8 @@ export interface NewsCard {
   clients: string[]
   clients_basis: string | null
   client_notes: ClientNotesDone | null
+  /** What Mia did for this card without being asked ('note', 'rule'); empty when a person did, or nobody has. */
+  mia_did?: Array<'note' | 'rule'>
   /** news: from a platform's own feed or the trade press; trend: a move across our own clients. */
   kind: 'news' | 'trend'
   platform: string | null

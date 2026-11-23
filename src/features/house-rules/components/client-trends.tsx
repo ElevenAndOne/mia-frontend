@@ -186,7 +186,8 @@ export function ClientTrends({ weeks, lastRun, running, onRefresh }: ClientTrend
           {latest ? 'No client had enough ad activity last week to compare.' : 'No numbers yet. The first ones come in on Monday.'}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        // Side by side as sentences; one column once a table is open, so it has room.
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:[&:has([aria-expanded=true])]:grid-cols-1">
           {platforms.map((p) => (
             <PlatformCard key={p} platform={p} rows={shown.filter((r) => r.platform === p)} />
           ))}
