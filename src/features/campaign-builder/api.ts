@@ -268,6 +268,18 @@ export async function editStudio(
   )
 }
 
+// An ad's headline and text, typed on its Launch card (23 Nov): only what's given changes
+export async function saveAdWords(sessionId: string, tenantId: string, campaignId: string, assetId: string,
+  words: { headline?: string; text?: string }) {
+  return check<{ ok: boolean; headline: string | null; text: string | null }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/launch/words`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ asset_id: assetId, ...words }),
+    }),
+  )
+}
+
 // Where this client's ads run: asked once on the first push and saved for the workspace (23 Nov)
 export async function saveAdCountries(sessionId: string, tenantId: string, countries: string[]) {
   return check<{ countries: string[] }>(

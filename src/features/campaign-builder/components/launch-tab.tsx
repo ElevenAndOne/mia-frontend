@@ -260,6 +260,14 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
             </div>
           ) : null}
 
+          {j.route === 'meta' && (j.state === 'ready' || j.state === 'taken_in') ? (
+            <AdWords
+              words={j.words ?? null}
+              saving={busy === 'words'}
+              onSave={(w) => run('words', () => api.saveAdWords(sessionId!, tenantId, campaignId, j.asset_id, w), () => setChecks(null))}
+            />
+          ) : null}
+
           {j.state === 'taken_in' && (j.route === 'meta' || j.route === 'google') ? (
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -435,6 +443,55 @@ function CountriesQuestion({ message, suggest, onSave, saving }: {
         <Button size="sm" variant="primary" loading={saving} disabled={!list.length} onClick={() => onSave(list)}>
           Save for this client
         </Button>
+      </span>
+    </div>
+  )
+}
+
+
+// The ad's words as the push uses them (23 Nov): one quiet line when they're there, the two boxes open when one is
+// missing (a job added by hand or from ClickUp has none, and the push blocks on that).
+function AdWords({ words, saving, onSave }: {
+  words: { headline: string | null; text: string | null } | null
+  saving: boolean
+  onSave: (w: { headline: string; text: string }) => void
+}) {
+  const missing = !words?.headline || !words?.text
+  const [open, setOpen] = useState(missing)
+  const [headline, setHeadline] = useState(words?.headline ?? '')
+  const [text, setText] = useState(words?.text ?? '')
+  if (!open) {
+    return (
+      <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
+        Ad words: <span className="text-primary">{words?.headline}</span> · {words?.text?.slice(0, 80)}
+        {(words?.text?.length ?? 0) > 80 ? '…' : ''}{' '}
+        <button type="button" className="underline hover:text-primary" onClick={() => setOpen(true)}>
+          Edit
+        </button>
+      </p>
+    )
+  }
+  return (
+    <div className={`flex flex-col gap-2 rounded-lg border p-2 ${missing ? 'border-utility-warning-300' : 'border-secondary'}`}>
+      <p className="label-xs text-secondary">Ad words{missing ? ': the push needs both' : ''}</p>
+      <label className="flex flex-col gap-1 paragraph-xs text-secondary">
+        Headline
+        <input value={headline} maxLength={200} onChange={(e) => setHeadline(e.target.value)}
+          className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" />
+      </label>
+      <label className="flex flex-col gap-1 paragraph-xs text-secondary">
+        Ad text
+        <textarea value={text} rows={3} onChange={(e) => setText(e.target.value)}
+          className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" />
+      </label>
+      <span className="flex gap-2">
+        <Button size="sm" variant="primary" loading={saving} disabled={!headline.trim() || !text.trim()}
+          onClick={() => onSave({ headline, text })}>
+          Save words
+        </Button>
+        {!missing ? (
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+        ) : null}
       </span>
     </div>
   )

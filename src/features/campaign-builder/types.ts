@@ -540,6 +540,8 @@ export interface LaunchJob {
   job_no?: string | null
   job_id?: string | null
   names?: JobNames | null
+  // the ad's words as the push uses them; typed on the card when missing (23 Nov)
+  words?: { headline: string | null; text: string | null } | null
   phase: string
   channel: string
   // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)
