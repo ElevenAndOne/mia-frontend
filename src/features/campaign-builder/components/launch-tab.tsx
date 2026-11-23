@@ -262,6 +262,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
 
           {j.route === 'meta' && (j.state === 'ready' || j.state === 'taken_in') ? (
             <AdWords
+              key={`${j.asset_id}:${j.words?.headline ?? ''}:${j.words?.text ?? ''}`}
               words={j.words ?? null}
               saving={busy === 'words'}
               onSave={(w) => run('words', () => api.saveAdWords(sessionId!, tenantId, campaignId, j.asset_id, w), () => setChecks(null))}
