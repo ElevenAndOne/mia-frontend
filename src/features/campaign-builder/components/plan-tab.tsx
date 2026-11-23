@@ -6,6 +6,7 @@ import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
 import { JobWords } from './final-words'
 import { AskMia, FactStrip, Fold, OneAtATime, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
+import { leadWith } from './turn-order'
 import { FindingFix, type CardError } from './finding-fix'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
@@ -54,16 +55,6 @@ const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
   check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'approve'].includes(k),
 }
-// The step's own action comes first, so it's what Your turn shows (flow review U1, 23 Nov: Approve sat behind "See"
-// because "Check again" was listed first and never counted as done; "Looks right" sat behind notes the same way).
-// The rest follow as "N more after this".
-const LEADS: Partial<Record<PlanPart, string>> = { check: 'approve', jobs: 'confirm-jobs' }
-function leadWith(part: PlanPart | undefined, items: TurnItem[]): TurnItem[] {
-  const key = part ? LEADS[part] : undefined
-  const lead = key ? items.find((i) => i.key === key && !i.done) : undefined
-  return lead ? [lead, ...items.filter((i) => i !== lead)] : items
-}
-
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
   targets: ['phases', 'stand'],
