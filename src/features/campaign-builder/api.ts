@@ -268,6 +268,17 @@ export async function editStudio(
   )
 }
 
+// Where this client's ads run: asked once on the first push and saved for the workspace (23 Nov)
+export async function saveAdCountries(sessionId: string, tenantId: string, countries: string[]) {
+  return check<{ countries: string[] }>(
+    await apiFetch(`/api/tenants/${tenantId}/ad-countries`, {
+      method: 'PUT',
+      headers: json(sessionId),
+      body: JSON.stringify({ countries }),
+    }),
+  )
+}
+
 export async function sendToFlex(sessionId: string, tenantId: string, campaignId: string, actingUserEmail: string) {
   // brief_cut: what had to be cut from a job's brief to fit Flex's limits (23 Nov), by job name
   return check<{ sent: number; jobs: number; brief_cut?: Record<string, string[]> }>(

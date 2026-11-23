@@ -289,9 +289,20 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
               {checks ? (
                 blocking.length ? (
                   <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
-                    {blocking.map((c) => (
-                      <li key={c.code}>⚠ {c.message}</li>
-                    ))}
+                    {blocking.map((c) =>
+                      c.code === 'ad_countries_unset' ? (
+                        <li key={c.code}>
+                          <CountriesQuestion
+                            message={c.message}
+                            suggest={c.suggest ?? []}
+                            onSave={(list) => run('countries', () => api.saveAdCountries(sessionId!, tenantId, list), () => void check())}
+                            saving={busy === 'countries'}
+                          />
+                        </li>
+                      ) : (
+                        <li key={c.code}>⚠ {c.message}</li>
+                      ),
+                    )}
                   </ul>
                 ) : advice.length ? (
                   // warnings used to be dropped, and this said "All checks pass" over them (sweep D6)
@@ -398,3 +409,34 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     </li>
   )
 }
+
+
+// Where the client's ads run: asked once, the first time a push is checked, pre-filled from the ad account, saved for
+// the workspace (flow review L3, 23 Nov: every push targeted South Africa). Two-letter codes: ZA, GB, US.
+function CountriesQuestion({ message, suggest, onSave, saving }: {
+  message: string
+  suggest: string[]
+  onSave: (countries: string[]) => void
+  saving: boolean
+}) {
+  const [typed, setTyped] = useState(suggest.join(', '))
+  const list = typed.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean)
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-secondary bg-primary p-2 text-primary">
+      <span>{message}</span>
+      <span className="flex flex-wrap items-center gap-2">
+        <input
+          aria-label="Countries the ads run in"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder="ZA"
+          className="w-40 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm uppercase"
+        />
+        <Button size="sm" variant="primary" loading={saving} disabled={!list.length} onClick={() => onSave(list)}>
+          Save for this client
+        </Button>
+      </span>
+    </div>
+  )
+}
+
