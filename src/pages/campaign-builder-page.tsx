@@ -142,16 +142,20 @@ function NewBuild() {
                   role="radio"
                   aria-checked={clientType === key}
                   onClick={() => setClientType(key)}
-                  className={`rounded-md px-3 py-1 label-sm ${clientType === key ? 'bg-secondary text-primary' : 'text-tertiary'}`}
+                  // the chosen one filled in brand colour with a tick, so it's plain which is on (test 24 Nov)
+                  className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 label-sm transition-colors ${
+                    clientType === key ? 'bg-brand-solid text-primary-onbrand shadow-sm' : 'text-tertiary hover:text-primary'
+                  }`}
                 >
+                  {clientType === key ? <span aria-hidden="true">✓</span> : null}
                   {label}
                 </button>
               ))}
             </div>
             <p className="paragraph-xs text-tertiary">
               {clientType === 'bpo'
-                ? "BPO: the client's document is the brief. Mia only asks if the dates, what to make or the channels are missing, and there are no KPIs or ad budget."
-                : 'Campaign: Mia plans it with you, with KPIs, targets and the ad budget.'}
+                ? "BPO: the client's document is the brief. Mia only flags what blocks the work. No targets or ad budget."
+                : 'Campaign: Mia plans it with you, with targets and the ad budget.'}
             </p>
           </div>
           <label htmlFor="pm-text" className="sr-only">

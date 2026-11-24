@@ -44,7 +44,7 @@ const LABELS: Record<BriefField, string> = {
   end_date: 'Ends',
   budget_total: 'Budget',
   budget_monthly: 'Budget a month',
-  channels_requested: 'Channels you asked for',
+  channels_requested: 'Channels', // the PM's own channels; "you asked for" made the tile's label wrap (24 Nov)
   must_haves: 'Must haves',
   constraints: "Don'ts and limits",
   offer: 'Offer',
@@ -71,6 +71,12 @@ const toDraft = (b: Brief, name: string): Draft & { name: string } => ({
   already_made: (b.already_made ?? []).join('\n'),
   measurement: (b.measurement ?? []).join('\n'),
 })
+
+// "the audience and the landing page": the facts Mia filled in, by name (test 24 Nov)
+const listFields = (ks: BriefField[]) => {
+  const names = ks.map((k) => `the ${LABELS[k].toLowerCase()}`)
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
 
 const fromDraft = (k: BriefField, v: string): unknown => {
   if (LIST_FIELDS.includes(k)) return v.split('\n').map((s) => s.trim()).filter(Boolean)
@@ -331,7 +337,6 @@ function BriefCard({
     setDraft(initial)
     setEditing(true)
   }
-  const setByPm = new Set(brief.set_by_pm ?? [])
   const locked = !state.campaign.building
   // "Edit" in Your turn or the optional line opens this form (one form, not a second one up there)
   useEffect(() => {
@@ -345,7 +350,6 @@ function BriefCard({
     return () => window.removeEventListener(EDIT_EVENT, open)
   }, [initial, locked])
   const fields = (Object.keys(LABELS) as BriefField[]).filter((k) => !(bpo && NOT_FOR_BPO.includes(k)))
-  const read = new Set(drafted)
   const empty = (k: BriefField) => {
     const v = brief[k as keyof Brief]
     return v == null || v === '' || (Array.isArray(v) && !v.length)
@@ -460,25 +464,32 @@ function BriefCard({
         // Long fields across the card, the short ones (dates, budget, channels) four to a row (19 Oct). Each fact is one
         // line, the whole text on tap; empty ones are one "Not set" line (20 Nov: a wall of dashes and full sentences).
         <>
-        <dl className="mt-3 grid grid-cols-2 @3xl:grid-cols-4 gap-x-6 gap-y-3">
-          {shown.map((k) => (
+        {/* The goal as the card's headline, the rest as tiles on a soft panel (test 24 Nov: the card read as generic and
+            bland). No "Mia read this" / "set by you" chips: the check below names what Mia filled in. */}
+        {shown.includes('goal') ? (
+          <div className="mt-3 rounded-lg bg-secondary px-4 py-3">
+            <p className="label-xs uppercase tracking-[0.06em] text-tertiary">{LABELS.goal}</p>
+            <p className="mt-1 label-bg text-primary [text-wrap:balance] [overflow-wrap:anywhere]">{show('goal')}</p>
+          </div>
+        ) : null}
+        <dl className="mt-2 grid grid-cols-2 @3xl:grid-cols-4 gap-2">
+          {shown.filter((k) => k !== 'goal').map((k) => (
             <div
               key={k}
-              className={`min-w-0 ${
-                k === 'goal' || k === 'audience' ? 'col-span-2 @3xl:col-span-4' : k === 'must_haves' || k === 'constraints' ? 'col-span-2' : ''
+              className={`min-w-0 rounded-lg bg-secondary px-3 py-2.5 ${
+                k === 'audience' ? 'col-span-2 @3xl:col-span-4' : k === 'must_haves' || k === 'constraints' || k === 'landing_page' ? 'col-span-2' : ''
               }`}
             >
-              <dt className="label-xs text-tertiary flex flex-wrap items-center gap-2">
+              <dt className="label-xs uppercase tracking-[0.06em] text-tertiary flex flex-wrap items-center gap-2">
                 {LABELS[k]}
-                {setByPm.has(k) ? <Chip tone="pm">set by you</Chip> : read.has(k) && !locked ? <Chip tone="mia">Mia read this</Chip> : null}
                 {(k === 'start_date' || k === 'end_date') && brief.dates_proposed_by_mia ? (
                   <NeedsYou>Mia's proposal</NeedsYou>
                 ) : null}
                 {k === 'budget_total' && brief.budget_total == null ? <NeedsYou>no budget yet</NeedsYou> : null}
               </dt>
-              <dd className="paragraph-sm text-primary mt-0.5">
+              <dd className="paragraph-md font-medium text-primary mt-1">
                 <details className="group">
-                  <summary className="cursor-pointer list-none line-clamp-1 group-open:line-clamp-none [overflow-wrap:anywhere] [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer list-none line-clamp-2 group-open:line-clamp-none [overflow-wrap:anywhere] [&::-webkit-details-marker]:hidden">
                     {show(k)}
                   </summary>
                 </details>
@@ -486,11 +497,11 @@ function BriefCard({
             </div>
           ))}
         </dl>
-        {/* the facts check, once, where the facts are (screen walk 23 Nov) */}
+        {/* the facts check, once, where the facts are, naming them (test 24 Nov: "2 of these" said nothing) */}
         {drafted.length && onConfirm && !locked ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand bg-brand-primary px-3 py-2">
             <p className="paragraph-sm text-primary">
-              Mia read {drafted.length === 1 ? 'one of these' : `${drafted.length} of these`} from what you gave her. Are they right?
+              Mia filled in {listFields(drafted)} herself. {drafted.length === 1 ? 'Is it' : 'Are they'} right?
             </p>
             <span className="flex gap-2">
               <PrimaryAction loading={busy === 'confirm'} onClick={() => onConfirm(drafted)}>
@@ -505,12 +516,13 @@ function BriefCard({
         {notSet.length || skipped.length ? (
           <div className="mt-3 flex flex-col gap-1 border-t border-secondary pt-2 paragraph-xs text-tertiary">
             {notSet.length ? (
+              // says it's optional and what Add does (test 24 Nov: "Not set: … · add" was unclear)
               <p>
-                Not set: {notSet.map((k) => LABELS[k].toLowerCase()).join(', ')}
+                Optional, not given: {notSet.map((k) => LABELS[k].toLowerCase()).join(', ')}
                 {locked ? null : (
                   <>
                     {' · '}
-                    <button type="button" onClick={startEditing} className="underline hover:text-secondary">add</button>
+                    <button type="button" onClick={startEditing} className="underline hover:text-secondary">Add any</button>
                   </>
                 )}
               </p>

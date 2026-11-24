@@ -175,8 +175,6 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   const current = open.find((i) => i.key === chosen) ?? open[0]
   // The item being done shows its list (the fixes, the questions) unless the PM hides it
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
-  // what comes after is a count; the list opens on tap (20 Nov: "2 more after this", not a second list)
-  const [showRest, setShowRest] = useState(false)
   const isOpen = (k: string) => !hidden.has(k)
   const toggle = (k: string) => setHidden((h) => { const n = new Set(h); if (n.has(k)) n.delete(k); else n.add(k); return n })
   if (!current) {
@@ -198,7 +196,21 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   return (
     <Card className="!p-0 flex flex-col overflow-hidden !border-brand">
       <div className="flex flex-col gap-3 bg-brand-primary px-5 py-4">
-        <p className="label-xs uppercase tracking-[0.06em] text-brand-secondary">Your turn</p>
+        {/* how many on this step, and a way past one, in the label (test 24 Nov: a "Then: … · See all" line under the
+            card repeated the step bar) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* no count here: a task like "Mia's question 1 of 3" has its own, and two counts read as a clash (24 Nov) */}
+          <p className="label-xs uppercase tracking-[0.06em] text-brand-secondary">Your turn</p>
+          {rest.length ? (
+            <button
+              type="button"
+              onClick={() => setChosen(open[(open.indexOf(current) + 1) % open.length].key)}
+              className="paragraph-xs text-tertiary hover:text-secondary"
+            >
+              Skip for now ›
+            </button>
+          ) : null}
+        </div>
         <div className="flex flex-col gap-1">
           <h2 className="label-md text-primary [text-wrap:balance]">{current.title}</h2>
           {current.detail ? <div className="paragraph-sm text-secondary max-w-[62ch]">{current.detail}</div> : null}
@@ -216,34 +228,6 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
           </div>
         ) : null}
       </div>
-      {rest.length ? (
-        <div className="border-t border-secondary px-5 py-2.5">
-          {/* what's next, named once: "Then: Set 2 targets · 1 more" (20 Nov: a count, not a second list) */}
-          <button type="button" aria-expanded={showRest} onClick={() => setShowRest((v) => !v)} className="paragraph-xs text-tertiary hover:text-secondary text-left">
-            Then: <span className="text-secondary">{rest[0].title}</span>
-            {rest.length > 1 ? ` · ${rest.length - 1} more` : ''} · <span className="underline">{showRest ? 'Hide' : 'See all'}</span>
-          </button>
-          {showRest ? (
-          <ul className="flex flex-col">
-            {rest.map((it) => (
-              <li key={it.key}>
-                {/* one line each; opening one makes it the item above (the list stays one at a time) */}
-                <button
-                  type="button"
-                  onClick={() => setChosen(it.key)}
-                  className="flex w-full items-center gap-2 py-1 text-left paragraph-xs text-secondary hover:text-primary"
-                >
-                  <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-tertiary label-xs text-secondary">
-                    {open.indexOf(it) + 1}
-                  </span>
-                  <span className="min-w-0 truncate">{it.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          ) : null}
-        </div>
-      ) : null}
       {footer ? <div className="border-t border-secondary px-4 py-3">{footer}</div> : null}
     </Card>
   )
