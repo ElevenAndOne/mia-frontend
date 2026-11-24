@@ -80,7 +80,9 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   // Each step opens with only Your turn; its detail sections stay folded until wanted (L8).
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
   const [lookOver, setLookOver] = useState(false) // Check & approve: the whole campaign behind one line
-  const shows = (f: string) => !part || part === 'check' || PART_FOLDS[part].includes(f)
+  // a BPO campaign is one list of work with no budget or targets (24 Nov): its phases fold isn't shown
+  const bpo = state.campaign.client_type === 'bpo'
+  const shows = (f: string) => !(bpo && f === 'phases') && (!part || part === 'check' || PART_FOLDS[part].includes(f))
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
@@ -166,7 +168,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           onClick={() => setLookOver(true)}
           className="self-start inline-flex items-center gap-1.5 paragraph-sm font-medium text-secondary hover:text-primary"
         >
-          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, phases, jobs, how Mia got here</span>
+          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, {bpo ? '' : 'phases, '}jobs, how Mia got here</span>
           <span aria-hidden="true">›</span>
         </button>
       ) : null}
@@ -299,9 +301,11 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           if (!jobs.length) return null
           return (
             <div key={p.phase} className="rounded-xl border border-secondary bg-secondary">
-              <p className="px-3 pt-2 label-xs text-tertiary">
-                {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
-              </p>
+              {bpo ? null : (
+                <p className="px-3 pt-2 label-xs text-tertiary">
+                  {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
+                </p>
+              )}
               <ul className="divide-y divide-secondary">
                 {jobs.map(({ a, i }) => {
                   const id = a.job_id ?? `${i}-${a.name}`

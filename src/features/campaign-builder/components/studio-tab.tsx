@@ -8,7 +8,7 @@ import { CopyButton } from './copy-button'
 import * as api from '../api'
 import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState, StudioTeam } from '../types'
 import { JobCard } from './launch-tab'
-import { Card, NeedsYou, channelLabel, day, num } from './parts'
+import { Card, NeedsYou, channelLabel, day, num, phaseTag } from './parts'
 import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
 
 // The Studio tab (plan §8.2): the approved jobs, priced from the Credit Ledger and placed in the
@@ -491,7 +491,7 @@ function Row({
         {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
         <JobId id={j.job_id} />
         <span className="block paragraph-xs text-tertiary">
-          {j.phase} · {channelLabel(j.channel)}
+          {phaseTag(j.phase)}{channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
         <JobNames names={j.names} />

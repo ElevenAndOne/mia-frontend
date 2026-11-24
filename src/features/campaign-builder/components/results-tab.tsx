@@ -57,7 +57,7 @@ const POINTS: [string, string][] = [
   ['what_to_avoid', 'Avoid next time'],
 ]
 
-export function ResultsTab({ campaignId, approved }: { campaignId: string; approved: boolean }) {
+export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: string; approved: boolean; bpo?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const qc = useQueryClient()
@@ -85,6 +85,15 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   const navigate = useNavigate()
 
   if (!approved) return <Card className="paragraph-sm text-secondary">Results start once the plan is approved and the campaign is launched.</Card>
+  // BPO: the client runs and measures its own media, so there are no targets here (24 Nov: empty phase cards asked
+  // for targets a BPO campaign never has)
+  if (bpo)
+    return (
+      <Card className="flex flex-col gap-1">
+        <p className="label-sm text-primary">No targets for a BPO campaign</p>
+        <p className="paragraph-sm text-secondary">The client runs its own media. What's made, sent and back from the studio is on the Studio tab.</p>
+      </Card>
+    )
   if (q.isPending) return <p className="paragraph-sm text-tertiary">Loading…</p>
   if (!s) return <p className="paragraph-sm text-error">{(q.error as Error)?.message ?? 'Could not load the results.'}</p>
 

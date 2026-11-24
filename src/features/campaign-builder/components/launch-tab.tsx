@@ -12,7 +12,7 @@ import type { PushCheck } from '../../campaigns/types'
 import * as api from '../api'
 import { CopyButton } from './copy-button'
 import type { LaunchJob } from '../types'
-import { NeedsYou, channelLabel, day } from './parts'
+import { NeedsYou, channelLabel, day, phaseTag } from './parts'
 
 // Launching a job (plan §8.2), shown under its row on the Studio page (Studio and Launch are one page since 19 Oct;
 // the old Launch tab was removed as dead code, review 26 Oct). A job is ready when Flex says so and its final artwork
@@ -401,7 +401,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           <JobId id={j.job_id} />
         </span>
         <span className="paragraph-xs text-tertiary">
-          {j.phase} · {channelLabel(j.channel)}
+          {phaseTag(j.phase)}{channelLabel(j.channel)}
         </span>
         <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
         {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}

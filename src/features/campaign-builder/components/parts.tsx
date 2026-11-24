@@ -37,6 +37,11 @@ export const CHANNEL_LABELS: Record<string, string> = {
   email: 'Email',
   website: 'Website',
 }
+// A BPO campaign's one list of work (plan_generator.BPO_PHASE, 24 Nov): never shown as a phase
+export const BPO_PHASE = 'Deliverables'
+/** "Reach · " before a job's channel, or nothing for a BPO campaign's one list */
+export const phaseTag = (phase?: string | null) => (phase && phase !== BPO_PHASE ? `${phase} · ` : '')
+
 export const channelLabel = (c: string) => {
   const t = CHANNEL_LABELS[c] ?? c.replace(/_/g, ' ')
   return t.charAt(0).toUpperCase() + t.slice(1)

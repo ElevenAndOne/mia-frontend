@@ -515,7 +515,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 scrollTop={() => pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })}
               />
             ) : tab === 'results' ? (
-              <ResultsTab campaignId={campaignId} approved={!s.campaign.building} />
+              <ResultsTab campaignId={campaignId} approved={!s.campaign.building} bpo={s.campaign.client_type === 'bpo'} />
             ) : tab === 'studio' || tab === 'launch' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
