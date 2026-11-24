@@ -79,6 +79,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   // Detail sections: closed until wanted; a step opens the ones it is about.
   // Each step opens with only Your turn; its detail sections stay folded until wanted (L8).
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
+  const [lookOver, setLookOver] = useState(false) // Check & approve: the whole campaign behind one line
   const shows = (f: string) => !part || part === 'check' || PART_FOLDS[part].includes(f)
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
@@ -101,6 +102,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   const pmPhases = new Set(sp?.pm_phases ?? [])
   // "Show me" from Your turn: open the fold (and the job), then scroll to the item.
   const reveal = (id: string, fold?: string, jobIndex?: number) => {
+    setLookOver(true) // on Check & approve the folds sit behind "Look over the whole campaign"
     if (fold) setFolds((f) => new Set(f).add(fold))
     const job = jobIndex != null ? plan.assets[jobIndex] : undefined
     if (job) setOpenJobs((o) => new Set(o).add(job.job_id ?? `${jobIndex}-${job.name}`))
@@ -157,6 +159,17 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           boxes on every step, repeating the top line) */}
       {!part || part === 'check' ? <FactStrip state={state} plan={plan} /> : null}
 
+      {part === 'check' && !lookOver ? (
+        // One line, not four folds (20 Nov plan, E): the whole campaign is a tap away for the last look
+        <button
+          type="button"
+          onClick={() => setLookOver(true)}
+          className="self-start paragraph-sm text-secondary underline hover:text-primary"
+        >
+          Look over the whole campaign: the idea, phases and targets, jobs, how Mia got here
+        </button>
+      ) : null}
+      {part !== 'check' || lookOver ? (<>
       {shows('idea') ? (<Fold
         id="fold-idea"
         title="The idea"
@@ -328,6 +341,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         {plan.review ? <SelfCheck review={plan.review} /> : null}
         <Checks plan={plan} />
       </Fold>) : null}
+      </>) : null}
     </div>
   )
 }

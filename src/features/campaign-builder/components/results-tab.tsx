@@ -198,7 +198,8 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                           </span>
                         ) : null}
                         {k.target == null ? <AskForTarget draft={`Suggest a target for ${p.phase} ${k.kpi_name}.`} /> : null}
-                        {k.basis === 'after_approve' ? <Chip>set after approve</Chip> : k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
+                        {/* where the target came from: only beside a target (24 Nov: "no target" sat beside "your target") */}
+                        {k.target == null ? null : k.basis === 'after_approve' ? <Chip>set after approve</Chip> : k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
                         {(() => {
                           // the number it replaced stays on record (owner, 6 Nov): never a silent rewrite
                           const last = k.history?.length ? k.history[k.history.length - 1] : null

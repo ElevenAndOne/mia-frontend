@@ -193,10 +193,20 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       key: 'check-back',
       title: `Check ${back.length} job${back.length === 1 ? '' : 's'} back from the studio`,
       // a job done in Flex with no file is asked for its file, not its artwork (browser pass 16 Nov)
+      // on a Shared Drive the files go in the job's _Delivery folder, not a pasted link (screen walk 23 Nov, theme 6)
       detail: back.some((j) => j.no_file)
-        ? `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
+        ? s.drive?.root_url
+          ? `${back.filter((j) => j.no_file).length} came back with no file yet: the files go in each job's _Delivery folder on Drive, then press Check now.`
+          : `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
         : 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
-      actions: <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>,
+      actions:
+        back.some((j) => j.no_file) && s.drive?.root_url ? (
+          <PrimaryAction loading={busy === 'refresh'} onClick={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}>
+            Check now
+          </PrimaryAction>
+        ) : (
+          <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>
+        ),
     })
   }
   if (toLaunch.length) {
@@ -554,8 +564,14 @@ function Row({
       <td className="py-2 pr-2">
         {inFlex ? (
           <span className="flex flex-col gap-0.5">
+            {/* the stage is the link to the task (screen walk 23 Nov, theme 5: a stage chip, "Open in Flex" and Details
+                stacked on every row) */}
             {launch && launch.state !== 'in_studio' ? (
               <LaunchChip state={launch.state} how={launch.launch?.how} />
+            ) : j.flex.url ? (
+              <a href={j.flex.url} target="_blank" rel="noreferrer" title="Open the task in Flex" className="w-fit hover:opacity-80">
+                <StageChip label={`${j.flex.stage_label ?? j.flex.status ?? 'Open'} ↗`} />
+              </a>
             ) : (
               <StageChip label={j.flex.stage_label ?? j.flex.status ?? 'Open'} />
             )}
@@ -564,14 +580,11 @@ function Row({
                 review: internal {j.flex.review_rounds.internal}, client {j.flex.review_rounds.client}
               </span>
             ) : null}
-            {j.flex.url ? (
-              <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary"
-                href={j.flex.url} target="_blank" rel="noreferrer">
-                Open in Flex ↗
+            {launch && launch.state !== 'in_studio' && j.flex.url ? (
+              <a className="w-fit paragraph-xs text-tertiary underline hover:text-secondary" href={j.flex.url} target="_blank" rel="noreferrer">
+                Flex ↗
               </a>
-            ) : (
-              <span className="paragraph-xs text-tertiary">in Flex</span>
-            )}
+            ) : null}
           </span>
         ) : inClickUp && j.clickup ? (
           <span className="flex flex-col gap-0.5">

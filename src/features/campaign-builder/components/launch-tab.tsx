@@ -211,7 +211,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ) : j.search && j.state === 'ready' ? (
             <p className="paragraph-sm text-secondary">A search ad is its headlines and descriptions, so there's no file: add the page people land on.</p>
           ) : j.no_file && j.state === 'ready' ? (
-            <NeedsYou>Done in Flex, but no file came back with it. Paste the file's link below, or add it to the job in Flex.</NeedsYou>
+            <NeedsYou>Done in Flex, but no file came back with it. Put it in the job's _Delivery folder on Drive, or paste its link below.</NeedsYou>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}

@@ -606,6 +606,7 @@ function StepView({
   const next = steps[i + 1]
   const nextOpen = next && states[step] === 'done'
   const left = steps.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
+  const [context, setContext] = useState(false)
   return (
     <div className="flex flex-col gap-4">
       {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
@@ -667,16 +668,23 @@ function StepView({
         />
       )}
       {step === 'check' ? (
-        // What you gave Mia, what she read, your words and the client's rules: folded context for the last look (L2, L4).
-        <BriefTab
-          part="context"
-          state={s}
-          kpiGroups={build.kpiGroups}
-          busy={build.busy}
-          onSave={build.saveBrief}
-          onRedraft={build.redraft}
-          onMakePlan={build.makePlan}
-        />
+        // What you gave Mia, what she read, your words and the client's rules: one line for the last look (L2, L4; 20
+        // Nov plan E: four more folds sat here)
+        context ? (
+          <BriefTab
+            part="context"
+            state={s}
+            kpiGroups={build.kpiGroups}
+            busy={build.busy}
+            onSave={build.saveBrief}
+            onRedraft={build.redraft}
+            onMakePlan={build.makePlan}
+          />
+        ) : (
+          <button type="button" onClick={() => setContext(true)} className="self-start paragraph-sm text-secondary underline hover:text-primary">
+            What you gave Mia, what she read, your words and {s.campaign.client}'s rules
+          </button>
+        )
       ) : null}
       {/* No "Next:" bar at the bottom (screen walk 23 Nov, theme 4: two next buttons competed): a finished step moves
           on by itself, and Up next at the top is the one way on when the next thing is on another step. */}
