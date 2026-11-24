@@ -50,6 +50,7 @@ const PlatformGearMenu = ({
   const supportsReconnect = [
     'google',
     'meta',
+    'facebook_organic',
     'ga4',
     'hubspot',
     'mailchimp',

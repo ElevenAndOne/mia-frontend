@@ -37,8 +37,11 @@ export function useIntegrationStatus(
     gcTime: 5 * 60 * 1000,
   })
 
+  // Every connect, reconnect, disconnect and account pick calls this, and each one can change
+  // the health flags too (a reconnect clears "Reconnect"), so refresh both together.
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['integration-status'] })
+    queryClient.invalidateQueries({ queryKey: ['integration-health'] })
   }
 
   return {
