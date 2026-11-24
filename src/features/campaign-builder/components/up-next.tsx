@@ -43,11 +43,13 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
   // a check from before the latest change isn't what's open now (review 2 Nov: "Go through Mia's 2 findings" beside
   // items saying "Found before your latest change"); the next check says what is, and the approve box counts the same
   const stale = !!plan?.review?.stale
-  const breaks = stale ? 0 : plan?.review?.audit?.jobs?.length ?? 0
+  // a must-have no job makes counts as a finding; notes are advice that never holds approve (E30)
+  const missing = stale || plan?.review?.audit?.error ? 0
+    : (plan?.review?.audit?.uncovered ?? []).filter((u) => !done.has(u.decision)).length
+  const breaks = (stale ? 0 : plan?.review?.audit?.jobs?.length ?? 0) + missing
   const notesOpen = stale ? 0 : (plan?.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x)).length
-  const findings = breaks + notesOpen
-  // the same words the approve box uses: findings and notes counted apart
-  const found = [breaks ? plural(breaks, 'finding') : '', notesOpen ? plural(notesOpen, 'note') : ''].filter(Boolean).join(' and ')
+  const findings = breaks
+  const found = plural(breaks, 'finding')
   const recheck = (plan?.decisions.kpi_targets ?? []).filter((t) => t.recheck && t.value != null).length
   const reconfirm = !!plan && !plan.decisions.jobs_confirmed && !!(plan.decisions as { jobs_confirmed_sig?: string }).jobs_confirmed_sig
   const first = [
@@ -104,10 +106,15 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       if (findings && !s.checking)
         return say(`Go through Mia's ${found}, one at a time${reconfirm ? ', then confirm the jobs again' : ''}, then approve.`, 'check', true)
       if (s.checking || words) return { text: 'Mia is checking the plan once more. Then you approve.', step: 'check' }
+      // a close reading that failed is "couldn't run", as the Approve box and the server say (review 25 Nov)
+      if (plan?.review?.audit?.error && !stale)
+        return say("Part of Mia's check couldn't run: press Check again, then approve.", 'check')
       // a changed job's words are rewritten first, then the check runs (local test 5, 2 Nov: "Everything is done.
       // Approve the plan." showed over "Mia is about to rewrite 2 jobs, then she checks")
       if ((s.check_pending ?? s.checking) && s.auto_words)
         return { text: 'Mia is rewriting the changed jobs, then she checks once more. Nothing needs you yet.', step: 'check' }
+      if (notesOpen)
+        return say(`Approve the plan. Mia left ${plural(notesOpen, 'note')} of advice: fix any you want first.`, 'check')
       return say('Everything is done. Approve the plan.', 'check')
     }
   }

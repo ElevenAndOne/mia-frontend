@@ -339,7 +339,7 @@ export function CampaignChat({
         {!loading
           ? // a card made by a button on the page (Fix it on a finding or note) shows in Your turn only; the chat shows the
             // cards from what the PM typed here (Josh, 24 Nov, E19)
-            pending.filter((p) => !/^(Fix|Note) · /.test(p.about ?? '')).map((p) => (
+            pending.filter((p) => !/^(Fix|Note|Missing) · /.test(p.about ?? '')).map((p) => (
               <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-brand bg-brand-primary px-3 py-2">
                 <p className="label-xs text-brand-secondary">Mia proposes{p.about ? ` · for ${p.about}` : ''}</p>
                 <ul className="flex flex-col gap-1 paragraph-sm text-primary">

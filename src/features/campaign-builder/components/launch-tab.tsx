@@ -1,5 +1,5 @@
 import { JobId, JobNames } from './job-names'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import {
@@ -58,15 +58,35 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   }
   const takeIn = () =>
     run('take', () => api.launchAction(sessionId!, tenantId, campaignId, 'take-in', { asset_id: j.asset_id, final_url: link, creative: creative || null }))
-  const check = () =>
-    run('check', async () => {
+  // The push check, by itself when a job ready to push opens (E34). Its own error line, so a failed check says so where
+  // the Push button is, with Check again.
+  const [checkError, setCheckError] = useState<string | null>(null)
+  const [cta, setCta] = useState<string | null>(null) // the button the push gives the ad, read from the check
+  const [autoChecked, setAutoChecked] = useState(false)
+  const check = async () => {
+    setBusy('check')
+    setCheckError(null)
+    try {
       const p = j.route === 'meta'
         ? await fetchMetaPushPreview(sessionId!, tenantId, campaignId, j.action_id)
         : await fetchGooglePushPreview(sessionId!, tenantId, campaignId, j.action_id)
       setChecks(p.errors)
       setAdvice(p.warnings ?? [])
       setPushCcy(p.currency ?? null)
-    })
+      if ('default_cta' in p && typeof p.default_cta === 'string') setCta(p.default_cta)
+    } catch (e) {
+      setCheckError(e instanceof Error ? e.message : 'something went wrong')
+    } finally {
+      setBusy(null)
+    }
+  }
+  const canPush = j.state === 'taken_in' && (j.route === 'meta' || j.route === 'google')
+  useEffect(() => {
+    if (!canPush || autoChecked || !sessionId) return
+    setAutoChecked(true)
+    void check()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canPush, autoChecked, sessionId])
   const push = () => {
     const where = j.route === 'meta' ? 'Meta' : 'Google Ads'
     if (!window.confirm(`Push every ready ad on this ${channelLabel(j.channel)} channel to ${where} as PAUSED? Nothing runs until someone switches it on in ${where}.`)) return
@@ -167,11 +187,20 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     </div>
   )
 
+  // What the ad looks like, for a job ready to push: its picture, headline and text (E34: a raw S3 link, the full UTM
+  // link and cut-off words were shown instead)
+  const images = [
+    ...j.artwork.filter((a) => /image|png|jpe?g|webp|gif/i.test(a.kind) || /\.(png|jpe?g|webp|gif)(\?|$)/i.test(a.url)).map((a) => a.url),
+    ...(j.creative ?? '').split('\n').map((x) => x.trim()).filter((x) => /^https?:\/\//i.test(x)),
+  ].filter((u, i, all) => all.indexOf(u) === i)
+  const pushable = canPush
   const flexBody = (
     <div className={`flex flex-col gap-3 ${bare ? '' : 'border-t border-secondary px-3 py-3'}`}>
-          <JobNames names={j.names} />
+          {pushable && j.route === 'meta' ? (
+            <AdPreview images={images} headline={j.words?.headline ?? null} text={j.words?.text ?? null} cta={cta} />
+          ) : null}
 
-          {j.artwork.length ? (
+          {!(pushable && j.route === 'meta') && j.artwork.length ? (
             <div className="flex flex-col gap-1">
               <p className="label-xs text-secondary">Artwork from the studio</p>
               <ul className="flex flex-wrap gap-2">
@@ -196,18 +225,22 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                 <NeedsYou>Only a Figma link: ad platforms need the exported file. Add a Drive link in Flex, or paste an image link below.</NeedsYou>
               ) : null}
             </div>
-          ) : j.state !== 'in_studio' && j.creative ? (
-            // The PM added the artwork here instead of in Flex: that is fine, say where it is (live test 18 Oct).
-            <p className="paragraph-xs text-secondary [overflow-wrap:anywhere]">
-              Artwork added in Mia:{' '}
-              {/^https?:\/\//i.test(j.creative) ? (
-                <a className="underline" href={j.creative} target="_blank" rel="noreferrer">
-                  {j.creative}
-                </a>
-              ) : (
-                <span>{j.creative}</span> // never a link that isn't a web address (review 26 Oct)
-              )}
-            </p>
+          ) : pushable && j.route === 'meta' ? null : j.state !== 'in_studio' && j.creative ? (
+            // The artwork came in through Mia (pasted, or from the job's Drive folder): its pictures, never the raw
+            // storage links (E34)
+            images.length ? (
+              <ul className="flex flex-wrap gap-2">
+                {images.map((u) => (
+                  <li key={u}>
+                    <a href={u} target="_blank" rel="noreferrer" title="Open the full size">
+                      <img src={u} alt="" loading="lazy" className="h-24 w-auto rounded-md border border-secondary object-cover" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="paragraph-xs text-secondary [overflow-wrap:anywhere]">Artwork added in Mia: {j.creative}</p>
+            )
           ) : j.search && j.state === 'ready' ? (
             <p className="paragraph-sm text-secondary">A search ad is its headlines and descriptions, so there's no file: add the page people land on.</p>
           ) : j.no_file && j.state === 'ready' ? (
@@ -217,25 +250,9 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ) : null}
           {j.state === 'in_studio' ? (
             <p className="paragraph-sm text-secondary">
-              In Flex: <span className="text-primary">{j.stage_label ?? 'Open'}</span>. It moves up to "Back from the studio" once
-              the job is set to Ready to launch in Flex with its final artwork linked (a Drive file or image link).
+              At the studio: <span className="text-primary">{j.stage_label ?? 'Open'}</span>. It comes back here by itself once
+              the studio has finished it and its files are in.
             </p>
-          ) : null}
-          {j.final_url && j.state !== 'ready' ? (
-            // the link with Mia's tracking, ready to paste into the ad (26 Oct)
-            <div className="flex flex-col gap-0.5">
-              <p className="paragraph-xs text-secondary flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
-                Tracked link: <span className="text-primary">{j.final_url}</span>
-                <CopyButton value={j.final_url} label="Copy link" />
-              </p>
-              {j.launch?.link_note ? <p className="paragraph-xs text-tertiary">{j.launch.link_note}</p> : null}
-            </div>
-          ) : null}
-          {j.flex_url ? (
-            <a href={j.flex_url} target="_blank" rel="noreferrer"
-              className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary">
-              Open the job in Flex ↗
-            </a>
           ) : null}
 
           {j.state === 'ready' ? (
@@ -265,24 +282,29 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
               key={`${j.asset_id}:${j.words?.headline ?? ''}:${j.words?.text ?? ''}`}
               words={j.words ?? null}
               saving={busy === 'words'}
-              onSave={(w) => run('words', () => api.saveAdWords(sessionId!, tenantId, campaignId, j.asset_id, w), () => setChecks(null))}
+              onSave={(w) => run('words', () => api.saveAdWords(sessionId!, tenantId, campaignId, j.asset_id, w), () => {
+                setChecks(null) // new words: Mia checks again by herself
+                setAutoChecked(false)
+              })}
             />
           ) : null}
 
-          {j.state === 'taken_in' && (j.route === 'meta' || j.route === 'google') ? (
+          {pushable ? (
+            // Mia checks by herself when this opens, and Push lights only once nothing blocks it (E34: "Push" led
+            // before any check had run)
             <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" loading={busy === 'check'} onClick={() => void check()}>
-                  Check before pushing
-                </Button>
-                <Button size="sm" variant="primary" loading={busy === 'push'} disabled={!!blocking.length} onClick={push}>
-                  Push to {j.route === 'meta' ? 'Meta' : 'Google'}, paused
-                </Button>
-                {/* The PM built the ad in Ads Manager themselves: it still counts as launched (live test 18 Oct). */}
-                <Button size="sm" loading={busy === 'mark'} onClick={mark}>
-                  I set it up myself
-                </Button>
-              </div>
+              {busy === 'check' || (!checks && !checkError) ? (
+                <p className="paragraph-sm text-tertiary">Mia is checking the ad before it goes up…</p>
+              ) : checkError ? (
+                <p className="flex flex-wrap items-center gap-2 paragraph-sm text-utility-warning-700">
+                  Mia couldn't check it: {checkError}
+                  <Button size="sm" onClick={() => void check()}>Check again</Button>
+                </p>
+              ) : blocking.length ? (
+                <p className="paragraph-sm text-primary">Before it can go up:</p>
+              ) : (
+                <p className="paragraph-sm text-utility-success-700">Ready to push. It goes up paused; nothing runs until someone switches it on.</p>
+              )}
               {currencyClash ? (
                 <label className="flex flex-wrap items-center gap-2 paragraph-xs text-secondary">
                   {j.route === 'meta' ? 'Lifetime' : 'Daily'} budget in {pushCcy ?? "the account's currency"}
@@ -304,7 +326,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                           <CountriesQuestion
                             message={c.message}
                             suggest={c.suggest ?? []}
-                            onSave={(list) => run('countries', () => api.saveAdCountries(sessionId!, tenantId, list), () => void check())}
+                            onSave={(list) => void run('countries', () => api.saveAdCountries(sessionId!, tenantId, list)).then(() => check())}
                             saving={busy === 'countries'}
                           />
                         </li>
@@ -315,18 +337,22 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                   </ul>
                 ) : advice.length ? (
                   // warnings used to be dropped, and this said "All checks pass" over them (sweep D6)
-                  <div className="paragraph-xs text-secondary">
-                    <p>Nothing blocks the push. Worth a look first:</p>
-                    <ul className="flex flex-col gap-0.5 mt-0.5">
-                      {advice.map((w) => (
-                        <li key={w}>• {w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="paragraph-xs text-utility-success-700">All checks pass. It goes up paused.</p>
-                )
+                  <ul className="flex flex-col gap-0.5 paragraph-xs text-secondary">
+                    {advice.map((w) => (
+                      <li key={w}>• {w}</li>
+                    ))}
+                  </ul>
+                ) : null
               ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="md" variant="primary" loading={busy === 'push'} disabled={!checks || !!blocking.length || busy === 'check'} onClick={push}>
+                  Push to {j.route === 'meta' ? 'Meta' : 'Google'}, paused
+                </Button>
+                {/* The PM built the ad in Ads Manager themselves: it still counts as launched (live test 18 Oct). */}
+                <Button size="md" loading={busy === 'mark'} onClick={mark}>
+                  I set it up myself
+                </Button>
+              </div>
             </div>
           ) : null}
 
@@ -387,6 +413,22 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ) : null}
           {note ? <p className="paragraph-xs text-utility-success-700">{note}</p> : null}
           {error ? <p className="paragraph-xs text-utility-warning-700">{error}</p> : null}
+          {/* the link with Mia's tracking and the job's names, on tap (E34: spelt out on the card before) */}
+          {(j.final_url && j.state !== 'ready') || j.names ? (
+            <details className="paragraph-xs text-tertiary">
+              <summary className="cursor-pointer select-none hover:text-secondary">Link and names</summary>
+              <div className="mt-1 flex flex-col gap-1">
+                {j.final_url && j.state !== 'ready' ? (
+                  <p className="flex flex-wrap items-center gap-2 [overflow-wrap:anywhere]">
+                    Tracked link: <span className="text-secondary">{j.final_url}</span>
+                    <CopyButton value={j.final_url} label="Copy link" />
+                  </p>
+                ) : null}
+                {j.launch?.link_note ? <p>{j.launch.link_note}</p> : null}
+                <JobNames names={j.names} />
+              </div>
+            </details>
+          ) : null}
     </div>
   )
   const body = j.route === 'elsewhere' ? elsewhereBody : flexBody
@@ -419,6 +461,36 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   )
 }
 
+
+// What the Meta ad will look like (E34): the picture (each size, when there are several), the text above it and the
+// headline under it, as in the feed. Missing words show as a gap to fill, never as blank.
+function AdPreview({ images, headline, text, cta }: { images: string[]; headline: string | null; text: string | null; cta: string | null }) {
+  const button = cta ? cta.toLowerCase().replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : null
+  return (
+    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-secondary bg-primary">
+      <p className="px-3 pt-3 paragraph-sm text-primary whitespace-pre-line [overflow-wrap:anywhere]">
+        {text || <span className="text-utility-warning-700">No ad text yet</span>}
+      </p>
+      {images.length ? (
+        <div className="mt-2 flex gap-1 overflow-x-auto bg-secondary">
+          {images.map((u) => (
+            <a key={u} href={u} target="_blank" rel="noreferrer" className="shrink-0" title="Open the full size">
+              <img src={u} alt="" loading="lazy" className={`${images.length > 1 ? 'h-48' : 'max-h-80 w-full'} object-contain`} />
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 bg-secondary px-3 py-6 text-center paragraph-xs text-tertiary">The picture shows here once it's in</p>
+      )}
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <p className="min-w-0 label-sm text-primary [overflow-wrap:anywhere]">
+          {headline || <span className="text-utility-warning-700">No headline yet</span>}
+        </p>
+        {button ? <span className="shrink-0 rounded-md bg-secondary px-2 py-1 label-xs text-secondary">{button}</span> : null}
+      </div>
+    </div>
+  )
+}
 
 // Where the client's ads run: asked once, the first time a push is checked, pre-filled from the ad account, saved for
 // the workspace (flow review L3, 23 Nov: every push targeted South Africa). Two-letter codes: ZA, GB, US.

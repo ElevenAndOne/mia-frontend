@@ -445,6 +445,12 @@ function planTurnItems({
     .filter((q) => !('about' in q && q.about === 'Targets'))
   const done = new Set(plan.decisions.notes_done ?? [])
   const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
+  // What the PM asked for that no job makes (a must-have, an answer asking for work): a real finding, so it leads the
+  // notes, and Approve names it (E30). A failed close reading or one from before a change says nothing here.
+  const uncovered = plan.review?.stale || plan.review?.audit?.error
+    ? []
+    : (plan.review?.audit?.uncovered ?? []).filter((u) => !done.has(u.decision))
+  const uncoveredHere = part === 'jobs' || part === 'check' || !part
 
   // A fix card made from a finding or a note that the check has since replaced: it stays here in Your turn, never only in
   // the chat (test 24 Nov, E19/E21: the clusters fix lost its finding when the check re-ran and ended up in the chat)
@@ -453,8 +459,9 @@ function planTurnItems({
   const shownHere = new Set([
     ...(part === 'words' || part === 'check' ? (plan.review?.audit?.jobs ?? []).map(breakLabel) : []),
     ...(part === 'jobs' || part === 'check' ? lookAt.map(noteLabel) : []),
+    ...(uncoveredHere ? uncovered.map((u) => missingLabel(u.decision)) : []),
   ])
-  const strays = (state.pending ?? []).filter((p) => /^(Fix|Note) · /.test(p.about ?? '') && !shownHere.has(p.about ?? ''))
+  const strays = (state.pending ?? []).filter((p) => /^(Fix|Note|Missing) · /.test(p.about ?? '') && !shownHere.has(p.about ?? ''))
   if (strays.length && onApplyChange && onDropChange)
     items.push({
       key: 'waiting-fix',
@@ -961,6 +968,53 @@ function planTurnItems({
       ),
     })
   }
+  // "Add it to the plan" asks Mia for the change; her card comes back here. "It's covered" settles a wrong one.
+  if (uncovered.length && uncoveredHere) {
+    items.push({
+      key: 'uncovered',
+      title:
+        uncovered.length === 1
+          ? `No job makes "${clip(uncovered[0].decision, 60)}"`
+          : `${uncovered.length} things you asked for that no job makes`,
+      detail: checking ? 'Mia is checking the plan as it is now.' : 'Ask Mia to add it, or tell her it is already covered.',
+      openByDefault: true,
+      more: (
+        <OneAtATime
+          noun="Missing"
+          entries={uncovered.map((u) => ({
+            key: u.decision,
+            node: (
+              <div className="flex flex-col gap-2 paragraph-sm text-primary">
+                {uncovered.length > 1 ? <p className="label-sm text-primary">{u.decision}</p> : null}
+                <span className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="min-w-0 flex-1">{u.how}</span>
+                  <button
+                    type="button"
+                    disabled={busy === 'edit' || checking}
+                    onClick={() => onEdit([{ op: 'close_note', text: u.decision }])}
+                    className="paragraph-xs underline text-secondary hover:text-primary disabled:opacity-50"
+                  >
+                    It's covered
+                  </button>
+                </span>
+                {/* Mia's card for it (a job added or changed) comes back here with Apply, never only in the chat */}
+                <FindingFix
+                  label={missingLabel(u.decision)}
+                  detail={`You asked for: ${u.decision}. ${u.how}`}
+                  quick="Add it to the plan"
+                  state={state}
+                  busy={busy}
+                  onApply={onApplyChange}
+                  onDrop={onDropChange}
+                  cardError={cardError}
+                />
+              </div>
+            ),
+          }))}
+        />
+      ),
+    })
+  }
   if (lookAt.length) {
     // One heading per job, its notes under it, each raised once (29 Oct: one job had three separate items, two of them
     // the same notes as on Mia's questions). A note naming no job goes under "The plan as a whole".
@@ -983,7 +1037,7 @@ function planTurnItems({
         ? 'Mia is checking the plan as it is now.'
         : plan.review?.jobs_changed
           ? staleNote
-          : 'Fix any you want changed. Looks right settles the rest with the jobs.',
+          : "Advice, not a must: fix any you want changed. You can approve with them as they are.",
       actions: checkAction(plan.review?.jobs_changed),
       openByDefault: true,
       // one note at a time, its job named above it (local test 4, 30 Oct)
@@ -1197,13 +1251,15 @@ function planTurnItems({
   // confirmation, logged with who approved. A check from before the latest change is "not checked", never "nothing
   // found" (live 28 Oct, Cherry Time: the final words outdated the check, its findings stopped counting, and four jobs
   // with flagged words and an uncovered must-have went to the studio). Same list as build_service.still_open.
-  const unchecked = !plan.review?.checked_at || !!plan.review?.stale
+  // a close reading that failed is "couldn't run", never "nothing missing" (same as still_open)
+  const unchecked = !plan.review?.checked_at || !!plan.review?.stale || !!plan.review?.audit?.error
   const open = unchecked ? [] : breaks
   const outdated = unchecked && !!plan.review
+  // Mia's notes are advice and never make this "Approve anyway"; a must-have no job makes does (E30)
   const pastThese = [
     ...(unchecked ? ['no check of the latest version'] : []),
     ...(open.length ? [`${open.length} finding${open.length === 1 ? '' : 's'}`] : []),
-    ...(!unchecked && lookAt.length ? [`${lookAt.length} open note${lookAt.length === 1 ? '' : 's'}`] : []),
+    ...(!unchecked && uncovered.length ? [`${uncovered.length} thing${uncovered.length === 1 ? '' : 's'} no job makes`] : []),
     ...(flagged.length ? [`flagged words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`] : []),
     // named before approve, and kept in the log after (Sean, live 24 Nov: "what happens to that alert?")
     ...(state.credits_over ? ['jobs over the studio credits'] : []),
@@ -1218,7 +1274,9 @@ function planTurnItems({
       ? (pastThese.length
           ? `Still open: ${pastThese.join(', ')}. Fix ${pastThese.length === 1 ? 'it' : 'them'}, or approve past ${pastThese.length === 1 ? 'it' : 'them'}: it's noted in the decision log.`
           : 'Saves the plan to the campaign. Next you send the jobs to Flex.') +
-        (unchecked && outdated
+        (unchecked && plan.review?.audit?.error && !plan.review?.stale
+          ? " Part of Mia's check couldn't run: Check again (a minute or two)."
+          : unchecked && outdated
           ? " Mia's check is from before your latest changes: Check again reads the campaign as it is now (a minute or two)."
           : '') +
         // the flagged-words warning repeats "flagged words on n jobs" above (local test 4, 30 Oct: the box read as a
@@ -1326,6 +1384,7 @@ const tag = (t: string) => {
 }
 const breakLabel = (x: { job: string; where: string; decision: string }) => `Fix · ${x.job} (${x.where}) · ${clip(x.decision, 32)}`
 const noteLabel = (x: string) => (x.length > 48 ? `Note · ${clip(x, 48)} #${tag(x)}` : `Note · ${x}`)
+const missingLabel = (x: string) => (x.length > 48 ? `Missing · ${clip(x, 48)} #${tag(x)}` : `Missing · ${x}`)
 
 type PlanQ = {
   id?: string
