@@ -151,6 +151,8 @@ export interface KPIActual {
   // A source is connected and read; there was just nothing in these dates (an email last sent before the campaign
   // started), so it isn't "Not tracked" (local test 5, 2 Nov)
   measured?: boolean
+  // Blank or 0 only because the phase runs ads on a platform with nothing linked to it (24 Nov): linking fixes it
+  link_gap?: boolean
   // Movement over the last 7 days, from the recorded reading series. Absent when the
   // series doesn't reach back a week yet, or when the date picker is off the campaign's
   // own window (the displayed value then measures something the series doesn't).

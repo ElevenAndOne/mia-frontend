@@ -3,7 +3,8 @@ import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
-import { fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { clearTrackerCache, fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { LinkedContentPanel } from '../../campaigns/components/builder/linked-content-panel'
 import * as api from '../api'
 import type { ResultsKpi } from '../types'
 import { Card, Chip, day, money, num } from './parts'
@@ -80,6 +81,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [linking, setLinking] = useState(false)
   const navigate = useNavigate()
 
   if (!approved) return <Card className="paragraph-sm text-secondary">Results start once the plan is approved and the campaign is launched.</Card>
@@ -87,6 +89,10 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   if (!s) return <p className="paragraph-sm text-error">{(q.error as Error)?.message ?? 'Could not load the results.'}</p>
 
   const progress = s.share_elapsed != null ? Math.round(s.share_elapsed * 100) : null
+  // KPIs with no number only because no ads are linked to the campaign (the server's link_gap): named in one line with
+  // the way to link them, here in the studio (docs2/LINK_EXISTING_ADS_PLAN_2026-11-24.md). Until campaigns are pushed
+  // from Mia, which links what it pushes by itself.
+  const unlinked = [...new Set(actuals.flatMap((a) => ((a.data as KPIActual[] | undefined) ?? []).filter((r) => r.link_gap).map((r) => r.kpi_name)))]
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-2">
@@ -120,6 +126,29 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
               : 'Counts are paced against the share of the target due by today; rates are compared as they stand. Numbers refresh nightly.'}
         </p>
       </Card>
+
+      {unlinked.length ? (
+        <Card warn className="flex flex-wrap items-center justify-between gap-2">
+          <p className="paragraph-sm text-primary">
+            {listed(unlinked)} {unlinked.length === 1 ? 'has' : 'have'} no data because no ads are linked to this campaign yet.
+          </p>
+          <Button size="sm" variant="primary" onClick={() => setLinking(true)}>
+            Link ads
+          </Button>
+        </Card>
+      ) : null}
+      {linking ? (
+        <LinkedContentPanel
+          campaignId={campaignId}
+          onClose={() => setLinking(false)}
+          // saving clears the server's cached numbers (measurement.py save_linked_content); the browser keeps its own
+          // copy for 23 hours (campaign-tracker-service), so that goes too, then they're read again now
+          onSaved={() => {
+            clearTrackerCache()
+            void qc.invalidateQueries({ queryKey: ['campaign-results-actuals', tenantId, campaignId] })
+          }}
+        />
+      ) : null}
 
       <div className="grid gap-3 @2xl:grid-cols-2">
         {s.phases.map((p, i) => {
@@ -178,7 +207,13 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                             </span>
                           ) : null
                         })()}
-                        {a?.state === 'none' ? <span className="paragraph-xs text-tertiary">not tracked yet: set its source on the campaign</span> : null}
+                        {/* why there's no number, as the server says it (24 Nov: "set its source on the campaign" was
+                            wrong when the source was connected and only the ads weren't linked) */}
+                        {a?.link_gap ? (
+                          <span className="paragraph-xs text-utility-warning-700">no ads linked yet</span>
+                        ) : a?.state === 'none' ? (
+                          <span className="paragraph-xs text-tertiary">{a.blank_reason ?? 'no data for these dates yet'}</span>
+                        ) : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
                       </div>
                     </li>
@@ -326,6 +361,11 @@ function ByJob({ campaignId, currency }: { campaignId: string; currency?: string
       {q.data?.problems?.length ? <p className="paragraph-xs text-utility-warning-700">{q.data.problems.join(' ')}</p> : null}
     </Card>
   )
+}
+
+// "Clicks", "Clicks and CTR", "Clicks, CTR and Leads"
+function listed(names: string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 // A target as the PM typed it means it: R5 for a cost, 2.5% for a rate, 2,000 for a count (live test 18 Oct).
