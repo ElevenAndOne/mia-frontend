@@ -11,8 +11,9 @@ import { NewsCard } from './news-card'
 
 type Filter = 'new' | 'mia' | 'kept' | 'ignored'
 
-/** Mia acted on it herself (the morning run), and nobody has ignored it since. */
-const byMia = (c: Card) => (c.mia_did?.length ?? 0) > 0 && c.status !== 'ignored'
+/** Mia closed it herself (the morning run), and nobody has decided it since. One she did her part on that still has
+ * work for the Mia team stays in New until they press Done, then sits in Kept as theirs. */
+const byMia = (c: Card) => (c.mia_did?.length ?? 0) > 0 && c.decided_by === 'Mia' && c.status !== 'ignored'
 
 const IN_FILTER: Record<Filter, (c: Card) => boolean> = {
   new: (c) => c.status === 'new',

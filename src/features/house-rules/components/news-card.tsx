@@ -84,7 +84,19 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
   const clients = card.clients ?? []
   const notes = card.client_notes
   const done = notes && !notes.taken_back ? notes : null
-  const isRule = card.status === 'made_rule'
+  // rule_id too: Mia can make the rule while the card stays in New for the Mia team's part.
+  const isRule = card.status === 'made_rule' || !!card.rule_id
+  const miaDid = card.mia_did ?? []
+  const miaLabel =
+    miaDid.length === 0
+      ? null
+      : card.status === 'new'
+        ? 'Mia did her part · the rest is for the Mia team'
+        : card.decided_by !== 'Mia'
+          ? 'Mia did her part'
+          : miaDid.length === 1 && miaDid[0] === 'info'
+            ? 'Filed by Mia for info · nothing to do'
+            : 'Done by Mia'
   const lead = card.why ?? card.summary
   const story = card.why ? card.summary : null
 
@@ -183,8 +195,8 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
       {/* What changed */}
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
-          {card.mia_did?.length ? (
-            <span className="text-utility-brand-700">Done by Mia</span>
+          {miaLabel ? (
+            <span className="text-utility-brand-700">{miaLabel}</span>
           ) : forTeamOnly ? (
             <span className="text-utility-brand-700">For the Mia team</span>
           ) : (
@@ -330,7 +342,15 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
         >
           {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clientsWord(clients.length)}` : ''}`}
         </button>
-        {isRule ? (
+        {isRule && card.status === 'new' ? (
+          // Mia made the rule; the card waits for the Mia team, who press Done once their part is built.
+          <>
+            <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
+              Done
+            </Button>
+          </>
+        ) : isRule ? (
           <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
         ) : (
           <>
