@@ -73,6 +73,33 @@ export function NeedsYouBanner({ title, items }: { title: string; items: string[
   )
 }
 
+// Links and web addresses in Mia's or the PM's text open in a new tab (test 24 Nov: a landing page link was plain text).
+const LINK = /(https?:\/\/[^\s<>()]+|\b(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:co\.za|com|org|net|io|ai|za|co|uk)(?:\/[^\s<>()]*)?)/gi
+
+export function Linked({ text }: { text: string }) {
+  const parts = text.split(LINK)
+  if (parts.length === 1) return <>{text}</>
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (i % 2 === 0) return p
+        const clean = p.replace(/[.,;:!?)]+$/, '')
+        const rest = p.slice(clean.length)
+        const href = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+        return (
+          <span key={i}>
+            <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-brand"
+               onClick={(e) => e.stopPropagation()}>
+              {clean}
+            </a>
+            {rest}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'pm' | 'mia' | 'good' }) {
   const cls = {
     neutral: 'bg-tertiary text-secondary',

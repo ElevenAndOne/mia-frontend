@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../../components/button'
 import type { Brief, BriefField, BuildState, KpiGroup } from '../types'
 import { kpiValue } from './kpi-picker'
-import { Card, Chip, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
+import { Card, Chip, Linked, NeedsYou, RunFailed, RunProgress, channelLabel, day, money } from './parts'
 import { AskMia, askMia, Fold, PrimaryAction, YourTurn, type TurnItem } from './your-turn'
 import { RulesLine } from './rules-line'
 
@@ -490,7 +490,7 @@ function BriefCard({
               <dd className="paragraph-md font-medium text-primary mt-1">
                 <details className="group">
                   <summary className="cursor-pointer list-none line-clamp-2 group-open:line-clamp-none [overflow-wrap:anywhere] [&::-webkit-details-marker]:hidden">
-                    {show(k)}
+                    <Linked text={show(k)} />
                   </summary>
                 </details>
               </dd>
@@ -557,7 +557,7 @@ function PmWords({ brief }: { brief: Brief }) {
       <ul className="flex flex-col gap-2">
         {brief.pm_words.map((w, i) => (
           <li key={i} className="paragraph-sm text-primary">
-            <span className="text-secondary">“{w.text}”</span> <Chip>{w.sets}</Chip>
+            <span className="text-secondary">“<Linked text={w.text} />”</span> <Chip>{w.sets}</Chip>
           </li>
         ))}
       </ul>
