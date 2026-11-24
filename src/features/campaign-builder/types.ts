@@ -333,6 +333,8 @@ export interface BuildState {
   // findings (their page labels) Mia is writing a fix for, and why a fix couldn't be made (build_service.start_fix_finding)
   fixing?: string[]
   fix_errors?: Record<string, string>
+  // the jobs over a sprint's free credits, and which case: Flex's estimate (no seats entered) or real capacity (24 Nov)
+  credits_over?: string | null
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
