@@ -255,23 +255,77 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
-      {s.outline?.version ? (
-        // the whole plan in Flex, read only at the top of the campaign (the outline, 17 Nov)
-        <p className="paragraph-xs text-tertiary">
-          {s.outline.current
-            ? 'Flex has the whole plan as it is now, shown at the top of the campaign there; the studio can send ideas from it.'
-            : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
+      {/* Reference, one quiet line each (screen walk 23 Nov: four blocks of explanation sat above the jobs) */}
+      <div className="flex flex-col gap-1.5 px-1">
+        {s.drive ? (
+          <DriveLine
+            d={s.drive}
+            retrying={busy === 'drive-retry'}
+            onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))}
+            checking={busy === 'refresh'}
+            onCheck={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}
+          />
+        ) : null}
+        {s.outline?.version ? (
+          // the whole plan in Flex, read only at the top of the campaign (the outline, 17 Nov)
+          <p className="paragraph-xs text-tertiary">
+            {s.outline.current
+              ? 'Flex has the whole plan, at the top of the campaign there.'
+              : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
+          </p>
+        ) : null}
+        {s?.job_code?.code ? (
+          // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex
+          <p className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
+            <span>
+              Job numbers <span className="text-secondary tabular-nums">{s.job_code.code}-01, {s.job_code.code}-02…</span>
+              {s.job_code.locked ? ' · fixed' : ''}
+            </span>
+            {!s.job_code.locked ? (
+              <button type="button" className="underline hover:text-secondary disabled:opacity-50" disabled={busy === 'code'} onClick={() => {
+                const next = window.prompt('The campaign\'s job code: 2 to 6 letters or digits, starting with a letter', s.job_code?.code ?? '')
+                if (!next || !sessionId || !tenantId) return
+                setBusy('code')
+                setError(null)
+                api.setJobCode(sessionId, tenantId, campaignId, next)
+                  .then(() => qc.invalidateQueries({ queryKey: key }))
+                  .catch((e) => setError(e instanceof Error ? e.message : 'Could not change the code'))
+                  .finally(() => setBusy(null))
+              }}>
+                change
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        {lq.data?.tag ? (
+          // The one manual step a PM can get wrong: an ad set up by hand must carry the tag for its results to come back
+          <details className="paragraph-xs text-tertiary">
+            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              Campaign tag <code className="rounded bg-secondary px-1 text-secondary">{lq.data.tag}</code>{' '}
+              <CopyButton value={lq.data.tag} /> <span className="underline">Why?</span>
+            </summary>
+            <p className="mt-1 max-w-[60ch]">
+              Mia adds it to every link when you take a job in. For ads you set up by hand, like LinkedIn, start the ad
+              campaign’s name with it, or link that campaign to this one, so its results come back here.
+            </p>
+          </details>
+        ) : null}
+        {/* Jobs are added on this page through Mia (live 5 Nov: "I am not sure how to add new tasks") */}
+        <p className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
+          <span>Need more jobs?</span>
+          <button type="button" className="underline hover:text-secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
+            add a job
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            className="underline hover:text-secondary"
+            onClick={() => askMia({ label: 'Add jobs from a file', draft: 'Add the jobs in this file to the campaign. ', pickFile: true })}
+          >
+            from a file or ClickUp links
+          </button>
         </p>
-      ) : null}
-      {s.drive ? (
-        <DriveLine
-          d={s.drive}
-          retrying={busy === 'drive-retry'}
-          onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))}
-          checking={busy === 'refresh'}
-          onCheck={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}
-        />
-      ) : null}
+      </div>
       {s.ideas?.items.length || s.ideas?.set_aside ? (
         <Ideas
           ideas={s.ideas.items}
@@ -280,72 +334,6 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
           onDecide={(i, status) => act(`idea-${i.id}`, () => api.decideIdea(...ids, i.id, status))}
         />
       ) : null}
-      {s?.job_code?.code ? (
-        // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex and at the end of each ad's name
-        <Card className="flex flex-wrap items-center justify-between gap-2">
-          <p className="paragraph-sm text-secondary">
-            Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
-            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>…{' '}
-            {/* under the naming scheme (20 Nov) the ad's name ends with the Job ID, not the number */}
-            {s.jobs.some((j) => j.names)
-              ? 'They go to Flex with each job. Each job also has a Job ID, at the end of every name and link it carries.'
-              : "They go to Flex with each job and at the end of each ad's name, so an ad traces back to its job."}
-            {s.job_code.locked ? ' The code is fixed now: Flex tasks and ads carry it.' : ''}
-          </p>
-          {!s.job_code.locked ? (
-            <Button size="sm" loading={busy === 'code'} onClick={() => {
-              const next = window.prompt('The campaign\'s job code: 2 to 6 letters or digits, starting with a letter', s.job_code?.code ?? '')
-              if (!next || !sessionId || !tenantId) return
-              setBusy('code')
-              setError(null)
-              api.setJobCode(sessionId, tenantId, campaignId, next)
-                .then(() => qc.invalidateQueries({ queryKey: key }))
-                .catch((e) => setError(e instanceof Error ? e.message : 'Could not change the code'))
-                .finally(() => setBusy(null))
-            }}>
-              Change the code
-            </Button>
-          ) : null}
-        </Card>
-      ) : null}
-
-      {/* Jobs are added on this page through Mia, not from the old campaign screen or the home chat; nothing here said so
-          (live 5 Nov: "I am not sure how to add new tasks"). The chat starts the line, the PM finishes it. */}
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="paragraph-sm text-secondary max-w-[60ch]">
-          Need more jobs in this campaign? Ask Mia in the chat: type them, add a file (a spreadsheet, a Word document or a
-          ClickUp export), or paste ClickUp links. She sorts them into phases, prices them from the credit table, and shows
-          one card for you to check and apply before anything changes.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
-            Add a job
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => askMia({ label: 'Add jobs from a file', draft: 'Add the jobs in this file to the campaign. ', pickFile: true })}
-          >
-            Add jobs from a file
-          </Button>
-        </div>
-      </Card>
-
-      {lq.data?.tag ? (
-        // The one manual step a PM can get wrong: an ad they set up by hand must carry the tag for its results to come
-        // back (26 Oct). Mia puts it in every link she tracks.
-        <Card className="flex flex-col gap-1">
-          <p className="paragraph-sm text-primary flex flex-wrap items-center gap-2">
-            This campaign’s tag: <code className="rounded bg-secondary px-1.5 py-0.5">{lq.data.tag}</code>
-            <CopyButton value={lq.data.tag} />
-          </p>
-          <p className="paragraph-xs text-secondary">
-            Mia adds it to every link when you take a job in. For ads you set up by hand, like LinkedIn, start the ad
-            campaign’s name with it, or link that campaign to this one, so its results come back here.
-          </p>
-        </Card>
-      ) : null}
-
       {s.credit_fit.length ? (
         <Card className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">

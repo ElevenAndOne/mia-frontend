@@ -160,7 +160,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       {shows('idea') ? (<Fold
         id="fold-idea"
         title="The idea"
-        summary={<>{plan.concept.name}{sc && !sc.thin_history ? ` · self-check ${sc.grade} (${sc.overall})` : ''}</>}
+        summary={<>{plan.concept.name}{sc?.grade && !sc.thin_history ? ` · self-check ${sc.grade}${sc.overall != null ? ` (${sc.overall})` : ''}` : ''}</>}
         open={folds.has('idea')}
         onToggle={() => toggle('idea')}
       >
@@ -566,12 +566,12 @@ function planTurnItems({
     })
   }
   if (toSet.length) {
-    const first = toSet[0]
     items.push({
       key: 'targets',
       title: `Set ${toSet.length} target${toSet.length === 1 ? '' : 's'}`,
-      detail: mias.length
-        ? `Each has a starting number: Mia's estimate, or your result from a past campaign. Keep them one by one or all at once, or type your own. Estimates show as Mia's, not your data.`
+      // the how-to behind Why? (screen walk 23 Nov, theme 5: three lines of it above the boxes)
+      why: mias.length
+        ? `Each starting number is Mia's estimate or your result from a past campaign. Keep them, or type your own. Estimates show as Mia's, not your data.`
         : 'Type a number for each, or "No target". Ask Mia to fill the boxes with her estimates.',
       openByDefault: true,
       // Under their phase's heading, in the plan's order (local test 27 Oct: ten targets in one list, the phase only as
@@ -623,12 +623,11 @@ function planTurnItems({
                 )
               }
             >
-              Keep all {mias.length}
+              {/* says which ones (24 Nov: "Set 2 targets" beside "Keep all 1" read as a mismatch) */}
+              {mias.length === toSet.length ? `Keep all ${mias.length}` : `Keep Mia's ${mias.length === 1 ? 'number' : `${mias.length} numbers`}`}
             </PrimaryAction>
           ) : null}
-          <Button size="sm" onClick={() => reveal(`t-${first.key}`, 'phases')}>
-            See them in the plan
-          </Button>
+          {/* no "See them in the plan": the boxes are right here (theme 5, too many controls) */}
           <AskMia
             label={`Targets to set (${toSet.length})`}
             detail={toSet.map((t) => `${t.phase} ${t.kpi_name}${t.account_reference ? ` (${t.account_reference})` : ''}`).join('; ')}
@@ -710,7 +709,8 @@ function planTurnItems({
     items.push({
       key: 'questions',
       title: `Mia's question ${done + 1} of ${done + asks.length}`,
-      detail: 'Answer it, or skip it and Mia decides.',
+      // no "Answer it, or skip it and Mia decides." under the title: the box and Skip are right below (23 Nov list)
+      why: 'Skip it and Mia decides, and says what she assumed.',
       openByDefault: true,
       more: (
         <ul className="flex flex-col gap-2">

@@ -122,6 +122,16 @@ export function UpNext({ state, states, step, onGo }: {
   if (!state.campaign.building) return null
   const u = upNext(state, states)
   const elsewhere = u.step !== step
+  // Said once (screen walk 23 Nov: Up next, Your turn and a Next button all named the same task): when the PM's task is
+  // on this step, Your turn below says it, so this line shows only to point elsewhere or to say what Mia is doing.
+  const minding = /^(Mia is|Approved\.)|Nothing needs you/.test(u.text)
+  if (!elsewhere && !minding) {
+    return u.background ? (
+      <p role="status" aria-live="polite" className="paragraph-xs text-tertiary">
+        {u.background}
+      </p>
+    ) : null
+  }
   return (
     <div
       role="status"

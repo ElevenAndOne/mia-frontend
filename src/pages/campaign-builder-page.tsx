@@ -395,8 +395,16 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             <header className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="paragraph-sm text-secondary">
-                  {s.campaign.client} · {day(s.campaign.start_date)} – {day(s.campaign.end_date)} ·{' '}
-                  {money(s.campaign.budget_total, s.campaign.currency)}
+                  {/* only what's set (24 Nov: a new draft read "DFSA · — – — · — · draft") */}
+                  {[
+                    s.campaign.client,
+                    s.campaign.start_date || s.campaign.end_date
+                      ? `${s.campaign.start_date ? day(s.campaign.start_date) : '…'} – ${s.campaign.end_date ? day(s.campaign.end_date) : '…'}`
+                      : null,
+                    s.campaign.budget_total != null ? money(s.campaign.budget_total, s.campaign.currency) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                   {s.campaign.building
                     ? ' · draft'
                     : // paused and finished campaigns said "approved, not live yet" (browser pass 10 Nov)
@@ -604,25 +612,12 @@ function StepView({
           and lagged behind it). The page opens on the thing to do. */}
       <h2 className="sr-only">{meta.label}</h2>
       {step === 'check' && left.length ? (
-        // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
-        // Only while something is left (local test 27 Oct: "Every step is done. Run Mia's final check" showed right
-        // after the check had run)
-        <Card className="flex flex-col gap-2">
-          <h3 className="subheading-sm text-primary">Still to do</h3>
-          <ul className="flex flex-col gap-1">
-            {left.map((st) => (
-              <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-                <span>
-                  {st.label}
-                  {states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
-                </span>
-                <Button size="sm" onClick={() => onGo(st.key)}>
-                  Go to {st.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        // One quiet line, not a second to-do list (screen walk 23 Nov: "Still to do" with four Go to buttons sat above
+        // Your turn): Up next above names the first step to finish and goes there; the rail shows the rest.
+        <p className="paragraph-sm text-secondary">
+          Approve opens once {left.map((st) => st.label).join(', ').replace(/, ([^,]*)$/, ' and $1')}{' '}
+          {left.length === 1 ? 'is' : 'are'} done.
+        </p>
       ) : null}
       {step === 'facts' ? (
         <BriefTab
@@ -683,17 +678,9 @@ function StepView({
           onMakePlan={build.makePlan}
         />
       ) : null}
-      {next ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
-          {/* the line at the top is the only "what's next" (20 Nov: said three times); Next lights up when done */}
-          <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
-            {nextOpen ? `✓ ${meta.label} done` : states[step] === 'busy' ? 'Mia is working on this step.' : ''}
-          </p>
-          <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
-            Next: {next.label}
-          </Button>
-        </div>
-      ) : null}
+      {/* No "Next:" bar at the bottom (screen walk 23 Nov, theme 4: two next buttons competed): a finished step moves
+          on by itself, and Up next at the top is the one way on when the next thing is on another step. */}
+      {next && nextOpen ? <p className="paragraph-sm text-utility-success-700">✓ {meta.label} done</p> : null}
     </div>
   )
 }
