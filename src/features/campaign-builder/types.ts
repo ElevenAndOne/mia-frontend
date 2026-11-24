@@ -335,6 +335,8 @@ export interface BuildState {
   fix_errors?: Record<string, string>
   // the jobs over a sprint's free credits, and which case: Flex's estimate (no seats entered) or real capacity (24 Nov)
   credits_over?: string | null
+  // jobs due sooner than the studio can make them from today, or that can't be ready in the campaign (read live)
+  studio_time?: { too_soon: string[]; too_late: string[] } | null
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 

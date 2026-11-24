@@ -958,26 +958,27 @@ function planTurnItems({
     // The studio's real time and capacity, said where the jobs are confirmed (DFSA and AgriAds tests, 24 Nov): due dates
     // Mia moved to what the studio can make from today, jobs that can't be ready, and credits over a sprint with which
     // case it is. Information to act on, never a block.
-    const studioTime = (plan.decisions as { studio_time?: { moved?: string[]; too_late?: string[] } }).studio_time
-    if (part === 'jobs' && (studioTime?.too_late?.length || studioTime?.moved?.length)) {
-      const late = studioTime.too_late ?? []
-      const moved = studioTime.moved ?? []
+    // read from the plan as it is now on every load, so it clears once the dates are fixed (review 24 Nov)
+    const studioTime = state.studio_time
+    if (part === 'jobs' && studioTime && (studioTime.too_late.length || studioTime.too_soon.length)) {
+      const late = studioTime.too_late
+      const soon = studioTime.too_soon
       items.push({
         key: 'studio-time',
         title: late.length
           ? `${late.length} job${late.length === 1 ? '' : 's'} can't be made in time`
-          : `Mia moved ${moved.length} due date${moved.length === 1 ? '' : 's'} to what the studio can make`,
+          : `${soon.length} job${soon.length === 1 ? ' is' : 's are'} due sooner than the studio can make ${soon.length === 1 ? 'it' : 'them'}`,
         detail: late.length
           ? 'Move their launch, drop them, or agree a faster turnaround with the studio.'
-          : 'Each one was due sooner than the studio can make it from today.',
+          : 'Move their due dates later, or agree a faster turnaround with the studio.',
         more: (
           <ul className="flex flex-col gap-1 paragraph-xs text-secondary">
-            {[...late, ...moved].map((l) => (
+            {[...late, ...soon].map((l) => (
               <li key={l} className="[overflow-wrap:anywhere]">{l}</li>
             ))}
           </ul>
         ),
-        actions: <AskMia label="Studio time" detail={[...late, ...moved].join('; ')} />,
+        actions: <AskMia label="Studio time" detail={[...late, ...soon].join('; ')} />,
       })
     }
     if (state.credits_over) {
