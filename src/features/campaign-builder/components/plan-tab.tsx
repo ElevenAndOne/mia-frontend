@@ -48,7 +48,9 @@ export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // Which of "Your turn" each step holds, and which detail sections it opens.
 // What a later change needs from the PM shows on whatever step they're on, never as a trip back (Josh, 29 Oct): the
 // brief changing under the plan, a kept target to recheck, jobs to confirm again, words to rewrite.
-const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words']
+// Mia's open questions too: one raised while she read an answer comes up on the step the PM is on, as a card (DFSA test
+// 24 Nov: "Who supplies the bakes and the kitchen?" was only a line in the chat, and would have been missed)
+const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words', 'questions']
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   questions: (k) => [...EVERYWHERE, 'not-carried', 'questions', 'answered'].includes(k),
   targets: (k) => [...EVERYWHERE, 'targets', 'fill-targets'].includes(k),
