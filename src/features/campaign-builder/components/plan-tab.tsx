@@ -57,7 +57,7 @@ const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   // Mia's self-check is about the jobs, so it's read here, once, grouped by job (29 Oct: it sat on Mia's questions)
   jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'studio-time', 'credits-over', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
   words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
-  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'words-running', 'approve'].includes(k),
+  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'words-running', 'no-drive', 'approve'].includes(k),
 }
 
 // Mia is still working on the step: the same things that hold Approve back (planTurnItems' canApprove), so the step's
@@ -449,6 +449,21 @@ function planTurnItems({
             </li>
           ))}
         </ul>
+      ),
+    })
+
+  // No Shared Drive: said before approve, since the jobs can't go to Flex without it (Josh, 24 Nov, E17). Settings opens
+  // in a new tab and this clears by itself once it's set; it never blocks approve.
+  if (part === 'check' && state.shared_drive_set === false)
+    items.push({
+      key: 'no-drive',
+      title: "Add the client's Shared Drive before the jobs go to Flex",
+      detail: "Mia makes each job's folder there when you approve. You can approve now and add it after.",
+      actions: (
+        <a href="/settings/workspace" target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary">
+          Add it in Settings
+        </a>
       ),
     })
 

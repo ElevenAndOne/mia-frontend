@@ -134,7 +134,22 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     </label>
   )
   const items: TurnItem[] = []
-  otherBlockers.forEach((b, k) => items.push({ key: `b${k}`, title: b, actions: <AskMia label="Before sending" detail={b} /> }))
+  otherBlockers.forEach((b, k) =>
+    items.push({
+      key: `b${k}`,
+      title: b,
+      // no Shared Drive: Settings opens in a new tab, so the campaign stays where it is; the item clears once it's set
+      // (Josh, 24 Nov, E17)
+      actions: /Shared Drive first/.test(b) ? (
+        <a href="/settings/workspace" target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand">
+          Add it in Settings
+        </a>
+      ) : (
+        <AskMia label="Before sending" detail={b} />
+      ),
+    }),
+  )
   if (toSend.length || (!s.sent && unsent.length)) {
     items.push({
       key: 'confirm',
