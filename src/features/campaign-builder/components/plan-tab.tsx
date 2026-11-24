@@ -632,31 +632,38 @@ function planTurnItems({
                       />
                     ))}
                   </ul>
+                  {(() => {
+                    // Keep this phase's starting numbers only: the ones on screen (test 24 Nov)
+                    const here = mias.filter((t) => t.phase === ph)
+                    return here.length > 1 ? (
+                      <span>
+                        <PrimaryAction
+                          loading={busy === `keep:${ph}`}
+                          onClick={() =>
+                            onEdit(
+                              here.map((t) =>
+                                t.fromHistory
+                                  ? { op: 'set_target', key: t.key, value: t.suggested ?? null }
+                                  : { op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" },
+                              ),
+                              `keep:${ph}`,
+                            )
+                          }
+                        >
+                          Keep {here.length === toSet.filter((t) => t.phase === ph).length ? `all ${here.length}` : `Mia's ${here.length}`} in {ph}
+                        </PrimaryAction>
+                      </span>
+                    ) : null
+                  })()}
                 </section>
               ),
             }))}
         />
       ),
+      // "Keep" for the phase on screen is inside each phase (test 24 Nov: "Keep all 9" under the Reach phase would have
+      // kept eight numbers in phases the PM hadn't seen)
       actions: (
         <>
-          {mias.length ? (
-            <PrimaryAction
-              loading={busy === 'keep-all'}
-              onClick={() =>
-                onEdit(
-                  mias.map((t) =>
-                    t.fromHistory
-                      ? { op: 'set_target', key: t.key, value: t.suggested ?? null }
-                      : { op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" },
-                  ),
-                  'keep-all',
-                )
-              }
-            >
-              {/* says which ones (24 Nov: "Set 2 targets" beside "Keep all 1" read as a mismatch) */}
-              {mias.length === toSet.length ? `Keep all ${mias.length}` : `Keep Mia's ${mias.length === 1 ? 'number' : `${mias.length} numbers`}`}
-            </PrimaryAction>
-          ) : null}
           {/* no "See them in the plan": the boxes are right here (theme 5, too many controls) */}
           <AskMia
             label={`Targets to set (${toSet.length})`}
