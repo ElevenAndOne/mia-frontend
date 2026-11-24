@@ -17,9 +17,10 @@ function AskForTarget({ draft }: { draft: string }) {
     <button
       type="button"
       onClick={() => askMia({ label: 'Targets', draft })}
-      className="inline-flex items-center rounded-full border border-brand px-2.5 py-0.5 label-xs text-brand-secondary hover:bg-brand-primary whitespace-nowrap"
+      // a quiet link like Ask Mia everywhere else (24 Nov: a bordered pill on every row)
+      className="inline-flex items-center paragraph-xs font-medium text-brand-secondary hover:underline whitespace-nowrap"
     >
-      Ask Mia
+      Ask Mia for a target
     </button>
   )
 }
@@ -127,13 +128,24 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
             <div className="h-full bg-brand-solid" style={{ width: `${progress}%` }} />
           </div>
         ) : null}
-        <p className="paragraph-xs text-tertiary">
-          {!s.live
-            ? 'Launch the first job on the Launch tab; results are read from the connected platforms from then on.'
-            : s.when === 'not_started'
-              ? 'Numbers appear here once the campaign starts. Counts are paced against the share of the target due by today; rates are compared as they stand.'
-              : 'Counts are paced against the share of the target due by today; rates are compared as they stand. Numbers refresh nightly.'}
-        </p>
+        {/* one short line; how pacing works is behind Why? (24 Nov, less text) */}
+        <div className="flex flex-wrap items-center gap-x-3 paragraph-xs text-tertiary">
+          <span>
+            {!s.live
+              ? 'Results start when the first job launches.'
+              : s.when === 'not_started'
+                ? 'Numbers appear once the campaign starts.'
+                : 'Numbers refresh nightly.'}
+          </span>
+          {s.live ? (
+            <details className="inline">
+              <summary className="inline cursor-pointer underline hover:text-secondary">How pacing works</summary>
+              <span className="block mt-1 text-secondary">
+                Counts are compared with the share of the target due by today; rates are compared as they stand.
+              </span>
+            </details>
+          ) : null}
+        </div>
       </Card>
 
       {unlinked.length ? (

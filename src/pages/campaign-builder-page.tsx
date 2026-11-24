@@ -681,8 +681,8 @@ function StepView({
             onMakePlan={build.makePlan}
           />
         ) : (
-          <button type="button" onClick={() => setContext(true)} className="self-start inline-flex items-center gap-1.5 paragraph-sm font-medium text-secondary hover:text-primary">
-            What Mia worked from <span className="font-normal text-tertiary">· your message, what she read, {s.campaign.client}'s rules</span>
+          <button type="button" onClick={() => setContext(true)} className="self-start text-left paragraph-sm font-medium text-secondary hover:text-primary">
+            What Mia worked from <span className="font-normal text-tertiary">· your message, what she read, {s.campaign.client}'s rules</span>{' '}
             <span aria-hidden="true">›</span>
           </button>
         )

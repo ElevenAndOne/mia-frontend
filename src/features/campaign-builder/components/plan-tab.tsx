@@ -166,9 +166,9 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <button
           type="button"
           onClick={() => setLookOver(true)}
-          className="self-start inline-flex items-center gap-1.5 paragraph-sm font-medium text-secondary hover:text-primary"
+          className="self-start text-left paragraph-sm font-medium text-secondary hover:text-primary"
         >
-          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, {bpo ? '' : 'phases, '}jobs, how Mia got here</span>
+          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, {bpo ? '' : 'phases, '}jobs, how Mia got here</span>{' '}
           <span aria-hidden="true">›</span>
         </button>
       ) : null}

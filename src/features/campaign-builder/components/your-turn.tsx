@@ -112,10 +112,10 @@ export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
   const credits = plan.credits
   const words = plan.assets.filter((a) => a.final_words).length
   const flagged = plan.assets.filter(wordsToFix).length
-  const fit =
-    credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : 'room unknown'
+  // only what's known (24 Nov: "room unknown" read as jargon)
+  const fit = credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : ''
   const cells: [string, string, string][] = [
-    ['Dates', c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'not set', plan.assets.length ? `studio from ${day(firstDue(plan))}` : ''],
+    ['Dates', c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'not set', firstDue(plan) ? `studio from ${day(firstDue(plan))}` : ''],
     ['Budget', c.budget_total != null ? money(c.budget_total, c.currency) : money(total || null, c.currency), shares],
     ['Studio', `${plan.assets.length} jobs · ${num(credits?.total_planned ?? 0)} cr`, `${fit}${credits?.estimated?.length ? ' (estimate)' : ''}`],
     plan.moved_from_old_builder

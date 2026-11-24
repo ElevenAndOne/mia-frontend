@@ -151,12 +151,17 @@ function BrandGuideLine({
   const edited = brand.edited_in_settings?.length ?? 0
   return (
     <p className="paragraph-xs text-secondary">
-      <span className="text-primary">Brand guide:</span> {brand.file || 'from Settings'}
-      {brand.uploaded ? `, uploaded ${day(brand.uploaded)}` : ''}
-      {edited ? `, ${edited} edit${edited === 1 ? '' : 's'} in Settings` : ''}. Mia reads it whole for the brief, the
-      plan, every job’s words and her checks
-      {never.length ? `, and sends back any words that use one of the ${never.length} it rules out` : ''}.
-      {kit ? ` ${kit}` : ''} {settings}
+      {/* one line; what Mia does with it behind the title (24 Nov, less text) */}
+      <span
+        className="text-primary"
+        title={`Mia reads it whole for the brief, the plan, every job's words and her checks${never.length ? `, and sends back words using any of the ${never.length} it rules out` : ''}.`}
+      >
+        Brand guide:
+      </span>{' '}
+      {brand.file || 'from Settings'}
+      {brand.uploaded ? ` · ${day(brand.uploaded)}` : ''}
+      {edited ? ` · ${edited} edit${edited === 1 ? '' : 's'}` : ''}
+      {kit ? ` · ${kit}` : ''} · {settings}
     </p>
   )
 }
