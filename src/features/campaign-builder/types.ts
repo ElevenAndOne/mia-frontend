@@ -142,6 +142,7 @@ export interface KpiTarget {
   suggested_kind?: 'estimate' | 'rule_of_thumb' | null
   no_target?: boolean
   missed_twice?: string[]
+  read_from?: string[] // where the tracker reads it in this phase, in plain words (Meta ads, Google Analytics (GA4))
 }
 
 export interface PlanPhase {

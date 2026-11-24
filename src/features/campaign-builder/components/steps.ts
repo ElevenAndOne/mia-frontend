@@ -58,7 +58,9 @@ export function targetsToDecide(s: Pick<BuildState, 'plan'> & { campaign?: { cur
       t.value != null
         ? // a last-90-days account rate reads "From your account", a past campaign's result "From a past campaign"
           // (review 2 Nov: every rules target said past campaign)
-          { ...t, suggested: t.value, suggested_by: t.basis === 'account' ? 'account' : 'history', suggested_label: targetLabel(t, t.value, s.campaign?.currency), suggested_from: t.reason ?? null, fromHistory: true }
+          // and one worked from this campaign's money "From your budget" (test 24 Nov: clicks bought by the budget read
+          // "From a past campaign")
+          { ...t, suggested: t.value, suggested_by: t.basis === 'account' || t.basis === 'budget' ? t.basis : 'history', suggested_label: targetLabel(t, t.value, s.campaign?.currency), suggested_from: t.reason ?? null, fromHistory: true }
         : // a past result put aside as far off: why, where the row explains its number
           { ...t, fromHistory: false, ...(t.doubted != null && t.reason ? { account_reference: t.reason } : {}) },
     )

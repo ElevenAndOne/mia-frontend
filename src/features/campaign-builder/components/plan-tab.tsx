@@ -593,38 +593,45 @@ function planTurnItems({
         ? `Each starting number is Mia's estimate or your result from a past campaign. Keep them, or type your own. Estimates show as Mia's, not your data.`
         : 'Type a number for each, or "No target". Ask Mia to fill the boxes with her estimates.',
       openByDefault: true,
-      // Under their phase's heading, in the plan's order (local test 27 Oct: ten targets in one list, the phase only as
-      // a small suffix)
+      // One phase at a time, in the plan's order (Josh, 24 Nov: eleven targets at once was too much). A phase whose
+      // targets are all set leaves the list, so the next one comes up by itself.
       more: (
-        <div className="flex flex-col gap-3">
-        {[...new Set([...plan.phases.map((p) => p.phase), ...toSet.map((t) => t.phase)])].filter((ph) => toSet.some((t) => t.phase === ph)).map((ph) => (
-        <section key={ph} aria-label={`${ph} targets`} className="flex flex-col gap-1.5">
-        <h4 className="label-sm text-secondary">{ph}</h4>
-        <ul className="flex flex-col gap-2">
-          {toSet.filter((t) => t.phase === ph).map((t) => (
-            <TargetToSet
-              key={t.key}
-              grouped
-              name={t.kpi_name}
-              phase={t.phase}
-              reference={t.account_reference}
-              suggested={t.suggested}
-              suggestedFrom={t.suggested_from}
-              suggestedLabel={t.suggested_label}
-              byMia={t.suggested_by === 'mia'}
-              kind={t.suggested_kind}
-              source={t.suggested_by}
-              onSet={(v, note) =>
-                onEdit([{ op: 'set_target', key: t.key, value: v, ...(note && !t.fromHistory ? { estimate_note: note } : {}) }], `target:${t.key}`)
-              }
-              saving={busy === `target:${t.key}`}
-              onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
-            />
-          ))}
-        </ul>
-        </section>
-        ))}
-        </div>
+        <OneAtATime
+          noun="Phase"
+          entries={[...new Set([...plan.phases.map((p) => p.phase), ...toSet.map((t) => t.phase)])]
+            .filter((ph) => toSet.some((t) => t.phase === ph))
+            .map((ph) => ({
+              key: ph,
+              node: (
+                <section aria-label={`${ph} targets`} className="flex flex-col gap-1.5">
+                  <h4 className="label-sm text-secondary">{ph}</h4>
+                  <ul className="flex flex-col gap-2">
+                    {toSet.filter((t) => t.phase === ph).map((t) => (
+                      <TargetToSet
+                        key={t.key}
+                        grouped
+                        name={t.kpi_name}
+                        phase={t.phase}
+                        reference={t.account_reference}
+                        suggested={t.suggested}
+                        suggestedFrom={t.suggested_from}
+                        suggestedLabel={t.suggested_label}
+                        byMia={t.suggested_by === 'mia'}
+                        kind={t.suggested_kind}
+                        source={t.suggested_by}
+                        readFrom={t.read_from}
+                        onSet={(v, note) =>
+                          onEdit([{ op: 'set_target', key: t.key, value: v, ...(note && !t.fromHistory ? { estimate_note: note } : {}) }], `target:${t.key}`)
+                        }
+                        saving={busy === `target:${t.key}`}
+                        onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ),
+            }))}
+        />
       ),
       actions: (
         <>

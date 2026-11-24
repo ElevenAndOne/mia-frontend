@@ -281,11 +281,13 @@ export function TargetToSet({
   byMia,
   kind,
   source,
+  readFrom,
   grouped = false,
   onSet,
   onNoTarget,
   saving = false,
 }: {
+  readFrom?: string[] | null // where the tracker will read it (Josh, 24 Nov: each target linked and tracked)
   saving?: boolean // this row's number is being saved
   grouped?: boolean // under its phase's heading: the row doesn't repeat the phase
   name: string
@@ -319,10 +321,13 @@ export function TargetToSet({
                 : "Mia's estimate"
               : source === 'history'
                 ? 'From a past campaign'
-                : 'From your account'}
+                : source === 'budget'
+                  ? 'What your budget buys'
+                  : 'From your account'}
             : {suggestedLabel ?? num(suggested)}
           </p>
         ) : null}
+        {readFrom?.length ? <p className="paragraph-xs text-tertiary">Tracked from {readFrom.join(' and ')}</p> : null}
         {/* the working on tap: a name, a number and Keep is all the row needs (local test 27 Oct) */}
         {reference || suggestedFrom ? (
           <details className="paragraph-xs text-tertiary">
