@@ -130,10 +130,11 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
       {unlinked.length ? (
         <Card warn className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-primary">
-            {listed(unlinked)} {unlinked.length === 1 ? 'has' : 'have'} no data because no ads are linked to this campaign yet.
+            {listed(unlinked)} {unlinked.length === 1 ? 'has' : 'have'} no data because no ads or posts are linked to this
+            campaign yet. Mia counts only what's linked, so a client's other posts never count here.
           </p>
           <Button size="sm" variant="primary" onClick={() => setLinking(true)}>
-            Link ads
+            Link ads and posts
           </Button>
         </Card>
       ) : null}
@@ -210,7 +211,7 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                         {/* why there's no number, as the server says it (24 Nov: "set its source on the campaign" was
                             wrong when the source was connected and only the ads weren't linked) */}
                         {a?.link_gap ? (
-                          <span className="paragraph-xs text-utility-warning-700">no ads linked yet</span>
+                          <span className="paragraph-xs text-utility-warning-700">nothing linked yet</span>
                         ) : a?.state === 'none' ? (
                           <span className="paragraph-xs text-tertiary">{a.blank_reason ?? 'no data for these dates yet'}</span>
                         ) : null}
