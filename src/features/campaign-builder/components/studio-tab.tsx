@@ -201,9 +201,17 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
         : 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
       actions:
         back.some((j) => j.no_file) && s.drive?.root_url ? (
-          <PrimaryAction loading={busy === 'refresh'} onClick={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}>
-            Check now
-          </PrimaryAction>
+          <>
+            <PrimaryAction loading={busy === 'refresh'} onClick={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}>
+              Check now
+            </PrimaryAction>
+            {/* the ones that did come back with files keep their way in (review 24 Nov) */}
+            {back.some((j) => !j.no_file) ? (
+              <Button size="md" onClick={() => openAndGo(back.filter((j) => !j.no_file).map((j) => j.asset_id))}>
+                Check the {back.filter((j) => !j.no_file).length} with files
+              </Button>
+            ) : null}
+          </>
         ) : (
           <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>
         ),

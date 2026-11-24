@@ -63,7 +63,8 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
   const tenantId = activeWorkspace?.tenant_id
   const qc = useQueryClient()
   const key = ['campaign-results', tenantId, campaignId]
-  const q = useQuery({ queryKey: key, queryFn: () => api.fetchResults(sessionId!, tenantId!, campaignId), enabled: !!sessionId && !!tenantId && approved })
+  // BPO shows no numbers here, so none are fetched (review 24 Nov)
+  const q = useQuery({ queryKey: key, queryFn: () => api.fetchResults(sessionId!, tenantId!, campaignId), enabled: !!sessionId && !!tenantId && approved && !bpo })
   const s = q.data
   const fetchable = !!s && s.live && s.when !== 'not_started'
   const actuals = useQueries({

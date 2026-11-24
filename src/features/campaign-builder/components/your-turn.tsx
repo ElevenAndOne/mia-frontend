@@ -208,9 +208,9 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {current.actions}
             {current.why ? <Why>{current.why}</Why> : null}
-            {current.more && !isOpen(current.key) ? (
-              <button type="button" aria-expanded={false} onClick={() => toggle(current.key)} className="paragraph-xs underline text-secondary hover:text-primary">
-                Show
+            {current.more ? (
+              <button type="button" aria-expanded={isOpen(current.key)} onClick={() => toggle(current.key)} className="paragraph-xs underline text-secondary hover:text-primary">
+                {isOpen(current.key) ? 'Hide' : 'Show'}
               </button>
             ) : null}
           </div>

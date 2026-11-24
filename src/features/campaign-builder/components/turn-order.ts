@@ -14,7 +14,8 @@ export function leadWith(part: Step | undefined, items: TurnItem[], running = fa
   const key = part ? LEADS[part] : undefined
   const lead = key ? items.find((i) => i.key === key && !i.done) : undefined
   if (!lead) return items
-  if (running) return [...items.filter((i) => i !== lead), lead]
+  // only Approve can't be pressed while Mia works; Looks right can (review 24 Nov: it dropped below a note while she checked)
+  if (running && part === 'check') return [...items.filter((i) => i !== lead), lead]
   const realLeft = items.some((i) => i !== lead && !i.done && !NOT_TASKS.has(i.key))
   return realLeft ? items : [lead, ...items.filter((i) => i !== lead)]
 }
