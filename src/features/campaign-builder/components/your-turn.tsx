@@ -155,6 +155,7 @@ export interface TurnItem {
   more?: ReactNode // opens under the item (the list of jobs to fix, the questions)
   openByDefault?: boolean
   why?: ReactNode // the explanation, behind "Why?" (20 Nov: a task is a short title and a button)
+  working?: boolean // Mia is doing this one (checking, writing): nothing to skip past it to (test 24 Nov, E18)
 }
 
 // "Why?": the reason behind a task or a fact, one tap away instead of a paragraph on screen (20 Nov, less text).
@@ -201,7 +202,7 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* no count here: a task like "Mia's question 1 of 3" has its own, and two counts read as a clash (24 Nov) */}
           <p className="label-xs uppercase tracking-[0.06em] text-brand-secondary">Your turn</p>
-          {rest.length ? (
+          {rest.length && !current.working ? (
             <button
               type="button"
               onClick={() => setChosen(open[(open.indexOf(current) + 1) % open.length].key)}

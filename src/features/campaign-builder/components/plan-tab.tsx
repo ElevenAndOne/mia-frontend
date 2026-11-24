@@ -50,7 +50,7 @@ export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // brief changing under the plan, a kept target to recheck, jobs to confirm again, words to rewrite.
 // Mia's open questions too: one raised while she read an answer comes up on the step the PM is on, as a card (DFSA test
 // 24 Nov: "Who supplies the bakes and the kitchen?" was only a line in the chat, and would have been missed)
-const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words', 'questions']
+const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words', 'questions', 'waiting-fix']
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   questions: (k) => [...EVERYWHERE, 'not-carried', 'questions', 'answered'].includes(k),
   targets: (k) => [...EVERYWHERE, 'targets', 'fill-targets'].includes(k),
@@ -422,6 +422,35 @@ function planTurnItems({
     .filter((q) => !('about' in q && q.about === 'Targets'))
   const done = new Set(plan.decisions.notes_done ?? [])
   const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
+
+  // A fix card made from a finding or a note that the check has since replaced: it stays here in Your turn, never only in
+  // the chat (test 24 Nov, E19/E21: the clusters fix lost its finding when the check re-ran and ended up in the chat)
+  const shownHere = new Set([...(plan.review?.audit?.jobs ?? []).map(breakLabel), ...lookAt.map(noteLabel)])
+  const strays = (state.pending ?? []).filter((p) => /^(Fix|Note) · /.test(p.about ?? '') && !shownHere.has(p.about ?? ''))
+  if (strays.length && onApplyChange && onDropChange)
+    items.push({
+      key: 'waiting-fix',
+      title: strays.length === 1 ? "Mia's fix is waiting" : `${strays.length} of Mia's fixes are waiting`,
+      detail: 'Made before her latest check. Apply it, or drop it.',
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {strays.map((p) => (
+            <li key={p.id} className="flex flex-col gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
+              <p className="paragraph-sm text-primary [overflow-wrap:anywhere]">{p.summary[0]}</p>
+              <span className="flex flex-wrap gap-2">
+                <Button size="sm" variant="primary" loading={busy === `apply:${p.id}`} onClick={() => void onApplyChange(p.id)}>
+                  Apply
+                </Button>
+                <Button size="sm" onClick={() => void onDropChange(p.id)}>
+                  Not now
+                </Button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    })
 
   // A brief that changed under the plan: first, on whichever step the PM is on (it was a separate Do this next box)
   if (state.plan_from_older_brief && onMakePlan)
@@ -1064,6 +1093,7 @@ function planTurnItems({
   if (rewritingNow.length && !rewritingNow.some((a) => a.words_stale))
     wordItems.push({
       key: 'words-running',
+      working: true,
       title: rewritingNow.length === 1
         ? `Mia is rewriting ${rewritingNow[0].name}'s words`
         : `Mia is rewriting the words for ${rewritingNow.length} jobs`,
@@ -1077,6 +1107,7 @@ function planTurnItems({
       key: 'final-check',
       // only a task while Mia is checking: running or re-running the check is on Approve itself (flow review U1)
       done: !checking,
+      working: checking,
       title: at ? `Mia checked the campaign ${day(at)}` : "Run Mia's final check",
       detail: checking
         ? 'Mia is checking the whole campaign as it is now (a minute or two).'
