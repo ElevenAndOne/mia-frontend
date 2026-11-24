@@ -312,13 +312,20 @@ export const fetchUnlinkedAds = async (sessionId: string, tenantId: string, camp
 export const refreshCampaignActuals = async (
   sessionId: string,
   tenantId: string,
-  campaignId: string
+  campaignId: string,
+  startDate: string | null = null,
+  endDate: string | null = null
 ): Promise<void> => {
   // Clear local JS + sessionStorage caches so stale data isn't shown
   actualsCache.clear()
   ssClear(SS_ACTUALS_PREFIX)
-  // Ask the server to clear the DB cache and re-warm
-  await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh`, {
+  // Ask the server to re-fetch and overwrite its cache for the range on screen, so the
+  // reload right after reads exactly what was just fetched.
+  const params = new URLSearchParams()
+  if (startDate) params.set('start_date', startDate)
+  if (endDate) params.set('end_date', endDate)
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh${qs}`, {
     method: 'POST',
     headers: { 'X-Session-ID': sessionId },
   })
