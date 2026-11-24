@@ -169,6 +169,20 @@ export async function fixFinding(sessionId: string, tenantId: string, campaignId
   )
 }
 
+// "Fix all": one fix per job with findings, written in the background (retest 24 Nov, E27); "Apply all" applies every
+// waiting fix card in one go.
+export async function fixAllFindings(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ started: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/fix-all`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+export async function applyAllFixes(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ applied: number; failed: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/apply-all`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
 export async function dropChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
   return check<{ ok: boolean }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}`, { method: 'DELETE', headers: json(sessionId) }),

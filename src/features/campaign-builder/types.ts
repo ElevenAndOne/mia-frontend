@@ -219,6 +219,8 @@ export interface Plan {
     not_carried?: string[] // the PM's edits a remade plan had no place for
     answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
+    // channels and jobs Mia left out to keep to the channels the PM named: shown in "How Mia got here" (E30)
+    left_out?: { phase?: string; channel?: string; job?: string; phase_dropped?: boolean }[]
   }
   checks?: PlanCheck[] // none on a campaign moved from the old builder
   // her claims about the client she corrected against their data before the PM saw the plan (claim_check, 24 Nov)
@@ -241,7 +243,7 @@ export interface PlanReview {
   // The close reading (26 Oct): every job's brief and words against what was decided, and the PM's chat messages
   audit?: {
     error?: string
-    jobs?: { job: string; where: string; decision: string; how: string }[]
+    jobs?: { job: string; job_id?: string; where: string; decision: string; how: string }[]
     chat?: { said: string; missing: string }[]
   }
   fact_check?: {
@@ -258,6 +260,8 @@ export interface PlanReview {
     best_past: { campaign: string; score: number; kpis_hit: number; kpis: number }[]
     strengths: string[]
     look_at: string[]
+    // ideas for later (a channel the PM left out...): read here only, never a Your turn item (retest 24 Nov, E29)
+    worth_asking?: string[]
   }
 }
 

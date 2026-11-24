@@ -40,6 +40,9 @@ interface Props {
   onDropChange?: (id: string) => Promise<unknown>
   // a final-check finding fixed whole by Mia's server: one card for the whole job (finding-fix.tsx)
   onFixFinding?: (label: string, how?: string) => Promise<unknown>
+  // every finding fixed in one go, then every card applied in one go (retest 24 Nov, E27)
+  onFixAll?: () => Promise<unknown>
+  onApplyAllFixes?: () => Promise<unknown>
   // an Apply, Not now or fix that failed ("apply:<card id>", "fix:<label>"): said on the finding it belongs to
   cardError?: CardError
 }
@@ -74,7 +77,8 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
 }
 
 export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onKeepPlan, onApprove, onWriteWords, onSaveBrief,
-  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, cardError = null }: Props) {
+  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, onFixAll,
+  onApplyAllFixes, cardError = null }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   // by job id, so removing a job never opens its neighbour (review 2 Nov: keyed by place)
   const [openJobs, setOpenJobs] = useState<Set<string>>(() => new Set())
@@ -137,8 +141,8 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <YourTurn
           key={part}
           items={leadWith(part, planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
-            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, cardError, part, onMakePlan,
-            onKeepPlan })
+            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, onFixAll, onApplyAllFixes,
+            cardError, part, onMakePlan, onKeepPlan })
             .filter((i) => !part || PART_ITEMS[part](i.key)), stillWorking(state, busy))}
         />
       )}
@@ -347,9 +351,24 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <Concept plan={plan} />
         {plan.review ? <SelfCheck review={plan.review} /> : null}
         <ClaimFixes plan={plan} />
+        <LeftOut plan={plan} />
         <Checks plan={plan} />
       </Fold>) : null}
       </>) : null}
+    </div>
+  )
+}
+
+// What Mia left out to keep to the channels the PM named: background, never a Your turn line (retest 24 Nov, E30: the
+// list sat in the Approve card as a wall of job names)
+function LeftOut({ plan }: { plan: Plan }) {
+  const left = plan.decisions.left_out ?? []
+  const what = [...new Set(left.map((x) => x.job ?? (x.channel ?? '').replace(/_/g, ' ')).filter(Boolean))].sort()
+  if (!what.length) return null
+  return (
+    <div className="mt-3 rounded-lg border border-secondary px-3 py-2">
+      <p className="label-sm text-primary">Left out to keep to the channels you named</p>
+      <p className="mt-1 paragraph-sm text-secondary">{what.join(' · ')}. Ask Mia to add any you want.</p>
     </div>
   )
 }
@@ -372,11 +391,15 @@ function planTurnItems({
   onApplyChange,
   onDropChange,
   onFixFinding,
+  onFixAll,
+  onApplyAllFixes,
   cardError,
   part,
   onMakePlan,
   onKeepPlan,
 }: {
+  onFixAll?: Props['onFixAll']
+  onApplyAllFixes?: Props['onApplyAllFixes']
   onMakePlan?: Props['onMakePlan']
   onKeepPlan?: Props['onKeepPlan']
   state: BuildState
@@ -869,6 +892,27 @@ function planTurnItems({
         Check again
       </Button>
     ) : undefined
+  // Fix all, then Apply all: one press each for every finding (retest 24 Nov, E27: three rounds of Fix it and Apply for
+  // what was one change). Each fix still shows on its own finding to read before applying.
+  const breakLabels = breaks.map(breakLabel)
+  const fixCards = (state.pending ?? []).filter((p) => p.about && breakLabels.includes(p.about))
+  const fixingAll = (state.fixing ?? []).some((l) => breakLabels.includes(l))
+  // a job counts as fixed once a card waits on any of its findings (one card covers every finding on its job)
+  const jobKey = (x: (typeof breaks)[number]) => x.job_id ?? x.job
+  const coveredJobs = new Set(breaks.filter((x) => fixCards.some((p) => p.about === breakLabel(x))).map(jobKey))
+  const unfixed = breaks.filter((x) => !coveredJobs.has(jobKey(x)))
+  const allAction =
+    breaks.length < 2 || plan.review?.stale || checking ? undefined : fixingAll ? (
+      <Checking label="Writing the fixes…" />
+    ) : unfixed.length && onFixAll ? (
+      <PrimaryAction loading={busy === 'fix-all'} onClick={() => onFixAll()}>
+        Fix {unfixed.length === breaks.length ? 'all ' : ''}{unfixed.length}
+      </PrimaryAction>
+    ) : fixCards.length && onApplyAllFixes ? (
+      <PrimaryAction loading={busy === 'apply-all'} onClick={() => onApplyAllFixes()}>
+        Apply all {fixCards.length} fix{fixCards.length === 1 ? '' : 'es'}
+      </PrimaryAction>
+    ) : undefined
   if (breaks.length) {
     items.push({
       key: 'breaks',
@@ -881,8 +925,10 @@ function planTurnItems({
         ? 'Mia is checking the plan as it is now.'
         : plan.review?.stale
           ? staleNote
-          : undefined,
-      actions: checkAction(plan.review?.stale),
+          : fixCards.length && !fixingAll && breaks.length > 1
+            ? 'Mia wrote the fixes. Read each one below, then apply them all.'
+            : undefined,
+      actions: allAction ?? checkAction(plan.review?.stale),
       // one finding at a time (local test 4, 30 Oct: three long findings at once read as a wall)
       more: (
         <OneAtATime
@@ -1162,7 +1208,9 @@ function planTurnItems({
     // named before approve, and kept in the log after (Sean, live 24 Nov: "what happens to that alert?")
     ...(state.credits_over ? ['jobs over the studio credits'] : []),
   ]
-  const otherWarnings = (state.warnings ?? []).filter((w) => !w.includes('still have flagged words'))
+  // the left-out list is background, in "How Mia got here" (E30), never in the Approve card
+  const otherWarnings = (state.warnings ?? []).filter(
+    (w) => !w.includes('still have flagged words') && !w.startsWith('Mia kept to the channels you named'))
   items.push({
     key: 'approve',
     title: 'Approve the plan',
@@ -1191,6 +1239,28 @@ function planTurnItems({
       </span>
     ),
   })
+  // While Mia works on Check & approve, that's the only thing in Your turn: no old findings or notes with live buttons,
+  // no Approve, no Skip (Josh, retest 24 Nov, E23: "at these points I have no context that I should be waiting", and
+  // "if Mia is doing anything we don't want them to go past, block them or say explicitly they can't go on yet").
+  // Fix cards waiting for Apply stay (the stray cards, and the findings item when it holds one), since applying them is
+  // still the PM's (review 24 Nov: the early return hid them during the check one Apply started).
+  if (part === 'check' && (checking || rewriting || applying)) {
+    const cards = items.filter((i) => i.key === 'waiting-fix' || (i.key === 'breaks' && fixCards.length > 0))
+    const what = rewriting
+      ? { title: 'Mia is rewriting the words', detail: 'About a minute a job, then she checks the campaign again.' }
+      : applying
+        ? { title: 'Mia is applying your answer', detail: 'Under a minute, then she checks the campaign again.' }
+        : { title: 'Mia is checking your campaign', detail: 'About a minute. What she finds shows here.' }
+    return [{
+      key: 'mia-working',
+      working: true,
+      title: what.title,
+      detail: cards.length
+        ? `${what.detail} You can apply a waiting fix below, but you can't approve until she's done.`
+        : `${what.detail} Nothing needs you, and you can't approve until she's done.`,
+      actions: <Checking label="Working…" />,
+    }, ...cards]
+  }
   return items
 }
 
@@ -2000,6 +2070,16 @@ function SelfCheck({ review }: { review: PlanReview }) {
               <li key={x}>{x}</li>
             ))}
           </ol>
+        </div>
+      ) : null}
+      {sc.worth_asking?.length ? (
+        <div className="mt-3 rounded-lg border border-secondary px-3 py-2">
+          <p className="label-sm text-primary">Ideas for later</p>
+          <ul className="mt-1 flex flex-col gap-1 paragraph-sm text-secondary">
+            {sc.worth_asking.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {fc && fc.unsupported.length ? (

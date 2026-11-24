@@ -668,6 +668,8 @@ function StepView({
           onApplyChange={build.applyChange}
           onDropChange={build.dropChange}
           onFixFinding={build.fixFinding}
+          onFixAll={build.fixAll}
+          onApplyAllFixes={build.applyAllFixes}
           cardError={build.errorAt && /^(apply|drop|fix):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
         />
       )}

@@ -65,7 +65,7 @@ export function useBuild(campaignId: string | undefined) {
           out = await fn()
         } catch (e) {
           // a fix starts a model call on the server: never twice (review 24 Nov)
-          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft'].includes(label) || label.startsWith('fix:')) throw e
+          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft', 'fix-all', 'apply-all'].includes(label) || label.startsWith('fix:')) throw e
           await new Promise((r) => setTimeout(r, 1000))
           out = await fn()
         }
@@ -129,6 +129,8 @@ export function useBuild(campaignId: string | undefined) {
       }),
     dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
     fixFinding: (label: string, how?: string) => run(`fix:${label}`, () => api.fixFinding(...ids(), label, how)),
+    fixAll: () => run('fix-all', () => api.fixAllFindings(...ids())),
+    applyAllFixes: () => run('apply-all', () => api.applyAllFixes(...ids())),
     editPlan: (ops: PlanOp[], label = 'edit') =>
       run(label, async () => {
         const next = await api.editPlan(...ids(), ops)
