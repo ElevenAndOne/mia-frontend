@@ -23,6 +23,8 @@ export const useNotes = (
     queryFn: ({ signal }) =>
       fetchNotes(sessionId!, tenantId!, { scope, campaignId, includeRetired: true }, signal),
     enabled: !!sessionId && !!tenantId && (scope === 'workspace' || !!campaignId),
+    // Notes change from other pages too (a platform note added, undone or ended): ask again each time it opens.
+    refetchOnMount: 'always',
   })
 
   // Any write can move a note between scopes (promote), so invalidate every notes

@@ -362,6 +362,8 @@ export interface PushCheck {
   target: { level: 'asset' | 'channel' | 'account' | 'campaign'; names: string[]; ids: string[] } | null
   // Set when someone has accepted this warning (blockers are never waivable).
   waived?: { by: string; user_id: string | null; at: string | null; reason: string | null } | null
+  // ad_countries_unset: the countries Mia suggests from the ad account (23 Nov)
+  suggest?: string[]
 }
 
 // ── Launch readiness (persisted preflight checks) ─────────────────────────

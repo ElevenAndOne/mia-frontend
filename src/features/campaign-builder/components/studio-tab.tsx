@@ -6,9 +6,9 @@ import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import { CopyButton } from './copy-button'
 import * as api from '../api'
-import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState } from '../types'
+import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState, StudioTeam } from '../types'
 import { JobCard } from './launch-tab'
-import { Card, NeedsYou, channelLabel, day, num } from './parts'
+import { Card, NeedsYou, channelLabel, day, num, phaseTag } from './parts'
 import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
 
 // The Studio tab (plan §8.2): the approved jobs, priced from the Credit Ledger and placed in the
@@ -134,7 +134,22 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     </label>
   )
   const items: TurnItem[] = []
-  otherBlockers.forEach((b, k) => items.push({ key: `b${k}`, title: b, actions: <AskMia label="Before sending" detail={b} /> }))
+  otherBlockers.forEach((b, k) =>
+    items.push({
+      key: `b${k}`,
+      title: b,
+      // no Shared Drive: Settings opens in a new tab, so the campaign stays where it is; the item clears once it's set
+      // (Josh, 24 Nov, E17)
+      actions: /Shared Drive first/.test(b) ? (
+        <a href="/settings/workspace" target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand">
+          Add it in Settings
+        </a>
+      ) : (
+        <AskMia label="Before sending" detail={b} />
+      ),
+    }),
+  )
   if (toSend.length || (!s.sent && unsent.length)) {
     items.push({
       key: 'confirm',
@@ -163,7 +178,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
             loading={busy === 'send'}
             disabled={!!s.blockers.length || !sender}
             onClick={() =>
-              act('send', () => api.sendToFlex(...ids, sender), (out) => setDone(`Sent: ${(out as { sent: number }).sent} new task(s) in Flex.`))
+              act('send', () => api.sendToFlex(...ids, sender), (out) => setDone(sentMessage(out as { sent: number; brief_cut?: Record<string, string[]> })))
             }
           >
             Send to Flex
@@ -193,10 +208,28 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       key: 'check-back',
       title: `Check ${back.length} job${back.length === 1 ? '' : 's'} back from the studio`,
       // a job done in Flex with no file is asked for its file, not its artwork (browser pass 16 Nov)
+      // on a Shared Drive the files go in the job's _Delivery folder, not a pasted link (screen walk 23 Nov, theme 6)
       detail: back.some((j) => j.no_file)
-        ? `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
+        ? s.drive?.root_url
+          ? `${back.filter((j) => j.no_file).length} came back with no file yet: the files go in each job's _Delivery folder on Drive, then press Check now.`
+          : `${back.filter((j) => j.no_file).length} came back with no file: paste its link. Then add the page people land on (Mia adds the UTM tags).`
         : 'Look at the artwork and add the page people land on (Mia adds the UTM tags).',
-      actions: <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>,
+      actions:
+        back.some((j) => j.no_file) && s.drive?.root_url ? (
+          <>
+            <PrimaryAction loading={busy === 'refresh'} onClick={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}>
+              Check now
+            </PrimaryAction>
+            {/* the ones that did come back with files keep their way in (review 24 Nov) */}
+            {back.some((j) => !j.no_file) ? (
+              <Button size="md" onClick={() => openAndGo(back.filter((j) => !j.no_file).map((j) => j.asset_id))}>
+                Check the {back.filter((j) => !j.no_file).length} with files
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <PrimaryAction onClick={() => openAndGo(back.map((j) => j.asset_id))}>Check {back.length === 1 ? 'it' : 'them'}</PrimaryAction>
+        ),
     })
   }
   if (toLaunch.length) {
@@ -255,17 +288,77 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
       {done ? <Card className="paragraph-sm text-primary">{done}</Card> : null}
       <YourTurn items={items} />
-      {s.outline?.version ? (
-        // the whole plan in Flex, read only at the top of the campaign (the outline, 17 Nov)
-        <p className="paragraph-xs text-tertiary">
-          {s.outline.current
-            ? 'Flex has the whole plan as it is now, shown at the top of the campaign there; the studio can send ideas from it.'
-            : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
+      {/* Reference, one quiet line each (screen walk 23 Nov: four blocks of explanation sat above the jobs) */}
+      <div className="flex flex-col gap-1.5 px-1">
+        {s.drive ? (
+          <DriveLine
+            d={s.drive}
+            retrying={busy === 'drive-retry'}
+            onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))}
+            checking={busy === 'refresh'}
+            onCheck={() => act('refresh', () => api.refreshFromFlex(...ids), () => void reloadLaunch())}
+          />
+        ) : null}
+        {s.outline?.version ? (
+          // the whole plan in Flex, read only at the top of the campaign (the outline, 17 Nov)
+          <p className="paragraph-xs text-tertiary">
+            {s.outline.current
+              ? 'Flex has the whole plan, at the top of the campaign there.'
+              : s.outline.error ?? 'The plan’s latest changes go to Flex shortly.'}
+          </p>
+        ) : null}
+        {s?.job_code?.code ? (
+          // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex
+          <p className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
+            <span>
+              Job numbers <span className="text-secondary tabular-nums">{s.job_code.code}-01, {s.job_code.code}-02…</span>
+              {s.job_code.locked ? ' · fixed' : ''}
+            </span>
+            {!s.job_code.locked ? (
+              <button type="button" className="underline hover:text-secondary disabled:opacity-50" disabled={busy === 'code'} onClick={() => {
+                const next = window.prompt('The campaign\'s job code: 2 to 6 letters or digits, starting with a letter', s.job_code?.code ?? '')
+                if (!next || !sessionId || !tenantId) return
+                setBusy('code')
+                setError(null)
+                api.setJobCode(sessionId, tenantId, campaignId, next)
+                  .then(() => qc.invalidateQueries({ queryKey: key }))
+                  .catch((e) => setError(e instanceof Error ? e.message : 'Could not change the code'))
+                  .finally(() => setBusy(null))
+              }}>
+                change
+              </button>
+            ) : null}
+          </p>
+        ) : null}
+        {lq.data?.tag ? (
+          // The one manual step a PM can get wrong: an ad set up by hand must carry the tag for its results to come back
+          <details className="paragraph-xs text-tertiary">
+            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              Campaign tag <code className="rounded bg-secondary px-1 text-secondary">{lq.data.tag}</code>{' '}
+              <CopyButton value={lq.data.tag} /> <span className="underline">Why?</span>
+            </summary>
+            <p className="mt-1 max-w-[60ch]">
+              Mia adds it to every link when you take a job in. For ads you set up by hand, like LinkedIn, start the ad
+              campaign’s name with it, or link that campaign to this one, so its results come back here.
+            </p>
+          </details>
+        ) : null}
+        {/* Jobs are added on this page through Mia (live 5 Nov: "I am not sure how to add new tasks") */}
+        <p className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
+          <span>Need more jobs?</span>
+          <button type="button" className="underline hover:text-secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
+            add a job
+          </button>
+          <span aria-hidden="true">·</span>
+          <button
+            type="button"
+            className="underline hover:text-secondary"
+            onClick={() => askMia({ label: 'Add jobs from a file', draft: 'Add the jobs in this file to the campaign. ', pickFile: true })}
+          >
+            from a file or ClickUp links
+          </button>
         </p>
-      ) : null}
-      {s.drive ? (
-        <DriveLine d={s.drive} retrying={busy === 'drive-retry'} onRetry={() => act('drive-retry', () => api.retryDriveFolders(...ids))} />
-      ) : null}
+      </div>
       {s.ideas?.items.length || s.ideas?.set_aside ? (
         <Ideas
           ideas={s.ideas.items}
@@ -274,87 +367,29 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
           onDecide={(i, status) => act(`idea-${i.id}`, () => api.decideIdea(...ids, i.id, status))}
         />
       ) : null}
-      {s?.job_code?.code ? (
-        // Mia's job numbers (step 7, 16 Nov): code + number on every job, sent to Flex and at the end of each ad's name
-        <Card className="flex flex-wrap items-center justify-between gap-2">
-          <p className="paragraph-sm text-secondary">
-            Job numbers: <span className="text-primary tabular-nums">{s.job_code.code}-01</span>,{' '}
-            <span className="text-primary tabular-nums">{s.job_code.code}-02</span>…{' '}
-            {/* under the naming scheme (20 Nov) the ad's name ends with the Job ID, not the number */}
-            {s.jobs.some((j) => j.names)
-              ? 'They go to Flex with each job. Each job also has a Job ID, at the end of every name and link it carries.'
-              : "They go to Flex with each job and at the end of each ad's name, so an ad traces back to its job."}
-            {s.job_code.locked ? ' The code is fixed now: Flex tasks and ads carry it.' : ''}
-          </p>
-          {!s.job_code.locked ? (
-            <Button size="sm" loading={busy === 'code'} onClick={() => {
-              const next = window.prompt('The campaign\'s job code: 2 to 6 letters or digits, starting with a letter', s.job_code?.code ?? '')
-              if (!next || !sessionId || !tenantId) return
-              setBusy('code')
-              setError(null)
-              api.setJobCode(sessionId, tenantId, campaignId, next)
-                .then(() => qc.invalidateQueries({ queryKey: key }))
-                .catch((e) => setError(e instanceof Error ? e.message : 'Could not change the code'))
-                .finally(() => setBusy(null))
-            }}>
-              Change the code
-            </Button>
-          ) : null}
-        </Card>
-      ) : null}
-
-      {/* Jobs are added on this page through Mia, not from the old campaign screen or the home chat; nothing here said so
-          (live 5 Nov: "I am not sure how to add new tasks"). The chat starts the line, the PM finishes it. */}
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <p className="paragraph-sm text-secondary max-w-[60ch]">
-          Need more jobs in this campaign? Ask Mia in the chat: type them, add a file (a spreadsheet, a Word document or a
-          ClickUp export), or paste ClickUp links. She sorts them into phases, prices them from the credit table, and shows
-          one card for you to check and apply before anything changes.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" onClick={() => askMia({ label: 'Add a job', draft: 'Add a job: ' })}>
-            Add a job
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => askMia({ label: 'Add jobs from a file', draft: 'Add the jobs in this file to the campaign. ', pickFile: true })}
-          >
-            Add jobs from a file
-          </Button>
-        </div>
-      </Card>
-
-      {lq.data?.tag ? (
-        // The one manual step a PM can get wrong: an ad they set up by hand must carry the tag for its results to come
-        // back (26 Oct). Mia puts it in every link she tracks.
-        <Card className="flex flex-col gap-1">
-          <p className="paragraph-sm text-primary flex flex-wrap items-center gap-2">
-            This campaign’s tag: <code className="rounded bg-secondary px-1.5 py-0.5">{lq.data.tag}</code>
-            <CopyButton value={lq.data.tag} />
-          </p>
-          <p className="paragraph-xs text-secondary">
-            Mia adds it to every link when you take a job in. For ads you set up by hand, like LinkedIn, start the ad
-            campaign’s name with it, or link that campaign to this one, so its results come back here.
-          </p>
-        </Card>
-      ) : null}
-
       {s.credit_fit.length ? (
-        <Card className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <p className="subheading-sm text-primary">Credits for this send</p>
-          {s.credit_fit.map((f) => (
-            <span key={f.sprint} className="paragraph-sm text-secondary">
-              {f.sprint}: {num(f.planned)}
-              {f.free == null ? ' (room unknown)' : ` of ${num(f.free)} free`}
-              {f.over ? (
-                <>
-                  {' '}
-                  <NeedsYou>over: carry-over or extra credits needed</NeedsYou>
-                </>
-              ) : null}
-            </span>
-          ))}
+        <Card className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <p className="subheading-sm text-primary">Credits for this send</p>
+            {s.credit_fit.map((f) => (
+              <span key={f.sprint} className="paragraph-sm text-secondary">
+                {f.sprint}: {num(f.planned)}
+                {f.free == null ? ' (room unknown)' : ` of ${num(f.free)} free`}
+                {f.over ? (
+                  <>
+                    {' '}
+                    <NeedsYou>over: carry-over or extra credits needed</NeedsYou>
+                  </>
+                ) : null}
+              </span>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+      {/* its own card: shown even when no client-credit row is (audit 24 Nov: weekend due dates hid it) */}
+      {s.team?.fit.sprints.length || s.team?.fit.outside_jobs ? (
+        <Card>
+          <TeamRoom team={s.team} />
         </Card>
       ) : null}
 
@@ -484,7 +519,7 @@ function Row({
         {j.job_no ? <span className="ml-1.5 paragraph-xs text-tertiary tabular-nums">{j.job_no}</span> : null}
         <JobId id={j.job_id} />
         <span className="block paragraph-xs text-tertiary">
-          {j.phase} · {channelLabel(j.channel)}
+          {phaseTag(j.phase)}{channelLabel(j.channel)}
           {j.setup_work ? ' · setup work (credits for setup still to be agreed)' : ''}
         </span>
         <JobNames names={j.names} />
@@ -544,12 +579,27 @@ function Row({
             sp
           )
         })()}
+        {!inFlex && j.maker ? (
+          <span
+            className="block paragraph-xs text-tertiary"
+            title={`Mia's suggestion from Flex's team plan: ${j.maker.has_skill ? `has ${j.maker.skill.replace('_', ' ')}` : `no one in the pod has ${j.maker.skill.replace('_', ' ')}`}, ${num(j.maker.free_after)} credits free after this job${j.maker.over ? ': the person with the most room for this kind of work, and they would be over' : ''}. The studio assigns in Flex.`}
+          >
+            Mia suggests {j.maker.name.split(' ')[0]}
+            {j.maker.over ? <NeedsYou> no room left</NeedsYou> : null}
+          </span>
+        ) : null}
       </td>
       <td className="py-2 pr-2">
         {inFlex ? (
           <span className="flex flex-col gap-0.5">
+            {/* the stage is the link to the task (screen walk 23 Nov, theme 5: a stage chip, "Open in Flex" and Details
+                stacked on every row) */}
             {launch && launch.state !== 'in_studio' ? (
               <LaunchChip state={launch.state} how={launch.launch?.how} />
+            ) : j.flex.url ? (
+              <a href={j.flex.url} target="_blank" rel="noreferrer" title="Open the task in Flex" className="w-fit hover:opacity-80">
+                <StageChip label={`${j.flex.stage_label ?? j.flex.status ?? 'Open'} ↗`} />
+              </a>
             ) : (
               <StageChip label={j.flex.stage_label ?? j.flex.status ?? 'Open'} />
             )}
@@ -558,14 +608,11 @@ function Row({
                 review: internal {j.flex.review_rounds.internal}, client {j.flex.review_rounds.client}
               </span>
             ) : null}
-            {j.flex.url ? (
-              <a className="inline-flex w-fit items-center whitespace-nowrap rounded-md border border-brand px-2 py-0.5 paragraph-xs text-brand-secondary hover:bg-brand-primary"
-                href={j.flex.url} target="_blank" rel="noreferrer">
-                Open in Flex ↗
+            {launch && launch.state !== 'in_studio' && j.flex.url ? (
+              <a className="w-fit paragraph-xs text-tertiary underline hover:text-secondary" href={j.flex.url} target="_blank" rel="noreferrer">
+                Flex ↗
               </a>
-            ) : (
-              <span className="paragraph-xs text-tertiary">in Flex</span>
-            )}
+            ) : null}
           </span>
         ) : inClickUp && j.clickup ? (
           <span className="flex flex-col gap-0.5">
@@ -610,7 +657,13 @@ function Row({
 
 // The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov): one line. Mia makes them after
 // approve and reads each job's _Delivery every 15 minutes (or on Check Flex now).
-function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean; onRetry: () => void }) {
+function DriveLine({ d, retrying, onRetry, checking, onCheck }: {
+  d: StudioDrive
+  retrying: boolean
+  onRetry: () => void
+  checking: boolean
+  onCheck: () => void
+}) {
   const [showUnplaced, setShowUnplaced] = useState(false)
   if (!d.shared_drive) {
     return (
@@ -634,7 +687,8 @@ function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean
     )
   }
   if (!d.root_url) return <p className="paragraph-xs text-tertiary">Making the Drive folders…</p>
-  const n = d.unplaced.length
+  // the real count: the server keeps only 20 names (an older server sends no total)
+  const n = d.unplaced_total ?? d.unplaced.length
   return (
     <div className="flex flex-col gap-1">
       <p className="paragraph-xs text-tertiary">
@@ -644,6 +698,15 @@ function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean
         <a href={d.root_url} target="_blank" rel="noreferrer" className="underline hover:text-primary">
           Open ↗
         </a>
+        {/* read every job's _Delivery now (23 Nov: the only way was "Check Flex now", hidden behind a later task) */}
+        {d.making ? null : (
+          <>
+            {' · '}
+            <button type="button" disabled={checking} className="underline hover:text-primary disabled:opacity-50" onClick={onCheck}>
+              {checking ? 'Checking…' : 'Check now'}
+            </button>
+          </>
+        )}
         {n ? (
           <>
             {' · '}
@@ -664,6 +727,7 @@ function DriveLine({ d, retrying, onRetry }: { d: StudioDrive; retrying: boolean
                 {f.name}
               </li>
             ))}
+            {n > d.unplaced.length ? <li>and {n - d.unplaced.length} more</li> : null}
           </ul>
           <p className="mt-1">Put the job’s ID in the file’s name, or move it into its job’s folder, and Mia picks it up on the next check.</p>
         </div>
@@ -858,5 +922,46 @@ function StageChip({ label }: { label: string }) {
     <span className={`inline-flex w-fit items-center whitespace-nowrap rounded-full border px-2 py-0.5 label-xs ${STAGE_STYLE[label] ?? STAGE_STYLE.Open}`}>
       {label}
     </span>
+  )
+}
+
+
+// What the send says: how many went, and any brief Mia had to shorten to fit Flex's limits (rare; never silent).
+function sentMessage(out: { sent: number; brief_cut?: Record<string, string[]> }): string {
+  const cut = Object.entries(out.brief_cut ?? {})
+  const head = `Sent: ${out.sent} new task(s) in Flex.`
+  if (!cut.length) return head
+  return `${head} Too long for Flex, so shortened: ${cut.map(([job, what]) => `${job} (${what.join('; ')})`).join(' · ')}.`
+}
+
+// Who is free in the client's pod for this send (Flex's team plan, 24 Nov): one line per sprint, the people on hover.
+// Beside the credits above: those are what the client bought, this is who has time to make it.
+function TeamRoom({ team }: { team: StudioTeam }) {
+  const over = new Set(team.fit.over ?? [])
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p className="subheading-sm text-primary">Studio team{team.pod ? ` (${team.pod})` : ''}</p>
+      {team.fit.sprints.map((f) => {
+        const sp = team.sprints.find((x) => x.label === f.sprint)
+        const who = sp?.people.map((p) => `${p.name.split(' ')[0]} ${num(p.free)}`).join(', ')
+        return (
+          <span key={f.sprint} className="paragraph-sm text-secondary" title={who ? `Free credits: ${who}` : undefined}>
+            {f.sprint}: {num(f.planned)} planned, {num(f.pod_free)} free in the pod
+            {over.has(f.sprint) ? (
+              <>
+                {' '}
+                <NeedsYou>more than the pod has free</NeedsYou>
+              </>
+            ) : null}
+          </span>
+        )
+      })}
+      {team.fit.outside_jobs ? (
+        <span className="paragraph-xs text-tertiary">
+          {num(team.fit.outside_credits ?? 0)} credits ({team.fit.outside_jobs} job{team.fit.outside_jobs === 1 ? '' : 's'}) due
+          outside the sprints Flex described, so not counted here
+        </span>
+      ) : null}
+    </div>
   )
 }

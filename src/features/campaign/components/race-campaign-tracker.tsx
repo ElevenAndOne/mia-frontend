@@ -318,7 +318,7 @@ export function RaceCampaignTracker({
     forceReloadRef.current = true
     clearTrackerCache()
     try {
-      await refreshCampaignActuals(sessionId, tenantId, campaign.campaign_id)
+      await refreshCampaignActuals(sessionId, tenantId, campaign.campaign_id, startDate, endDate)
       // Only clear displayed data after server confirms cache is cleared and re-warmed
       actualsMapRef.current = {}
       setActualsMap({})
@@ -336,12 +336,19 @@ export function RaceCampaignTracker({
     // else: keep existing campaign visible — backend may be temporarily unavailable
     setRefreshKey((k) => k + 1)
     setRefreshing(false)
-  }, [sessionId, tenantId, campaign, refreshing, selectedCampaignId])
+  }, [sessionId, tenantId, campaign, refreshing, selectedCampaignId, startDate, endDate])
 
   const actualsMapRef = useRef(actualsMap)
   useEffect(() => {
     actualsMapRef.current = actualsMap
   }, [actualsMap])
+
+  // A workspace opened in All Campaigns mode has no active campaign: say so on mount, as picking
+  // "all" does. The tracker remounts per workspace, so without this the chat kept the previous
+  // workspace's campaign (and its locked dates) after a switch (24 Nov).
+  useEffect(() => {
+    if (campaignModeState === 'all') onCampaignChangeRef.current?.(null)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Fetch campaign summaries for the dropdown ──────────────────────────
   useEffect(() => {

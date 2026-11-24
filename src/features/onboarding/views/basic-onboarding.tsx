@@ -422,11 +422,18 @@ export const BasicOnboarding = ({ onComplete, onConnectPlatform }: Props) => {
                     That didn't connect. Try again, or reconnect with Facebook below.
                   </p>
                 )}
-                {linkFailed && (
-                  <button type="button" className={QUIET} disabled={leaving} onClick={toFacebook}>
-                    Reconnect with Facebook
-                  </button>
-                )}
+                {/* Always offered, not only after a failed link: with one Page found, "That's
+                    them" was the only way on, so a wrong Page (or an Instagram left unticked in
+                    Facebook's dialog) was linked or left them stuck (audit, 24 Nov 2026). */}
+                <button type="button" className={QUIET} disabled={leaving || confirming} onClick={toFacebook}>
+                  {leaving
+                    ? 'Opening Facebook…'
+                    : linkFailed
+                      ? 'Reconnect with Facebook'
+                      : instagram?.publishable
+                        ? 'Not this Page? Reconnect with Facebook'
+                        : 'Wrong Page, or Instagram missing? Reconnect with Facebook'}
+                </button>
               </>
             ) : choices.length ? (
               <>

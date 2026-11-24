@@ -532,7 +532,10 @@ export const ChatView = ({
                         strategiseReady={strategiseReady}
                       />
                     )}
+                    {/* key: a new workspace starts the tracker fresh. Kept mounted, it held the last
+                        workspace's campaign and asked for its numbers under the new one (404s, 24 Nov). */}
                     <RaceCampaignTracker
+                      key={activeWorkspace?.tenant_id ?? 'none'}
                       disabled={isLoading}
                       dateRange={dateRange}
                       onCampaignChange={handleCampaignChange}

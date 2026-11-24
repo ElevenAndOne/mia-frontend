@@ -25,15 +25,11 @@ export function StepRail({
   steps?: Steps // the campaign's own steps (stepsFor: a BPO campaign has five)
 }) {
   const cur = currentStep(states)
-  const done = steps.filter((st) => states[st.key] === 'done').length
   return (
     <nav aria-label="Campaign steps" className="flex flex-col gap-2">
-      <p className="paragraph-xs text-secondary">
-        {done} of {steps.length} done
-        <span className="@xl:hidden">
-          {' '}
-          · Step {steps.findIndex((st) => st.key === step) + 1}: {steps.find((st) => st.key === step)?.label}
-        </span>
+      {/* no "N of 6 done" (screen walk 23 Nov: one of three counts that disagreed); each done step carries its ✓ */}
+      <p className="@xl:hidden paragraph-sm text-secondary">
+        Step {steps.findIndex((st) => st.key === step) + 1} of {steps.length}: {steps.find((st) => st.key === step)?.label}
       </p>
       <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((st, i) => {
@@ -55,7 +51,7 @@ export function StepRail({
                   className={`h-2.5 w-full rounded-full ${BAR[look]} ${here ? 'outline outline-2 outline-offset-2 outline-[var(--color-border-brand)]' : ''}`}
                 />
                 <span
-                  className={`hidden @xl:block truncate paragraph-xs ${
+                  className={`hidden @xl:block truncate paragraph-sm ${
                     here ? 'text-primary font-semibold' : open ? 'text-secondary' : 'text-quaternary'
                   }`}
                 >

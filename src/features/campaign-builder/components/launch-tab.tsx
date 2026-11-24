@@ -12,7 +12,7 @@ import type { PushCheck } from '../../campaigns/types'
 import * as api from '../api'
 import { CopyButton } from './copy-button'
 import type { LaunchJob } from '../types'
-import { NeedsYou, channelLabel, day } from './parts'
+import { NeedsYou, channelLabel, day, phaseTag } from './parts'
 
 // Launching a job (plan §8.2), shown under its row on the Studio page (Studio and Launch are one page since 19 Oct;
 // the old Launch tab was removed as dead code, review 26 Oct). A job is ready when Flex says so and its final artwork
@@ -211,7 +211,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           ) : j.search && j.state === 'ready' ? (
             <p className="paragraph-sm text-secondary">A search ad is its headlines and descriptions, so there's no file: add the page people land on.</p>
           ) : j.no_file && j.state === 'ready' ? (
-            <NeedsYou>Done in Flex, but no file came back with it. Paste the file's link below, or add it to the job in Flex.</NeedsYou>
+            <NeedsYou>Done in Flex, but no file came back with it. Put it in the job's _Delivery folder on Drive, or paste its link below.</NeedsYou>
           ) : j.state !== 'in_studio' ? (
             <NeedsYou>No artwork linked in Flex yet.</NeedsYou>
           ) : null}
@@ -260,6 +260,15 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
             </div>
           ) : null}
 
+          {j.route === 'meta' && (j.state === 'ready' || j.state === 'taken_in') ? (
+            <AdWords
+              key={`${j.asset_id}:${j.words?.headline ?? ''}:${j.words?.text ?? ''}`}
+              words={j.words ?? null}
+              saving={busy === 'words'}
+              onSave={(w) => run('words', () => api.saveAdWords(sessionId!, tenantId, campaignId, j.asset_id, w), () => setChecks(null))}
+            />
+          ) : null}
+
           {j.state === 'taken_in' && (j.route === 'meta' || j.route === 'google') ? (
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -289,9 +298,20 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
               {checks ? (
                 blocking.length ? (
                   <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
-                    {blocking.map((c) => (
-                      <li key={c.code}>⚠ {c.message}</li>
-                    ))}
+                    {blocking.map((c) =>
+                      c.code === 'ad_countries_unset' ? (
+                        <li key={c.code}>
+                          <CountriesQuestion
+                            message={c.message}
+                            suggest={c.suggest ?? []}
+                            onSave={(list) => run('countries', () => api.saveAdCountries(sessionId!, tenantId, list), () => void check())}
+                            saving={busy === 'countries'}
+                          />
+                        </li>
+                      ) : (
+                        <li key={c.code}>⚠ {c.message}</li>
+                      ),
+                    )}
                   </ul>
                 ) : advice.length ? (
                   // warnings used to be dropped, and this said "All checks pass" over them (sweep D6)
@@ -381,7 +401,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
           <JobId id={j.job_id} />
         </span>
         <span className="paragraph-xs text-tertiary">
-          {j.phase} · {channelLabel(j.channel)}
+          {phaseTag(j.phase)}{channelLabel(j.channel)}
         </span>
         <span className="paragraph-xs text-tertiary whitespace-nowrap">goes live {day(j.launch_date)}</span>
         {j.state === 'in_studio' ? <span className="paragraph-xs text-secondary">In Flex: {j.stage_label ?? 'Open'}</span> : null}
@@ -398,3 +418,83 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     </li>
   )
 }
+
+
+// Where the client's ads run: asked once, the first time a push is checked, pre-filled from the ad account, saved for
+// the workspace (flow review L3, 23 Nov: every push targeted South Africa). Two-letter codes: ZA, GB, US.
+function CountriesQuestion({ message, suggest, onSave, saving }: {
+  message: string
+  suggest: string[]
+  onSave: (countries: string[]) => void
+  saving: boolean
+}) {
+  const [typed, setTyped] = useState(suggest.join(', '))
+  const list = typed.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean)
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-secondary bg-primary p-2 text-primary">
+      <span>{message}</span>
+      <span className="flex flex-wrap items-center gap-2">
+        <input
+          aria-label="Countries the ads run in"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder="ZA"
+          className="w-40 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm uppercase"
+        />
+        <Button size="sm" variant="primary" loading={saving} disabled={!list.length} onClick={() => onSave(list)}>
+          Save for this client
+        </Button>
+      </span>
+    </div>
+  )
+}
+
+
+// The ad's words as the push uses them (23 Nov): one quiet line when they're there, the two boxes open when one is
+// missing (a job added by hand or from ClickUp has none, and the push blocks on that).
+function AdWords({ words, saving, onSave }: {
+  words: { headline: string | null; text: string | null } | null
+  saving: boolean
+  onSave: (w: { headline: string; text: string }) => void
+}) {
+  const missing = !words?.headline || !words?.text
+  const [open, setOpen] = useState(missing)
+  const [headline, setHeadline] = useState(words?.headline ?? '')
+  const [text, setText] = useState(words?.text ?? '')
+  if (!open) {
+    return (
+      <p className="paragraph-xs text-tertiary [overflow-wrap:anywhere]">
+        Ad words: <span className="text-primary">{words?.headline}</span> · {words?.text?.slice(0, 80)}
+        {(words?.text?.length ?? 0) > 80 ? '…' : ''}{' '}
+        <button type="button" className="underline hover:text-primary" onClick={() => setOpen(true)}>
+          Edit
+        </button>
+      </p>
+    )
+  }
+  return (
+    <div className={`flex flex-col gap-2 rounded-lg border p-2 ${missing ? 'border-utility-warning-300' : 'border-secondary'}`}>
+      <p className="label-xs text-secondary">Ad words{missing ? ': the push needs both' : ''}</p>
+      <label className="flex flex-col gap-1 paragraph-xs text-secondary">
+        Headline
+        <input value={headline} maxLength={200} onChange={(e) => setHeadline(e.target.value)}
+          className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" />
+      </label>
+      <label className="flex flex-col gap-1 paragraph-xs text-secondary">
+        Ad text
+        <textarea value={text} rows={3} onChange={(e) => setText(e.target.value)}
+          className="rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary" />
+      </label>
+      <span className="flex gap-2">
+        <Button size="sm" variant="primary" loading={saving} disabled={!headline.trim() || !text.trim()}
+          onClick={() => onSave({ headline, text })}>
+          Save words
+        </Button>
+        {!missing ? (
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+        ) : null}
+      </span>
+    </div>
+  )
+}
+

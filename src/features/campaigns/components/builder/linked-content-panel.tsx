@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLinkedContent } from '../../hooks/use-linked-content'
 import { channelLabel } from '../../utils/channel-colors'
 import type { LinkedContentCandidate, LinkedContentChannel } from '../../types'
@@ -150,9 +151,17 @@ const ChannelBlock = ({
         </div>
       </div>
 
-      {channel.message && (
+      {channel.message && /not connected$/i.test(channel.message.trim()) ? (
+        // what to do instead of an empty list (24 Nov, link-existing-ads plan): the platform isn't connected yet
+        <p className="paragraph-xs text-quaternary px-3 py-2">
+          {channel.message.trim().replace(/ not connected$/i, '')} isn’t connected to this workspace.{' '}
+          <Link to="/integrations" className="underline hover:text-secondary">
+            Connect it
+          </Link>
+        </p>
+      ) : channel.message ? (
         <p className="paragraph-xs text-quaternary px-3 py-2">{channel.message}</p>
-      )}
+      ) : null}
       {!channel.message && ordered.length === 0 && (
         <p className="paragraph-xs text-quaternary px-3 py-2">Nothing found on this channel</p>
       )}

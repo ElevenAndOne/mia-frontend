@@ -6,6 +6,7 @@ import { fetchPlaybooks } from '../api'
 import { KpiPicker } from './kpi-picker'
 import { JobWords } from './final-words'
 import { AskMia, FactStrip, Fold, OneAtATime, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
+import { leadWith } from './turn-order'
 import { FindingFix, type CardError } from './finding-fix'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
@@ -37,7 +38,12 @@ interface Props {
   // A card Mia proposed for a finding is applied on the finding itself (finding-fix.tsx)
   onApplyChange?: (id: string) => Promise<unknown>
   onDropChange?: (id: string) => Promise<unknown>
-  // an Apply or Not now that failed ("apply:<card id>"): said on the finding the card belongs to
+  // a final-check finding fixed whole by Mia's server: one card for the whole job (finding-fix.tsx)
+  onFixFinding?: (label: string, how?: string) => Promise<unknown>
+  // every finding fixed in one go, then every card applied in one go (retest 24 Nov, E27)
+  onFixAll?: () => Promise<unknown>
+  onApplyAllFixes?: () => Promise<unknown>
+  // an Apply, Not now or fix that failed ("apply:<card id>", "fix:<label>"): said on the finding it belongs to
   cardError?: CardError
 }
 
@@ -45,14 +51,22 @@ export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // Which of "Your turn" each step holds, and which detail sections it opens.
 // What a later change needs from the PM shows on whatever step they're on, never as a trip back (Josh, 29 Oct): the
 // brief changing under the plan, a kept target to recheck, jobs to confirm again, words to rewrite.
-const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words']
+// Mia's open questions too: one raised while she read an answer comes up on the step the PM is on, as a card (DFSA test
+// 24 Nov: "Who supplies the bakes and the kitchen?" was only a line in the chat, and would have been missed)
+const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words', 'questions', 'waiting-fix']
 const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   questions: (k) => [...EVERYWHERE, 'not-carried', 'questions', 'answered'].includes(k),
   targets: (k) => [...EVERYWHERE, 'targets', 'fill-targets'].includes(k),
   // Mia's self-check is about the jobs, so it's read here, once, grouped by job (29 Oct: it sat on Mia's questions)
-  jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
+  jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'studio-time', 'credits-over', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
   words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
-  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'approve'].includes(k),
+  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'words-running', 'no-drive', 'approve'].includes(k),
+}
+
+// Mia is still working on the step: the same things that hold Approve back (planTurnItems' canApprove), so the step's
+// button never leads while it can't be pressed (turn-order.ts)
+function stillWorking(state: BuildState, busy: string | null) {
+  return state.words_run?.status === 'running' || !!state.checking || busy === 'check' || (state.reading_answers ?? 0) > 0
 }
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
@@ -63,14 +77,18 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
 }
 
 export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onKeepPlan, onApprove, onWriteWords, onSaveBrief,
-  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError = null }: Props) {
+  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, onFixAll,
+  onApplyAllFixes, cardError = null }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   // by job id, so removing a job never opens its neighbour (review 2 Nov: keyed by place)
   const [openJobs, setOpenJobs] = useState<Set<string>>(() => new Set())
   // Detail sections: closed until wanted; a step opens the ones it is about.
   // Each step opens with only Your turn; its detail sections stay folded until wanted (L8).
   const [folds, setFolds] = useState<Set<string>>(() => new Set())
-  const shows = (f: string) => !part || part === 'check' || PART_FOLDS[part].includes(f)
+  const [lookOver, setLookOver] = useState(false) // Check & approve: the whole campaign behind one line
+  // a BPO campaign is one list of work with no budget or targets (24 Nov): its phases fold isn't shown
+  const bpo = state.campaign.client_type === 'bpo'
+  const shows = (f: string) => !(bpo && f === 'phases') && (!part || part === 'check' || PART_FOLDS[part].includes(f))
   const needsSource = new Set(kpiGroups.flatMap((g) => g.kpis.filter((k) => k.needs_source).map((k) => k.kpi_key)))
   const run = state.plan_run
   const plan = state.plan
@@ -92,6 +110,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
   const pmPhases = new Set(sp?.pm_phases ?? [])
   // "Show me" from Your turn: open the fold (and the job), then scroll to the item.
   const reveal = (id: string, fold?: string, jobIndex?: number) => {
+    setLookOver(true) // on Check & approve the folds sit behind "Look over the whole campaign"
     if (fold) setFolds((f) => new Set(f).add(fold))
     const job = jobIndex != null ? plan.assets[jobIndex] : undefined
     if (job) setOpenJobs((o) => new Set(o).add(job.job_id ?? `${jobIndex}-${job.name}`))
@@ -121,9 +140,10 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       ) : (
         <YourTurn
           key={part}
-          items={planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
-            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError, part, onMakePlan, onKeepPlan })
-            .filter((i) => !part || PART_ITEMS[part](i.key))}
+          items={leadWith(part, planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
+            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, onFixAll, onApplyAllFixes,
+            cardError, part, onMakePlan, onKeepPlan })
+            .filter((i) => !part || PART_ITEMS[part](i.key)), stillWorking(state, busy))}
         />
       )}
       {(part === 'questions' || part === 'check') && (plan.decisions.answered ?? []).some((q) => !q.answer) ? (
@@ -147,10 +167,22 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           boxes on every step, repeating the top line) */}
       {!part || part === 'check' ? <FactStrip state={state} plan={plan} /> : null}
 
+      {part === 'check' && !lookOver ? (
+        // One line, not four folds (20 Nov plan, E): the whole campaign is a tap away for the last look
+        <button
+          type="button"
+          onClick={() => setLookOver(true)}
+          className="self-start text-left paragraph-sm font-medium text-secondary hover:text-primary"
+        >
+          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, {bpo ? '' : 'phases, '}jobs, how Mia got here</span>{' '}
+          <span aria-hidden="true">›</span>
+        </button>
+      ) : null}
+      {part !== 'check' || lookOver ? (<>
       {shows('idea') ? (<Fold
         id="fold-idea"
         title="The idea"
-        summary={<>{plan.concept.name}{sc && !sc.thin_history ? ` · self-check ${sc.grade} (${sc.overall})` : ''}</>}
+        summary={<>{plan.concept.name}{sc?.grade && !sc.thin_history ? ` · self-check ${sc.grade}${sc.overall != null ? ` (${sc.overall})` : ''}` : ''}</>}
         open={folds.has('idea')}
         onToggle={() => toggle('idea')}
       >
@@ -275,9 +307,11 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
           if (!jobs.length) return null
           return (
             <div key={p.phase} className="rounded-xl border border-secondary bg-secondary">
-              <p className="px-3 pt-2 label-xs text-tertiary">
-                {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
-              </p>
+              {bpo ? null : (
+                <p className="px-3 pt-2 label-xs text-tertiary">
+                  {p.phase} · {jobs.length} job{jobs.length === 1 ? '' : 's'}
+                </p>
+              )}
               <ul className="divide-y divide-secondary">
                 {jobs.map(({ a, i }) => {
                   const id = a.job_id ?? `${i}-${a.name}`
@@ -316,8 +350,25 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       >
         <Concept plan={plan} />
         {plan.review ? <SelfCheck review={plan.review} /> : null}
+        <ClaimFixes plan={plan} />
+        <LeftOut plan={plan} />
         <Checks plan={plan} />
       </Fold>) : null}
+      </>) : null}
+    </div>
+  )
+}
+
+// What Mia left out to keep to the channels the PM named: background, never a Your turn line (retest 24 Nov, E30: the
+// list sat in the Approve card as a wall of job names)
+function LeftOut({ plan }: { plan: Plan }) {
+  const left = plan.decisions.left_out ?? []
+  const what = [...new Set(left.map((x) => x.job ?? (x.channel ?? '').replace(/_/g, ' ')).filter(Boolean))].sort()
+  if (!what.length) return null
+  return (
+    <div className="mt-3 rounded-lg border border-secondary px-3 py-2">
+      <p className="label-sm text-primary">Left out to keep to the channels you named</p>
+      <p className="mt-1 paragraph-sm text-secondary">{what.join(' · ')}. Ask Mia to add any you want.</p>
     </div>
   )
 }
@@ -339,11 +390,16 @@ function planTurnItems({
   onFillTargets,
   onApplyChange,
   onDropChange,
+  onFixFinding,
+  onFixAll,
+  onApplyAllFixes,
   cardError,
   part,
   onMakePlan,
   onKeepPlan,
 }: {
+  onFixAll?: Props['onFixAll']
+  onApplyAllFixes?: Props['onApplyAllFixes']
   onMakePlan?: Props['onMakePlan']
   onKeepPlan?: Props['onKeepPlan']
   state: BuildState
@@ -359,6 +415,7 @@ function planTurnItems({
   onFillTargets?: Props['onFillTargets']
   onApplyChange?: Props['onApplyChange']
   onDropChange?: Props['onDropChange']
+  onFixFinding?: Props['onFixFinding']
   cardError?: CardError
   part?: PlanPart
 }): TurnItem[] {
@@ -388,6 +445,55 @@ function planTurnItems({
     .filter((q) => !('about' in q && q.about === 'Targets'))
   const done = new Set(plan.decisions.notes_done ?? [])
   const lookAt = (plan.review?.scorecard?.look_at ?? []).filter((x) => !done.has(x))
+
+  // A fix card made from a finding or a note that the check has since replaced: it stays here in Your turn, never only in
+  // the chat (test 24 Nov, E19/E21: the clusters fix lost its finding when the check re-ran and ended up in the chat)
+  // shown here = on this step: findings show on Final words and Check & approve, notes on Jobs and Check & approve
+  // (review 24 Nov: a card for a finding still open but not on this step showed nowhere)
+  const shownHere = new Set([
+    ...(part === 'words' || part === 'check' ? (plan.review?.audit?.jobs ?? []).map(breakLabel) : []),
+    ...(part === 'jobs' || part === 'check' ? lookAt.map(noteLabel) : []),
+  ])
+  const strays = (state.pending ?? []).filter((p) => /^(Fix|Note) · /.test(p.about ?? '') && !shownHere.has(p.about ?? ''))
+  if (strays.length && onApplyChange && onDropChange)
+    items.push({
+      key: 'waiting-fix',
+      title: strays.length === 1 ? "Mia's fix is waiting" : `${strays.length} of Mia's fixes are waiting`,
+      detail: 'Made before her latest check. Apply it, or drop it.',
+      openByDefault: true,
+      more: (
+        <ul className="flex flex-col gap-2">
+          {strays.map((p) => (
+            <li key={p.id} className="flex flex-col gap-2 rounded-lg border border-secondary bg-primary px-3 py-2">
+              <p className="paragraph-sm text-primary [overflow-wrap:anywhere]">{p.summary[0]}</p>
+              <span className="flex flex-wrap gap-2">
+                <Button size="sm" variant="primary" loading={busy === `apply:${p.id}`} onClick={() => void onApplyChange(p.id)}>
+                  Apply
+                </Button>
+                <Button size="sm" onClick={() => void onDropChange(p.id)}>
+                  Not now
+                </Button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    })
+
+  // No Shared Drive: said before approve, since the jobs can't go to Flex without it (Josh, 24 Nov, E17). Settings opens
+  // in a new tab and this clears by itself once it's set; it never blocks approve.
+  if (part === 'check' && state.shared_drive_set === false)
+    items.push({
+      key: 'no-drive',
+      title: "Add the client's Shared Drive before the jobs go to Flex",
+      detail: "Mia makes each job's folder there when you approve. You can approve now and add it after.",
+      actions: (
+        <a href="/settings/workspace" target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary">
+          Add it in Settings
+        </a>
+      ),
+    })
 
   // A brief that changed under the plan: first, on whichever step the PM is on (it was a separate Do this next box)
   if (state.plan_from_older_brief && onMakePlan)
@@ -554,69 +660,83 @@ function planTurnItems({
     })
   }
   if (toSet.length) {
-    const first = toSet[0]
     items.push({
       key: 'targets',
       title: `Set ${toSet.length} target${toSet.length === 1 ? '' : 's'}`,
-      detail: mias.length
-        ? `Each has a starting number: Mia's estimate, or your result from a past campaign. Keep them one by one or all at once, or type your own. Estimates show as Mia's, not your data.`
+      // the how-to behind Why? (screen walk 23 Nov, theme 5: three lines of it above the boxes)
+      why: mias.length
+        ? `Each starting number is Mia's estimate or your result from a past campaign. Keep them, or type your own. Estimates show as Mia's, not your data.`
         : 'Type a number for each, or "No target". Ask Mia to fill the boxes with her estimates.',
       openByDefault: true,
-      // Under their phase's heading, in the plan's order (local test 27 Oct: ten targets in one list, the phase only as
-      // a small suffix)
+      // One phase at a time, in the plan's order (Josh, 24 Nov: eleven targets at once was too much). A phase whose
+      // targets are all set leaves the list, so the next one comes up by itself.
       more: (
-        <div className="flex flex-col gap-3">
-        {[...new Set([...plan.phases.map((p) => p.phase), ...toSet.map((t) => t.phase)])].filter((ph) => toSet.some((t) => t.phase === ph)).map((ph) => (
-        <section key={ph} aria-label={`${ph} targets`} className="flex flex-col gap-1.5">
-        <h4 className="label-sm text-secondary">{ph}</h4>
-        <ul className="flex flex-col gap-2">
-          {toSet.filter((t) => t.phase === ph).map((t) => (
-            <TargetToSet
-              key={t.key}
-              grouped
-              name={t.kpi_name}
-              phase={t.phase}
-              reference={t.account_reference}
-              suggested={t.suggested}
-              suggestedFrom={t.suggested_from}
-              suggestedLabel={t.suggested_label}
-              byMia={t.suggested_by === 'mia'}
-              kind={t.suggested_kind}
-              source={t.suggested_by}
-              onSet={(v, note) =>
-                onEdit([{ op: 'set_target', key: t.key, value: v, ...(note && !t.fromHistory ? { estimate_note: note } : {}) }], `target:${t.key}`)
-              }
-              saving={busy === `target:${t.key}`}
-              onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
-            />
-          ))}
-        </ul>
-        </section>
-        ))}
-        </div>
+        <OneAtATime
+          noun="Phase"
+          entries={[...new Set([...plan.phases.map((p) => p.phase), ...toSet.map((t) => t.phase)])]
+            .filter((ph) => toSet.some((t) => t.phase === ph))
+            .map((ph) => ({
+              key: ph,
+              node: (
+                <section aria-label={`${ph} targets`} className="flex flex-col gap-2">
+                  {/* a clear heading for the phase (Josh, 24 Nov, E14) */}
+                  <h4 className="text-[17px] leading-6 font-semibold tracking-[-0.01em] text-primary">{ph}</h4>
+                  <ul className="flex flex-col gap-2">
+                    {toSet.filter((t) => t.phase === ph).map((t) => (
+                      <TargetToSet
+                        key={t.key}
+                        grouped
+                        name={t.kpi_name}
+                        phase={t.phase}
+                        reference={t.account_reference}
+                        suggested={t.suggested}
+                        suggestedFrom={t.suggested_from}
+                        suggestedLabel={t.suggested_label}
+                        byMia={t.suggested_by === 'mia'}
+                        kind={t.suggested_kind}
+                        source={t.suggested_by}
+                        readFrom={t.read_from}
+                        onSet={(v, note) =>
+                          onEdit([{ op: 'set_target', key: t.key, value: v, ...(note && !t.fromHistory ? { estimate_note: note } : {}) }], `target:${t.key}`)
+                        }
+                        saving={busy === `target:${t.key}`}
+                        onNoTarget={() => onEdit([{ op: 'set_target', key: t.key, value: null, no_target: true }])}
+                      />
+                    ))}
+                  </ul>
+                  {(() => {
+                    // Keep this phase's starting numbers only: the ones on screen (test 24 Nov)
+                    const here = mias.filter((t) => t.phase === ph)
+                    return here.length > 1 ? (
+                      <span>
+                        <PrimaryAction
+                          loading={busy === `keep:${ph}`}
+                          onClick={() =>
+                            onEdit(
+                              here.map((t) =>
+                                t.fromHistory
+                                  ? { op: 'set_target', key: t.key, value: t.suggested ?? null }
+                                  : { op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" },
+                              ),
+                              `keep:${ph}`,
+                            )
+                          }
+                        >
+                          Keep {here.length === toSet.filter((t) => t.phase === ph).length ? `all ${here.length}` : `Mia's ${here.length}`} in {ph}
+                        </PrimaryAction>
+                      </span>
+                    ) : null
+                  })()}
+                </section>
+              ),
+            }))}
+        />
       ),
+      // "Keep" for the phase on screen is inside each phase (test 24 Nov: "Keep all 9" under the Reach phase would have
+      // kept eight numbers in phases the PM hadn't seen)
       actions: (
         <>
-          {mias.length ? (
-            <PrimaryAction
-              loading={busy === 'keep-all'}
-              onClick={() =>
-                onEdit(
-                  mias.map((t) =>
-                    t.fromHistory
-                      ? { op: 'set_target', key: t.key, value: t.suggested ?? null }
-                      : { op: 'set_target', key: t.key, value: t.suggested ?? null, estimate_note: t.suggested_from ?? "Mia's estimate" },
-                  ),
-                  'keep-all',
-                )
-              }
-            >
-              Keep all {mias.length}
-            </PrimaryAction>
-          ) : null}
-          <Button size="sm" onClick={() => reveal(`t-${first.key}`, 'phases')}>
-            See them in the plan
-          </Button>
+          {/* no "See them in the plan": the boxes are right here (theme 5, too many controls) */}
           <AskMia
             label={`Targets to set (${toSet.length})`}
             detail={toSet.map((t) => `${t.phase} ${t.kpi_name}${t.account_reference ? ` (${t.account_reference})` : ''}`).join('; ')}
@@ -698,7 +818,8 @@ function planTurnItems({
     items.push({
       key: 'questions',
       title: `Mia's question ${done + 1} of ${done + asks.length}`,
-      detail: 'Answer it, or skip it and Mia decides.',
+      // no "Answer it, or skip it and Mia decides." under the title: the box and Skip are right below (23 Nov list)
+      why: 'Skip it and Mia decides, and says what she assumed.',
       openByDefault: true,
       more: (
         <ul className="flex flex-col gap-2">
@@ -771,6 +892,27 @@ function planTurnItems({
         Check again
       </Button>
     ) : undefined
+  // Fix all, then Apply all: one press each for every finding (retest 24 Nov, E27: three rounds of Fix it and Apply for
+  // what was one change). Each fix still shows on its own finding to read before applying.
+  const breakLabels = breaks.map(breakLabel)
+  const fixCards = (state.pending ?? []).filter((p) => p.about && breakLabels.includes(p.about))
+  const fixingAll = (state.fixing ?? []).some((l) => breakLabels.includes(l))
+  // a job counts as fixed once a card waits on any of its findings (one card covers every finding on its job)
+  const jobKey = (x: (typeof breaks)[number]) => x.job_id ?? x.job
+  const coveredJobs = new Set(breaks.filter((x) => fixCards.some((p) => p.about === breakLabel(x))).map(jobKey))
+  const unfixed = breaks.filter((x) => !coveredJobs.has(jobKey(x)))
+  const allAction =
+    breaks.length < 2 || plan.review?.stale || checking ? undefined : fixingAll ? (
+      <Checking label="Writing the fixes…" />
+    ) : unfixed.length && onFixAll ? (
+      <PrimaryAction loading={busy === 'fix-all'} onClick={() => onFixAll()}>
+        Fix {unfixed.length === breaks.length ? 'all ' : ''}{unfixed.length}
+      </PrimaryAction>
+    ) : fixCards.length && onApplyAllFixes ? (
+      <PrimaryAction loading={busy === 'apply-all'} onClick={() => onApplyAllFixes()}>
+        Apply all {fixCards.length} fix{fixCards.length === 1 ? '' : 'es'}
+      </PrimaryAction>
+    ) : undefined
   if (breaks.length) {
     items.push({
       key: 'breaks',
@@ -783,8 +925,10 @@ function planTurnItems({
         ? 'Mia is checking the plan as it is now.'
         : plan.review?.stale
           ? staleNote
-          : undefined,
-      actions: checkAction(plan.review?.stale),
+          : fixCards.length && !fixingAll && breaks.length > 1
+            ? 'Mia wrote the fixes. Read each one below, then apply them all.'
+            : undefined,
+      actions: allAction ?? checkAction(plan.review?.stale),
       // one finding at a time (local test 4, 30 Oct: three long findings at once read as a wall)
       more: (
         <OneAtATime
@@ -794,8 +938,10 @@ function planTurnItems({
             node: (
               <div className="flex flex-col gap-2 paragraph-sm text-primary">
                 <span className="min-w-0">
-                  <span className="font-medium">{x.job}</span> ({x.where}): {x.how}
-                  <span className="block paragraph-xs text-tertiary">Decided: {x.decision}</span>
+                  {/* the title names the job when there's one finding: not said twice (24 Nov) */}
+                  {breaks.length > 1 ? <span className="font-medium">{x.job}: </span> : null}
+                  {x.how}
+                  <span className="block paragraph-xs text-tertiary">You decided: {x.decision}</span>
                 </span>
                 <FindingFix
                   label={breakLabel(x)}
@@ -805,6 +951,7 @@ function planTurnItems({
                   busy={busy}
                   onApply={onApplyChange}
                   onDrop={onDropChange}
+                  onFix={onFixFinding ? (how) => onFixFinding(breakLabel(x), how) : undefined}
                   cardError={cardError}
                 />
               </div>
@@ -911,6 +1058,40 @@ function planTurnItems({
       actions: <AskMia label="No jobs" detail="Every job was removed from the plan" />,
     })
   } else if (part === 'jobs' || part === 'check') {
+    // The studio's real time and capacity, said where the jobs are confirmed (DFSA and AgriAds tests, 24 Nov): due dates
+    // Mia moved to what the studio can make from today, jobs that can't be ready, and credits over a sprint with which
+    // case it is. Information to act on, never a block.
+    // read from the plan as it is now on every load, so it clears once the dates are fixed (review 24 Nov)
+    const studioTime = state.studio_time
+    if (part === 'jobs' && studioTime && (studioTime.too_late.length || studioTime.too_soon.length)) {
+      const late = studioTime.too_late
+      const soon = studioTime.too_soon
+      items.push({
+        key: 'studio-time',
+        title: late.length
+          ? `${late.length} job${late.length === 1 ? '' : 's'} can't be made in time`
+          : `${soon.length} job${soon.length === 1 ? ' is' : 's are'} due sooner than the studio can make ${soon.length === 1 ? 'it' : 'them'}`,
+        detail: late.length
+          ? 'Move their launch, drop them, or agree a faster turnaround with the studio.'
+          : 'Move their due dates later, or agree a faster turnaround with the studio.',
+        more: (
+          <ul className="flex flex-col gap-1 paragraph-xs text-secondary">
+            {[...late, ...soon].map((l) => (
+              <li key={l} className="[overflow-wrap:anywhere]">{l}</li>
+            ))}
+          </ul>
+        ),
+        actions: <AskMia label="Studio time" detail={[...late, ...soon].join('; ')} />,
+      })
+    }
+    if (state.credits_over) {
+      items.push({
+        key: 'credits-over',
+        title: 'The jobs are over the studio credits for a sprint',
+        detail: state.credits_over,
+        actions: <AskMia label="Studio credits" detail={state.credits_over} />,
+      })
+    }
     items.push({
       key: 'confirm-jobs',
       title: 'Check the jobs and the money',
@@ -972,11 +1153,27 @@ function planTurnItems({
         ) : null,
     })
   }
+  // A rewrite of words a job already had (a fix's card, Rewrite) while the PM is on Check & approve: said there, since
+  // the Final words items aren't (screen walk 23 Nov: nothing said Mia was busy, and Approve led)
+  const rewritingNow = wordsRun?.status === 'running' ? jobs.filter((a) => a.writing && a.final_words) : []
+  if (rewritingNow.length && !rewritingNow.some((a) => a.words_stale))
+    wordItems.push({
+      key: 'words-running',
+      working: true,
+      title: rewritingNow.length === 1
+        ? `Mia is rewriting ${rewritingNow[0].name}'s words`
+        : `Mia is rewriting the words for ${rewritingNow.length} jobs`,
+      detail: 'About a minute a job. Then she checks again by herself.',
+      actions: <Checking label="Rewriting…" />,
+    })
   items.push(...wordItems)
   if (onFinalCheck && (part === 'check' || !part)) {
     const at = plan.review?.checked_at
     items.push({
       key: 'final-check',
+      // only a task while Mia is checking: running or re-running the check is on Approve itself (flow review U1)
+      done: !checking,
+      working: checking,
       title: at ? `Mia checked the campaign ${day(at)}` : "Run Mia's final check",
       detail: checking
         ? 'Mia is checking the whole campaign as it is now (a minute or two).'
@@ -1008,8 +1205,12 @@ function planTurnItems({
     ...(open.length ? [`${open.length} finding${open.length === 1 ? '' : 's'}`] : []),
     ...(!unchecked && lookAt.length ? [`${lookAt.length} open note${lookAt.length === 1 ? '' : 's'}`] : []),
     ...(flagged.length ? [`flagged words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`] : []),
+    // named before approve, and kept in the log after (Sean, live 24 Nov: "what happens to that alert?")
+    ...(state.credits_over ? ['jobs over the studio credits'] : []),
   ]
-  const otherWarnings = (state.warnings ?? []).filter((w) => !w.includes('still have flagged words'))
+  // the left-out list is background, in "How Mia got here" (E30), never in the Approve card
+  const otherWarnings = (state.warnings ?? []).filter(
+    (w) => !w.includes('still have flagged words') && !w.startsWith('Mia kept to the channels you named'))
   items.push({
     key: 'approve',
     title: 'Approve the plan',
@@ -1028,7 +1229,9 @@ function planTurnItems({
           [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · ')
         : applying
           ? 'Mia is applying your last answer (under a minute); approve once she’s done.'
-          : 'Mia is checking the campaign as it is now (a minute or two); approve once she’s done.',
+          : rewriting
+            ? 'Mia is rewriting words, then she checks again; approve once she’s done.'
+            : 'Mia is checking the campaign as it is now (a minute or two); approve once she’s done.',
     actions: (
       <span className="flex flex-wrap items-center gap-2">
         {unchecked ? checkAction(true) ?? null : null}
@@ -1036,6 +1239,28 @@ function planTurnItems({
       </span>
     ),
   })
+  // While Mia works on Check & approve, that's the only thing in Your turn: no old findings or notes with live buttons,
+  // no Approve, no Skip (Josh, retest 24 Nov, E23: "at these points I have no context that I should be waiting", and
+  // "if Mia is doing anything we don't want them to go past, block them or say explicitly they can't go on yet").
+  // Fix cards waiting for Apply stay (the stray cards, and the findings item when it holds one), since applying them is
+  // still the PM's (review 24 Nov: the early return hid them during the check one Apply started).
+  if (part === 'check' && (checking || rewriting || applying)) {
+    const cards = items.filter((i) => i.key === 'waiting-fix' || (i.key === 'breaks' && fixCards.length > 0))
+    const what = rewriting
+      ? { title: 'Mia is rewriting the words', detail: 'About a minute a job, then she checks the campaign again.' }
+      : applying
+        ? { title: 'Mia is applying your answer', detail: 'Under a minute, then she checks the campaign again.' }
+        : { title: 'Mia is checking your campaign', detail: 'About a minute. What she finds shows here.' }
+    return [{
+      key: 'mia-working',
+      working: true,
+      title: what.title,
+      detail: cards.length
+        ? `${what.detail} You can apply a waiting fix below, but you can't approve until she's done.`
+        : `${what.detail} Nothing needs you, and you can't approve until she's done.`,
+      actions: <Checking label="Working…" />,
+    }, ...cards]
+  }
   return items
 }
 
@@ -1719,6 +1944,33 @@ function Checks({ plan }: { plan: Plan }) {
   )
 }
 
+// What Mia corrected in her own plan against the client's data before the PM saw it (claim_check, DFSA test 24 Nov),
+// or that she couldn't check: the PM sees she checks herself, and what she had wrong.
+function ClaimFixes({ plan }: { plan: Plan }) {
+  const fixes = plan.claim_fixes ?? []
+  if (plan.claim_check_error) {
+    return <p className="paragraph-sm text-utility-warning-700">⚠ {plan.claim_check_error}</p>
+  }
+  if (!fixes.length) return null
+  return (
+    <details className="rounded-xl border border-secondary bg-primary p-4">
+      <summary className="cursor-pointer subheading-sm text-primary">
+        Mia corrected {fixes.length} of her claims against your data
+      </summary>
+      <ul className="mt-2 flex flex-col gap-3 paragraph-sm">
+        {fixes.map((f, i) => (
+          <li key={i} className="flex flex-col gap-0.5">
+            <span className="label-sm text-secondary">{f.where}</span>
+            <span className="text-tertiary line-through [overflow-wrap:anywhere]">{f.was}</span>
+            <span className="text-primary [overflow-wrap:anywhere]">{f.now}</span>
+            {f.why ? <span className="paragraph-xs text-tertiary">Why: {f.why}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 const PART_LABELS: Record<string, string> = {
   grounded: 'Numbers come from the data',
   learns: 'Learns from the best campaigns',
@@ -1818,6 +2070,16 @@ function SelfCheck({ review }: { review: PlanReview }) {
               <li key={x}>{x}</li>
             ))}
           </ol>
+        </div>
+      ) : null}
+      {sc.worth_asking?.length ? (
+        <div className="mt-3 rounded-lg border border-secondary px-3 py-2">
+          <p className="label-sm text-primary">Ideas for later</p>
+          <ul className="mt-1 flex flex-col gap-1 paragraph-sm text-secondary">
+            {sc.worth_asking.map((x) => (
+              <li key={x}>{x}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {fc && fc.unsupported.length ? (

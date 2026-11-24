@@ -22,6 +22,11 @@ export function useIntegrationHealth(sessionId: string | null, tenantId?: string
     },
     enabled: !!sessionId,
     staleTime: 60 * 1000,
+    // Ask again every time the page opens. The app-wide default is refetchOnMount: false and
+    // this result is kept across a refresh (lib/query-client.ts), so after a reconnect the
+    // old "Reconnect" flag kept showing for up to 10 minutes (Creative Seat, 24 Nov 2026).
+    // The kept copy still shows at once while the fresh one loads.
+    refetchOnMount: 'always',
     // A warning that fails to load should be silent, not noisy.
     retry: false,
   })

@@ -3,7 +3,8 @@ import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
-import { fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { clearTrackerCache, fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { LinkedContentPanel } from '../../campaigns/components/builder/linked-content-panel'
 import * as api from '../api'
 import type { ResultsKpi } from '../types'
 import { Card, Chip, day, money, num } from './parts'
@@ -16,9 +17,10 @@ function AskForTarget({ draft }: { draft: string }) {
     <button
       type="button"
       onClick={() => askMia({ label: 'Targets', draft })}
-      className="inline-flex items-center rounded-full border border-brand px-2.5 py-0.5 label-xs text-brand-secondary hover:bg-brand-primary whitespace-nowrap"
+      // a quiet link like Ask Mia everywhere else (24 Nov: a bordered pill on every row)
+      className="inline-flex items-center paragraph-xs font-medium text-brand-secondary hover:underline whitespace-nowrap"
     >
-      Ask Mia
+      Ask Mia for a target
     </button>
   )
 }
@@ -56,12 +58,13 @@ const POINTS: [string, string][] = [
   ['what_to_avoid', 'Avoid next time'],
 ]
 
-export function ResultsTab({ campaignId, approved }: { campaignId: string; approved: boolean }) {
+export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: string; approved: boolean; bpo?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const qc = useQueryClient()
   const key = ['campaign-results', tenantId, campaignId]
-  const q = useQuery({ queryKey: key, queryFn: () => api.fetchResults(sessionId!, tenantId!, campaignId), enabled: !!sessionId && !!tenantId && approved })
+  // BPO shows no numbers here, so none are fetched (review 24 Nov)
+  const q = useQuery({ queryKey: key, queryFn: () => api.fetchResults(sessionId!, tenantId!, campaignId), enabled: !!sessionId && !!tenantId && approved && !bpo })
   const s = q.data
   const fetchable = !!s && s.live && s.when !== 'not_started'
   const actuals = useQueries({
@@ -80,13 +83,27 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [linking, setLinking] = useState(false)
   const navigate = useNavigate()
 
   if (!approved) return <Card className="paragraph-sm text-secondary">Results start once the plan is approved and the campaign is launched.</Card>
+  // BPO: the client runs and measures its own media, so there are no targets here (24 Nov: empty phase cards asked
+  // for targets a BPO campaign never has)
+  if (bpo)
+    return (
+      <Card className="flex flex-col gap-1">
+        <p className="label-sm text-primary">No targets for a BPO campaign</p>
+        <p className="paragraph-sm text-secondary">The client runs its own media. What's made, sent and back from the studio is on the Studio tab.</p>
+      </Card>
+    )
   if (q.isPending) return <p className="paragraph-sm text-tertiary">Loading…</p>
   if (!s) return <p className="paragraph-sm text-error">{(q.error as Error)?.message ?? 'Could not load the results.'}</p>
 
   const progress = s.share_elapsed != null ? Math.round(s.share_elapsed * 100) : null
+  // KPIs with no number only because no ads are linked to the campaign (the server's link_gap): named in one line with
+  // the way to link them, here in the studio (docs2/LINK_EXISTING_ADS_PLAN_2026-11-24.md). Until campaigns are pushed
+  // from Mia, which links what it pushes by itself.
+  const unlinked = [...new Set(actuals.flatMap((a) => ((a.data as KPIActual[] | undefined) ?? []).filter((r) => r.link_gap).map((r) => r.kpi_name)))]
   return (
     <div className="flex flex-col gap-4">
       <Card className="flex flex-col gap-2">
@@ -112,14 +129,49 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
             <div className="h-full bg-brand-solid" style={{ width: `${progress}%` }} />
           </div>
         ) : null}
-        <p className="paragraph-xs text-tertiary">
-          {!s.live
-            ? 'Launch the first job on the Launch tab; results are read from the connected platforms from then on.'
-            : s.when === 'not_started'
-              ? 'Numbers appear here once the campaign starts. Counts are paced against the share of the target due by today; rates are compared as they stand.'
-              : 'Counts are paced against the share of the target due by today; rates are compared as they stand. Numbers refresh nightly.'}
-        </p>
+        {/* one short line; how pacing works is behind Why? (24 Nov, less text) */}
+        <div className="flex flex-wrap items-center gap-x-3 paragraph-xs text-tertiary">
+          <span>
+            {!s.live
+              ? 'Results start when the first job launches.'
+              : s.when === 'not_started'
+                ? 'Numbers appear once the campaign starts.'
+                : 'Numbers refresh nightly.'}
+          </span>
+          {s.live ? (
+            <details className="inline">
+              <summary className="inline cursor-pointer underline hover:text-secondary">How pacing works</summary>
+              <span className="block mt-1 text-secondary">
+                Counts are compared with the share of the target due by today; rates are compared as they stand.
+              </span>
+            </details>
+          ) : null}
+        </div>
       </Card>
+
+      {unlinked.length ? (
+        <Card warn className="flex flex-wrap items-center justify-between gap-2">
+          <p className="paragraph-sm text-primary">
+            {listed(unlinked)} {unlinked.length === 1 ? 'has' : 'have'} no data because no ads or posts are linked to this
+            campaign yet. Mia counts only what's linked, so a client's other posts never count here.
+          </p>
+          <Button size="sm" variant="primary" onClick={() => setLinking(true)}>
+            Link ads and posts
+          </Button>
+        </Card>
+      ) : null}
+      {linking ? (
+        <LinkedContentPanel
+          campaignId={campaignId}
+          onClose={() => setLinking(false)}
+          // saving clears the server's cached numbers (measurement.py save_linked_content); the browser keeps its own
+          // copy for 23 hours (campaign-tracker-service), so that goes too, then they're read again now
+          onSaved={() => {
+            clearTrackerCache()
+            void qc.invalidateQueries({ queryKey: ['campaign-results-actuals', tenantId, campaignId] })
+          }}
+        />
+      ) : null}
 
       <div className="grid gap-3 @2xl:grid-cols-2">
         {s.phases.map((p, i) => {
@@ -168,7 +220,8 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                           </span>
                         ) : null}
                         {k.target == null ? <AskForTarget draft={`Suggest a target for ${p.phase} ${k.kpi_name}.`} /> : null}
-                        {k.basis === 'after_approve' ? <Chip>set after approve</Chip> : k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
+                        {/* where the target came from: only beside a target (24 Nov: "no target" sat beside "your target") */}
+                        {k.target == null ? null : k.basis === 'after_approve' ? <Chip>set after approve</Chip> : k.basis === 'budget' ? <Chip>target is what the budget buys</Chip> : k.basis === 'pm' ? <Chip tone="pm">your target</Chip> : k.basis === 'mia_estimate' ? <Chip>Mia's estimate, not a client goal</Chip> : null}
                         {(() => {
                           // the number it replaced stays on record (owner, 6 Nov): never a silent rewrite
                           const last = k.history?.length ? k.history[k.history.length - 1] : null
@@ -178,7 +231,13 @@ export function ResultsTab({ campaignId, approved }: { campaignId: string; appro
                             </span>
                           ) : null
                         })()}
-                        {a?.state === 'none' ? <span className="paragraph-xs text-tertiary">not tracked yet: set its source on the campaign</span> : null}
+                        {/* why there's no number, as the server says it (24 Nov: "set its source on the campaign" was
+                            wrong when the source was connected and only the ads weren't linked) */}
+                        {a?.link_gap ? (
+                          <span className="paragraph-xs text-utility-warning-700">nothing linked yet</span>
+                        ) : a?.state === 'none' ? (
+                          <span className="paragraph-xs text-tertiary">{a.blank_reason ?? 'no data for these dates yet'}</span>
+                        ) : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
                       </div>
                     </li>
@@ -326,6 +385,11 @@ function ByJob({ campaignId, currency }: { campaignId: string; currency?: string
       {q.data?.problems?.length ? <p className="paragraph-xs text-utility-warning-700">{q.data.problems.join(' ')}</p> : null}
     </Card>
   )
+}
+
+// "Clicks", "Clicks and CTR", "Clicks, CTR and Leads"
+function listed(names: string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 // A target as the PM typed it means it: R5 for a cost, 2.5% for a rate, 2,000 for a count (live test 18 Oct).

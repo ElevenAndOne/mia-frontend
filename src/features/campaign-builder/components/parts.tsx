@@ -37,6 +37,11 @@ export const CHANNEL_LABELS: Record<string, string> = {
   email: 'Email',
   website: 'Website',
 }
+// A BPO campaign's one list of work (plan_generator.BPO_PHASE, 24 Nov): never shown as a phase
+export const BPO_PHASE = 'Deliverables'
+/** "Reach · " before a job's channel, or nothing for a BPO campaign's one list */
+export const phaseTag = (phase?: string | null) => (phase && phase !== BPO_PHASE ? `${phase} · ` : '')
+
 export const channelLabel = (c: string) => {
   const t = CHANNEL_LABELS[c] ?? c.replace(/_/g, ' ')
   return t.charAt(0).toUpperCase() + t.slice(1)
@@ -68,6 +73,33 @@ export function NeedsYouBanner({ title, items }: { title: string; items: string[
   )
 }
 
+// Links and web addresses in Mia's or the PM's text open in a new tab (test 24 Nov: a landing page link was plain text).
+const LINK = /(https?:\/\/[^\s<>()]+|\b(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:co\.za|com|org|net|io|ai|za|co|uk)(?:\/[^\s<>()]*)?)/gi
+
+export function Linked({ text }: { text: string }) {
+  const parts = text.split(LINK)
+  if (parts.length === 1) return <>{text}</>
+  return (
+    <>
+      {parts.map((p, i) => {
+        if (i % 2 === 0) return p
+        const clean = p.replace(/[.,;:!?)]+$/, '')
+        const rest = p.slice(clean.length)
+        const href = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+        return (
+          <span key={i}>
+            <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-brand"
+               onClick={(e) => e.stopPropagation()}>
+              {clean}
+            </a>
+            {rest}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'pm' | 'mia' | 'good' }) {
   const cls = {
     neutral: 'bg-tertiary text-secondary',
@@ -92,18 +124,46 @@ export function Card({ children, className = '', warn = false, id }: { children:
 
 // Progress you can trust (local test 27 Oct: a still spinner for 5 to 15 minutes looked frozen): a bar filled by the
 // run's real stages ("3 of 7: Writing the jobs…"), and a clock that ticks, so it moves even with animations off.
+// Each step's share of a run and its usual length in seconds (rough, from local runs, 24 Nov: writing the jobs is
+// about half of a plan). The bar fills smoothly inside a step towards the next step's start and never passes it, so it
+// moves all the time without running ahead of the real step (Josh, 24 Nov: "a smooth real-time bar").
+const STEP_ORDER: Record<string, string[]> = {
+  plan: ['reading', 'options', 'choosing', 'jobs', 'questions', 'estimates', 'facts', 'checks'],
+  brief: ['reading', 'brief'],
+}
+const STEP_SHARE: Record<string, number> = { reading: 4, brief: 6, options: 18, choosing: 10, jobs: 42, questions: 4, estimates: 8, facts: 6, checks: 2 }
+const STEP_SECONDS: Record<string, number> = { reading: 30, brief: 40, options: 150, choosing: 90, jobs: 360, questions: 30, estimates: 60, facts: 35, checks: 10 }
+
+function smoothShare(kind: string, stage: string | null, secsInStage: number): number | null {
+  const order = STEP_ORDER[kind]
+  if (!order || !stage) return null
+  const i = order.indexOf(stage)
+  if (i < 0) return null
+  const total = order.reduce((n, s) => n + (STEP_SHARE[s] ?? 1), 0)
+  const before = order.slice(0, i).reduce((n, s) => n + (STEP_SHARE[s] ?? 1), 0)
+  const share = STEP_SHARE[stage] ?? 1
+  // eases towards 95% of this step: quick at first, slowing as the step runs long, never past the next step's start
+  const inStep = 1 - Math.exp(-secsInStage / (STEP_SECONDS[stage] ?? 60))
+  return Math.min(99, ((before + share * 0.95 * inStep) / total) * 100)
+}
+
 export function RunProgress({ run, what }: { run: BuildRun; what: string }) {
   const [now, setNow] = useState(() => Date.now())
+  // when this page first saw the current step (the server keeps the step, not when it started)
+  const [stepSeen, setStepSeen] = useState<{ stage: string | null; at: number }>(() => ({ stage: run.stage, at: Date.now() }))
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+  if (stepSeen.stage !== run.stage) setStepSeen({ stage: run.stage, at: Date.now() })
   const started = run.started_at ? Date.parse(run.started_at) : NaN
   const secs = Number.isFinite(started) ? Math.max(0, Math.floor((now - started) / 1000)) : null
   const at = run.stage_at ?? null
   const of = run.stage_of ?? null
-  // a stage under way counts as half done, so the bar never sits at 0 or reaches the end before the run does
-  const pct = at && of ? Math.round(((at - 0.5) / of) * 100) : null
+  const kind = what === 'plan' ? 'plan' : what === 'brief' ? 'brief' : ''
+  const smooth = smoothShare(kind, run.stage, Math.max(0, (now - stepSeen.at) / 1000))
+  // other runs: a stage under way counts as half done, so the bar never sits at 0 or reaches the end before the run does
+  const pct = smooth ?? (at && of ? Math.round(((at - 0.5) / of) * 100) : null)
   return (
     <Card className="flex flex-col gap-2">
       <div className="flex items-center gap-3" role="status">
@@ -126,10 +186,11 @@ export function RunProgress({ run, what }: { run: BuildRun; what: string }) {
       </div>
       {pct != null ? (
         <div className="h-2 w-full overflow-hidden rounded-full bg-tertiary" aria-hidden="true">
-          <div className="h-full rounded-full bg-brand-solid transition-[width] duration-700" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-brand-solid transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
         </div>
       ) : null}
       <p className="paragraph-xs text-tertiary">
+        {/* real runs: 4 to 11 minutes on live (Nov 2026), 10 and 14+ minutes on the DFSA tests (24 Nov) */}
         {what === 'plan' ? 'Usually 10 to 20 minutes. You can leave the page; it keeps going.' : 'About a minute or two.'}
       </p>
     </Card>

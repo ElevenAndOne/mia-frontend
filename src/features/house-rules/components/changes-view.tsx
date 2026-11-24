@@ -9,16 +9,22 @@ import { ClientTrends } from './client-trends'
 import { ago } from './format'
 import { NewsCard } from './news-card'
 
-type Filter = 'new' | 'kept' | 'ignored'
+type Filter = 'new' | 'mia' | 'kept' | 'ignored'
+
+/** Mia closed it herself (the morning run), and nobody has decided it since. One she did her part on that still holds
+ * something for a person stays in New until they decide it, then sits in Kept or Ignored as theirs. */
+const byMia = (c: Card) => (c.mia_did?.length ?? 0) > 0 && c.decided_by === 'Mia' && c.status !== 'ignored'
 
 const IN_FILTER: Record<Filter, (c: Card) => boolean> = {
   new: (c) => c.status === 'new',
-  kept: (c) => c.status === 'kept' || c.status === 'made_rule',
+  mia: (c) => byMia(c),
+  kept: (c) => (c.status === 'kept' || c.status === 'made_rule') && !byMia(c),
   ignored: (c) => c.status === 'ignored',
 }
 
 const EMPTY: Record<Filter, string> = {
   new: 'Nothing new. Mia checks Meta, Google and the trade press every morning.',
+  mia: 'Mia hasn’t handled anything herself yet.',
   kept: 'Nothing kept yet.',
   ignored: 'Nothing ignored.',
 }
@@ -89,6 +95,8 @@ export function ChangesView({ sessionId }: { sessionId: string | null }) {
             onChange={setFilter}
             options={[
               { value: 'new', label: `New ${count('new')}` },
+              // Only there once she has done something: one less tab to read until then.
+              ...(count('mia') > 0 || filter === 'mia' ? [{ value: 'mia' as Filter, label: `Mia did ${count('mia')}` }] : []),
               { value: 'kept', label: `Kept ${count('kept')}` },
               { value: 'ignored', label: `Ignored ${count('ignored')}` },
             ]}

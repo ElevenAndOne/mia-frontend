@@ -84,7 +84,23 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
   const clients = card.clients ?? []
   const notes = card.client_notes
   const done = notes && !notes.taken_back ? notes : null
-  const isRule = card.status === 'made_rule'
+  // rule_id too: Mia can make the rule while the card stays in New for the Mia team's part.
+  const isRule = card.status === 'made_rule' || !!card.rule_id
+  const miaDid = card.mia_did ?? []
+  // A note or a rule of hers; filing it for info is no "part" once a person has moved the card.
+  const miaActed = miaDid.some((x) => x !== 'info')
+  const miaLabel =
+    miaDid.length === 0 || card.status === 'ignored'
+      ? null
+      : card.decided_by === 'Mia' && card.status !== 'new'
+        ? miaActed
+          ? 'Done by Mia'
+          : 'Filed by Mia for info · nothing to do'
+        : !miaActed
+          ? null
+          : card.status === 'new'
+            ? 'Mia did her part · the rest needs a person'
+            : 'Mia did her part'
   const lead = card.why ?? card.summary
   const story = card.why ? card.summary : null
 
@@ -183,10 +199,11 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
       {/* What changed */}
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
-          {forTeamOnly ? (
-            <span className="text-utility-brand-700">For the Mia team</span>
-          ) : (
-            card.importance === 'high' && <span className="text-utility-warning-700">● Important</span>
+          {miaLabel && <span className="text-utility-brand-700">{miaLabel}</span>}
+          {forTeamOnly && !miaLabel && <span className="text-utility-brand-700">For the Mia team</span>}
+          {/* Beside Mia's label too: an important card she did part of still needs a person first. */}
+          {!forTeamOnly && card.importance === 'high' && (
+            <span className="text-utility-warning-700">● Important</span>
           )}
           <span>{trend ? 'Our clients' : (PLATFORM_LABEL[card.platform ?? 'other'] ?? card.platform)}</span>
           {when && <span>· {when}</span>}
@@ -328,8 +345,44 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
         >
           {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clientsWord(clients.length)}` : ''}`}
         </button>
-        {isRule ? (
-          <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+        {isRule && card.status === 'new' ? (
+          // Mia made the rule; the rest of the card waits for a person (or the Mia team), who press Done (the rule
+          // stays) or Not relevant (her rule stops too: a person has the final say).
+          <>
+            <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            <button
+              type="button"
+              className="paragraph-sm text-tertiary hover:text-secondary disabled:opacity-50"
+              disabled={busy}
+              onClick={() => onDecide('ignore')}
+            >
+              Not relevant
+            </button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
+              Done
+            </Button>
+          </>
+        ) : isRule ? (
+          <>
+            <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            {/* A card Mia closed with her own rule: a person has the final say, and Not relevant stops her rule. */}
+            {card.decided_by === 'Mia' && card.status !== 'ignored' && (
+              <button
+                type="button"
+                className="paragraph-sm text-tertiary hover:text-secondary disabled:opacity-50"
+                disabled={busy}
+                onClick={() => onDecide('ignore')}
+              >
+                Not relevant
+              </button>
+            )}
+            {/* Mia's rule on a card a person then put away: it can still come back to Kept. */}
+            {card.status === 'ignored' && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
+                Keep after all
+              </Button>
+            )}
+          </>
         ) : (
           <>
             {card.status !== 'ignored' && (

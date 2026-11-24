@@ -151,6 +151,8 @@ export interface KPIActual {
   // A source is connected and read; there was just nothing in these dates (an email last sent before the campaign
   // started), so it isn't "Not tracked" (local test 5, 2 Nov)
   measured?: boolean
+  // Blank or 0 only because the phase runs on a channel with nothing linked (no ads, no posts) (24 Nov): linking fixes it
+  link_gap?: boolean
   // Movement over the last 7 days, from the recorded reading series. Absent when the
   // series doesn't reach back a week yet, or when the date picker is off the campaign's
   // own window (the displayed value then measures something the series doesn't).
@@ -310,13 +312,20 @@ export const fetchUnlinkedAds = async (sessionId: string, tenantId: string, camp
 export const refreshCampaignActuals = async (
   sessionId: string,
   tenantId: string,
-  campaignId: string
+  campaignId: string,
+  startDate: string | null = null,
+  endDate: string | null = null
 ): Promise<void> => {
   // Clear local JS + sessionStorage caches so stale data isn't shown
   actualsCache.clear()
   ssClear(SS_ACTUALS_PREFIX)
-  // Ask the server to clear the DB cache and re-warm
-  await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh`, {
+  // Ask the server to re-fetch and overwrite its cache for the range on screen, so the
+  // reload right after reads exactly what was just fetched.
+  const params = new URLSearchParams()
+  if (startDate) params.set('start_date', startDate)
+  if (endDate) params.set('end_date', endDate)
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  await apiFetch(`/api/tenants/${tenantId}/campaigns/${campaignId}/actuals/refresh${qs}`, {
     method: 'POST',
     headers: { 'X-Session-ID': sessionId },
   })

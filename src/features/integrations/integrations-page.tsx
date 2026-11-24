@@ -945,7 +945,10 @@ const IntegrationsPage = ({
 
     // Meta Ads / Facebook Organic: check actual credential existence (not tenant_integrations,
     // which can be stale). Only show selector if token is actually present in the DB.
-    if (integrationId === 'meta' || integrationId === 'facebook_organic') {
+    // Reconnect never takes this shortcut: a dead login is still a saved login, so it used to
+    // open the picker without ever reaching Meta, and the dead login could not be replaced
+    // from its own card (Creative Seat, 24 Nov 2026).
+    if ((integrationId === 'meta' || integrationId === 'facebook_organic') && !opts?.reconnect) {
       try {
         const metaCredsResponse = await apiFetch(
           withWorkspace('/api/oauth/meta/credentials-status', activeWorkspace?.tenant_id),
@@ -1373,7 +1376,11 @@ const IntegrationsPage = ({
                               {canManageIntegrations && (
                                 <button
                                   type="button"
-                                  onClick={() => handleConnect(i.id)}
+                                  // "Reconnect" must reach the platform for a new login; "Change
+                                  // account" and "Connect" may use the saved login's picker.
+                                  onClick={() =>
+                                    handleConnect(i.id, { reconnect: label === 'Reconnect' })
+                                  }
                                   disabled={connectingId !== null}
                                   className={
                                     primary
@@ -1556,6 +1563,9 @@ const IntegrationsPage = ({
                                 [
                                   'google',
                                   'meta',
+                                  // Shares the Meta login and gets the same red "Reconnect" flag,
+                                  // so it needs the same way out.
+                                  'facebook_organic',
                                   'ga4',
                                   'hubspot',
                                   'mailchimp',

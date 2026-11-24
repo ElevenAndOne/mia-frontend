@@ -34,7 +34,8 @@ export function useBuild(campaignId: string | undefined) {
       if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own
       // also while Mia re-checks after a change, so the page shows the result when it lands (27 Oct)
       // and while Mia applies an answer in the background, so her line and the change land on their own (29 Oct)
-      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || (s.check_pending ?? s.checking) || (s.reading_answers ?? 0) > 0)
+      // and while Mia writes a finding's fix in the background, so its card shows when it lands (24 Nov)
+      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || (s.check_pending ?? s.checking) || (s.reading_answers ?? 0) > 0 || (s.fixing?.length ?? 0) > 0)
         ? POLL_MS
         : false
     },
@@ -63,7 +64,8 @@ export function useBuild(campaignId: string | undefined) {
         try {
           out = await fn()
         } catch (e) {
-          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft'].includes(label)) throw e
+          // a fix starts a model call on the server: never twice (review 24 Nov)
+          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft', 'fix-all', 'apply-all'].includes(label) || label.startsWith('fix:')) throw e
           await new Promise((r) => setTimeout(r, 1000))
           out = await fn()
         }
@@ -126,6 +128,9 @@ export function useBuild(campaignId: string | undefined) {
         return out
       }),
     dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
+    fixFinding: (label: string, how?: string) => run(`fix:${label}`, () => api.fixFinding(...ids(), label, how)),
+    fixAll: () => run('fix-all', () => api.fixAllFindings(...ids())),
+    applyAllFixes: () => run('apply-all', () => api.applyAllFixes(...ids())),
     editPlan: (ops: PlanOp[], label = 'edit') =>
       run(label, async () => {
         const next = await api.editPlan(...ids(), ops)

@@ -142,6 +142,7 @@ export interface KpiTarget {
   suggested_kind?: 'estimate' | 'rule_of_thumb' | null
   no_target?: boolean
   missed_twice?: string[]
+  read_from?: string[] // where the tracker reads it in this phase, in plain words (Meta ads, Google Analytics (GA4))
 }
 
 export interface PlanPhase {
@@ -218,8 +219,13 @@ export interface Plan {
     not_carried?: string[] // the PM's edits a remade plan had no place for
     answered?: { question: string; about?: string; answer: string | null; assumed?: string; by?: string }[]
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
+    // channels and jobs Mia left out to keep to the channels the PM named: shown in "How Mia got here" (E30)
+    left_out?: { phase?: string; channel?: string; job?: string; phase_dropped?: boolean }[]
   }
   checks?: PlanCheck[] // none on a campaign moved from the old builder
+  // her claims about the client she corrected against their data before the PM saw the plan (claim_check, 24 Nov)
+  claim_fixes?: { where: string; was: string; now: string; why: string }[]
+  claim_check_error?: string | null
   review?: PlanReview
 }
 
@@ -237,7 +243,7 @@ export interface PlanReview {
   // The close reading (26 Oct): every job's brief and words against what was decided, and the PM's chat messages
   audit?: {
     error?: string
-    jobs?: { job: string; where: string; decision: string; how: string }[]
+    jobs?: { job: string; job_id?: string; where: string; decision: string; how: string }[]
     chat?: { said: string; missing: string }[]
   }
   fact_check?: {
@@ -254,6 +260,8 @@ export interface PlanReview {
     best_past: { campaign: string; score: number; kpis_hit: number; kpis: number }[]
     strengths: string[]
     look_at: string[]
+    // ideas for later (a channel the PM left out...): read here only, never a Your turn item (retest 24 Nov, E29)
+    worth_asking?: string[]
   }
 }
 
@@ -326,6 +334,14 @@ export interface BuildState {
   // Mia's lines about recent answers (also saved in the chat's history), and how many answers she's still applying
   answer_notes?: { nid: string; id: string; text: string; at: string }[]
   reading_answers?: number
+  // findings (their page labels) Mia is writing a fix for, and why a fix couldn't be made (build_service.start_fix_finding)
+  fixing?: string[]
+  fix_errors?: Record<string, string>
+  // the jobs over a sprint's free credits, and which case: Flex's estimate (no seats entered) or real capacity (24 Nov)
+  credits_over?: string | null
+  shared_drive_set?: boolean | null // the workspace has a Shared Drive (needed before the jobs go to Flex, E17)
+  // jobs due sooner than the studio can make them from today, or that can't be ready in the campaign (read live)
+  studio_time?: { too_soon: string[]; too_late: string[] } | null
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
@@ -434,6 +450,33 @@ export interface StudioJob {
   change_requests?: StudioChangeRequest[]
   // its Drive folder and what's in its _Delivery as last read (naming step 4, 20 Nov); null until its folder is made
   delivery?: StudioDelivery | null
+  // not sent yet: who in the client's pod Mia suggests (skills that fit, most room in its sprint; 24 Nov). The studio
+  // assigns in Flex; null when Flex didn't say who is free or the job has no due date in a known sprint
+  maker?: StudioMaker | null
+}
+
+export interface StudioMaker {
+  name: string
+  email: string
+  skill: string // the skill the job needs: design, video, animation, web_design, illustration, print
+  sprint: string
+  free_after: number // the person's free credits in that sprint once this job (and the ones placed before it) count
+  has_skill: boolean // false: no one in the pod has the skill, so the person with most room
+  over: boolean // no one has room: they'd be overbooked
+}
+
+// Who is free in the client's pod per sprint (Flex's team plan: working days less days off, less work booked; 24 Nov)
+export interface StudioTeam {
+  pod: string | null
+  creative_lead_email: string | null
+  sprints: { label: string; free: number; overbooked: string[]; people: { name: string; free: number; speciality: string | null }[] }[]
+  fit: {
+    status: 'fits' | 'over' | 'unknown'
+    over?: string[]
+    sprints: { sprint: string; planned: number; pod_free: number }[]
+    outside_credits?: number // due outside the sprints Flex described (a failed read, a long window): not counted
+    outside_jobs?: number
+  }
 }
 
 // sizes are ratio tokens ("4x5", "9x16"); need/have/missing are counts per size
@@ -458,6 +501,7 @@ export interface StudioDrive {
   error: string | null
   checked_at: string | null
   unplaced: { id: string; name: string; ratio: string | null }[] // files in _Delivery with no Job ID Mia can match
+  unplaced_total?: number // how many there are: only the first 20 names are kept
   making: boolean
   test_folder?: string | null // "_Mia test" when this campaign's folders go there instead of its year
 }
@@ -496,6 +540,7 @@ export interface StudioState {
   flex_client_id?: number | null
   jobs: StudioJob[]
   credit_fit: { sprint: string; planned: number; free: number | null; over: boolean }[]
+  team?: StudioTeam | null // who is free in the client's pod; null when unlinked or Flex didn't say (24 Nov)
   to_send: number
   sent: number
   blockers: string[]
@@ -540,6 +585,8 @@ export interface LaunchJob {
   job_no?: string | null
   job_id?: string | null
   names?: JobNames | null
+  // the ad's words as the push uses them; typed on the card when missing (23 Nov)
+  words?: { headline: string | null; text: string | null } | null
   phase: string
   channel: string
   // elsewhere: a job worked outside Flex (in ClickUp, or made before the campaign moved), marked live by hand (18 Nov)

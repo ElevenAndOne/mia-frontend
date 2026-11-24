@@ -142,16 +142,20 @@ function NewBuild() {
                   role="radio"
                   aria-checked={clientType === key}
                   onClick={() => setClientType(key)}
-                  className={`rounded-md px-3 py-1 label-sm ${clientType === key ? 'bg-secondary text-primary' : 'text-tertiary'}`}
+                  // the chosen one filled in brand colour with a tick, so it's plain which is on (test 24 Nov)
+                  className={`inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 label-sm transition-colors ${
+                    clientType === key ? 'bg-brand-solid text-primary-onbrand shadow-sm' : 'text-tertiary hover:text-primary'
+                  }`}
                 >
+                  {clientType === key ? <span aria-hidden="true">✓</span> : null}
                   {label}
                 </button>
               ))}
             </div>
             <p className="paragraph-xs text-tertiary">
               {clientType === 'bpo'
-                ? "BPO: the client's document is the brief. Mia only asks if the dates, what to make or the channels are missing, and there are no KPIs or ad budget."
-                : 'Campaign: Mia plans it with you, with KPIs, targets and the ad budget.'}
+                ? "BPO: the client's document is the brief. Mia only flags what blocks the work. No targets or ad budget."
+                : 'Campaign: Mia plans it with you, with targets and the ad budget.'}
             </p>
           </div>
           <label htmlFor="pm-text" className="sr-only">
@@ -161,7 +165,7 @@ function NewBuild() {
             id="pm-text"
             rows={7}
             className="rounded-xl border border-secondary bg-primary px-4 py-3 paragraph-md text-primary"
-            placeholder="e.g. Festive campaign for Nov to Jan, R108k, Meta ads, emailers and organic. No athletes this time."
+            placeholder="e.g. Spring launch, 1 March to 30 April, R50k on Meta and Google ads, plus 2 emails. Goal: more online orders. No discount talk."
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -395,8 +399,16 @@ function BuildPage({ campaignId }: { campaignId: string }) {
             <header className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="paragraph-sm text-secondary">
-                  {s.campaign.client} · {day(s.campaign.start_date)} – {day(s.campaign.end_date)} ·{' '}
-                  {money(s.campaign.budget_total, s.campaign.currency)}
+                  {/* only what's set (24 Nov: a new draft read "DFSA · — – — · — · draft") */}
+                  {[
+                    s.campaign.client,
+                    s.campaign.start_date || s.campaign.end_date
+                      ? `${s.campaign.start_date ? day(s.campaign.start_date) : '…'} – ${s.campaign.end_date ? day(s.campaign.end_date) : '…'}`
+                      : null,
+                    s.campaign.budget_total != null ? money(s.campaign.budget_total, s.campaign.currency) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                   {s.campaign.building
                     ? ' · draft'
                     : // paused and finished campaigns said "approved, not live yet" (browser pass 10 Nov)
@@ -487,7 +499,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               ))}
             </nav>
             )}
-            {build.error && !/^(apply|drop):/.test(build.errorAt ?? '') ? (
+            {build.error && !/^(apply|drop|fix):/.test(build.errorAt ?? '') ? (
               // a card's Apply or Not now says why under that card, in the chat and on its finding (28 Oct)
               <Card warn className="flex items-center justify-between gap-3 paragraph-sm text-primary">
                 {build.error}
@@ -507,7 +519,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                 scrollTop={() => pageScroll.current?.scrollTo({ top: 0, behavior: 'smooth' })}
               />
             ) : tab === 'results' ? (
-              <ResultsTab campaignId={campaignId} approved={!s.campaign.building} />
+              <ResultsTab campaignId={campaignId} approved={!s.campaign.building} bpo={s.campaign.client_type === 'bpo'} />
             ) : tab === 'studio' || tab === 'launch' ? (
               <StudioTab campaignId={campaignId} approved={!s.campaign.building} onChanged={() => build.reload()} />
             ) : tab === 'plan' ? (
@@ -598,31 +610,19 @@ function StepView({
   const next = steps[i + 1]
   const nextOpen = next && states[step] === 'done'
   const left = steps.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
+  const [context, setContext] = useState(false)
   return (
     <div className="flex flex-col gap-4">
       {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
           and lagged behind it). The page opens on the thing to do. */}
       <h2 className="sr-only">{meta.label}</h2>
       {step === 'check' && left.length ? (
-        // What's left, by step, each with a way there; then Mia's final check and Approve below (live test 20 Oct).
-        // Only while something is left (local test 27 Oct: "Every step is done. Run Mia's final check" showed right
-        // after the check had run)
-        <Card className="flex flex-col gap-2">
-          <h3 className="subheading-sm text-primary">Still to do</h3>
-          <ul className="flex flex-col gap-1">
-            {left.map((st) => (
-              <li key={st.key} className="flex flex-wrap items-center justify-between gap-2 paragraph-sm text-primary">
-                <span>
-                  {st.label}
-                  {states[st.key] === 'busy' ? ' · Mia is working on it' : ''}
-                </span>
-                <Button size="sm" onClick={() => onGo(st.key)}>
-                  Go to {st.label}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        // One quiet line, not a second to-do list (screen walk 23 Nov: "Still to do" with four Go to buttons sat above
+        // Your turn): Up next above names the first step to finish and goes there; the rail shows the rest.
+        <p className="paragraph-sm text-secondary">
+          Approve opens once {left.map((st) => st.label).join(', ').replace(/, ([^,]*)$/, ' and $1')}{' '}
+          {left.length === 1 ? 'is' : 'are'} done.
+        </p>
       ) : null}
       {step === 'facts' ? (
         <BriefTab
@@ -667,32 +667,35 @@ function StepView({
           onFillTargets={build.fillTargets}
           onApplyChange={build.applyChange}
           onDropChange={build.dropChange}
-          cardError={build.errorAt && /^(apply|drop):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
+          onFixFinding={build.fixFinding}
+          onFixAll={build.fixAll}
+          onApplyAllFixes={build.applyAllFixes}
+          cardError={build.errorAt && /^(apply|drop|fix):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
         />
       )}
       {step === 'check' ? (
-        // What you gave Mia, what she read, your words and the client's rules: folded context for the last look (L2, L4).
-        <BriefTab
-          part="context"
-          state={s}
-          kpiGroups={build.kpiGroups}
-          busy={build.busy}
-          onSave={build.saveBrief}
-          onRedraft={build.redraft}
-          onMakePlan={build.makePlan}
-        />
+        // What you gave Mia, what she read, your words and the client's rules: one line for the last look (L2, L4; 20
+        // Nov plan E: four more folds sat here)
+        context ? (
+          <BriefTab
+            part="context"
+            state={s}
+            kpiGroups={build.kpiGroups}
+            busy={build.busy}
+            onSave={build.saveBrief}
+            onRedraft={build.redraft}
+            onMakePlan={build.makePlan}
+          />
+        ) : (
+          <button type="button" onClick={() => setContext(true)} className="self-start text-left paragraph-sm font-medium text-secondary hover:text-primary">
+            What Mia worked from <span className="font-normal text-tertiary">· your message, what she read, {s.campaign.client}'s rules</span>{' '}
+            <span aria-hidden="true">›</span>
+          </button>
+        )
       ) : null}
-      {next ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary pt-3">
-          {/* the line at the top is the only "what's next" (20 Nov: said three times); Next lights up when done */}
-          <p className={`paragraph-sm ${nextOpen ? 'text-utility-success-700' : 'text-tertiary'}`}>
-            {nextOpen ? `✓ ${meta.label} done` : states[step] === 'busy' ? 'Mia is working on this step.' : ''}
-          </p>
-          <Button variant="primary" disabled={!nextOpen} onClick={() => onGo(next.key)}>
-            Next: {next.label}
-          </Button>
-        </div>
-      ) : null}
+      {/* No "Next:" bar at the bottom (screen walk 23 Nov, theme 4: two next buttons competed): a finished step moves
+          on by itself, and Up next at the top is the one way on when the next thing is on another step. */}
+      {next && nextOpen ? <p className="paragraph-sm text-utility-success-700">✓ {meta.label} done</p> : null}
     </div>
   )
 }

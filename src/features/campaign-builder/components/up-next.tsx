@@ -122,6 +122,25 @@ export function UpNext({ state, states, step, onGo }: {
   if (!state.campaign.building) return null
   const u = upNext(state, states)
   const elsewhere = u.step !== step
+  // The brief or the plan being made, on the step whose progress card already says so: nothing to add (test 24 Nov,
+  // E9: "Up next: Mia is making the plan (4 of 7…)" sat right above the card saying the same)
+  const running = state.brief_run?.status === 'running' || state.plan_run?.status === 'running'
+  if (running && !elsewhere) return null
+  // Only saying what Mia is doing ("Nothing needs you yet"): no "Go to" button sending the PM away from the work in
+  // front of them (test 24 Nov, E20: "Go to Final words" while they were going through findings)
+  const onlyMia = /Nothing needs you|^Mia is (checking|rewriting|writing|applying)/.test(u.text)
+  // ...and on the step where Your turn's own card already says what she is doing, nothing at all (E18)
+  if (onlyMia && !elsewhere) return null
+  // Said once (screen walk 23 Nov: Up next, Your turn and a Next button all named the same task): when the PM's task is
+  // on this step, Your turn below says it, so this line shows only to point elsewhere or to say what Mia is doing.
+  const minding = /^(Mia is|Approved\.)|Nothing needs you/.test(u.text)
+  if (!elsewhere && !minding) {
+    return u.background ? (
+      <p role="status" aria-live="polite" className="paragraph-xs text-tertiary">
+        {u.background}
+      </p>
+    ) : null
+  }
   return (
     <div
       role="status"
@@ -133,7 +152,7 @@ export function UpNext({ state, states, step, onGo }: {
         {u.text}
         {u.background ? <span className="paragraph-xs text-tertiary"> · Meanwhile: {u.background}</span> : null}
       </p>
-      {elsewhere ? (
+      {elsewhere && !onlyMia ? (
         <Button size="sm" variant="primary" onClick={() => onGo(u.step)}>
           Go to {stepsFor(state).find((st) => st.key === u.step)?.label}
         </Button>

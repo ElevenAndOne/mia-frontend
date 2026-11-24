@@ -44,6 +44,7 @@ const PostCardPage = lazy(() => import('../features/posts/post-card-page'))
 const PostLinkPage = lazy(() => import('../features/posts/post-link-page'))
 const BudgetTrackerPage = lazy(() => import('../pages/budget-tracker-page'))
 const MemoPage = lazy(() => import('../pages/memo-page'))
+const ClaudeChangePage = lazy(() => import('../pages/claude-change-page'))
 const NotFoundPage = lazy(() => import('../pages/not-found-page'))
 const InternalPulsePage = lazy(() => import('../pages/internal-pulse-page'))
 const InternalHouseRulesPage = lazy(() => import('../pages/internal-house-rules-page'))
@@ -345,6 +346,17 @@ export const AppRoutes = ({
             }
           />
 
+          {/* A person's own yes to a change proposed through Claude (step 5): Claude gives this link */}
+          <Route
+            path="/claude-changes/:proposalId"
+            element={
+              <ProtectedRoute>
+                <ErrorBoundary>
+                  <ClaudeChangePage />
+                </ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/memo"
             element={

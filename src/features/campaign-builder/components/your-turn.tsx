@@ -46,8 +46,12 @@ export function AskMia({ label, detail, className = '' }: AskFocus & { className
         }
         askMia({ label, detail })
       }}
-      className={`inline-flex items-center gap-1 rounded-full border border-brand px-2.5 py-1 label-xs text-brand-secondary hover:bg-brand-primary whitespace-nowrap ${className}`}
+      // a quiet link, still on every item (24 Nov: a bordered pill on every row made each row look busy)
+      className={`inline-flex items-center gap-1 paragraph-xs font-medium text-brand-secondary hover:underline whitespace-nowrap ${className}`}
     >
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z" strokeLinejoin="round" />
+      </svg>
       Ask Mia
     </button>
   )
@@ -108,10 +112,10 @@ export function FactStrip({ state, plan }: { state: BuildState; plan: Plan }) {
   const credits = plan.credits
   const words = plan.assets.filter((a) => a.final_words).length
   const flagged = plan.assets.filter(wordsToFix).length
-  const fit =
-    credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : 'room unknown'
+  // only what's known (24 Nov: "room unknown" read as jargon)
+  const fit = credits?.status === 'fits' ? 'fits the sprints' : credits?.status === 'over' ? 'over in a sprint' : ''
   const cells: [string, string, string][] = [
-    ['Dates', c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'not set', plan.assets.length ? `studio from ${day(firstDue(plan))}` : ''],
+    ['Dates', c.start_date ? `${day(c.start_date)} – ${day(c.end_date)}` : 'not set', firstDue(plan) ? `studio from ${day(firstDue(plan))}` : ''],
     ['Budget', c.budget_total != null ? money(c.budget_total, c.currency) : money(total || null, c.currency), shares],
     ['Studio', `${plan.assets.length} jobs · ${num(credits?.total_planned ?? 0)} cr`, `${fit}${credits?.estimated?.length ? ' (estimate)' : ''}`],
     plan.moved_from_old_builder
@@ -151,6 +155,7 @@ export interface TurnItem {
   more?: ReactNode // opens under the item (the list of jobs to fix, the questions)
   openByDefault?: boolean
   why?: ReactNode // the explanation, behind "Why?" (20 Nov: a task is a short title and a button)
+  working?: boolean // Mia is doing this one (checking, writing): nothing to skip past it to (test 24 Nov, E18)
 }
 
 // "Why?": the reason behind a task or a fact, one tap away instead of a paragraph on screen (20 Nov, less text).
@@ -171,8 +176,6 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
   const current = open.find((i) => i.key === chosen) ?? open[0]
   // The item being done shows its list (the fixes, the questions) unless the PM hides it
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
-  // what comes after is a count; the list opens on tap (20 Nov: "2 more after this", not a second list)
-  const [showRest, setShowRest] = useState(false)
   const isOpen = (k: string) => !hidden.has(k)
   const toggle = (k: string) => setHidden((h) => { const n = new Set(h); if (n.has(k)) n.delete(k); else n.add(k); return n })
   if (!current) {
@@ -188,65 +191,44 @@ export function YourTurn({ items, footer }: { items: TurnItem[]; footer?: ReactN
     )
   }
   const rest = open.filter((i) => i.key !== current.key)
-  const n = open.indexOf(current) + 1
+  // One guided step (24 Nov, Josh: "as little text as necessary… single approve/deny or simple buttons… like hand
+  // holding"): a small "Your turn", the task as a clear title, at most one line under it, proper buttons, the reason
+  // behind Why?, and what comes next as one quiet line. Nothing removed: every item, list and action is still here.
   return (
-    <Card className="!p-0 flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-4 py-3">
-        {/* what to do, not how the list works (local test 27 Oct) */}
-        <h2 className="min-w-0 subheading-md text-primary">Your turn</h2>
-        {/* the count lives once, in "N more after this" below (20 Nov) */}
-      </div>
-      <div className="bg-brand-primary px-4 py-3">
-        <div className="grid grid-cols-[28px_1fr] @2xl:grid-cols-[28px_1fr_auto] items-center gap-x-3 gap-y-2">
-          <span aria-hidden="true" className="grid size-7 place-items-center rounded-full label-xs bg-brand-solid text-primary-onbrand">
-            {n}
-          </span>
-          <div className="min-w-0">
-            <p className="paragraph-sm font-medium text-primary">{current.title}</p>
-            {current.detail ? <div className="paragraph-xs text-secondary">{current.detail}</div> : null}
-            {current.why && !current.more ? <Why>{current.why}</Why> : null}
+    <Card className="!p-0 flex flex-col overflow-hidden !border-brand">
+      <div className="flex flex-col gap-3 bg-brand-primary px-5 py-4">
+        {/* how many on this step, and a way past one, in the label (test 24 Nov: a "Then: … · See all" line under the
+            card repeated the step bar) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* no count here: a task like "Mia's question 1 of 3" has its own, and two counts read as a clash (24 Nov) */}
+          <p className="label-xs uppercase tracking-[0.06em] text-brand-secondary">Your turn</p>
+          {rest.length && !current.working ? (
+            <button
+              type="button"
+              onClick={() => setChosen(open[(open.indexOf(current) + 1) % open.length].key)}
+              className="paragraph-xs text-tertiary hover:text-secondary"
+            >
+              Skip for now ›
+            </button>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-1">
+          <h2 className="label-md text-primary [text-wrap:balance]">{current.title}</h2>
+          {current.detail ? <div className="paragraph-sm text-secondary max-w-[62ch]">{current.detail}</div> : null}
+        </div>
+        {current.more && isOpen(current.key) ? <div>{current.more}</div> : null}
+        {current.actions || current.more || current.why ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {current.actions}
+            {current.why ? <Why>{current.why}</Why> : null}
+            {current.more ? (
+              <button type="button" aria-expanded={isOpen(current.key)} onClick={() => toggle(current.key)} className="paragraph-xs underline text-secondary hover:text-primary">
+                {isOpen(current.key) ? 'Hide' : 'Show'}
+              </button>
+            ) : null}
           </div>
-          {current.actions || current.more ? (
-            <div className="col-start-2 @2xl:col-start-3 flex flex-wrap items-center gap-2 @2xl:justify-end">
-              {current.actions}
-              {current.more ? (
-                <button type="button" aria-expanded={isOpen(current.key)} onClick={() => toggle(current.key)} className="paragraph-xs underline text-primary">
-                  {isOpen(current.key) ? 'Hide' : 'Show'}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        {current.more && isOpen(current.key) ? <div className="mt-3 @2xl:pl-10">{current.more}</div> : null}
-        {/* with a list under it (the question), "Why?" comes after it, not between the title and the question */}
-        {current.why && current.more ? <div className="mt-1 @2xl:pl-10"><Why>{current.why}</Why></div> : null}
+        ) : null}
       </div>
-      {rest.length ? (
-        <div className="border-t border-secondary px-4 py-2">
-          <button type="button" aria-expanded={showRest} onClick={() => setShowRest((v) => !v)} className="paragraph-xs text-tertiary hover:text-secondary">
-            {rest.length} more after this · <span className="underline">{showRest ? 'Hide' : 'See'}</span>
-          </button>
-          {showRest ? (
-          <ul className="flex flex-col">
-            {rest.map((it) => (
-              <li key={it.key}>
-                {/* one line each; opening one makes it the item above (the list stays one at a time) */}
-                <button
-                  type="button"
-                  onClick={() => setChosen(it.key)}
-                  className="flex w-full items-center gap-2 py-1 text-left paragraph-xs text-secondary hover:text-primary"
-                >
-                  <span aria-hidden="true" className="grid size-5 shrink-0 place-items-center rounded-full bg-tertiary label-xs text-secondary">
-                    {open.indexOf(it) + 1}
-                  </span>
-                  <span className="min-w-0 truncate">{it.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          ) : null}
-        </div>
-      ) : null}
       {footer ? <div className="border-t border-secondary px-4 py-3">{footer}</div> : null}
     </Card>
   )
@@ -280,9 +262,10 @@ export function OneAtATime({ entries, noun = 'item' }: { entries: { key: string;
   )
 }
 
+// The step's own button: full size, so the one thing to press is plain to see (24 Nov)
 export function PrimaryAction({ children, ...rest }: Parameters<typeof Button>[0]) {
   return (
-    <Button size="sm" variant="primary" {...rest}>
+    <Button size="md" variant="primary" {...rest}>
       {children}
     </Button>
   )
@@ -299,11 +282,13 @@ export function TargetToSet({
   byMia,
   kind,
   source,
+  readFrom,
   grouped = false,
   onSet,
   onNoTarget,
   saving = false,
 }: {
+  readFrom?: string[] | null // where the tracker will read it (Josh, 24 Nov: each target linked and tracked)
   saving?: boolean // this row's number is being saved
   grouped?: boolean // under its phase's heading: the row doesn't repeat the phase
   name: string
@@ -337,10 +322,13 @@ export function TargetToSet({
                 : "Mia's estimate"
               : source === 'history'
                 ? 'From a past campaign'
-                : 'From your account'}
+                : source === 'budget'
+                  ? 'What your budget buys'
+                  : 'From your account'}
             : {suggestedLabel ?? num(suggested)}
           </p>
         ) : null}
+        {readFrom?.length ? <p className="paragraph-xs text-tertiary">Tracked from {readFrom.join(' and ')}</p> : null}
         {/* the working on tap: a name, a number and Keep is all the row needs (local test 27 Oct) */}
         {reference || suggestedFrom ? (
           <details className="paragraph-xs text-tertiary">

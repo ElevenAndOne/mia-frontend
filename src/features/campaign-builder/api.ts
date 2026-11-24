@@ -157,6 +157,32 @@ export async function applyChange(sessionId: string, tenantId: string, campaignI
   )
 }
 
+// "Fix it to follow what I decided" on a final-check finding: one card that fixes the whole job, shown on the finding.
+// Written in the background: the page polls (state.fixing) until the card or the reason (state.fix_errors) shows.
+export async function fixFinding(sessionId: string, tenantId: string, campaignId: string, label: string, how?: string) {
+  return check<{ started?: boolean; card?: { id: string; summary: string[] } }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/fix`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ label, how: how ?? null }),
+    }),
+  )
+}
+
+// "Fix all": one fix per job with findings, written in the background (retest 24 Nov, E27); "Apply all" applies every
+// waiting fix card in one go.
+export async function fixAllFindings(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ started: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/fix-all`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
+export async function applyAllFixes(sessionId: string, tenantId: string, campaignId: string) {
+  return check<{ applied: number; failed: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/apply-all`, { method: 'POST', headers: json(sessionId) }),
+  )
+}
+
 export async function dropChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
   return check<{ ok: boolean }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}`, { method: 'DELETE', headers: json(sessionId) }),
@@ -268,8 +294,32 @@ export async function editStudio(
   )
 }
 
+// An ad's headline and text, typed on its Launch card (23 Nov): only what's given changes
+export async function saveAdWords(sessionId: string, tenantId: string, campaignId: string, assetId: string,
+  words: { headline?: string; text?: string }) {
+  return check<{ ok: boolean; headline: string | null; text: string | null }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/launch/words`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ asset_id: assetId, ...words }),
+    }),
+  )
+}
+
+// Where this client's ads run: asked once on the first push and saved for the workspace (23 Nov)
+export async function saveAdCountries(sessionId: string, tenantId: string, countries: string[]) {
+  return check<{ countries: string[] }>(
+    await apiFetch(`/api/tenants/${tenantId}/ad-countries`, {
+      method: 'PUT',
+      headers: json(sessionId),
+      body: JSON.stringify({ countries }),
+    }),
+  )
+}
+
 export async function sendToFlex(sessionId: string, tenantId: string, campaignId: string, actingUserEmail: string) {
-  return check<{ sent: number; jobs: number }>(
+  // brief_cut: what had to be cut from a job's brief to fit Flex's limits (23 Nov), by job name
+  return check<{ sent: number; jobs: number; brief_cut?: Record<string, string[]> }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/send`, {
       method: 'POST',
       headers: json(sessionId),
