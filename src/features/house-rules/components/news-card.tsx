@@ -87,16 +87,20 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
   // rule_id too: Mia can make the rule while the card stays in New for the Mia team's part.
   const isRule = card.status === 'made_rule' || !!card.rule_id
   const miaDid = card.mia_did ?? []
+  // A note or a rule of hers; filing it for info is no "part" once a person has moved the card.
+  const miaActed = miaDid.some((x) => x !== 'info')
   const miaLabel =
     miaDid.length === 0 || card.status === 'ignored'
       ? null
-      : card.status === 'new'
-        ? 'Mia did her part · the rest needs a person'
-        : card.decided_by !== 'Mia'
-          ? 'Mia did her part'
-          : miaDid.length === 1 && miaDid[0] === 'info'
-            ? 'Filed by Mia for info · nothing to do'
-            : 'Done by Mia'
+      : card.decided_by === 'Mia' && card.status !== 'new'
+        ? miaActed
+          ? 'Done by Mia'
+          : 'Filed by Mia for info · nothing to do'
+        : !miaActed
+          ? null
+          : card.status === 'new'
+            ? 'Mia did her part · the rest needs a person'
+            : 'Mia did her part'
   const lead = card.why ?? card.summary
   const story = card.why ? card.summary : null
 
@@ -359,7 +363,15 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
             </Button>
           </>
         ) : isRule ? (
-          <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+          <>
+            <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            {/* Mia's rule on a card a person then put away: it can still come back to Kept. */}
+            {card.status === 'ignored' && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
+                Keep after all
+              </Button>
+            )}
+          </>
         ) : (
           <>
             {card.status !== 'ignored' && (
