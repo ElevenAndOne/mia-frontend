@@ -34,8 +34,10 @@ export function FindingFix({
   const [typed, setTyped] = useState('')
   const [sent, setSent] = useState(false)
   const cards = (state.pending ?? []).filter((p) => p.about === label)
-  const fixing = busy === `fix:${label}`
-  const fixFailed = cardError?.at === `fix:${label}` ? cardError.error : null
+  // the press, then Mia writing it in the background (state.fixing, kept across a reload) until the card shows
+  const fixing = busy === `fix:${label}` || !!state.fixing?.includes(label)
+  // the press refused (the finding closed meanwhile), or the background fix couldn't be made
+  const fixFailed = fixing ? null : (cardError?.at === `fix:${label}` ? cardError.error : null) ?? state.fix_errors?.[label] ?? null
   // Its Apply or Not now failed: why shows here, also once a refused card has left the list (28 Oct: it showed at the
   // page top and in the chat, not where it was pressed)
   const [shown, setShown] = useState<string[]>([])
@@ -48,9 +50,9 @@ export function FindingFix({
   const send = (text: string) => {
     if (!text.trim()) return
     if (onFix) {
-      if (busy) return // Enter while a fix (or any press) is running would start a second one (review 24 Nov)
-      // the card comes back with the call and shows here at once; no "Sent" line is needed
-      // a failed fix keeps what the PM typed (the error shows under it)
+      if (busy || fixing) return // Enter while a fix (or any press) is running would start a second one (review 24 Nov)
+      // Mia writes it in the background; the line below says so until the card shows here (no "Sent" line needed).
+      // A refused press keeps what the PM typed (the reason shows under it).
       void onFix(text.trim() === quick ? undefined : text.trim()).then((out) => {
         if (out) setTyped('')
       })
@@ -108,12 +110,12 @@ export function FindingFix({
           className="min-w-0 flex-1 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary"
         />
         {typed.trim() ? (
-          <Button size="sm" variant="primary" disabled={!!busy} onClick={() => send(typed)}>
+          <Button size="sm" variant="primary" disabled={!!busy || fixing} onClick={() => send(typed)}>
             Send
           </Button>
         ) : null}
       </div>
-      {fixing ? <p className="paragraph-xs text-tertiary">Mia is rewriting the whole job to follow it (under a minute)…</p> : null}
+      {fixing ? <p className="paragraph-xs text-tertiary">Mia is rewriting the whole job to follow it (about a minute)…</p> : null}
       {fixFailed ? <p className="paragraph-xs text-error [overflow-wrap:anywhere]">{fixFailed}</p> : null}
       {gone ? why : null}
       {sent ? <p className="paragraph-xs text-tertiary">Sent. Mia's fix shows here; if she needs to ask you something, it's in the chat.</p> : null}

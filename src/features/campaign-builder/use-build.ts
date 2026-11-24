@@ -34,7 +34,8 @@ export function useBuild(campaignId: string | undefined) {
       if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own
       // also while Mia re-checks after a change, so the page shows the result when it lands (27 Oct)
       // and while Mia applies an answer in the background, so her line and the change land on their own (29 Oct)
-      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || (s.check_pending ?? s.checking) || (s.reading_answers ?? 0) > 0)
+      // and while Mia writes a finding's fix in the background, so its card shows when it lands (24 Nov)
+      return s && ([s.brief_run, s.plan_run, s.words_run].some((r) => r?.status === 'running') || (s.check_pending ?? s.checking) || (s.reading_answers ?? 0) > 0 || (s.fixing?.length ?? 0) > 0)
         ? POLL_MS
         : false
     },

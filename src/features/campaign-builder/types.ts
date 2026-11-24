@@ -326,6 +326,9 @@ export interface BuildState {
   // Mia's lines about recent answers (also saved in the chat's history), and how many answers she's still applying
   answer_notes?: { nid: string; id: string; text: string; at: string }[]
   reading_answers?: number
+  // findings (their page labels) Mia is writing a fix for, and why a fix couldn't be made (build_service.start_fix_finding)
+  fixing?: string[]
+  fix_errors?: Record<string, string>
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }
 }
 
