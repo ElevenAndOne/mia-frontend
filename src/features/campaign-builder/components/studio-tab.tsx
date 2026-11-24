@@ -361,7 +361,12 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
               </span>
             ))}
           </div>
-          {s.team?.fit.sprints.length ? <TeamRoom team={s.team} /> : null}
+        </Card>
+      ) : null}
+      {/* its own card: shown even when no client-credit row is (audit 24 Nov: weekend due dates hid it) */}
+      {s.team?.fit.sprints.length || s.team?.fit.outside_jobs ? (
+        <Card>
+          <TeamRoom team={s.team} />
         </Card>
       ) : null}
 

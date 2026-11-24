@@ -34,15 +34,20 @@ export default function ClaudeChangePage() {
 
   const load = useCallback(async () => {
     if (!sessionId) return
-    const res = await apiFetch(
-      `/api/claude-changes/${encodeURIComponent(proposalId)}?session_id=${encodeURIComponent(sessionId)}`
-    )
-    const body = await safeJson<ClaudeChange & { detail?: string }>(res, {} as ClaudeChange)
-    if (!res.ok) {
-      setError(body.detail || 'Could not load this change.')
-      return
+    try {
+      const res = await apiFetch(
+        `/api/claude-changes/${encodeURIComponent(proposalId)}?session_id=${encodeURIComponent(sessionId)}`
+      )
+      const body = await safeJson<ClaudeChange & { detail?: string }>(res, {} as ClaudeChange)
+      if (!res.ok) {
+        setError(body.detail || 'Could not load this change.')
+        return
+      }
+      setChange(body)
+    } catch {
+      // a network failure never leaves the page on "Loading…" for good (audit 24 Nov)
+      setError('Mia couldn’t be reached. Check your connection and reload the page.')
     }
-    setChange(body)
   }, [proposalId, sessionId])
 
   useEffect(() => {
@@ -50,30 +55,43 @@ export default function ClaudeChangePage() {
   }, [load])
 
   const press = async (what: 'confirm' | 'decline') => {
-    if (!sessionId) return
+    if (!sessionId || busy) return
     setBusy(true)
     setError(null)
-    const res = await apiFetch(`/api/claude-changes/${encodeURIComponent(proposalId)}/${what}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId }),
-    })
-    const body = await safeJson<{ detail?: string; status?: string; message?: string }>(res, {})
-    setBusy(false)
-    if (!res.ok) {
-      setError(body.detail || 'That didn’t go through.')
-      return
+    try {
+      const res = await apiFetch(`/api/claude-changes/${encodeURIComponent(proposalId)}/${what}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+      const body = await safeJson<{ detail?: string; status?: string; message?: string; state?: string }>(res, {})
+      if (!res.ok) {
+        setError(body.detail || 'That didn’t go through.')
+        void load() // expired or changed since: show it as it is now, no dead buttons
+        return
+      }
+      if (what === 'decline') {
+        // already made (the panel's Yes in another tab) or already declined: say so, never "not made" (audit)
+        if (body.state && body.state !== 'cancelled') {
+          void load()
+          return
+        }
+        setDone('Not made. Nothing was changed.')
+      } else {
+        setDone(
+          body.status === 'done'
+            ? 'Done. Mia made the change.'
+            : body.status === 'still_running'
+              ? 'Mia is still making it. It shows in her change history when it finishes.'
+              : `Mia couldn’t make it: ${body.message || 'nothing was changed.'}`
+        )
+      }
+      void load()
+    } catch {
+      setError('Mia couldn’t be reached, so it may or may not have gone through. Reload the page to see.')
+    } finally {
+      setBusy(false)
     }
-    setDone(
-      what === 'decline'
-        ? 'Not made. Nothing was changed.'
-        : body.status === 'done'
-          ? 'Done. Mia made the change.'
-          : body.status === 'still_running'
-            ? 'Mia is still making it. It shows in her change history when it finishes.'
-            : `Mia couldn’t make it: ${body.message || 'nothing was changed.'}`
-    )
-    void load()
   }
 
   const open = change?.state === 'open' && !done
@@ -115,6 +133,7 @@ export default function ClaudeChangePage() {
                 </Button>
               </div>
             ) : null}
+            {busy ? <p className="paragraph-sm text-secondary">Working… this can take up to a minute.</p> : null}
             {done ? <p className="paragraph-sm text-primary">{done}</p> : null}
             {!open && !done ? (
               <p className="paragraph-sm text-secondary">
