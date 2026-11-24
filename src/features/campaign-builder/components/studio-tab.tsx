@@ -6,7 +6,7 @@ import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
 import { CopyButton } from './copy-button'
 import * as api from '../api'
-import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState } from '../types'
+import type { LaunchJob, StudioChangeRequest, StudioDelivery, StudioDrive, StudioIdea, StudioJob, StudioState, StudioTeam } from '../types'
 import { JobCard } from './launch-tab'
 import { Card, NeedsYou, channelLabel, day, num } from './parts'
 import { AskMia, PrimaryAction, YourTurn, askMia, type TurnItem } from './your-turn'
@@ -347,20 +347,23 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       ) : null}
 
       {s.credit_fit.length ? (
-        <Card className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <p className="subheading-sm text-primary">Credits for this send</p>
-          {s.credit_fit.map((f) => (
-            <span key={f.sprint} className="paragraph-sm text-secondary">
-              {f.sprint}: {num(f.planned)}
-              {f.free == null ? ' (room unknown)' : ` of ${num(f.free)} free`}
-              {f.over ? (
-                <>
-                  {' '}
-                  <NeedsYou>over: carry-over or extra credits needed</NeedsYou>
-                </>
-              ) : null}
-            </span>
-          ))}
+        <Card className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <p className="subheading-sm text-primary">Credits for this send</p>
+            {s.credit_fit.map((f) => (
+              <span key={f.sprint} className="paragraph-sm text-secondary">
+                {f.sprint}: {num(f.planned)}
+                {f.free == null ? ' (room unknown)' : ` of ${num(f.free)} free`}
+                {f.over ? (
+                  <>
+                    {' '}
+                    <NeedsYou>over: carry-over or extra credits needed</NeedsYou>
+                  </>
+                ) : null}
+              </span>
+            ))}
+          </div>
+          {s.team?.fit.sprints.length ? <TeamRoom team={s.team} /> : null}
         </Card>
       ) : null}
 
@@ -550,6 +553,15 @@ function Row({
             sp
           )
         })()}
+        {!inFlex && j.maker ? (
+          <span
+            className="block paragraph-xs text-tertiary"
+            title={`Mia's suggestion from Flex's team plan: ${j.maker.has_skill ? `has ${j.maker.skill.replace('_', ' ')}` : `no one in the pod has ${j.maker.skill.replace('_', ' ')}`}, ${num(j.maker.free_after)} credits free after this job${j.maker.over ? ': the person with the most room for this kind of work, and they would be over' : ''}. The studio assigns in Flex.`}
+          >
+            Mia suggests {j.maker.name.split(' ')[0]}
+            {j.maker.over ? <NeedsYou> no room left</NeedsYou> : null}
+          </span>
+        ) : null}
       </td>
       <td className="py-2 pr-2">
         {inFlex ? (
@@ -891,4 +903,36 @@ function sentMessage(out: { sent: number; brief_cut?: Record<string, string[]> }
   const head = `Sent: ${out.sent} new task(s) in Flex.`
   if (!cut.length) return head
   return `${head} Too long for Flex, so shortened: ${cut.map(([job, what]) => `${job} (${what.join('; ')})`).join(' · ')}.`
+}
+
+// Who is free in the client's pod for this send (Flex's team plan, 24 Nov): one line per sprint, the people on hover.
+// Beside the credits above: those are what the client bought, this is who has time to make it.
+function TeamRoom({ team }: { team: StudioTeam }) {
+  const over = new Set(team.fit.over ?? [])
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <p className="subheading-sm text-primary">Studio team{team.pod ? ` (${team.pod})` : ''}</p>
+      {team.fit.sprints.map((f) => {
+        const sp = team.sprints.find((x) => x.label === f.sprint)
+        const who = sp?.people.map((p) => `${p.name.split(' ')[0]} ${num(p.free)}`).join(', ')
+        return (
+          <span key={f.sprint} className="paragraph-sm text-secondary" title={who ? `Free credits: ${who}` : undefined}>
+            {f.sprint}: {num(f.planned)} planned, {num(f.pod_free)} free in the pod
+            {over.has(f.sprint) ? (
+              <>
+                {' '}
+                <NeedsYou>more than the pod has free</NeedsYou>
+              </>
+            ) : null}
+          </span>
+        )
+      })}
+      {team.fit.outside_jobs ? (
+        <span className="paragraph-xs text-tertiary">
+          {num(team.fit.outside_credits ?? 0)} credits ({team.fit.outside_jobs} job{team.fit.outside_jobs === 1 ? '' : 's'}) due
+          outside the sprints Flex described, so not counted here
+        </span>
+      ) : null}
+    </div>
+  )
 }

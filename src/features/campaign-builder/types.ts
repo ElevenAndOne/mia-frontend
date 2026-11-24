@@ -437,6 +437,33 @@ export interface StudioJob {
   change_requests?: StudioChangeRequest[]
   // its Drive folder and what's in its _Delivery as last read (naming step 4, 20 Nov); null until its folder is made
   delivery?: StudioDelivery | null
+  // not sent yet: who in the client's pod Mia suggests (skills that fit, most room in its sprint; 24 Nov). The studio
+  // assigns in Flex; null when Flex didn't say who is free or the job has no due date in a known sprint
+  maker?: StudioMaker | null
+}
+
+export interface StudioMaker {
+  name: string
+  email: string
+  skill: string // the skill the job needs: design, video, animation, web_design, illustration, print
+  sprint: string
+  free_after: number // the person's free credits in that sprint once this job (and the ones placed before it) count
+  has_skill: boolean // false: no one in the pod has the skill, so the person with most room
+  over: boolean // no one has room: they'd be overbooked
+}
+
+// Who is free in the client's pod per sprint (Flex's team plan: working days less days off, less work booked; 24 Nov)
+export interface StudioTeam {
+  pod: string | null
+  creative_lead_email: string | null
+  sprints: { label: string; free: number; overbooked: string[]; people: { name: string; free: number; speciality: string | null }[] }[]
+  fit: {
+    status: 'fits' | 'over' | 'unknown'
+    over?: string[]
+    sprints: { sprint: string; planned: number; pod_free: number }[]
+    outside_credits?: number // due outside the sprints Flex described (a failed read, a long window): not counted
+    outside_jobs?: number
+  }
 }
 
 // sizes are ratio tokens ("4x5", "9x16"); need/have/missing are counts per size
@@ -500,6 +527,7 @@ export interface StudioState {
   flex_client_id?: number | null
   jobs: StudioJob[]
   credit_fit: { sprint: string; planned: number; free: number | null; over: boolean }[]
+  team?: StudioTeam | null // who is free in the client's pod; null when unlinked or Flex didn't say (24 Nov)
   to_send: number
   sent: number
   blockers: string[]
