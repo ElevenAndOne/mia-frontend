@@ -165,7 +165,7 @@ function NewBuild() {
             id="pm-text"
             rows={7}
             className="rounded-xl border border-secondary bg-primary px-4 py-3 paragraph-md text-primary"
-            placeholder="e.g. Festive campaign for Nov to Jan, R108k, Meta ads, emailers and organic. No athletes this time."
+            placeholder="e.g. Spring launch, 1 March to 30 April, R50k on Meta and Google ads, plus 2 emails. Goal: more online orders. No discount talk."
             value={text}
             onChange={(e) => setText(e.target.value)}
           />

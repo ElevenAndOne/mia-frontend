@@ -606,8 +606,9 @@ function planTurnItems({
             .map((ph) => ({
               key: ph,
               node: (
-                <section aria-label={`${ph} targets`} className="flex flex-col gap-1.5">
-                  <h4 className="label-sm text-secondary">{ph}</h4>
+                <section aria-label={`${ph} targets`} className="flex flex-col gap-2">
+                  {/* a clear heading for the phase (Josh, 24 Nov, E14) */}
+                  <h4 className="text-[17px] leading-6 font-semibold tracking-[-0.01em] text-primary">{ph}</h4>
                   <ul className="flex flex-col gap-2">
                     {toSet.filter((t) => t.phase === ph).map((t) => (
                       <TargetToSet

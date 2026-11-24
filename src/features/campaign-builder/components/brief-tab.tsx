@@ -152,9 +152,26 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
         ),
       })
     }
-    // "These are right" (review 21 Oct) sits on the brief card itself, under the facts it confirms (screen walk 23 Nov:
-    // "Check the 4 facts" here and the same facts again in the card below)
+    // "These are right" (review 21 Oct) is a Your turn card, naming the facts it confirms: every action the PM takes sits
+    // in one place at the top, never at the bottom of a section (Josh, 24 Nov, E13)
     const drafted = (state.brief?.drafted ?? []) as BriefField[]
+    if (drafted.length && onConfirm && !qs.length) {
+      items.push({
+        key: 'confirm-facts',
+        title: `Mia filled in ${listFields(drafted)} herself. ${drafted.length === 1 ? 'Is it' : 'Are they'} right?`,
+        detail: 'They are in the brief below.',
+        actions: (
+          <>
+            <PrimaryAction loading={busy === 'confirm'} onClick={() => onConfirm(drafted)}>
+              These are right
+            </PrimaryAction>
+            <Button size="sm" onClick={editBrief}>
+              Edit
+            </Button>
+          </>
+        ),
+      })
+    }
     const noBudget = state.blockers.find((x) => x.key === 'budget_total')
     if (noBudget) {
       items.push({
@@ -234,8 +251,7 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       {/* an empty "Nothing needs you here" box above a card that asks something read wrong (24 Nov) */}
       {part !== 'context' && items.some((i) => !i.done) ? <YourTurn items={items} /> : null}
       {part !== 'context' ? (
-        <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} bpo={bpo} drafted={(state.brief?.drafted ?? []) as BriefField[]}
-          onConfirm={onConfirm} />
+        <BriefCard state={state} brief={b!} busy={busy} onSave={onSave} bpo={bpo} />
       ) : null}
       {part === 'facts' ? (
         // Reference and optional things: one quiet line each (20 Nov, docs2/BUILDER_HAND_HOLDING_CLEANUP_2026-11-20.md)
@@ -312,16 +328,12 @@ function BriefCard({
   busy,
   onSave,
   bpo = false,
-  drafted = [],
-  onConfirm,
 }: {
   state: BuildState
   brief: Brief
   busy: string | null
   onSave: Props['onSave']
   bpo?: boolean
-  drafted?: BriefField[]
-  onConfirm?: Props['onConfirm']
 }) {
   const [editing, setEditing] = useState(false)
   const initial = useMemo(() => toDraft(brief, state.campaign.name), [brief, state.campaign.name])
@@ -497,22 +509,7 @@ function BriefCard({
             </div>
           ))}
         </dl>
-        {/* the facts check, once, where the facts are, naming them (test 24 Nov: "2 of these" said nothing) */}
-        {drafted.length && onConfirm && !locked ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand bg-brand-primary px-3 py-2">
-            <p className="paragraph-sm text-primary">
-              Mia filled in {listFields(drafted)} herself. {drafted.length === 1 ? 'Is it' : 'Are they'} right?
-            </p>
-            <span className="flex gap-2">
-              <PrimaryAction loading={busy === 'confirm'} onClick={() => onConfirm(drafted)}>
-                These are right
-              </PrimaryAction>
-              <Button size="sm" onClick={startEditing}>
-                Edit
-              </Button>
-            </span>
-          </div>
-        ) : null}
+        {/* "These are right" is in Your turn at the top (E13, 24 Nov) */}
         {notSet.length || skipped.length ? (
           <div className="mt-3 flex flex-col gap-1 border-t border-secondary pt-2 paragraph-xs text-tertiary">
             {notSet.length ? (

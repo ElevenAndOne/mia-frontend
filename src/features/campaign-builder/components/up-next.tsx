@@ -122,6 +122,10 @@ export function UpNext({ state, states, step, onGo }: {
   if (!state.campaign.building) return null
   const u = upNext(state, states)
   const elsewhere = u.step !== step
+  // The brief or the plan being made, on the step whose progress card already says so: nothing to add (test 24 Nov,
+  // E9: "Up next: Mia is making the plan (4 of 7…)" sat right above the card saying the same)
+  const running = state.brief_run?.status === 'running' || state.plan_run?.status === 'running'
+  if (running && !elsewhere) return null
   // Said once (screen walk 23 Nov: Up next, Your turn and a Next button all named the same task): when the PM's task is
   // on this step, Your turn below says it, so this line shows only to point elsewhere or to say what Mia is doing.
   const minding = /^(Mia is|Approved\.)|Nothing needs you/.test(u.text)
