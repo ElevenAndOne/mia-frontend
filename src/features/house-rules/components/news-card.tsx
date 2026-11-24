@@ -88,10 +88,10 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
   const isRule = card.status === 'made_rule' || !!card.rule_id
   const miaDid = card.mia_did ?? []
   const miaLabel =
-    miaDid.length === 0
+    miaDid.length === 0 || card.status === 'ignored'
       ? null
       : card.status === 'new'
-        ? 'Mia did her part · the rest is for the Mia team'
+        ? 'Mia did her part · the rest needs a person'
         : card.decided_by !== 'Mia'
           ? 'Mia did her part'
           : miaDid.length === 1 && miaDid[0] === 'info'
@@ -195,12 +195,11 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
       {/* What changed */}
       <div className="flex flex-col gap-1.5">
         <span className="flex flex-wrap items-center gap-x-2 paragraph-xs text-tertiary">
-          {miaLabel ? (
-            <span className="text-utility-brand-700">{miaLabel}</span>
-          ) : forTeamOnly ? (
-            <span className="text-utility-brand-700">For the Mia team</span>
-          ) : (
-            card.importance === 'high' && <span className="text-utility-warning-700">● Important</span>
+          {miaLabel && <span className="text-utility-brand-700">{miaLabel}</span>}
+          {forTeamOnly && !miaLabel && <span className="text-utility-brand-700">For the Mia team</span>}
+          {/* Beside Mia's label too: an important card she did part of still needs a person first. */}
+          {!forTeamOnly && card.importance === 'high' && (
+            <span className="text-utility-warning-700">● Important</span>
           )}
           <span>{trend ? 'Our clients' : (PLATFORM_LABEL[card.platform ?? 'other'] ?? card.platform)}</span>
           {when && <span>· {when}</span>}
@@ -343,9 +342,18 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
           {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clientsWord(clients.length)}` : ''}`}
         </button>
         {isRule && card.status === 'new' ? (
-          // Mia made the rule; the card waits for the Mia team, who press Done once their part is built.
+          // Mia made the rule; the rest of the card waits for a person (or the Mia team), who press Done or Not
+          // relevant. Either way the rule stays live: it is stopped on Platform facts.
           <>
             <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            <button
+              type="button"
+              className="paragraph-sm text-tertiary hover:text-secondary disabled:opacity-50"
+              disabled={busy}
+              onClick={() => onDecide('ignore')}
+            >
+              Not relevant
+            </button>
             <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
               Done
             </Button>
