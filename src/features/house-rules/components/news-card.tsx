@@ -346,8 +346,8 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
           {open ? '▾ Hide details' : `▸ Details${clients.length ? ` · ${clientsWord(clients.length)}` : ''}`}
         </button>
         {isRule && card.status === 'new' ? (
-          // Mia made the rule; the rest of the card waits for a person (or the Mia team), who press Done or Not
-          // relevant. Either way the rule stays live: it is stopped on Platform facts.
+          // Mia made the rule; the rest of the card waits for a person (or the Mia team), who press Done (the rule
+          // stays) or Not relevant (her rule stops too: a person has the final say).
           <>
             <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
             <button
@@ -365,6 +365,17 @@ export function NewsCard({ card, busy, notesBusy, onDecide, onClientNotes }: New
         ) : isRule ? (
           <>
             <span className="paragraph-sm text-utility-success-700">Mia follows this now</span>
+            {/* A card Mia closed with her own rule: a person has the final say, and Not relevant stops her rule. */}
+            {card.decided_by === 'Mia' && card.status !== 'ignored' && (
+              <button
+                type="button"
+                className="paragraph-sm text-tertiary hover:text-secondary disabled:opacity-50"
+                disabled={busy}
+                onClick={() => onDecide('ignore')}
+              >
+                Not relevant
+              </button>
+            )}
             {/* Mia's rule on a card a person then put away: it can still come back to Kept. */}
             {card.status === 'ignored' && (
               <Button size="sm" variant="secondary" disabled={busy} onClick={() => onDecide('keep')}>
