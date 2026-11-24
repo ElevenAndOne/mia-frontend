@@ -344,6 +344,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
       >
         <Concept plan={plan} />
         {plan.review ? <SelfCheck review={plan.review} /> : null}
+        <ClaimFixes plan={plan} />
         <Checks plan={plan} />
       </Fold>) : null}
       </>) : null}
@@ -1769,6 +1770,33 @@ function Checks({ plan }: { plan: Plan }) {
         {checks.map((c) => (
           <li key={c.check} className={c.ok ? 'text-secondary' : 'text-utility-warning-700'}>
             {c.ok ? '✓' : '⚠'} {c.check}: <span className="text-tertiary">{c.detail}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+// What Mia corrected in her own plan against the client's data before the PM saw it (claim_check, DFSA test 24 Nov),
+// or that she couldn't check: the PM sees she checks herself, and what she had wrong.
+function ClaimFixes({ plan }: { plan: Plan }) {
+  const fixes = plan.claim_fixes ?? []
+  if (plan.claim_check_error) {
+    return <p className="paragraph-sm text-utility-warning-700">⚠ {plan.claim_check_error}</p>
+  }
+  if (!fixes.length) return null
+  return (
+    <details className="rounded-xl border border-secondary bg-primary p-4">
+      <summary className="cursor-pointer subheading-sm text-primary">
+        Mia corrected {fixes.length} of her claims against your data
+      </summary>
+      <ul className="mt-2 flex flex-col gap-3 paragraph-sm">
+        {fixes.map((f, i) => (
+          <li key={i} className="flex flex-col gap-0.5">
+            <span className="label-sm text-secondary">{f.where}</span>
+            <span className="text-tertiary line-through [overflow-wrap:anywhere]">{f.was}</span>
+            <span className="text-primary [overflow-wrap:anywhere]">{f.now}</span>
+            {f.why ? <span className="paragraph-xs text-tertiary">Why: {f.why}</span> : null}
           </li>
         ))}
       </ul>

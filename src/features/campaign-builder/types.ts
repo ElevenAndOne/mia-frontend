@@ -221,6 +221,9 @@ export interface Plan {
     jobs_confirmed?: boolean // the jobs and money are as the PM confirmed them
   }
   checks?: PlanCheck[] // none on a campaign moved from the old builder
+  // her claims about the client she corrected against their data before the PM saw the plan (claim_check, 24 Nov)
+  claim_fixes?: { where: string; was: string; now: string; why: string }[]
+  claim_check_error?: string | null
   review?: PlanReview
 }
 
