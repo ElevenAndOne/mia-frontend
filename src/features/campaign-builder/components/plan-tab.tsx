@@ -164,9 +164,10 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <button
           type="button"
           onClick={() => setLookOver(true)}
-          className="self-start paragraph-sm text-secondary underline hover:text-primary"
+          className="self-start inline-flex items-center gap-1.5 paragraph-sm font-medium text-secondary hover:text-primary"
         >
-          Look over the whole campaign: the idea, phases and targets, jobs, how Mia got here
+          Look over the whole campaign <span className="font-normal text-tertiary">· the idea, phases, jobs, how Mia got here</span>
+          <span aria-hidden="true">›</span>
         </button>
       ) : null}
       {part !== 'check' || lookOver ? (<>
@@ -820,8 +821,10 @@ function planTurnItems({
             node: (
               <div className="flex flex-col gap-2 paragraph-sm text-primary">
                 <span className="min-w-0">
-                  <span className="font-medium">{x.job}</span> ({x.where}): {x.how}
-                  <span className="block paragraph-xs text-tertiary">Decided: {x.decision}</span>
+                  {/* the title names the job when there's one finding: not said twice (24 Nov) */}
+                  {breaks.length > 1 ? <span className="font-medium">{x.job}: </span> : null}
+                  {x.how}
+                  <span className="block paragraph-xs text-tertiary">You decided: {x.decision}</span>
                 </span>
                 <FindingFix
                   label={breakLabel(x)}

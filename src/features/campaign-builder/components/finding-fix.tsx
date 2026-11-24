@@ -90,7 +90,8 @@ export function FindingFix({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" loading={fixing} disabled={!!busy && !fixing} onClick={() => send(quick)}>
+        {/* the step's main action, so it looks like it (24 Nov) */}
+        <Button size="md" variant="primary" loading={fixing} disabled={!!busy && !fixing} onClick={() => send(quick)}>
           {quick}
         </Button>
         <label className="sr-only" htmlFor={`fix-${label}`}>
