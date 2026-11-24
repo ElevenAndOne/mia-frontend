@@ -16,13 +16,32 @@ interface ClaudeChange {
   summary: string
   said?: string
   expires_at: string
-  change?: { what_it_does?: string; note?: { kind?: string; text?: string } } & Record<string, unknown>
+  change?: {
+    what_it_does?: string
+    note?: { kind?: string; text?: string }
+    fact?: { text?: string; status?: string }
+    post?: PostPreview
+  } & Record<string, unknown>
   result?: { status: string; message?: string | null; yes_by?: string | null } | null
 }
 
-// Claude's words are shown as text only, with invisible and direction-changing characters removed
-const INVISIBLE = new RegExp('[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]', 'g')
-const clean = (s: unknown) => String(s ?? '').replace(INVISIBLE, '')
+// A post through Claude (step 6a): Mia worked out the Page, the time on the business's clock and the pictures (her own
+// library's URLs); the words are Claude's
+interface PostPreview {
+  platform?: string
+  page?: string
+  when_local?: string
+  zone?: string
+  text?: string
+  pictures?: string[]
+}
+
+// Claude's words are shown as text only, with every invisible format character removed (zero-width, direction-changing,
+// tag letters), the same rule as Mia's server and the claude.ai panel; the emoji joiner stays
+const INVISIBLE = new RegExp('\\p{Cf}', 'gu')
+const clean = (s: unknown) => String(s ?? '').replace(INVISIBLE, (c) => (c === '\u200D' ? c : ''))
+// the server sends only its own library's URLs for a post (Claude gives asset ids, never addresses); https only here
+const ownPicture = (u: unknown) => typeof u === 'string' && /^https:\/\//.test(u)
 
 export default function ClaudeChangePage() {
   const { proposalId = '' } = useParams<{ proposalId: string }>()
@@ -80,7 +99,9 @@ export default function ClaudeChangePage() {
       } else {
         setDone(
           body.status === 'done'
-            ? 'Done. Mia made the change.'
+            ? change?.change?.post
+              ? `Booked. It goes out ${change.change.post.when_local ?? 'at its time'} and shows in Mia’s Posts, where it can be moved or cancelled.`
+              : 'Done. Mia made the change.'
             : body.status === 'still_running'
               ? 'Mia is still making it. It shows in her change history when it finishes.'
               : `Mia couldn’t make it: ${body.message || 'nothing was changed.'}`
@@ -95,6 +116,8 @@ export default function ClaudeChangePage() {
   }
 
   const open = change?.state === 'open' && !done
+  const post = change?.change?.post
+  const pictures = (post?.pictures ?? []).filter(ownPicture) as string[]
   return (
     <div className="w-full h-full overflow-y-auto bg-secondary">
       <div className="mx-auto max-w-xl px-4 py-8 flex flex-col gap-4">
@@ -109,15 +132,43 @@ export default function ClaudeChangePage() {
                 <p className="paragraph-sm text-primary">{clean(change.change.what_it_does)}</p>
               ) : null}
               <p className="paragraph-sm text-primary font-semibold">
-                Pressing Yes makes this change in Mia straight away, in your name. Only press it if you asked for
-                this change and it says what you want.
+                {post
+                  ? 'Only press Yes if you asked for this post and the words, pictures and time are right.'
+                  : 'Pressing Yes makes this change in Mia straight away, in your name. Only press it if you asked for this change and it says what you want.'}
               </p>
             </div>
+            {post ? (
+              <div className="rounded-xl bg-primary border border-secondary p-4 flex flex-col gap-2">
+                <p className="paragraph-sm text-secondary">
+                  {post.platform === 'instagram' ? 'Instagram' : 'Facebook'} · {post.page ?? '—'} ·{' '}
+                  <span className="text-primary font-semibold">{post.when_local}</span>
+                  {post.zone ? ` (${post.zone})` : ''}
+                </p>
+                {pictures.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {pictures.map((u) => (
+                      <img
+                        key={u}
+                        src={u}
+                        alt="Picture in the post"
+                        referrerPolicy="no-referrer"
+                        className="h-32 w-32 rounded-lg object-contain bg-secondary border border-secondary"
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex flex-col gap-1">
-              <p className="paragraph-xs text-tertiary">The change, as Claude proposed it (Claude’s words, shown as written):</p>
+              <p className="paragraph-xs text-tertiary">
+                {post
+                  ? 'The post, as Claude wrote it (shown exactly as it would go out):'
+                  : 'The change, as Claude proposed it (Claude’s words, shown as written):'}
+              </p>
               <pre className="whitespace-pre-wrap break-words rounded-xl bg-primary border border-secondary p-4 paragraph-sm text-primary max-h-80 overflow-auto font-sans">
-                {clean(change.summary)}
+                {post ? clean(post.text) : clean(change.summary)}
                 {change.change?.note?.text ? `\n\nThe note: ${clean(change.change.note.text)}` : ''}
+                {change.change?.fact?.text ? `\n\nThe fact: ${clean(change.change.fact.text)}` : ''}
               </pre>
               {change.said ? (
                 <p className="paragraph-xs text-tertiary">What you asked for, as Claude put it: {clean(change.said)}</p>
