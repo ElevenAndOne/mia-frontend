@@ -9,7 +9,9 @@ type Step = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // Nor while Mia is still working on the step (rewriting words, checking, applying an answer): the step's button can't
 // be pressed then, so what she is doing leads (screen walk 23 Nov: "Approve anyway" sat first during a rewrite).
 const LEADS: Partial<Record<Step, string>> = { check: 'approve', jobs: 'confirm-jobs' }
-const NOT_TASKS = new Set(['notes', 'launch-gap'])
+// no-drive: a warning that never blocks approve (review 24 Nov: it held Approve back and became the first card); the
+// studio-time and credits cards are information too
+const NOT_TASKS = new Set(['notes', 'launch-gap', 'no-drive', 'studio-time', 'credits-over'])
 export function leadWith(part: Step | undefined, items: TurnItem[], running = false): TurnItem[] {
   const key = part ? LEADS[part] : undefined
   const lead = key ? items.find((i) => i.key === key && !i.done) : undefined

@@ -425,7 +425,12 @@ function planTurnItems({
 
   // A fix card made from a finding or a note that the check has since replaced: it stays here in Your turn, never only in
   // the chat (test 24 Nov, E19/E21: the clusters fix lost its finding when the check re-ran and ended up in the chat)
-  const shownHere = new Set([...(plan.review?.audit?.jobs ?? []).map(breakLabel), ...lookAt.map(noteLabel)])
+  // shown here = on this step: findings show on Final words and Check & approve, notes on Jobs and Check & approve
+  // (review 24 Nov: a card for a finding still open but not on this step showed nowhere)
+  const shownHere = new Set([
+    ...(part === 'words' || part === 'check' ? (plan.review?.audit?.jobs ?? []).map(breakLabel) : []),
+    ...(part === 'jobs' || part === 'check' ? lookAt.map(noteLabel) : []),
+  ])
   const strays = (state.pending ?? []).filter((p) => /^(Fix|Note) · /.test(p.about ?? '') && !shownHere.has(p.about ?? ''))
   if (strays.length && onApplyChange && onDropChange)
     items.push({
