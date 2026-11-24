@@ -63,7 +63,8 @@ export function useBuild(campaignId: string | undefined) {
         try {
           out = await fn()
         } catch (e) {
-          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft'].includes(label)) throw e
+          // a fix starts a model call on the server: never twice (review 24 Nov)
+          if (!network(e) || ['approve', 'words', 'plan', 'discard', 'redraft'].includes(label) || label.startsWith('fix:')) throw e
           await new Promise((r) => setTimeout(r, 1000))
           out = await fn()
         }
@@ -126,6 +127,7 @@ export function useBuild(campaignId: string | undefined) {
         return out
       }),
     dropChange: (id: string) => run(`drop:${id}`, () => api.dropChange(...ids(), id)),
+    fixFinding: (label: string, how?: string) => run(`fix:${label}`, () => api.fixFinding(...ids(), label, how)),
     editPlan: (ops: PlanOp[], label = 'edit') =>
       run(label, async () => {
         const next = await api.editPlan(...ids(), ops)

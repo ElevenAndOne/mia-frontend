@@ -6,12 +6,15 @@ type Step = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
 // behind "See" because "Check again" came first and never counted as done; review of that fix: Approve must not jump
 // ahead of a finding, a blocker, flagged words or a fill-in). Only information that never needs doing may sit behind
 // it: Mia's self-check notes (Looks right settles them) and "nothing goes live for the first days".
+// Nor while Mia is still working on the step (rewriting words, checking, applying an answer): the step's button can't
+// be pressed then, so what she is doing leads (screen walk 23 Nov: "Approve anyway" sat first during a rewrite).
 const LEADS: Partial<Record<Step, string>> = { check: 'approve', jobs: 'confirm-jobs' }
 const NOT_TASKS = new Set(['notes', 'launch-gap'])
-export function leadWith(part: Step | undefined, items: TurnItem[]): TurnItem[] {
+export function leadWith(part: Step | undefined, items: TurnItem[], running = false): TurnItem[] {
   const key = part ? LEADS[part] : undefined
   const lead = key ? items.find((i) => i.key === key && !i.done) : undefined
   if (!lead) return items
+  if (running) return [...items.filter((i) => i !== lead), lead]
   const realLeft = items.some((i) => i !== lead && !i.done && !NOT_TASKS.has(i.key))
   return realLeft ? items : [lead, ...items.filter((i) => i !== lead)]
 }

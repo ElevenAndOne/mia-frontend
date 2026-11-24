@@ -38,7 +38,9 @@ interface Props {
   // A card Mia proposed for a finding is applied on the finding itself (finding-fix.tsx)
   onApplyChange?: (id: string) => Promise<unknown>
   onDropChange?: (id: string) => Promise<unknown>
-  // an Apply or Not now that failed ("apply:<card id>"): said on the finding the card belongs to
+  // a final-check finding fixed whole by Mia's server: one card for the whole job (finding-fix.tsx)
+  onFixFinding?: (label: string, how?: string) => Promise<unknown>
+  // an Apply, Not now or fix that failed ("apply:<card id>", "fix:<label>"): said on the finding it belongs to
   cardError?: CardError
 }
 
@@ -53,7 +55,13 @@ const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
   // Mia's self-check is about the jobs, so it's read here, once, grouped by job (29 Oct: it sat on Mia's questions)
   jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
   words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
-  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'approve'].includes(k),
+  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'words-running', 'approve'].includes(k),
+}
+
+// Mia is still working on the step: the same things that hold Approve back (planTurnItems' canApprove), so the step's
+// button never leads while it can't be pressed (turn-order.ts)
+function stillWorking(state: BuildState, busy: string | null) {
+  return state.words_run?.status === 'running' || !!state.checking || busy === 'check' || (state.reading_answers ?? 0) > 0
 }
 const PART_FOLDS: Record<PlanPart, string[]> = {
   questions: ['idea'],
@@ -64,7 +72,7 @@ const PART_FOLDS: Record<PlanPart, string[]> = {
 }
 
 export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMakePlan, onKeepPlan, onApprove, onWriteWords, onSaveBrief,
-  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError = null }: Props) {
+  onReprice, part, onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, cardError = null }: Props) {
   const [picking, setPicking] = useState<string | null>(null) // the phase whose KPI picker is open
   // by job id, so removing a job never opens its neighbour (review 2 Nov: keyed by place)
   const [openJobs, setOpenJobs] = useState<Set<string>>(() => new Set())
@@ -123,8 +131,9 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
         <YourTurn
           key={part}
           items={leadWith(part, planTurnItems({ state, plan, busy, onEdit, onApprove, onWriteWords, onReprice, reveal,
-            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, cardError, part, onMakePlan, onKeepPlan })
-            .filter((i) => !part || PART_ITEMS[part](i.key)))}
+            onSkipQuestion, onFinalCheck, onFillTargets, onApplyChange, onDropChange, onFixFinding, cardError, part, onMakePlan,
+            onKeepPlan })
+            .filter((i) => !part || PART_ITEMS[part](i.key)), stillWorking(state, busy))}
         />
       )}
       {(part === 'questions' || part === 'check') && (plan.decisions.answered ?? []).some((q) => !q.answer) ? (
@@ -340,6 +349,7 @@ function planTurnItems({
   onFillTargets,
   onApplyChange,
   onDropChange,
+  onFixFinding,
   cardError,
   part,
   onMakePlan,
@@ -360,6 +370,7 @@ function planTurnItems({
   onFillTargets?: Props['onFillTargets']
   onApplyChange?: Props['onApplyChange']
   onDropChange?: Props['onDropChange']
+  onFixFinding?: Props['onFixFinding']
   cardError?: CardError
   part?: PlanPart
 }): TurnItem[] {
@@ -806,6 +817,7 @@ function planTurnItems({
                   busy={busy}
                   onApply={onApplyChange}
                   onDrop={onDropChange}
+                  onFix={onFixFinding ? (how) => onFixFinding(breakLabel(x), how) : undefined}
                   cardError={cardError}
                 />
               </div>
@@ -973,6 +985,18 @@ function planTurnItems({
         ) : null,
     })
   }
+  // A rewrite of words a job already had (a fix's card, Rewrite) while the PM is on Check & approve: said there, since
+  // the Final words items aren't (screen walk 23 Nov: nothing said Mia was busy, and Approve led)
+  const rewritingNow = wordsRun?.status === 'running' ? jobs.filter((a) => a.writing && a.final_words) : []
+  if (rewritingNow.length && !rewritingNow.some((a) => a.words_stale))
+    wordItems.push({
+      key: 'words-running',
+      title: rewritingNow.length === 1
+        ? `Mia is rewriting ${rewritingNow[0].name}'s words`
+        : `Mia is rewriting the words for ${rewritingNow.length} jobs`,
+      detail: 'About a minute a job. Then she checks again by herself.',
+      actions: <Checking label="Rewriting…" />,
+    })
   items.push(...wordItems)
   if (onFinalCheck && (part === 'check' || !part)) {
     const at = plan.review?.checked_at
@@ -1031,7 +1055,9 @@ function planTurnItems({
           [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · ')
         : applying
           ? 'Mia is applying your last answer (under a minute); approve once she’s done.'
-          : 'Mia is checking the campaign as it is now (a minute or two); approve once she’s done.',
+          : rewriting
+            ? 'Mia is rewriting words, then she checks again; approve once she’s done.'
+            : 'Mia is checking the campaign as it is now (a minute or two); approve once she’s done.',
     actions: (
       <span className="flex flex-wrap items-center gap-2">
         {unchecked ? checkAction(true) ?? null : null}

@@ -157,6 +157,17 @@ export async function applyChange(sessionId: string, tenantId: string, campaignI
   )
 }
 
+// "Fix it to follow what I decided" on a final-check finding: one card that fixes the whole job, shown on the finding.
+export async function fixFinding(sessionId: string, tenantId: string, campaignId: string, label: string, how?: string) {
+  return check<{ id: string; summary: string[] }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/findings/fix`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ label, how: how ?? null }),
+    }),
+  )
+}
+
 export async function dropChange(sessionId: string, tenantId: string, campaignId: string, id: string) {
   return check<{ ok: boolean }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/pending/${id}`, { method: 'DELETE', headers: json(sessionId) }),

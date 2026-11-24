@@ -487,7 +487,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
               ))}
             </nav>
             )}
-            {build.error && !/^(apply|drop):/.test(build.errorAt ?? '') ? (
+            {build.error && !/^(apply|drop|fix):/.test(build.errorAt ?? '') ? (
               // a card's Apply or Not now says why under that card, in the chat and on its finding (28 Oct)
               <Card warn className="flex items-center justify-between gap-3 paragraph-sm text-primary">
                 {build.error}
@@ -667,7 +667,8 @@ function StepView({
           onFillTargets={build.fillTargets}
           onApplyChange={build.applyChange}
           onDropChange={build.dropChange}
-          cardError={build.errorAt && /^(apply|drop):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
+          onFixFinding={build.fixFinding}
+          cardError={build.errorAt && /^(apply|drop|fix):/.test(build.errorAt) ? { at: build.errorAt, error: build.error } : null}
         />
       )}
       {step === 'check' ? (

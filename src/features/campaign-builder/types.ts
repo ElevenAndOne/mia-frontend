@@ -458,6 +458,7 @@ export interface StudioDrive {
   error: string | null
   checked_at: string | null
   unplaced: { id: string; name: string; ratio: string | null }[] // files in _Delivery with no Job ID Mia can match
+  unplaced_total?: number // how many there are: only the first 20 names are kept
   making: boolean
   test_folder?: string | null // "_Mia test" when this campaign's folders go there instead of its year
 }

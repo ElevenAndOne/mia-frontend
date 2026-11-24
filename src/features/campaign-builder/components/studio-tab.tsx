@@ -646,7 +646,8 @@ function DriveLine({ d, retrying, onRetry, checking, onCheck }: {
     )
   }
   if (!d.root_url) return <p className="paragraph-xs text-tertiary">Making the Drive folders…</p>
-  const n = d.unplaced.length
+  // the real count: the server keeps only 20 names (an older server sends no total)
+  const n = d.unplaced_total ?? d.unplaced.length
   return (
     <div className="flex flex-col gap-1">
       <p className="paragraph-xs text-tertiary">
@@ -685,6 +686,7 @@ function DriveLine({ d, retrying, onRetry, checking, onCheck }: {
                 {f.name}
               </li>
             ))}
+            {n > d.unplaced.length ? <li>and {n - d.unplaced.length} more</li> : null}
           </ul>
           <p className="mt-1">Put the job’s ID in the file’s name, or move it into its job’s folder, and Mia picks it up on the next check.</p>
         </div>
