@@ -426,7 +426,17 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
                 const open = openRows.has(j.asset_id)
                 return (
                   <Fragment key={j.asset_id}>
-                    <PlacedRow j={j} launch={lj} open={open} onToggle={() => toggleRow(j.asset_id)} />
+                    <PlacedRow
+                      j={j}
+                      launch={lj}
+                      open={open}
+                      onToggle={() => toggleRow(j.asset_id)}
+                      using={busy === `use-${j.asset_id}`}
+                      onUseFiles={() =>
+                        void act(`use-${j.asset_id}`, () => api.launchAction(...ids, 'use-delivery', { asset_id: j.asset_id }), () =>
+                          void reloadLaunch())
+                      }
+                    />
                     {open ? (
                       <tr className="bg-secondary">
                         <td colSpan={4} className="px-4 py-3">
@@ -641,6 +651,9 @@ function placedStatus(j: StudioJob, launch?: LaunchJob): { label: string; tone: 
     return { label: how === 'scheduled' ? 'Scheduled' : how === 'manual' ? 'Launched' : how === 'clickup' ? 'Live (ClickUp)' : 'Pushed, paused', tone: 'text-utility-success-700' }
   }
   if (launch?.state === 'cancelled') return { label: 'Cancelled', tone: 'text-tertiary' }
+  // complete on Drive, not signed off in Flex (C2): the row's one button takes the files in anyway
+  if (j.delivery?.waiting_flex && launch?.state !== 'taken_in')
+    return { label: 'Files in, waiting for Flex sign-off', tone: 'text-utility-warning-700', action: 'Use them anyway' }
   if (launch?.state === 'taken_in') return { label: 'Ready to launch', tone: 'text-utility-blue-700', action: 'Launch it' }
   if (launch?.state === 'ready') {
     return launch.no_file
@@ -655,8 +668,16 @@ function placedStatus(j: StudioJob, launch?: LaunchJob): { label: string; tone: 
 
 // A sent job: one line (name, due, where it is, one real button when there's something to do). Everything else opens
 // under it (E34: rows wrapped over four or five lines of codes, tags, sizes and tiny links).
-function PlacedRow({ j, launch, open, onToggle }: { j: StudioJob; launch?: LaunchJob; open: boolean; onToggle: () => void }) {
+function PlacedRow({ j, launch, open, onToggle, onUseFiles, using }: {
+  j: StudioJob
+  launch?: LaunchJob
+  open: boolean
+  onToggle: () => void
+  onUseFiles?: () => void // "Use them anyway": the press itself takes the files in (C2), not a fold to open
+  using?: boolean
+}) {
   const st = placedStatus(j, launch)
+  const useFiles = st.action === 'Use them anyway' && onUseFiles
   const warn = j.clickup?.state === 'archived' || j.clickup?.state === 'deleted' || !!j.clickup_not_linked
     || (j.change_requests ?? []).some((r) => r.status === 'declined' || r.status === 'refused')
   return (
@@ -673,7 +694,11 @@ function PlacedRow({ j, launch, open, onToggle }: { j: StudioJob; launch?: Launc
         <span className="block truncate" title={st.label}>{st.label}</span>
       </td>
       <td className="py-2 pr-4 text-right">
-        {st.action ? (
+        {useFiles ? (
+          <Button size="sm" variant="primary" loading={using} onClick={onUseFiles}>
+            {st.action}
+          </Button>
+        ) : st.action ? (
           <Button size="sm" variant={open ? 'secondary' : 'primary'} onClick={onToggle}>
             {open ? 'Close' : st.action}
           </Button>
@@ -777,6 +802,8 @@ function DeliveryLine({ dv }: { dv?: StudioDelivery | null }) {
   const sizes = Object.entries(dv.need)
   const ratio = (r: string) => r.replace('x', ':')
   if (dv.taken_at) return <p className="text-utility-success-700">Files in from Drive, taken in.</p>
+  if (dv.waiting_flex)
+    return <p className="text-utility-warning-700">Files are in, waiting for Flex to sign it off. Mia takes them in once it's done there.</p>
   if (dv.waiting_for) return <p className="text-utility-warning-700">Files: {dv.waiting_for}</p>
   if (sizes.length)
     return <p>Files: {sizes.map(([r, need]) => `${ratio(r)} ${Math.min(dv.have[r] ?? 0, need)} of ${need}`).join(', ')}</p>

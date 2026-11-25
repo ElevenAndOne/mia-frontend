@@ -496,6 +496,7 @@ export interface StudioDelivery {
   taken_at: string | null
   waiting_for: string | null // complete, but held: e.g. no landing page in the brief
   checked_at: string | null
+  waiting_flex?: boolean // complete, sent to Flex and not signed off there yet: "Use them anyway" (C2)
 }
 
 // The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov)

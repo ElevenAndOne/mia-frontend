@@ -446,7 +446,8 @@ export async function launchAction(
   sessionId: string,
   tenantId: string,
   campaignId: string,
-  what: 'take-in' | 'mark' | 'schedule' | 'not-on-page',
+  // use-delivery: "Use them anyway", a job's _Delivery files taken in before Flex signs it off (C2)
+  what: 'take-in' | 'mark' | 'schedule' | 'not-on-page' | 'use-delivery',
   body: Record<string, unknown>,
 ): Promise<unknown> {
   return check(
