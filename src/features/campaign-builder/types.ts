@@ -48,7 +48,7 @@ export interface Brief {
     // Mia read the last answer as about something else and asks again (build_service.check_brief_answers)
     unclear?: { answer: string; why: string; kind?: 'not_an_answer' | 'unclear' }
   }[]
-  answered_questions?: { question: string; answer: string | null; assumed?: string }[]
+  answered_questions?: { id?: string; question: string; answer: string | null; assumed?: string }[]
   dates_proposed_by_mia?: boolean
   set_by_pm?: string[]
 }
@@ -245,6 +245,8 @@ export interface PlanReview {
     error?: string
     jobs?: { job: string; job_id?: string; where: string; decision: string; how: string }[]
     chat?: { said: string; missing: string }[]
+    // must-haves or answers no job makes: real findings, so notes can be advice (E30)
+    uncovered?: { decision: string; how: string }[]
   }
   fact_check?: {
     numbers_checked: number
@@ -340,6 +342,8 @@ export interface BuildState {
   // the jobs over a sprint's free credits, and which case: Flex's estimate (no seats entered) or real capacity (24 Nov)
   credits_over?: string | null
   shared_drive_set?: boolean | null // the workspace has a Shared Drive (needed before the jobs go to Flex, E17)
+  // where the client's ads run, when nobody has said yet and this campaign has Meta or Google ads (E34)
+  ad_countries?: { saved: string[] | null; suggest: string[] } | null
   // jobs due sooner than the studio can make them from today, or that can't be ready in the campaign (read live)
   studio_time?: { too_soon: string[]; too_late: string[] } | null
   next_step: { label: string; tab: 'brief' | 'plan' | 'studio' | 'launch' | 'results' }

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/button'
 import { TopBar } from '../components/top-bar'
 import { useSession } from '../contexts/session-context'
-import { readDeck, showOnHome, startBuild, type ClientType, type DeckRead } from '../features/campaign-builder/api'
+import { readDeck, saveAdCountries, showOnHome, startBuild, type ClientType, type DeckRead } from '../features/campaign-builder/api'
 import { clearTrackerCache } from '../features/campaign/services/campaign-tracker-service'
 import { CampaignChat } from '../features/campaign-builder/campaign-chat'
 import { BriefTab } from '../features/campaign-builder/components/brief-tab'
@@ -465,7 +465,9 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                     Show on home
                   </Button>
                 ) : null}
-                {step && states ? null : ( // while a draft, the way on is in Up next, below (28 Oct)
+                {/* while a draft, the way on is in Up next, below (28 Oct); and no "Next" that only points at the tab
+                    already open (E31: "Next: Send the jobs to Flex" sat live above "Mia is making the folders") */}
+                {(step && states) || (s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab) === (tab === 'launch' ? 'studio' : tab) ? null : (
                   <Button variant="primary" onClick={() => go(s.next_step.tab === 'launch' ? 'studio' : s.next_step.tab)}>
                     Next: {s.next_step.label}
                   </Button>
@@ -611,6 +613,7 @@ function StepView({
   const nextOpen = next && states[step] === 'done'
   const left = steps.filter((st) => st.key !== 'check' && states[st.key] !== 'done')
   const [context, setContext] = useState(false)
+  const { sessionId, activeWorkspace } = useSession()
   return (
     <div className="flex flex-col gap-4">
       {/* No step header: the rail names the step (local test 27 Oct: "Step 2 of 6 / Mia's questions / …" repeated it,
@@ -636,6 +639,12 @@ function StepView({
           onSkipQuestion={build.skipQuestion}
           onKeepPlan={build.keepPlan}
           onConfirm={build.confirmBrief}
+          // only owners and admins can save it (the server's rule); others never see a question they can't answer
+          onSaveCountries={!['owner', 'admin'].includes(activeWorkspace?.role ?? '') ? undefined : async (countries) => {
+            if (!sessionId || !activeWorkspace) return
+            await saveAdCountries(sessionId, activeWorkspace.tenant_id, countries)
+            await build.reload()
+          }}
           onMakePlan={async () => {
             const out = await build.makePlan()
             if (out) onGo('questions')

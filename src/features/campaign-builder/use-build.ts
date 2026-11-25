@@ -108,7 +108,7 @@ export function useBuild(campaignId: string | undefined) {
     saveBrief: (
       fields: Partial<Record<BriefField | 'playbook', unknown>>,
       name?: string,
-      answered?: { id: string; answer: string | null }[],
+      answered?: { id: string; answer: string | null; revise?: boolean; was?: string | null }[],
     ) => run('brief', () => api.saveBrief(...ids(), fields, name, answered)),
     redraft: (answers: string[]) => run('redraft', () => api.redraftBrief(...ids(), answers)),
     makePlan: () => run('plan', () => api.makePlan(...ids())),

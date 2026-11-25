@@ -18,7 +18,7 @@ interface Props {
   onSave: (
     fields: Partial<Record<BriefField, unknown>>,
     name?: string,
-    answered?: { id: string; answer: string | null }[],
+    answered?: { id: string; answer: string | null; revise?: boolean; was?: string | null }[],
   ) => Promise<unknown>
   onRedraft: (answers: string[]) => Promise<unknown>
   onMakePlan: () => Promise<unknown>
@@ -28,6 +28,8 @@ interface Props {
   onSkipQuestion?: (id: string) => Promise<unknown>
   onKeepPlan?: () => Promise<unknown>
   onConfirm?: (fields: string[]) => Promise<unknown>
+  // where the client's ads run, said once for the workspace (E34: it was asked at push time)
+  onSaveCountries?: (countries: string[]) => Promise<unknown>
 }
 
 // BPO clients have no ad budget of ours and no KPIs: their Key facts don't show those fields (20 Nov)
@@ -88,7 +90,7 @@ const fromDraft = (k: BriefField, v: string): unknown => {
 
 export { WhereTheyStand }
 
-export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan, onConfirm }: Props) {
+export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan, part, onSkipQuestion, onKeepPlan, onConfirm, onSaveCountries }: Props) {
   const run = state.brief_run
   const b = state.brief?.brief
   const planRunning = state.plan_run?.status === 'running'
@@ -170,6 +172,19 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             </Button>
           </>
         ),
+      })
+    }
+    // Where this client's ads run: once for the workspace, here at the start, never at push time (retest 24 Nov, E34).
+    // Mia suggests the ad account's country; the PM confirms or types others.
+    if (state.ad_countries && onSaveCountries && !qs.length) {
+      items.push({
+        key: 'countries',
+        title: "Which countries do this client's ads run in?",
+        detail: state.ad_countries.suggest.length
+          ? `Mia suggests ${state.ad_countries.suggest.join(', ')}. Said once for this client; every ad push uses it.`
+          : 'Two-letter codes, like ZA or GB. Said once for this client; every ad push uses it.',
+        openByDefault: true,
+        more: <CountriesBox suggest={state.ad_countries.suggest} onSave={onSaveCountries} />,
       })
     }
     const noBudget = state.blockers.find((x) => x.key === 'budget_total')
@@ -369,6 +384,7 @@ function BriefCard({
   const shown = fields.filter((k) => ALWAYS.includes(k) || !empty(k)).filter((k) => k !== 'budget_monthly' || brief.budget_monthly != null)
   const notSet = fields.filter((k) => !shown.includes(k) && k !== 'budget_monthly')
   const skipped = (brief.answered_questions ?? []).filter((q) => !q.answer)
+  const answeredQs = (brief.answered_questions ?? []).filter((q) => q.answer && q.id)
 
   const save = async () => {
     const changed: Partial<Record<BriefField, unknown>> = {}
@@ -510,8 +526,28 @@ function BriefCard({
           ))}
         </dl>
         {/* "These are right" is in Your turn at the top (E13, 24 Nov) */}
-        {notSet.length || skipped.length ? (
+        {notSet.length || skipped.length || answeredQs.length ? (
           <div className="mt-3 flex flex-col gap-1 border-t border-secondary pt-2 paragraph-xs text-tertiary">
+            {answeredQs.length ? (
+              // your answers, each one changeable here (E11: a correction had to go through the chat)
+              <details>
+                <summary className="cursor-pointer select-none">
+                  Your {answeredQs.length === 1 ? 'answer' : `${answeredQs.length} answers`} to Mia's questions · <span className="underline">See or change</span>
+                </summary>
+                <ul className="mt-1 flex flex-col gap-2">
+                  {answeredQs.map((q) => (
+                    <AnswerRow
+                      key={q.id}
+                      question={q.question}
+                      answer={q.answer ?? ''}
+                      locked={locked}
+                      saving={busy === 'brief'}
+                      onChange={(answer) => onSave({}, undefined, [{ id: q.id!, answer, revise: true, was: q.answer }])}
+                    />
+                  ))}
+                </ul>
+              </details>
+            ) : null}
             {notSet.length ? (
               // says it's optional and what Add does (test 24 Nov: "Not set: … · add" was unclear)
               <p>
@@ -724,5 +760,93 @@ function WhereTheyStand({ groups, currency }: { groups: KpiGroup[]; currency?: s
         ))}
       </div>
     </>
+  )
+}
+
+// Where the client's ads run (E34): Mia's suggestion filled in, the PM confirms or types others. Two-letter codes.
+function CountriesBox({ suggest, onSave }: { suggest: string[]; onSave: (countries: string[]) => Promise<unknown> }) {
+  const [typed, setTyped] = useState(suggest.join(', '))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const list = typed.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean)
+  const save = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(list)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save that')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="flex flex-wrap items-center gap-2">
+        <label className="sr-only" htmlFor="ad-countries">Countries the ads run in</label>
+        <input
+          id="ad-countries"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder="ZA"
+          className="w-40 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm uppercase text-primary"
+        />
+        <PrimaryAction loading={saving} disabled={!list.length} onClick={() => void save()}>
+          {suggest.length && list.join(',') === suggest.join(',') ? 'Yes, these' : 'Save'}
+        </PrimaryAction>
+      </span>
+      {error ? <p className="paragraph-xs text-error">{error}</p> : null}
+    </div>
+  )
+}
+
+// One of the PM's answers on Key facts, with Change (E11). Saving sends the answer they saw with it, so a change made in
+// another tab is never overwritten; Mia reads the new answer again for the facts it settles.
+function AnswerRow({ question, answer, locked, saving, onChange }: {
+  question: string
+  answer: string
+  locked: boolean
+  saving: boolean
+  onChange: (answer: string) => Promise<unknown>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [typed, setTyped] = useState(answer)
+  return (
+    <li className="flex flex-col gap-1">
+      <span className="text-primary">{question}</span>
+      {editing ? (
+        <span className="flex flex-wrap items-center gap-2">
+          <input
+            aria-label={`Your answer: ${question}`}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            className="min-w-0 flex-1 rounded-md border border-secondary bg-primary px-2 py-1 paragraph-sm text-primary"
+          />
+          <Button
+            size="sm"
+            variant="primary"
+            loading={saving}
+            disabled={!typed.trim() || typed.trim() === answer}
+            onClick={async () => {
+              if ((await onChange(typed.trim())) !== undefined) setEditing(false)
+            }}
+          >
+            Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { setTyped(answer); setEditing(false) }}>
+            Cancel
+          </Button>
+        </span>
+      ) : (
+        <span className="flex flex-wrap items-center gap-2 text-secondary">
+          {answer}
+          {locked ? null : (
+            <button type="button" className="underline hover:text-primary" onClick={() => setEditing(true)}>
+              Change
+            </button>
+          )}
+        </span>
+      )}
+    </li>
   )
 }
