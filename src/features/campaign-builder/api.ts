@@ -426,6 +426,22 @@ export async function fetchLaunch(sessionId: string, tenantId: string, campaignI
   return check(await apiFetch(`${base(tenantId)}/${campaignId}/launch`, { headers: { 'X-Session-ID': sessionId } }))
 }
 
+// Mark every listed job worked outside Flex live at once, each on its own launch day (25 Nov)
+export async function markAllLive(
+  sessionId: string,
+  tenantId: string,
+  campaignId: string,
+  assetIds: string[],
+): Promise<{ ok: boolean; marked: number; skipped: number; message?: string }> {
+  return check(
+    await apiFetch(`${base(tenantId)}/${campaignId}/launch/mark-all`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ asset_ids: assetIds }),
+    }),
+  )
+}
+
 export async function launchAction(
   sessionId: string,
   tenantId: string,

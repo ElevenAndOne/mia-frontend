@@ -95,6 +95,17 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     }
   }
   const ids = [sessionId!, tenantId!, campaignId] as const
+  // 25 Nov: Cherry Time had 100+ jobs closed in ClickUp, each marked live by hand. Each goes out on its launch date
+  // when that has passed, else today (the row's own default); one already live is skipped.
+  const markAllLive = (assetIds: string[]) => {
+    if (!window.confirm(`Mark ${assetIds.length} jobs live? Each counts from its launch date (today if that date hasn't come yet), and Mia starts tracking their results. Only do this if they are all out.`)) return
+    void act('mark-all', () => api.markAllLive(sessionId!, tenantId!, campaignId, assetIds), (out) => {
+      const r = out as { marked: number; skipped?: number; message?: string }
+      const rest = r.skipped ? ` ${r.skipped} were already live or not waiting, so left as they were.` : ''
+      setDone((r.message ?? `Marked ${r.marked} job${r.marked === 1 ? '' : 's'} live.`) + rest)
+      void reloadLaunch()
+    })
+  }
 
   if (!approved) {
     return <Card className="paragraph-sm text-secondary">Approve the plan first: the studio gets the approved jobs.</Card>
@@ -283,11 +294,18 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     items.push({
       key: 'clickup-closed',
       title: `${closedInClickUp.length} job${closedInClickUp.length === 1 ? '' : 's'} closed in ClickUp, not live in Mia`,
-      detail: 'Once each is out (sent from Brevo, posted, running), mark it live with its link so Mia tracks its results.',
+      detail: 'Once each is out (sent from Brevo, posted, running), mark it live so Mia tracks its results. Mark all live does them at once, each on its launch date.',
       actions: (
-        <PrimaryAction onClick={() => openAndGo(closedInClickUp.map((j) => j.asset_id))}>
-          Mark {closedInClickUp.length === 1 ? 'it' : 'them'} live
-        </PrimaryAction>
+        <>
+          {closedInClickUp.length > 1 ? (
+            <PrimaryAction loading={busy === 'mark-all'} onClick={() => void markAllLive(closedInClickUp.map((j) => j.asset_id))}>
+              Mark all {closedInClickUp.length} live
+            </PrimaryAction>
+          ) : null}
+          <Button size="md" onClick={() => openAndGo(closedInClickUp.map((j) => j.asset_id))}>
+            {closedInClickUp.length === 1 ? 'Mark it live' : 'One by one'}
+          </Button>
+        </>
       ),
     })
   }
