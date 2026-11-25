@@ -85,6 +85,7 @@ export interface CreativeBrief {
 export interface PlanAsset {
   words_stale?: boolean // the job or a fact its words used changed after they were written
   words_stale_why?: string[] // e.g. "the offer changed", "the job changed"
+  words_must_fix?: string // a fix applied to the job that its words don't have yet (cleared when they're rewritten)
   writing?: boolean // the running words run is writing this job (read only while words_run is running)
   phase: string
   channel: string

@@ -7,6 +7,7 @@ import { KpiPicker } from './kpi-picker'
 import { JobWords } from './final-words'
 import { AskMia, FactStrip, Fold, OneAtATime, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
 import { leadWith } from './turn-order'
+import { PART_ITEMS, type PlanPart } from './plan-parts'
 import { FindingFix, type CardError } from './finding-fix'
 import { Button } from '../../../components/button'
 import type { BudgetChannel, BuildState, CreativeBrief, KpiGroup, KpiTarget, Plan, PlanAsset, PlanOp, PlanReview } from '../types'
@@ -47,21 +48,7 @@ interface Props {
   cardError?: CardError
 }
 
-export type PlanPart = 'questions' | 'targets' | 'jobs' | 'words' | 'check'
-// Which of "Your turn" each step holds, and which detail sections it opens.
-// What a later change needs from the PM shows on whatever step they're on, never as a trip back (Josh, 29 Oct): the
-// brief changing under the plan, a kept target to recheck, jobs to confirm again, words to rewrite.
-// Mia's open questions too: one raised while she read an answer comes up on the step the PM is on, as a card (DFSA test
-// 24 Nov: "Who supplies the bakes and the kitchen?" was only a line in the chat, and would have been missed)
-const EVERYWHERE = ['older-brief', 'recheck', 'reconfirm-jobs', 'stale-words', 'questions', 'waiting-fix']
-const PART_ITEMS: Record<PlanPart, (key: string) => boolean> = {
-  questions: (k) => [...EVERYWHERE, 'not-carried', 'questions', 'answered'].includes(k),
-  targets: (k) => [...EVERYWHERE, 'targets', 'fill-targets'].includes(k),
-  // Mia's self-check is about the jobs, so it's read here, once, grouped by job (29 Oct: it sat on Mia's questions)
-  jobs: (k) => [...EVERYWHERE, 'reprice', 'launch-gap', 'notes', 'studio-time', 'credits-over', 'confirm-jobs'].includes(k) || k.startsWith('blocker-'),
-  words: (k) => [...EVERYWHERE, 'words', 'fix-words', 'fill-in', 'breaks'].includes(k),
-  check: (k) => [...EVERYWHERE, 'final-check', 'breaks', 'notes', 'words-running', 'no-drive', 'approve'].includes(k),
-}
+export type { PlanPart }
 
 // Mia is still working on the step: the same things that hold Approve back (planTurnItems' canApprove), so the step's
 // button never leads while it can't be pressed (turn-order.ts)
@@ -1246,13 +1233,16 @@ function planTurnItems({
   const applying = (state.reading_answers ?? 0) > 0
   // while Mia rewrites words the server refuses approve; the button said yes, then the click got a 409 (sweep D6)
   const rewriting = state.words_run?.status === 'running'
-  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking && !applying && !rewriting
+  // a brief redraft lands new dates and budget when it ends: the server refuses approve until then (review 25 Nov, B4)
+  const redrafting = state.brief_run?.status === 'running'
+  const canApprove = !state.blockers.length && !state.plan_from_older_brief && !checking && !applying && !rewriting && !redrafting
   // Mia's check warns, never blocks (review 26 Oct): what's still open is named and approving past it is one explicit
   // confirmation, logged with who approved. A check from before the latest change is "not checked", never "nothing
   // found" (live 28 Oct, Cherry Time: the final words outdated the check, its findings stopped counting, and four jobs
   // with flagged words and an uncovered must-have went to the studio). Same list as build_service.still_open.
   // a close reading that failed is "couldn't run", never "nothing missing" (same as still_open)
   const unchecked = !plan.review?.checked_at || !!plan.review?.stale || !!plan.review?.audit?.error
+  const fixPending = jobs.filter((a) => a.words_must_fix && a.final_words)
   const open = unchecked ? [] : breaks
   const outdated = unchecked && !!plan.review
   // Mia's notes are advice and never make this "Approve anyway"; a must-have no job makes does (E30)
@@ -1261,6 +1251,8 @@ function planTurnItems({
     ...(open.length ? [`${open.length} finding${open.length === 1 ? '' : 's'}`] : []),
     ...(!unchecked && uncovered.length ? [`${uncovered.length} thing${uncovered.length === 1 ? '' : 's'} no job makes`] : []),
     ...(flagged.length ? [`flagged words on ${flagged.length} job${flagged.length === 1 ? '' : 's'}`] : []),
+    // its finding closed on Apply; the rewrite that carries the fix hasn't landed (review 25 Nov, B1; still_open)
+    ...(fixPending.length ? [`a fix not in ${fixPending.length === 1 ? `${fixPending[0].name}'s` : `${fixPending.length} jobs'`} words yet`] : []),
     // named before approve, and kept in the log after (Sean, live 24 Nov: "what happens to that alert?")
     ...(state.credits_over ? ['jobs over the studio credits'] : []),
   ]
@@ -1285,7 +1277,9 @@ function planTurnItems({
       : state.blockers.length || state.plan_from_older_brief
         ? 'Waiting on: ' +
           [...(state.plan_from_older_brief ? ['the brief change above'] : []), ...state.blockers.map((b) => b.what)].slice(0, 4).join(' · ')
-        : applying
+        : redrafting
+          ? 'Mia is redrafting the brief; approve once she’s done.'
+          : applying
           ? 'Mia is applying your last answer (under a minute); approve once she’s done.'
           : rewriting
             ? 'Mia is rewriting words, then she checks again; approve once she’s done.'

@@ -29,6 +29,10 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     queryKey: key,
     queryFn: () => api.fetchStudio(sessionId!, tenantId!, campaignId),
     enabled: !!sessionId && !!tenantId && approved,
+    // read again on coming back to the tab or the Studio step: the Shared Drive added in Settings (a new tab) clears
+    // its blocker and Send to Flex works without a reload (review 25 Nov, E5). The app-wide default is never.
+    refetchOnWindowFocus: 'always',
+    refetchOnMount: 'always',
     // the Drive folders are made in the background: look again every few seconds until they are (naming step 4)
     // (or while the server says it's waiting on them: the flag is per server process, the blocker isn't; review 25 Nov)
     refetchInterval: (query) =>
@@ -55,7 +59,7 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       (query.state.data?.jobs ?? []).some((j) => j.state === 'in_studio' || (j.state === 'ready' && j.no_file)) && s?.drive?.root_url
         ? 60 * 1000
         : 2 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: 'always', // true did nothing within the app-wide 5 minutes of "fresh"
   })
   useEffect(() => {
     if (!lq.dataUpdatedAt) return

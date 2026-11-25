@@ -29,6 +29,9 @@ export function useBuild(campaignId: string | undefined) {
     queryKey: key,
     queryFn: () => api.fetchBuild(sessionId!, tenantId!, campaignId!),
     enabled: !!sessionId && !!tenantId && !!campaignId,
+    // read again when the PM comes back to the tab, whatever the app-wide 5-minute "fresh" says: "Add it in Settings"
+    // opens a new tab and its item must clear on return, and a colleague's or Claude's change shows (review 25 Nov, E5)
+    refetchOnWindowFocus: 'always',
     refetchInterval: (q) => {
       const s = q.state.data as BuildState | undefined
       if (q.state.status === 'error') return 15_000 // a failed read is tried again, so the page recovers on its own

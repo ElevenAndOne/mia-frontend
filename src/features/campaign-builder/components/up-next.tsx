@@ -113,6 +113,10 @@ function upNext(s: BuildState, states: Record<StepKey, StepState>): { text: stri
       // Approve the plan." showed over "Mia is about to rewrite 2 jobs, then she checks")
       if ((s.check_pending ?? s.checking) && s.auto_words)
         return { text: 'Mia is rewriting the changed jobs, then she checks once more. Nothing needs you yet.', step: 'check' }
+      // a fix applied to a job's words whose rewrite didn't land (review 25 Nov, B1): the Approve box names it too
+      const fixPending = jobs.filter((a) => a.words_must_fix && a.final_words)
+      if (fixPending.length)
+        return say(`Rewrite ${fixPending.length === 1 ? `${fixPending[0].name}'s words` : `the words for ${plural(fixPending.length, 'job')}`}: the fix you applied isn't in them yet.`, 'check')
       if (notesOpen)
         return say(`Approve the plan. Mia left ${plural(notesOpen, 'note')} of advice: fix any you want first.`, 'check')
       return say('Everything is done. Approve the plan.', 'check')

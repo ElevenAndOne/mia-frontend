@@ -69,6 +69,9 @@ function NewBuild() {
   // the deck box, which takes far more (sweep 12 Nov: over the cap it failed with a bare "Request failed").
   const textTooLong = text.length > MAX_PM_TEXT_CHARS
   const tooLong = deckTooLong || textTooLong
+  // the short box, a file, or a brief pasted under "Or paste its text" each count (review 25 Nov, E11: pasted text alone
+  // left Start off with nothing saying why)
+  const hasBrief = !!(text.trim() || deckText.trim() || files.length)
 
   const addFiles = async (picked: File[]) => {
     if (!sessionId || !activeWorkspace) return
@@ -117,7 +120,7 @@ function NewBuild() {
           className="mx-auto flex max-w-2xl flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault()
-            if ((text.trim() || files.length) && !tooLong) start()
+            if (hasBrief && !reading && !tooLong) start()
           }}
         >
           <div>
@@ -240,7 +243,7 @@ function NewBuild() {
           )}
           {error ? <p className="paragraph-sm text-error">{error}</p> : null}
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" loading={busy} disabled={(!text.trim() && !files.length) || !!reading || tooLong}>
+            <Button type="submit" variant="primary" loading={busy} disabled={!hasBrief || !!reading || tooLong}>
               Start the brief
             </Button>
           </div>
