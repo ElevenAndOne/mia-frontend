@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { TopBar } from '../components/top-bar'
 import { useExperience } from '../features/workspace/hooks/use-experience'
 import { oldCampaignCrumbs } from '../features/campaigns/utils/old-campaign-crumbs'
@@ -8,7 +8,9 @@ import { BuilderChat } from '../features/campaigns/components/empty-state/builde
 // destination when the workspace has no campaigns yet.
 const NewCampaignPage = () => {
   const navigate = useNavigate()
-  const { isBasic } = useExperience()
+  const { isBasic, isAgency } = useExperience()
+  // an Agency workspace builds new campaigns in the campaign builder, never here (review 26 Nov, E12)
+  if (isAgency) return <Navigate to="/campaign-builder/new" replace />
 
   return (
     <>

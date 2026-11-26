@@ -29,7 +29,8 @@ async function check<T>(res: Response): Promise<T> {
   } catch {
     // keep the status line
   }
-  throw new Error(detail)
+  // the status rides on the error, so a page can tell "not yours / gone" (403, 404) from a hiccup worth retrying
+  throw Object.assign(new Error(detail), { status: res.status })
 }
 
 /** Make this the campaign the home tracker shows (the workspace's starred campaign). Admin-only on the server: a
@@ -83,11 +84,6 @@ export async function startBuild(
 // A BPO client's campaign (19 Nov 2026): their document is the brief, Mia asks only what's vital and missing from it,
 // and there are no KPIs or ad budget. Chosen on the new-campaign page, kept for the campaign's life.
 export type ClientType = 'campaign' | 'bpo'
-
-// Where the new-campaign page's switch starts: what this workspace chose last.
-export async function lastClientType(sessionId: string, tenantId: string): Promise<{ client_type: ClientType }> {
-  return check(await apiFetch(`${base(tenantId)}/client-type`, { headers: { 'X-Session-ID': sessionId } }))
-}
 
 export async function saveBrief(
   sessionId: string,
@@ -319,8 +315,19 @@ export async function saveAdCountries(sessionId: string, tenantId: string, count
 
 export async function sendToFlex(sessionId: string, tenantId: string, campaignId: string, actingUserEmail: string) {
   // brief_cut: what had to be cut from a job's brief to fit Flex's limits (23 Nov), by job name
-  return check<{ sent: number; jobs: number; brief_cut?: Record<string, string[]> }>(
+  return check<{ sent: number; jobs: number; brief_cut?: Record<string, string[]>; not_linked_to_clickup?: string[] }>(
     await apiFetch(`${base(tenantId)}/${campaignId}/studio/send`, {
+      method: 'POST',
+      headers: json(sessionId),
+      body: JSON.stringify({ acting_user_email: actingUserEmail }),
+    }),
+  )
+}
+
+// Take a sent job back: Flex cancels it while nobody has started it (review 26 Nov, E8: the route had no caller)
+export async function cancelInFlex(sessionId: string, tenantId: string, campaignId: string, assetId: string, actingUserEmail: string) {
+  return check<{ status?: string }>(
+    await apiFetch(`${base(tenantId)}/${campaignId}/studio/jobs/${encodeURIComponent(assetId)}/cancel`, {
       method: 'POST',
       headers: json(sessionId),
       body: JSON.stringify({ acting_user_email: actingUserEmail }),
@@ -381,6 +388,8 @@ export interface ClientRule {
   scope?: 'campaign' | 'workspace'
   /** Where it came from: 'claude' shows as From Claude. */
   from?: string | null
+  /** false: past the cap plans and words read (only the newest are read), so Mia doesn't follow it now. */
+  followed?: boolean
 }
 
 export async function fetchRules(sessionId: string, tenantId: string, campaignId?: string): Promise<{ rules: ClientRule[] }> {

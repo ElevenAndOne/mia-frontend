@@ -137,7 +137,8 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
       items.push({
         key: 'questions',
         // one at a time with where you are, like Mia's questions after the plan (local test 27 Oct)
-        title: `Mia's question ${(b?.answered_questions ?? []).length + 1} of ${(b?.answered_questions ?? []).length + qs.length}`,
+        // counted on all her open questions, not the three shown (review 26 Nov, E15: "1 of 3", then "2 of 4")
+        title: `Mia's question ${(b?.answered_questions ?? []).length + 1} of ${(b?.answered_questions ?? []).length + (b?.open_questions ?? []).length}`,
         why: 'Skip it and Mia decides, and says what she assumed.',
         done: !qs.length,
         openByDefault: true,
@@ -157,7 +158,9 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
     // "These are right" (review 21 Oct) is a Your turn card, naming the facts it confirms: every action the PM takes sits
     // in one place at the top, never at the bottom of a section (Josh, 24 Nov, E13)
     const drafted = (state.brief?.drafted ?? []) as BriefField[]
-    if (drafted.length && onConfirm && !qs.length) {
+    // before the first plan, Make the plan confirms them in the same press (review 26 Nov, §5: one press fewer)
+    const confirmWithPlan = drafted.length > 0 && !!onConfirm && !state.plan
+    if (drafted.length && onConfirm && !qs.length && !confirmWithPlan) {
       items.push({
         key: 'confirm-facts',
         title: `Mia filled in ${listFields(drafted)} herself. ${drafted.length === 1 ? 'Is it' : 'Are they'} right?`,
@@ -215,8 +218,8 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
           ? 'After the questions above.'
           : state.plan_from_older_brief
             ? 'The brief changed since the plan.'
-            : drafted.length && onConfirm && !state.plan
-              ? 'Check the facts Mia read in the brief below first.'
+            : confirmWithPlan
+              ? `Making it confirms what Mia filled in herself (${listFields(drafted)}): Edit the brief below first if it's wrong.`
               : undefined,
       why: planRunning || waiting
         ? undefined
@@ -227,7 +230,15 @@ export function BriefTab({ state, kpiGroups, busy, onSave, onRedraft, onMakePlan
             : 'Mia makes the plan: the idea, phases, targets, budget split and the jobs for the studio.',
       actions: planRunning ? null : (
         <>
-          <PrimaryAction loading={busy === 'plan'} disabled={run?.status === 'running' || waiting} onClick={() => onMakePlan()}>
+          <PrimaryAction
+            loading={busy === 'plan' || busy === 'confirm'}
+            disabled={run?.status === 'running' || waiting}
+            onClick={async () => {
+              // a failed confirm stops here and its error stays on screen (it returns nothing on a failure)
+              if (confirmWithPlan && (await onConfirm!(drafted)) === undefined) return
+              await onMakePlan()
+            }}
+          >
             {state.plan ? 'Update the plan' : 'Make the plan'}
           </PrimaryAction>
           {state.plan_from_older_brief && onKeepPlan ? (
@@ -426,7 +437,7 @@ function BriefCard({
         <h2 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-primary">The brief</h2>
         <div className="flex items-center gap-2">
           <span className="paragraph-xs text-tertiary">
-            Version {state.brief?.version} · {state.brief?.made_by === 'pm' ? 'edited by you' : 'drafted by Mia'}
+            {state.brief?.made_by === 'pm' ? 'Last edited by you' : 'Drafted by Mia'}
           </span>
           {locked ? null : editing ? (
             <>

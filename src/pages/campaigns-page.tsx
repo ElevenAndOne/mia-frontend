@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { Button } from '../components/button'
 import { Spinner } from '../components/spinner'
 import { useCampaignList, resolveDefaultCampaign } from '../features/campaigns/hooks/use-campaign-list'
+import { useExperience } from '../features/workspace/hooks/use-experience'
 
 // Entry resolver for /campaigns. Sends the user to their default campaign's
 // Overview, or to the build-new surface when the workspace has no campaigns yet.
@@ -9,6 +10,7 @@ import { useCampaignList, resolveDefaultCampaign } from '../features/campaigns/h
 // resolves (and redirects) instantly with no spinner.
 const CampaignsPage = () => {
   const { list, loading, error, reload } = useCampaignList()
+  const { isAgency } = useExperience()
 
   if (loading) {
     return (
@@ -30,7 +32,9 @@ const CampaignsPage = () => {
   }
 
   const def = resolveDefaultCampaign(list)
-  return <Navigate to={def ? `/campaigns/${def.campaign_id}/overview` : '/campaigns/new'} replace />
+  // an agency workspace with no old campaigns starts a new one in the campaign builder, never the old builder
+  // (review 26 Nov, E12; the builder is Agency only)
+  return <Navigate to={def ? `/campaigns/${def.campaign_id}/overview` : isAgency ? '/campaign-builder/new' : '/campaigns/new'} replace />
 }
 
 export default CampaignsPage

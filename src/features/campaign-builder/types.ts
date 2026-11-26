@@ -450,6 +450,8 @@ export interface StudioJob {
     review_rounds?: { internal: number; client: number; pod_lead: number }
     sprint_name?: string
     sent_at?: string
+    // signed off in Flex with words that differ from Mia's: Flex's won, and these changed (R4-3)
+    words_back?: { at: string; changed: string[] }
   }
   // changes asked of the studio for a job in Flex (its lead accepts or declines; 17 Nov), the last five
   change_requests?: StudioChangeRequest[]
@@ -497,6 +499,8 @@ export interface StudioDelivery {
   waiting_for: string | null // complete, but held: e.g. no landing page in the brief
   checked_at: string | null
   waiting_flex?: boolean // complete, sent to Flex and not signed off there yet: "Use them anyway" (C2)
+  send_first?: boolean // complete, ticked for Flex and not sent yet: "send it to Flex first" (R4-4)
+  unsigned?: boolean // complete, and nothing in Flex will sign it off: "Use them anyway", never by itself (R4-2)
 }
 
 // The campaign's Drive folders on the client's Shared Drive (naming step 4, 20 Nov)

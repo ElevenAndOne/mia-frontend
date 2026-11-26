@@ -10,6 +10,7 @@ import { CampaignPickerModal } from '../components/builder/campaign-picker-modal
 import { useCampaignWorkspace } from '../contexts/campaign-context'
 import { useCampaignMutations } from '../hooks/use-campaign-mutations'
 import { useWorkspaceLists } from '../hooks/use-workspace-lists'
+import { useExperience } from '../../workspace/hooks/use-experience'
 import { defaultPhaseIndex } from '../utils/campaign-dates'
 import type { LinkedCampaign } from '../types'
 
@@ -20,6 +21,7 @@ export const BuilderView = () => {
   const { patchCampaign, saveObjectives, savePickerLinks } = useCampaignMutations()
   const lists = useWorkspaceLists()
   const navigate = useNavigate()
+  const { isAgency } = useExperience()
   const { showToast } = useToast()
   const [settingLive, setSettingLive] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
@@ -77,7 +79,8 @@ export const BuilderView = () => {
         </div>
       )}
 
-      <BuilderHeader onBuildNew={() => navigate('/campaigns/new')} />
+      {/* Build new goes to the campaign builder in an Agency workspace, never the old builder (review 26 Nov, E12) */}
+      <BuilderHeader onBuildNew={() => navigate(isAgency ? '/campaign-builder/new' : '/campaigns/new')} />
 
       <ObjectivesEditor objectives={campaign.objectives} onSave={saveObjectives} />
 

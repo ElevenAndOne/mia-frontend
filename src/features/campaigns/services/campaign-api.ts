@@ -492,7 +492,8 @@ export async function pushChannelActionToMeta(
   t: string,
   campaignId: string,
   actionId: string,
-  overrides: { default_cta?: string; lifetime_budget?: number } = {},
+  // checked_ads_manager: the PM looked in Ads Manager after a push that timed out (review 26 Nov, C7)
+  overrides: { default_cta?: string; lifetime_budget?: number; checked_ads_manager?: boolean } = {},
 ): Promise<MetaPushResult> {
   const res = await apiFetch(
     `${base(t)}/${campaignId}/channel_actions/${actionId}/push-to-meta`,

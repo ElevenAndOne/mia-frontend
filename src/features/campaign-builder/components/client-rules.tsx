@@ -46,6 +46,7 @@ export function ClientRules({ client, campaignId, readOnly }: { client: string; 
         {r.text}{' '}
         {r.origin === 'learned' ? <Chip tone="mia">learned from corrections</Chip> : null}
         {r.from === 'claude' ? <Chip>From Claude</Chip> : null}
+        {r.followed === false ? <Chip>Not in use: Mia reads only the newest rules</Chip> : null}
       </span>
       {r.origin === 'person' && !readOnly ? (
         <button

@@ -22,9 +22,16 @@ import { NeedsYou, channelLabel, day, phaseTag } from './parts'
 
 // One job's launch work (artwork, landing page, push / schedule / mark). `bare`: just the body, for the drop-down
 // under the job's row on the Studio page (Studio and Launch are one page since 19 Oct).
+// One push check per channel, shared by every job card on it: the check is per channel, and "Launch them" on N jobs
+// fired N of the same check (review 26 Nov, E10). Kept 30 s; Check again, a take-in or a push reads afresh.
+type Preview = Awaited<ReturnType<typeof fetchMetaPushPreview>> | Awaited<ReturnType<typeof fetchGooglePushPreview>>
+const PREVIEWS = new Map<string, { at: number; p: Promise<Preview> }>()
+const PREVIEW_FOR_MS = 30_000
+
 export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob; campaignId: string; onDone: () => Promise<void>; bare?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id ?? ''
+  const isAdmin = ['owner', 'admin'].includes(activeWorkspace?.role ?? '') // the push route needs admin (C8)
   const [open, setOpen] = useState(j.state === 'ready' || j.state === 'taken_in')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -48,6 +55,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
     setError(null)
     try {
       const out = await fn()
+      PREVIEWS.delete(`${campaignId}:${j.action_id}`) // a take-in or push changes what the check says
       after?.(out)
       await onDone()
     } catch (e) {
@@ -63,13 +71,22 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
   const [checkError, setCheckError] = useState<string | null>(null)
   const [cta, setCta] = useState<string | null>(null) // the button the push gives the ad, read from the check
   const [autoChecked, setAutoChecked] = useState(false)
-  const check = async () => {
+  const check = async (fresh = false) => {
     setBusy('check')
     setCheckError(null)
+    const k = `${campaignId}:${j.action_id}`
+    const hit = PREVIEWS.get(k)
     try {
-      const p = j.route === 'meta'
-        ? await fetchMetaPushPreview(sessionId!, tenantId, campaignId, j.action_id)
-        : await fetchGooglePushPreview(sessionId!, tenantId, campaignId, j.action_id)
+      let req: Promise<Preview>
+      if (!fresh && hit && Date.now() - hit.at < PREVIEW_FOR_MS) req = hit.p
+      else {
+        req = j.route === 'meta'
+          ? fetchMetaPushPreview(sessionId!, tenantId, campaignId, j.action_id)
+          : fetchGooglePushPreview(sessionId!, tenantId, campaignId, j.action_id)
+        PREVIEWS.set(k, { at: Date.now(), p: req })
+        req.catch(() => PREVIEWS.delete(k)) // a failed read is never shared
+      }
+      const p = await req
       setChecks(p.errors)
       setAdvice(p.warnings ?? [])
       setPushCcy(p.currency ?? null)
@@ -96,8 +113,19 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
       setNote(null)
       const typed = currencyClash && Number(typedBudget) > 0 ? Number(typedBudget) : undefined
       if (j.route === 'meta') {
-        const r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id,
-          typed ? { lifetime_budget: typed } : {})
+        const opts = typed ? { lifetime_budget: typed } : {}
+        let r
+        try {
+          r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id, opts)
+        } catch (e) {
+          // the last push timed out, so Meta may have made it already (C7): the PM looks in Ads Manager, then says so
+          const msg = e instanceof Error ? e.message : ''
+          if (!/say you've checked/.test(msg)) throw e
+          if (!window.confirm(`${msg}
+
+Have you looked in Ads Manager and deleted any copy? OK pushes again.`)) return
+          r = await pushChannelActionToMeta(sessionId!, tenantId, campaignId, j.action_id, { ...opts, checked_ads_manager: true })
+        }
         if (!r?.success) {
           const why = r?.stage === 'campaign' ? r.campaign : r?.stage === 'adset' ? r.adset : undefined
           // a step that never reported back isn't a refusal: its own message says to check Ads Manager (review 16 Nov)
@@ -298,7 +326,7 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
               ) : checkError ? (
                 <p className="flex flex-wrap items-center gap-2 paragraph-sm text-utility-warning-700">
                   Mia couldn't check it: {checkError}
-                  <Button size="sm" onClick={() => void check()}>Check again</Button>
+                  <Button size="sm" onClick={() => void check(true)}>Check again</Button>
                 </p>
               ) : blocking.length ? (
                 <p className="paragraph-sm text-primary">Before it can go up:</p>
@@ -344,8 +372,14 @@ export function JobCard({ j, campaignId, onDone, bare = false }: { j: LaunchJob;
                   </ul>
                 ) : null
               ) : null}
+              {!isAdmin ? (
+                // the push and the countries need an admin or owner: said here, not at the last press (review 26 Nov, C8)
+                <p className="paragraph-xs text-utility-warning-700">
+                  Only a workspace admin or owner can push ads. Ask one to press Push, or set it up yourself in Ads Manager.
+                </p>
+              ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="md" variant="primary" loading={busy === 'push'} disabled={!checks || !!blocking.length || busy === 'check'} onClick={push}>
+                <Button size="md" variant="primary" loading={busy === 'push'} disabled={!isAdmin || !checks || !!blocking.length || busy === 'check'} onClick={push}>
                   Push to {j.route === 'meta' ? 'Meta' : 'Google'}, paused
                 </Button>
                 {/* The PM built the ad in Ads Manager themselves: it still counts as launched (live test 18 Oct). */}

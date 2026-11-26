@@ -20,6 +20,23 @@ export const day = (d: string | null | undefined) => {
   return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// A piece of the final words, as the PM reads it: "ad.primary_text" → "Ad text", "slides[2]" → "Slide 3"
+// (review 26 Nov, E14: the keys reached the screen)
+const WORDS_WHERE: Record<string, string> = {
+  'ad.primary_text': 'Ad text', 'ad.headline': 'Headline', 'ad.description': 'Description', 'ad.cta': 'Button',
+  'email.subject': 'Email subject', 'email.preheader': 'Email preview line', 'email.body': 'Email body',
+}
+export const wordsWhere = (where: string) => {
+  if (WORDS_WHERE[where]) return WORDS_WHERE[where]
+  const m = where.match(/^(slides|captions|cards|rsa\.headlines|rsa\.descriptions)\[(\d+)\](?:\.(\w+))?$/)
+  if (m) {
+    const name = { slides: 'Slide', captions: 'Caption', cards: 'Card', 'rsa.headlines': 'Search headline', 'rsa.descriptions': 'Search description' }[m[1]]
+    return `${name} ${Number(m[2]) + 1}`
+  }
+  const plain = where.replace(/[._]/g, ' ').replace(/\[(\d+)\]/g, (_x, n) => ` ${Number(n) + 1}`).trim()
+  return plain.charAt(0).toUpperCase() + plain.slice(1)
+}
+
 export const num = (v: number | null | undefined) =>
   v == null ? '—' : Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 })
 
@@ -53,23 +70,6 @@ export function NeedsYou({ children }: { children: ReactNode }) {
       <AlertTriangle size={12} />
       {children}
     </span>
-  )
-}
-
-export function NeedsYouBanner({ title, items }: { title: string; items: string[] }) {
-  if (!items.length) return null
-  return (
-    <div role="status" className="rounded-lg border-2 border-utility-warning-300 bg-utility-warning-100 px-4 py-3 text-utility-warning-700">
-      <p className="subheading-sm flex items-center gap-2">
-        <AlertTriangle size={16} />
-        {title}
-      </p>
-      <ul className="mt-1 list-disc pl-6 paragraph-sm">
-        {items.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
-    </div>
   )
 }
 
@@ -128,11 +128,12 @@ export function Card({ children, className = '', warn = false, id }: { children:
 // about half of a plan). The bar fills smoothly inside a step towards the next step's start and never passes it, so it
 // moves all the time without running ahead of the real step (Josh, 24 Nov: "a smooth real-time bar").
 const STEP_ORDER: Record<string, string[]> = {
-  plan: ['reading', 'options', 'choosing', 'jobs', 'questions', 'estimates', 'facts', 'checks'],
+  // questions, estimates and the facts check run together now, under "questions" (review 26 Nov, §7)
+  plan: ['reading', 'options', 'choosing', 'jobs', 'questions', 'checks'],
   brief: ['reading', 'brief'],
 }
-const STEP_SHARE: Record<string, number> = { reading: 4, brief: 6, options: 18, choosing: 10, jobs: 42, questions: 4, estimates: 8, facts: 6, checks: 2 }
-const STEP_SECONDS: Record<string, number> = { reading: 30, brief: 40, options: 150, choosing: 90, jobs: 360, questions: 30, estimates: 60, facts: 35, checks: 10 }
+const STEP_SHARE: Record<string, number> = { reading: 4, brief: 6, options: 18, choosing: 10, jobs: 42, questions: 18, estimates: 8, facts: 6, checks: 2 }
+const STEP_SECONDS: Record<string, number> = { reading: 30, brief: 40, options: 150, choosing: 90, jobs: 360, questions: 60, estimates: 60, facts: 35, checks: 10 }
 
 function smoothShare(kind: string, stage: string | null, secsInStage: number): number | null {
   const order = STEP_ORDER[kind]

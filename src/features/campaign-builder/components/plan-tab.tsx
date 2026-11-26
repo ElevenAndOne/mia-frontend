@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '../../../contexts/session-context'
 import { fetchPlaybooks } from '../api'
-import { KpiPicker } from './kpi-picker'
+import { KpiPicker, kpiValue } from './kpi-picker'
 import { JobWords } from './final-words'
 import { AskMia, FactStrip, Fold, OneAtATime, PrimaryAction, TargetToSet, YourTurn, type TurnItem } from './your-turn'
 import { leadWith } from './turn-order'
@@ -230,7 +230,7 @@ export function PlanTab({ state, kpiGroups, kpiError = null, busy, onEdit, onMak
                 {targets
                   .filter((t) => t.phase === p.phase)
                   .map((t) => (
-                    <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} />
+                    <Target key={t.key} t={t} disabled={locked} onEdit={onEdit} needsSource={needsSource.has(t.kpi_key)} currency={currency} />
                   ))}
                 {locked ? null : picking === p.phase ? (
                   <KpiPicker
@@ -751,7 +751,7 @@ function planTurnItems({
             <li key={t.key} className="flex flex-col gap-1 paragraph-sm text-primary">
               <span className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0">
-                  <span className="font-medium">{t.kpi_name}</span> <span className="text-tertiary">· {t.phase} · {num(t.value)}</span>
+                  <span className="font-medium">{t.kpi_name}</span> <span className="text-tertiary">· {t.phase} · {kpiValue(t.value, t.unit, state.campaign.currency)}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <Button
@@ -759,7 +759,7 @@ function planTurnItems({
                     disabled={busy === 'edit'}
                     onClick={() => onEdit([{ op: 'set_target', key: t.key, value: t.value, ...(t.estimate_note ? { estimate_note: t.estimate_note } : {}) }])}
                   >
-                    Keep {num(t.value)}
+                    Keep {kpiValue(t.value, t.unit, state.campaign.currency)}
                   </Button>
                   {t.recheck_value != null ? (
                     <Button
@@ -770,7 +770,7 @@ function planTurnItems({
                         onEdit([{ op: 'set_target', key: t.key, value: t.recheck_value ?? null, estimate_note: t.recheck ?? "Mia's estimate" }])
                       }
                     >
-                      Use {num(t.recheck_value)}
+                      Use {kpiValue(t.recheck_value, t.unit, state.campaign.currency)}
                     </Button>
                   ) : null}
                 </span>
@@ -1135,7 +1135,7 @@ function planTurnItems({
     }
     items.push({
       key: 'confirm-jobs',
-      title: 'Check the jobs and the money',
+      title: state.campaign.client_type === 'bpo' ? 'Check the jobs' : 'Check the jobs and the money', // a BPO plan has no money of ours (E14)
       done: !!plan.decisions.jobs_confirmed,
       // the same total as the jobs list: setup work isn't counted yet (local test 5, 2 Nov: 67 here, 58 in the list)
       detail: `${jobs.length} jobs, ${num(plan.credits?.total_planned ?? jobs.reduce((n, a) => n + (a.credits ?? 0), 0))} credits${
@@ -1266,7 +1266,9 @@ function planTurnItems({
       ? (pastThese.length
           ? `Still open: ${pastThese.join(', ')}. Fix ${pastThese.length === 1 ? 'it' : 'them'}, or approve past ${pastThese.length === 1 ? 'it' : 'them'}: it's noted in the decision log.`
           : 'Saves the plan to the campaign. Next you send the jobs to Flex.') +
-        (unchecked && plan.review?.audit?.error && !plan.review?.stale
+        (unchecked && (plan.review as { error?: string } | undefined)?.error
+          ? " Mia's check couldn't run: Check again (a minute or two)." // a failed check isn't an old one (E14)
+          : unchecked && plan.review?.audit?.error && !plan.review?.stale
           ? " Part of Mia's check couldn't run: Check again (a minute or two)."
           : unchecked && outdated
           ? " Mia's check is from before your latest changes: Check again reads the campaign as it is now (a minute or two)."
@@ -1678,11 +1680,13 @@ function Target({
   disabled,
   onEdit,
   needsSource = false,
+  currency,
 }: {
   t: KpiTarget
   disabled: boolean
   onEdit: Props['onEdit']
   needsSource?: boolean
+  currency?: string | null // the target shown with its R or % (review 26 Nov, E14)
 }) {
   const missing = t.value == null && !t.no_target
   const basis =
@@ -1722,7 +1726,7 @@ function Target({
           )}
         </p>
         {disabled ? (
-          <span className="paragraph-sm text-primary">{t.value == null ? '—' : num(t.value)}</span>
+          <span className="paragraph-sm text-primary">{kpiValue(t.value, t.unit, currency)}</span>
         ) : (
           <Field
             aria-label={`${t.kpi_name} target`}

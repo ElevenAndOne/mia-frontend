@@ -26,6 +26,10 @@ const CHARS_PER_TICK = 5
 const QUICK_ASKS = ['Why this?', 'How would you fix it?']
 const CONNECTION_ERROR = 'Connection error. Please try again.'
 const FAILED = 'Something went wrong. Try again.'
+// said when the line dropped: she may have got the message and made a card, so check before sending it again
+// (review 26 Nov, E13: "Send it again" made a second card)
+const LOST = "The connection dropped, so Mia's answer didn't arrive. She may have got your message: check the page for a new card before you send it again."
+const CUT = "\n\n(Mia's answer was cut off here. Ask her to go on, or check the page for what she did.)"
 
 type Pending = { id: string; summary: string[]; at?: string; about?: string }
 
@@ -95,11 +99,12 @@ export function CampaignChat({
       .then((m) =>
         setMessages(
           m
-            .filter((x) => !(x.role === 'assistant' && [CONNECTION_ERROR, FAILED].includes(x.content.trim())))
+            .filter((x) => !(x.role === 'assistant' && [CONNECTION_ERROR, FAILED, LOST].includes(x.content.trim())))
             .map((x) => ({ role: x.role, content: x.content })),
         ),
       )
-      .catch(() => setMessages([])) // a new campaign has no conversation yet
+      // a new campaign's conversation answers with no messages; a failure is said, never shown as an empty chat (E13)
+      .catch(() => setMessages([{ role: 'assistant', content: "Mia couldn't load the earlier chat. Reload the page to see it." }]))
   }, [sessionId, conversationId])
 
   // Scroll the chat box itself: scrollIntoView also scrolled the whole page (live test 20 Oct).
@@ -138,6 +143,7 @@ export function CampaignChat({
       let shown = 0
       let done = false
       let afterTool = false // Mia's reply resumes after a tool call: start a new paragraph
+      let ended = false // the server's last chunk says it's done: without it the reply was cut off (E13)
       let finish: () => void = () => undefined
       const revealed = new Promise<void>((r) => (finish = r))
       const tick = setInterval(() => {
@@ -166,6 +172,7 @@ export function CampaignChat({
             ...(attached.length ? { documents: attached.map((f) => ({ filename: f.filename, content: f.text })) } : {}),
           },
           (chunk) => {
+            if (chunk.done) ended = true
             if (chunk.text) {
               if (afterTool && received && !received.endsWith('\n')) received += '\n\n'
               afterTool = false
@@ -176,8 +183,9 @@ export function CampaignChat({
             }
           },
         )
+        if (received && !ended) received += CUT
       } catch {
-        received = received || CONNECTION_ERROR
+        received = received ? received + CUT : LOST
       } finally {
         done = true
         await revealed
@@ -450,6 +458,7 @@ export function CampaignChat({
             {files.map((f) => (
               <span key={`${f.filename}-${f.chars}`} className="inline-flex items-center gap-1 rounded-full border border-brand px-2.5 py-0.5 paragraph-xs text-brand-secondary">
                 {f.filename} · {f.how}
+                {f.note ? ` · ${f.note}` : ''}
                 <button
                   type="button"
                   aria-label={`Remove ${f.filename}`}

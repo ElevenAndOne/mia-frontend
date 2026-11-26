@@ -424,7 +424,7 @@ function BuildPage({ campaignId }: { campaignId: string }) {
                           : s.campaign.status === 'live'
                       ? // launched before its start date: it isn't running yet (live test 18 Oct)
                         s.campaign.start_date && s.campaign.start_date > sastToday()
-                        ? ` · launched, starts ${s.campaign.start_date}`
+                        ? ` · launched, starts ${day(s.campaign.start_date)}`
                         : ' · live'
                       : ' · approved, not live yet'}
                 </p>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/button'
-import type { BuildState, FinalWords, PlanOp } from '../types'
-import { Card, Chip, NeedsYou } from './parts'
+import type { FinalWords, PlanOp } from '../types'
+import { Chip, NeedsYou, wordsWhere } from './parts'
 
 // Final words (rule 08): the copy model writes each job's words, Claude checks them. The PM starts
 // it once the job list is right; it runs in the background, a few jobs at a time. Every piece is
@@ -16,44 +16,6 @@ const LIMIT: Record<string, number> = {
 }
 const limitFor = (where: string) =>
   where.startsWith('rsa.headlines') ? 30 : where.startsWith('rsa.descriptions') ? 90 : LIMIT[where]
-
-export function WordsCard({
-  state,
-  busy,
-  locked,
-  onWrite,
-}: {
-  state: BuildState
-  busy: string | null
-  locked: boolean
-  onWrite: (jobIds?: string[], rewrite?: boolean) => Promise<unknown>
-}) {
-  const jobs = state.plan?.assets ?? []
-  const run = state.words_run
-  const without = jobs.filter((a) => !a.final_words).length
-  const flagged = jobs.filter((a) => a.final_words?.status === 'flagged').length
-  if (locked || !jobs.length) return null
-  return (
-    <Card warn={flagged > 0} className="flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="subheading-sm text-primary">Final words</p>
-        <p className="paragraph-sm text-secondary">
-          {run?.status === 'running'
-            ? `${run.stage_label ?? 'Writing'}… About a minute a job, a few at a time. You can keep working.`
-            : without === jobs.length
-              ? 'When the jobs look right, Mia writes the finished words for each one: words on every slide, captions, ad copy and search ads, checked against the brand and your rules.'
-              : `${jobs.length - without} of ${jobs.length} jobs have their final words${flagged ? `; ${flagged} need a look` : ''}.`}
-        </p>
-        {run?.status === 'failed' ? <p className="paragraph-xs text-utility-warning-700">The last run stopped: {run.error ?? 'try again'}</p> : null}
-      </div>
-      {run?.status === 'running' ? null : (
-        <Button variant={without ? 'primary' : 'secondary'} loading={busy === 'words'} disabled={!without} onClick={() => onWrite()}>
-          {without ? `Write the final words (${without} job${without === 1 ? '' : 's'})` : 'All jobs have words'}
-        </Button>
-      )}
-    </Card>
-  )
-}
 
 // The copywriting skill Mia used for a job's words (services/campaign_builder/craft.py).
 const CRAFT: Record<string, string> = {
@@ -118,7 +80,7 @@ export function JobWords({
             <ul className="paragraph-xs text-utility-warning-700 flex flex-col gap-0.5">
               {fw.flags.map((f, i) => (
                 <li key={i} className="[overflow-wrap:anywhere]">
-                  ⚠ {f.where}: {f.problem}. {f.fix}
+                  ⚠ {wordsWhere(f.where)}: {f.problem}. {f.fix}
                 </li>
               ))}
             </ul>

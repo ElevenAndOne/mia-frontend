@@ -42,6 +42,10 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
   const [error, setError] = useState<string | null>(null)
   const [sender, setSender] = useState('')
   const [done, setDone] = useState<string | null>(null)
+  // tick and credit saves still on their way: Send waits for them (review 26 Nov, E8: an untick then Send at once
+  // could still send the job)
+  const saving = useRef<Set<Promise<unknown>>>(new Set())
+  const saveFailed = useRef(false) // a tick that didn't save: Send stops, so a job the PM unticked never goes
   const s = q.data
   useEffect(() => {
     if (s && !sender) setSender(s.you ?? '')
@@ -124,13 +128,16 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     qc.setQueryData<StudioState>(key, (old) =>
       old ? { ...old, jobs: old.jobs.map((x) => (idsToSet.has(x.asset_id) ? { ...x, ...change } : x)) } : old,
     )
-    api
+    const p = api
       .editStudio(...ids, jobs.map((x) => ({ asset_id: x.asset_id, ...change })))
       .then(() => qc.invalidateQueries({ queryKey: key }))
       .catch((e) => {
+        saveFailed.current = true
         setError(e instanceof Error ? e.message : 'Could not save that')
         qc.invalidateQueries({ queryKey: key })
       })
+      .finally(() => saving.current.delete(p))
+    saving.current.add(p)
   }
   const setAll = (jobs: StudioJob[], include: boolean) => setJobs(jobs.filter((x) => x.include !== include), { include })
   // Jobs that can go to Flex: not there yet and not tracked in ClickUp (3 Nov: a campaign moved from the old builder
@@ -147,7 +154,14 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
   const back = byState('ready')
   const toLaunch = byState('taken_in')
   const studioCount = byState('in_studio').length
-  const backCount = inFlex.length - studioCount
+  // with no launch read yet (slow, or it failed) nothing is "back": every job counted as back and the item read done
+  // (review 26 Nov, E7)
+  const launchRead = !!lq.data
+  const backCount = launchRead ? inFlex.length - studioCount : 0
+  // files in on Drive that wait on a sign-off: Flex's, or the PM's when nothing in Flex will give one (R4-2)
+  const filesWaiting = s.jobs.filter(
+    (j) => (j.delivery?.waiting_flex || j.delivery?.unsigned) && launchJobs.get(j.asset_id)?.state !== 'taken_in',
+  )
   const senderPick = s.you ? null : (
     // Only someone without a Flex account picks one to send as; a Flex user always sends as themselves.
     <label className="flex items-center gap-1 paragraph-xs text-tertiary">
@@ -175,10 +189,15 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
     act(
       'send',
       async () => {
+        await Promise.allSettled([...saving.current]) // the ticks on screen are what goes (E8)
+        if (saveFailed.current) {
+          saveFailed.current = false
+          throw new Error("A tick or credit change didn't save, so nothing was sent. Check the list, then Send again.")
+        }
         if (unconfirmed) await api.editStudio(...ids, [], true) // the credits on screen are what the PM sends
         return api.sendToFlex(...ids, sender)
       },
-      (out) => setDone(sentMessage(out as { sent: number; brief_cut?: Record<string, string[]> })),
+      (out) => setDone(sentMessage(out as SendResult)),
     )
 
   const items: TurnItem[] = []
@@ -348,15 +367,41 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
       ),
     })
   }
-  if (s.sent) {
+  if (filesWaiting.length) {
+    const unsigned = filesWaiting.filter((j) => j.delivery?.unsigned)
+    items.push({
+      key: 'files-waiting',
+      title: `${filesWaiting.length} job${filesWaiting.length === 1 ? ' has' : 's have'} files in, ${unsigned.length === filesWaiting.length ? 'not signed off' : 'waiting for Flex'}`,
+      detail: unsigned.length
+        ? "Nothing in Flex will sign off a job that isn't there: look at its files and use them when they're right."
+        : 'Mia takes them in once Flex marks them done. Use them anyway if nobody will mark them done there.',
+      actions: <Button size="md" onClick={() => openAndGo(filesWaiting.map((j) => j.asset_id))}>See {filesWaiting.length === 1 ? 'it' : 'them'}</Button>,
+    })
+  }
+  if (s.sent && lq.error && !launchRead) {
+    items.push({
+      key: 'launch-error',
+      title: "Mia couldn't read what's back from the studio",
+      detail: lq.error instanceof Error ? lq.error.message : 'Try again in a minute.',
+      actions: <Button size="md" onClick={() => void reloadLaunch()}>Try again</Button>,
+    })
+  } else if (s.sent) {
     // one status line; Mia follows Flex and Drive by herself (E33: "14 jobs with the studio · 0 back")
     items.push({
       key: 'follow',
-      title: `${inFlex.length} job${inFlex.length === 1 ? '' : 's'} with the studio · ${backCount} back`,
+      title: launchRead
+        ? `${inFlex.length} job${inFlex.length === 1 ? '' : 's'} with the studio · ${backCount} back`
+        : `${inFlex.length} job${inFlex.length === 1 ? '' : 's'} with the studio · reading Flex…`,
       detail: studioCount ? 'Mia follows them in Flex and Drive by herself. Nothing needs you until one comes back.' : undefined,
-      done: !studioCount,
+      done: launchRead && !studioCount,
     })
   }
+  // What needs the PM now comes first: Your turn shows the first item, so jobs back from the studio sat behind
+  // "3 jobs not sent yet" (review 26 Nov, E6). Then sending, then the rest.
+  const FIRST = ['launch', 'check-back', 'files-waiting', 'clickup-closed']
+  const LAST = ['rest', 'pick', 'ideas', 'follow']
+  const rank = (k: string) => (FIRST.includes(k) ? FIRST.indexOf(k) : LAST.includes(k) ? 100 + LAST.indexOf(k) : 50)
+  items.sort((x, y) => rank(String(x.key)) - rank(String(y.key)))
   return (
     <div className="flex flex-col gap-4">
       {error ? <Card warn className="paragraph-sm text-primary">{error}</Card> : null}
@@ -447,6 +492,10 @@ export function StudioTab({ campaignId, approved, onChanged }: { campaignId: str
                             onDone={reloadLaunch}
                             busy={busy}
                             onWithdraw={(r) => act(`withdraw-${r.mia_request_id}`, () => api.withdrawChangeRequest(...ids, r.mia_request_id))}
+                            onCancel={() => {
+                              if (!window.confirm(`Cancel ${j.name} in Flex? Its credits go back, and Mia takes it off the plan.`)) return
+                              void act(`cancel-${j.asset_id}`, () => api.cancelInFlex(...ids, j.asset_id, sender), () => void reloadLaunch())
+                            }}
                           />
                         </td>
                       </tr>
@@ -654,6 +703,9 @@ function placedStatus(j: StudioJob, launch?: LaunchJob): { label: string; tone: 
   // complete on Drive, not signed off in Flex (C2): the row's one button takes the files in anyway
   if (j.delivery?.waiting_flex && launch?.state !== 'taken_in')
     return { label: 'Files in, waiting for Flex sign-off', tone: 'text-utility-warning-700', action: 'Use them anyway' }
+  // nothing in Flex will sign it off (ClickUp, made outside Flex): never taken in by itself (R4-2)
+  if (j.delivery?.unsigned && launch?.state !== 'taken_in')
+    return { label: 'Files in, nobody has signed them off', tone: 'text-utility-warning-700', action: 'Use them anyway' }
   if (launch?.state === 'taken_in') return { label: 'Ready to launch', tone: 'text-utility-blue-700', action: 'Launch it' }
   if (launch?.state === 'ready') {
     return launch.no_file
@@ -714,17 +766,27 @@ function PlacedRow({ j, launch, open, onToggle, onUseFiles, using }: {
 
 // What opens under a sent job: its launch work first when it has some, then the reference (codes, names and link tags,
 // its Drive folder, changes asked of the studio, its task in Flex or ClickUp).
-function JobDetail({ j, launch, campaignId, onDone, busy, onWithdraw }: {
+function JobDetail({ j, launch, campaignId, onDone, busy, onWithdraw, onCancel }: {
   j: StudioJob
   launch?: LaunchJob
   campaignId: string
   onDone: () => Promise<void>
   busy: string | null
   onWithdraw: (r: StudioChangeRequest) => void
+  onCancel?: () => void
 }) {
   const inFlex = !!j.flex.task_id
+  // a sent job nobody has finished can be taken back here; Flex refuses once its lead has started it (E8)
+  const cancellable = inFlex && onCancel && !['done', 'cancelled'].includes(j.flex.stage ?? '') && launch?.state !== 'launched'
   return (
     <div className="flex flex-col gap-3">
+      {cancellable ? (
+        <div>
+          <Button size="sm" loading={busy === `cancel-${j.asset_id}`} onClick={onCancel}>
+            Cancel it in Flex
+          </Button>
+        </div>
+      ) : null}
       {launch && launch.state !== 'in_studio' ? <JobCard j={launch} campaignId={campaignId} onDone={onDone} bare /> : null}
       <div className="flex flex-col gap-1 paragraph-xs text-tertiary">
         <p>
@@ -737,6 +799,9 @@ function JobDetail({ j, launch, campaignId, onDone, busy, onWithdraw }: {
           <p>Review rounds: internal {j.flex.review_rounds.internal}, client {j.flex.review_rounds.client}</p>
         ) : null}
         <DeliveryLine dv={j.delivery} />
+        {j.flex.words_back?.changed.length ? (
+          <p className="text-secondary">Words updated from Flex when it was signed off: {j.flex.words_back.changed.join(', ')}.</p>
+        ) : null}
         {inFlex ? <Requests rs={j.change_requests ?? []} onWithdraw={onWithdraw} busy={busy} /> : null}
         {inFlex && j.clickup_not_linked ? (
           <p className="text-utility-warning-700" title={j.clickup_not_linked}>Not linked to its ClickUp task yet: Mia tries again on the next Flex read.</p>
@@ -804,6 +869,10 @@ function DeliveryLine({ dv }: { dv?: StudioDelivery | null }) {
   if (dv.taken_at) return <p className="text-utility-success-700">Files in from Drive, taken in.</p>
   if (dv.waiting_flex)
     return <p className="text-utility-warning-700">Files are in, waiting for Flex to sign it off. Mia takes them in once it's done there.</p>
+  if (dv.send_first)
+    return <p className="text-utility-warning-700">Files are in. Send it to Flex first: Mia takes them in once Flex signs it off.</p>
+  if (dv.unsigned)
+    return <p className="text-utility-warning-700">Files are in, but nobody has signed them off (this job isn't in Flex). Use them anyway when they're right.</p>
   if (dv.waiting_for) return <p className="text-utility-warning-700">Files: {dv.waiting_for}</p>
   if (sizes.length)
     return <p>Files: {sizes.map(([r, need]) => `${ratio(r)} ${Math.min(dv.have[r] ?? 0, need)} of ${need}`).join(', ')}</p>
@@ -942,11 +1011,17 @@ function Ideas({
 }
 
 // What the send says: how many went, and any brief Mia had to shorten to fit Flex's limits (rare; never silent).
-function sentMessage(out: { sent: number; brief_cut?: Record<string, string[]> }): string {
+type SendResult = { sent: number; brief_cut?: Record<string, string[]>; not_linked_to_clickup?: string[] }
+
+function sentMessage(out: SendResult): string {
   const cut = Object.entries(out.brief_cut ?? {})
-  const head = `Sent: ${out.sent} new task(s) in Flex.`
-  if (!cut.length) return head
-  return `${head} Too long for Flex, so shortened: ${cut.map(([job, what]) => `${job} (${what.join('; ')})`).join(' · ')}.`
+  const parts = [`Sent ${out.sent} job${out.sent === 1 ? '' : 's'} to Flex.`]
+  if (cut.length) parts.push(`Too long for Flex, so shortened: ${cut.map(([job, what]) => `${job} (${what.join('; ')})`).join(' · ')}.`)
+  // said, not dropped (review 26 Nov, E9): these may now be two tasks, one in Flex and one in ClickUp
+  const unlinked = out.not_linked_to_clickup ?? []
+  if (unlinked.length)
+    parts.push(`Flex couldn't link ${unlinked.join(', ')} to the ClickUp task, so the team may see it twice. Mia tries again on the next send.`)
+  return parts.join(' ')
 }
 
 // Who is free in the client's pod for this send (Flex's team plan, 24 Nov): one line per sprint, the people on hover.

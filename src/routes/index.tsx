@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './protected-route'
 import { RequireFeature } from './require-feature'
-import { RequireStaff } from './require-staff'
 import { ErrorBoundary } from '../components/error-boundary'
 import { Spinner } from '../components/spinner'
 // Imported here, not lazily: it saves WorkOS's id from the query string before anything strips it.
@@ -250,18 +249,17 @@ export const AppRoutes = ({
             }
           />
 
-          {/* The new campaign builder (rebuild slice 3): Agency only (the campaigns flag), and staff only while it's tested. */}
+          {/* The campaign builder: Agency only (the campaigns flag). Open to every agency member since 19 Nov, as the backend and
+              the sidebar are; RequireStaff sent a non-staff agency user to Home with no word (review 26 Nov, E4). */}
           <Route
             path="/campaign-builder"
             element={
               <ProtectedRoute requireAccount>
-                <RequireStaff>
                   <RequireFeature flag="campaigns">
                     <ErrorBoundary>
                       <CampaignBoardPage />
                     </ErrorBoundary>
                   </RequireFeature>
-                </RequireStaff>
               </ProtectedRoute>
             }
           />
@@ -271,13 +269,11 @@ export const AppRoutes = ({
               path={path}
               element={
                 <ProtectedRoute requireAccount>
-                  <RequireStaff>
                     <RequireFeature flag="campaigns">
                       <ErrorBoundary>
                         <CampaignBuilderPage />
                       </ErrorBoundary>
                     </RequireFeature>
-                  </RequireStaff>
                 </ProtectedRoute>
               }
             />
