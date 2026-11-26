@@ -139,7 +139,10 @@ export interface KPIActual {
   // Provenance (absent on entries cached before Sep 2026):
   // live = platform pipeline · snapshot = uploaded source doc · manual = human entry ·
   // none = no source wired — render "Not tracked", not a dash
-  state?: 'live' | 'snapshot' | 'manual' | 'none'
+  // pending = the server's instant answer had no saved number for this KPI yet; a background
+  // refresh is fetching it (26 Nov 2026) and fetchPhaseActuals' onUpdate delivers it
+  state?: 'live' | 'snapshot' | 'manual' | 'none' | 'pending'
+  pending?: boolean
   as_of?: string | null
   source_label?: string | null
   scope_note?: string | null
@@ -207,6 +210,72 @@ export const fetchCampaignTracker = async (
 export const isAbort = (err: unknown) =>
   err instanceof DOMException ? err.name === 'AbortError' : (err as Error)?.name === 'AbortError'
 
+// While the server refreshes a phase in the background it answers at once with what it has
+// ("refreshing": true): saved numbers, or the analytics store's with the rest "pending". The page
+// then asks again every few seconds until the fresh numbers are saved (26 Nov 2026: the old
+// read waited on every platform, and four phases at once froze the server for everyone).
+const POLL_EVERY_MS = 6000
+const POLL_MAX_TRIES = 25 // ~2.5 minutes: a refresh fans out to the platforms two phases at a time
+// key -> each waiting caller's update function and its abort signal. One poll per key; a caller
+// that aborts (left the view, changed the range) just stops being told, and the poll ends when
+// nobody is left (review 26 Nov: one caller's abort used to end the poll for all of them).
+const actualsPolls = new Map<string, Map<(rows: KPIActual[]) => void, AbortSignal | undefined>>()
+
+const actualsUrl = (tenantId: string, campaignId: string, phaseName: string, startDate?: string | null, endDate?: string | null) => {
+  let url = `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`
+  if (startDate) url += `&start_date=${startDate}`
+  if (endDate) url += `&end_date=${endDate}`
+  return url
+}
+
+// Keep an answer for the day only when it is final: not refreshing, and made of saved numbers
+// (saved_minutes_ago is null when nothing was saved, e.g. a "couldn't reach the platforms" row).
+// Servers before 26 Nov 2026 send neither field: their answers were always final.
+const finalAnswer = (data: { refreshing?: boolean; saved_minutes_ago?: number | null }) =>
+  !data.refreshing && data.saved_minutes_ago !== null
+
+const pollUntilFresh = (
+  key: string,
+  sessionId: string,
+  url: string,
+  onUpdate: ((rows: KPIActual[]) => void) | undefined,
+  signal?: AbortSignal
+) => {
+  const existing = actualsPolls.get(key)
+  if (existing) {
+    if (onUpdate) existing.set(onUpdate, signal)
+    return
+  }
+  const listeners = new Map<(rows: KPIActual[]) => void, AbortSignal | undefined>()
+  if (onUpdate) listeners.set(onUpdate, signal)
+  actualsPolls.set(key, listeners)
+  const live = () => {
+    for (const [fn, sig] of listeners) if (sig?.aborted) listeners.delete(fn)
+    return listeners.size > 0
+  }
+  void (async () => {
+    try {
+      for (let i = 0; i < POLL_MAX_TRIES; i++) {
+        await new Promise((r) => setTimeout(r, POLL_EVERY_MS))
+        if (!live()) return
+        const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId } })
+        if (!res.ok) continue
+        const data = await res.json()
+        const rows: KPIActual[] | null = data.kpis ?? null
+        if (!rows) continue
+        if (finalAnswer(data)) setActualsEntry(key, { data: rows, ts: Date.now() })
+        // checked again here: a caller that aborted while the request ran must not get these rows
+        if (live()) listeners.forEach((_, fn) => fn(rows)) // the numbers fill in as soon as they land
+        if (!data.refreshing) return
+      }
+    } catch (err) {
+      console.warn('[RACE] actuals: refresh poll failed', { key, err })
+    } finally {
+      actualsPolls.delete(key)
+    }
+  })()
+}
+
 export const fetchPhaseActuals = async (
   sessionId: string,
   tenantId: string,
@@ -214,11 +283,12 @@ export const fetchPhaseActuals = async (
   phaseName: string,
   startDate?: string | null,
   endDate?: string | null,
-  // Actuals fan out to every connected platform and can run for a minute. When the user
-  // navigates away the answer is worthless, but the browser still holds the connection
-  // open and every other request on the page queues behind it — which is why the whole
-  // app felt stuck. Aborting frees the socket immediately.
-  signal?: AbortSignal
+  // Aborting (the user navigated away or changed the range) frees the socket at once and
+  // stops any follow-up polling for this read.
+  signal?: AbortSignal,
+  // Called with the fresh numbers when the server was still refreshing this phase. Without
+  // it the caller keeps the first answer (which is never cached, so the next read asks again).
+  onUpdate?: (rows: KPIActual[]) => void
 ): Promise<KPIActual[] | null> => {
   const dateKey = startDate && endDate ? `${startDate}:${endDate}` : 'default'
   const key = `${tenantId}:${campaignId}:${phaseName}:${dateKey}`
@@ -229,9 +299,7 @@ export const fetchPhaseActuals = async (
   }
   try {
     console.debug('[RACE] actuals: fetching from API', { campaignId, phaseName, startDate, endDate })
-    let url = `/api/tenants/${tenantId}/campaigns/${campaignId}/actuals?phase=${encodeURIComponent(phaseName)}`
-    if (startDate) url += `&start_date=${startDate}`
-    if (endDate) url += `&end_date=${endDate}`
+    const url = actualsUrl(tenantId, campaignId, phaseName, startDate, endDate)
     const res = await apiFetch(url, { headers: { 'X-Session-ID': sessionId }, signal })
     if (!res.ok) {
       console.warn('[RACE] actuals: API error', res.status, phaseName)
@@ -239,7 +307,11 @@ export const fetchPhaseActuals = async (
     }
     const data = await res.json()
     const result = data.kpis ?? null
-    setActualsEntry(key, { data: result, ts: Date.now() })
+    if (data.refreshing) {
+      pollUntilFresh(key, sessionId, url, onUpdate, signal)
+    } else if (finalAnswer(data)) {
+      setActualsEntry(key, { data: result, ts: Date.now() })
+    }
     console.debug('[RACE] actuals: loaded', {
       phase: phaseName,
       kpis: result?.map((k: KPIActual) => ({
@@ -319,8 +391,9 @@ export const refreshCampaignActuals = async (
   // Clear local JS + sessionStorage caches so stale data isn't shown
   actualsCache.clear()
   ssClear(SS_ACTUALS_PREFIX)
-  // Ask the server to re-fetch and overwrite its cache for the range on screen, so the
-  // reload right after reads exactly what was just fetched.
+  // Ask the server to re-fetch and overwrite its cache for the range on screen. It answers at
+  // once and fetches in the background; the reload right after shows the earlier numbers and
+  // fills in the fresh ones as they land (fetchPhaseActuals' onUpdate).
   const params = new URLSearchParams()
   if (startDate) params.set('start_date', startDate)
   if (endDate) params.set('end_date', endDate)

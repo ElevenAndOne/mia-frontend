@@ -73,7 +73,10 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
       // fetchPhaseActuals answers null when the read failed; as data that sat as a row of dashes for 10 minutes with
       // nothing said (sweep 12 Nov), so it is an error here: retried, and shown with a Try again
       queryFn: async () => {
-        const got = await fetchPhaseActuals(sessionId!, tenantId!, campaignId, p.phase)
+        const got = await fetchPhaseActuals(sessionId!, tenantId!, campaignId, p.phase, null, null, undefined, (rows) =>
+          // still refreshing on the server: the fresh numbers replace these when they land
+          qc.setQueryData(['campaign-results-actuals', tenantId, campaignId, p.phase], rows)
+        )
         if (got == null) throw new Error("Couldn't read the platforms for this phase just now.")
         return got
       },

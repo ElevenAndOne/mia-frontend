@@ -81,6 +81,8 @@ function resolveDates(
 function formatActual(actual: KPIActual): string {
   if (actual.actual_label) return actual.actual_label
   if (actual.actual_value === null || actual.actual_value === undefined) {
+    // pending = the number is being fetched in the background right now (26 Nov 2026).
+    if (actual.pending) return 'Updating…'
     // 'none' = nothing is wired to this KPI — say so instead of a dash that reads
     // as "loading" or "zero" (state is absent on pre-Sep-2026 cached entries).
     return actual.state === 'none' && !actual.measured ? 'Not tracked' : '—'
@@ -477,11 +479,14 @@ export function RaceCampaignTracker({
           }
           return
         }
-        if (actualsMapRef.current[phaseName]) return
+        // Only a request in flight is left alone. Rows on screen that aren't in the cache weren't
+        // final (still refreshing, or a failed read): ask again, which is instant and re-attaches
+        // the background poll a tab switch's abort detached (review 26 Nov).
+        if (actualsMapRef.current[phaseName] === 'loading') return
       }
 
       // Only show loading dots if there's no stale data to display while we wait
-      if (!staleActualsRef.current[phaseName]) {
+      if (!staleActualsRef.current[phaseName] && !Array.isArray(actualsMapRef.current[phaseName])) {
         setActualsMap((prev) => ({ ...prev, [phaseName]: 'loading' }))
       }
       try {
@@ -492,7 +497,9 @@ export function RaceCampaignTracker({
           phaseName,
           startDate,
           endDate,
-          actualsAbortRef.current?.signal
+          actualsAbortRef.current?.signal,
+          // the server was still refreshing this phase: the fresh numbers replace these when they land
+          (rows) => setActualsMap((prev) => ({ ...prev, [phaseName]: rows }))
         )
         // Clear stale for this phase — fresh data is ready
         delete staleActualsRef.current[phaseName]

@@ -29,6 +29,7 @@ export const OverviewView = () => {
       void fetchPhaseActuals(
         sessionId, tenantId, campaign.campaign_id, phase.phase_name,
         null, null, controller.signal,
+        (rows) => setActualsByPhase((prev) => ({ ...prev, [phase.phase_name]: rows })),
       )
         .then((rows) => {
           setActualsByPhase((prev) => ({ ...prev, [phase.phase_name]: rows }))

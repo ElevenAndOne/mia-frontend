@@ -18,8 +18,10 @@ const findActual = (rows: KPIActual[] | null | undefined, kpiName: string | null
 
 const actualText = (a: KPIActual): string => {
   if (a.actual_label) return a.actual_label
-  if (a.actual_value === null || a.actual_value === undefined)
+  if (a.actual_value === null || a.actual_value === undefined) {
+    if (a.pending) return 'Updating…' // fetched in the background right now (26 Nov 2026)
     return a.state === 'none' && !a.measured ? 'Not tracked' : '—'
+  }
   return String(a.actual_value)
 }
 

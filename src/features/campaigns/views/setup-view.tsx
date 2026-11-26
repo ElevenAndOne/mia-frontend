@@ -332,7 +332,8 @@ const DataSourcesSection = () => {
         phase.phase_name,
         null,
         null,
-        controller.signal
+        controller.signal,
+        (rows) => setActualsByPhase((prev) => ({ ...prev, [phase.phase_name]: rows }))
       )
         .then((rows) => setActualsByPhase((prev) => ({ ...prev, [phase.phase_name]: rows })))
         .catch((err) => {
