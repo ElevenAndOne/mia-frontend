@@ -735,6 +735,9 @@ export interface PictureWords {
   accent: string
   size: 's' | 'm' | 'l'
   logo: boolean
+  /** The post as the business's design system drew it ({html, v, layout, said}), or {placed: true} when they
+   *  placed the words themselves. Sent back untouched so an edit changes only what they changed. */
+  design?: Record<string, unknown>
 }
 
 export interface DocumentWordsInfo {
@@ -745,6 +748,10 @@ export interface DocumentWordsInfo {
   brand_font: string | null
   fonts: string[]
   personal: boolean
+  /** Their design system is on and built: Mia can lay the words out from their brand. */
+  can_design?: boolean
+  /** This post is laid out by the design system (not placed by hand in this editor). */
+  designed?: boolean
   /** Where new words should start: never over a face or the subject (backend choose_position). */
   suggested_position?: 'top' | 'bottom'
 }
@@ -780,12 +787,13 @@ export const saveDocumentWords = async (
   sessionId: string,
   documentId: string,
   conversationId: string | null,
-  words: PictureWords | null
-): Promise<{ media_url: string; version: number; font_missing?: string | null; font?: string | null }> => {
+  words: PictureWords | null,
+  classic = false
+): Promise<{ media_url: string; version: number; font_missing?: string | null; font?: string | null; designed?: boolean }> => {
   const response = await apiFetch(`/api/chat/v2/documents/${documentId}/words`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
-    body: JSON.stringify({ conversation_id: conversationId, words }),
+    body: JSON.stringify({ conversation_id: conversationId, words, classic }),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok || data.success === false) throw new Error(data.error || 'Could not save the words')

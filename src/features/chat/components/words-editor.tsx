@@ -95,6 +95,9 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
   const [drafting, setDrafting] = useState(false)
   const [ratio, setRatio] = useState(4 / 5)
   const [dragZone, setDragZone] = useState<PictureWordsPosition | null>(null)
+  // 'designed': laid out from their design system (the backend's services/design_system); 'placed': they set
+  // the style, colours and place themselves, drawn exactly as the preview shows.
+  const [mode, setMode] = useState<'designed' | 'placed'>('placed')
   const postRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
 
@@ -104,10 +107,17 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
     fetchDocumentWords(sessionId, documentId)
       .then((data) => {
         setInfo(data)
+        setMode(data.designed ? 'designed' : 'placed')
         const start = data.words
           ? { ...EMPTY, ...data.words }
-          : { ...EMPTY, style: (data.personal ? 'note' : 'band') as PictureWordsStyle, position: data.suggested_position ?? 'top' }
-        if (start.position === 'auto') start.position = data.suggested_position ?? 'top'
+          : data.designed
+            ? { ...EMPTY, position: 'auto' as PictureWordsPosition } // Mia places them from the design system
+            : { ...EMPTY, style: (data.personal ? 'note' : 'band') as PictureWordsStyle, position: data.suggested_position ?? 'top' }
+        // A designed post keeps 'auto': a set place would read as a change and lay the post out again.
+        if (!data.designed && !ZONES.includes(start.position)) start.position = data.suggested_position ?? 'top'
+        // Styles Mia draws that this editor has no preview for (editorial, panel, photo): placed by hand they
+        // start as a Headline, so what's previewed is what's saved.
+        if (!data.designed && !STYLES.some((st) => st.id === start.style)) start.style = 'band'
         setWords(start)
       })
       .catch((e: Error) => showToast('error', e.message))
@@ -152,12 +162,36 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
     setDrafting(true)
     try {
       const drafted = await draftDocumentWords(sessionId, documentId, conversationId)
-      setWords((w) => ({ ...w, ...drafted, position: drafted.position === 'auto' ? w.position : drafted.position, font: w.font, text: w.text, panel: w.panel, accent: w.accent }))
+      setWords((w) => ({
+        ...w,
+        ...drafted,
+        position: drafted.position === 'auto' ? w.position : drafted.position,
+        font: w.font,
+        text: w.text,
+        panel: w.panel,
+        accent: w.accent,
+        design: w.design, // new words go into the same design
+      }))
     } catch (e) {
       showToast('error', (e as Error).message)
     } finally {
       setDrafting(false)
     }
+  }
+
+  // Place the words by hand (the classic templates), or hand them back to the design system for a fresh layout.
+  const placeMyself = () => {
+    setMode('placed')
+    setWords((w) => ({
+      ...w,
+      design: undefined,
+      style: STYLES.some((st) => st.id === w.style) ? w.style : 'band',
+      position: ZONES.includes(w.position) ? w.position : info?.suggested_position ?? 'top',
+    }))
+  }
+  const letMiaDesign = () => {
+    setMode('designed')
+    setWords((w) => ({ ...w, design: {}, style: w.style === 'note' ? 'band' : w.style, position: 'auto', text: '', panel: '', accent: '' }))
   }
 
   const save = async (next: PictureWords | null) => {
@@ -168,9 +202,15 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
     }
     setSaving(true)
     try {
-      const res = await saveDocumentWords(sessionId, documentId, conversationId, next)
+      // Placed by hand: drawn exactly as previewed here (never a pack layout or a design).
+      const classic = mode === 'placed'
+      const res = await saveDocumentWords(sessionId, documentId, conversationId, next, classic)
       if (res.font_missing) showToast('info', `${res.font_missing} isn't available, so ${res.font} was used.`)
-      showToast('success', next ? 'Words saved on the picture.' : 'Words taken off. The photo is back as it was.')
+      if (next && !classic && res.designed === false) {
+        showToast('info', "Mia couldn't lay this one out from your brand's design system, so the words are on in the simple style. Try again, or place them yourself.")
+      } else {
+        showToast('success', next ? 'Words saved on the picture.' : 'Words taken off. The photo is back as it was.')
+      }
       onSaved()
       onClose()
     } catch (e) {
@@ -192,6 +232,10 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
   }, [look.panel, look.text, look.accent])
 
   const photo = info?.clean_media_url ?? null
+  const designed = mode === 'designed'
+  const hasDesign = Boolean(words.design && (words.design as { html?: string }).html)
+  // The designed post as drawn (it can't be previewed live: Mia lays it out on Save).
+  const shown = designed && info?.words && hasDesign ? info.media_url ?? photo : photo
   const layerPos = words.style === 'quote' ? 'middle' : words.position
 
   return (
@@ -206,6 +250,19 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
       ) : (
         <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_300px]">
           <div className="p-5 bg-secondary flex flex-col items-center gap-2 min-w-0">
+            {designed ? (
+              <div className="pw-post w-full max-w-[440px] rounded-lg overflow-hidden shadow-lg" style={{ aspectRatio: String(ratio) }}>
+                <img
+                  src={shown ?? undefined}
+                  alt={hasDesign ? 'The post as designed' : "The post's photo"}
+                  className="pw-photo"
+                  onLoad={(e) => {
+                    const i = e.currentTarget
+                    if (i.naturalWidth && i.naturalHeight) setRatio(i.naturalWidth / i.naturalHeight)
+                  }}
+                />
+              </div>
+            ) : (
             <div
               ref={postRef}
               className="pw-post w-full max-w-[440px] rounded-lg overflow-hidden shadow-lg"
@@ -270,8 +327,13 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                 </div>
               </div>
             </div>
+            )}
             <p className="paragraph-xs text-tertiary text-center">
-              Drag the words to move them. Click them to type. The photo itself never changes.
+              {!designed
+                ? 'Drag the words to move them. Click them to type. The photo itself never changes.'
+                : hasDesign
+                  ? 'Change the words on the right. Mia keeps this design and puts the new words in.'
+                  : "Mia lays the words out from your brand's design system when you save. It takes up to a minute."}
             </p>
           </div>
 
@@ -285,7 +347,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                 placeholder="Open this Sunday"
                 className="rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-primary"
               />
-              {['band', 'event'].includes(words.style) && (
+              {(designed || ['band', 'event'].includes(words.style)) && (
                 <input
                   aria-label="Small line above"
                   value={words.kicker}
@@ -294,7 +356,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                   className="rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-primary"
                 />
               )}
-              {['band', 'event', 'badge', 'quote'].includes(words.style) && (
+              {(designed || ['band', 'event', 'badge', 'quote'].includes(words.style)) && (
                 <input
                   aria-label="Small line below"
                   value={words.sub}
@@ -308,6 +370,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
               </Button>
             </div>
 
+            {!designed && (
             <div className="flex flex-col gap-1.5">
               <span className="label-xs text-tertiary uppercase tracking-wide">Style</span>
               <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Style">
@@ -327,6 +390,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                 ))}
               </div>
             </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="pw-font" className="label-xs text-tertiary uppercase tracking-wide">Font</label>
@@ -336,7 +400,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                 onChange={(e) => set({ font: e.target.value })}
                 className="rounded-lg border border-primary bg-primary px-3 py-2 paragraph-sm text-primary"
               >
-                <option value="">{info.brand_font ? `${info.brand_font} (Brand Kit)` : 'Mia\'s default'}</option>
+                <option value="">{designed ? "Your brand's font" : info.brand_font ? `${info.brand_font} (Brand Kit)` : 'Mia\'s default'}</option>
                 {info.fonts.filter((f) => f !== info.brand_font).map((f) => (
                   <option key={f} value={f}>{f}</option>
                 ))}
@@ -362,6 +426,7 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                   ))}
                 </div>
               </div>
+              {!designed && (
               <div className="flex flex-col gap-1.5">
                 <span className="label-xs text-tertiary uppercase tracking-wide">Colours</span>
                 <div className="flex gap-1.5" role="group" aria-label="Colours">
@@ -382,12 +447,23 @@ export function WordsEditor({ isOpen, onClose, documentId, conversationId, onSav
                   })}
                 </div>
               </div>
+              )}
             </div>
 
             <div className="mt-auto flex flex-col gap-2 pt-2">
               <Button variant="primary" onClick={() => save(words)} loading={saving} fullWidth>
                 Save on the picture
               </Button>
+              {designed && hasDesign && (
+                <Button variant="secondary" onClick={() => save({ ...words, design: {} })} disabled={saving} fullWidth>
+                  Try a new design
+                </Button>
+              )}
+              {info.can_design && (
+                <Button variant="ghost" size="sm" onClick={designed ? placeMyself : letMiaDesign} disabled={saving}>
+                  {designed ? 'Place the words myself' : "Let Mia design it from your brand"}
+                </Button>
+              )}
               {info.words && (
                 <Button variant="secondary" onClick={() => save(null)} disabled={saving} fullWidth>
                   Take the words off
