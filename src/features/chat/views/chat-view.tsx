@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { CampaignOfferCard } from '../../campaign-builder/campaign-offer-card'
+import { HomeCampaignCards } from '../../campaign-builder/pending-cards'
 import { useSearchParams } from 'react-router-dom'
 import ChatLayout from '../components/chat-layout'
 
@@ -658,6 +659,17 @@ export const ChatView = ({
                       <span className="paragraph-sm">{midStreamStatus}</span>
                     </div>
                   )}
+
+                  {/* A builder campaign picked in the KPI table: its waiting changes, with Apply (27 Nov) */}
+                  {!isLoading && activeCampaign?.builder === 'v2' && isFeatureEnabled('campaigns') &&
+                  ['owner', 'admin', 'analyst'].includes(activeWorkspace?.role ?? '') ? (
+                    <HomeCampaignCards
+                      key={activeCampaign.campaignId}
+                      campaignId={activeCampaign.campaignId}
+                      campaignName={activeCampaign.campaignName}
+                      replies={messages.length}
+                    />
+                  ) : null}
 
                   <div ref={messagesEndRef} />
                 </div>

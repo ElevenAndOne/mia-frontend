@@ -6,6 +6,8 @@ import { fetchConversationMessages, sendChatMessageStreaming } from '../chat/ser
 import { readDeck, type DeckRead } from './api'
 import { buildKey } from './use-build'
 import { ASK_EVENT, clearFocus, type AskFocus } from './components/your-turn'
+import { PendingCardList } from './pending-cards'
+import { chatCards, type Pending } from './pending'
 
 // The chat docked beside the campaign page (plan §8.3). It is the campaign's own chat: one
 // conversation per campaign, reopened from the page. Mia sees the brief and the draft plan and
@@ -31,7 +33,6 @@ const FAILED = 'Something went wrong. Try again.'
 const LOST = "The connection dropped, so Mia's answer didn't arrive. She may have got your message: check the page for a new card before you send it again."
 const CUT = "\n\n(Mia's answer was cut off here. Ask her to go on, or check the page for what she did.)"
 
-type Pending = { id: string; summary: string[]; at?: string; about?: string }
 
 export function CampaignChat({
   campaignId,
@@ -344,49 +345,9 @@ export function CampaignChat({
             <p className="paragraph-xs text-tertiary">{status || 'Mia is thinking…'}</p>
           )
         ) : null}
-        {!loading
-          ? // a card made by a button on the page (Fix it on a finding or note) shows in Your turn only; the chat shows the
-            // cards from what the PM typed here (Josh, 24 Nov, E19)
-            pending.filter((p) => !/^(Fix|Note|Missing) · /.test(p.about ?? '')).map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 rounded-xl border border-brand bg-brand-primary px-3 py-2">
-                <p className="label-xs text-brand-secondary">Mia proposes{p.about ? ` · for ${p.about}` : ''}</p>
-                <ul className="flex flex-col gap-1 paragraph-sm text-primary">
-                  {p.summary.map((line, k) => (
-                    <li key={k} className="[overflow-wrap:anywhere]">{line}</li>
-                  ))}
-                </ul>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={!!busy}
-                    className="rounded-lg bg-brand-solid px-3 py-1.5 paragraph-sm text-primary-onbrand disabled:opacity-50"
-                    onClick={() => {
-                      clearFocus()
-                      void onApply?.(p.id)
-                    }}
-                  >
-                    Apply
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!!busy}
-                    className="rounded-lg border border-secondary px-3 py-1.5 paragraph-sm text-primary disabled:opacity-50"
-                    onClick={() => {
-                      clearFocus()
-                      void onDrop?.(p.id)
-                    }}
-                  >
-                    Not now
-                  </button>
-                </div>
-                {cardError(p.id) ? (
-                  <p role="alert" className="rounded-lg border border-error bg-error-primary px-3 py-2 paragraph-sm text-error">
-                    {cardError(p.id)}
-                  </p>
-                ) : null}
-              </div>
-            ))
-          : null}
+        {!loading ? (
+          <PendingCardList pending={chatCards(pending)} busy={busy} cardError={cardError} onApply={onApply} onDrop={onDrop} onPress={clearFocus} />
+        ) : null}
         {!loading && readingAnswers > 0 ? (
           <p className="paragraph-xs text-tertiary">Mia is applying your answer…</p>
         ) : null}

@@ -14,7 +14,7 @@ const POLL_MS = 4000
 
 /** The page's one source of truth. Polls while Mia is working on the brief or the plan,
  *  so a refresh (or another tab) always shows the same state the server has. */
-export function useBuild(campaignId: string | undefined) {
+export function useBuild(campaignId: string | undefined, opts: { kpis?: boolean } = {}) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
   const queryClient = useQueryClient()
@@ -54,7 +54,8 @@ export function useBuild(campaignId: string | undefined) {
   const kpis = useQuery({
     queryKey: [...key, 'kpis', query.data?.plan_run?.run_id ?? null, query.data?.brief?.version ?? null],
     queryFn: () => api.fetchKpiOptions(sessionId!, tenantId!, campaignId!),
-    enabled: !!sessionId && !!tenantId && !!campaignId && !!query.data?.brief,
+    // not for the home chat's cards (27 Nov): only the page's pickers need the KPI list
+    enabled: opts.kpis !== false && !!sessionId && !!tenantId && !!campaignId && !!query.data?.brief,
     staleTime: 5 * 60 * 1000,
     refetchInterval: (q) => (q.state.status === 'error' ? 30_000 : false), // a failed read is tried again
   })
@@ -104,6 +105,8 @@ export function useBuild(campaignId: string | undefined) {
   return {
     state: query.data,
     loading: query.isPending,
+    // read again now (the home chat, after a reply that may have made a card, 27 Nov)
+    refetch: query.refetch,
     kpiGroups: kpis.data?.groups ?? [],
     // said in the picker, not "Loading…" forever (review 26 Oct)
     kpiError: kpis.error instanceof Error ? kpis.error.message : null,

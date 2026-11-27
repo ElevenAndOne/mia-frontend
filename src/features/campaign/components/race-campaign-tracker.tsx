@@ -30,6 +30,8 @@ export interface CampaignInfo {
   startDate: string | null
   endDate: string | null
   status: string
+  // 'v2' for a campaign made in the new campaign builder: the home chat can change its jobs (27 Nov)
+  builder?: string | null
 }
 
 interface CampaignSummary {
@@ -422,6 +424,7 @@ export function RaceCampaignTracker({
           startDate: data.start_date,
           endDate: data.end_date,
           status: data.status,
+          builder: data.builder ?? null,
         })
       } else {
         // No campaign for this tenant
