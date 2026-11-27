@@ -73,6 +73,14 @@ const CandidateRow = ({
               suggested
             </span>
           )}
+          {candidate.also_in?.length ? (
+            <span
+              className="label-xs px-1.5 py-0.5 rounded bg-utility-warning-50 text-utility-warning-700"
+              title="Its results already count in that campaign. Link it in one campaign only, or both will count them."
+            >
+              also in {candidate.also_in.join(', ')}
+            </span>
+          ) : null}
           {candidate.dismissed && !checked && (
             <span className="label-xs px-1.5 py-0.5 rounded bg-primary border border-secondary text-quaternary">
               previously rejected

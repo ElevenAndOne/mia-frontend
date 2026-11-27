@@ -3,7 +3,8 @@ import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/button'
 import { useSession } from '../../../contexts/session-context'
-import { clearTrackerCache, fetchPhaseActuals, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { clearTrackerCache, fetchPhaseActuals, fetchUnlinkedAds, type KPIActual } from '../../campaign/services/campaign-tracker-service'
+import { KpiDatesEditor, KpiDatesLine } from '../../campaign/components/kpi-dates'
 import { LinkedContentPanel } from '../../campaigns/components/builder/linked-content-panel'
 import * as api from '../api'
 import type { ResultsKpi } from '../types'
@@ -58,6 +59,13 @@ const POINTS: [string, string][] = [
   ['what_to_avoid', 'Avoid next time'],
 ]
 
+// "16 – 31 Oct" when the phase counts over its own dates, not the campaign's
+function phaseDates(w: [string, string] | null | undefined, start?: string | null, end?: string | null): string {
+  if (!w || (w[0] === start && w[1] === end)) return ''
+  const f = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return `${f(w[0])} – ${f(w[1])}`
+}
+
 export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: string; approved: boolean; bpo?: boolean }) {
   const { sessionId, activeWorkspace } = useSession()
   const tenantId = activeWorkspace?.tenant_id
@@ -84,6 +92,15 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
       staleTime: 10 * 60 * 1000,
     })),
   })
+  // Ads that spent in the campaign's dates with no campaign linking them (the tracker's line). Asked whatever the KPIs
+  // show: a campaign with some ads linked still misses the rest (Onvlee 26 Nov: 2 retargeting copies, R5,217, and no
+  // button here because no KPI was blank).
+  const strays = useQuery({
+    queryKey: ['campaign-unlinked-ads', tenantId, campaignId],
+    queryFn: () => fetchUnlinkedAds(sessionId!, tenantId!, campaignId),
+    enabled: fetchable,
+    staleTime: 10 * 60 * 1000,
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [linking, setLinking] = useState(false)
@@ -106,6 +123,7 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
   // KPIs with no number only because no ads are linked to the campaign (the server's link_gap): named in one line with
   // the way to link them, here in the studio (docs2/LINK_EXISTING_ADS_PLAN_2026-11-24.md). Until campaigns are pushed
   // from Mia, which links what it pushes by itself.
+  const strayAds = strays.data?.ads ?? []
   const unlinked = [...new Set(actuals.flatMap((a) => ((a.data as KPIActual[] | undefined) ?? []).filter((r) => r.link_gap).map((r) => r.kpi_name)))]
   return (
     <div className="flex flex-col gap-4">
@@ -152,6 +170,19 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
         </div>
       </Card>
 
+      {!unlinked.length && strayAds.length ? (
+        <Card warn className="flex flex-wrap items-center justify-between gap-2">
+          <p className="paragraph-sm text-primary" title={strayAds.map((a) => `${a.label}: ${a.name}`).join('\n')}>
+            {strayAds.length} ad campaign{strayAds.length === 1 ? '' : 's'} spent{' '}
+            {money(strayAds.reduce((t, a) => t + (a.spend || 0), 0), s.currency)} in these dates but{' '}
+            {strayAds.length === 1 ? "isn't" : "aren't"} linked, so {strayAds.length === 1 ? 'its' : 'their'} results
+            don't count here.
+          </p>
+          <Button size="sm" variant="primary" onClick={() => setLinking(true)}>
+            Link ads and posts
+          </Button>
+        </Card>
+      ) : null}
       {unlinked.length ? (
         <Card warn className="flex flex-wrap items-center justify-between gap-2">
           <p className="paragraph-sm text-primary">
@@ -172,6 +203,7 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
           onSaved={() => {
             clearTrackerCache()
             void qc.invalidateQueries({ queryKey: ['campaign-results-actuals', tenantId, campaignId] })
+            void qc.invalidateQueries({ queryKey: ['campaign-unlinked-ads', tenantId, campaignId] })
           }}
         />
       ) : null}
@@ -185,7 +217,11 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
             <section key={p.phase} className="rounded-xl border border-secondary bg-secondary p-3 flex flex-col gap-2">
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="subheading-md text-primary">{p.phase}</h3>
-                <span className="paragraph-xs text-tertiary">{p.budget != null ? money(p.budget, s.currency) : ''}</span>
+                <span className="paragraph-xs text-tertiary">
+                  {/* a phase with its own dates counts only those (27 Nov 2026): say which */}
+                  {phaseDates(rows[0]?.pace_window, s.start_date, s.end_date)}
+                  {p.budget != null ? `${phaseDates(rows[0]?.pace_window, s.start_date, s.end_date) ? ' · ' : ''}${money(p.budget, s.currency)}` : ''}
+                </span>
               </div>
               {loading ? <p className="paragraph-xs text-tertiary">Reading the platforms… (up to a minute)</p> : null}
               {failed ? (
@@ -206,9 +242,10 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
                 {p.kpis.map((k) => {
                   const a = rows.find((r) => r.kpi_name === k.kpi_name)
                   const value = a?.actual_value ?? null
-                  const pc = pace(value, k, s.share_elapsed)
+                  // a KPI with its own counting dates is paced over those (26 Nov 2026)
+                  const pc = pace(value, k, a?.window_share ?? s.share_elapsed)
                   return (
-                    <li key={k.kpi_name} className="rounded-lg border border-secondary bg-primary px-2 py-1.5">
+                    <li key={k.kpi_name} className="group rounded-lg border border-secondary bg-primary px-2 py-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="label-sm text-primary">{k.kpi_name}</span>
                         <span className="paragraph-sm text-primary tabular-nums">
@@ -242,7 +279,22 @@ export function ResultsTab({ campaignId, approved, bpo = false }: { campaignId: 
                           <span className="paragraph-xs text-tertiary">{a.blank_reason ?? 'no data for these dates yet'}</span>
                         ) : null}
                         {a?.as_of ? <span className="paragraph-xs text-tertiary">as of {day(a.as_of)}</span> : null}
+                        {a?.kpi_id != null && a.state !== 'manual' ? (
+                          <KpiDatesEditor
+                            sessionId={sessionId!}
+                            tenantId={tenantId!}
+                            campaignId={campaignId}
+                            kpiId={a.kpi_id}
+                            // the KPI's saved dates (on every row), not what this row was counted over
+                            initial={a.kpi_dates ?? {}}
+                            onSaved={() => {
+                              clearTrackerCache()
+                              void qc.invalidateQueries({ queryKey: ['campaign-results-actuals', tenantId, campaignId] })
+                            }}
+                          />
+                        ) : null}
                       </div>
+                      {a ? <KpiDatesLine actual={a} /> : null}
                     </li>
                   )
                 })}

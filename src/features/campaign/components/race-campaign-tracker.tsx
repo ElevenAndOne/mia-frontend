@@ -21,6 +21,7 @@ import type {
 import { parseDateRangeValue, isSinceLaunchRange } from '../../../utils/date-range'
 import { getCampaignMode, setCampaignMode } from '../../../utils/campaign-mode'
 import { isOnTrack, isRateMetric, rateMetricStatus } from '../../../utils/on-track'
+import { KpiDatesEditor, KpiDatesLine } from './kpi-dates'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,21 +50,33 @@ interface RaceCampaignTrackerProps {
 
 // ── Pure helpers ───────────────────────────────────────────────────────────
 
+/** Mia's "today" as YYYY-MM-DD, in South African time like the server's (a browser behind it is a day behind before
+ *  midnight there). Built from parts, so no locale's date format matters. */
+function miaToday(): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date())
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
 function resolveDates(
   dateRange: string | undefined,
   campaignStartDate: string | null,
   campaignEndDate: string | null = null
 ): { startDate: string | null; endDate: string | null } {
-  const today = format(new Date(), 'yyyy-MM-dd')
+  // Mia's "today", the server's too: a browser behind SAST sent yesterday before midnight there, which read as a
+  // narrower range than the campaign's and missed the nightly warm's cache (26 Nov 2026)
+  const today = miaToday()
   // When a campaign is loaded, always use its own date window — never the date picker.
   // The picker is locked in campaign mode, but its stored value may be a stale custom
   // range from a previous session, which would cause actuals to fetch the wrong window.
   if (campaignStartDate) {
-    const campaignEnded = campaignEndDate && new Date(campaignEndDate) < new Date()
+    const campaignEnded = !!campaignEndDate && campaignEndDate < today
     // Future-dated campaign that hasn't started yet: clamping the end to today would
     // produce start > end (an invalid window the platforms reject). Use the start as
     // the end so we never send start > end; the backend returns empty actuals.
-    const notStarted = new Date(campaignStartDate) > new Date()
+    const notStarted = campaignStartDate > today
     return {
       startDate: campaignStartDate,
       endDate: campaignEnded ? campaignEndDate : notStarted ? campaignStartDate : today,
@@ -85,6 +98,9 @@ function formatActual(actual: KPIActual): string {
   if (actual.actual_value === null || actual.actual_value === undefined) {
     // pending = the number is being fetched in the background right now (26 Nov 2026).
     if (actual.pending) return 'Updating…'
+    // its phase starts later (27 Nov 2026): no number yet, and never "ahead" on numbers from before it
+    if (actual.starts_on)
+      return `Starts ${new Date(`${actual.starts_on}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
     // 'none' = nothing is wired to this KPI — say so instead of a dash that reads
     // as "loading" or "zero" (state is absent on pre-Sep-2026 cached entries).
     return actual.state === 'none' && !actual.measured ? 'Not tracked' : '—'
@@ -169,7 +185,7 @@ function campaignTimePct(startDate: string, endDate: string): number {
 }
 
 function todayString(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+  return miaToday() // pace reads the same day the numbers were fetched for
 }
 
 /** The campaign's real state: an approved builder campaign is a draft until its first job launches, and said
@@ -184,7 +200,7 @@ function CampaignStatusPill({ status, startDate, builder }: { status: string; st
     )
   }
   // a start date already behind us with nothing launched yet isn't "Starts", it's waiting on a launch
-  const startsAhead = !!startDate && new Date(`${startDate.slice(0, 10)}T23:59:59`) >= new Date()
+  const startsAhead = !!startDate && startDate.slice(0, 10) >= miaToday()
   const label =
     status === 'draft'
       ? startDate && startsAhead
@@ -807,9 +823,11 @@ export function RaceCampaignTracker({
                 actual.actual_value >= actual.target_numeric
 
               const overPct = actual ? overPerformPct(actual) : null
-              const timePct = canShowOnTrack
-                ? campaignTimePct(campaign.start_date!, campaign.end_date!)
-                : null
+              // a KPI is paced over its own counting dates (26 Nov 2026), else its phase's dates (27 Nov 2026)
+              const own = actual?.count_window ?? actual?.pace_window ?? null
+              const paceStart = own ? own[0] : campaign.start_date
+              const paceEnd = own ? own[1] : campaign.end_date
+              const timePct = canShowOnTrack || own ? campaignTimePct(paceStart!, paceEnd!) : null
 
               // Bar colour
               let barColor = 'bg-utility-brand-500'
@@ -827,14 +845,14 @@ export function RaceCampaignTracker({
                       : rs === 'at-risk'
                         ? 'bg-utility-warning-500'
                         : 'bg-utility-error-500'
-                } else if (canShowOnTrack) {
+                } else if (canShowOnTrack || own) {
                   // Time-paced signal for cumulative metrics
                   const trackStatus = isOnTrack(
                     kpi.kpi_name,
                     actual.target_numeric,
                     actual.actual_value,
-                    campaign.start_date!,
-                    campaign.end_date!,
+                    paceStart!,
+                    paceEnd!,
                     today
                   )
                   barColor =
@@ -847,7 +865,7 @@ export function RaceCampaignTracker({
               }
 
               return (
-                <div key={kpi.kpi_name} className="space-y-1">
+                <div key={kpi.kpi_name} className="group space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="paragraph-xs text-secondary truncate">{kpi.kpi_name}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -929,6 +947,18 @@ export function RaceCampaignTracker({
                       )}
                     </div>
                   )}
+                  {actual ? <KpiDatesLine actual={actual} /> : null}
+                  {sessionId && tenantId && (kpi.kpi_id ?? actual?.kpi_id) != null && actual?.state !== 'manual' ? (
+                    <KpiDatesEditor
+                      sessionId={sessionId}
+                      tenantId={tenantId}
+                      campaignId={campaign.campaign_id}
+                      kpiId={(kpi.kpi_id ?? actual?.kpi_id)!}
+                      // the KPI's saved dates (on every row), not what this row was counted over
+                      initial={actual?.kpi_dates ?? {}}
+                      onSaved={() => void handleRefresh()}
+                    />
+                  ) : null}
                 </div>
               )
             })}
@@ -963,13 +993,18 @@ export function RaceCampaignTracker({
                   {n} ad campaign{n === 1 ? '' : 's'} spent R{Math.round(spend).toLocaleString()} in these dates but{' '}
                   {n === 1 ? "isn't" : "aren't"} linked to this campaign.
                 </span>
-                {/* New-builder campaigns: the old link screen is closed to them; the push from Mia links their
-                    ads (owner, 8 Nov). Old campaigns link on Setup → Linked. */}
-                {campaign.builder !== 'v2' && (
-                  <a className="font-medium text-brand-secondary hover:underline" href={`/campaigns/${campaign.campaign_id}/setup/linked`}>
-                    Link them →
-                  </a>
-                )}
+                {/* Old campaigns link on Setup → Linked; new-builder ones on the studio's Results tab (26 Nov: Onvlee's
+                    line had no way to act on it, since a push links only what Mia pushed, not copies made in Meta). */}
+                <a
+                  className="font-medium text-brand-secondary hover:underline"
+                  href={
+                    campaign.builder === 'v2'
+                      ? `/campaign-builder/${campaign.campaign_id}/results`
+                      : `/campaigns/${campaign.campaign_id}/setup/linked`
+                  }
+                >
+                  Link them →
+                </a>
               </p>
             )
           })()}

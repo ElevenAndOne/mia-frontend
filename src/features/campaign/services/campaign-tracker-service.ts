@@ -105,6 +105,11 @@ export interface CampaignKPI {
   target_numeric: number | null
   unit: string
   hubspot_list_name?: string | null
+  // own counting dates and comparison dates (26 Nov 2026)
+  count_from?: string | null
+  count_to?: string | null
+  compare_from?: string | null
+  compare_to?: string | null
 }
 
 export interface CampaignPhase {
@@ -163,6 +168,18 @@ export interface KPIActual {
   // Whether that beat the 7 days before it. Every bound KPI is cumulative since launch,
   // so the value always rises — this is the part that carries information.
   change_momentum?: 'up' | 'down' | 'flat' | null
+  // The KPI's own counting dates and the dates it's compared with (26 Nov 2026, services/kpi_dates.py)
+  kpi_id?: number | null
+  kpi_dates?: { count_from: string | null; count_to: string | null; compare_from: string | null; compare_to: string | null } | null
+  count_window?: [string, string] | null
+  // the dates this number covers (its phase's, else the campaign's), the span it's paced over, and the day a phase
+  // that hasn't started begins (27 Nov 2026)
+  window?: [string, string] | null
+  pace_window?: [string, string] | null
+  starts_on?: string | null
+  window_share?: number | null // how much of count_window has passed: pace reads this
+  per_day?: number | null
+  compare?: { from: string; to: string; value: number | null; label: string | null; per_day: number | null; reason: string | null } | null
 }
 
 // ---------------------------------------------------------------------------

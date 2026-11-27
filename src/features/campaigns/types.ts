@@ -37,6 +37,8 @@ export interface LinkedContentCandidate extends LinkedCampaign {
   suggested: boolean
   dismissed: boolean
   reason: string | null
+  // other campaigns in the workspace that already count this item (27 Nov 2026): linking it here counts it twice
+  also_in?: string[]
   starts_at?: string | null
   ends_at?: string | null
   published_at?: string | null
